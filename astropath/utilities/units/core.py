@@ -33,7 +33,7 @@ qpscale = PScale("qpscale")
 apscale = PScale("apscale")
 imscale = PScale("imscale")
 
-class ThingWithScale(abc.ABC, TableReader):
+class ThingWithScale(TableReader):
   __scales = set()
   def __init_subclass__(cls, *, scale=None, scales=None, **kwargs):
     super().__init_subclass__(**kwargs)

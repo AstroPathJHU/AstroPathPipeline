@@ -1,4 +1,5 @@
 import abc, argparse, pathlib, re
+from ..utilities.tableio import TableReader
 from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .workflowdependency import ThingWithRoots
 
@@ -26,7 +27,7 @@ class MRODebuggingMetaClass(abc.ABCMeta):
         print("========================")
       raise
 
-class RunFromArgumentParserBase(metaclass=MRODebuggingMetaClass):
+class RunFromArgumentParserBase(ThingWithRoots, TableReader, metaclass=MRODebuggingMetaClass):
   @classmethod
   def argumentparserhelpmessage(cls):
     return cls.__doc__

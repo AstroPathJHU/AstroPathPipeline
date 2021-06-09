@@ -11,7 +11,7 @@ from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
-from .workflowdependency import WorkflowDependency
+from .workflowdependency import WorkflowDependencySlideID
 
 class SampleDef(MyDataClass):
   """
@@ -113,6 +113,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   def informdataroot(self): return self.__informdataroot
   @property
   def logger(self): return self.__logger
+  @classmethod
+  def usegloballogger(cls): return False
 
   @property
   def rootnames(self):
@@ -560,7 +562,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   def run(self, **kwargs):
     "actually run whatever is supposed to be run on the sample"
 
-class WorkflowSample(SampleBase, WorkflowDependency):
+class WorkflowSample(SampleBase, WorkflowDependencySlideID):
   """
   Base class for a sample that will be used in a workflow,
   i.e. it takes in input files and creates output files.
@@ -576,11 +578,14 @@ class WorkflowSample(SampleBase, WorkflowDependency):
 
   @classmethod
   @abc.abstractmethod
-  def workflowdependencies(cls):
+  def workflowdependencyclasses(cls):
     """
     Previous steps that this step depends on
     """
     return []
+
+  def workflowdependencies(self):
+    return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses()]
 
   def joblock(self, **kwargs):
     self.samplelog.parent.mkdir(exist_ok=True, parents=True)

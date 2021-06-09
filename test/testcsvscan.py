@@ -13,7 +13,6 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   def filestocopy(cls):
     testroot = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
     dataroot = thisfolder/"data"
-    yield dataroot/"sampledef.csv", testroot
 
     for foldername in "Batch", "Clinical", "Ctrl", pathlib.Path("Control_TMA_1372_111_06.19.2019")/"dbload":
       old = dataroot/foldername
@@ -47,10 +46,30 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"/"dbload"/"project0_loadfiles.csv"
     ]
 
+  def setUp(self):
+    super().setUp()
+    slideids = "M206",
+
+    testroot = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
+    dataroot = thisfolder/"data"
+    for SlideID in slideids:
+      logfolder = testroot/SlideID/"logfiles"
+      logfolder.mkdir(exist_ok=True, parents=True)
+      from astropath.utilities.version import astropathversion
+      for module in "annowarp", "geom", "geomcell":
+        with open(logfolder/f"{SlideID}-{module}.log", "w") as f:
+          f.write(f"0;0;{SlideID};{module} {astropathversion};1900-01-01 00:00:00\n")
+          f.write(f"0;0;{SlideID};end {module};1900-01-01 00:00:00\n")
+
+    with open(dataroot/"sampledef.csv") as f, open(testroot/"sampledef.csv", "w") as newf:
+      for line in f:
+        if line.strip() and line.split(",")[1] in ("SlideID",) + slideids:
+          newf.write(line)
+
   def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False):
     root = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
     geomroot = thisfolder/"reference"/"geomcell"
-    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--rerun-finished"]
     if selectrectangles is not None:
       args.append("--selectrectangles")
       for rid in selectrectangles: args.append(str(rid))

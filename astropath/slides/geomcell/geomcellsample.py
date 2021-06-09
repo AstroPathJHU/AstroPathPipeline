@@ -85,7 +85,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
         pxvec = units.nominal_values(field.pxvec)
         with field.using_image() as im:
           im = im.astype(np.uint32)
-          for imlayernumber, imlayer in more_itertools.zip_equal(self.layers, im):
+          for imlayernumber, imlayer in more_itertools.zip_equal(self.layers, im.transpose(2, 0, 1)):
             celltype = self.celltype(imlayernumber)
             properties = skimage.measure.regionprops(imlayer)
             for cellproperties in properties:
@@ -140,8 +140,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     ]
 
   @classmethod
-  def workflowdependencies(cls):
-    return [AlignSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [AlignSample] + super().workflowdependencyclasses()
 
 class CellGeomLoad(DataClassWithPolygon):
   field: int

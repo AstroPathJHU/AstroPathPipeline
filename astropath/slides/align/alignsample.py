@@ -457,8 +457,8 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     ]
 
   @classmethod
-  def workflowdependencies(cls):
-    return [PrepDbSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [PrepDbSample] + super().workflowdependencyclasses()
 
 class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
   """
@@ -506,13 +506,13 @@ class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, A
 
 class AlignSampleComponentTiff(AlignSampleComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignSampleDbloadBase):
   """
-  An alignment set that runs on im3 images and can write results to the dbload folder.
+  An alignment set that runs on component tiff images and can write results to the dbload folder.
   This class is not currently used but is here for completeness.
   """
 
 class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, ReadRectanglesOverlapsComponentTiffFromXML):
   """
-  An alignment set that runs on im3 images and does not rely on the dbload folder.
+  An alignment set that runs on component tiff images and does not rely on the dbload folder.
   This class is used for identifying overexposed HPFs.
   """
 

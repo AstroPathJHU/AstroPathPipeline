@@ -536,11 +536,11 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
             raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
 
       #make the destination array
-      image = np.ndarray(shape=(len(self.__layers),)+shape, dtype=dtype)
+      image = np.ndarray(shape=shape+(len(self.__layers),), dtype=dtype)
 
       #load the desired layers
       for i, layer in enumerate(self.__layers):
-        image[i] = pages[layer-1].asarray()
+        image[:,:,i] = pages[layer-1].asarray()
 
       return image
 
@@ -549,7 +549,7 @@ class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
   Single layer image read from a component tiff.
   You can also use RectangleReadIm3MultiLayer and write layers=[i],
   but this class gives you a 2D array as the image instead of a 3D array
-  with shape[0] = 1.
+  with shape[2] = 1.
   """
   def __post_init__(self, *args, layer, **kwargs):
     morekwargs = {
@@ -563,7 +563,7 @@ class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
     return layer
 
   def getimage(self):
-    image, = super().getimage()
+    image, = super().getimage().transpose(2, 0, 1)
     return image
 
 class RectangleCollection(abc.ABC):

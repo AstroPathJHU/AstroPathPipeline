@@ -1,4 +1,4 @@
-import contextlib2, logging, more_itertools, numpy as np, os, pathlib, re, unittest
+import logging, more_itertools, numpy as np, os, pathlib, re, unittest
 from astropath.shared.sample import SampleDef
 from astropath.slides.align.aligncohort import AlignCohort
 from astropath.slides.align.alignsample import AlignSample, AlignSampleComponentTiff, AlignSampleFromXML, ImageStats
@@ -251,7 +251,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     assertAlmostEqual(o1.result.covyy, o2.result.covyy, rtol=1e-5)
     assertAlmostEqual(o1.result.covxy, o2.result.covxy, rtol=1e-5)
 
-  @unittest.skip #temporarilyremove messes with other tests
+  @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
   def testPscale(self, SlideID="M21_1"):
     a1 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
     readfilename = thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
@@ -286,14 +286,14 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
       assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
 
-  @unittest.skip #temporarilyremove messes with other tests
+  @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
   def testPscaleFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast"):
       self.testPscale(SlideID=SlideID)
 
   def testCohort(self, units="safe"):
     SlideID = "M21_1"
-    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", str(thisfolder/"alignment_test_for_jenkins"), "--logroot", str(thisfolder/"alignment_test_for_jenkins"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
+    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", os.fspath(thisfolder/"alignment_test_for_jenkins"), "--logroot", os.fspath(thisfolder/"alignment_test_for_jenkins"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     AlignCohort.runfromargumentparser(args)
 
     a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
@@ -302,6 +302,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   def testCohortFastUnits(self):
     self.testCohort(units="fast_microns")
 
+  @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
   def testMissingFolders(self, SlideID="M21_1"):
     with temporarilyremove(thisfolder/"data"/SlideID/"im3"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"), units.setup_context("fast"):
       a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=range(10), dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
@@ -335,23 +336,22 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     nclip = a1.nclip
     position = a1.position
 
-    with contextlib2.nullcontext(): #temporarilyremove(thisfolder/"data"/SlideID/"dbload"):
-      a2 = AlignSampleFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), position=position, **kwargs)
-      a2.getDAPI()
-      a2.align()
-      result2 = a2.stitch()
+    a2 = AlignSampleFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), position=position, **kwargs)
+    a2.getDAPI()
+    a2.align()
+    result2 = a2.stitch()
 
-      """
-      with temporarilyremove(thisfolder/"data"/SlideID/"inform_data"):
+    units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result2.T))
+    units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()))
+
+    if not os.environ.get("JENKINS_PARALLEL", 0): #temporarilyremove messes with other tests run in parallel
+      with temporarilyremove(thisfolder/"data"/SlideID/"dbload"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"):
         a3 = AlignSampleFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), **kwargs)
         a3.getDAPI()
         a3.align()
         result3 = a3.stitch()
-      """
 
-    units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result2.T))
-    units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()))
-    #units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result3.T), atol=1e-8)
+      units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result3.T), atol=1e-8)
 
   def testReadingLayer(self, SlideID="M21_1"):
     args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID

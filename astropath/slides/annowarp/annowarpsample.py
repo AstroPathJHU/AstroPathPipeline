@@ -4,14 +4,14 @@ from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, S
 from ...shared.csvclasses import Region, Vertex
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
-from ...shared.sample import MaskWorkflowSampleBase, ReadRectanglesDbloadComponentTiff, SampleBase, WorkflowSample, XMLPolygonReader, ZoomFolderSampleBase
+from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample, XMLPolygonReader, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
-from ..align.field import FieldReadComponentTiffMultiLayer
+from ..align.field import Field
 from ..align.overlap import AlignmentComparison
 from ..zoom.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
@@ -151,7 +151,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFolderSampleBase, ZoomSampleBase, WorkflowSample, XMLPolygonReader, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, WorkflowSample, XMLPolygonReader, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -165,7 +165,7 @@ class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFo
   tile, with a possible constant piece.
   """
 
-  rectangletype = FieldReadComponentTiffMultiLayer
+  rectangletype = Field
 
   __bigtilepixels = np.array([1400, 2100])
   __bigtileoffsetpixels = np.array([0, 1000])
@@ -869,8 +869,8 @@ class AnnoWarpSampleBase(QPTiffSample, ReadRectanglesDbloadComponentTiff, ZoomFo
     ]
 
   @classmethod
-  def workflowdependencies(cls):
-    return [ZoomSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [ZoomSample] + super().workflowdependencyclasses()
 
 class AnnoWarpArgumentParserTissueMask(AnnoWarpArgumentParserBase, DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser):
   defaultmintissuefraction = 0.2
@@ -929,8 +929,8 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
   """
 
   @classmethod
-  def workflowdependencies(cls):
-    return [StitchInformMaskSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [StitchInformMaskSample] + super().workflowdependencyclasses()
   def printcuts(self, *args, **kwargs):
     super().printcuts(*args, **kwargs)
     self.logger.info("      Using Inform mask to determine tissue regions")
@@ -942,8 +942,8 @@ class AnnoWarpSampleAstroPathTissueMask(AnnoWarpSampleTissueMask, AstroPathTissu
   """
 
   @classmethod
-  def workflowdependencies(cls):
-    return [StitchAstroPathTissueMaskSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [StitchAstroPathTissueMaskSample] + super().workflowdependencyclasses()
   def printcuts(self, *args, **kwargs):
     super().printcuts(*args, **kwargs)
     self.logger.info("      Using AstroPath mask to determine tissue regions")
