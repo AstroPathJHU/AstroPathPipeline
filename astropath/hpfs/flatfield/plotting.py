@@ -81,20 +81,20 @@ def plot_image_layer_thresholds_with_histograms(image_background_thresholds_by_l
             axis_min+=1
         while hists_by_layer[axis_max,layer_n-1]==0 :
             axis_max-=1
-        print(f'axis_min = {axis_min}, hists_by_layer[{axis_min},{layer_n-1}] = {hists_by_layer[axis_min,layer_n-1]}, axis_max = {axis_max}')
         log_bins = np.logspace(np.log10(axis_min),np.log10(axis_max),61)
         background_layer_log_hist = np.zeros((len(log_bins)-1),dtype=np.uint64)
         signal_layer_log_hist = np.zeros((len(log_bins)-1),dtype=np.uint64)
         log_bin_i = 0
         for lin_bin in range(axis_min,axis_max+1) :
-            if lin_bin>log_bins[log_bin_i+1] :
+            while lin_bin>log_bins[log_bin_i+1] and log_bin_i<len(log_bins)-2 :
                 log_bin_i+=1
             if lin_bin>chosen_t :
                 signal_layer_log_hist[log_bin_i]+=hists_by_layer[lin_bin,layer_n-1]
             else :
                 background_layer_log_hist[log_bin_i]+=hists_by_layer[lin_bin,layer_n-1]
-        ax2.bar(log_bins[:-1],background_layer_log_hist,width=np.diff(log_bins),log=True,align='edge',label='background')
-        ax2.bar(log_bins[:-1],signal_layer_log_hist,width=np.diff(log_bins),log=True,align='edge',label='signal')
+        ax2.bar(log_bins[:-1],background_layer_log_hist,width=np.diff(log_bins),log=True,align='edge',alpha=0.7,label='background')
+        ax2.bar(log_bins[:-1],signal_layer_log_hist,width=np.diff(log_bins),log=True,align='edge',alpha=0.7,label='signal')
+        ax2.plot([chosen_t,chosen_t],[ax2.get_ylim()[0],0.8*ax2.get_ylim()[1]],linewidth=2,color='r',label=f'threshold = {chosen_t} counts')
         ax2.set_xscale('log')
         ax2.set_title('pixel histogram (summed over all images)')
         ax2.set_xlabel('log pixel intensity (counts)')

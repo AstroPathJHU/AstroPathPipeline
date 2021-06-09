@@ -240,15 +240,14 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         tissue_edge_rects = the list of rectangles that are on the edge of the tissue
         """
         #start up the lists that will be returned (and the list of datatable entries to write out)
-        with tissue_edge_rects[0].using_image() as im :
-            image_background_thresholds_by_layer = np.zeros((len(tissue_edge_rects),im.shape[-1]),dtype=im.dtype)
-            tissue_edge_layer_hists = np.zeros((np.iinfo(im.dtype).max+1,im.shape[-1]),dtype=np.uint64)
+        image_background_thresholds_by_layer = np.zeros((len(tissue_edge_rects),self.nlayers),dtype=np.uint16)
+        tissue_edge_layer_hists = np.zeros((np.iinfo(np.uint16).max+1,self.nlayers),dtype=np.uint64)
         rectangle_data_table_entries = []
         #run the thresholding/histogram function in multiple parallel processes
         if self.__n_threads>1 :
             with Pool(processes=self.__n_threads) as pool :
                 proc_results = {}; current_image_i = 0
-                for ri,r in enumerate(tissue_edge_rects[:2]) :
+                for ri,r in enumerate(tissue_edge_rects) :
                     while len(proc_results)>=self.__n_threads :
                         for rect,res in proc_results.items() :
                             if res.ready() :
@@ -268,7 +267,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                                     warnmsg+= f'with error {e} and this rectangle WILL BE SKIPPED when finding thresholds for the overall slide!'
                                     self.logger.warning(warnmsg)
                                 finally :
-                                    del proc_results[r]
+                                    del proc_results[rect]
                                     break
                     self.logger.info(f'Finding background thresholds for {r.file} ({ri+1} of {len(tissue_edge_rects)})....')
                     proc_results[r] = pool.apply_async(get_background_thresholds_and_pixel_hists_for_rectangle_image,(r.image,))
@@ -290,6 +289,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                         self.logger.warning(warnmsg)
         #run the thresholding/histogram function serially in this current single process
         else :
+            current_image_i=0
             for ri,r in enumerate(tissue_edge_rects) :
                 self.logger.info(f'Finding background thresholds for {r.file} ({ri+1} of {len(tissue_edge_rects)})....')
                 try :
@@ -302,6 +302,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                             rectangle_data_table_entries.append(RectangleThresholdTableEntry(r.n,li+1,int(t),t/r.allexposuretimes[li]))
                     image_background_thresholds_by_layer[current_image_i,:] = thresholds
                     tissue_edge_layer_hists+=hists
+                    current_image_i+=1
                 except Exception as e :
                     warnmsg = f'WARNING: finding thresholds for rectangle {r.n} ({r.file}) failed '
                     warnmsg+= f'with error {e} and this rectangle WILL BE SKIPPED when finding thresholds for the overall slide!'
