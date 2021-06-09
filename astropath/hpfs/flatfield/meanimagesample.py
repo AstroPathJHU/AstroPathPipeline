@@ -1,35 +1,39 @@
 #imports
 from .meanimage import MeanImage
 from .rectangle import RectangleCorrectedIm3MultiLayer
+from .plotting import plot_tissue_edge_rectangle_locations
 from .config import CONST
-from ...shared.sample import ReadRectanglesIm3FromXML, WorkflowSample
+from ...shared.sample import ReadRectanglesOverlapsIm3FromXML, WorkflowSample
+from ...shared.overlap import Overlap
 from ...utilities.img_file_io import LayerOffset
-from ...utilities.tableio import readtable
+from ...utilities.tableio import readtable, writetable
+from ...utilities.misc import cd, MetadataSummary
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
 import matplotlib.pyplot as plt
 import pathlib
 
 #some file-scope constants
+DEFAULT_N_THREADS = 10
 
-class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
+class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
     """
     Main class to handle creating the meanimage for a slide
     """
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=pathlib.Path(CONST.MEANIMAGE_DIRNAME),et_offset_file=None,skip_masking=False,**kwargs) :
+    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),et_offset_file=None,skip_masking=False,n_threads=DEFAULT_N_THREADS,**kwargs) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
-        #set some runmode variables
-        self.__et_offset_file = et_offset_file
-        #set the path to the working directory based on a kwarg
         self.__workingdirpath = workingdir
-        #if it was just a name, set it to a directory with that name in the default location (im3 subdir)
+        #if the workingdir arg was just a name, set it to a directory with that name in the default location (im3 subdir)
         if self.__workingdirpath.name==str(self.__workingdirpath) :
             self.__workingdirpath = self.im3folder / workingdir
         self.__workingdirpath.mkdir(parents=True,exist_ok=True)
+        #set some other variables
+        self.__et_offset_file = et_offset_file
+        self.__n_threads = n_threads
         #start up the meanimage
         self.__meanimage = MeanImage(skip_masking)
         #set up the list of output files to add to as the code runs (though some will always be required)
@@ -73,6 +77,8 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
 
     multilayer = True
     rectangletype = RectangleCorrectedIm3MultiLayer
+    overlaptype = Overlap
+    nclip = UNIV_CONST.N_CLIP
     
     @property
     def inputfiles(self,**kwargs) :
@@ -96,8 +102,8 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         p = super().makeargumentparser()
         p.add_argument('--filetype',choices=['raw','flatWarp'],default='raw',
                         help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatWarp" files (extension {UNIV_CONST.FLATW_EXT})')
-        p.add_argument('--workingdir', type=pathlib.Path, default=pathlib.Path(CONST.MEANIMAGE_DIRNAME),
-                        help=f'path to the working directory (default: new subdirectory called "{CONST.MEANIMAGE_DIRNAME}" in the slide im3 directory)')
+        p.add_argument('--workingdir', type=pathlib.Path, default=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),
+                        help=f'path to the working directory (default: new subdirectory called "{UNIV_CONST.MEANIMAGE_DIRNAME}" in the slide im3 directory)')
         g = p.add_mutually_exclusive_group(required=True)
         g.add_argument('--exposure_time_offset_file',
                         help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
@@ -107,6 +113,8 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         p.add_argument('--skip_masking', action='store_true',
                         help='''Add this flag to entirely skip masking out the background regions of the images as they get added
                         [use this argument to completely skip the background thresholding and masking]''')
+        p.add_argument('--n_threads', type=int, default=DEFAULT_N_THREADS,
+                        help=f'Number of threads to use for parallelized portions of the code (default={DEFAULT_N_THREADS})')
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
@@ -115,7 +123,8 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
             'filetype': parsed_args_dict.pop('filetype'), 
             'workingdir': parsed_args_dict.pop('workingdir'),
             'et_offset_file': None if parsed_args_dict.pop('skip_exposure_time_correction') else parsed_args_dict.pop('exposure_time_offset_file'),
-            'skip_masking': parsed_args_dict.pop('skip_masking')
+            'skip_masking': parsed_args_dict.pop('skip_masking'),
+            'n_threads': parsed_args_dict.pop('n_threads'),
         }
     @classmethod
     def defaultunits(cls) :
@@ -124,8 +133,8 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
     def logmodule(cls) : 
         return "meanimage"
     @classmethod
-    def workflowdependencies(cls) :
-        return super().workflowdependencies()
+    def workflowdependencyclasses(cls):
+        return super().workflowdependencyclasses()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -133,7 +142,7 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         """
         Read in the offset factors for exposure time corrections from the file defined by command line args
         """
-        self.logger.info(f'Copying exposure time offsets for {self.SlideId} from file {self.__et_offset_file}')
+        self.logger.info(f'Copying exposure time offsets for {self.SlideID} from file {self.__et_offset_file}')
         layer_offsets_from_file = readtable(self.__et_offset_file,LayerOffset)
         offsets_to_return = []
         for ln in range(1,self.nlayers+1) :
@@ -151,10 +160,18 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
 
     def __get_background_thresholds(self) :
         """
-        Return the bakcground thresholds for each image layer, either reading them from an existing file 
+        Return the background thresholds for each image layer, either reading them from an existing file 
         or calculating them from the rectangles on the edges of the tissue
         """
+        #first check the working directory for the background threshold file
         threshold_file_path = self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
+        #if it's not in the working directory, check in the slide's meanimage directory (if it exists)
+        if not threshold_file_path.is_file() :
+            other_threshold_file_path = self.root / f'{self.SlideID}' / f'{UNIV_CONST.IM3_DIR_NAME}' / f'{UNIV_CONST.MEANIMAGE_DIRNAME}' 
+            other_threshold_file_path = other_threshold_file_path / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}'
+            if other_threshold_file_path.is_file() :
+                threshold_file_path = other_threshold_file_path
+        #read the values from the files or find them from the tissue edge rectangles
         if threshold_file_path.is_file() :
             return self.__get_background_thresholds_from_file(threshold_file_path)
         else :
@@ -183,10 +200,19 @@ class MeanImageSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         """
         Find, write out, and return the list of optimal background thresholds found from the set of images located on the edges of the tissue
         """
-        print('made it to __find_background_thresholds_from_tissue_edge_images : )')
-        #add the output files that will be created to the list
-        #filter the list of rectangles for those that are on the edge of the tissue
-        #find the optimal thresholds for each tissue edge image
+        #add the output file(s) that will be created to the list
+        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM}')
+        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}')
+        #get the list of rectangles that are on the edge of the tissue, plot their locations, and save a summary of their metadata
+        tissue_edge_rects = [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))<8]
+        plot_tissue_edge_rectangle_locations(self.rectangles,tissue_edge_rects,self.root,self.SlideID,
+                                             self.__workingdirpath / CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots'))
+        edge_rect_ts = [r.t for r in tissue_edge_rects]
+        with cd(self.__workingdirpath) :
+            writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}',
+                      [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(edge_rect_ts)),str(max(edge_rect_ts)))])
+        #find the optimal thresholds for each tissue edge image and make plots of the thresholds found in each layer
+
         #write out the data table of all the thresholds found
         #make some plots and collect them in a .pdf file
         #return the list of background thresholds

@@ -58,7 +58,7 @@ def weightedstd(*args, **kwargs):
   return weightedvariance(*args, **kwargs) ** 0.5
 
 #small helper function to crop white border out of an image
-def cropAndOverwriteImage(im_path,border=0.03) :
+def crop_and_overwrite_image(im_path,border=0.03) :
   im = cv2.imread(im_path)
   y_border = int(im.shape[0]*(border/2))
   x_border = int(im.shape[1]*(border/2))

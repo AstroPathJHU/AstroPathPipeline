@@ -1,5 +1,5 @@
 #imports
-from ...utilities.misc import cd, cropAndOverwriteImage
+from ...utilities.misc import cd, crop_and_overwrite_image
 import numpy as np, matplotlib.pyplot as plt
 
 #helper function to write out a sheet of masking information plots for an image
@@ -79,4 +79,4 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,compressed_full
     else :
         with cd(savedir) :
             fn = f'{image_key}_masking_plots.png'
-            plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
+            plt.savefig(fn); plt.close(); crop_and_overwrite_image(fn)

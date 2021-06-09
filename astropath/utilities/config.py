@@ -13,6 +13,19 @@ class Const :
     @property
     def IM3_EXT(self) :
         return '.im3' # extension of .im3 image files
+    @property
+    def QPTIFF_SUFFIX(self) :
+        return '_qptiff.jpg' # suffix for the qptiff files
+    #subdirectory names
+    @property
+    def IM3_DIR_NAME(self) :
+        return 'im3' #name of the im3 subdirectory
+    @property
+    def DBLOAD_DIR_NAME(self) :
+        return 'dbload' #name of the dbload directory
+    @property
+    def MEANIMAGE_DIRNAME(self) :
+        return 'meanimage' #name of the output directory for slidemeanimage results
     #image information
     @property
     def N_CLIP(self) :
