@@ -62,23 +62,23 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     if not s.runstatus:
       raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus}")
 
-    rows = s.readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
-    targetrows = s.readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    rows = s.readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
-    rows = s.readtable(stitchfilename, AnnoWarpStitchResultEntry)
-    targetrows = s.readtable(referencestitchfilename, AnnoWarpStitchResultEntry)
+    rows = s.readtable(stitchfilename, AnnoWarpStitchResultEntry, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referencestitchfilename, AnnoWarpStitchResultEntry, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = s.readtable(verticesfilename, WarpedVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
-    targetrows = s.readtable(referenceverticesfilename, WarpedVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize})
+    rows = s.readtable(verticesfilename, WarpedVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize}, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referenceverticesfilename, WarpedVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize}, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = s.readtable(regionsfilename, Region)
-    targetrows = s.readtable(referenceregionsfilename, Region)
+    rows = s.readtable(regionsfilename, Region, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referenceregionsfilename, Region, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
       self.assertGreater(row.poly.area, 0)
@@ -90,8 +90,8 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     testfilename.parent.mkdir(parents=True, exist_ok=True)
     s.readalignments(filename=referencefilename)
     s.writealignments(filename=testfilename)
-    rows = s.readtable(testfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
-    targetrows = s.readtable(referencefilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset})
+    rows = s.readtable(testfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referencefilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
     testfilename.unlink()

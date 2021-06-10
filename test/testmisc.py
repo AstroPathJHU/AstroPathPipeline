@@ -104,8 +104,8 @@ class TestMisc(unittest.TestCase):
       (f"{SlideID}_regions.csv", Region),
     ):
       try:
-        rows = s.readtable(folder/filename, cls, checkorder=True)
-        targetrows = s.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True)
+        rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True)
+        targetrows = s.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True)
         for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:
