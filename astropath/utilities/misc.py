@@ -282,9 +282,10 @@ def commonroot(*paths, __niter=0):
 
 def checkwindowsnewlines(filename):
   with open(filename, newline="") as f:
-    if re.search(r"(?<!\r)\n", f.read()):
+    contents = f.read()
+    if re.search(r"(?<!\r)\n", contents):
       raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
-    if re.search(r"\r\r", f.read()):
+    if re.search(r"\r\r", contents):
       raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
 
 dummylogger = logging.getLogger("dummy")
