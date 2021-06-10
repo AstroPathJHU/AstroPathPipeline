@@ -166,7 +166,11 @@ class MyFileHandler:
         kwargs["errors"] = handler.errors
       except AttributeError: #python < 3.9
         pass
-      handler.setStream(open(filename, **kwargs))
+      newfile = open(filename, **kwargs)
+      try:
+        handler.setStream(newfile)
+      except AttributeError: #python < 3.7
+        handler.stream = newfile
       handler.terminator = "\r\n"
     self.__handler = self.__handlers[filename]
     self.__counts[filename] += 1
