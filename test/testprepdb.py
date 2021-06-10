@@ -4,6 +4,7 @@ from astropath.shared.overlap import Overlap
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
+from astropath.utilities.misc import checkwindowsnewlines
 from .testbase import assertAlmostEqual, temporarilyreplace
 
 thisfolder = pathlib.Path(__file__).parent
@@ -56,6 +57,9 @@ class TestPrepDb(unittest.TestCase):
     with PIL.Image.open(thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
          PIL.Image.open(thisfolder/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff.jpg") as targetimg:
       np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+
+    for log in logs:
+      checkwindowsnewlines(log)
 
   def testPrepDbFastUnits(self, SlideID="M21_1"):
     self.testPrepDb(SlideID, units="fast")

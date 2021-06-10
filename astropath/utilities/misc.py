@@ -281,7 +281,7 @@ def commonroot(*paths, __niter=0):
   return commonroot(path1, path2.parent, *others, __niter=__niter+1)
 
 def checkwindowsnewlines(filename):
-  with open(filename) as f:
+  with open(filename, newline="") as f:
     if re.search(r"(?<!\r)\n", f.read()):
       raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
 
