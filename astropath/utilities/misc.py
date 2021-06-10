@@ -284,6 +284,8 @@ def checkwindowsnewlines(filename):
   with open(filename, newline="") as f:
     if re.search(r"(?<!\r)\n", f.read()):
       raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
+    if re.search(r"\r\r", f.read()):
+      raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
