@@ -1,5 +1,6 @@
 import contextlib, cv2, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, skimage
 
+from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels
@@ -27,7 +28,7 @@ class ZoomSampleBase(ReadRectanglesDbload):
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
-class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample):
+class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, SelectLayersArgumentParser):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
