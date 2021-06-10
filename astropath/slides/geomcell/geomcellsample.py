@@ -208,6 +208,9 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     finally:
       self.debugdraw(polygon)
 
+    if len(polygon.outerpolygon) < 4:
+      self.logger.warningglobal(f"polygon only has {len(polygon.outerpolygon)} vertices, skipping it. {self.loginfo}")
+
     return polygon
 
   def __findpolygons(self, cellmask):

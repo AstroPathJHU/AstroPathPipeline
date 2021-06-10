@@ -217,7 +217,7 @@ class SimplePolygon(Polygon):
   apscale: apscale of the polygon
   """
 
-  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1):
+  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1, require4vertices=False):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
 
@@ -258,6 +258,9 @@ class SimplePolygon(Polygon):
       if self.__vertices is not None:
         self.__vertices = [self.__vertices[0]] + self.__vertices[:0:-1]
 
+    if require4vertices and len(self) < 4:
+      raise ValueError(f"Polygon has only {len(self)} vertices, needs to have at least 4")
+
   @property
   def pscale(self):
     return self.__pscale
@@ -276,6 +279,8 @@ class SimplePolygon(Polygon):
         for i, (x, y) in enumerate(self.vertexarray)
       ]
     return self.__vertices
+
+  def __len__(self): return len(self.__vertexarray)+1 #include the first and last points separately
 
   def __eq__(self, other):
     if other is None: return False
@@ -333,7 +338,7 @@ class SimplePolygon(Polygon):
   def __repr__(self, *, round=True):
     return f"PolygonFromGdal(pixels={str(self.gdalpolygon(round=round))!r}, pscale={self.pscale}, apscale={self.apscale})"
 
-def PolygonFromGdal(*, pixels, pscale, apscale):
+def PolygonFromGdal(*, pixels, pscale, apscale, **kwargs):
   """
   Create a polygon from a GDAL format string or an
   ogr.Geometry object
@@ -357,8 +362,8 @@ def PolygonFromGdal(*, pixels, pscale, apscale):
     polyvertices = units.convertpscale(polyvertices, pscale, apscale)
     vertices.append(polyvertices)
 
-  outerpolygon = SimplePolygon(vertexarray=vertices[0], pscale=pscale, apscale=apscale)
-  subtractpolygons = [SimplePolygon(vertexarray=vertices[1], pscale=pscale, apscale=apscale) for v in vertices[1:]]
+  outerpolygon = SimplePolygon(vertexarray=vertices[0], pscale=pscale, apscale=apscale, **kwargs)
+  subtractpolygons = [SimplePolygon(vertexarray=vertices[1], pscale=pscale, apscale=apscale, **kwargs) for v in vertices[1:]]
 
   return Polygon(outerpolygon, subtractpolygons)
 
@@ -390,6 +395,7 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
           pixels=poly,
           pscale=self.pscale,
           apscale=self.apscale,
+          require4vertices=True,
         ))
       else:
         raise TypeError(f"Unknown type {type(poly).__name__} for {field}")
