@@ -2,7 +2,7 @@
 from .meanimage import MeanImage
 from .rectangle import RectangleCorrectedIm3MultiLayer
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry
-from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms
+from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms, plot_background_thresholds_by_layer
 from .config import CONST
 from ...shared.sample import ReadRectanglesOverlapsIm3FromXML, WorkflowSample
 from ...shared.overlap import Overlap
@@ -178,7 +178,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         if threshold_file_path.is_file() :
             return self.__get_background_thresholds_from_file(threshold_file_path)
         else :
-            return self.__find_background_thresholds_from_tissue_edge_images(threshold_file_path)
+            return self.__find_background_thresholds_from_tissue_edge_images()
 
     def __get_background_thresholds_from_file(self,threshold_file_path) :
         """
@@ -197,9 +197,10 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 background_thresholds_to_return.append(layer_counts_threshold[0])
         return background_thresholds_to_return
 
-    def __find_background_thresholds_from_tissue_edge_images(self,threshold_file_path) :
+    def __find_background_thresholds_from_tissue_edge_images(self) :
         """
         Find, write out, and return the list of optimal background thresholds found from the set of images located on the edges of the tissue
+        Also makes some plots and datatables in the process
         """
         self.logger.info(f'Finding background thresholds for {self.SlideID} using images on the edges of the tissue')
         thresholding_plot_dir_path = self.__workingdirpath / CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
@@ -217,18 +218,21 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                       [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(edge_rect_ts)),str(max(edge_rect_ts)))])
         #find the optimal thresholds for each tissue edge image, write them out, and make plots of the thresholds found in each layer
         image_background_thresholds_by_layer, image_hists_by_layer = self.__get_background_thresholds_and_pixel_hists_for_edge_rectangles(tissue_edge_rects)
-        slide_thresholds = []
+        chosen_thresholds = []
         for li in range(self.nlayers) :
             valid_layer_thresholds = image_background_thresholds_by_layer[:,li][image_background_thresholds_by_layer[:,li]!=0]
             if len(valid_layer_thresholds)<1 :
                 raise RuntimeError(f"ERROR: not enough image background thresholds were found in layer {li+1} for {self.SlideID} and so this slide can't be used")
             if not self.__et_offset_file is None :
-                slide_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),np.median(valid_layer_thresholds)/self.__med_ets[li]))
+                chosen_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),np.median(valid_layer_thresholds)/self.__med_ets[li]))
             else :
-                slide_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),-1.))
+                chosen_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),-1.))
         with cd(self.__workingdirpath) :
-            writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',slide_thresholds)
-        plot_image_layer_thresholds_with_histograms(image_background_thresholds_by_layer,slide_thresholds,image_hists_by_layer,thresholding_plot_dir_path)
+            writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',chosen_thresholds)
+        thresholding_datatable_filepath = self.__workingdirpath / f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}'
+        if thresholding_datatable_filepath.is_file() :
+            plot_background_thresholds_by_layer(thresholding_datatable_filepath,chosen_thresholds,thresholding_plot_dir_path)
+        plot_image_layer_thresholds_with_histograms(image_background_thresholds_by_layer,chosen_thresholds,image_hists_by_layer,thresholding_plot_dir_path)
         #collect plots in a .pdf file
         #return the list of background thresholds
 
