@@ -83,8 +83,8 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
     reference = reffolder/filename.name
 
     try:
-      rows = s.readtable(filename, LoadFile, header=False)
-      targetrows = s.readtable(reference, LoadFile, header=False)
+      rows = s.readtable(filename, LoadFile, header=False, checkorder=True, checknewlines=True)
+      targetrows = s.readtable(reference, LoadFile, header=False, checkorder=True, checknewlines=True)
       for row in rows:
         folder = s.mainfolder
         if row.tablename == "CellGeom":
@@ -98,8 +98,8 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
 
       filename = s.root/"dbload"/"project0_loadfiles.csv"
       reference = thisfolder/"reference"/"csvscan"/filename.name
-      rows = s.readtable(filename, LoadFile, header=False)
-      targetrows = s.readtable(reference, LoadFile, header=False)
+      rows = s.readtable(filename, LoadFile, header=False, checkorder=True, checknewlines=True)
+      targetrows = s.readtable(reference, LoadFile, header=False, checkorder=True, checknewlines=True)
       for row in rows:
         folder = s.root
         if row.tablename == "CellGeom":

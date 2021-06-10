@@ -45,9 +45,9 @@ args = Namespace(
     )
 main(args)
 
-new = readtable(working_dir/"fit_result.csv", WarpFitResult)
-ref = readtable(folder/"reference"/"warping"/"fit_result.csv", WarpFitResult)
-ref2 = readtable(folder/"reference"/"warping"/"fit_result_2.csv", WarpFitResult)
+new = readtable(working_dir/"fit_result.csv", WarpFitResult, checkorder=True, checknewlines=True)
+ref = readtable(folder/"reference"/"warping"/"fit_result.csv", WarpFitResult, checkorder=True, checknewlines=True)
+ref2 = readtable(folder/"reference"/"warping"/"fit_result_2.csv", WarpFitResult, checkorder=True, checknewlines=True)
 for resultnew, resultref, resultref2 in zip(new, ref, ref2):
   for result in resultnew, resultref, resultref2:
     result.dirname = ""

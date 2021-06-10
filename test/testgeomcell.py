@@ -31,8 +31,8 @@ class TestGeomCell(TestBaseSaveOutput):
       ):
         self.assertEqual(filename.name, reffilename.name)
   
-        rows = s.readtable(filename, CellGeomLoad)
-        targetrows = s.readtable(reffilename, CellGeomLoad)
+        rows = s.readtable(filename, CellGeomLoad, checkorder=True, checknewlines=True)
+        targetrows = s.readtable(reffilename, CellGeomLoad, checkorder=True, checknewlines=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           assertAlmostEqual(row, target)
           try:

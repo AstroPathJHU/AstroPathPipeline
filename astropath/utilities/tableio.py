@@ -3,7 +3,7 @@ import abc, contextlib, csv, dataclasses, dataclassy, datetime, pathlib
 from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import dummylogger
 
-def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, maxrows=float("inf"), header=True, **columntypes):
+def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """
   Read a csv table into a list of named tuples
 
@@ -34,6 +34,10 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
   """
 
   result = []
+  if checknewlines:
+    with open(filename) as f:
+      if re.search(r"(?<!\r)\n", f.read()):
+        raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
   with field_size_limit_context(fieldsizelimit), open(filename) as f:
     if header:
       fieldnames = None
@@ -108,8 +112,8 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
 
   try:
-    with open(filename, "w") as f:
-      writer = csv.DictWriter(f, fieldnames, lineterminator='\n')
+    with open(filename, "w", newline='') as f:
+      writer = csv.DictWriter(f, fieldnames, lineterminator='\r\n')
       if header: writer.writeheader()
       for i, row in enumerate(rows, start=1):
         if printevery is not None and not i % printevery:

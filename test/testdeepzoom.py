@@ -38,8 +38,8 @@ class TestDeepZoom(TestBaseSaveOutput):
         with PIL.Image.open(filename) as im, PIL.Image.open(reffilename) as ref:
           np.testing.assert_array_equal(np.asarray(im), np.asarray(ref))
 
-        new = readtable(zoomlist, DeepZoomFile)
-        ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/zoomlist.name, DeepZoomFile)
+        new = readtable(zoomlist, DeepZoomFile, checkorder=True, checknewlines=True)
+        ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/zoomlist.name, DeepZoomFile, checkorder=True, checknewlines=True)
         for resultnew, resultref in more_itertools.zip_equal(new, ref):
           resultnew.name = pathlib.PurePosixPath(resultnew.name.relative_to(thisfolder))
           resultref.name = pathlib.PurePosixPath(resultref.name.relative_to(resultref.name.parent.parent.parent.parent.parent))

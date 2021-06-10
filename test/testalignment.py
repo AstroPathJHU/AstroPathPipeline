@@ -88,8 +88,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       testfolder = thisfolder/"alignment_test_for_jenkins"/("" if not componenttiff else "component_tiff")
       reffolder = thisfolder/"reference"/"alignment"/("" if not componenttiff else "component_tiff")
       try:
-        rows = a.readtable(testfolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        targetrows = a.readtable(reffolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        rows = a.readtable(testfolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
+        targetrows = a.readtable(reffolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == AlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
@@ -135,8 +135,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
     a.readalignments(filename=readfilename)
     a.writealignments(filename=writefilename)
-    rows = a.readtable(writefilename, AlignmentResult)
-    targetrows = a.readtable(readfilename, AlignmentResult)
+    rows = a.readtable(writefilename, AlignmentResult, checkorder=True, checknewlines=True)
+    targetrows = a.readtable(readfilename, AlignmentResult, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 
@@ -160,8 +160,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       (AffineEntry, Field, FieldOverlap),
       ({}, {}, {"nclip": a.nclip, "rectangles": a.rectangles}),
     ):
-      rows = a.readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
-      targetrows = a.readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)
+      rows = a.readtable(newfilename(filename), cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
+      targetrows = a.readtable(referencefilename(filename), cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
 
