@@ -1,8 +1,9 @@
 #imports
 from .meanimage import MeanImage
 from .rectangle import RectangleCorrectedIm3MultiLayer
-from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry
 from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms, plot_background_thresholds_by_layer
+from .latexsummary import ThresholdingLatexSummary
+from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry
 from .config import CONST
 from ...shared.sample import ReadRectanglesOverlapsIm3FromXML, WorkflowSample
 from ...shared.overlap import Overlap
@@ -237,7 +238,15 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
             plot_background_thresholds_by_layer(thresholding_datatable_filepath,chosen_thresholds,thresholding_plot_dir_path)
         plot_image_layer_thresholds_with_histograms(image_background_thresholds_by_layer,chosen_thresholds,image_hists_by_layer,thresholding_plot_dir_path)
         #collect plots in a .pdf file
-        #return the list of background thresholds
+        latex_summary = ThresholdingLatexSummary(self.SlideID,thresholding_plot_dir_path)
+        latex_summary.build_tex_file()
+        check = latex_summary.compile()
+        if check!=0 :
+            warnmsg = f'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
+            warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+            self.logger.warning(warnmsg)
+        #return the list of background thresholds in counts
+        return [ct.counts_threshold for ct in sorted(chosen_thresholds,key = lambda x:x.layer_n)]
 
     def __get_background_thresholds_and_pixel_hists_for_edge_rectangles(self,tissue_edge_rects) :
         """
