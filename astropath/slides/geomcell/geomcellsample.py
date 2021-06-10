@@ -147,10 +147,10 @@ class CellGeomLoad(DataClassWithPolygon):
   field: int
   ctype: int
   n: int
-  x: units.Distance = distancefield(pixelsormicrons="pixels")
-  y: units.Distance = distancefield(pixelsormicrons="pixels")
-  w: units.Distance = distancefield(pixelsormicrons="pixels")
-  h: units.Distance = distancefield(pixelsormicrons="pixels")
+  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  w: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  h: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   poly: Polygon = polygonfield()
 
   @classmethod
