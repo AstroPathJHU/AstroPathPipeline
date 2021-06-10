@@ -1,7 +1,7 @@
 import abc, contextlib, csv, dataclasses, dataclassy, datetime, pathlib
 
 from .dataclasses import MetaDataAnnotation, MyDataClass
-from .misc import dummylogger
+from .misc import checkwindowsnewlines, dummylogger
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """
@@ -35,9 +35,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
   result = []
   if checknewlines:
-    with open(filename) as f:
-      if re.search(r"(?<!\r)\n", f.read()):
-        raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
+    checkwindowsnewlines(filename)
   with field_size_limit_context(fieldsizelimit), open(filename) as f:
     if header:
       fieldnames = None
