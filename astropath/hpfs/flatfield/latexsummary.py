@@ -32,7 +32,8 @@ class LatexSummaryBase :
         tex_file_lines = []
         for section in self.sections :
             tex_file_lines+=section
-            tex_file_lines.append('\\clearpage\n\n')
+            if section!=self.preamble and section!=self.title :
+                tex_file_lines.append('\\clearpage\n\n')
         tex_file_lines.append('\\end{document}\n')
         with cd(self.__output_dir) :
             with open(f'{self.__tex_filename}','w') as fp :
@@ -61,10 +62,13 @@ class LatexSummaryBase :
                 return 1
             if (self.__output_dir / self.__pdf_filename).is_file() :
                 for fp in self.filepaths_to_remove_on_success :
-                    if fp.is_file() :
-                        fp.unlink()
-                    elif fp.is_dir() :
-                        fp.rmdir()
+                    try :
+                        if fp.is_file() :
+                            fp.unlink()
+                        elif fp.is_dir() :
+                            fp.rmdir()
+                    except Exception :
+                        pass
         return 0
 
     #################### PROPERTIES ####################
@@ -72,7 +76,8 @@ class LatexSummaryBase :
     @property
     def sections(self):
         """
-        A list of lists of lines to write to the .tex file. The different sections will be separated by "clearpage" commands
+        A list of lists of lines to write to the .tex file. The different sections (except for the preamble and title) 
+        will be separated by "clearpage" commands
         """
         return [self.preamble,self.title]
 
@@ -88,7 +93,10 @@ class LatexSummaryBase :
         """
         File or directory paths to remove if the .tex file is successfully compiled into a .pdf
         """
-        return [self.__aux_filename,self.__log_filename,self.__tex_filename]
+        return [self.__output_dir / self.__aux_filename,
+                self.__output_dir / self.__log_filename,
+                self.__output_dir / self.__tex_filename,
+            ]
 
     @property
     def preamble(self) :
@@ -138,13 +146,13 @@ class ThresholdingLatexSummary(LatexSummaryBase) :
     def filepaths_to_remove_on_success(self) :
         to_remove = super().filepaths_to_remove_on_success
         for fp in self.__threshold_plot_dirpath.glob('*') :
-            to_remove+=fp.resolve()
-        to_remove+=self.__threshold_plot_dirpath
+            to_remove.append(fp.resolve())
+        to_remove.append(self.__threshold_plot_dirpath)
         return to_remove
 
     @property
     def plot_dirpath_tex(self) :
-        return self.__threshold_plot_dirpath.replace("\\","/")
+        return str(self.__threshold_plot_dirpath.as_posix())
 
     @property
     def slideID_tex(self) :
@@ -160,7 +168,7 @@ class ThresholdingLatexSummary(LatexSummaryBase) :
         lines.append('\n')
         lines.append('\\begin{figure}[!ht]\n')
         lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.slideID}_rectangle_locations}}\n')
+        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.__slideID}_rectangle_locations}}\n')
         l = f'\\caption{{\\footnotesize Locations of HPFs in slide {self.slideID_tex},'
         l+= ' with tissue edge HPFs shown in red and non-edge HPFs shown in blue.}'
         lines.append(l+'\n')
@@ -178,7 +186,7 @@ class ThresholdingLatexSummary(LatexSummaryBase) :
         lines.append('\n')
         lines.append('\\begin{figure}[!ht]\n')
         lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.slideID}_background_thresholds_by_layer}}')
+        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.__slideID}_background_thresholds_by_layer}}')
         l = '\\caption{\\footnotesize 10th and 90th percentiles (in red and blue, respectively) of the entire set of individual HPF thresholds found '
         l+= 'in each image layer in raw counts (upper) and in counts/ms (lower). Also shown in black are the overall optimal thresholds chosen.}'
         lines.append(l+'\n')
@@ -190,9 +198,9 @@ class ThresholdingLatexSummary(LatexSummaryBase) :
     def individual_layer_thresholding_plots(self) :
         all_fns = []
         for fn in self.__threshold_plot_dirpath.glob('layer_*_background_threshold_plots.png') :
-            all_fns.append(fn)
+            all_fns.append(fn.name)
         figure_lines = []
-        for ifn,fn in sorted(all_fns) :
+        for ifn,fn in enumerate(sorted(all_fns,key=lambda x:int(str(x).split('_')[1]))) :
             figure_lines.append('\\begin{figure}[!ht]\n')
             figure_lines.append('\\centering\n')
             figure_lines.append(f'\\includegraphics[width=0.9\\textwidth]{{{self.plot_dirpath_tex}/{fn}}}\n')
