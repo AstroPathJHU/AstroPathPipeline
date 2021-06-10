@@ -2,9 +2,6 @@
 
 #imports
 from astropath.hpfs.warping.run_warp_fitter import main
-from astropath.hpfs.warping.utilities import WarpFitResult
-from astropath.utilities.tableio import readtable
-from .testbase import assertAlmostEqual
 from argparse import Namespace
 import pathlib, shutil
 
@@ -46,6 +43,10 @@ args = Namespace(
 main(args)
 
 """
+from astropath.hpfs.warping.utilities import WarpFitResult
+from astropath.utilities.tableio import readtable
+from .testbase import assertAlmostEqual
+
 new = readtable(working_dir/"fit_result.csv", WarpFitResult, checkorder=True, checknewlines=True)
 ref = readtable(folder/"reference"/"warping"/"fit_result.csv", WarpFitResult, checkorder=True, checknewlines=True)
 ref2 = readtable(folder/"reference"/"warping"/"fit_result_2.csv", WarpFitResult, checkorder=True, checknewlines=True)
