@@ -110,28 +110,33 @@ def plot_image_layer_thresholds_with_histograms(image_background_thresholds_by_l
         ax2.set_ylabel('log(# of image pixels)')
         ax2.legend(loc='best')
         save_figure_in_dir(plt,f'layer_{layer_n}_background_threshold_plots.png',save_dirpath)
-        
 
-def plot_background_thresholds_by_layer(datatable_filepath,chosen_thresholds_by_layer,save_dirpath=None) :
+def plot_background_thresholds_by_layer(datatable_filepath,chosen_threshold_table_entries,save_dirpath=None) :
     """
     Plot a slide's 10th and 90th percentile thresholds found, and the final chosen thresholds, in each image layer
     Based on a datatable that's saved when the optimal thresholds are found
 
     datatable_filepath = path to the datatable file containing RectangleThresholdTableEntry objects stored after 
                          all the individual tissue edge image thresholds were found
-    chosen_thresholds_by_layer = the list of overall optimal background thresholds found in each layer
+    chosen_threshold_table_entries = the list of overall optimal background thresholds stored as ThresholdTableEntry objects
     save_dirpath = path to directory to save the plot in (if None the plot is saved in the current directory)
     """
     rectangle_thresholds = readtable(datatable_filepath,RectangleThresholdTableEntry)
-    assert len(chosen_thresholds_by_layer) == len(set([rt.layer_n for rt in rectangle_thresholds]))
-    nlayers = len(chosen_thresholds_by_layer)
+    assert len(chosen_threshold_table_entries) == len(set([rt.layer_n for rt in rectangle_thresholds]))
+    nlayers = len(chosen_threshold_table_entries)
+    chosen_cts_by_layer = []; chosen_cpmsts_by_layer = []
+    for li in range(nlayers) :
+        layer_tobjs = [ct for ct in chosen_threshold_table_entries if ct.layer_n==li+1]
+        if len(layer_tobjs)!=1 :
+            return
+        chosen_cts_by_layer.append(layer_tobjs[0].counts_threshold)
+        chosen_cpmsts_by_layer.append(layer_tobjs[0].counts_per_ms_threshold)
     cts_by_layer = [[rt.counts_threshold for rt in rectangle_thresholds if rt.layer_n==li+1] for li in range(nlayers)]
     cpmsts_by_layer = [[rt.counts_per_ms_threshold for rt in rectangle_thresholds if rt.layer_n==li+1] for li in range(nlayers)]
     low_ct_pctiles_by_layer = []; high_ct_pctiles_by_layer = []
-    low_cpmst_pctiles_by_layer = []; med_cpmsts_by_layer = []; high_cpmst_pctiles_by_layer = []
+    low_cpmst_pctiles_by_layer = []; high_cpmst_pctiles_by_layer = []
     for li in range(nlayers) :
         layer_cts = cts_by_layer[li]; layer_cpmsts = cpmsts_by_layer[li]
-        med_cpmsts_by_layer.append(np.median(np.array(layer_cpmsts)))
         layer_cts.sort(); layer_cpmsts.sort()
         low_ct_pctiles_by_layer.append(layer_cts[int(0.1*len(layer_cts))])
         low_cpmst_pctiles_by_layer.append(layer_cpmsts[int(0.1*len(layer_cts))])
@@ -142,13 +147,13 @@ def plot_background_thresholds_by_layer(datatable_filepath,chosen_thresholds_by_
     plt.suptitle('Thresholds chosen from tissue edge HPFs by image layer')
     ax[0].plot(xvals,low_ct_pctiles_by_layer,marker='v',color='r',linewidth=2,label='10th %ile thresholds')
     ax[0].plot(xvals,high_ct_pctiles_by_layer,marker='^',color='b',linewidth=2,label='90th %ile thresholds')
-    ax[0].plot(xvals,chosen_thresholds_by_layer,marker='o',color='k',linewidth=2,label='optimal overall thresholds')
+    ax[0].plot(xvals,chosen_cts_by_layer,marker='o',color='k',linewidth=2,label='final chosen thresholds')
     ax[0].set_xlabel('image layer')
     ax[0].set_ylabel('pixel intensity (counts)')
     ax[0].legend(loc='best')
     ax[1].plot(xvals,low_cpmst_pctiles_by_layer,marker='v',color='r',linewidth=2,label='10th %ile thresholds')
     ax[1].plot(xvals,high_cpmst_pctiles_by_layer,marker='^',color='b',linewidth=2,label='90th %ile thresholds')
-    ax[1].plot(xvals,chosen_thresholds_by_layer,marker='o',color='k',linewidth=2,label='median thresholds')
+    ax[1].plot(xvals,chosen_cpmsts_by_layer,marker='o',color='k',linewidth=2,label='chosen thresholds (counts/ms)')
     ax[1].set_xlabel('image layer')
     ax[1].set_ylabel('pixel intensity (counts/ms)')
     ax[1].legend(loc='best')

@@ -211,6 +211,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         #get the list of rectangles that are on the edge of the tissue, plot their locations, and save a summary of their metadata
         tissue_edge_rects = [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))<8]
         self.logger.info(f'Found {len(tissue_edge_rects)} images on the edge of the tissue from a set of {len(self.rectangles)} total images')
+        self.logger.info('Plotting rectangle locations and saving tissue edge HPF MetadataSummary')
         plot_tissue_edge_rectangle_locations(self.rectangles,tissue_edge_rects,self.root,self.SlideID,thresholding_plot_dir_path)
         edge_rect_ts = [r.t for r in tissue_edge_rects]
         with cd(self.__workingdirpath) :
@@ -218,6 +219,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                       [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(edge_rect_ts)),str(max(edge_rect_ts)))])
         #find the optimal thresholds for each tissue edge image, write them out, and make plots of the thresholds found in each layer
         image_background_thresholds_by_layer, image_hists_by_layer = self.__get_background_thresholds_and_pixel_hists_for_edge_rectangles(tissue_edge_rects)
+        self.logger.info('Finding best thresholds based on those found for individual images')
         chosen_thresholds = []
         for li in range(self.nlayers) :
             valid_layer_thresholds = image_background_thresholds_by_layer[:,li][image_background_thresholds_by_layer[:,li]!=0]
@@ -229,6 +231,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 chosen_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),-1.))
         with cd(self.__workingdirpath) :
             writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',chosen_thresholds)
+        self.logger.info('Saving final thresholding plots')
         thresholding_datatable_filepath = self.__workingdirpath / f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}'
         if thresholding_datatable_filepath.is_file() :
             plot_background_thresholds_by_layer(thresholding_datatable_filepath,chosen_thresholds,thresholding_plot_dir_path)
@@ -313,6 +316,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                     self.logger.warning(warnmsg)
         #write out the data table of all the individual rectangle layer thresholds
         if len(rectangle_data_table_entries)>0 :
+            self.logger.info('Writing out individual image threshold datatable')
             with cd(self.__workingdirpath) :
                 writetable(f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}',rectangle_data_table_entries)
         return image_background_thresholds_by_layer, tissue_edge_layer_hists
