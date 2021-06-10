@@ -161,6 +161,7 @@ class MyFileHandler:
     self.__lockfilename = self.__filename.with_suffix(self.__filename.suffix+".lock")
     if filename not in self.__handlers:
       self.__handlers[filename] = logging.FileHandler(filename)
+      self.__handlers[filename].terminator = "\r\n"
     self.__handler = self.__handlers[filename]
     self.__counts[filename] += 1
     self.__formatter = self.__handler.formatter
