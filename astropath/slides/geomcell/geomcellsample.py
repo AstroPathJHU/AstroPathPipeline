@@ -95,6 +95,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
               celllabel = cellproperties.label
               if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
               polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembranelayer(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+              if polygon is None: continue
 
               box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
               box += pxvec
@@ -194,7 +195,8 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       if self.isprimary and self.repair:
         if self.ismembrane:
           self.joinbrokenmembrane()
-        self.connectdisjointregions()
+        #self.connectdisjointregions()
+        self.pickbiggestregion()
       else:
         self.pickbiggestregion()
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
@@ -210,6 +212,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
     if len(polygon.outerpolygon) < 4:
       self.logger.warningglobal(f"polygon only has {len(polygon.outerpolygon)} vertices, skipping it. {self.loginfo}")
+      return None
 
     return polygon
 
@@ -453,6 +456,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       return slicedmask
     nlabeled = {label: np.sum(labeled == label) for label in labels}
     biggest = max(nlabeled.items(), key=lambda kv: kv[1])[0]
+    self.logger.warning(f"Broken cell: picking the biggest region ({nlabeled[biggest]} pixels) and discarding the others (total {sum(nlabeled.values()) - nlabeled[biggest]} pixels)")
     slicedmask[labeled != biggest] = 0
 
   def debugdraw(self, polygon):
