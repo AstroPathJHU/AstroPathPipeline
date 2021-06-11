@@ -12,13 +12,28 @@ class InvalidPolygonError(Exception):
     message = f"Polygon is not valid"
     if reason is not None: message += " ("+reason+")"
     message += ": "+str(polygon)
-    message += "\n\nMakeValid result:"
     try:
-      for _ in polygon.MakeValid():
-        message += "\n"+str(_)
+      self.madevalid = polygon.MakeValid()
     except RuntimeError as e:
-      message += "\nstr(e)"
+      self.madevalid = None
+      message += f"\n\nMakeValid failed: {e}"
+    else:
+      message += "\n\nMakeValid result:"
+      for _ in self.madevalid:
+        message += "\n"+str(_)
     super().__init__(message)
+
+  @property
+  def validcomponents(self):
+    if self.madevalid is None: return []
+    result = []
+    for component in self.madevalid:
+      if "MULTI" in str(component):
+        for subcomponent in component:
+          result.append(subcomponent)
+      else:
+        result.append(component)
+    return result
 
 class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   """

@@ -1,7 +1,7 @@
 import cv2, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
-from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
+from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield, PolygonFromGdal
 from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
 from ...shared.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
@@ -209,11 +209,26 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
       try:
         polygon.checkvalidity()
-      except InvalidPolygonError:
-        if self.isprimary:
-          raise
-        else:
+      except InvalidPolygonError as e:
+        if e.madevalid is None:
+          if self.isprimary:
+            self.logger.warningglobal(f"{e} {self.loginfo}")
           return None
+        polygons = []
+        for component in e.validcomponents:
+          if "MULTI" in str(component): assert False
+          elif "LINESTRING" in str(component):
+            continue
+          elif "POLYGON" in str(component):
+            polygons.append(component)
+          else:
+            raise ValueError(f"Unknown component from MakeValid: {component}")
+        polygons.sort(key=lambda x: x.GetArea(), reverse=True)
+        if self.isprimary:
+          biggestarea = polygons[0].GetArea()
+          otherarea = sum(p.GetArea() for p in polygons[1:])
+          self.logger.warningglobal(f"Multiple polygons connected by 1-dimensional lines - keeping the biggest ({biggestarea} pixels) and discarding the rest (total {otherarea} pixels)")
+        polygon = PolygonFromGdal(pixels=polygons[0], pscale=polygon.pscale, apscale=polygon.apscale, requirevalidity=True)
       else:
         if self.isprimary and self.ismembrane:
           if self.istoothin(polygon):
