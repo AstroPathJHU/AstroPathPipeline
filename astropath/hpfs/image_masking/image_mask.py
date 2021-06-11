@@ -1,5 +1,5 @@
 #imports
-from .utilities import LabelledMaskRegion, getEnumeratedMask, getSizeFilteredMask, get_image_tissue_fold_mask, get_image_layer_group_blur_mask, get_morphed_and_filtered_mask, get_exclusive_mask
+from .utilities import LabelledMaskRegion, getEnumeratedMask, get_size_filtered_mask, get_image_tissue_fold_mask, get_image_layer_group_blur_mask, get_morphed_and_filtered_mask, get_exclusive_mask
 from .plotting import doMaskingPlotsForImage
 from .config import CONST
 from ...utilities.img_file_io import smooth_image_worker, getExposureTimesByLayer, im3writeraw, writeImageToFile
@@ -65,6 +65,11 @@ class ImageMask() :
         self.__blur_mask = self.get_image_blur_mask(im_array,self.__tissue_mask)
         #create the saturation masks (one for each layer group)
         self.__saturation_masks = get_image_saturation_masks(im_array,norm_ets)
+        ##########################################################################################
+        ########## The functions called above here have been renamed but they need more ##########
+        ##########  edits. I haven't touched anything below here yet. This whole thing  ##########
+        ##########                needs to be more thought-out                          ##########
+        ##########################################################################################
         #make the compressed mask and the list of labelled mask regions
         self._make_compressed_mask_and_list_of_mask_regions()
         #make the plots for this image if requested
@@ -98,7 +103,8 @@ class ImageMask() :
     def save_plots_for_image(cls,im_array,im_key,bg_thresholds,norm_ets,sample_exp_time_hists_and_bins,savedir=None) :
         """
         Create the masks for a given image and write out plots of the process
-        Useful if all you care about is getting the plots; this function also has the lowest possible memory footprint to be run in parallel processes
+        Useful if all you care about is getting the plots
+        This function also has the lowest possible memory footprint to be run in parallel processes
 
         arguments are the same as __init__ with the addition of:
         sample_exp_time_hists_and_bins = a list of tuples of histograms and their bins of all layer group exposure times in the sample that im_array is coming from
@@ -222,6 +228,51 @@ class ImageMask() :
         #return the blur mask
         return final_blur_mask
 
+    @staticmethod
+    def get_image_saturation_masks(image_arr,norm_ets) :
+        """
+        Return the list of saturation masks by layer group for a given image
+
+        image_arr = the multilayer image array of uint16s whose mask should be created
+        norm_ets  = the list of exposure times in each layer that should be used to normalize the given image 
+        """
+        #figure out where the layer groups are, etc.
+        if image_arr.shape[-1]==35 :
+            mask_layer_groups=UNIV_CONST.LAYER_GROUPS_35
+            saturation_intensity_cuts=CONST.SATURATION_INTENSITY_CUTS_35
+        elif image_arr.shape[-1]==43 :
+            mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
+            saturation_intensity_cuts=CONST.SATURATION_INTENSITY_CUTS_43
+        else :
+            raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {image_arr.shape[-1]} layers!')
+        #normalize the image by its exposure time and smooth it
+        normalized_image_arr = image_arr / norm_ets[np.newaxis,np.newaxis,:]
+        #smooth the exposure time-normalized image
+        sm_n_image_arr = smooth_image_worker(normalized_image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
+        #make masks for each layer group
+        layer_group_saturation_masks = []
+        for lgi,lgb in enumerate(mask_layer_groups) :
+            stacked_masks = np.zeros(sm_n_image_arr.shape[:-1],dtype=np.uint8)
+            for ln in range(lgb[0],lgb[1]+1) :
+                #threshold the image layer to make a binary mask
+                layer_mask = (np.where(sm_n_image_arr[:,:,ln-1]>saturation_intensity_cuts[lgi],0,1)).astype(np.uint8)
+                stacked_masks+=layer_mask
+            #the final mask is anything flagged in ANY layer
+            group_mask = (np.where(stacked_masks>lgb[1]-lgb[0],1,0)).astype(np.uint8)    
+            if np.min(group_mask)!=np.max(group_mask) :
+                #convert to UMat
+                group_mask = cv2.UMat(group_mask)
+                #medium sized open/close to refine it
+                cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,group_mask,borderType=cv2.BORDER_REPLICATE)
+                cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,group_mask,borderType=cv2.BORDER_REPLICATE)
+                group_mask = group_mask.get()
+                #filter the mask for the total number of pixels and regions by the minimum size
+                group_mask = get_size_filtered_mask(group_mask,CONST.SATURATION_MIN_SIZE)
+            if np.sum(group_mask==0)<CONST.SATURATION_MIN_PIXELS :
+                group_mask = np.ones_like(group_mask)
+            layer_group_saturation_masks.append(group_mask)
+        return layer_group_saturation_masks
+
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     #helper function to combine all the created masks into a compressed mask and also make the list of labelled mask region objects
@@ -257,49 +308,3 @@ class ImageMask() :
         #finally add in the tissue mask
         for li in range(self._compressed_mask.shape[-1]) :
             self._compressed_mask[:,:,li][self._compressed_mask[:,:,li]==1] = self._tissue_mask[self._compressed_mask[:,:,li]==1]
-
-#################### FILE-SCOPE HELPER FUNCTIONS ####################
-
-def get_image_saturation_masks(image_arr,norm_ets) :
-    """
-    Return the list of saturation masks by layer group for a given image
-
-    image_arr = the multilayer image array of uint16s whose mask should be created
-    norm_ets  = the list of exposure times in each layer that should be used to normalize the given image 
-    """
-    #figure out where the layer groups are, etc.
-    if image_arr.shape[-1]==35 :
-        mask_layer_groups=UNIV_CONST.LAYER_GROUPS_35
-        saturation_intensity_cuts=CONST.SATURATION_INTENSITY_CUTS_35
-    elif image_arr.shape[-1]==43 :
-        mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
-        saturation_intensity_cuts=CONST.SATURATION_INTENSITY_CUTS_43
-    else :
-        raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {image_arr.shape[-1]} layers!')
-    #normalize the image by its exposure time and smooth it
-    normalized_image_arr = image_arr / norm_ets[np.newaxis,np.newaxis,:]
-    #smooth the exposure time-normalized image
-    sm_n_image_arr = smoothImageWorker(normalized_image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
-    #make masks for each layer group
-    layer_group_saturation_masks = []
-    for lgi,lgb in enumerate(mask_layer_groups) :
-        stacked_masks = np.zeros(sm_n_image_arr.shape[:-1],dtype=np.uint8)
-        for ln in range(lgb[0],lgb[1]+1) :
-            #threshold the image layer to make a binary mask
-            layer_mask = (np.where(sm_n_image_arr[:,:,ln-1]>saturation_intensity_cuts[lgi],0,1)).astype(np.uint8)
-            stacked_masks+=layer_mask
-        #the final mask is anything flagged in ANY layer
-        group_mask = (np.where(stacked_masks>lgb[1]-lgb[0],1,0)).astype(np.uint8)    
-        if np.min(group_mask)!=np.max(group_mask) :
-            #convert to UMat
-            group_mask = cv2.UMat(group_mask)
-            #medium sized open/close to refine it
-            cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,group_mask,borderType=cv2.BORDER_REPLICATE)
-            cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,group_mask,borderType=cv2.BORDER_REPLICATE)
-            group_mask = group_mask.get()
-            #filter the mask for the total number of pixels and regions by the minimum size
-            group_mask = getSizeFilteredMask(group_mask,CONST.SATURATION_MIN_SIZE)
-        if np.sum(group_mask==0)<CONST.SATURATION_MIN_PIXELS :
-            group_mask = np.ones_like(group_mask)
-        layer_group_saturation_masks.append(group_mask)
-    return layer_group_saturation_masks

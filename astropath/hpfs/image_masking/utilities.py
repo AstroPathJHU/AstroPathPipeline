@@ -32,7 +32,7 @@ def getEnumeratedMask(layer_mask,start_i) :
     return return_mask
 
 #return a binary mask with all of the areas smaller than min_size removed
-def getSizeFilteredMask(mask,min_size,both=True,invert=False) :
+def get_size_filtered_mask(mask,min_size,both=True,invert=False) :
     """
     both   = True if regions of ones and zeros should both be filtered (just recursively calls the function with !invert)
     invert = True if regions of zeros instead of ones should be filtered
@@ -52,7 +52,7 @@ def getSizeFilteredMask(mask,min_size,both=True,invert=False) :
     return new_mask
 
 #return a binary mask with any areas that are already flagged in a prior mask removed
-def getExclusiveMask(mask_to_check,prior_mask,min_independent_pixel_frac,invert=True) :
+def get_exclusive_mask(mask_to_check,prior_mask,min_independent_pixel_frac,invert=True) :
     prior_mask_hot = 1
     if invert :
         mask_to_check = (np.where(mask_to_check==1,0,1)).astype(mask_to_check.dtype)
@@ -70,7 +70,7 @@ def getExclusiveMask(mask_to_check,prior_mask,min_independent_pixel_frac,invert=
     return new_mask
 
 #erode a binary mask near a corresponding tissue mask and filter for size
-def getMorphedAndFilteredMask(mask,tissue_mask,min_pixels,min_size) :
+def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size) :
     if np.min(mask)<1 and np.max(mask)!=np.min(mask) :
         #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
         mask_to_transform = cv2.UMat(np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype))
@@ -114,7 +114,7 @@ def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer) :
     return local_norm_lap_var
 
 #function to return a blur mask for a given image layer group, along with a dictionary of plots to add to the group for this image
-def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_layers_flag_cut,max_mean,brightest_layer_n,ethistandbins,return_plots=True) :
+def get_image_layer_group_blur_mask(img_array,exp_times,layer_group_bounds,nlv_cut,n_layers_flag_cut,max_mean,brightest_layer_n,ethistandbins,return_plots=True) :
     #start by making a mask for every layer in the group
     stacked_masks = np.zeros(img_array.shape[:-1],dtype=np.uint8)
     brightest_layer_nlv = None
@@ -173,7 +173,7 @@ def getImageLayerGroupBlurMask(img_array,exp_times,layer_group_bounds,nlv_cut,n_
     return group_blur_mask, plots
 
 #return the tissue fold mask for an image combining information from all layer groups
-def getImageTissueFoldMask(sm_img_array,exp_times,tissue_mask,exp_t_hists,layer_groups,brightest_layers,dapi_lgi,rbc_lgi,nlv_cuts,nlv_max_means,return_plots=False) :
+def get_image_tissue_fold_mask(sm_img_array,exp_times,tissue_mask,exp_t_hists,layer_groups,brightest_layers,dapi_lgi,rbc_lgi,nlv_cuts,nlv_max_means,return_plots=False) :
     #make the list of flag cuts (how many layers can miss being flagged to include the region in the layer group mask)
     fold_flag_cuts = []
     for lgi,lgb in enumerate(layer_groups) :
