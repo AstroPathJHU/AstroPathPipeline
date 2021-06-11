@@ -2,10 +2,12 @@ import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage, unittest
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
-from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
+from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
+from astropath.shared.sample import APIDDef, SampleDef
 from astropath.utilities import units
+from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 
 thisfolder = pathlib.Path(__file__).parent
@@ -127,3 +129,16 @@ class TestMisc(unittest.TestCase):
   def testPolygonVerticesFastUnits(self):
     with units.setup_context("fast_microns"):
       self.testPolygonVertices()
+
+  def testSampleDef(self):
+    self.maxDiff = None
+    s1 = SampleDef(samp="M21_1", root=thisfolder/"data")
+    s2 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv", Scan=s1.Scan, SampleID=s1.SampleID)
+    s3 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv", root=thisfolder/"data")
+    APID, = {APID for APID in readtable(thisfolder/"data"/"AstropathAPIDdef.csv", APIDDef) if APID.SlideID == "M21_1"}
+    s4 = SampleDef(samp=APID, Scan=s1.Scan, SampleID=s1.SampleID)
+    s5 = SampleDef(samp=APID, root=thisfolder/"data")
+    self.assertEqual(s1, s2)
+    self.assertEqual(s1, s3)
+    self.assertEqual(s1, s4)
+    self.assertEqual(s1, s5)

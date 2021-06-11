@@ -34,7 +34,7 @@ class CohortBase(ThingWithRoots):
     return Cohort
 
   def globallogger(self):
-    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
+    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
     return self.getlogger(samp, isglobal=True)
 
   @property
