@@ -5,6 +5,18 @@ from ..utilities.misc import floattoint
 from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale
 
+class InvalidPolygonError(Exception):
+  def __init__(self, polygon, reason=None):
+    self.polygon = polygon
+    self.reason = reason
+    message = f"Polygon is not valid"
+    if reason is not None: message += " ("+reason+")"
+    message += ": "+str(polygon)
+    message += "\n\nMakeValid result:\n"
+    for _ in polygon.MakeValid():
+      message += str(_)
+    super().__init__(message)
+
 class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   """
   This class represents a polygon with holes in it.
@@ -281,8 +293,16 @@ class SimplePolygon(Polygon):
         self.__vertices = [self.__vertices[0]] + self.__vertices[:0:-1]
 
     if requirevalidity:
-      if not self.gdalpolygon().IsValid():
-        raise ValueError(f"Polygon is not valid: {self}")
+      self.checkvalidity()
+
+  def checkvalidity(self):
+    poly = self.gdalpolygon()
+    try:
+      bad = not poly.IsValid()
+    except Exception as e:
+      raise InvalidPolygonError(poly, reason=str(e))
+    if bad:
+      raise InvalidPolygonError(poly)
 
   @property
   def pscale(self):
