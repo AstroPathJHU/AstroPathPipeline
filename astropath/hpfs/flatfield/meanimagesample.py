@@ -265,11 +265,11 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 proc_results = {}; current_image_i = 0
                 for ri,r in enumerate(tissue_edge_rects) :
                     self.logger.info(f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(tissue_edge_rects)})....')
-                    proc_results[r] = pool.apply_async(get_background_thresholds_and_pixel_hists_for_rectangle_image,(r.image,))
+                    with r.using_image() as im :
+                        proc_results[r] = pool.apply_async(get_background_thresholds_and_pixel_hists_for_rectangle_image,(im,))
                 for rect,res in proc_results.items() :
                     try :
                         thresholds, hists = res.get()
-                        del rect.image
                         for li,t in enumerate(thresholds) :
                             if self.__et_offset_file is not None :
                                 rectangle_data_table_entries.append(RectangleThresholdTableEntry(rect.n,li+1,int(t),t/self.__med_ets[li]))
@@ -288,8 +288,8 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
             for ri,r in enumerate(tissue_edge_rects) :
                 self.logger.info(f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(tissue_edge_rects)})....')
                 try :
-                    thresholds, hists = get_background_thresholds_and_pixel_hists_for_rectangle_image(r.image)
-                    del r.image
+                    with r.using_image() as im :
+                        thresholds, hists = get_background_thresholds_and_pixel_hists_for_rectangle_image(im)
                     for li,t in enumerate(thresholds) :
                         if self.__et_offset_file is not None :
                             rectangle_data_table_entries.append(RectangleThresholdTableEntry(r.n,li+1,int(t),t/self.__med_ets[li]))
