@@ -225,7 +225,7 @@ __notgiven = object()
 def __getlogger(*, module, root, samp, uselogfiles, threshold, isglobal, mainlog, samplelog, imagelog, reraiseexceptions):
   return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None):
   from .sample import SampleDef
-  samp = SampleDef(root=root, samp=samp)
+  samp = SampleDef(root=root, samp=samp, apidfile=apidfile)
   return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
