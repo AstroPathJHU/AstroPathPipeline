@@ -13,8 +13,11 @@ class InvalidPolygonError(Exception):
     if reason is not None: message += " ("+reason+")"
     message += ": "+str(polygon)
     message += "\n\nMakeValid result:"
-    for _ in polygon.MakeValid():
-      message += "\n"+str(_)
+    try:
+      for _ in polygon.MakeValid():
+        message += "\n"+str(_)
+    except RuntimeError as e:
+      message += "\nstr(e)"
     super().__init__(message)
 
 class Polygon(units.ThingWithPscale, units.ThingWithApscale):

@@ -201,6 +201,10 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       else:
         self.pickbiggestregion()
         self.cleanup()
+      if not np.any(self.slicedmask):
+        if self.isprimary:
+          self.logger.warningglobal(f"Cleaned up cell is empty {self.loginfo}")
+        return None
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
       try:
@@ -227,6 +231,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     return polygon
 
   def __findpolygons(self, cellmask):
+    if not np.any(cellmask): return []
     top, left, bottom, right = self.adjustedbbox
     shiftby = self.pxvec + np.array([left, top]) * self.onepixel
     polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=shiftby, fill=True)
