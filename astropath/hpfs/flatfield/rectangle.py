@@ -71,6 +71,7 @@ class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
     Class for Rectangles whose multilayer im3 data should be corrected for differences in exposure time 
     and/or flatfielding (either or both can be omitted)
     """
+    _DEBUG = False #we're going to be running some multithreaded processes on these and so we likely will need to get the images multiple times
     
     def __post_init__(self, *args, transformations=None, **kwargs) :
         if transformations is None : 

@@ -145,11 +145,11 @@ class RectangleWithImageBase(Rectangle):
   They should inherit from RectangleTransformationBase below.
   """
 
-  #if __DEBUG is true, then when the rectangle is deleted, it will print
+  #if _DEBUG is true, then when the rectangle is deleted, it will print
   #a warning if its image has been loaded multiple times, for debug
   #purposes.  If __DEBUG_PRINT_TRACEBACK is also true, it will print the
   #tracebacks for each of the times the image was loaded.
-  __DEBUG = True
+  _DEBUG = True
   def __DEBUG_PRINT_TRACEBACK(self, i):
     return False
 
@@ -163,7 +163,7 @@ class RectangleWithImageBase(Rectangle):
     super().__post_init__(*args, **kwargs)
 
   def __del__(self):
-    if self.__DEBUG:
+    if self._DEBUG:
       for i, ctr in enumerate(self.__debug_load_images_counter):
         if ctr > 1:
           for formattedtb in self.__debug_load_images_tracebacks[i]:
@@ -357,6 +357,9 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   @property
   def imageslicefrominput(self):
     return slice(None), slice(None), tuple(_-1 for _ in self.__layers)
+  @property
+  def imageshapeinoutput(self):
+    return (np.empty((self.imageshapeininput)).transpose(self.imagetransposefrominput)[self.imageslicefrominput]).shape
 
   def getimage(self):
     image = np.ndarray(shape=self.imageshape, dtype=np.uint16)

@@ -1,6 +1,5 @@
 #imports
-from .utilities import LabelledMaskRegion, getEnumeratedMask, getSizeFilteredMask, getImageTissueFoldMask, getImageLayerGroupBlurMask
-from .utilities import getMorphedAndFilteredMask, getExclusiveMask
+from .utilities import LabelledMaskRegion, getEnumeratedMask, getSizeFilteredMask, get_image_tissue_fold_mask, get_image_layer_group_blur_mask, get_morphed_and_filtered_mask, get_exclusive_mask
 from .plotting import doMaskingPlotsForImage
 from .config import CONST
 from ...utilities.img_file_io import smooth_image_worker, getExposureTimesByLayer, im3writeraw, writeImageToFile
@@ -45,40 +44,27 @@ class ImageMask() :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,im_array,rfp,exp_time_dir,bg_thresholds,norm_ets=None,exp_time_hists=None,make_plots=False,savedir=None) :
+    def __init__(self,im_array,im_key,bg_thresholds,norm_ets,savedir=None) :
         """
-        im_array       = the multilayer image array of uint16s whose mask should be created (may already be corrected for exposure time)
-        rfp            = the path to the raw image file
-        exp_time_dir   = the path to the directory that has this image's exposure time .xml file in it
-        bg_thresholds  = a list of the background intensity thresholds in each image layer
-        norm_ets       = a list of the exposure times to which each layer of the image have been normalized
-        exp_time_hists = a list of histograms of exposure times in each layer group (used in plotting)
-        make_plots     = True if the sheet of plots for this image mask should be saved
-        savedir        = path to the directory where the tissue mask file and sheet of plots should be saved
+        im_array       = the multilayer image array whose mask should be created (may already be corrected to a set of exposure times)
+        im_key         = the string representing the key of the image filename (used as a prepend to the masking file name)
+        bg_thresholds  = a list of the background intensity thresholds in counts in each image layer
+        norm_ets       = a list of the exposure times to which the image layers have been normalized 
+        savedir        = path to the directory in which the mask file(s) should be saved (if None the mask files will not be written to disk)
         """
-        #get the key of the given image
-        if str(rfp).endswith(UNIV_CONST.RAW_EXT) :
-            self._image_key = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.RAW_EXT)
-        elif str(rfp).endswith(UNIV_CONST.FLATW_EXT) :
-            self._image_key = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.FLATW_EXT)
         #set the layer groups for the image
         if im_array.shape[-1]==35 :
-            self._layer_groups=UNIV_CONST.LAYER_GROUPS_35
+            self.__layer_groups=UNIV_CONST.LAYER_GROUPS_35
         elif im_array.shape[-1]==43 :
-            self._layer_groups=UNIV_CONST.LAYER_GROUPS_43
+            self.__layer_groups=UNIV_CONST.LAYER_GROUPS_43
         else :
-            raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {im_array.shape[-1]} layers!')
+            raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {im_array.shape[-1]} layers!')
         #create the tissue mask
-        self._tissue_mask = getImageTissueMask(im_array,bg_thresholds)
-        #we may need the exposure times for this image when the blur mask and saturations masks are created
-        if (norm_ets is None) or ((make_plots) and (exp_time_hists is not None)) :
-            exp_times = getExposureTimesByLayer(rfp,exp_time_dir)
-        else :
-            exp_times = None
-        #create the blur mask (and get the plots)
-        self._blur_mask,blur_mask_plots = getImageBlurMask(im_array,self._tissue_mask,exp_time_hists,exp_times,make_plots)
+        self.__tissue_mask = self.get_image_tissue_mask(im_array,bg_thresholds)
+        #create the blur mask
+        self.__blur_mask = self.get_image_blur_mask(im_array,self.__tissue_mask)
         #create the saturation masks (one for each layer group)
-        self._saturation_masks = getImageSaturationMasks(im_array,norm_ets if norm_ets is not None else exp_times)
+        self.__saturation_masks = get_image_saturation_masks(im_array,norm_ets)
         #make the compressed mask and the list of labelled mask regions
         self._make_compressed_mask_and_list_of_mask_regions()
         #make the plots for this image if requested
@@ -98,22 +84,143 @@ class ImageMask() :
                     writeImageToFile(self._compressed_mask,f'{self._image_key}_full_mask.bin',dtype=np.uint8)
 
     @classmethod
-    def create_mp(cls,im_array,rfp,exp_time_dir,bg_thresholds,norm_ets=None,exp_time_hists=None,make_plots=False,savedir=None,i=None,return_dict=None) :
+    def create_write_and_return_labelled_regions(cls,im_array,im_key,bg_thresholds,norm_ets,savedir=None) :
         """
-        class method to create and return an ImageMask for a given image array
-        can be run in parallel with a given index and return dictionary (in this case the mask will not be returned but rather added to the dictionary)
+        Create an ImageMask, write out the files it creates, and return its list of labelled mask regions
+        This function writes out the ImageMask it creates and doesn't return it in order to have the lowest possible memory footprint
+        which is useful for running many iterations of it in parallel processes
+        
+        arguments are the same as __init__ above
+        """
+        pass
 
-        (see __init__ docstring above for other arguments)
-        i              = an index to file this image mask under in the return dictionary (used for running in parallel)
-        return_dict    = the multiprocessing.Manager.dict object to put this mask under with the given index (used for running in parallel)
+    @classmethod
+    def save_plots_for_image(cls,im_array,im_key,bg_thresholds,norm_ets,sample_exp_time_hists_and_bins,savedir=None) :
         """
-        #create the mask object
-        image_mask = cls(im_array,rfp,exp_time_dir,bg_thresholds,norm_ets,exp_time_hists,make_plots,savedir)
-        #return the mask (either in the shared dict or just on its own)
-        if i is not None and return_dict is not None :
-            return_dict[i] = image_mask
+        Create the masks for a given image and write out plots of the process
+        Useful if all you care about is getting the plots; this function also has the lowest possible memory footprint to be run in parallel processes
+
+        arguments are the same as __init__ with the addition of:
+        sample_exp_time_hists_and_bins = a list of tuples of histograms and their bins of all layer group exposure times in the sample that im_array is coming from
+        """
+        pass
+
+    @staticmethod
+    def get_image_tissue_mask(image_arr,bkg_thresholds) :
+        """
+        return the fully-determined overall tissue mask as a 2d array of ones and zeroes for a given multilayer image
+
+        image_arr      = the multilayer image array whose mask should be created
+        bkg_thresholds = the list of background intensity thresholds to use in each image layer 
+        """
+        #figure out where the layer groups are
+        if image_arr.shape[-1]==35 :
+            mask_layer_groups=UNIV_CONST.LAYER_GROUPS_35
+            dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35
+        elif image_arr.shape[-1]==43 :
+            mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
+            dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_43
         else :
-            return image_mask
+            raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {image_arr.shape[-1]} layers!')
+        #smooth the entire image
+        sm_image_array = smoothImageWorker(image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
+        #mask each layer individually first
+        layer_masks = []
+        for li in range(image_arr.shape[-1]) :
+            #threshold
+            layer_mask = (np.where(sm_image_array[:,:,li]>bkg_thresholds[li],1,0)).astype(np.uint8)
+            #convert to UMat to use on the GPU
+            layer_mask = cv2.UMat(layer_mask)
+            #small close/open
+            cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
+            cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
+            layer_masks.append(layer_mask.get())
+        #find the well-defined tissue and background in each layer group
+        overall_tissue_mask = np.zeros_like(layer_masks[0])
+        overall_background_mask = np.zeros_like(layer_masks[0])
+        total_stacked_masks = np.zeros_like(layer_masks[0])
+        #for each layer group
+        for lgi,lgb in enumerate(mask_layer_groups) :
+            stacked_masks = np.zeros_like(layer_masks[0])
+            for ln in range(lgb[0],lgb[1]+1) :
+                stacked_masks+=layer_masks[ln-1]
+            total_stacked_masks+=stacked_masks
+            #well-defined tissue is anything called tissue in at least all but two layers
+            overall_tissue_mask[stacked_masks>(lgb[1]-lgb[0]-1)]+= 10 if lgi==dapi_layer_group_index else 1
+            #well-defined background is anything called background in at least half the layers
+            overall_background_mask[stacked_masks<(lgb[1]-lgb[0]+1)/2.]+= 10 if lgi==dapi_layer_group_index else 1
+        #threshold tissue/background masks to include only those from the DAPI and at least one other layer group
+        overall_tissue_mask = (np.where(overall_tissue_mask>10,1,0)).astype(np.uint8)
+        overall_background_mask = (np.where(overall_background_mask>10,1,0)).astype(np.uint8)
+        #final mask has tissue=1, background=0
+        final_mask = np.zeros_like(layer_masks[0])+2
+        final_mask[overall_tissue_mask==1] = 1
+        final_mask[overall_background_mask==1] = 0
+        #anything left over is signal if it's stacked in at least 60% of the total number of layers
+        thresholded_stacked_masks = np.where(total_stacked_masks>(0.6*image_arr.shape[-1]),1,0)
+        final_mask[final_mask==2] = thresholded_stacked_masks[final_mask==2]
+        if np.min(final_mask) != np.max(final_mask) :
+            #filter the tissue and background portions to get rid of the small islands
+            final_mask = getSizeFilteredMask(final_mask,min_size=CONST.TISSUE_MIN_SIZE)
+            #convert to UMat
+            final_mask = cv2.UMat(final_mask)
+            #medium size close/open to smooth out edges
+            cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,final_mask,borderType=cv2.BORDER_REPLICATE)
+            cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,final_mask,borderType=cv2.BORDER_REPLICATE)
+            final_mask = final_mask.get()
+        return final_mask
+
+    @staticmethod
+    def get_image_blur_mask(img_array,tissue_mask) :
+        """
+        return the single blur mask for an image (multilayer "tissue fold" blur and single-layer "dust" blur combined)
+
+        img_array      = the multilayer image array whose mask should be created
+        tissue_mask    = the 2d binary tissue mask for this image 
+        """
+        #figure out where the layer groups are, etc.
+        if img_array.shape[-1]==35 :
+            mask_layer_groups=UNIV_CONST.LAYER_GROUPS_35
+            brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_35
+            dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35
+            rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_35
+            nlv_cuts_by_layer_group=CONST.FOLD_NLV_CUTS_BY_LAYER_GROUP_35
+            nlv_max_means_by_layer_group=CONST.FOLD_MAX_MEANS_BY_LAYER_GROUP_35
+            dust_nlv_cut=CONST.DUST_NLV_CUT_35
+            dust_max_mean=CONST.DUST_MAX_MEAN_35
+            #smooth the image array for both the tissue fold and DAPI layer blur detection
+            sm_img_array = smooth_image_worker(img_array,CONST.BLUR_MASK_SMOOTHING_SIGMA)
+        elif img_array.shape[-1]==43 :
+            mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
+            brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_43
+            dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_43
+            rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_43
+            nlv_cuts_by_layer_group=CONST.FOLD_NLV_CUTS_BY_LAYER_GROUP_43
+            nlv_max_means_by_layer_group=CONST.FOLD_MAX_MEANS_BY_LAYER_GROUP_43
+            dust_nlv_cut=CONST.DUST_NLV_CUT_43
+            dust_max_mean=CONST.DUST_MAX_MEAN_43
+            #don't smooth the image array before blur detection
+            sm_img_array = img_array
+        else :
+            raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {img_array.shape[-1]} layers!')
+        #get the tissue fold mask
+        tissue_fold_mask = get_image_tissue_fold_mask(sm_img_array,tissue_mask,mask_layer_groups,brightest_layers,dapi_layer_group_index,rbc_layer_group_index,
+                                                  nlv_cuts_by_layer_group,nlv_max_means_by_layer_group)
+        #get masks for the blurriest areas of the DAPI layer group
+        dapi_dust_mask = get_image_layer_group_blur_mask(sm_img_array,
+                                                         mask_layer_groups[dapi_layer_group_index],
+                                                         dust_nlv_cut,
+                                                         0.5*(mask_layer_groups[dapi_layer_group_index][1]-mask_layer_groups[dapi_layer_group_index][0]+1),
+                                                         dust_max_mean,
+                                                         brightest_layers[dapi_layer_group_index])
+        #same morphology transformations as for the multilayer blur masks
+        dapi_dust_mask = get_morphed_and_filtered_mask(dapi_dust_mask,tissue_mask,CONST.DUST_MIN_PIXELS,CONST.DUST_MIN_SIZE)
+        #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged as blurry
+        dapi_dust_mask = get_exclusive_mask(dapi_dust_mask,tissue_fold_mask,0.25)
+        #combine the multilayer and single layer blur masks into one by multiplying them together
+        final_blur_mask = tissue_fold_mask*dapi_dust_mask
+        #return the blur mask
+        return final_blur_mask
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -153,130 +260,7 @@ class ImageMask() :
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
 
-def getImageTissueMask(image_arr,bkg_thresholds) :
-    """
-    return the fully-determined single tissue mask as a 2d array of ones and zeroes for a given multilayer image
-
-    image_arr      = the multilayer image array of uint16s whose mask should be created
-    bkg_thresholds = the list of background intensity thresholds to use in each image layer 
-    """
-    #figure out where the layer groups are
-    if image_arr.shape[-1]==35 :
-        mask_layer_groups=UNIV_CONST.LAYER_GROUPS_35
-        dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35
-    elif image_arr.shape[-1]==43 :
-        mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
-        dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_43
-    else :
-        raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {image_arr.shape[-1]} layers!')
-    #smooth the entire image
-    sm_image_array = smoothImageWorker(image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
-    #mask each layer individually first
-    layer_masks = []
-    for li in range(image_arr.shape[-1]) :
-        #threshold
-        layer_mask = (np.where(sm_image_array[:,:,li]>bkg_thresholds[li],1,0)).astype(np.uint8)
-        #convert to UMat to use on the GPU
-        layer_mask = cv2.UMat(layer_mask)
-        #small close/open
-        cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
-        cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
-        layer_masks.append(layer_mask.get())
-    #find the well-defined tissue and background in each layer group
-    overall_tissue_mask = np.zeros_like(layer_masks[0])
-    overall_background_mask = np.zeros_like(layer_masks[0])
-    total_stacked_masks = np.zeros_like(layer_masks[0])
-    #for each layer group
-    for lgi,lgb in enumerate(mask_layer_groups) :
-        stacked_masks = np.zeros_like(layer_masks[0])
-        for ln in range(lgb[0],lgb[1]+1) :
-            stacked_masks+=layer_masks[ln-1]
-        total_stacked_masks+=stacked_masks
-        #well-defined tissue is anything called tissue in at least all but two layers
-        overall_tissue_mask[stacked_masks>(lgb[1]-lgb[0]-1)]+= 10 if lgi==dapi_layer_group_index else 1
-        #well-defined background is anything called background in at least half the layers
-        overall_background_mask[stacked_masks<(lgb[1]-lgb[0]+1)/2.]+= 10 if lgi==dapi_layer_group_index else 1
-    #threshold tissue/background masks to include only those from the DAPI and at least one other layer group
-    overall_tissue_mask = (np.where(overall_tissue_mask>10,1,0)).astype(np.uint8)
-    overall_background_mask = (np.where(overall_background_mask>10,1,0)).astype(np.uint8)
-    #final mask has tissue=1, background=0
-    final_mask = np.zeros_like(layer_masks[0])+2
-    final_mask[overall_tissue_mask==1] = 1
-    final_mask[overall_background_mask==1] = 0
-    #anything left over is signal if it's stacked in at least 60% of the total number of layers
-    thresholded_stacked_masks = np.where(total_stacked_masks>(0.6*image_arr.shape[-1]),1,0)
-    final_mask[final_mask==2] = thresholded_stacked_masks[final_mask==2]
-    if np.min(final_mask) != np.max(final_mask) :
-        #filter the tissue and background portions to get rid of the small islands
-        final_mask = getSizeFilteredMask(final_mask,min_size=CONST.TISSUE_MIN_SIZE)
-        #convert to UMat
-        final_mask = cv2.UMat(final_mask)
-        #medium size close/open to smooth out edges
-        cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,final_mask,borderType=cv2.BORDER_REPLICATE)
-        cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,final_mask,borderType=cv2.BORDER_REPLICATE)
-        final_mask = final_mask.get()
-    return final_mask
-
-def getImageBlurMask(img_array,tissue_mask,exp_time_hists=None,exp_times=None,return_plots=False) :
-    """
-    return the single blur mask for an image (multilayer "tissue fold" blur and single-layer "dust" blur combined)
-
-    img_array      = the multilayer image array of uint16s whos mask should be created
-    tissue_mask    = the 2d binary tissue mask for this image 
-    exp_time_hists = a list of histograms of exposure times in each layer group (used in plotting)
-    exp_times      = the list of this image's exposure times in each layer (used in plotting)
-    return_plots   = True if the list of lists of plot dictionaries should be returned from this function
-    """
-    #figure out where the layer groups are, etc.
-    if img_array.shape[-1]==35 :
-        mask_layer_groups=UNIV_CONST.LAYER_GROUPS_35
-        brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_35
-        dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_35
-        rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_35
-        nlv_cuts_by_layer_group=CONST.FOLD_NLV_CUTS_BY_LAYER_GROUP_35
-        nlv_max_means_by_layer_group=CONST.FOLD_MAX_MEANS_BY_LAYER_GROUP_35
-        dust_nlv_cut=CONST.DUST_NLV_CUT_35
-        dust_max_mean=CONST.DUST_MAX_MEAN_35
-        #smooth the image array for both the tissue fold and DAPI layer blur detection
-        sm_img_array = smoothImageWorker(img_array,CONST.BLUR_MASK_SMOOTHING_SIGMA)
-    elif img_array.shape[-1]==43 :
-        mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
-        brightest_layers=UNIV_CONST.BRIGHTEST_LAYERS_43
-        dapi_layer_group_index=UNIV_CONST.DAPI_LAYER_GROUP_INDEX_43
-        rbc_layer_group_index=UNIV_CONST.RBC_LAYER_GROUP_INDEX_43
-        nlv_cuts_by_layer_group=CONST.FOLD_NLV_CUTS_BY_LAYER_GROUP_43
-        nlv_max_means_by_layer_group=CONST.FOLD_MAX_MEANS_BY_LAYER_GROUP_43
-        dust_nlv_cut=CONST.DUST_NLV_CUT_43
-        dust_max_mean=CONST.DUST_MAX_MEAN_43
-        #don't smooth the image array before blur detection
-        sm_img_array = img_array
-    else :
-        raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {img_array.shape[-1]} layers!')
-    #get the tissue fold mask and its associated plots
-    tissue_fold_mask,tissue_fold_plots_by_layer_group = getImageTissueFoldMask(sm_img_array,exp_times,tissue_mask,exp_time_hists,mask_layer_groups,
-                                                                               brightest_layers,dapi_layer_group_index,rbc_layer_group_index,
-                                                                               nlv_cuts_by_layer_group,nlv_max_means_by_layer_group,return_plots)
-    #get masks for the blurriest areas of the DAPI layer group
-    dust_et_hist = exp_time_hists[dapi_layer_group_index] if exp_time_hists is not None else None
-    dapi_dust_mask,dapi_dust_plots = getImageLayerGroupBlurMask(sm_img_array,
-                                                                exp_times,
-                                                                mask_layer_groups[dapi_layer_group_index],
-                                                                dust_nlv_cut,
-                                                                0.5*(mask_layer_groups[dapi_layer_group_index][1]-mask_layer_groups[dapi_layer_group_index][0]+1),
-                                                                dust_max_mean,
-                                                                brightest_layers[dapi_layer_group_index],
-                                                                dust_et_hist,
-                                                                False)
-    #same morphology transformations as for the multilayer blur masks
-    dapi_dust_mask = getMorphedAndFilteredMask(dapi_dust_mask,tissue_mask,CONST.DUST_MIN_PIXELS,CONST.DUST_MIN_SIZE)
-    #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged
-    dapi_dust_mask = getExclusiveMask(dapi_dust_mask,tissue_fold_mask,0.25)
-    #combine the multilayer and single layer blur masks into one by multiplying them together
-    final_blur_mask = tissue_fold_mask*dapi_dust_mask
-    #return the blur mask and the list of plot dicts 
-    return final_blur_mask,tissue_fold_plots_by_layer_group
-
-def getImageSaturationMasks(image_arr,norm_ets) :
+def get_image_saturation_masks(image_arr,norm_ets) :
     """
     Return the list of saturation masks by layer group for a given image
 
@@ -291,11 +275,9 @@ def getImageSaturationMasks(image_arr,norm_ets) :
         mask_layer_groups=UNIV_CONST.LAYER_GROUPS_43
         saturation_intensity_cuts=CONST.SATURATION_INTENSITY_CUTS_43
     else :
-        raise RuntimeError(f'ERROR: no defined list of broadband filter breaks for images with {image_arr.shape[-1]} layers!')
-    #normalize the image by its exposure time
-    normalized_image_arr = np.zeros(image_arr.shape,dtype=np.float32)
-    for li in range(image_arr.shape[-1]) :
-        normalized_image_arr[:,:,li] = image_arr[:,:,li]/norm_ets[li]
+        raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {image_arr.shape[-1]} layers!')
+    #normalize the image by its exposure time and smooth it
+    normalized_image_arr = image_arr / norm_ets[np.newaxis,np.newaxis,:]
     #smooth the exposure time-normalized image
     sm_n_image_arr = smoothImageWorker(normalized_image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
     #make masks for each layer group

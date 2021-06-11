@@ -42,5 +42,8 @@ class Const :
     @property
     def TISSUE_MASK_FILE_NAME_STEM(self) :
         return 'tissue_mask.bin' #end of the filename for the blur and saturation mask files
+    @property
+    def MIN_PIXEL_FRAC(self) :
+        return 0.8
 
 CONST=Const()

@@ -3,8 +3,9 @@ from .config import CONST
 from ..image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import writeImageToFile, smooth_image_worker, smoothImageWithUncertaintyWorker
 from ...utilities.tableio import writetable
-from ...utilities.misc import cd
+from ...utilities.misc import cd, dummylogger
 from ...utilities.config import CONST as UNIV_CONST
+from multiprocessing.pool import Pool
 import numpy as np
 import pathlib
 
@@ -13,20 +14,14 @@ class MeanImage :
     Class representing an image that is the mean of a bunch of stacked raw images 
     Includes tools to build meanimages in a variety of ways including masking out empty background and artifacts in images as they're stacked
     """
-    
-    #################### PROPERTIES ####################
-
-    @property
-    def skip_masking(self):
-        return self.__skip_masking
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,skip_masking=False) :
+    def __init__(self,logger=dummylogger) :
         """
-        skip_masking = if True, image layers won't be masked before being added to the stack
+        logger = the logging object to use (passed from whatever is using this meanimage)
         """
-        self.__skip_masking = skip_masking
+        self.__logger = logger
         self.__image_stack = None
         self.__image_squared_stack = None
         self.__mask_stack = None
@@ -36,56 +31,109 @@ class MeanImage :
         self.__mean_image=None
         self.__std_err_of_mean_image=None
 
+    def stack_images(self,rectangles,thresholds,med_ets,skip_masking=False,n_threads=1) :
+        """
+        Loop over a set of given images and add them to the stack, masking them as they're added and keeping track of that information
+        
+        rectangles = the list of rectangles whose images should be added to the stack
+        thresholds = the list of background thresholds in counts per layer
+        med_ets = the slide median exposure times to which each rectangle image has been corrected 
+                  (if None then corrections were skipped and individual image exposure times will be used instead)
+        skip_masking = if True, image layers won't be masked before being added to the stack
+        n_threads  = the maximum number of processes to open at once while adding images
+        """
+        self.__logger.info(f'Stacking {len(self.tissue_bulk_rects)} images in the bulk of the tissue')
+        #initialize the image and mask stacks based on the image dimensions
+        img_dims = rectangles[0].imageshapeinoutput
+        self.__image_stack = np.zeros(img_dims,dtype=np.float64)
+        self.__image_squared_stack = np.zeros(img_dims,dtype=np.float64)
+        if not skip_masking :
+            self.__mask_stack = np.zeros(img_dims,dtype=np.uint64)
+        self.__n_images_stacked_by_layer = np.zeros((img_dims[-1]),dtype=np.uint64)
+        #if the images aren't going to be masked, this whole step is pretty trivial. Otherwise it's a bit more complex
+        if skip_masking :
+            self.__stack_images_no_masking(rectangles,med_ets)
+        else :
+            self.__stack_images_with_masking(rectangles,thresholds,med_ets,n_threads)
 
+        #################### PRIVATE HELPER FUNCTIONS ####################
 
+        def __stack_images_no_masking(self,rectangles,med_ets) :
+            """
+            Simply add all the images to the image_stack and image_squared_stack without masking them
+            """
+            if med_ets is not None :
+                med_ets = med_ets[np.newaxis,np.newaxis,:]
+            for ri,r in enumerate(rectangles) :
+                self.__logger.info(f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the meanimage stack ({ri+1} of {len(rectangles)})....')
+                with r.using_image() as im :
+                    normalized_image = im / med_ets if med_ets is not None else im / r.allexposuretimes[np.newaxis,np.newaxis,:]
+                    self.__image_stack+=normalized_image
+                    self.__image_squared_stack+=np.power(normalized_image,2)
+                    self.__n_images_read+=1
+                    self.__n_images_stacked_by_layer+=1
 
+        def __stack_images_with_masking(self,rectangles,thresholds,med_ets,n_threads) :
+            """
+            Compute all of the image masks and add the masked images and their masks to the stacks 
+            """
+            #get the masks and add masked images to the stack in parallel
+            if n_threads>1 :
+                proc_results = {}
+                with Pool(processes=n_threads) as pool :
+                    for ri,r in enumerate(rectangles) :
+                        self.__logger.info(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the meanimage stack ({ri+1} of {len(rectangles)})....')
+                        with r.using_image() as im :
+                            proc_results[r] = pool.apply_async(ImageMask,(im,
+                                                                          r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                                          thresholds,
+                                                                          med_ets if med_ets is not None else r.allexposuretimes,
+                                                                          self.__image_masking_dirpath,
+                                                                         )
+                                                              )
+                for rect,res in proc_results.items() :
+                    try :
+                        mask = res.get()
+                        onehot_mask = mask.onehot_mask
+                        self.__labelled_mask_regions+=mask.labelled_mask_regions
+                        layers_to_add = np.where(np.sum(onehot_mask,axis=(0,1))/(onehot_mask.shape[0]*onehot_mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0)
+                        with rect.using_image() as im :
+                            masked_im = im*layers_to_add[np.newaxis,np.newaxis,:]*onehot_mask
+                        normalized_masked_im = masked_im / med_ets if med_ets is not None else masked_im / rect.allexposuretimes[np.newaxis,np.newaxis,:]
+                        self.__image_stack+=normalized_masked_im
+                        self.__image_squared_stack+=np.power(normalized_masked_im,2)
+                        self.__n_images_read+=1
+                        self.__n_images_stacked_by_layer+=layers_to_add
+                    except Exception as e :
+                        warnmsg = f'WARNING: getting image mask for rectangle {rect.n} ({rect.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
+                        warnmsg+= f'with the error "{e}" and this rectangle WILL BE SKIPPED when stacking images in the meanimage!'
+                        self.__logger.warning(warnmsg)
+            #do the same as above except serially
+            else :
+                for ri,r in enumerate(rectangles) :
+                    self.__logger.info(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the meanimage stack ({ri+1} of {len(rectangles)})....')
+                    try :
+                        with r.using_image() as im :
+                            mask = ImageMask(im,
+                                             r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                             thresholds,
+                                             med_ets if med_ets is not None else r.allexposuretimes,
+                                             self.__image_masking_dirpath,
+                                            )
+                            onehot_mask = mask.onehot_mask
+                            self.__labelled_mask_regions+=mask.labelled_mask_regions
+                            layers_to_add = np.where(np.sum(onehot_mask,axis=(0,1))/(onehot_mask.shape[0]*onehot_mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0)
+                            masked_im = im*layers_to_add[np.newaxis,np.newaxis,:]*onehot_mask
+                        normalized_masked_im = masked_im / med_ets if med_ets is not None else masked_im / rect.allexposuretimes[np.newaxis,np.newaxis,:]
+                        self.__image_stack+=normalized_masked_im
+                        self.__image_squared_stack+=np.power(normalized_masked_im,2)
+                        self.__n_images_read+=1
+                        self.__n_images_stacked_by_layer+=layers_to_add
+                    except Exception as e :
+                        warnmsg = f'WARNING: getting image mask for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
+                        warnmsg+= f'with the error "{e}" and this rectangle WILL BE SKIPPED when stacking images in the meanimage!'
+                        self.__logger.warning(warnmsg)
 
-
-
-
-#        self.image_stack = np.zeros(self._dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
-#        self.image_squared_stack = np.zeros(self._dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
-#        self.mask_stack  = np.zeros(self._dims,dtype=np.uint64)
-#        self._labelled_mask_regions = []
-#        self.n_images_read = 0
-#        self.n_images_stacked_by_layer = np.zeros((self.nlayers),dtype=CONST.MASK_STACK_DTYPE_OUT)
-#        self.mean_image=None
-#        self.std_err_of_mean_image=None
-#        self.smoothed_mean_image=None
-#        self.flatfield_image=None
-#        self.corrected_mean_image=None
-#        self.smoothed_corrected_mean_image=None
-#
-#    def addSlideMeanImageAndMaskStack(self,mean_image_fp,image_squared_fp,mask_stack_fp) :
-#        """
-#        A function to add a mean image and mask stack from a particular slide to the running total, including updating the aggregated metadata
-#        mean_image_fp    = path to this slide's already existing mean image file
-#        image_squared_fp = path to this slide's already existing sum of images squared file
-#        mask_stack_fp    = path to this slide's already existing mask_stack file
-#        """
-#        #add the mean image times the mask stack to the image stack, and the mask stack to the running total
-#        thismeanimage = getRawAsHWL(mean_image_fp,*(self._dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
-#        thisimagesquaredstack = getRawAsHWL(image_squared_fp,*(self._dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
-#        thismaskstack = getRawAsHWL(mask_stack_fp,*(self._dims),CONST.MASK_STACK_DTYPE_OUT)
-#        self.mask_stack+=thismaskstack
-#        self.image_stack+=thismaskstack*thismeanimage
-#        self.image_squared_stack+=thisimagesquaredstack
-#        #aggregate some of the metadata also
-#        nisblfp = pathlib.Path((pathlib.Path(mean_image_fp)).parent / CONST.POSTRUN_PLOT_DIRECTORY_NAME / self.N_IMAGES_STACKED_PER_LAYER_TEXT_FILE_NAME)
-#        with open(nisblfp,'r') as fp :
-#            nisbl = np.array([int(l.rstrip()) for l in fp.readlines() if l.rstrip()!=''],dtype=CONST.MASK_STACK_DTYPE_OUT)
-#        if len(nisbl)!=self._dims[-1] :
-#            msg = f'ERROR: number of images stacked by layer in {nisblfp} has {len(nisbl)} entries'
-#            msg+= f' but there are {self._dims[-1]} image layers!'
-#            raise FlatFieldError(msg)
-#        self.n_images_stacked_by_layer+=nisbl
-#        nirfp = pathlib.Path((pathlib.Path(mean_image_fp)).parent / CONST.POSTRUN_PLOT_DIRECTORY_NAME / CONST.N_IMAGES_READ_TEXT_FILE_NAME)
-#        with open(nirfp,'r') as fp :
-#            nir = [int(l.rstrip()) for l in fp.readlines() if l.rstrip()!='']
-#        if len(nir)!=1 :
-#            raise FlatFieldError(f'ERROR: getting number of images read from {nirfp} yielded {len(nir)} values, not exactly 1')
-#        self.n_images_read+=nir[0]
-#
 #    def addGroupOfImages(self,im_array_list,rfps,slide,min_pixel_frac,ets_for_normalization=None,masking_plot_indices=[],logger=None) :
 #        """
 #        A function to add a list of raw image arrays to the image stack

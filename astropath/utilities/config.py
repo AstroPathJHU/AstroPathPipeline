@@ -62,15 +62,6 @@ class Const :
         return 8 #number of the autofluorescence (AF) layer in component tiff images
     #information for corrections
     @property
-    def LAYER_ET_OFFSET_FILE_NAME_STEM(self) :
-        return 'best_fit_offsets' #stem for the name of the .csv file holding a slide's LayerOffset result objects
-    @property
-    def BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM(self) :
-        return 'background_thresholds.txt' #name of the text file holding each layer's background threshold flux
-    @property
-    def FLATFIELD_IMAGE_DTYPE(self) :
-        return np.float64 #datatype for the main output flatfield images
-    @property
     def X_WARP_BIN_FILENAME(self) :
         return 'dx_warp_field' #name of the dx warping field binary file
     @property
