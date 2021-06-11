@@ -12,9 +12,9 @@ class InvalidPolygonError(Exception):
     message = f"Polygon is not valid"
     if reason is not None: message += " ("+reason+")"
     message += ": "+str(polygon)
-    message += "\n\nMakeValid result:\n"
+    message += "\n\nMakeValid result:"
     for _ in polygon.MakeValid():
-      message += str(_)
+      message += "\n"+str(_)
     super().__init__(message)
 
 class Polygon(units.ThingWithPscale, units.ThingWithApscale):
@@ -200,8 +200,6 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     if showvertices:
       if self.subtractpolygons:
         raise ValueError("Can't do showvertices when a polygon has holes")
-      if dtype == bool:
-        raise ValueError("Can't do showvertices for a boolean array")
       for vertex in floattoint(vv.astype(float)):
         array[vertex[1], vertex[0]] += 2
 

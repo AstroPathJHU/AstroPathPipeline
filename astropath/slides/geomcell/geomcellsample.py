@@ -1,7 +1,7 @@
 import cv2, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
-from ...shared.polygon import DataClassWithPolygon, Polygon, polygonfield
+from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
 from ...shared.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
@@ -197,13 +197,23 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           self.joinbrokenmembrane()
         #self.connectdisjointregions()
         self.pickbiggestregion()
+        self.cleanup()
       else:
         self.pickbiggestregion()
+        self.cleanup()
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
-      if self.isprimary and self.ismembrane:
-        if self.istoothin(polygon):
-          self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygon.perimeter / self.onepixel} pixels, area = {polygon.area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
+      try:
+        polygon.checkvalidity()
+      except InvalidPolygonError:
+        if self.isprimary:
+          raise
+        else:
+          return None
+      else:
+        if self.isprimary and self.ismembrane:
+          if self.istoothin(polygon):
+            self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygon.perimeter / self.onepixel} pixels, area = {polygon.area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
     except:
       if self._debugdrawonerror: self._debugdraw = True
       raise
@@ -458,6 +468,14 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     biggest = max(nlabeled.items(), key=lambda kv: kv[1])[0]
     self.logger.warning(f"Broken cell: picking the biggest region ({nlabeled[biggest]} pixels) and discarding the others (total {sum(nlabeled.values()) - nlabeled[biggest]} pixels)")
     slicedmask[labeled != biggest] = 0
+
+  def cleanup(self):
+    slicedmask = self.slicedmask.astype(np.uint8)
+    nneighbors = scipy.ndimage.convolve(slicedmask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
+    oneneighbor = nneighbors == 1
+    if not np.any(oneneighbor & self.slicedmask): return
+    self.slicedmask[oneneighbor] = 0
+    return self.cleanup()
 
   def debugdraw(self, polygon):
     if not self._debugdraw: return
