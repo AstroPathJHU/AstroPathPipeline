@@ -29,7 +29,7 @@ class SampleDef(MyDataClass):
   isGood: int = True
 
   @classmethod
-  def transforminitargs(cls, *args, root=None, samp=None, **kwargs):
+  def transforminitargs(cls, *args, root=None, samp=None, apidfile=None, **kwargs):
     if samp is not None:
       if isinstance(samp, str):
         if "SlideID" in kwargs:
@@ -52,6 +52,18 @@ class SampleDef(MyDataClass):
           if row.SlideID == kwargs["SlideID"]:
             return cls.transforminitargs(root=root, samp=row)
 
+    if "SlideID" in kwargs and apidfile is not None:
+      apidtable = readtable(apidfile, APIDDef)
+      for row in apidtable:
+        if row.SlideID == kwargs["SlideID"]:
+          if "Cohort" not in kwargs:
+            kwargs["Cohort"] = row.Cohort
+          if "Project" not in kwargs:
+            kwargs["Project"] = row.Project
+          if "BatchID" not in kwargs:
+            kwargs["BatchID"] = row.BatchID
+
+    if "SlideID" in kwargs and root is not None:
       if "Scan" not in kwargs:
         try:
           kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/"im3").glob("Scan*/"))
@@ -64,12 +76,17 @@ class SampleDef(MyDataClass):
         except FileNotFoundError:
           pass
 
-    if "SampleID" not in kwargs: kwargs["SampleID"] = 0
-
     return super().transforminitargs(*args, **kwargs)
 
   def __bool__(self):
     return bool(self.isGood)
+
+class APIDDef(MyDataClass):
+  SlideID: str
+  SampleName: str
+  Project: int
+  Cohort: int
+  BatchID: int
 
 class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentParser):
   """

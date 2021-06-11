@@ -61,8 +61,6 @@ class MyLogger:
       self.__enter__()
 
   @property
-  def SampleID(self): return self.samp.SampleID
-  @property
   def SlideID(self): return self.samp.SlideID
   @property
   def Project(self): return self.samp.Project

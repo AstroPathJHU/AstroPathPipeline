@@ -2,9 +2,10 @@ import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage, unittest
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
-from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
+from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
+from astropath.shared.sample import SampleDef
 from astropath.utilities import units
 from .testbase import assertAlmostEqual
 
@@ -127,3 +128,12 @@ class TestMisc(unittest.TestCase):
   def testPolygonVerticesFastUnits(self):
     with units.setup_context("fast_microns"):
       self.testPolygonVertices()
+
+  def testSampleDef(self):
+    self.maxDiff = None
+    s1 = SampleDef(samp="M21_1", root=thisfolder/"data")
+    s2 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv")
+    s3 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv", root=thisfolder/"data")
+    s2.Scan = s1.Scan #can't get this from APID
+    self.assertEqual(s1, s2)
+    self.assertEqual(s1, s3)
