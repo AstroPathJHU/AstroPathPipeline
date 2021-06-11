@@ -44,14 +44,14 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
     fieldreference = reffolder/fieldfilename.name
 
     try:
-      rows = s.readtable(fieldfilename, Boundary)
-      targetrows = s.readtable(fieldreference, Boundary)
+      rows = s.readtable(fieldfilename, Boundary, checkorder=True, checknewlines=True)
+      targetrows = s.readtable(fieldreference, Boundary, checkorder=True, checknewlines=True)
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5)
         self.assertGreater(row.poly.area, 0)
 
-      rows = s.readtable(tumorfilename, Boundary)
-      targetrows = s.readtable(tumorreference, Boundary)
+      rows = s.readtable(tumorfilename, Boundary, checkorder=True, checknewlines=True)
+      targetrows = s.readtable(tumorreference, Boundary, checkorder=True, checknewlines=True)
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target, rtol=1e-5)
         self.assertGreater(row.poly.area, 0)

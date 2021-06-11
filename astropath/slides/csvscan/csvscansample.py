@@ -29,7 +29,7 @@ class CsvScanBase(TableReader):
     self.logger.debug(f"Processing {csv}")
     #read the csv, to check that it's valid
     if checkcsv:
-      rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs, fieldsizelimit=fieldsizelimit)
+      rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs, fieldsizelimit=fieldsizelimit, checknewlines=True, checkorder=True)
       nrows = len(rows)
     else:
       with open(csv) as f:

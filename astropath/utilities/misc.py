@@ -286,6 +286,14 @@ def commonroot(*paths, __niter=0):
   path1, path2 = sorted((path1, path2), key=lambda x: len(x.parts))
   return commonroot(path1, path2.parent, *others, __niter=__niter+1)
 
+def checkwindowsnewlines(filename):
+  with open(filename, newline="") as f:
+    contents = f.read()
+    if re.search(r"(?<!\r)\n", contents):
+      raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
+    if re.search(r"\r\r", contents):
+      raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
+
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
 dummylogger.warningglobal = dummylogger.warning

@@ -160,7 +160,18 @@ class MyFileHandler:
     self.__filename = pathlib.Path(filename)
     self.__lockfilename = self.__filename.with_suffix(self.__filename.suffix+".lock")
     if filename not in self.__handlers:
-      self.__handlers[filename] = logging.FileHandler(filename)
+      handler = self.__handlers[filename] = logging.FileHandler(filename, delay=True)
+      kwargs = {"newline": "", "mode": handler.mode, "encoding": handler.encoding}
+      try:
+        kwargs["errors"] = handler.errors
+      except AttributeError: #python < 3.9
+        pass
+      newfile = open(filename, **kwargs)
+      try:
+        handler.setStream(newfile)
+      except AttributeError: #python < 3.7
+        handler.stream = newfile
+      handler.terminator = "\r\n"
     self.__handler = self.__handlers[filename]
     self.__counts[filename] += 1
     self.__formatter = self.__handler.formatter

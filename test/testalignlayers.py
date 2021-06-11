@@ -45,8 +45,8 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
         (f"{SlideID}_layerpositions.csv", LayerPosition),
         (f"{SlideID}_layerpositioncovariances.csv", LayerPositionCovariance),
       ):
-        rows = a.readtable(thisfolder/"alignlayers_test_for_jenkins"/SlideID/"dbload"/filename, cls, checkorder=True)
-        targetrows = a.readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, checkorder=True)
+        rows = a.readtable(thisfolder/"alignlayers_test_for_jenkins"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True)
+        targetrows = a.readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, checkorder=True, checknewlines=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
@@ -89,8 +89,8 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
 
     a.readalignments(filename=readfilename)
     a.writealignments(filename=writefilename)
-    rows = a.readtable(writefilename, LayerAlignmentResult)
-    targetrows = a.readtable(readfilename, LayerAlignmentResult)
+    rows = a.readtable(writefilename, LayerAlignmentResult, checkorder=True, checknewlines=True)
+    targetrows = a.readtable(readfilename, LayerAlignmentResult, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-5)
 

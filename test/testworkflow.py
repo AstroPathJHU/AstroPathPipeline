@@ -1,5 +1,6 @@
 import os, pathlib
 
+from astropath.utilities.misc import checkwindowsnewlines
 from astropath.shared.workflow import Workflow
 
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput
@@ -51,6 +52,8 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
     try:
       Workflow.runfromargumentparser(args=args)
       assert (root/"dbload"/"project0_loadfiles.csv").exists()
+      for filename in testfolder.rglob("*.log"):
+        checkwindowsnewlines(filename)
     except:
       self.saveoutput()
       raise
