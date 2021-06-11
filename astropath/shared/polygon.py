@@ -155,7 +155,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       **kwargs,
     )
 
-  def numpyarray(self, *, shape=None, dtype=bool, imagescale=None, shiftby=None):
+  def numpyarray(self, *, shape=None, dtype=bool, imagescale=None, shiftby=None, showvertices=False):
     """
     A numpy array corresponding to the polygon, with 1 inside the
     polygon and 0 outside.
@@ -164,6 +164,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     dtype: dtype of the numpy array (default: bool)
     imagescale: the scale to use for converting to pixels (default: pscale)
     shiftby: vector to shift all the vertices by (default: [0, 0], unless shape is None in which case it is determined automatically)
+    showvertices: also show the vertices in the output array
     """
     if imagescale is None: imagescale = self.pscale
 
@@ -178,11 +179,20 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
     vv = (units.convertpscale(vv, self.apscale, imagescale) + shiftby) // units.onepixel(imagescale)
     if shape is None:
-      shape = floattoint(np.max(vv, axis=0).astype(float)[::-1]+1)
+      shape = floattoint(np.max(vv, axis=0).astype(float)[::-1]+2)
 
     coordinates = skimage.draw.polygon(r=vv[:, 1], c=vv[:, 0], shape=shape)
+
     array = np.zeros(shape, dtype)
     array[coordinates] = 1
+    if showvertices:
+      if self.subtractpolygons:
+        raise ValueError("Can't do showvertices when a polygon has holes")
+      if dtype == bool:
+        raise ValueError("Can't do showvertices for a boolean array")
+      for vertex in floattoint(vv.astype(float)):
+        array[vertex[1], vertex[0]] += 2
+
     for p in self.subtractpolygons:
       array = array & ~p.numpyarray(
         shape=shape,
@@ -229,7 +239,7 @@ class SimplePolygon(Polygon):
   apscale: apscale of the polygon
   """
 
-  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1, require4vertices=False):
+  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1, requirevalidity=False):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
 
@@ -270,8 +280,9 @@ class SimplePolygon(Polygon):
       if self.__vertices is not None:
         self.__vertices = [self.__vertices[0]] + self.__vertices[:0:-1]
 
-    if require4vertices and len(self) < 4:
-      raise ValueError(f"Polygon has only {len(self)} vertices, needs to have at least 4")
+    if requirevalidity:
+      if not self.gdalpolygon().IsValid():
+        raise ValueError(f"Polygon is not valid: {self}")
 
   @property
   def pscale(self):
@@ -407,7 +418,7 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
           pixels=poly,
           pscale=self.pscale,
           apscale=self.apscale,
-          require4vertices=True,
+          requirevalidity=True,
         ))
       else:
         raise TypeError(f"Unknown type {type(poly).__name__} for {field}")
