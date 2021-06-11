@@ -9,7 +9,7 @@ class InvalidPolygonError(Exception):
   def __init__(self, polygon, reason=None):
     self.polygon = polygon
     self.reason = reason
-    message = f"Polygon is not valid"
+    message = "Polygon is not valid"
     if reason is not None: message += " ("+reason+")"
     message += ": "+str(polygon)
     try:
