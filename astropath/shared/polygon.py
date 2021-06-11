@@ -155,21 +155,33 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       **kwargs,
     )
 
-  def numpyarray(self, *, shape, dtype, imagescale=None, shiftby=0):
+  def numpyarray(self, *, shape=None, dtype=bool, imagescale=None, shiftby=None):
     """
     A numpy array corresponding to the polygon, with 1 inside the
     polygon and 0 outside.
 
-    shape: shape of the numpy array
-    dtype: dtype of the numpy array
+    shape: shape of the numpy array (default: automatically determined to include the whole polygon plus a little buffer)
+    dtype: dtype of the numpy array (default: bool)
     imagescale: the scale to use for converting to pixels (default: pscale)
-    shiftby: vector to shift all the vertices by (default: [0, 0])
+    shiftby: vector to shift all the vertices by (default: [0, 0], unless shape is None in which case it is determined automatically)
     """
     if imagescale is None: imagescale = self.pscale
-    array = np.zeros(shape, dtype)
+
     vv = self.outerpolygon.vertexarray
+
+    if shape is None:
+      if shiftby is not None:
+        raise TypeError("If you provide shiftby, you also have to provide the array shape")
+      shiftby = units.convertpscale(-np.min(vv, axis=0), self.apscale, imagescale) + units.onepixel(imagescale)
+    if shiftby is None:
+      shiftby = 0
+
     vv = (units.convertpscale(vv, self.apscale, imagescale) + shiftby) // units.onepixel(imagescale)
+    if shape is None:
+      shape = floattoint(np.max(vv, axis=0).astype(float)[::-1]+1)
+
     coordinates = skimage.draw.polygon(r=vv[:, 1], c=vv[:, 0], shape=shape)
+    array = np.zeros(shape, dtype)
     array[coordinates] = 1
     for p in self.subtractpolygons:
       array = array & ~p.numpyarray(
