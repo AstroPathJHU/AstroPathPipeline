@@ -6,6 +6,9 @@ class MyLogger:
   It should always be used in a with statement that contains everything
   you want to do in the module.
 
+  Don't construct MyLogger directly.  You should use the getlogger function
+  at the bottom of this module.
+
   module: name of the process that's being run, e.g. "align"
   root: the Clinical_Specimen_* folder (or another folder if you want to log somewhere else)
   samp: the SampleDef object
@@ -34,6 +37,15 @@ class MyLogger:
       logger.imageinfo("this gets logged only to the image log, if it exists")
       logger.debug("this gets printed but doesn't go in any log")
       #when you exit the with statement, successfully or due to an error, it will log "end module"
+
+  getlogger requires information about the project and cohort, because those
+  go in the log.  You can provide that information in one of three ways:
+    1) give a SampleDef or APIDDef object to getlogger using the samp argument
+    or, you can give a SlideID as the samp argument and it will determine
+         the Project and Cohort automatically:
+    2) if sampledef.csv exists in root, the information will be read from there
+    3) if sampledef.csv does not exist yet, you can provide an apidfile argument
+       to getlogger and it will read the information from there
   """
   def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
