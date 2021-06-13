@@ -1,4 +1,4 @@
-import cv2, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield, PolygonFromGdal
@@ -76,7 +76,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     if not _debugdraw: _onlydebug = False
     nfields = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
-      with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), outputfiles=[field.geomloadcsv]) as lock:
+      with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv]) as lock:
         if not lock: continue
         if field.geomloadcsv.exists(): continue
         if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): continue

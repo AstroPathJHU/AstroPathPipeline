@@ -1,4 +1,4 @@
-import abc, job_lock, pathlib, re
+import abc, datetime, job_lock, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
@@ -42,10 +42,10 @@ class CohortBase(ThingWithRoots):
   @property
   def mainlog(self): return self.logger.mainlog
 
-  def globaljoblock(self, **kwargs):
+  def globaljoblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     lockfile = self.globallogger().mainlog.with_suffix(".lock")
     lockfile.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(lockfile, **kwargs)
+    return job_lock.JobLock(lockfile, corruptfiletimeout=corruptfiletimeout, **kwargs)
 
   def getlogger(self, samp, *, isglobal=False, **kwargs):
     if isinstance(samp, WorkflowDependency):
