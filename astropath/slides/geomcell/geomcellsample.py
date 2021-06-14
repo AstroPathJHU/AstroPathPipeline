@@ -492,11 +492,15 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
 
   def cleanup(self):
     slicedmask = self.slicedmask.astype(np.uint8)
-    nneighbors = scipy.ndimage.convolve(slicedmask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
-    oneneighbor = nneighbors == 1
-    if not np.any(oneneighbor & self.slicedmask): return
-    self.slicedmask[oneneighbor] = 0
-    return self.cleanup()
+    size = np.sum(slicedmask)
+    lastsize = float("inf")
+    while lastsize != size:
+      lastsize = size
+      nneighbors = scipy.ndimage.convolve(slicedmask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
+      oneneighbor = nneighbors == 1
+      slicedmask[oneneighbor] = 0
+      size = np.sum(slicedmask)
+    self.slicedmask = slicedmask.astype(bool)
 
   def debugdraw(self, polygon):
     if not self._debugdraw: return
