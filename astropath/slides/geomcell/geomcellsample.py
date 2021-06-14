@@ -212,7 +212,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       except InvalidPolygonError as e:
         if e.madevalid is None:
           if self.isprimary:
-            self.logger.warningglobal(f"{e} {self.loginfo}")
+            self.logger.warningglobal(f"{str(e).replace('\n', ' ')} {self.loginfo}")
           return None
         polygons = []
         for component in e.validcomponents:
