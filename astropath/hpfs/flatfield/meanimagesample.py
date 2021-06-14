@@ -2,7 +2,7 @@
 from .meanimage import MeanImage
 from .rectangle import RectangleCorrectedIm3MultiLayer
 from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms, plot_background_thresholds_by_layer
-from .latexsummary import ThresholdingLatexSummary
+from .latexsummary import ThresholdingLatexSummary, MaskingLatexSummary
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry
 from .config import CONST
 from ..image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image

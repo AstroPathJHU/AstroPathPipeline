@@ -267,7 +267,7 @@ class MaskingLatexSummary(LatexSummaryBase) :
         lines = []
         lines.append('\\section{Example masking plots}\n')
         lines.append('\n')
-        l = f'Figures~\\ref{fig:first_masking_plot}-\\ref{fig:last_masking_plot} below show examples of how the image masking proceeded for {len(all_fns)} '
+        l = f'Figures~\\ref{{fig:first_masking_plot}}-\\ref{{fig:last_masking_plot}} below show examples of how the image masking proceeded for {len(all_fns)} '
         l+= f'individual images in {self.slideID_tex}. The examples shown are for the images in the sample with the largest numbers of pixels flagged due to '
         l+= f'blur and/or saturation.'
         lines.append(l+'\n\n')
@@ -285,14 +285,17 @@ class MaskingLatexSummary(LatexSummaryBase) :
         l+= 'respectively. The final rightmost column shows the stack of individual image layer tissue fold masks in each layer group, and states where the cut '
         l+= 'on the number of layers required was.'
         lines.append(l+'\n\n')
-        l = f'The bottom row in each plot shows the layers of the compressed ``{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM.replace("_","\\_")}" file, with the '
-        l+= f'numerical values pictured corresponding to entries in the ``{CONST.LABELLED_MASK_REGIONS_CSV_FILENAME.replace("_","\\_")} file for the sample.'
+        full_mask_fn_tex = CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM.replace("_","\\_")
+        labelled_mask_regions_fn_tex = CONST.LABELLED_MASK_REGIONS_CSV_FILENAME.replace("_","\\_")
+        l = f'The bottom row in each plot shows the layers of the compressed ``{full_mask_fn_tex}" file, with the '
+        l+= f'numerical values pictured corresponding to entries in the ``{labelled_mask_regions_fn_tex} file for the sample.'
         lines.append(l+'\n\n')
         for ifn,fn in enumerate(all_fns) :
             lines.append('\\begin{figure}[!ht]\n')
             lines.append('\\centering\n')
             lines.append(f'\\includegraphics[width=\\textwidth]{{{self.plot_dirpath_tex}/{fn}}}\n')
-            lines.append(f'\\caption{{\\footnotesize Masking plots for {fn.rstrip('_masking_plots.png').replace("_","\\_")}}}\n')
+            img_key_tex = fn.rstrip("_masking_plots.png").replace("_","\\_")
+            lines.append(f'\\caption{{\\footnotesize Masking plots for {img_key_tex}}}\n')
             if ifn==0 :
                 lines.append('\\label{fig:first_masking_plot}\n')
             elif ifn==len(all_fns)-1 :

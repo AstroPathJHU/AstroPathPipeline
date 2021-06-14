@@ -121,9 +121,7 @@ def get_background_thresholds_and_pixel_hists_for_rectangle_image(rimg) :
     Return the optimal background thresholds and pixel histograms by layer for a given rectangle image
     (this function is in utilities and not a function of a rectangle so several iterations of it can be run in parallel)
     """
-    smoothed_im = []
-    smooth_image_worker(rimg,MASKING_CONST.TISSUE_MASK_SMOOTHING_SIGMA,smoothed_im)
-    smoothed_im = smoothed_im[0]
+    smoothed_im = smooth_image_worker(rimg,MASKING_CONST.TISSUE_MASK_SMOOTHING_SIGMA,gpu=True)
     nbins = np.iinfo(rimg.dtype).max+1
     layer_hists = np.zeros((nbins,rimg.shape[-1]),dtype=np.uint64)
     for li in range(rimg.shape[-1]) :
