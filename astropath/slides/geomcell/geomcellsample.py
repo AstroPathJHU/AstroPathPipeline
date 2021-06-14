@@ -207,33 +207,41 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
         return None
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
-      try:
-        polygon.checkvalidity()
-      except InvalidPolygonError as e:
-        if e.madevalid is None:
+      valid = False
+      niterations = 0
+      maxiterations = 100
+      discardedarea = 0
+      while not valid:
+        niterations += 1
+        if niterations > maxiterations:
+          raise RuntimeError(f"Couldn't make polygon valid after {maxiterations} iterations")
+        try:
+          polygon.checkvalidity()
+        except InvalidPolygonError as e:
+          if e.madevalid is None:
+            if self.isprimary:
+              estring = str(e).replace("\n", " ")
+              self.logger.warningglobal(f"{estring} {self.loginfo}")
+            return None
+          polygons = []
+          for component in e.validcomponents:
+            if "MULTI" in str(component): assert False
+            elif "LINESTRING" in str(component):
+              continue
+            elif "POLYGON" in str(component):
+              polygons.append(component)
+            else:
+              raise ValueError(f"Unknown component from MakeValid: {component}")
+          polygons.sort(key=lambda x: x.GetArea(), reverse=True)
           if self.isprimary:
-            estring = str(e).replace("\n", " ")
-            self.logger.warningglobal(f"{estring} {self.loginfo}")
-          return None
-        polygons = []
-        for component in e.validcomponents:
-          if "MULTI" in str(component): assert False
-          elif "LINESTRING" in str(component):
-            continue
-          elif "POLYGON" in str(component):
-            polygons.append(component)
-          else:
-            raise ValueError(f"Unknown component from MakeValid: {component}")
-        polygons.sort(key=lambda x: x.GetArea(), reverse=True)
-        if self.isprimary:
-          biggestarea = polygons[0].GetArea()
-          otherarea = sum(p.GetArea() for p in polygons[1:])
-          self.logger.warningglobal(f"Multiple polygons connected by 1-dimensional lines - keeping the biggest ({biggestarea} pixels) and discarding the rest (total {otherarea} pixels)")
-        polygon = PolygonFromGdal(pixels=polygons[0], pscale=polygon.pscale, apscale=polygon.apscale, requirevalidity=True)
-      else:
-        if self.isprimary and self.ismembrane:
-          if self.istoothin(polygon):
-            self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygon.perimeter / self.onepixel} pixels, area = {polygon.area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
+            biggestarea = polygons[0].GetArea()
+            otherarea = sum(p.GetArea() for p in polygons[1:])
+            discardedarea += otherarea
+          polygon = PolygonFromGdal(pixels=polygons[0], pscale=polygon.pscale, apscale=polygon.apscale)
+        else:
+          valid = True
+      if niterations > 1 and self.isprimary:
+        self.logger.warningglobal(f"Multiple polygons connected by 1-dimensional lines - keeping the biggest ({biggestarea} pixels) and discarding the rest (total {discardedarea} pixels)")
     except:
       if self._debugdrawonerror: self._debugdraw = True
       raise

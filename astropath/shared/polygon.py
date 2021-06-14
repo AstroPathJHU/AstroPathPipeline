@@ -71,6 +71,11 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   def apscale(self):
     return self.__apscale
 
+  def checkvalidity(self):
+    self.outerpolygon.checkvalidity()
+    for p in self.subtractpolygons:
+      p.checkvalidity()
+
   @property
   def outerpolygon(self): return self.__outerpolygon
   @property
