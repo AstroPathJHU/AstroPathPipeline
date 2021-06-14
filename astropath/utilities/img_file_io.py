@@ -81,7 +81,7 @@ def getRawAsHW(fname,height,width,dtype=np.uint16) :
   return img_a
 
 #helper function to flatten and write out a given image as binary content
-def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
+def write_image_to_file(img_array,filename_to_write,dtype=np.uint16) :
   #if the image is three dimensional (with the smallest dimension last, probably the number of layers), it has to be transposed
   if len(img_array.shape)==3 and (img_array.shape[2]<img_array.shape[0] and img_array.shape[2]<img_array.shape[1]) :
     img_array = img_array.transpose(2,1,0)
@@ -97,32 +97,32 @@ def writeImageToFile(img_array,filename_to_write,dtype=np.uint16) :
     raise RuntimeError(f'ERROR: failed to save file {filename_to_write}. Exception: {e}')
 
 #helper function to smooth an image
-#this can be run in parallel on the GPU
-def smooth_image_worker(im_array,smoothsigma,return_list=None) :
-  if return_list is not None :
+#runs on the CPU by default but can be run on the GPU by passing gpu=True
+def smooth_image_worker(im_array,smoothsigma,gpu=False) :
+  if gpu :
     im_in_umat = cv2.UMat(im_array)
     im_out_umat = cv2.UMat(np.empty_like(im_array))
     cv2.GaussianBlur(im_in_umat,(0,0),smoothsigma,im_out_umat,borderType=cv2.BORDER_REPLICATE)
-    return_list.append(im_out_umat.get())
+    return im_out_umat.get()
   else :
     return cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
 
 #helper function to smooth an image and its uncertainty image
-#this can be run in parallel on the GPU
-def smoothImageWithUncertaintyWorker(im_array,im_unc_array,smoothsigma,return_list=None) :
+#runs on the CPU by default but can be run on the GPU by passing gpu=True
+def smooth_image_with_uncertainty_worker(im_array,im_unc_array,smoothsigma,gpu=False) :
   ksize = 5*smoothsigma
   if ksize%2==0 :
     ksize+=1
   x_kernel = cv2.getGaussianKernel(ksize,smoothsigma)
   gaussian_kernel = (x_kernel.T)*(x_kernel)
-  if return_list is not None :
+  if gpu :
     im_in_umat = cv2.UMat(im_array); im_out_umat = cv2.UMat(np.empty_like(im_array))
     im_var_in_umat = cv2.UMat(im_unc_array**2); im_var_out_umat = cv2.UMat(np.empty_like(im_unc_array))
     cv2.filter2D(im_in_umat,cv2.CV_64F,cv2.UMat(gaussian_kernel),im_out_umat,borderType=cv2.BORDER_REPLICATE)
     cv2.filter2D(im_var_in_umat,cv2.CV_64F,cv2.UMat(gaussian_kernel**2),im_var_out_umat,borderType=cv2.BORDER_REPLICATE)
     sm_im_var = im_var_out_umat.get()
     sm_im_unc = np.where(sm_im_var>0,np.sqrt(sm_im_var),0.)
-    return_list.append((im_out_umat.get(),sm_im_unc))
+    return im_out_umat.get(),sm_im_unc
   else :
     sm_im = cv2.filter2D(im_array,cv2.CV_64F,gaussian_kernel,borderType=cv2.BORDER_REPLICATE)
     sm_im_var = cv2.filter2D(im_unc_array**2,cv2.CV_64F,gaussian_kernel**2,borderType=cv2.BORDER_REPLICATE)

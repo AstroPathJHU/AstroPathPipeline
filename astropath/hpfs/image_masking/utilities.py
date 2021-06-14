@@ -12,30 +12,6 @@ class LabelledMaskRegion(MyDataClass) :
     n_pixels           : int
     reason_flagged     : str
 
-def return_new_mask_labelled_regions(im_array,im_key,bg_thresholds,norm_ets,savedir=None) :
-    """
-    Create an ImageMask, write out the files it creates, and return its list of labelled mask regions
-    This function writes out the ImageMask it creates and doesn't return it in order to have the lowest possible memory footprint
-    And it also doesn't depend on passing any complex objects outside of it
-    Both of which are useful for running many iterations of the function in parallel processes
-    
-    arguments are the same as ImageMask.__init__
-    """
-    mask = ImageMask(im_array,im_key,bg_thresholds,norm_ets)
-    mask.save_mask_files(savedir)
-    return mask.labelled_mask_regions
-
-def save_plots_for_image(im_array,im_key,bg_thresholds,norm_ets,orig_ets,exp_time_hists_and_bins,savedir) :
-    """
-    Create the masks for a given image and write out plots of the process
-    Useful if all you care about is getting the plots
-    This function also has the lowest possible memory footprint/simplest possible I/O to be run in parallel processes
-
-    arguments are the same as ImageMask.__init__ + ImageMask.save_plots
-    """
-    mask = ImageMask(im_array,im_key,bg_thresholds,norm_ets)
-    mask.save_plots(orig_ets,exp_time_hists_and_bins,savedir=None)
-
 #helper function to unpack, reshape, and return a tissue mask from its packed mask file
 def unpack_tissue_mask(filepath,dimensions) :
     if not pathlib.Path(filepath).is_file() :
@@ -72,7 +48,7 @@ def get_size_filtered_mask(mask,min_size,both=True,invert=False) :
     if invert :
         new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
     if both :
-        return getSizeFilteredMask(new_mask,min_size,both=False,invert=(not invert))
+        return get_size_filtered_mask(new_mask,min_size,both=False,invert=(not invert))
     return new_mask
 
 #return a binary mask with any areas that are already flagged in a prior mask removed
@@ -107,7 +83,7 @@ def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size) :
         twice_eroded_fold_mask = twice_eroded_fold_mask.get()
         mask[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)]
         #remove any remaining small spots after the tissue mask incorporation
-        mask = getSizeFilteredMask(mask,min_size)
+        mask = get_size_filtered_mask(mask,min_size)
         #make sure there are at least the minimum number of pixels selected
         if np.sum(mask==0)<min_pixels :
             return np.ones_like(mask)
