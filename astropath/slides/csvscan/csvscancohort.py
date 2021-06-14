@@ -19,7 +19,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
 
   @property
   def samp(self):
-    return SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
+    return SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
 
   def inputfiles(self, *, checkcsvs=True):
     return []  #will be checked in run()
