@@ -43,6 +43,9 @@ class Const :
     def TISSUE_MASK_FILE_NAME_STEM(self) :
         return 'tissue_mask.bin' #end of the filename for the blur and saturation mask files
     @property
+    def MASKING_SUMMARY_PDF_FILENAME(self) :
+        return 'masking_summary.pdf' #name of the .pdf file containing plots of how the image masking worked for this sample
+    @property
     def MIN_PIXEL_FRAC(self) :
         return 0.8
 

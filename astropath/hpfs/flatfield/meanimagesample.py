@@ -266,6 +266,14 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 writetable(f'{CONST.LABELLED_MASK_REGIONS_CSV_FILENAME}',labelled_mask_regions)
             #save some masking plots for images with the largest numbers of masked pixels
             self.__save_set_of_masking_plots(labelled_mask_regions,background_thresholds)
+            #write out the latex summary containing all of the image masking plots that were made
+            latex_summary = MaskingLatexSummary(self.SlideID,self.__image_masking_dirpath)
+            latex_summary.build_tex_file()
+            check = latex_summary.compile()
+            if check!=0 :
+                warnmsg = f'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
+                warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+                self.logger.warning(warnmsg)
 
     def __get_background_thresholds(self) :
         """
@@ -419,7 +427,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         labelled_mask_regions = the list of LabelledMaskRegion objects computed for the sample
         background_thresholds = the list of background thresholds in counts by image layer
         """
-        #find the images that had the most pixels masked out (up to 5 each for blur and saturation)
+        #find the images that had the most pixels masked out (up to 10 each for blur and saturation)
         self.logger.info('Finding images that had the largest numbers of pixels masked due to blur or saturation')
         regions_by_n_blurred_pixels = sorted([lmr for lmr in labelled_mask_regions if lmr.reason_flagged==MASK_CONST.BLUR_FLAG_STRING],
                                            key=lambda x: x.n_pixels,reverse=True)
@@ -428,12 +436,12 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         top_blur_keys = set()
         for lmr in regions_by_n_blurred_pixels :
             top_blur_keys.add(lmr.image_key)
-            if len(top_blur_keys)>=5 :
+            if len(top_blur_keys)>=10 :
                 break
         top_saturation_keys = set()
         for lmr in regions_by_n_saturated_pixels :
             top_saturation_keys.add(lmr.image_key)
-            if len(top_saturation_keys)>=5 :
+            if len(top_saturation_keys)>=10 :
                 break
         #recompute the masks for those images and write out the masking plots for them
         rects_to_plot = [r for r in self.rectangles if r.file.rstrip(UNIV_CONST.IM3_EXT) in (top_blur_keys | top_saturation_keys)]

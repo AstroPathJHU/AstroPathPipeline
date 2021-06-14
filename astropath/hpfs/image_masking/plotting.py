@@ -37,7 +37,9 @@ def do_masking_plots_for_image(image_key,tissue_mask,plot_dict_lists,compressed_
                     if pk in dkeys :
                         imshowkwargs[pk]=pd[pk]
                 pos = ax[row][col].imshow(pd['image'],**imshowkwargs)
-                f.colorbar(pos,ax=ax[row][col])
+                if 'overlay' not in pd['title'] :
+                    cax = f.add_axes([ax[row][col].get_position().x1+0.004,ax[row][col].get_position().y0,0.01,ax[row][col].get_position().height])
+                    f.colorbar(pos,cax=cax)
                 if 'title' in dkeys :
                     title_text = pd['title'].replace('IMAGE',image_key)
                     ax[row][col].set_title(title_text)
