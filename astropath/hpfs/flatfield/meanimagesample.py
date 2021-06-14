@@ -5,7 +5,7 @@ from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thr
 from .latexsummary import ThresholdingLatexSummary
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry
 from .config import CONST
-from ..image_masking.image_mask import ImageMask
+from ..image_masking.utilities import return_new_mask_labelled_regions, save_plots_for_image
 from ..image_masking.utilities import LabelledMaskRegion
 from ..image_masking.config import CONST as MASK_CONST
 from ...shared.sample import ReadRectanglesOverlapsIm3FromXML, WorkflowSample
@@ -99,9 +99,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         if (not self.__skip_masking) and (not self.__use_precomputed_masks) :
             self.__create_sample_image_masks()
         #make the mean image from all of the tissue bulk rectangles
-        self.__meanimage.stack_images(self.tissue_bulk_rects,background_thresholds,
-                                      self.__med_ets if self.__et_offset_file is not None else None,
-                                      self.__skip_masking,self.__n_threads)
+        #self.__meanimage.stack_images(self.tissue_bulk_rects,self.__skip_masking,self.__n_threads)
         #create and write out the final mask stack, mean image, and std. error of the mean image
 
     #################### CLASS VARIABLES + PROPERTIES ####################
@@ -229,7 +227,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 for ri,r in enumerate(self.rectangles) :
                     self.logger.info(f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....')
                     with r.using_image() as im :
-                        proc_results[r] = pool.apply_async(ImageMask.create_write_and_return_labelled_regions,
+                        proc_results[r] = pool.apply_async(return_new_mask_labelled_regions,
                                                            (im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                                             self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
                                                             self.__image_masking_dirpath,
@@ -248,7 +246,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 self.logger.info(f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....')
                 try :
                     with r.using_image() as im :
-                        labelled_mask_regions.append(ImageMask.create_write_and_return_labelled_regions(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
+                        labelled_mask_regions.append(return_new_mask_labelled_regions(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                                             self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
                                                             self.__image_masking_dirpath))
                 except Exception as e :
@@ -438,9 +436,10 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 for ri,r in enumerate(rects_to_plot) :
                     self.logger.info(f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots ({ri+1} of {len(self.rectangles)})....')
                     with r.using_image() as im :
-                        proc_results[r] = pool.apply_async(ImageMask.save_plots_for_image,
+                        proc_results[r] = pool.apply_async(save_plots_for_image,
                                                            (im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                                             self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
+                                                            r.allexposuretimes,
                                                             self.exposure_time_histograms_and_bins_by_layer_group,
                                                             self.__image_masking_dirpath,
                                                            )
@@ -458,8 +457,9 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 self.logger.info(f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots ({ri+1} of {len(rectangles)})....')
                 try :
                     with r.using_image() as im :
-                        labelled_mask_regions.append(ImageMask.save_plots_for_image(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
+                        labelled_mask_regions.append(save_plots_for_image(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                                             self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
+                                                            r.allexposuretimes,
                                                             self.exposure_time_histograms_and_bins_by_layer_group,
                                                             self.__image_masking_dirpath))
                 except Exception as e :

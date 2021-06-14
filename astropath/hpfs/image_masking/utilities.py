@@ -12,15 +12,39 @@ class LabelledMaskRegion(MyDataClass) :
     n_pixels           : int
     reason_flagged     : str
 
+def return_new_mask_labelled_regions(im_array,im_key,bg_thresholds,norm_ets,savedir=None) :
+    """
+    Create an ImageMask, write out the files it creates, and return its list of labelled mask regions
+    This function writes out the ImageMask it creates and doesn't return it in order to have the lowest possible memory footprint
+    And it also doesn't depend on passing any complex objects outside of it
+    Both of which are useful for running many iterations of the function in parallel processes
+    
+    arguments are the same as ImageMask.__init__
+    """
+    mask = ImageMask(im_array,im_key,bg_thresholds,norm_ets)
+    mask.save_mask_files(savedir)
+    return mask.labelled_mask_regions
+
+def save_plots_for_image(im_array,im_key,bg_thresholds,norm_ets,orig_ets,exp_time_hists_and_bins,savedir) :
+    """
+    Create the masks for a given image and write out plots of the process
+    Useful if all you care about is getting the plots
+    This function also has the lowest possible memory footprint/simplest possible I/O to be run in parallel processes
+
+    arguments are the same as ImageMask.__init__ + ImageMask.save_plots
+    """
+    mask = ImageMask(im_array,im_key,bg_thresholds,norm_ets)
+    mask.save_plots(orig_ets,exp_time_hists_and_bins,savedir=None)
+
 #helper function to unpack, reshape, and return a tissue mask from its packed mask file
-def unpackTissueMask(filepath,dimensions) :
+def unpack_tissue_mask(filepath,dimensions) :
     if not pathlib.Path(filepath).is_file() :
         raise ValueError(f'ERROR: tissue mask file {filepath} does not exist!')
     packed_mask = np.memmap(filepath,dtype=np.uint8,mode='r')
     return (np.unpackbits(packed_mask)).reshape(dimensions)
 
 #helper function to change a mask from zeroes and ones to region indices and zeroes
-def getEnumeratedMask(layer_mask,start_i) :
+def get_enumerated_mask(layer_mask,start_i) :
     #first invert the mask to get the "bad" regions as "signal"
     inverted_mask = np.zeros_like(layer_mask); inverted_mask[layer_mask==0] = 1; inverted_mask[layer_mask==1] = 0
     #label each connected region uniquely starting at the supplied index
@@ -90,7 +114,7 @@ def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size) :
     return mask
 
 #function to compute and return the variance of the normalized laplacian for a given image layer
-def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer) :
+def get_image_layer_local_variance_of_normalized_laplacian(img_layer) :
     #build the laplacian image and normalize it to get the curvature
     img_laplacian = cv2.Laplacian(img_layer,cv2.CV_32F,borderType=cv2.BORDER_REFLECT)
     img_lap_norm = cv2.UMat(np.empty(img_layer.shape,dtype=np.float32))
@@ -112,100 +136,3 @@ def getImageLayerLocalVarianceOfNormalizedLaplacian(img_layer) :
     local_norm_lap_var = np.abs(norm_lap_2_loc_mean-np.power(norm_lap_loc_mean,2))
     #return the local variance of the normalized laplacian
     return local_norm_lap_var
-
-#function to return a blur mask for a given image layer group, along with a dictionary of plots to add to the group for this image
-def get_image_layer_group_blur_mask(img_array,exp_times,layer_group_bounds,nlv_cut,n_layers_flag_cut,max_mean,brightest_layer_n,ethistandbins,return_plots=True) :
-    #start by making a mask for every layer in the group
-    stacked_masks = np.zeros(img_array.shape[:-1],dtype=np.uint8)
-    brightest_layer_nlv = None
-    for ln in range(layer_group_bounds[0],layer_group_bounds[1]+1) :
-        #get the local variance of the normalized laplacian image
-        img_nlv = getImageLayerLocalVarianceOfNormalizedLaplacian(img_array[:,:,ln-1])
-        if ln==brightest_layer_n :
-            brightest_layer_nlv = img_nlv
-        #get the mean of those local normalized laplacian variance values in the window size
-        img_nlv_loc_mean = cv2.UMat(np.empty_like(img_nlv))
-        cv2.filter2D(img_nlv,cv2.CV_32F,CONST.SMALLER_WINDOW_EL,img_nlv_loc_mean,borderType=cv2.BORDER_REFLECT)
-        img_nlv_loc_mean=img_nlv_loc_mean.get()
-        img_nlv_loc_mean/=np.sum(CONST.SMALLER_WINDOW_EL)
-        #threshold on the local variance of the normalized laplacian and the local mean of those values to make a binary mask
-        layer_mask = (np.where((img_nlv>nlv_cut) | (img_nlv_loc_mean>max_mean),1,0)).astype(np.uint8)
-        if np.min(layer_mask) != np.max(layer_mask) :
-            #convert to UMat
-            layer_mask = cv2.UMat(layer_mask)
-            #small open/close to refine it
-            cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
-            cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
-            #erode by the smaller window element
-            cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,CONST.SMALLER_WINDOW_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
-            layer_mask = layer_mask.get()
-        #add it to the stack 
-        stacked_masks+=layer_mask
-    #determine the final mask for this group by thresholding on how many individual layers contribute
-    group_blur_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
-    if np.min(group_blur_mask) != np.max(group_blur_mask) :
-        #medium sized open/close to refine it
-        group_blur_mask = cv2.UMat(group_blur_mask)
-        cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,group_blur_mask,borderType=cv2.BORDER_REPLICATE)
-        cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,group_blur_mask,borderType=cv2.BORDER_REPLICATE)
-        group_blur_mask = group_blur_mask.get()
-    #set up the plots to return
-    if return_plots :
-        plot_img_layer = img_array[:,:,brightest_layer_n-1]
-        sorted_pil = np.sort(plot_img_layer[group_blur_mask==1].flatten())
-        pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
-        norm = 255./(pil_max-pil_min)
-        im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
-        overlay_c = np.array([im_c,im_c*group_blur_mask,im_c*group_blur_mask]).transpose(1,2,0)
-        plots = [{'image':plot_img_layer,'title':f'raw IMAGE layer {brightest_layer_n}'},
-                 {'image':overlay_c,'title':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} blur mask overlay (clipped)'}]
-        if exp_times is not None and ethistandbins is not None :
-            plots.append({'bar':ethistandbins[0],'bins':ethistandbins[1],
-                          'xlabel':f'layer {layer_group_bounds[0]}-{layer_group_bounds[1]} exposure times (ms)',
-                          'line_at':exp_times[layer_group_bounds[0]-1]})
-        plots.append({'image':brightest_layer_nlv,'title':'local variance of normalized laplacian'})
-        plots.append({'hist':brightest_layer_nlv.flatten(),'xlabel':'variance of normalized laplacian','line_at':nlv_cut})
-        plots.append({'image':stacked_masks,'title':f'stacked layer masks (cut at {n_layers_flag_cut})','cmap':'gist_ncar',
-                      'vmin':0,'vmax':layer_group_bounds[1]-layer_group_bounds[0]+1})
-    else :
-        plots = None
-    #return the blur mask for the layer group and the list of plot dictionaries
-    return group_blur_mask, plots
-
-#return the tissue fold mask for an image combining information from all layer groups
-def get_image_tissue_fold_mask(sm_img_array,exp_times,tissue_mask,exp_t_hists,layer_groups,brightest_layers,dapi_lgi,rbc_lgi,nlv_cuts,nlv_max_means,return_plots=False) :
-    #make the list of flag cuts (how many layers can miss being flagged to include the region in the layer group mask)
-    fold_flag_cuts = []
-    for lgi,lgb in enumerate(layer_groups) :
-        if lgi==dapi_lgi or lgi==rbc_lgi :
-            fold_flag_cuts.append(3)
-        elif lgb[1]-lgb[0]<3 :
-            fold_flag_cuts.append(0)
-        else :
-            fold_flag_cuts.append(1)
-    #get the fold masks for each layer group
-    fold_masks_by_layer_group = []; fold_mask_plots_by_layer_group = []
-    for lgi,lgb in enumerate(layer_groups) :
-        lgeth = exp_t_hists[lgi] if exp_t_hists is not None else None
-        lgtfm, lgtfmps = getImageLayerGroupBlurMask(sm_img_array,
-                                                    exp_times,
-                                                    lgb,
-                                                    nlv_cuts[lgi],
-                                                    fold_flag_cuts[lgi],
-                                                    nlv_max_means[lgi],
-                                                    brightest_layers[lgi],
-                                                    lgeth,
-                                                    return_plots)
-        fold_masks_by_layer_group.append(lgtfm)
-        fold_mask_plots_by_layer_group.append(lgtfmps)
-    #combine the layer group blur masks to get the final mask for all layers
-    stacked_fold_masks = np.zeros_like(fold_masks_by_layer_group[0])
-    for lgi,layer_group_fold_mask in enumerate(fold_masks_by_layer_group) :
-        stacked_fold_masks[layer_group_fold_mask==0]+=10 if lgi in (dapi_lgi,rbc_lgi) else 1
-    overall_fold_mask = (np.where(stacked_fold_masks>11,0,1)).astype(np.uint8)
-    #morph and filter the mask using the common operations
-    overall_fold_mask = getMorphedAndFilteredMask(overall_fold_mask,tissue_mask,CONST.FOLD_MIN_PIXELS,CONST.FOLD_MIN_SIZE)
-    if return_plots :
-        return overall_fold_mask,fold_mask_plots_by_layer_group
-    else :
-        return overall_fold_mask,None

@@ -1,9 +1,18 @@
 #imports
 from ...utilities.misc import cd, crop_and_overwrite_image
-import numpy as np, matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.pyplot as plt
 
-#helper function to write out a sheet of masking information plots for an image
-def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,compressed_full_mask,savedir=None) :
+def do_masking_plots_for_image(image_key,tissue_mask,plot_dict_lists,compressed_full_mask,savedir=None) :
+    """
+    write out a sheet of masking information plots for an image
+
+    image_key = the stem of the image file name 
+    tissue_mask = the binary mask of where the tissue vs. background is in the image
+    plot_dict_lists = the list of lists of plot dictionaries by layer group
+    compressed_full_mask = the full, compressed image mask object to make comparisons with the individual layer group masks
+    savedir = path to the directory in which the plot should be saved. If None, the current directory will be used
+    """
     #figure out how many rows/columns will be in the sheet and set up the plots
     n_rows = len(plot_dict_lists)+1
     n_cols = max(n_rows,len(plot_dict_lists[0]))
@@ -73,10 +82,13 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,compressed_full
     #empty the other unused axes in the last row
     for ci in range(n_rows-1,n_cols) :
         ax[n_rows-1][ci].axis('off')
-    #show/save the plot
+    #save the plot
+    fn = f'{image_key}_masking_plots.png'
     if savedir is None :
-        plt.show()
+        plt.savefig(fn); plt.close(); crop_and_overwrite_image(fn)
     else :
+        if not savedir.is_dir() :
+            savedir.mkdir()
         with cd(savedir) :
-            fn = f'{image_key}_masking_plots.png'
             plt.savefig(fn); plt.close(); crop_and_overwrite_image(fn)
+
