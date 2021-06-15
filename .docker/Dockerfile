@@ -137,6 +137,8 @@ RUN sudo apt-get update && \
   #for vips
   zlib1g-dev
 
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y equivs unzip wget zip
+
 FROM base as texlive
 
 #install texlive
