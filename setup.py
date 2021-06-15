@@ -70,7 +70,7 @@ setupkwargs = dict(
   ],
   extras_require = {
     "test": ["beautifulsoup4", "flake8", "gitpython", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
-    "gdal": ["gdal>=3.2.1"],
+    "gdal": ["gdal>=3.3.0"],
     "vips": ["pyvips"],
   },
   package_data = {
