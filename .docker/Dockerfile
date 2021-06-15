@@ -352,15 +352,20 @@ COPY --from=gdal  /build_gdal_python/usr/ /usr/
 COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
-ENV ASTROPATH_DEPENDENCY_COMMIT 3423b20d26e9a33a83c95db264f1f855d90a2ba7
 ARG GITHUB_TOKEN
 
 #add python packages
 RUN sudo pip install --upgrade pip
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
-  sudo pip install "astropath[all] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
+  sudo git clone https://github.com/AstropathJHU/AstroPathPipelinePrivate && \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
+
+ENV ASTROPATH_DEPENDENCY_COMMIT 457ca688c81758ac63f005824e0fd17347066ac4
+RUN \
+  cd AstroPathPipelinePrivate && \
+  sudo git checkout "${ASTROPATH_DEPENDENCY_COMMIT}"
+RUN sudo pip install ./AstroPathPipelinePrivate[all]
 RUN sudo pip uninstall -y astropath
 
 from base as final
