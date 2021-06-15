@@ -331,7 +331,7 @@ RUN sudo -E bash /buildscripts/bh-proj.sh
 
 # Build GDAL
 ARG JAVA_VERSION=11
-ARG GDAL_VERSION=v3.2.1
+ARG GDAL_VERSION=v3.3.0
 ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
@@ -357,7 +357,7 @@ ARG GITHUB_TOKEN
 #add python packages
 RUN sudo pip install --upgrade pip
 
-ENV ASTROPATH_DEPENDENCY_COMMIT 457ca688c81758ac63f005824e0fd17347066ac4
+ENV ASTROPATH_DEPENDENCY_COMMIT 3f92b08d252a29188519145157f7016c8b3965ca
 
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
