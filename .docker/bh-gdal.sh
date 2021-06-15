@@ -46,6 +46,7 @@ wget -q "https://github.com/OSGeo/gdal/archive/${GDAL_VERSION}.tar.gz" \
       GDAL_CONFIG_OPTS="$GDAL_CONFIG_OPTS  --with-pdfium=/usr "
     fi
 
+    export LD_LIBRARY_PATH="/build${PROJ_INSTALL_PREFIX-/usr/local}/lib"
     LDFLAGS="-L/build${PROJ_INSTALL_PREFIX-/usr/local}/lib -linternalproj" ./configure --prefix=/usr \
     --without-libtool \
     --with-hide-internal-symbols \
@@ -96,7 +97,7 @@ rm -rf gdal
 mkdir -p /build_gdal_python/usr/lib
 mkdir -p /build_gdal_python/usr/bin
 mkdir -p /build_gdal_version_changing/usr/include
-mv /build/usr/lib/python3            /build_gdal_python/usr/lib
+mv /build/usr/lib/python3.6          /build_gdal_python/usr/lib
 mv /build/usr/lib                    /build_gdal_version_changing/usr
 mv /build/usr/include/gdal_version.h /build_gdal_version_changing/usr/include
 mv /build/usr/bin/*.py               /build_gdal_python/usr/bin
