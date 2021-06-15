@@ -1,10 +1,13 @@
 import collections, datetime, functools, job_lock, logging, os, pathlib, traceback
 
 class MyLogger:
-  """
+  r"""
   Logger that follows the astropath logging conventions.
   It should always be used in a with statement that contains everything
   you want to do in the module.
+
+  Don't construct MyLogger directly.  You should use the getlogger function
+  at the bottom of this module.
 
   module: name of the process that's being run, e.g. "align"
   root: the Clinical_Specimen_* folder (or another folder if you want to log somewhere else)
@@ -20,6 +23,29 @@ class MyLogger:
             (default: None)
   reraiseexceptions: should the logger reraise exceptions after logging them
                      (default: True)
+
+  To use the logger, you should write:
+    with getlogger(module="module", root=r"\\bki0X\Clinical_Specimen_Y", samp="APIDXXXXXXXX", uselogfiles=True) as logger:
+      #as soon as you enter the with statement, it will log "module v<version>" to both logs
+      logger.critical("this gets logged to both logs")
+      logger.error("this gets logged to both logs with ERROR: in front")
+      #also if there is a python exception, it gets logged to both logs with ERROR: in front,
+      # and the full traceback is logged to the sample log
+      logger.warningglobal("this gets logged to both logs with WARNING: in front")
+      logger.warning("this gets logged to the sample log with WARNING: in front")
+      logger.info("this gets logged to the sample log")
+      logger.imageinfo("this gets logged only to the image log, if it exists")
+      logger.debug("this gets printed but doesn't go in any log")
+      #when you exit the with statement, successfully or due to an error, it will log "end module"
+
+  getlogger requires information about the project and cohort, because those
+  go in the log.  You can provide that information in one of three ways:
+    1) give a SampleDef or APIDDef object to getlogger using the samp argument
+    or, you can give a SlideID as the samp argument and it will determine
+         the Project and Cohort automatically:
+    2) if sampledef.csv exists in root, the information will be read from there
+    3) if sampledef.csv does not exist yet, you can provide an apidfile argument
+       to getlogger and it will read the information from there
   """
   def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
@@ -40,14 +66,12 @@ class MyLogger:
     self.imagelog = None if imagelog is None else pathlib.Path(imagelog)
     self.isglobal = isglobal
     self.reraiseexceptions = reraiseexceptions
-    if uselogfiles and (self.Project is None or self.SampleID is None or self.Cohort is None):
-      raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
+    if uselogfiles and (self.Project is None or self.Cohort is None):
+      raise ValueError("Have to give a non-None Project and Cohort when writing to log files")
 
     if not uselogfiles:
       self.__enter__()
 
-  @property
-  def SampleID(self): return self.samp.SampleID
   @property
   def SlideID(self): return self.samp.SlideID
   @property
@@ -210,19 +234,10 @@ class MyFileHandler:
 __notgiven = object()
 
 @functools.lru_cache(maxsize=None)
-def getlogger(*, module, root, samp, uselogfiles=__notgiven, threshold=__notgiven, isglobal=__notgiven, mainlog=__notgiven, samplelog=__notgiven, imagelog=__notgiven, reraiseexceptions=__notgiven):
-  if uselogfiles is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
-  if threshold is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
-  if isglobal is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=False, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
-  if mainlog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=None, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
-  if samplelog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=None, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
-  if imagelog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=None, reraiseexceptions=reraiseexceptions)
-  if reraiseexceptions is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=True)
+def __getlogger(*, module, root, samp, uselogfiles, threshold, isglobal, mainlog, samplelog, imagelog, reraiseexceptions):
   return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None):
+  from .sample import SampleDef
+  samp = SampleDef(root=root, samp=samp, apidfile=apidfile)
+  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
