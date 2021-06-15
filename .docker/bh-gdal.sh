@@ -1,5 +1,5 @@
-#!/bin/bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 if [ "${GDAL_VERSION}" = "master" ]; then
     GDAL_VERSION=$(curl -Ls https://api.github.com/repos/OSGeo/gdal/commits/HEAD -H "Accept: application/vnd.github.VERSION.sha")
@@ -42,7 +42,11 @@ wget -q "https://github.com/OSGeo/gdal/archive/${GDAL_VERSION}.tar.gz" \
       GDAL_CONFIG_OPTS="$GDAL_CONFIG_OPTS  --with-fgdb=/usr/local/FileGDB_API "
     fi
 
-    ./configure --prefix=/usr \
+    if echo "$WITH_PDFIUM" | grep -Eiq "^(y(es)?|1|true)$" ; then
+      GDAL_CONFIG_OPTS="$GDAL_CONFIG_OPTS  --with-pdfium=/usr "
+    fi
+
+    LDFLAGS="-L/build${PROJ_INSTALL_PREFIX-/usr/local}/lib -linternalproj" ./configure --prefix=/usr \
     --without-libtool \
     --with-hide-internal-symbols \
     --with-jpeg12 \
@@ -92,7 +96,7 @@ rm -rf gdal
 mkdir -p /build_gdal_python/usr/lib
 mkdir -p /build_gdal_python/usr/bin
 mkdir -p /build_gdal_version_changing/usr/include
-mv /build/usr/lib/python3.6          /build_gdal_python/usr/lib
+mv /build/usr/lib/python3            /build_gdal_python/usr/lib
 mv /build/usr/lib                    /build_gdal_version_changing/usr
 mv /build/usr/include/gdal_version.h /build_gdal_version_changing/usr/include
 mv /build/usr/bin/*.py               /build_gdal_python/usr/bin
