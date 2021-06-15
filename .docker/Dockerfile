@@ -1,15 +1,27 @@
 #comes with python + git and some other utilities
-FROM circleci/python:3.6.12 AS base
+FROM ubuntu:20.04 AS base
+
+#https://stackoverflow.com/a/25908200/5228524
+#https://github.com/CircleCI-Public/circleci-dockerfiles/blob/eda702fe560b258138d3a895c5d397f4a2cdfcd0/python/images/3.6.12/Dockerfile#L83
+#https://dev.to/emmanuelnk/using-sudo-without-password-prompt-as-non-root-docker-user-52bg
+RUN apt-get update && \
+      apt-get -y install sudo
+
+RUN adduser --disabled-password --gecos '' astropath && \
+    adduser astropath sudo && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+USER astropath
 
 #libvips stuff is from https://github.com/TailorBrands/docker-libvips/blob/f64952af6871fb963934b7454f7edf5b6738f4b8/8.6.1/Dockerfile
 #gdal stuff is from https://github.com/OSGeo/gdal/blob/f6689b653338502de4150f491864553894c37410/gdal/docker/ubuntu-full/Dockerfile
 
 #make the home directory editable
-RUN sudo mkdir -p /home/circleci/.cache/pip /home/circleci/.cache/matplotlib
-RUN sudo chmod -R a+w /home/circleci
+RUN sudo mkdir -p /home/astropath/.cache/pip /home/astropath/.cache/matplotlib
+RUN sudo chmod -R a+w /home/astropath
 
 #apt-get stuff
-RUN sudo apt-get install equivs
+#RUN sudo apt-get install -y equivs
 
 ARG JAVA_VERSION=11
 
