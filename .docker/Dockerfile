@@ -20,26 +20,32 @@ USER astropath
 RUN sudo mkdir -p /home/astropath/.cache/pip /home/astropath/.cache/matplotlib
 RUN sudo chmod -R a+w /home/astropath
 
-#apt-get stuff
-#RUN sudo apt-get install -y equivs
-
-ARG JAVA_VERSION=11
-
 RUN sudo apt-get update && \
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   #for gdal
   ant \
   #for vips
+  automake \
   bison \
+  build-essential \
+  ccache \
   cdbs \
+  cmake \
+  curl \
   debhelper \
   #for gdal
   default-libmysqlclient-dev \
   #for vips
   dh-autoreconf \
+  #for build
+  equivs \
+  #for vips
   fftw3-dev \
   flex \
   gettext \
+  #for build
+  git \
+  #for vips
   gtk-doc-tools \
   #for gdal
   libarmadillo-dev \
@@ -109,6 +115,7 @@ RUN sudo apt-get update && \
   #for gdal
   libpoppler-private-dev \
   libpq-dev \
+  libpython3-dev \
   #for vips
   librsvg2-dev \
   #for gdal
@@ -127,17 +134,29 @@ RUN sudo apt-get update && \
   libxml2-dev \
   #for gdal
   libzstd-dev \
-  openjdk-"$JAVA_VERSION"-jdk \
   #for vips
   pkg-config \
+  #for astropath
+  python-is-python3 \
+  python3-pip \
   #for gdal
+  rsync \
   sqlite3 \
   swig \
   unixodbc-dev \
+  unzip \
+  wget \
+  zip \
   #for vips
   zlib1g-dev
 
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y equivs unzip wget zip
+#for gdal
+ARG JAVA_VERSION=11
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-"$JAVA_VERSION"-jdk
+
+RUN sudo apt-get autoclean && \
+    sudo apt-get autoremove && \
+    sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 FROM base as texlive
 
@@ -162,9 +181,6 @@ RUN cd /tmp && \
     sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 from base as libvips
-
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    automake build-essential curl
 
 ENV LIBVIPS_VERSION_MAJOR 8
 ENV LIBVIPS_VERSION_MINOR 6
@@ -212,10 +228,6 @@ RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install enumitem
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install lineno
 
 from base as gdal
-
-RUN sudo apt-get update && \
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    cmake
 
 # Build likbkea
 ARG KEA_VERSION=1.4.13
@@ -330,9 +342,6 @@ RUN if echo "$WITH_FILEGDB" | grep -Eiq "^(y(es)?|1|true)$"  ; then ( \
   && sudo rm -rf FileGDB_API_1_5_1-64gcc51.tar.gz \
   ) ; fi
 
-RUN sudo apt-get update -y \
-    && sudo apt-get install -y --fix-missing --no-install-recommends rsync ccache \
-    && sudo rm -rf /var/lib/apt/lists/*
 ARG RSYNC_REMOTE
 
 ARG WITH_DEBUG_SYMBOLS=no
@@ -348,12 +357,9 @@ ARG JAVA_VERSION=11
 ARG GDAL_VERSION=v3.3.0
 ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
-ENV LD_LIBRARY_PATH=/build/usr/local/lib/:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/build/usr/local/lib/
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
 RUN sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python-is-python3
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libpython3-dev
 RUN sudo -E bash /buildscripts/bh-gdal.sh
 
 FROM base as python_packages
@@ -370,14 +376,11 @@ COPY --from=gdal  /build/usr/include/ /usr/include/
 COPY --from=gdal  /build_gdal_python/usr/ /usr/
 COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip
 
 ARG GITHUB_TOKEN
 
 #add python packages
 RUN sudo pip3 install --upgrade pip
-
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y git
 
 ENV ASTROPATH_DEPENDENCY_COMMIT 3f92b08d252a29188519145157f7016c8b3965ca
 
