@@ -359,7 +359,6 @@ ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
 ENV LD_LIBRARY_PATH=/build/usr/local/lib/
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
 RUN sudo -E bash /buildscripts/bh-gdal.sh
 
 FROM base as python_packages
