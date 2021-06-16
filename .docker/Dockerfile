@@ -350,6 +350,10 @@ ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
 ENV LD_LIBRARY_PATH=/build/usr/local/lib/:${LD_LIBRARY_PATH}
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python-is-python3
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libpython3-dev
 RUN sudo -E bash /buildscripts/bh-gdal.sh
 
 FROM base as python_packages
@@ -366,11 +370,14 @@ COPY --from=gdal  /build/usr/include/ /usr/include/
 COPY --from=gdal  /build_gdal_python/usr/ /usr/
 COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip
 
 ARG GITHUB_TOKEN
 
 #add python packages
-RUN sudo pip install --upgrade pip
+RUN sudo pip3 install --upgrade pip
+
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y git
 
 ENV ASTROPATH_DEPENDENCY_COMMIT 3f92b08d252a29188519145157f7016c8b3965ca
 
@@ -381,8 +388,8 @@ RUN \
   sudo git fetch && \
   sudo git checkout "${ASTROPATH_DEPENDENCY_COMMIT}" && \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
-RUN sudo pip install ./AstroPathPipelinePrivate[all]
-RUN sudo pip uninstall -y astropath
+RUN sudo pip3 install ./AstroPathPipelinePrivate[all]
+RUN sudo pip3 uninstall -y astropath
 
 from base as final
 
@@ -394,7 +401,7 @@ COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/share/proj/ ${PROJ_INSTALL_PREFIX
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/include/ ${PROJ_INSTALL_PREFIX}/include/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/bin/ ${PROJ_INSTALL_PREFIX}/bin/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/lib/ ${PROJ_INSTALL_PREFIX}/lib/
-copy --from=python_packages /usr/local/lib/python3.6/site-packages/ /usr/local/lib/python3.6/site-packages/
+copy --from=python_packages /usr/local/lib/python3.8/dist-packages/ /usr/local/lib/python3.8/dist-packages/
 copy --from=latex_packages /usr/local/texlive/ /usr/local/texlive/
 RUN sudo ldconfig
 #RUN sudo projsync --system-directory --all
