@@ -300,7 +300,7 @@ class SimplePolygon(Polygon):
     self.__pscale, = pscale
 
     self.__vertices = vertices
-    self.__vertexarray = vertexarray
+    self.__vertexarray = np.array(vertexarray)
 
     super().__init__(self, [])
 
@@ -312,6 +312,11 @@ class SimplePolygon(Polygon):
       self.__vertexarray[1:] = self.__vertexarray[1:][::-1]
       if self.__vertices is not None:
         self.__vertices = [self.__vertices[0]] + self.__vertices[:0:-1]
+
+    lexsorted = np.lexsort(self.__vertexarray.T)
+    self.__vertexarray = np.roll(self.__vertexarray, -lexsorted[0], axis=0)
+    if self.__vertices is not None:
+      self.__vertices = np.roll(self.__vertices, -lexsorted[0], axis=0)
 
     if requirevalidity:
       self.checkvalidity()
