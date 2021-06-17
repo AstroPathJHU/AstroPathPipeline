@@ -16,6 +16,9 @@ class Const :
     def STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM(self) :
         return 'std_err_of_mean_image.bin' #suffix to name of the standard error of the meanimage .bin file created by meanimagesample
     @property
+    def MASK_STACK_BIN_FILE_NAME_STEM(self) :
+        return 'mask_stack.bin' #suffix to the name of the mask stack .bin file
+    @property
     def BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM(self) :
         return 'background_thresholds.csv' #suffix to name of the background threshold .txt file created by meanimagesample
     @property
@@ -48,5 +51,8 @@ class Const :
     @property
     def MIN_PIXEL_FRAC(self) :
         return 0.8
+    @property
+    def MEANIMAGE_SUMMARY_PDF_FILENAME(self) :
+        return 'meanimage_summary.pdf' #name of the .pdf file containing plots of layers of the meanimage for this sample, etc.
 
 CONST=Const()

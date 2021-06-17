@@ -118,45 +118,61 @@ class LatexSummaryBase :
         lines.append('\n')
         return lines
 
-class ThresholdingLatexSummary(LatexSummaryBase) :
+class LatexSummaryForSlideWithPlotdir(LatexSummaryBase) :
+    """
+    Class to make a LatexSummary for a single slide with all of its plots in a single directory
+    """
+
+    def __init__(self,titlestem,filenamestem,slideID,plot_dirpath,plot_pattern='*') :
+        """
+        titlestem    = prefix for the title of the document
+        filenamestem = suffix for the name of the file
+        slideID      = ID of the slide used
+        plot_dirpath = path to directory holding the plots that will be used
+        plot_pattern = some pattern to use for glob in finding all of the plots to remove if the compilation is successful
+                       (default is everything in the directory)
+        """
+        self.__slideID = slideID
+        self.__plot_dirpath = plot_dirpath
+        self.__plot_pattern = plot_pattern
+        super().__init__(f'{titlestem} for {self.slideID_tex}',
+                         f'{self.__slideID}-{filenamestem}',
+                         plot_dirpath.parent)
+
+    @property
+    def failed_compilation_tex_file_path(self) :
+        return self.__plot_dirpath
+
+    @property
+    def filepaths_to_remove_on_success(self) :
+        to_remove = super().filepaths_to_remove_on_success
+        for fp in self.__plot_dirpath.glob(self.__plot_pattern) :
+            to_remove.append(fp.resolve())
+        to_remove.append(self.__plot_dirpath)
+        return to_remove
+
+    @property
+    def plot_dirpath_tex(self) :
+        return str(self.__plot_dirpath.as_posix())
+
+    @property
+    def slideID_tex(self) :
+        return self.__slideID.replace("_","\\_")
+
+class ThresholdingLatexSummary(LatexSummaryForSlideWithPlotdir) :
     """
     Class to make the background thresholding summary file for a single slide
     """
 
     def __init__(self,slideID,threshold_plot_dirpath) :
         """
-        slideID = the sample slideID
         threshold_plot_dirpath = path to the directory with all of the thresholding summary plots in it
         """
-        self.__slideID = slideID
-        self.__threshold_plot_dirpath = threshold_plot_dirpath
-        super().__init__(f'Background Thresholding Summary for {self.slideID_tex}',
-                         CONST.THRESHOLDING_SUMMARY_PDF_FILENAME,
-                         self.__threshold_plot_dirpath.parent)
+        super().__init__('Background Thresholding Summary',CONST.THRESHOLDING_SUMMARY_PDF_FILENAME,slideID,threshold_plot_dirpath)
 
     @property
     def sections(self) :
         return super().sections+[self.rect_locations,self.thresholds_by_layer,self.individual_layer_thresholding_plots]
-
-    @property
-    def failed_compilation_tex_file_path(self) :
-        return self.__threshold_plot_dirpath
-
-    @property
-    def filepaths_to_remove_on_success(self) :
-        to_remove = super().filepaths_to_remove_on_success
-        for fp in self.__threshold_plot_dirpath.glob('*') :
-            to_remove.append(fp.resolve())
-        to_remove.append(self.__threshold_plot_dirpath)
-        return to_remove
-
-    @property
-    def plot_dirpath_tex(self) :
-        return str(self.__threshold_plot_dirpath.as_posix())
-
-    @property
-    def slideID_tex(self) :
-        return self.__slideID.replace("_","\\_")
 
     @property
     def rect_locations(self) :
@@ -197,7 +213,7 @@ class ThresholdingLatexSummary(LatexSummaryBase) :
     @property
     def individual_layer_thresholding_plots(self) :
         all_fns = []
-        for fn in self.__threshold_plot_dirpath.glob('layer_*_background_threshold_plots.png') :
+        for fn in self.__plot_dirpath.glob('layer_*_background_threshold_plots.png') :
             all_fns.append(fn.name)
         figure_lines = []
         for ifn,fn in enumerate(sorted(all_fns,key=lambda x:int(str(x).split('_')[1]))) :
@@ -219,50 +235,25 @@ class ThresholdingLatexSummary(LatexSummaryBase) :
         lines+=figure_lines
         return lines
 
-class MaskingLatexSummary(LatexSummaryBase) :
+class MaskingLatexSummary(LatexSummaryForSlideWithPlotdir) :
     """
     Class to make the blur and saturation masking summary file for a single slide
     """
 
     def __init__(self,slideID,masking_plot_dirpath) :
         """
-        slideID = the sample slideID
         masking_plot_dirpath = path to the directory with all of the masking plots in it
         """
-        self.__slideID = slideID
-        self.__masking_plot_dirpath = masking_plot_dirpath
-        super().__init__(f'Image Masking Summary for {self.slideID_tex}',
-                         CONST.MASKING_SUMMARY_PDF_FILENAME,
-                         self.__masking_plot_dirpath.parent)
+        super().__init__('Image Masking Summary',CONST.MASKING_SUMMARY_PDF_FILENAME,slideID,masking_plot_dirpath,'*_masking_plots.png')
 
     @property
     def sections(self) :
         return super().sections+[self.reproduced_plots]
 
     @property
-    def failed_compilation_tex_file_path(self) :
-        return self.__masking_plot_dirpath
-
-    @property
-    def filepaths_to_remove_on_success(self) :
-        to_remove = super().filepaths_to_remove_on_success
-        for fp in self.__masking_plot_dirpath.glob('*_masking_plots.png') :
-            to_remove.append(fp.resolve())
-        to_remove.append(self.__masking_plot_dirpath)
-        return to_remove
-
-    @property
-    def plot_dirpath_tex(self) :
-        return str(self.__masking_plot_dirpath.as_posix())
-
-    @property
-    def slideID_tex(self) :
-        return self.__slideID.replace("_","\\_")
-
-    @property
     def reproduced_plots(self) :
         all_fns = []
-        for fn in self.__masking_plot_dirpath.glob('*_masking_plots.png') :
+        for fn in self.__plot_dirpath.glob('*_masking_plots.png') :
             all_fns.append(fn.name)
         lines = []
         lines.append('\\section{Example masking plots}\n')
@@ -304,3 +295,32 @@ class MaskingLatexSummary(LatexSummaryBase) :
             lines.append('\\clearpage\n')
         return lines
 
+class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
+    """
+    Class to make the meanimage summary file for a single slide
+    """
+
+    def __init__(self,slideID,image_layer_plot_dirpath) :
+        """
+        image_layer_plot_dirpath = path to the directory with all of the image layer plots in it
+        """
+        super().__init__('Mean Image Summary',CONST.MEANIMAGE_SUMMARY_PDF_FILENAME,slideID,image_layer_plot_dirpath)
+
+    @property
+    def sections(self) :
+        return super().sections+[self.mean_image_plots,self.std_err_mean_image_plots,self.mask_stack_plots]
+
+    @property
+    def mean_image_plots(self) :
+        lines = []
+        return lines
+
+    @property
+    def std_err_mean_image_plots(self) :
+        lines = []
+        return lines
+
+    @property
+    def mask_stack_plots(self) :
+        lines = []
+        return lines

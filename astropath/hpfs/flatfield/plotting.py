@@ -159,3 +159,22 @@ def plot_background_thresholds_by_layer(datatable_filepath,chosen_threshold_tabl
     ax[1].legend(loc='best')
     slideID = datatable_filepath.name.split('-')[0]
     save_figure_in_dir(plt,f'{slideID}_background_thresholds_by_layer.png',save_dirpath)
+
+def plot_image_layers(image,name_stem,save_dirpath=None) :
+    """
+    Save .png reference plots of all layers of a given image
+
+    image = the image whose layers should be plotted (assumed to be stored with shape [height,width,nlayers])
+    name_stem = prefix to each image that will be saved ("_layer_[n].png" is added)
+    save_dirpath = path to directory to save the plots in (if None the plot is saved in the current directory)
+    """
+    fig_size=(6.4,6.4*(image.shape[0]/image.shape[1]))
+    for li in range(image.shape[-1]) :
+        layer_title = f'{name_stem} layer {li+1}'
+        layer_fn = f'{name_stem}_layer_{li+1}'
+        f,ax = plt.subplots(figsize=fig_size)
+        pos = ax.imshow(image[:,:,li])
+        ax.set_title(layer_title)
+        cax = f.add_axes([ax.get_position().x1+0.003,ax.get_position().y0,0.006,ax.get_position().height])
+        f.colorbar(pos,cax=cax)
+        save_figure_in_dir(plt,layer_fn,save_dirpath)

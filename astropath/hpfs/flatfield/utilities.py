@@ -7,10 +7,18 @@ import cv2, math
 
 #A small dataclass to hold entries in the background threshold datatable
 class RectangleThresholdTableEntry(MyDataClass) :
-  rect_n                  : int
-  layer_n                 : int
-  counts_threshold        : int
-  counts_per_ms_threshold : float
+    rect_n                  : int
+    layer_n                 : int
+    counts_threshold        : int
+    counts_per_ms_threshold : float
+
+#helper class for logging included/excluded fields
+class FieldLog(MyDataClass) :
+    slide   : str
+    file     : str
+    location : str
+    use      : str
+    stacked_in_layers : str = ''
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 

@@ -12,14 +12,7 @@ class LabelledMaskRegion(MyDataClass) :
     n_pixels           : int
     reason_flagged     : str
 
-#helper function to unpack, reshape, and return a tissue mask from its packed mask file
-def unpack_tissue_mask(filepath,dimensions) :
-    if not pathlib.Path(filepath).is_file() :
-        raise ValueError(f'ERROR: tissue mask file {filepath} does not exist!')
-    packed_mask = np.memmap(filepath,dtype=np.uint8,mode='r')
-    return (np.unpackbits(packed_mask)).reshape(dimensions)
-
-#helper function to change a mask from zeroes and ones to region indices and zeroes
+#change a mask from zeroes and ones to region indices and zeroes
 def get_enumerated_mask(layer_mask,start_i) :
     #first invert the mask to get the "bad" regions as "signal"
     inverted_mask = np.zeros_like(layer_mask); inverted_mask[layer_mask==0] = 1; inverted_mask[layer_mask==1] = 0
@@ -89,7 +82,7 @@ def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size) :
             return np.ones_like(mask)
     return mask
 
-#function to compute and return the variance of the normalized laplacian for a given image layer
+#compute and return the variance of the normalized laplacian for a given image layer
 def get_image_layer_local_variance_of_normalized_laplacian(img_layer) :
     #build the laplacian image and normalize it to get the curvature
     img_laplacian = cv2.Laplacian(img_layer,cv2.CV_32F,borderType=cv2.BORDER_REFLECT)

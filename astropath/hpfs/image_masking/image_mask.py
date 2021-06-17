@@ -3,7 +3,7 @@ from .utilities import LabelledMaskRegion, get_enumerated_mask, get_size_filtere
 from .utilities import get_image_layer_local_variance_of_normalized_laplacian
 from .plotting import do_masking_plots_for_image
 from .config import CONST
-from ...utilities.img_file_io import smooth_image_worker, getExposureTimesByLayer, im3writeraw, write_image_to_file
+from ...utilities.img_file_io import smooth_image_worker, im3writeraw, write_image_to_file, get_raw_as_hwl
 from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
@@ -28,8 +28,7 @@ class ImageMask() :
         return self.__compressed_mask
     @property
     def onehot_mask(self) : #the mask with good tissue=1, everything else=0
-        uncompressed_full_mask = self.uncompressed_full_mask
-        return (np.where(uncompressed_full_mask==1,1,0)).astype(np.uint8)
+        return (np.where(self.uncompressed_full_mask==1,1,0)).astype(np.uint8)
     @property
     def uncompressed_full_mask(self): #the uncompressed mask with the real number of image layers
         if self.__compressed_mask is None or self._layer_groups==[] :
@@ -147,6 +146,31 @@ class ImageMask() :
                           'vmin':0,'vmax':lgb[1]-lgb[0]+1})
             all_plots.append(plots)
         do_masking_plots_for_image(self.__image_key,self.__tissue_mask,all_plots,self.__compressed_mask,savedir)
+
+    #unpack, reshape, and return a tissue mask from its packed mask file
+    @staticmethod
+    def unpack_tissue_mask(filepath,dimensions) :
+        if not pathlib.Path(filepath).is_file() :
+            raise ValueError(f'ERROR: tissue mask file {filepath} does not exist!')
+        packed_mask = np.memmap(filepath,dtype=np.uint8,mode='r')
+        return (np.unpackbits(packed_mask)).reshape(dimensions)
+
+    #get a one-hot, fully-layered mask from a given blur/saturation mask filepath
+    @staticmethod
+    def onehot_mask_from_full_mask_file(filepath,dimensions) :
+        if not pathlib.Path(filepath).is_file() :
+            raise ValueError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
+        if dimensions[-1]==35 :
+            layergroups = UNIV_CONST.LAYER_GROUPS_35
+        elif dimensions[-1]==43 :
+            layergroups = UNIV_CONST.LAYER_GROUPS_43
+        else :
+            raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {dimensions[-1]} layers!')
+        read_mask = get_raw_as_hwl(filepath,*(dimensions[:-1]),len(layergroups),dtype=np.uint8)
+        return_mask = np.zeros(dimensions,dtype=np.uint8)
+        for lgi,lgb in layergroups :
+            return_mask[:,:,lgb[0]-1:lgb[1]][read_mask[lgi]==1] = 1
+        return return_mask
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

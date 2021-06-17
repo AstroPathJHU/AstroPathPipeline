@@ -3,7 +3,7 @@ from .meanimage import MeanImage
 from .rectangle import RectangleCorrectedIm3MultiLayer
 from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms, plot_background_thresholds_by_layer
 from .latexsummary import ThresholdingLatexSummary, MaskingLatexSummary
-from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry
+from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry, FieldLog
 from .config import CONST
 from ..image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
 from ..image_masking.utilities import LabelledMaskRegion
@@ -41,6 +41,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         self.__et_offset_file = et_offset_file
         self.__skip_masking = skip_masking
         self.__n_threads = n_threads
+        self.__field_logs = []
         #set the image masking directory path (could either be in the workingdir or in the sample's meanimage directory)
         self.__image_masking_dirpath = self.__workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME if not self.__skip_masking else None
         self.__use_precomputed_masks = False
@@ -102,8 +103,13 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
             else :
                 self.logger.info(f'Will use already-created image masks in {self.__image_masking_dirpath}')
         #make the mean image from all of the tissue bulk rectangles
-        #self.__meanimage.stack_images(self.tissue_bulk_rects,self.__skip_masking,self.__n_threads)
+        new_field_logs = self.__meanimage.stack_images(self.tissue_bulk_rects,self.__med_ets,self.__image_masking_dirpath)
+        for fl in new_field_logs :
+            fl.slide = self.SlideID
+            self.__field_logs.append(fl)
         #create and write out the final mask stack, mean image, and std. error of the mean image
+        self.__meanimage.write_output(self.SlideID,self.__workingdirpath)
+        #write out the field log
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -388,6 +394,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                                 rectangle_data_table_entries.append(RectangleThresholdTableEntry(rect.n,li+1,int(t),t/r.allexposuretimes[li]))
                         image_background_thresholds_by_layer[current_image_i,:] = thresholds
                         tissue_edge_layer_hists+=hists
+                        self.__field_logs.append(FieldLog(self.SlideID,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'edge','thresholding'))
                         current_image_i+=1
                     except Exception as e :
                         warnmsg = f'WARNING: finding thresholds for rectangle {rect.n} ({rect.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
@@ -408,6 +415,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                             rectangle_data_table_entries.append(RectangleThresholdTableEntry(r.n,li+1,int(t),t/r.allexposuretimes[li]))
                     image_background_thresholds_by_layer[current_image_i,:] = thresholds
                     tissue_edge_layer_hists+=hists
+                    self.__field_logs.append(FieldLog(self.SlideID,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'edge','thresholding'))
                     current_image_i+=1
                 except Exception as e :
                     warnmsg = f'WARNING: finding thresholds for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '

@@ -47,7 +47,7 @@ def im3writeraw(outname,a) :
     a.tofile(fp)
 
 #helper function to read a raw image file and return it as an array of shape (height,width,n_layers)
-def getRawAsHWL(fname,height,width,nlayers,dtype=np.uint16) :
+def get_raw_as_hwl(fname,height,width,nlayers,dtype=np.uint16) :
   #get the .raw file as a vector of uint16s
   try :
     img = im3readraw(fname,dtype)
@@ -81,7 +81,7 @@ def getRawAsHW(fname,height,width,dtype=np.uint16) :
   return img_a
 
 #helper function to flatten and write out a given image as binary content
-def write_image_to_file(img_array,filename_to_write,dtype=np.uint16) :
+def write_image_to_file(img_array,filename_to_write,dtype=None) :
   #if the image is three dimensional (with the smallest dimension last, probably the number of layers), it has to be transposed
   if len(img_array.shape)==3 and (img_array.shape[2]<img_array.shape[0] and img_array.shape[2]<img_array.shape[1]) :
     img_array = img_array.transpose(2,1,0)
@@ -92,7 +92,10 @@ def write_image_to_file(img_array,filename_to_write,dtype=np.uint16) :
     raise ValueError(msg)
   #write out image flattened in fortran order
   try :
-    im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
+    if dtype is not None :
+      im3writeraw(filename_to_write,img_array.flatten(order="F").astype(dtype))
+    else :
+      im3writeraw(filename_to_write,img_array.flatten(order="F"))
   except Exception as e :
     raise RuntimeError(f'ERROR: failed to save file {filename_to_write}. Exception: {e}')
 
