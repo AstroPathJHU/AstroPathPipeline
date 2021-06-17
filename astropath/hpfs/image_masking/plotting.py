@@ -19,7 +19,7 @@ def do_masking_plots_for_image(image_key,tissue_mask,plot_dict_lists,compressed_
     for pdi in range(1,len(plot_dict_lists)) :
         if len(plot_dict_lists[pdi]) > n_cols :
             n_cols = len(plot_dict_lists[pdi])
-    f,ax = plt.subplots(n_rows,n_cols,figsize=(n_cols*6.4,n_rows*tissue_mask.shape[0]/tissue_mask.shape[1]*6.4))
+    f,ax = plt.subplots(n_rows,n_cols,figsize=(n_cols*4.8,n_rows*tissue_mask.shape[0]/tissue_mask.shape[1]*4.8))
     #add the masking plots for each layer group
     for row,plot_dicts in enumerate(plot_dict_lists) :
         for col,pd in enumerate(plot_dicts) :
@@ -38,7 +38,7 @@ def do_masking_plots_for_image(image_key,tissue_mask,plot_dict_lists,compressed_
                         imshowkwargs[pk]=pd[pk]
                 pos = ax[row][col].imshow(pd['image'],**imshowkwargs)
                 if 'overlay' not in pd['title'] :
-                    cax = f.add_axes([ax[row][col].get_position().x1+0.004,ax[row][col].get_position().y0,0.01,ax[row][col].get_position().height])
+                    cax = f.add_axes([ax[row][col].get_position().x1+0.003,ax[row][col].get_position().y0,0.006,ax[row][col].get_position().height])
                     f.colorbar(pos,cax=cax)
                 if 'title' in dkeys :
                     title_text = pd['title'].replace('IMAGE',image_key)
@@ -79,7 +79,8 @@ def do_masking_plots_for_image(image_key,tissue_mask,plot_dict_lists,compressed_
     enumerated_mask_max = np.max(compressed_full_mask)
     for lgi in range(compressed_full_mask.shape[-1]-1) :
         pos = ax[n_rows-1][lgi].imshow(compressed_full_mask[:,:,lgi+1],vmin=0.,vmax=enumerated_mask_max,cmap='rainbow')
-        f.colorbar(pos,ax=ax[n_rows-1][lgi])
+        cax = f.add_axes([ax[n_rows-1][lgi].get_position().x1+0.003,ax[n_rows-1][lgi].get_position().y0,0.006,ax[n_rows-1][lgi].get_position().height])
+        f.colorbar(pos,cax=cax)
         ax[n_rows-1][lgi].set_title(f'full mask, layer group {lgi+1}')
     #empty the other unused axes in the last row
     for ci in range(n_rows-1,n_cols) :
