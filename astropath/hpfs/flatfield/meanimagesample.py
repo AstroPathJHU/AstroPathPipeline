@@ -99,6 +99,10 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         for fl in new_field_logs :
             fl.slide = self.SlideID
             self.__field_logs.append(fl)
+        bulk_rect_ts = [r.t for r in self.tissue_bulk_rects]
+        with cd(self.__workingdirpath) :
+            writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',
+                      [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))])
         #create and write out the final mask stack, mean image, and std. error of the mean image
         self.__meanimage.write_output(self.SlideID,self.__workingdirpath)
         #write out the field log
