@@ -101,6 +101,8 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         #create and write out the final mask stack, mean image, and std. error of the mean image
         self.__meanimage.write_output(self.SlideID,self.__workingdirpath)
         #write out the field log
+        with cd(self.__workingdirpath) :
+            writetable(CONST.FIELDS_USED_CSV_FILENAME,self.__field_logs)
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
