@@ -1,7 +1,7 @@
 import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
-from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield, PolygonFromGdal
+from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
 from ...shared.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
@@ -207,50 +207,25 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
         return None
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
-      valid = False
-      niterations = 0
-      maxiterations = 100
-      discardedarea = 0
-      while not valid:
-        niterations += 1
-        if niterations > maxiterations:
-          raise RuntimeError(f"Couldn't make polygon valid after {maxiterations} iterations")
-        try:
-          polygon.checkvalidity()
-        except InvalidPolygonError as e:
-          if e.madevalid is None:
-            if self.isprimary:
-              estring = str(e).replace("\n", " ")
-              self.logger.warningglobal(f"{estring} {self.loginfo}")
-            return None
-          polygons = []
-          for component in e.validcomponents:
-            if "MULTI" in str(component): assert False
-            elif "LINESTRING" in str(component):
-              continue
-            elif "POLYGON" in str(component):
-              polygons.append(component)
-            else:
-              raise ValueError(f"Unknown component from MakeValid: {component}")
-          polygons.sort(key=lambda x: x.GetArea(), reverse=True)
+      try:
+        polygons = polygon.makevalid()
+      except InvalidPolygonError as e:
+        if self.isprimary:
+          estring = str(e).replace("\n", " ")
+          self.logger.warningglobal(f"{estring} {self.loginfo}")
+        return None
+      else:
+        if len(polygons) > 1:
           if self.isprimary:
-            biggestarea = polygons[0].GetArea()
-            otherarea = sum(p.GetArea() for p in polygons[1:])
-            discardedarea += otherarea
-          polygon = PolygonFromGdal(pixels=polygons[0], pscale=polygon.pscale, apscale=polygon.apscale)
-        else:
-          valid = True
-      if niterations > 1 and self.isprimary:
-        self.logger.warningglobal(f"Multiple polygons connected by 1-dimensional lines - keeping the biggest ({biggestarea} pixels) and discarding the rest (total {discardedarea} pixels)")
+            biggestarea = polygons[0].area
+            discardedarea = sum(p.area for p in polygons[1:])
+            self.logger.warningglobal(f"Multiple polygons connected by 1-dimensional lines - keeping the biggest ({biggestarea} pixels) and discarding the rest (total {discardedarea} pixels)")
+        polygon = polygons[0]
     except:
       if self._debugdrawonerror: self._debugdraw = True
       raise
     finally:
       self.debugdraw(polygon)
-
-    if len(polygon.outerpolygon) < 4:
-      self.logger.warningglobal(f"polygon only has {len(polygon.outerpolygon)} vertices, skipping it. {self.loginfo}")
-      return None
 
     return polygon
 

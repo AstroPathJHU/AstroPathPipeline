@@ -72,9 +72,35 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     return self.__apscale
 
   def checkvalidity(self):
-    self.outerpolygon.checkvalidity()
-    for p in self.subtractpolygons:
-      p.checkvalidity()
+    poly = self.gdalpolygon()
+    try:
+      bad = not poly.IsValid()
+    except Exception as e:
+      raise InvalidPolygonError(poly, reason=str(e))
+    if bad:
+      raise InvalidPolygonError(poly)
+
+  def makevalid(self):
+    try:
+      self.checkvalidity()
+    except InvalidPolygonError as e:
+      if e.madevalid is None:
+        raise
+      polygons = []
+      for component in e.validcomponents:
+        if "MULTI" in str(component): assert False
+        elif "LINESTRING" in str(component):
+          continue
+        elif "POLYGON" in str(component):
+          polygons.append(component)
+        else:
+          raise ValueError(f"Unknown component from MakeValid: {component}")
+      polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, apscale=self.apscale) for p in polygons]
+      polygons = sum((p.makevalid() for p in polygons), [])
+      polygons.sort(key=lambda x: x.area, reverse=True)
+      return polygons
+    else:
+      return [self]
 
   @property
   def outerpolygon(self): return self.__outerpolygon
@@ -321,15 +347,6 @@ class SimplePolygon(Polygon):
     if requirevalidity:
       self.checkvalidity()
 
-  def checkvalidity(self):
-    poly = self.gdalpolygon()
-    try:
-      bad = not poly.IsValid()
-    except Exception as e:
-      raise InvalidPolygonError(poly, reason=str(e))
-    if bad:
-      raise InvalidPolygonError(poly)
-
   @property
   def pscale(self):
     return self.__pscale
@@ -432,7 +449,7 @@ def PolygonFromGdal(*, pixels, pscale, apscale, **kwargs):
     vertices.append(polyvertices)
 
   outerpolygon = SimplePolygon(vertexarray=vertices[0], pscale=pscale, apscale=apscale, **kwargs)
-  subtractpolygons = [SimplePolygon(vertexarray=vertices[1], pscale=pscale, apscale=apscale, **kwargs) for v in vertices[1:]]
+  subtractpolygons = [SimplePolygon(vertexarray=v, pscale=pscale, apscale=apscale, **kwargs) for v in vertices[1:]]
 
   return Polygon(outerpolygon, subtractpolygons)
 
