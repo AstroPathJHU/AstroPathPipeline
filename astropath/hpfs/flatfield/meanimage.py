@@ -118,7 +118,7 @@ class MeanImage :
                 self.__image_squared_stack+=np.power(normalized_image,2)
                 self.__n_images_read+=1
                 self.__n_images_stacked_by_layer+=1
-                field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'edge','stacking',str(list(range(self.__image_stack.shape[-1])))))
+                field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'bulk','stacking',str(list(range(self.__image_stack.shape[-1])))))
         return field_logs
 
     def __stack_images_with_masking(self,rectangles,med_ets,maskingdirpath) :
@@ -159,7 +159,7 @@ class MeanImage :
                 self.__n_images_read+=1
                 self.__n_images_stacked_by_layer+=layers_to_add
                 stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
-                field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'edge','stacking',str(stacked_in_layers)))
+                field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'bulk','stacking',str(stacked_in_layers)))
         return field_logs
 
     def __make_mean_image(self) :
