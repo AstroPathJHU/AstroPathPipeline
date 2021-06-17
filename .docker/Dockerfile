@@ -417,7 +417,7 @@ COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
 ENV CLASSPATH="/usr/share/java/jackcess-1.1.14.jar:/usr/share/java/commons-logging-1.1.1.jar:/usr/share/java/commons-lang-2.4.jar"
-ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
+ENV PATH=/usr/local/texlive/bin/x86_64-linux:/home/astropath/.local/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
 
 CMD ["/bin/bash"]
