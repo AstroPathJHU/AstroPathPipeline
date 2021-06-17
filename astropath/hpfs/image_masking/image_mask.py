@@ -166,10 +166,10 @@ class ImageMask() :
             layergroups = UNIV_CONST.LAYER_GROUPS_43
         else :
             raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {dimensions[-1]} layers!')
-        read_mask = get_raw_as_hwl(filepath,*(dimensions[:-1]),len(layergroups),dtype=np.uint8)
+        read_mask = get_raw_as_hwl(filepath,*(dimensions[:-1]),len(layergroups)+1,dtype=np.uint8)
         return_mask = np.zeros(dimensions,dtype=np.uint8)
-        for lgi,lgb in layergroups :
-            return_mask[:,:,lgb[0]-1:lgb[1]][read_mask[lgi]==1] = 1
+        for lgi,lgb in enumerate(layergroups) :
+            return_mask[:,:,lgb[0]-1:lgb[1]][read_mask[:,:,lgi+1]==1] = 1
         return return_mask
 
     #################### PRIVATE HELPER FUNCTIONS ####################

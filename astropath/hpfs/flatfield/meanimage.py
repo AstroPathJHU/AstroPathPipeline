@@ -100,7 +100,7 @@ class MeanImage :
         if check!=0 :
             warnmsg = f'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
-            self.logger.warning(warnmsg)
+            self.__logger.warning(warnmsg)
 
 
     #################### PRIVATE HELPER FUNCTIONS ####################
