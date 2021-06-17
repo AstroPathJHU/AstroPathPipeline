@@ -175,6 +175,7 @@ def plot_image_layers(image,name_stem,save_dirpath=None) :
         f,ax = plt.subplots(figsize=fig_size)
         pos = ax.imshow(image[:,:,li])
         ax.set_title(layer_title)
-        cax = f.add_axes([ax.get_position().x1+0.003,ax.get_position().y0,0.006,ax.get_position().height])
+        ax.axis('off')
+        cax = f.add_axes([ax.get_position().x1+0.003,ax.get_position().y0,0.01,ax.get_position().height])
         f.colorbar(pos,cax=cax)
         save_figure_in_dir(plt,layer_fn,save_dirpath)

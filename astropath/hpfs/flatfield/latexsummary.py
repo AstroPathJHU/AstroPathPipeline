@@ -316,19 +316,63 @@ class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
 
     @property
     def sections(self) :
-        return super().sections+[self.mean_image_plots,self.std_err_mean_image_plots,self.mask_stack_plots]
+        sections = super().sections+[self.mean_image_plots,self.std_err_mean_image_plots]
+        n_mask_stack_plots = 0
+        for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
+            n_mask_stack_plots+=1
+        if n_mask_stack_plots>0 :
+            sections.append(self.mask_stack_plots)
 
     @property
     def mean_image_plots(self) :
         lines = []
+        lines.append('\\section{Layers of the mean image}\n')
+        l = f'Figure~\\ref{{fig:mean_image_layers}} shows all individual layers of the computed mean image for {self.slideID_tex}. '
+        l+= 'The units in these plots are units of intensity in average counts/ms.'
+        lines.append(l+'\n')
+        lines.append('\n')
+        lines.append('\\begin{figure}[!ht]\n')
+        lines.append('\\centering\n')
+        for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{fn}}}\n')
+        lines.append(f'\\caption{{\\footnotesize All layers of the mean image computed for {self.slideID_tex}}}\n')
+        lines.append('\\label{fig:mean_image_layers}\n')
+        lines.append('\\end{figure}\n')
         return lines
 
     @property
     def std_err_mean_image_plots(self) :
         lines = []
+        lines.append('\\section{Layers of the standard error on the mean image}\n')
+        l = f'Figure~\\ref{{fig:mean_image_std_err_layers}} shows the standard error of the {self.slideID_tex} mean image in all individual image layers. '
+        l+= 'The units in these plots are also units of intensity in average counts/ms; they represent the uncertainties on the mean image layers shown in '
+        l+= 'Figure~\\ref{fig:mean_image_layers}. Any overly bright regions that were not masked out will be especially apparent in these plots.'
+        lines.append(l+'\n')
+        lines.append('\n')
+        lines.append('\\begin{figure}[!ht]\n')
+        lines.append('\\centering\n')
+        for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{fn}}}\n')
+        lines.append(f'\\caption{{\\footnotesize The standard error of the mean image for {self.slideID_tex} in all layers}}\n')
+        lines.append('\\label{fig:mean_image_std_err_layers}\n')
+        lines.append('\\end{figure}\n')
         return lines
 
     @property
     def mask_stack_plots(self) :
         lines = []
+        lines.append('\\section{Layers of the mask stack}\n')
+        l = f'Figure~\\ref{{fig:mask_stack_layers}} shows every layer of the mask stack for {self.slideID_tex}. The units in these plots are the number of '
+        l+= 'individual images contributing to the mean image at every location. They should be identical unless one or more image layer groups exhibited a '
+        l+= 'great deal of saturation that was masked out. Referencing the general number of images stacked to find the mean illumination of each pixel helps '
+        l+= 'contextualize the results above.'
+        lines.append(l+'\n')
+        lines.append('\n')
+        lines.append('\\begin{figure}[!ht]\n')
+        lines.append('\\centering\n')
+        for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{fn}}}\n')
+        lines.append(f'\\caption{{\\footnotesize The stack of all masked images used to compute the {self.slideID_tex} mean image in all layers}}\n')
+        lines.append('\\label{fig:mask_stack_layers}\n')
+        lines.append('\\end{figure}\n')
         return lines
