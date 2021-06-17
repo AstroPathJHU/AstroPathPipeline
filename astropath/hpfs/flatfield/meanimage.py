@@ -3,7 +3,7 @@ from .plotting import plot_image_layers
 from .latexsummary import MeanImageLatexSummary
 from .utilities import FieldLog
 from .config import CONST 
-from ..image_masking.image_mask import ImageMask, unpack_tissue_mask, onehot_mask_from_full_mask_file
+from ..image_masking.image_mask import ImageMask
 from ..image_masking.utilities import LabelledMaskRegion
 from ...utilities.img_file_io import write_image_to_file, smooth_image_worker, smooth_image_with_uncertainty_worker
 from ...utilities.tableio import readtable,writetable
@@ -45,7 +45,7 @@ class MeanImage :
                          image exposure times will be used instead
         maskingdirpath = the path to the directory holding all of the slide's image masking files (if None then masking will be skipped)
         """
-        self.__logger.info(f'Stacking {len(self.tissue_bulk_rects)} images in the bulk of the tissue')
+        self.__logger.info(f'Stacking {len(rectangles)} images in the bulk of the tissue')
         #initialize the image and mask stacks based on the image dimensions
         img_dims = rectangles[0].imageshapeinoutput
         self.__image_stack = np.zeros(img_dims,dtype=np.float64)
@@ -67,6 +67,8 @@ class MeanImage :
         #make the mean image & its standard error
         self.__logger.info(f'Creating the mean image with its standard error....')
         self.__make_mean_image()
+        #return the field logs
+        return field_logs_to_return
 
     def write_output(self,slide_id,workingdirpath) :
         """
@@ -139,23 +141,23 @@ class MeanImage :
                     rectangles_to_stack.remove(r)
         #for every image that will be stacked, read its masking file, normalize and mask its image, and add the image/mask to the respective stacks
         field_logs = []
-        for r in rectangles_to_stack :
+        for ri,r in enumerate(rectangles_to_stack) :
             self.__logger.info(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the meanimage stack ({ri+1} of {len(rectangles_to_stack)})....')
             imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
             with r.using_image() as im :
                 normalized_im = im / med_ets if med_ets is not None else masked_im / r.allexposuretimes[np.newaxis,np.newaxis,:]
                 if imkey in keys_with_full_masks :
-                    mask = onehot_mask_from_full_mask_file(maskingdirpath / f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}',self.__image_stack.shape)
+                    mask = ImageMask.onehot_mask_from_full_mask_file(maskingdirpath / f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}',self.__image_stack.shape)
                 else :
-                    mask = (unpack_tissue_mask(maskingdirpath / f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}',self.__image_stack.shape))[:,:,np.newaxis]
-                layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0)
-                normalized_masked_im = normalized_image*mask*layers_to_add[np.newaxis,np.newaxis,:]
+                    mask = (ImageMask.unpack_tissue_mask(maskingdirpath / f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}',self.__image_stack.shape[:-1]))[:,:,np.newaxis]
+                layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
+                normalized_masked_im = normalized_im*mask*layers_to_add[np.newaxis,np.newaxis,:]
                 self.__image_stack+=normalized_masked_im
                 self.__image_squared_stack+=np.power(normalized_masked_im,2)
                 self.__mask_stack+=mask
                 self.__n_images_read+=1
                 self.__n_images_stacked_by_layer+=layers_to_add
-                stacked_in_layers = [i for i in range(layers_to_add.shape) if layers_to_add[i]==1]
+                stacked_in_layers = [i for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
                 field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'edge','stacking',str(stacked_in_layers)))
         return field_logs
 

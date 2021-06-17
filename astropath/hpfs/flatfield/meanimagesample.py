@@ -42,26 +42,6 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         self.__skip_masking = skip_masking
         self.__n_threads = n_threads
         self.__field_logs = []
-        #set the image masking directory path (could either be in the workingdir or in the sample's meanimage directory)
-        self.__image_masking_dirpath = self.__workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME if not self.__skip_masking else None
-        self.__use_precomputed_masks = False
-        if not self.__image_masking_dirpath.is_dir() :
-            other_dirpath = self.root / f'{self.SlideID}' / f'{UNIV_CONST.IM3_DIR_NAME}' / f'{UNIV_CONST.MEANIMAGE_DIRNAME}' / CONST.IMAGE_MASKING_SUBDIR_NAME
-            use_other_dir = other_dirpath.is_dir()
-            if other_dirpath.is_dir() :
-                if (other_dirpath / CONST.LABELLED_MASK_REGIONS_CSV_FILENAME).is_file() :
-                    masked_rect_keys = set([lmr.image_key for lmr in readtable(other_dirpath / CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,LabelledMaskRegion)])
-                else :
-                    masked_rect_keys = set([])
-                for r in self.rectangles :
-                    if not use_other_dir :
-                        break
-                    use_other_dir = use_other_dir and (other_dirpath/f'{r.file.rstrip(UNIV_CONST.IM3_EXT)}_{TISSUE_MASK_FILE_NAME_STEM}').is_file()
-                    if r.file.rstrip(UNIV_CONST.IM3_EXT) in masked_rect_keys :
-                        use_other_dir = use_other_dir and (other_dirpath/f'{r.file.rstrip(UNIV_CONST.IM3_EXT)}_{BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}').is_file()
-            if use_other_dir :
-                self.__image_masking_dirpath = other_dirpath
-                self.__use_precomputed_masks = True
         #start up the meanimage
         self.__meanimage = MeanImage(self.logger)
         #set up the list of output files to add to as the code runs (though some will always be required)
@@ -98,6 +78,17 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         """
         #Create masks for all of the images in the sample if requested 
         if not self.__skip_masking :
+            #set the image masking directory path (could either be in the workingdir or in the sample's meanimage directory)
+            self.__image_masking_dirpath = self.__workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME if not self.__skip_masking else None
+            self.__use_precomputed_masks = False
+            if self.__image_masking_dirpath.is_dir() :
+                self.__use_precomputed_masks = self.__dir_has_precomputed_masks(self.__image_masking_dirpath)
+            if not self.__use_precomputed_masks :
+                other_dirpath = self.root / f'{self.SlideID}' / f'{UNIV_CONST.IM3_DIR_NAME}' / f'{UNIV_CONST.MEANIMAGE_DIRNAME}' / CONST.IMAGE_MASKING_SUBDIR_NAME
+                if other_dirpath.is_dir() :
+                    self.__use_precomputed_masks = self.__dir_has_precomputed_masks(other_dirpath)
+                if self.__use_precomputed_masks :
+                    self.__image_masking_dirpath = other_dirpath
             if not self.__use_precomputed_masks :
                 self.__create_sample_image_masks()
             else :
@@ -201,6 +192,22 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         return super().workflowdependencyclasses()
 
     #################### PRIVATE HELPER FUNCTIONS ####################
+
+    def __dir_has_precomputed_masks(self,dirpath) :
+        """
+        Return True if the given directory has a complete set of mask files needed to run for the slide
+        """
+        if (dirpath / CONST.LABELLED_MASK_REGIONS_CSV_FILENAME).is_file() :
+            masked_rect_keys = set([lmr.image_key for lmr in readtable(dirpath / CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,LabelledMaskRegion)])
+        else :
+            masked_rect_keys = set([])
+        for r in self.rectangles :
+            if not (dirpath/f'{r.file.rstrip(UNIV_CONST.IM3_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}').is_file() :
+                return False
+            if r.file.rstrip(UNIV_CONST.IM3_EXT) in masked_rect_keys :
+                if not (dirpath/f'{r.file.rstrip(UNIV_CONST.IM3_EXT)}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}').is_file() :
+                    return False
+        return True
 
     def __read_exposure_time_offsets(self) :
         """

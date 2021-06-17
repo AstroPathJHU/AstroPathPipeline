@@ -171,7 +171,7 @@ def plot_image_layers(image,name_stem,save_dirpath=None) :
     fig_size=(6.4,6.4*(image.shape[0]/image.shape[1]))
     for li in range(image.shape[-1]) :
         layer_title = f'{name_stem} layer {li+1}'
-        layer_fn = f'{name_stem}_layer_{li+1}'
+        layer_fn = f'{name_stem}_layer_{li+1}.png'
         f,ax = plt.subplots(figsize=fig_size)
         pos = ax.imshow(image[:,:,li])
         ax.set_title(layer_title)

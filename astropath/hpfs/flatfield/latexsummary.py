@@ -152,8 +152,16 @@ class LatexSummaryForSlideWithPlotdir(LatexSummaryBase) :
         return to_remove
 
     @property
+    def plot_dirpath(self) :
+        return self.__plot_dirpath
+
+    @property
     def plot_dirpath_tex(self) :
         return str(self.__plot_dirpath.as_posix())
+
+    @property
+    def slideID(self) :
+        return self.__slideID
 
     @property
     def slideID_tex(self) :
@@ -184,7 +192,7 @@ class ThresholdingLatexSummary(LatexSummaryForSlideWithPlotdir) :
         lines.append('\n')
         lines.append('\\begin{figure}[!ht]\n')
         lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.__slideID}_rectangle_locations}}\n')
+        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.slideID}_rectangle_locations}}\n')
         l = f'\\caption{{\\footnotesize Locations of HPFs in slide {self.slideID_tex},'
         l+= ' with tissue edge HPFs shown in red and non-edge HPFs shown in blue.}'
         lines.append(l+'\n')
@@ -202,7 +210,7 @@ class ThresholdingLatexSummary(LatexSummaryForSlideWithPlotdir) :
         lines.append('\n')
         lines.append('\\begin{figure}[!ht]\n')
         lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.__slideID}_background_thresholds_by_layer}}')
+        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.slideID}_background_thresholds_by_layer}}')
         l = '\\caption{\\footnotesize 10th and 90th percentiles (in red and blue, respectively) of the entire set of individual HPF thresholds found '
         l+= 'in each image layer in raw counts (upper) and in counts/ms (lower). Also shown in black are the overall optimal thresholds chosen.}'
         lines.append(l+'\n')
@@ -213,7 +221,7 @@ class ThresholdingLatexSummary(LatexSummaryForSlideWithPlotdir) :
     @property
     def individual_layer_thresholding_plots(self) :
         all_fns = []
-        for fn in self.__plot_dirpath.glob('layer_*_background_threshold_plots.png') :
+        for fn in self.plot_dirpath.glob('layer_*_background_threshold_plots.png') :
             all_fns.append(fn.name)
         figure_lines = []
         for ifn,fn in enumerate(sorted(all_fns,key=lambda x:int(str(x).split('_')[1]))) :
@@ -253,7 +261,7 @@ class MaskingLatexSummary(LatexSummaryForSlideWithPlotdir) :
     @property
     def reproduced_plots(self) :
         all_fns = []
-        for fn in self.__plot_dirpath.glob('*_masking_plots.png') :
+        for fn in self.plot_dirpath.glob('*_masking_plots.png') :
             all_fns.append(fn.name)
         lines = []
         lines.append('\\section{Example masking plots}\n')
