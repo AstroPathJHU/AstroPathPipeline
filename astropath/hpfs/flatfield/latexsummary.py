@@ -355,8 +355,11 @@ class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
         lines.append('\n')
         lines.append('\\begin{figure}[!ht]\n')
         lines.append('\\centering\n')
+        all_plot_names = []
         for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{fn.name}}}\n')
+            all_plot_names.append(fn.name)
+        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
         lines.append(f'\\caption{{\\footnotesize All layers of the mean image computed for {self.slideID_tex}}}\n')
         lines.append('\\label{fig:mean_image_layers}\n')
         lines.append('\\end{figure}\n')
@@ -373,8 +376,11 @@ class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
         lines.append('\n')
         lines.append('\\begin{figure}[!ht]\n')
         lines.append('\\centering\n')
+        all_plot_names = []
         for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{fn.name}}}\n')
+            all_plot_names.append(fn.name)
+        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
         lines.append(f'\\caption{{\\footnotesize The standard error of the mean image for {self.slideID_tex} in all layers}}\n')
         lines.append('\\label{fig:mean_image_std_err_layers}\n')
         lines.append('\\end{figure}\n')
@@ -392,8 +398,11 @@ class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
         lines.append('\n')
         lines.append('\\begin{figure}[!ht]\n')
         lines.append('\\centering\n')
+        all_plot_names = []
         for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{fn.name}}}\n')
+            all_plot_names.append(fn.name)
+        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
         lines.append(f'\\caption{{\\footnotesize The stack of all masked images used to compute the {self.slideID_tex} mean image in all layers}}\n')
         lines.append('\\label{fig:mask_stack_layers}\n')
         lines.append('\\end{figure}\n')

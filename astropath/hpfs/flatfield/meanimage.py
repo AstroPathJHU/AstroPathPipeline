@@ -158,7 +158,6 @@ class MeanImage :
                 self.__mask_stack+=mask
                 self.__n_images_read+=1
                 self.__n_images_stacked_by_layer+=layers_to_add
-                self.__logger.info(f'layers_to_add = {layers_to_add} with shape {layers_to_add.shape}')
                 stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
                 field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'edge','stacking',str(stacked_in_layers)))
         return field_logs
