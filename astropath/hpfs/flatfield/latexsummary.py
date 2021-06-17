@@ -256,7 +256,25 @@ class MaskingLatexSummary(LatexSummaryForSlideWithPlotdir) :
 
     @property
     def sections(self) :
-        return super().sections+[self.reproduced_plots]
+        return super().sections+[self.flagged_hpf_locations,self.reproduced_plots]
+
+    @property
+    def flagged_hpf_locations(self) :
+        lines = []
+        lines.append('\\section{Flagged HPF locations}')
+        l = f'Figure~\\ref{{fig:flagged_hpf_locations}} shows the locations of every HPF in {self.slideID_tex}, color-coded by their reason for being flagged.'
+        lines.append(l+'\n')
+        lines.append('\n')
+        lines.append('\\begin{figure}[!ht]\n')
+        lines.append('\\centering\n')
+        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.slideID}_flagged_hpf_locations}}')
+        l = f'\\caption{{\\footnotesize locations of all HPFs in {self.slideID_tex}. Those shown in gray did not have any blur or saturation flagged in them. '
+        l+= 'Those shown in blue had some region(s) flagged due to blur (either dust or folded tissue). Those shown in gold had some region(s) flagged due to '
+        l+= 'saturation in at least one layer group. Those shown in green had some region(s) flagged due to both blur and saturation.}'
+        lines.append(l+'\n')
+        lines.append('\\label{fig:flagged_hpf_locations}\n')
+        lines.append('\\end{figure}\n\n')
+        return lines
 
     @property
     def reproduced_plots(self) :

@@ -281,6 +281,8 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 writetable(f'{CONST.LABELLED_MASK_REGIONS_CSV_FILENAME}',labelled_mask_regions)
             #save some masking plots for images with the largest numbers of masked pixels
             self.__save_set_of_masking_plots(labelled_mask_regions,background_thresholds)
+            #make and save the plot of the flagged HPF locations
+            plot_flagged_HPF_locations(self.SlideID,self.rectangles,labelled_mask_regions,self.__image_masking_dirpath)
             #write out the latex summary containing all of the image masking plots that were made
             latex_summary = MaskingLatexSummary(self.SlideID,self.__image_masking_dirpath)
             latex_summary.build_tex_file()

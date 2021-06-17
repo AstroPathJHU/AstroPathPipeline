@@ -1,5 +1,6 @@
 #imports
 from .utilities import RectangleThresholdTableEntry
+from ..image_masking.config import CONST as MASKING_CONST
 from ...utilities.tableio import readtable
 from ...utilities.misc import cd, crop_and_overwrite_image
 from ...utilities.config import CONST as UNIV_CONST
@@ -159,6 +160,51 @@ def plot_background_thresholds_by_layer(datatable_filepath,chosen_threshold_tabl
     ax[1].legend(loc='best')
     slideID = datatable_filepath.name.split('-')[0]
     save_figure_in_dir(plt,f'{slideID}_background_thresholds_by_layer.png',save_dirpath)
+
+def plot_flagged_HPF_locations(sid,rectangles,lmrs,save_dirpath=None) :
+    """
+    Plot all of the HPF locations for a slide with their reasons for being flagged
+
+    sid = slideID
+    rectangles = the full list of rectangles for the slide
+    lmrs = the list of LabelledMaskRegion objects for the slide
+    save_dirpath = path to directory to save the plots in (if None the plot is saved in the current directory)
+    """
+    all_flagged_hpf_keys = [lmr.image_key for lmr in lmrs]
+    hpf_identifiers = []
+    for r in rectangles :
+        key=r.file.rstrip(UNIV_CONST.IM3_EXT)
+        key_x = float(key.split(',')[0].split('[')[1])
+        key_y = float(key.split(',')[1].split(']')[0])
+        if key in all_flagged_hpf_keys :
+            key_strings = set([lmr.reason_flagged for lmr in lmrs if lmr.image_key==key])
+            blur_flagged = 1 if MASKING_CONST.BLUR_FLAG_STRING in key_strings else 0
+            saturation_flagged = 1 if MASKING_CONST.SATURATION_FLAG_STRING in key_strings else 0
+            flagged_int = 1*blur_flagged+2*saturation_flagged
+        else :
+            flagged_int = 0
+        hpf_identifiers.append({'x':key_x,'y':key_y,'flagged':flagged_int})
+    colors_by_flag_int = ['gray','royalblue','gold','limegreen']
+    labels_by_flag_int = ['not flagged','blur flagged','saturation flagged','blur and saturation']
+    f,ax = plt.subplots(figsize=(9.6,7.2))
+    for i in range(len(colors_by_flag_int)) :
+        hpf_ids_to_plot = [identifier for identifier in hpf_identifiers if identifier['flagged']==i]
+        if len(hpf_ids_to_plot)<1 :
+            continue
+        ax.scatter([hpfid['x'] for hpfid in hpf_ids_to_plot],
+                   [hpfid['y'] for hpfid in hpf_ids_to_plot],
+                   marker='o',
+                   color=colors_by_flag_int[i],
+                   label=labels_by_flag_int[i])
+    ax.invert_yaxis()
+    title_text = f'{sid} HPF center locations, ({len(rectangles)} in slide '
+    title_text+=f'{len([hpfid for hpfid in hpf_identifiers if hpfid["flagged"]!=0])} flagged)'
+    ax.set_title(title_text,fontsize=13.5)
+    ax.legend(loc='best',fontsize=10)
+    ax.set_xlabel('HPF local x position',fontsize=13.5)
+    ax.set_ylabel('HPF local y position',fontsize=13.5)
+    fn = f'{sid}_flagged_hpf_locations.png'
+    save_figure_in_dir(plt,fn,save_dirpath)
 
 def plot_image_layers(image,name_stem,save_dirpath=None) :
     """
