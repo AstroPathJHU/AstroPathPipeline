@@ -123,18 +123,18 @@ class LatexSummaryForSlideWithPlotdir(LatexSummaryBase) :
     Class to make a LatexSummary for a single slide with all of its plots in a single directory
     """
 
-    def __init__(self,titlestem,filenamestem,slideID,plot_dirpath,plot_pattern='*') :
+    def __init__(self,titlestem,filenamestem,slideID,plot_dirpath,plot_patterns=['*']) :
         """
-        titlestem    = prefix for the title of the document
-        filenamestem = suffix for the name of the file
-        slideID      = ID of the slide used
-        plot_dirpath = path to directory holding the plots that will be used
-        plot_pattern = some pattern to use for glob in finding all of the plots to remove if the compilation is successful
+        titlestem     = prefix for the title of the document
+        filenamestem  = suffix for the name of the file
+        slideID       = ID of the slide used
+        plot_dirpath  = path to directory holding the plots that will be used
+        plot_patterns = list of patterns to use for glob in finding all of the plots to remove if the compilation is successful
                        (default is everything in the directory)
         """
         self.__slideID = slideID
         self.__plot_dirpath = plot_dirpath
-        self.__plot_pattern = plot_pattern
+        self.__plot_patterns = plot_patterns
         super().__init__(f'{titlestem} for {self.slideID_tex}',
                          f'{self.__slideID}-{filenamestem}',
                          plot_dirpath.parent)
@@ -146,9 +146,11 @@ class LatexSummaryForSlideWithPlotdir(LatexSummaryBase) :
     @property
     def filepaths_to_remove_on_success(self) :
         to_remove = super().filepaths_to_remove_on_success
-        for fp in self.__plot_dirpath.glob(self.__plot_pattern) :
-            to_remove.append(fp.resolve())
-        to_remove.append(self.__plot_dirpath)
+        for pattern in self.__plot_patterns :
+            for fp in self.__plot_dirpath.glob(pattern) :
+                to_remove.append(fp.resolve())
+        if self.__plot_patterns==['*'] :
+            to_remove.append(self.__plot_dirpath)
         return to_remove
 
     @property
@@ -252,7 +254,8 @@ class MaskingLatexSummary(LatexSummaryForSlideWithPlotdir) :
         """
         masking_plot_dirpath = path to the directory with all of the masking plots in it
         """
-        super().__init__('Image Masking Summary',CONST.MASKING_SUMMARY_PDF_FILENAME,slideID,masking_plot_dirpath,'*_masking_plots.png')
+        super().__init__('Image Masking Summary',CONST.MASKING_SUMMARY_PDF_FILENAME,
+                         slideID,masking_plot_dirpath,['*_masking_plots.png','*_flagged_hpf_locations.png'])
 
     @property
     def sections(self) :

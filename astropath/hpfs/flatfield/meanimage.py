@@ -98,7 +98,7 @@ class MeanImage :
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :
-            warnmsg = f'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
+            warnmsg = f'WARNING: failed while compiling meanimage summary LaTeX file into a PDF. '
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
             self.__logger.warning(warnmsg)
 
@@ -148,16 +148,18 @@ class MeanImage :
                 normalized_im = im / med_ets if med_ets is not None else masked_im / r.allexposuretimes[np.newaxis,np.newaxis,:]
                 if imkey in keys_with_full_masks :
                     mask = ImageMask.onehot_mask_from_full_mask_file(maskingdirpath / f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}',self.__image_stack.shape)
+                    layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
                 else :
                     mask = (ImageMask.unpack_tissue_mask(maskingdirpath / f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}',self.__image_stack.shape[:-1]))[:,:,np.newaxis]
-                layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
+                    layers_to_add = np.ones(im.shape[-1],dtype=np.uint64) if np.sum(mask[:,:,0])/(im.shape[0]*im.shape[1])>=CONST.MIN_PIXEL_FRAC else np.zeros(im.shape[-1],dtype=np.uint64)
                 normalized_masked_im = normalized_im*mask*layers_to_add[np.newaxis,np.newaxis,:]
                 self.__image_stack+=normalized_masked_im
                 self.__image_squared_stack+=np.power(normalized_masked_im,2)
                 self.__mask_stack+=mask
                 self.__n_images_read+=1
                 self.__n_images_stacked_by_layer+=layers_to_add
-                stacked_in_layers = [i for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
+                self.__logger.info(f'layers_to_add = {layers_to_add} with shape {layers_to_add.shape}')
+                stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
                 field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'edge','stacking',str(stacked_in_layers)))
         return field_logs
 

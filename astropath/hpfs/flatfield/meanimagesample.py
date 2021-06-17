@@ -1,7 +1,8 @@
 #imports
 from .meanimage import MeanImage
 from .rectangle import RectangleCorrectedIm3MultiLayer
-from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms, plot_background_thresholds_by_layer
+from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms
+from .plotting import plot_background_thresholds_by_layer, plot_flagged_HPF_locations
 from .latexsummary import ThresholdingLatexSummary, MaskingLatexSummary
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry, FieldLog
 from .config import CONST
@@ -281,16 +282,16 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 writetable(f'{CONST.LABELLED_MASK_REGIONS_CSV_FILENAME}',labelled_mask_regions)
             #save some masking plots for images with the largest numbers of masked pixels
             self.__save_set_of_masking_plots(labelled_mask_regions,background_thresholds)
-            #make and save the plot of the flagged HPF locations
-            plot_flagged_HPF_locations(self.SlideID,self.rectangles,labelled_mask_regions,self.__image_masking_dirpath)
-            #write out the latex summary containing all of the image masking plots that were made
-            latex_summary = MaskingLatexSummary(self.SlideID,self.__image_masking_dirpath)
-            latex_summary.build_tex_file()
-            check = latex_summary.compile()
-            if check!=0 :
-                warnmsg = f'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
-                warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
-                self.logger.warning(warnmsg)
+        #make and save the plot of the flagged HPF locations
+        plot_flagged_HPF_locations(self.SlideID,self.rectangles,labelled_mask_regions,self.__image_masking_dirpath)
+        #write out the latex summary containing all of the image masking plots that were made
+        latex_summary = MaskingLatexSummary(self.SlideID,self.__image_masking_dirpath)
+        latex_summary.build_tex_file()
+        check = latex_summary.compile()
+        if check!=0 :
+            warnmsg = f'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
+            warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+            self.logger.warning(warnmsg)
 
     def __get_background_thresholds(self) :
         """
