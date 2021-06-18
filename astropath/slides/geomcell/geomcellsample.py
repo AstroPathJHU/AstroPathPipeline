@@ -71,14 +71,13 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   def defaultunits(cls):
     return "fast_microns"
 
-  def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True):
+  def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     if not _debugdraw: _onlydebug = False
     nfields = len(self.rectangles)
     for i, field in enumerate(self.rectangles, start=1):
-      with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv]) as lock:
+      with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
         if not lock: continue
-        if field.geomloadcsv.exists(): continue
         if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): continue
         self.logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
         geomload = []
@@ -208,7 +207,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
       try:
-        polygons = polygon.makevalid()
+        polygons = polygon.makevalid(round=True)
       except InvalidPolygonError as e:
         if self.isprimary:
           estring = str(e).replace("\n", " ")
