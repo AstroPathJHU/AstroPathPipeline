@@ -7,7 +7,7 @@ from astropath.utilities import units
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"
 zoomroot = here/".."/".."/"test"/"reference"/"zoom"
-annowarproot = here/".."/".."/"test"/"annowarp_test_for_jenkins"
+annowarproot = here/".."/".."/"test"/"test_for_jenkins"/"annowarp"
 samp = "M206"
 
 def makeplots():
