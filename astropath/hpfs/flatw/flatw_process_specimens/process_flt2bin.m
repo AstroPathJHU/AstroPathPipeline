@@ -46,10 +46,17 @@ for i1 = 1:height(tbl)
         end
         [ii2, tbl3, fnms] = checkMean(wd, B1, tbl2);
         %
+        %
+        f = dir([wd,'\upkeep_and_progress\AstropathAPIDdef_*']);
+        f = fullfile(f(1).folder,f(1).name);
+        tbl4 = readtable(f);
+        %
+        ii4 = tbl4.BatchID == str2double(B1);
+        %
         % if all mean.flt files exist for every specimen then create a total
         % .bin flat field file
         %
-        if sum(ii2)==0
+        if sum(ii2)==0 && length(ii2) == sum(ii4)
             %
             fltOneBatch(tbl3, p1, fnms)
             %
@@ -59,26 +66,6 @@ for i1 = 1:height(tbl)
     %
 end
 %
-end
-%
-function sn = find_specimens(wd)
-sp = dir(wd);
-sp = sp(3:end);
-ii = [sp.isdir];
-sp = sp(ii);
-sn = {sp(:).name};
-ii = (contains(sn, 'Batch')|...
-    strcmp(sn, 'Clinical')|...
-    contains(sn, 'Control')|...
-    strcmpi(sn, 'Ctrl')|...
-    strcmpi(sn, 'dbload')|...
-    strcmpi(sn, 'Flatfield')|...
-    strcmpi(sn, 'logfiles')|...
-    strcmpi(sn, 'reject')|...
-    contains(sn, 'tmp_inform_data')|...
-    strcmp(sn, 'Upkeep and Progress')|...
-    strcmpi(sn, 'upkeep_and_progress'));
-sn(ii) = [];
 end
 %
 function tbl2 = getSampleTable(wd, samplenames)
@@ -112,47 +99,6 @@ for i2 = 1:length(samplenames)
     tbl2 = [tbl2;tbl3];
 end
 %
-end
-%
-function [Scanpath, ScanNum, BatchID] = getscan(wd, sname)
-%% getscan
-%
-% get the highest number of a directory given a directory and a specimen
-% name
-%%
-%
-% get highest scan for a sample
-%
-Scan = dir([wd,'\',sname,'\im3\Scan*']);
-%
-if isempty(Scan)
-    Scanpath = [];
-    ScanNum = [];
-    BatchID = [];
-    return
-end
-%
-sid = {Scan(:).name};
-sid = extractAfter(sid,'Scan');
-sid = cellfun(@(x)str2double(x),sid,'Uni',0);
-sid = cell2mat(sid);
-sid = sort(sid,'descend');
-ScanNum = sid(1);
-%
-Scanpath = [wd,'\',sname,'\im3\Scan', num2str(ScanNum)];
-BatchID  = [];
-fid = fullfile(Scanpath, 'BatchID.txt');
-try
-    fid = fopen(fid, 'r');
-    BatchID = fscanf(fid, '%s');
-    fclose(fid);
-catch
-end
-
-if ~isempty(BatchID) && length(BatchID) == 1
-    BatchID = ['0',BatchID];
-end
-Scanpath = [Scanpath,'\'];
 end
 %
 function [ii2, tbl3, fnms] = checkMean(wd, B1, tbl2)
@@ -246,7 +192,7 @@ for i=1:numel(d)
     if nn(1) >= 300
         %fprintf('%s : %d\n', d(i).name, nn);
         A = A + (readflat(f1, m, n, k) .* nn(1));
-        N = N + nn;
+        N = N + nn(1);
     end
     %
 end

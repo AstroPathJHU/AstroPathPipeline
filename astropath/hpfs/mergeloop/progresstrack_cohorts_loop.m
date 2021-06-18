@@ -35,8 +35,8 @@ for i1 = 1:height(tbl)
     %
     % check drive space
     %
-    str = ['\\', td.Dpath{1}];
-    TB = java.io.File(str).getFreeSpace * (10^-12);
+    %str = ['\\', td.Dpath{1}];
+    TB = java.io.File(wd).getFreeSpace * (10^-12);
     TB = round(TB, 3);
     %
     tbl2(tbl2.Project == project,'Space_TB') = {TB};

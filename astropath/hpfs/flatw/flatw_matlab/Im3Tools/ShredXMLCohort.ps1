@@ -30,5 +30,5 @@ Function ShredXMLCohort {
     #
 }
 #
-ShredXMLCohort '\\bki04\Clinical_Specimen_3'
+ShredXMLCohort '\\bki03\Clinical_Specimen_BMS_01'
 

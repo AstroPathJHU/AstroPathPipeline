@@ -15,6 +15,8 @@ tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
     'ReadVariableNames', true);
 tbl2 = readtable([main, '\AstropathCohortsProgress.csv'], 'Delimiter' , ',',...
     'ReadVariableNames', true);
+tbl3 = readtable([main, '\AstropathConfig.csv'], 'Delimiter' , ',',...
+    'ReadVariableNames', true);
 %
 % check if process flatw queue table exists, if it doesn't create is then
 % read it in
@@ -26,7 +28,10 @@ pqt = readtable([main,'\across_project_queues\process_flatw_queue.csv'],'Delimit
 for i1 = 1:height(tbl)
     tic
     %
-    [wd, fwpath, machinename, samplenames] = getmyVars(tbl, tbl2, i1);
+    [wd, fwpath, machinename, process, samplenames] = getmyVars(tbl, tbl2, tbl3, i1);
+    if strcmpi(process,'No')
+        continue
+    end
     %
     % cycle through each sample track all relavant information 
     %
@@ -89,7 +94,7 @@ end
 %
 end
 %%
-function [wd, fwpath, machinename, sn] = getmyVars(tbl, tbl2,  i1)
+function [wd, fwpath, machinename, process, sn] = getmyVars(tbl, tbl2,  tbl3, i1)
 %%
 % get the variables for the current cohort, i1
 %
@@ -107,6 +112,9 @@ fwpath = ['\\', tb.FWpath{1}];
 project = tb.Project;
 tb2 = tbl2(tbl2.Project == project, :);
 machinename = tb2.Machine{1};
+%
+tb3 = tbl3(tbl3.Project == project, :);
+process = tb3.Process_Merge{1};
 %
 % get specimen names for the CS
 %

@@ -8,7 +8,7 @@ while i1 == 1
     %
     try
         process_flt2bin(main)
-        process_flatw_queue(main,'')
+        process_flatw_queue(main)
         Send_process(main)
     catch
     end

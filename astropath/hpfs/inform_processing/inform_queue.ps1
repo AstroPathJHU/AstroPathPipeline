@@ -16,16 +16,17 @@
 ----------------------------------------------------------------------------------------------
 #>
 param([string] $main)
+$cred = Get-Credential
 #
 while(1){
 #
-# get list of VM Names that are off
+# get list of Vitual machines that are on
 #
 $VMs = (Get-VM | where {$_.State -eq 'RUNNING'}).Name 
 #
 # remove any of the "Taube Lab Workstations" from usable VMs (VMs 2)
 #
-[System.Collections.ArrayList]$TLWS = "VM_inForm_21","VM_inForm_22"
+[System.Collections.ArrayList]$TLWS = "VM_inForm_2","VM_inForm_22"
 FOREACH ($WS in $TLWS){
     $CC = $WS + "$"
    $VMs = $VMs | Select-String $CC -notmatch
@@ -74,13 +75,11 @@ While($VMs){
     #
     # get VM credentials
     # 
-    $CredU = "username"
-    $CredPW = ConvertTo-SecureString -String "password" -AsPlainText -Force
-    $Cred = New-Object System.Management.Automation.PSCredential -ArgumentList $CredU, $CredPW
+    
     #
     # Enter PSSession 
     #
-    $a = invoke-command -VMName $cVM -Credential $Cred -argumentlist $cVM, $CI -scriptblock {
+    $a = invoke-command -VMName $cVM -Credential $cred -argumentlist $cVM, $CI -scriptblock {
         param ([string] $cVM, [string] $CI)
         #
         # check csv VM_inForm_queue
