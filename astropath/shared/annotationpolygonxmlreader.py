@@ -223,13 +223,13 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
               plt.close(fig)
 
           for polygon, m in zip(valid, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
-            if len(valid) > 1:
+            if valid is not polygon:
               regionid = 1000*layer + m
               polygon.regionid = regionid
               assert not polygon.subtractpolygons
               regionvertices = polygon.outerpolygon.vertices
 
-            allvertices += regionvertices
+            allvertices += list(regionvertices)
 
             allregions.append(
               Region(
