@@ -14,7 +14,7 @@
 ,M206,"\\bki07\Clinical_Specimen_11\M206\dbload\M206_overlap.csv",Overlap,42,0
 ,M206,"\\bki07\Clinical_Specimen_11\M206\dbload\M206_qptiff.csv",Qptiff,1,0
 ,M206,"\\bki07\Clinical_Specimen_11\M206\dbload\M206_rect.csv",Rect,15,0
-,M206,"\\bki07\Clinical_Specimen_11\M206\dbload\M206_regions.csv",Regions,4,0
+,M206,"\\bki07\Clinical_Specimen_11\M206\dbload\M206_regions.csv",Regions,6,0
 ,M206,"\\bki07\Clinical_Specimen_11\M206\dbload\M206_tumorGeometry.csv",TumorGeometry,26,0
 ,M206,"\\bki07\Clinical_Specimen_11\M206\dbload\M206_vertices.csv",Vertices,2090,0
 ,M206,"\\bki07\Clinical_Specimen_11\M206\inform_data\Phenotyped\Results\Tables\M206_[53511,12668]_cleaned_phenotype_table.csv",Cell,159,0
