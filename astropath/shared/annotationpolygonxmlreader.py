@@ -239,7 +239,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                 rid=m,
                 isNeg=isNeg,
                 type=region.get_xml_attr("Type"),
-                nvert=len(vertices),
+                nvert=len(regionvertices),
                 poly=None,
                 apscale=self.apscale,
                 pscale=self.pscale,
