@@ -207,7 +207,11 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
       try:
+        if self.loginfo == "18 1 1000": print(polygon)
         polygons = polygon.makevalid(round=True)
+        if self.loginfo == "18 1 1000":
+          for _ in polygons:
+            print(_)
       except InvalidPolygonError as e:
         if self.isprimary:
           estring = str(e).replace("\n", " ")
