@@ -284,7 +284,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
         result += "("
         vertices = units.convertpscale(p.vertexarray, self.apscale, self.pscale) / onepixel
         if _rounded:
-          vertices = floattoint(vertices)
+          vertices = floattoint(vertices.astype(float))
         vertices = itertools.chain(vertices, [vertices[0]])
         result += ",".join("{} {}".format(*v) for v in vertices)
         result += ")"
@@ -419,18 +419,19 @@ class SimplePolygon(Polygon):
     vertexarray = (self.vertexarray+1e-10*onepixel) // onepixel * onepixel
     return SimplePolygon(vertexarray=vertexarray, pscale=self.pscale, apscale=self.apscale, regionid=self.regionid)
 
-  def gdallinearring(self, *, imagescale=None, round=False):
+  def gdallinearring(self, *, imagescale=None, round=False, _rounded=False):
     """
     Convert to a gdal linear ring.
 
     imagescale: the scale to use for converting to pixels (default: pscale)
     round: round to the nearest pixel (default: False)
     """
-    if round: return self.round(imagescale=imagescale).gdallinearring(imagescale=imagescale)
+    if round: return self.round(imagescale=imagescale).gdallinearring(imagescale=imagescale, _rounded=True)
     if imagescale is None: imagescale = self.pscale
     ring = ogr.Geometry(ogr.wkbLinearRing)
     onepixel = units.onepixel(imagescale)
     vertexarray = units.convertpscale(self.vertexarray, self.apscale, imagescale) / onepixel
+    if _rounded: vertexarray = floattoint(vertexarray.astype(float))
     for point in itertools.chain(vertexarray, [vertexarray[0]]):
       ring.AddPoint_2D(*point.astype(float))
     return ring
