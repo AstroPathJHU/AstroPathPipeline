@@ -71,10 +71,11 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   def defaultunits(cls):
     return "fast_microns"
 
-  def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False):
+  def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea=None):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     if not _debugdraw: _onlydebug = False
     nfields = len(self.rectangles)
+    if minarea is None: minarea = 50 * self.onepixel**2
     for i, field in enumerate(self.rectangles, start=1):
       with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
         if not lock: continue
@@ -95,6 +96,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
               if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
               polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembranelayer(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
               if polygon is None: continue
+              if polygon.area < minarea: continue
 
               box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
               box += pxvec
