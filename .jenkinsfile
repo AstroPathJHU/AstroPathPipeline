@@ -235,11 +235,7 @@ pipeline {
       archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/exposuretime/exposuretime_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/layerPCA/layerPCA.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'test/annowarp_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/deepzoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/exposuretimefit_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/warpfitter_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/zoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+      archiveArtifacts artifacts: 'test/test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
     }
   }
 }

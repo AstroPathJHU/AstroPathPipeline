@@ -16,7 +16,7 @@ class TestDeepZoom(TestBaseSaveOutput):
   def testDeepZoom(self, SlideID="M206", units="safe", **kwargs):
     root = thisfolder/"data"
     zoomroot = thisfolder/"reference"/"zoom"
-    deepzoomroot = thisfolder/"deepzoom_test_for_jenkins"
+    deepzoomroot = thisfolder/"test_for_jenkins"/"deepzoom"
     args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     DeepZoomCohort.runfromargumentparser(args)
 
@@ -56,11 +56,11 @@ class TestDeepZoom(TestBaseSaveOutput):
     return sum(
       (
         [
-          thisfolder/"deepzoom_test_for_jenkins"/SlideID/"L1_files"/filename.parent.name/filename.name
+          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"L1_files"/filename.parent.name/filename.name
           for filename in (thisfolder/"reference"/"deepzoom"/SlideID/"L1_files").glob("*/*.png")
         ] + [
-          thisfolder/"deepzoom_test_for_jenkins"/SlideID/"L1.dzi",
-          thisfolder/"deepzoom_test_for_jenkins"/SlideID/f"{SlideID}_zoomlist.csv",
+          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"L1.dzi",
+          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/f"{SlideID}_zoomlist.csv",
         ]
         for SlideID in ("M206",)
       ), []

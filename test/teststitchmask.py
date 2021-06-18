@@ -10,13 +10,13 @@ class TestStitchMask(TestBaseCopyInput, TestBaseSaveOutput):
   def filestocopy(cls):
     for SlideID in "M21_1",:
       oldfolder = thisfolder/"data"/SlideID/"im3"/"meanimage"/"image_masking"
-      newfolder = thisfolder/"stitchmask_test_for_jenkins"/SlideID/"im3"/"meanimage"/"image_masking"
+      newfolder = thisfolder/"test_for_jenkins"/"stitchmask"/SlideID/"im3"/"meanimage"/"image_masking"
       for file in oldfolder.glob("*tissue_mask.bin"):
         yield file, newfolder
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"stitchmask_test_for_jenkins"/SlideID/"im3"/"meanimage"/"image_masking"/f"{SlideID}_{maskfilestem}.{suffix}"
+      thisfolder/"test_for_jenkins"/"stitchmask"/SlideID/"im3"/"meanimage"/"image_masking"/f"{SlideID}_{maskfilestem}.{suffix}"
       for SlideID in ("M206", "M21_1")
       for maskfilestem in ("inform_mask", "tissue_mask")
       for suffix in ("npz", "bin")
@@ -24,7 +24,7 @@ class TestStitchMask(TestBaseCopyInput, TestBaseSaveOutput):
 
   def _testStitchMask(self, *, SlideID, masktype, maskfilesuffix, units):
     root = thisfolder/"data"
-    maskroot = thisfolder/"stitchmask_test_for_jenkins"
+    maskroot = thisfolder/"test_for_jenkins"/"stitchmask"
     samplecls, cohortcls = {
       "inform": (StitchInformMaskSample, StitchInformMaskCohort),
       "astropathtissue": (StitchAstroPathTissueMaskSample, StitchAstroPathTissueMaskCohort),

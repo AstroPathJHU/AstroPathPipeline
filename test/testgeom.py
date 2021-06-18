@@ -12,7 +12,7 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
   def filestocopy(cls):
     for SlideID in "M206", "M148":
       olddbload = thisfolder/"data"/SlideID/"dbload"
-      newdbload = thisfolder/"geom_test_for_jenkins"/SlideID/"dbload"
+      newdbload = thisfolder/"test_for_jenkins"/"geom"/SlideID/"dbload"
       for csv in (
         "constants",
         "fields",
@@ -22,14 +22,14 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"geom_test_for_jenkins"/SlideID/f"{SlideID}_{csv}.csv"
+      thisfolder/"test_for_jenkins"/"geom"/SlideID/f"{SlideID}_{csv}.csv"
       for csv in ("tumorGeometry", "fieldGeometry")
       for SlideID in ("M206", "M148")
     ]
 
   def testGeom(self, SlideID="M206", units="safe", selectrectangles=None):
     root = thisfolder/"data"
-    dbloadroot = thisfolder/"geom_test_for_jenkins"
+    dbloadroot = thisfolder/"test_for_jenkins"/"geom"
     args = [os.fspath(root), "--dbloadroot", os.fspath(dbloadroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     if selectrectangles is not None:
       args.append("--selectrectangles")

@@ -36,19 +36,19 @@ class TestZoom(TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"zoom_test_for_jenkins"/SlideID/"big"/f"{SlideID}-Z9-L{i}-X{x}-Y{y}-big.png"
+      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"/f"{SlideID}-Z9-L{i}-X{x}-Y{y}-big.png"
       for SlideID in ("L1_1", "M206")
       for i in self.layers(SlideID)
       for x, y in self.xys(SlideID)
     ] + [
-      thisfolder/"zoom_test_for_jenkins"/SlideID/"wsi"/f"{SlideID}-Z9-L{i}-wsi.png"
+      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z9-L{i}-wsi.png"
       for SlideID in ("L1_1", "M206")
       for i in self.layers(SlideID)
     ]
 
   def testZoomWsi(self, SlideID="L1_1", units="safe", mode="vips"):
     root = thisfolder/"data"
-    zoomroot = thisfolder/"zoom_test_for_jenkins"
+    zoomroot = thisfolder/"test_for_jenkins"/"zoom"
     args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     if self.selectrectangles(SlideID) is not None:
       args += ["--selectrectangles", *(str(_) for _ in self.selectrectangles(SlideID))]
@@ -63,13 +63,13 @@ class TestZoom(TestBaseSaveOutput):
           filename = f"{SlideID}-Z9-L{i}-X{x}-Y{y}-big.png"
           sample.logger.info("comparing "+filename)
           with sample.PILmaximagepixels(), \
-               PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"big"/filename) as img, \
+               PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"/filename) as img, \
                PIL.Image.open(thisfolder/"reference"/"zoom"/SlideID/"big"/filename) as targetimg:
             np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
         filename = f"{SlideID}-Z9-L{i}-wsi.png"
         sample.logger.info("comparing "+filename)
         with sample.PILmaximagepixels(), \
-             PIL.Image.open(thisfolder/"zoom_test_for_jenkins"/SlideID/"wsi"/filename) as img, \
+             PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/filename) as img, \
              PIL.Image.open(thisfolder/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
           np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
     except:

@@ -11,7 +11,7 @@ thisfolder = pathlib.Path(__file__).parent
 class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
-    testroot = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
+    testroot = thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"
     dataroot = thisfolder/"data"
 
     for foldername in "Batch", "Clinical", "Ctrl", pathlib.Path("Control_TMA_1372_111_06.19.2019")/"dbload":
@@ -39,18 +39,18 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"/SlideID/"dbload"/f"{SlideID}_{csv}.csv"
+      thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/SlideID/"dbload"/f"{SlideID}_{csv}.csv"
       for csv in ("loadfiles",)
       for SlideID in ("M206",)
     ] + [
-      thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"/"dbload"/"project0_loadfiles.csv"
+      thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/"dbload"/"project0_loadfiles.csv"
     ]
 
   def setUp(self):
     super().setUp()
     slideids = "M206",
 
-    testroot = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
+    testroot = thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"
     dataroot = thisfolder/"data"
     for SlideID in slideids:
       logfolder = testroot/SlideID/"logfiles"
@@ -67,7 +67,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
           newf.write(line)
 
   def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False):
-    root = thisfolder/"csvscan_test_for_jenkins"/"Clinical_Specimen_0"
+    root = thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"
     geomroot = thisfolder/"reference"/"geomcell"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--rerun-finished"]
     if selectrectangles is not None:

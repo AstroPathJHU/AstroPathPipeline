@@ -97,7 +97,7 @@ class TestMisc(unittest.TestCase):
       self.testPolygonNumpyArray()
 
   def testStandaloneAnnotations(self, SlideID="M21_1"):
-    folder = thisfolder/"misc_test_for_jenkins"
+    folder = thisfolder/"test_for_jenkins"/"misc"
     s = PrepDbSample(thisfolder/"data", SlideID)
     writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
     for filename, cls in (

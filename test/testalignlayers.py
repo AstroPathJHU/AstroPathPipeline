@@ -11,7 +11,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
   def filestocopy(cls):
     for SlideID in "M21_1", "YZ71":
       olddbload = thisfolder/"data"/SlideID/"dbload"
-      newdbload = thisfolder/"alignlayers_test_for_jenkins"/SlideID/"dbload"
+      newdbload = thisfolder/"test_for_jenkins"/"alignlayers"/SlideID/"dbload"
       for csv in (
         "constants",
         "overlap",
@@ -22,19 +22,19 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"alignlayers_test_for_jenkins"/"M21_1"/"dbload"/filename.name
+      thisfolder/"test_for_jenkins"/"alignlayers"/"M21_1"/"dbload"/filename.name
       for filename in (thisfolder/"reference"/"alignlayers"/"M21_1").glob("M21_1_*")
     ] + [
-      thisfolder/"alignlayers_test_for_jenkins"/"YZ71"/"dbload"/filename.name
+      thisfolder/"test_for_jenkins"/"alignlayers"/"YZ71"/"dbload"/filename.name
       for filename in (thisfolder/"reference"/"alignlayers"/"YZ71").glob("YZ71_*")
     ] + [
-      thisfolder/"alignlayers_test_for_jenkins"/"logfiles"/"alignlayers.log",
-      thisfolder/"alignlayers_test_for_jenkins"/"M21_1"/"logfiles"/"M21_1-alignlayers.log",
-      thisfolder/"alignlayers_test_for_jenkins"/"YZ71"/"logfiles"/"YZ71-alignlayers.log",
+      thisfolder/"test_for_jenkins"/"alignlayers"/"logfiles"/"alignlayers.log",
+      thisfolder/"test_for_jenkins"/"alignlayers"/"M21_1"/"logfiles"/"M21_1-alignlayers.log",
+      thisfolder/"test_for_jenkins"/"alignlayers"/"YZ71"/"logfiles"/"YZ71-alignlayers.log",
     ]
 
   def testAlignLayers(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"alignlayers_test_for_jenkins", logroot=thisfolder/"alignlayers_test_for_jenkins")
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
     a.getDAPI()
     a.align()
     a.stitch(eliminatelayer=1)
@@ -45,7 +45,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
         (f"{SlideID}_layerpositions.csv", LayerPosition),
         (f"{SlideID}_layerpositioncovariances.csv", LayerPositionCovariance),
       ):
-        rows = a.readtable(thisfolder/"alignlayers_test_for_jenkins"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True)
+        rows = a.readtable(thisfolder/"test_for_jenkins"/"alignlayers"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True)
         targetrows = a.readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, checkorder=True, checknewlines=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
@@ -58,7 +58,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
       self.testAlignLayers(SlideID=SlideID)
 
   def testEliminateLayerInvariance(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"alignlayers_test_for_jenkins", logroot=thisfolder/"alignlayers_test_for_jenkins")
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
     a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
     result1 = a.stitch(eliminatelayer=0)
     result2 = a.stitch(eliminatelayer=1)
@@ -67,7 +67,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
 
   @units.setup_context("fast", "microns")
   def testStitchCvxpy(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"alignlayers_test_for_jenkins", logroot=thisfolder/"alignlayers_test_for_jenkins")
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
     a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
 
     defaultresult = a.stitch(saveresult=False, eliminatelayer=0)
@@ -83,7 +83,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
     )
 
   def testReadAlignlayers(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"alignlayers_test_for_jenkins", logroot=thisfolder/"alignlayers_test_for_jenkins")
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
     readfilename = thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv"
     writefilename = thisfolder/"testreadalignlayers.csv"
 
@@ -95,6 +95,6 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
       assertAlmostEqual(row, target, rtol=1e-5)
 
   def testBroadbandFilters(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"alignlayers_test_for_jenkins", logroot=thisfolder/"alignlayers_test_for_jenkins")
+    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
     r = a.rectangles[0]
     np.testing.assert_array_equal(r.broadbandfilters, [1]*9+[2]*9+[3]*7+[4]*7+[5]*3)
