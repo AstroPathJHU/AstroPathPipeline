@@ -75,7 +75,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     self.geomfolder.mkdir(exist_ok=True, parents=True)
     if not _debugdraw: _onlydebug = False
     nfields = len(self.rectangles)
-    if minarea is None: minarea = 50 * self.onepixel**2
+    if minarea is None: minarea = (3 * self.onemicron)**2
     for i, field in enumerate(self.rectangles, start=1):
       with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
         if not lock: continue
