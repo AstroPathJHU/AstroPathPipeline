@@ -80,7 +80,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     if bad:
       raise InvalidPolygonError(poly)
 
-  def makevalid(self):
+  def makevalid(self, *, round=False, imagescale=None):
     try:
       self.checkvalidity()
     except InvalidPolygonError as e:
@@ -101,7 +101,8 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
         else:
           raise ValueError(f"Unknown component from MakeValid: {component}")
       polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, apscale=self.apscale, regionid=self.regionid) for p in polygons]
-      polygons = sum((p.makevalid() for p in polygons), [])
+      if round: polygons = [p.round(imagescale=imagescale) for p in polygons]
+      polygons = sum((p.makevalid(round=round, imagescale=imagescale) for p in polygons), [])
       polygons.sort(key=lambda x: x.area, reverse=True)
       return polygons
     else:
@@ -271,17 +272,19 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     assert self.pscale == other.pscale and self.apscale == other.apscale
     return self.outerpolygon == other.outerpolygon and self.subtractpolygons == other.subtractpolygons
 
-  def __str__(self, *, round=True):
+  def __str__(self, *, round=True, _rounded=False):
     if any(p.subtractpolygons for p in self.subtractpolygons):
       return self.__repr__(round=round)
     else:
+      if round: return self.round().__str__(round=False, _rounded=True)
       onepixel = self.onepixel
       result = "POLYGON ("
       for i, p in enumerate([self.outerpolygon] + self.subtractpolygons):
         if i != 0: result += ","
         result += "("
-        vertices = units.convertpscale(p.vertexarray, self.apscale, self.pscale)
-        if round: vertices = floattoint(((vertices+1e-10*onepixel)//onepixel).astype(float))
+        vertices = units.convertpscale(p.vertexarray, self.apscale, self.pscale) / onepixel
+        if _rounded:
+          vertices = floattoint(vertices)
         vertices = itertools.chain(vertices, [vertices[0]])
         result += ",".join("{} {}".format(*v) for v in vertices)
         result += ")"
@@ -304,6 +307,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     self.outerpolygon.regionid = regionid
     for _ in self.subtractpolygons:
       _.regionid = regionid
+
+  def round(self, **kwargs):
+    return Polygon(outerpolygon=self.outerpolygon.round(**kwargs), subtractpolygons=[p.round(**kwargs) for p in self.subtractpolygons])
 
 class SimplePolygon(Polygon):
   """
@@ -407,6 +413,12 @@ class SimplePolygon(Polygon):
     if other is None: return False
     return np.all(self.vertexarray == other.vertexarray)
 
+  def round(self, *, imagescale=None):
+    if imagescale is None: imagescale = self.pscale
+    onepixel = units.convertpscale(units.onepixel(imagescale), imagescale, self.apscale)
+    vertexarray = (self.vertexarray+1e-10*onepixel) // onepixel * onepixel
+    return SimplePolygon(vertexarray=vertexarray, pscale=self.pscale, apscale=self.apscale, regionid=self.regionid)
+
   def gdallinearring(self, *, imagescale=None, round=False):
     """
     Convert to a gdal linear ring.
@@ -414,15 +426,12 @@ class SimplePolygon(Polygon):
     imagescale: the scale to use for converting to pixels (default: pscale)
     round: round to the nearest pixel (default: False)
     """
+    if round: return self.round(imagescale=imagescale).gdallinearring(imagescale=imagescale)
     if imagescale is None: imagescale = self.pscale
     ring = ogr.Geometry(ogr.wkbLinearRing)
-    for v in itertools.chain(self.vertexarray, [self.vertexarray[0]]):
-      point = units.convertpscale(v, self.apscale, imagescale)
-      onepixel = units.onepixel(imagescale)
-      if round:
-        point = (point+1e-10*onepixel) // onepixel
-      else:
-        point = point / onepixel
+    onepixel = units.onepixel(imagescale)
+    vertexarray = units.convertpscale(self.vertexarray, self.apscale, imagescale) / onepixel
+    for point in itertools.chain(vertexarray, [vertexarray[0]]):
       ring.AddPoint_2D(*point.astype(float))
     return ring
 

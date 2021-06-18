@@ -178,7 +178,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           isNeg = bool(int(region.get_xml_attr("NegativeROA")))
 
           polygon = SimplePolygon(vertices=regionvertices)
-          valid = polygon.makevalid()
+          valid = polygon.makevalid(round=True, imagescale=self.apscale)
 
           perimeter = 0
           maxlength = 0
