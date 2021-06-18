@@ -235,7 +235,7 @@ pipeline {
       archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/exposuretime/exposuretime_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/layerPCA/layerPCA.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'test/test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+      archiveArtifacts artifacts: 'test/test_for_jenkins/**', fingerprint: true, allowEmptyArchive: true
     }
   }
 }
