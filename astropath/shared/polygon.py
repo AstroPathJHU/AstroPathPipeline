@@ -88,14 +88,19 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
         raise
       polygons = []
       for component in e.validcomponents:
-        if "MULTI" in str(component): assert False
-        elif "LINESTRING" in str(component):
+        if "MULTI" in str(component):
+          assert False
+        if "LINESTRING" in str(component):
           continue
         elif "POLYGON" in str(component):
           polygons.append(component)
+        elif "LINEARRING" in str(component):
+          poly = ogr.Geometry(ogr.wkbPolygon)
+          poly.AddGeometry(component)
+          polygons.append(poly)
         else:
           raise ValueError(f"Unknown component from MakeValid: {component}")
-      polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, apscale=self.apscale) for p in polygons]
+      polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, apscale=self.apscale, regionid=self.regionid) for p in polygons]
       polygons = sum((p.makevalid() for p in polygons), [])
       polygons.sort(key=lambda x: x.area, reverse=True)
       return polygons
@@ -286,6 +291,20 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   def __repr__(self, *, round=True):
     return f"{type(self).__name__}({self.outerpolygon!r}, [{', '.join(_.__repr__(round=round) for _ in self.subtractpolygons)}])"
 
+  @property
+  def regionid(self):
+    regionids = {self.outerpolygon.regionid, *(_.regionid for _ in self.subtractpolygons)}
+    try:
+      result, = regionids
+    except ValueError:
+      raise ValueError(f"Inconsistent regionids {regionids}")
+    return result
+  @regionid.setter
+  def regionid(self, regionid):
+    self.outerpolygon.regionid = regionid
+    for _ in self.subtractpolygons:
+      _.regionid = regionid
+
 class SimplePolygon(Polygon):
   """
   Represents a polygon as a list of vertices in a way that works
@@ -298,12 +317,13 @@ class SimplePolygon(Polygon):
   apscale: apscale of the polygon
   """
 
-  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1, requirevalidity=False):
+  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1, regionid=None, requirevalidity=False):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
 
     apscale = {apscale}
     pscale = {pscale}
+    regionid = {regionid}
 
     if vertexarray is not None is vertices:
       vertexarray = np.array(vertexarray)
@@ -312,6 +332,7 @@ class SimplePolygon(Polygon):
       vertexarray = np.array([v.xvec for v in vertices])
       apscale |= {v.apscale for v in vertices}
       pscale |= {v.pscale for v in vertices}
+      regionid |= {v.regionid for v in vertices}
     else:
       raise TypeError("Have to provide exactly one of vertices or vertexarray")
 
@@ -324,6 +345,11 @@ class SimplePolygon(Polygon):
     if len(pscale) > 1: raise ValueError(f"Inconsistent pscales {pscale}")
     elif not pscale: raise ValueError("No pscale provided")
     self.__pscale, = pscale
+
+    regionid.discard(None)
+    if len(regionid) > 1: raise ValueError(f"Inconsistent regionids {regionid}")
+    elif not regionid: regionid = {None}
+    self.__regionid, = regionid
 
     self.__vertices = vertices
     self.__vertexarray = np.array(vertexarray)
@@ -353,6 +379,15 @@ class SimplePolygon(Polygon):
   @property
   def apscale(self):
     return self.__apscale
+  @property
+  def regionid(self):
+    return self.__regionid
+  @regionid.setter
+  def regionid(self, regionid):
+    self.__regionid = regionid
+    if self.__vertices is not None:
+      for v in self.__vertices:
+        v.regionid = regionid
 
   @property
   def vertexarray(self): return self.__vertexarray
@@ -361,8 +396,8 @@ class SimplePolygon(Polygon):
     if self.__vertices is None:
       from .csvclasses import Vertex
       self.__vertices = [
-        Vertex(x=x, y=y, vid=i, regionid=None, apscale=self.apscale, pscale=self.pscale)
-        for i, (x, y) in enumerate(self.vertexarray)
+        Vertex(x=x, y=y, vid=i, regionid=self.regionid, apscale=self.apscale, pscale=self.pscale)
+        for i, (x, y) in enumerate(self.vertexarray, start=1)
       ]
     return self.__vertices
 
