@@ -1,4 +1,4 @@
-import argparse, itertools, numpy as np, pathlib, PIL, shutil, tempfile
+import argparse, numpy as np, pathlib, PIL, shutil, tempfile
 from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleInformTissueMask
 from astropath.slides.annowarp.visualization import showannotation
 from astropath.shared.csvclasses import Region
