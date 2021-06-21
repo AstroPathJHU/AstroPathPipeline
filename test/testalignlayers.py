@@ -50,8 +50,9 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
-    finally:
+    except:
       self.saveoutput()
+      raise
 
   def testAlignLayersFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast"):

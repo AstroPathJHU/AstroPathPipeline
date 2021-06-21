@@ -44,6 +44,12 @@ class TestZoom(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z9-L{i}-wsi.png"
       for SlideID in ("L1_1", "M206")
       for i in self.layers(SlideID)
+    ] + [
+      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"logfiles"/f"{SlideID}-zoom.log"
+      for SlideID in ("L1_1", "M206")
+      for i in self.layers(SlideID)
+    ] + [
+      thisfolder/"test_for_jenkins"/"zoom"/"logfiles"/"zoom.log"
     ]
 
   def testZoomWsi(self, SlideID="L1_1", units="safe", mode="vips"):

@@ -8,11 +8,21 @@ from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.shared.sample import APIDDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable
-from .testbase import assertAlmostEqual
+from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-class TestMisc(unittest.TestCase):
+class TestMisc(TestBaseSaveOutput):
+  @property
+  def outputfilenames(self):
+    return [
+      thisfolder/"test_for_jenkins"/"misc"/"M206_annotations.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M206_regions.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M206_vertices.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M21_1_annotations.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M21_1_regions.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M21_1_vertices.csv",
+    ]
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
     islands = l.islands()
@@ -97,21 +107,25 @@ class TestMisc(unittest.TestCase):
       self.testPolygonNumpyArray()
 
   def testStandaloneAnnotations(self, SlideID="M21_1"):
-    folder = thisfolder/"test_for_jenkins"/"misc"
-    s = PrepDbSample(thisfolder/"data", SlideID)
-    writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
-    for filename, cls in (
-      (f"{SlideID}_annotations.csv", Annotation),
-      (f"{SlideID}_vertices.csv", Vertex),
-      (f"{SlideID}_regions.csv", Region),
-    ):
-      try:
-        rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True)
-        targetrows = s.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True)
-        for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
-          assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
-      except:
-        raise ValueError("Error in "+filename)
+    try:
+      folder = thisfolder/"test_for_jenkins"/"misc"
+      s = PrepDbSample(thisfolder/"data", SlideID)
+      writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
+      for filename, cls in (
+        (f"{SlideID}_annotations.csv", Annotation),
+        (f"{SlideID}_vertices.csv", Vertex),
+        (f"{SlideID}_regions.csv", Region),
+      ):
+        try:
+          rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True)
+          targetrows = s.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True)
+          for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
+            assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+        except:
+          raise ValueError("Error in "+filename)
+    except:
+      self.saveoutput()
+      raise
 
   def testStandaloneAnnotationsFastUnits(self, SlideID="M206"):
     with units.setup_context("fast"):

@@ -20,6 +20,13 @@ class TestStitchMask(TestBaseCopyInput, TestBaseSaveOutput):
       for SlideID in ("M206", "M21_1")
       for maskfilestem in ("inform_mask", "tissue_mask")
       for suffix in ("npz", "bin")
+    ] + [
+      thisfolder/"test_for_jenkins"/"stitchmask"/SlideID/"logfiles"/f"{SlideID}-stitch{masktype}mask.log"
+      for SlideID in ("M206", "M21_1")
+      for masktype in ("inform", "tissue")
+    ] + [
+      thisfolder/"test_for_jenkins"/"stitchmask"/"logfiles"/f"stitch{masktype}mask.log"
+      for masktype in ("inform", "tissue")
     ]
 
   def _testStitchMask(self, *, SlideID, masktype, maskfilesuffix, units):

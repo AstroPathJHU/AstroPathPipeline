@@ -53,14 +53,17 @@ class TestDeepZoom(TestBaseSaveOutput):
 
   @property
   def outputfilenames(self):
-    return sum(
+    return [
+      thisfolder/"test_for_jenkins"/"deepzoom"/"logfiles"/"deepzoom.log",
+    ] + sum(
       (
         [
           thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"L1_files"/filename.parent.name/filename.name
           for filename in (thisfolder/"reference"/"deepzoom"/SlideID/"L1_files").glob("*/*.png")
         ] + [
           thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"L1.dzi",
-          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/f"{SlideID}_zoomlist.csv",
+          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"zoomlist.csv",
+          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"logfiles"/f"{SlideID}-deepzoom.log",
         ]
         for SlideID in ("M206",)
       ), []

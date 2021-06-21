@@ -19,14 +19,9 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       newdbload = thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"
       for csv in (
         "constants",
-        "vertices",
         "regions",
-        "fields",
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
-
-  @classmethod
-  def removecopiedinput(cls): return False
 
   @classmethod
   def setUpClass(cls):
@@ -38,11 +33,15 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
   @property
   def outputfilenames(self):
-    return sum(([
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"annowarp.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"annowarp-stitch.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"regions.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"vertices.csv",
+    return [
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/"annowarp.log",
+    ] + sum(([
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"annotations.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"annowarp.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"annowarp-stitch.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"regions.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"vertices.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/f"{SlideID}-annowarp.log",
     ] for SlideID in ("M206",)), [])
 
   def testAlignment(self, SlideID="M206"):

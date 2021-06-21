@@ -43,11 +43,16 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for csv in ("loadfiles",)
       for SlideID in ("M206",)
     ] + [
+      thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/SlideID/"logfiles"/f"{SlideID}-csvscan.log"
+      for SlideID in ("M206",)
+    ] + [
       thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/"dbload"/"project0_loadfiles.csv"
+      thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/"logfiles"/"csvscan.log"
     ]
 
   def setUp(self):
     super().setUp()
+    stack = self.__stack = contextlib.ExitStack()
     slideids = "M206",
 
     testroot = thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"
@@ -57,14 +62,22 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       logfolder.mkdir(exist_ok=True, parents=True)
       from astropath.utilities.version import astropathversion
       for module in "annowarp", "geom", "geomcell":
-        with open(logfolder/f"{SlideID}-{module}.log", "w") as f:
+        filename = logfolder/f"{SlideID}-{module}.log"
+        assert stack.enter_context(job_lock.JobLock(filename))
+        with open(filename, "w") as f:
           f.write(f"0;0;{SlideID};{module} {astropathversion};1900-01-01 00:00:00\n")
           f.write(f"0;0;{SlideID};end {module};1900-01-01 00:00:00\n")
 
-    with open(dataroot/"sampledef.csv") as f, open(testroot/"sampledef.csv", "w") as newf:
+    sampledef = testroot/"sampledef.csv"
+    assert stack.enter_context(job_lock.JobLock(sampledef))
+    with open(dataroot/"sampledef.csv") as f, open(sampledef, "w") as newf:
       for line in f:
         if line.strip() and line.split(",")[1] in ("SlideID",) + slideids:
           newf.write(line)
+
+  def tearDown(self):
+    super().tearDown()
+    self.__stack.close()
 
   def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False):
     root = thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"

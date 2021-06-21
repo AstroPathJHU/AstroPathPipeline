@@ -22,7 +22,7 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"test_for_jenkins"/"geom"/SlideID/f"{SlideID}_{csv}.csv"
+      thisfolder/"test_for_jenkins"/"geom"/SlideID/"dbload"/f"{SlideID}_{csv}.csv"
       for csv in ("tumorGeometry", "fieldGeometry")
       for SlideID in ("M206", "M148")
     ]
