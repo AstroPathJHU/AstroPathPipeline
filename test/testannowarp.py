@@ -19,7 +19,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       newdbload = thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"
       for csv in (
         "constants",
-        "regions",
+        "fields",
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
 
