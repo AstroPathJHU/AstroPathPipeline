@@ -86,7 +86,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
   def testReadAlignlayers(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
     readfilename = thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv"
-    writefilename = thisfolder/"testreadalignlayers.csv"
+    writefilename = a.csv("align")
 
     a.readalignments(filename=readfilename)
     a.writealignments(filename=writefilename)

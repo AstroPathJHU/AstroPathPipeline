@@ -75,6 +75,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     except:
       self.saveoutput()
       raise
+    finally:
+      self.removeoutput()
 
   def compareoutput(self, alignsample, SlideID="M21_1", componenttiff=False):
     a = alignsample
@@ -129,69 +131,85 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       assertAlmostEqual(o.result, ogpu.result, rtol=1e-5, atol=1e-5)
 
   def testReadAlignment(self, SlideID="M21_1"):
-    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-    readfilename = thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
-    writefilename = thisfolder/"testreadalignments.csv"
+    try:
+      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+      readfilename = thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
 
-    a.readalignments(filename=readfilename)
-    a.writealignments(filename=writefilename)
-    rows = a.readtable(writefilename, AlignmentResult, checkorder=True, checknewlines=True)
-    targetrows = a.readtable(readfilename, AlignmentResult, checkorder=True, checknewlines=True)
-    for row, target in more_itertools.zip_equal(rows, targetrows):
-      assertAlmostEqual(row, target, rtol=1e-5)
+      a.readalignments(filename=readfilename)
+      a.writealignments(filename=a.csv("align"))
+      rows = a.readtable(writefilename, AlignmentResult, checkorder=True, checknewlines=True)
+      targetrows = a.readtable(readfilename, AlignmentResult, checkorder=True, checknewlines=True)
+      for row, target in more_itertools.zip_equal(rows, targetrows):
+        assertAlmostEqual(row, target, rtol=1e-5)
+    except:
+      self.saveoutput()
+      raise
+    finally:
+      self.removeoutput()
 
   def testReadAlignmentFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast", "microns"):
       self.testReadAlignment(SlideID=SlideID)
 
   def testStitchReadingWriting(self, SlideID="M21_1"):
-    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-    a.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
-    stitchfilenames = [thisfolder/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a.stitchfilenames]
-    result = a.readstitchresult(filenames=stitchfilenames)
+    try:
+      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+      a.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
+      stitchfilenames = [thisfolder/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a.stitchfilenames]
+      result = a.readstitchresult(filenames=stitchfilenames)
 
-    def newfilename(filename): return thisfolder/("test_"+filename.name)
-    def referencefilename(filename): return thisfolder/"reference"/"alignment"/SlideID/"dbload"/filename.name
+      def referencefilename(filename): return thisfolder/"reference"/"alignment"/SlideID/"dbload"/filename.name
 
-    a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
+      a.writestitchresult(result, filenames=a.stitchfilenames)
 
-    for filename, cls, extrakwargs in more_itertools.zip_equal(
-      a.stitchfilenames,
-      (AffineEntry, Field, FieldOverlap),
-      ({}, {}, {"nclip": a.nclip, "rectangles": a.rectangles}),
-    ):
-      rows = a.readtable(newfilename(filename), cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
-      targetrows = a.readtable(referencefilename(filename), cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
-      for row, target in more_itertools.zip_equal(rows, targetrows):
-        assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
+      for filename, cls, extrakwargs in more_itertools.zip_equal(
+        a.stitchfilenames,
+        (AffineEntry, Field, FieldOverlap),
+        ({}, {}, {"nclip": a.nclip, "rectangles": a.rectangles}),
+      ):
+        rows = a.readtable(filename, cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
+        targetrows = a.readtable(referencefilename(filename), cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
+        for row, target in more_itertools.zip_equal(rows, targetrows):
+          assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
+    except:
+      self.saveoutput()
+      raise
+    finally:
+      self.removeoutput()
 
   def testStitchReadingWritingFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast"):
       self.testStitchReadingWriting(SlideID=SlideID)
 
   def testStitchWritingReading(self, SlideID="M21_1"):
-    a1 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-    a1.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
-    a1.stitch()
+    try:
+      a1 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+      a1.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
+      a1.stitch()
 
-    a2 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-    a2.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
-    stitchfilenames = [thisfolder/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a1.stitchfilenames]
-    a2.readstitchresult(filenames=stitchfilenames)
+      a2 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+      a2.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
+      stitchfilenames = [thisfolder/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a1.stitchfilenames]
+      a2.readstitchresult(filenames=stitchfilenames)
 
-    pscale = a1.pscale
-    assert pscale == a2.pscale
+      pscale = a1.pscale
+      assert pscale == a2.pscale
 
-    rtol = 1e-6
-    atol = 1e-6
-    for o1, o2 in zip(a1.overlaps, a2.overlaps):
-      x1, y1 = units.pixels(units.nominal_values(o1.stitchresult), pscale=pscale)
-      x2, y2 = units.pixels(units.nominal_values(o2.stitchresult), pscale=pscale)
-      assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
-      assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
+      rtol = 1e-6
+      atol = 1e-6
+      for o1, o2 in zip(a1.overlaps, a2.overlaps):
+        x1, y1 = units.pixels(units.nominal_values(o1.stitchresult), pscale=pscale)
+        x2, y2 = units.pixels(units.nominal_values(o2.stitchresult), pscale=pscale)
+        assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
+        assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
 
-    for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
-      assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
+      for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
+        assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
+    except:
+      self.saveoutput()
+      raise
+    finally:
+      self.removeoutput()
 
   def testStitchWritingReadingFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast"):
