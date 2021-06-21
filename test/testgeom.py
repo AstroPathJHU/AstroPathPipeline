@@ -39,7 +39,7 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
     s = GeomSample(root=thisfolder/"data", dbloadroot=dbloadroot, samp=SlideID)
     tumorfilename = s.csv("tumorGeometry")
     fieldfilename = s.csv("fieldGeometry")
-    reffolder = thisfolder/"reference"/"geom"/SlideID
+    reffolder = thisfolder/"reference"/"geom"/SlideID/"dbload"
     tumorreference = reffolder/tumorfilename.name
     fieldreference = reffolder/fieldfilename.name
 

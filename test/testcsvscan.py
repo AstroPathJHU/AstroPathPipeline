@@ -66,9 +66,9 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
         for module in "annowarp", "geom", "geomcell":
           filename = logfolder/f"{SlideID}-{module}.log"
           assert stack.enter_context(job_lock.JobLock(filename))
-          with open(filename, "w") as f:
-            f.write(f"0;0;{SlideID};{module} {astropathversion};1900-01-01 00:00:00\n")
-            f.write(f"0;0;{SlideID};end {module};1900-01-01 00:00:00\n")
+          with open(filename, "w", newline="") as f:
+            f.write(f"0;0;{SlideID};{module} {astropathversion};1900-01-01 00:00:00\r\n")
+            f.write(f"0;0;{SlideID};end {module};1900-01-01 00:00:00\r\n")
   
       sampledef = testroot/"sampledef.csv"
       assert stack.enter_context(job_lock.JobLock(sampledef))
