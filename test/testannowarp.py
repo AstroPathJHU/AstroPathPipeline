@@ -34,7 +34,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/"annowarp.log",
+      thisfolder/"test_for_jenkins"/"annowarp"/"logfiles"/"annowarp.log",
     ] + sum(([
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"annotations.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"annowarp.csv",

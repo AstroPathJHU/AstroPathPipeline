@@ -1,4 +1,4 @@
-import more_itertools, os, pathlib
+import contextlib, job_lock, more_itertools, os, pathlib
 
 from astropath.slides.csvscan.csvscancohort import CsvScanCohort
 from astropath.slides.csvscan.csvscansample import LoadFile, CsvScanSample
@@ -46,8 +46,8 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/SlideID/"logfiles"/f"{SlideID}-csvscan.log"
       for SlideID in ("M206",)
     ] + [
-      thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/"dbload"/"project0_loadfiles.csv"
-      thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/"logfiles"/"csvscan.log"
+      thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/"dbload"/"project0_loadfiles.csv",
+      thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"/"logfiles"/"csvscan.log",
     ]
 
   def setUp(self):

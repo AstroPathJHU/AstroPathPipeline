@@ -134,9 +134,10 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     try:
       a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
       readfilename = thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
+      writefilename = a.csv("align")
 
       a.readalignments(filename=readfilename)
-      a.writealignments(filename=a.csv("align"))
+      a.writealignments(filename=writefilename)
       rows = a.readtable(writefilename, AlignmentResult, checkorder=True, checknewlines=True)
       targetrows = a.readtable(readfilename, AlignmentResult, checkorder=True, checknewlines=True)
       for row, target in more_itertools.zip_equal(rows, targetrows):

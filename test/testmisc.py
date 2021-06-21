@@ -1,4 +1,4 @@
-import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage, unittest
+import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
