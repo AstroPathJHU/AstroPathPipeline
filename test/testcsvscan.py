@@ -1,4 +1,4 @@
-import contextlib, job_lock, more_itertools, os, pathlib, shutil
+import contextlib, job_lock, more_itertools, os, pathlib
 
 from astropath.slides.csvscan.csvscancohort import CsvScanCohort
 from astropath.slides.csvscan.csvscansample import LoadFile, CsvScanSample
