@@ -1,4 +1,5 @@
 import abc
+from dataclassy import dataclass
 from dataclassy.dataclass import DataClassMeta
 
 class DataClassTransformArgsMeta(DataClassMeta):
@@ -6,10 +7,16 @@ class DataClassTransformArgsMeta(DataClassMeta):
     newargs, newkwargs = cls.transforminitargs(*args, **kwargs)
     return super().__call__(*newargs, **newkwargs)
 
-class DataClassTransformArgs(metaclass=DataClassTransformArgsMeta):
+class DataClassTransformArgsBase(metaclass=DataClassTransformArgsMeta):
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
     return args, kwargs
+
+@dataclass(meta=DataClassTransformArgsMeta)
+class DataClassTransformArgs(DataClassTransformArgsBase): pass
+
+@dataclass(meta=DataClassTransformArgsMeta, frozen=True)
+class DataClassTransformArgsFrozen(DataClassTransformArgsBase): pass
 
 class MetaDataAnnotation:
   __notgiven = object()
@@ -40,14 +47,26 @@ class DataClassWithMetaDataMeta(DataClassMeta):
 
     return super().__new__(mcs, name, bases, dict_, **kwargs)
 
-class DataClassWithMetaData(metaclass=DataClassWithMetaDataMeta):
+class DataClassWithMetaDataBase:
   @classmethod
   def metadata(cls, fieldname):
     return cls.__annotationmetadata__.get(fieldname, {})
 
+@dataclass(meta=DataClassWithMetaDataMeta)
+class DataClassWithMetaData(DataClassWithMetaDataBase): pass
+
+@dataclass(meta=DataClassWithMetaDataMeta, frozen=True)
+class DataClassWithMetaDataFrozen(DataClassWithMetaDataBase): pass
+
 class MyDataClassMeta(abc.ABCMeta, DataClassTransformArgsMeta, DataClassWithMetaDataMeta):
   pass
 
-class MyDataClass(DataClassTransformArgs, DataClassWithMetaData, metaclass=MyDataClassMeta):
+class MyDataClassBase(DataClassTransformArgsBase, DataClassWithMetaDataBase): pass
+
+class MyDataClass(MyDataClassBase, DataClassTransformArgs, DataClassWithMetaData, metaclass=MyDataClassMeta):
+  def __post_init__(self, *, readingfromfile=False):
+    pass
+
+class MyDataClassFrozen(MyDataClassBase, DataClassTransformArgsFrozen, DataClassWithMetaDataFrozen, metaclass=MyDataClassMeta):
   def __post_init__(self, *, readingfromfile=False):
     pass
