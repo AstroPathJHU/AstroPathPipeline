@@ -1,4 +1,4 @@
-import contextlib, more_itertools, numpy as np, os, pathlib, re
+import more_itertools, numpy as np, os, pathlib, re
 
 from astropath.shared.csvclasses import Region
 from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
