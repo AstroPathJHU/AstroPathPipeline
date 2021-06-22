@@ -1,7 +1,7 @@
 import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
-from ..utilities.dataclasses import MyDataClass, MyDataClassFrozen
+from ..utilities.dataclasses import MyDataClassFrozen
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
