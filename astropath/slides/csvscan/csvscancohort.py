@@ -1,4 +1,4 @@
-import contextlib, job_lock, re
+import contextlib, datetime, job_lock, re
 from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
 from ...shared.sample import SampleDef
@@ -146,9 +146,9 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   @classmethod
   def getlogfile(cls, *, logroot, **workflowkwargs):
     return logroot/"logfiles"/f"{cls.logmodule()}.log"
-  def joblock(self, **kwargs):
+  def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     self.mainlog.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(self.mainlog.with_suffix(".lock"), **kwargs)
+    return job_lock.JobLock(self.mainlog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, **kwargs)
 
   @classmethod
   def usegloballogger(cls): return True

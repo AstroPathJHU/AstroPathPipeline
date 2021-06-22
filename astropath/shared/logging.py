@@ -1,4 +1,4 @@
-import collections, functools, job_lock, logging, os, pathlib, traceback
+import collections, datetime, functools, job_lock, logging, os, pathlib, traceback
 
 class MyLogger:
   r"""
@@ -225,7 +225,7 @@ class MyFileHandler:
     self.__handler.setFormatter(self.__formatter)
     self.__handler.setLevel(self.__level)
     self.__handler.filters = self.__filters
-    with job_lock.JobLockAndWait(self.__lockfilename, 1, task=f"logging to {self.__filename}"):
+    with job_lock.JobLockAndWait(self.__lockfilename, 1, corruptfiletimeout=datetime.timedelta(minutes=10), task=f"logging to {self.__filename}"):
       self.__handler.handle(record)
 
   def __repr__(self):

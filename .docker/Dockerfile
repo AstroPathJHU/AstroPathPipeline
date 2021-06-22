@@ -1,33 +1,51 @@
 #comes with python + git and some other utilities
-FROM circleci/python:3.6.12 AS base
+FROM ubuntu:20.04 AS base
+
+#https://stackoverflow.com/a/25908200/5228524
+#https://github.com/CircleCI-Public/circleci-dockerfiles/blob/eda702fe560b258138d3a895c5d397f4a2cdfcd0/python/images/3.6.12/Dockerfile#L83
+#https://dev.to/emmanuelnk/using-sudo-without-password-prompt-as-non-root-docker-user-52bg
+RUN apt-get update && \
+      apt-get -y install sudo
+
+RUN adduser --disabled-password --gecos '' astropath && \
+    adduser astropath sudo && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+USER astropath
 
 #libvips stuff is from https://github.com/TailorBrands/docker-libvips/blob/f64952af6871fb963934b7454f7edf5b6738f4b8/8.6.1/Dockerfile
 #gdal stuff is from https://github.com/OSGeo/gdal/blob/f6689b653338502de4150f491864553894c37410/gdal/docker/ubuntu-full/Dockerfile
 
 #make the home directory editable
-RUN sudo mkdir -p /home/circleci/.cache/pip /home/circleci/.cache/matplotlib
-RUN sudo chmod -R a+w /home/circleci
-
-#apt-get stuff
-RUN sudo apt-get install equivs
-
-ARG JAVA_VERSION=11
+RUN sudo mkdir -p /home/astropath/.cache/pip /home/astropath/.cache/matplotlib
+RUN sudo chmod -R a+w /home/astropath
 
 RUN sudo apt-get update && \
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   #for gdal
   ant \
   #for vips
+  automake \
   bison \
+  build-essential \
+  ccache \
   cdbs \
+  cmake \
+  curl \
   debhelper \
   #for gdal
   default-libmysqlclient-dev \
   #for vips
   dh-autoreconf \
+  #for build
+  equivs \
+  #for vips
   fftw3-dev \
   flex \
   gettext \
+  #for build
+  git \
+  #for vips
   gtk-doc-tools \
   #for gdal
   libarmadillo-dev \
@@ -97,6 +115,7 @@ RUN sudo apt-get update && \
   #for gdal
   libpoppler-private-dev \
   libpq-dev \
+  libpython3-dev \
   #for vips
   librsvg2-dev \
   #for gdal
@@ -115,15 +134,29 @@ RUN sudo apt-get update && \
   libxml2-dev \
   #for gdal
   libzstd-dev \
-  openjdk-"$JAVA_VERSION"-jdk \
   #for vips
   pkg-config \
+  #for astropath
+  python-is-python3 \
+  python3-pip \
   #for gdal
+  rsync \
   sqlite3 \
   swig \
   unixodbc-dev \
+  unzip \
+  wget \
+  zip \
   #for vips
   zlib1g-dev
+
+#for gdal
+ARG JAVA_VERSION=11
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-"$JAVA_VERSION"-jdk
+
+RUN sudo apt-get autoclean && \
+    sudo apt-get autoremove && \
+    sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 FROM base as texlive
 
@@ -148,9 +181,6 @@ RUN cd /tmp && \
     sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 from base as libvips
-
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    automake build-essential curl
 
 ENV LIBVIPS_VERSION_MAJOR 8
 ENV LIBVIPS_VERSION_MINOR 6
@@ -198,10 +228,6 @@ RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install enumitem
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install lineno
 
 from base as gdal
-
-RUN sudo apt-get update && \
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    cmake
 
 # Build likbkea
 ARG KEA_VERSION=1.4.13
@@ -316,24 +342,22 @@ RUN if echo "$WITH_FILEGDB" | grep -Eiq "^(y(es)?|1|true)$"  ; then ( \
   && sudo rm -rf FileGDB_API_1_5_1-64gcc51.tar.gz \
   ) ; fi
 
-RUN sudo apt-get update -y \
-    && sudo apt-get install -y --fix-missing --no-install-recommends rsync ccache \
-    && sudo rm -rf /var/lib/apt/lists/*
 ARG RSYNC_REMOTE
 
 ARG WITH_DEBUG_SYMBOLS=no
 
 # Build PROJ
-ARG PROJ_VERSION=7.2.1
+ARG PROJ_VERSION=8.0.1
 ARG PROJ_INSTALL_PREFIX=/usr/local
 COPY ./bh-proj.sh /buildscripts/bh-proj.sh
 RUN sudo -E bash /buildscripts/bh-proj.sh
 
 # Build GDAL
 ARG JAVA_VERSION=11
-ARG GDAL_VERSION=v3.2.1
+ARG GDAL_VERSION=v3.3.0
 ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
+ENV LD_LIBRARY_PATH=/build/usr/local/lib/
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
 RUN sudo -E bash /buildscripts/bh-gdal.sh
 
@@ -352,16 +376,22 @@ COPY --from=gdal  /build_gdal_python/usr/ /usr/
 COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
-ENV ASTROPATH_DEPENDENCY_COMMIT 3423b20d26e9a33a83c95db264f1f855d90a2ba7
 ARG GITHUB_TOKEN
 
 #add python packages
-RUN sudo pip install --upgrade pip
+RUN sudo pip3 install --upgrade pip
+
+ENV ASTROPATH_DEPENDENCY_COMMIT 3f92b08d252a29188519145157f7016c8b3965ca
+
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
-  sudo pip install "astropath[all] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
+  sudo git clone https://github.com/AstropathJHU/AstroPathPipelinePrivate && \
+  cd AstroPathPipelinePrivate && \
+  sudo git fetch && \
+  sudo git checkout "${ASTROPATH_DEPENDENCY_COMMIT}" && \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
-RUN sudo pip uninstall -y astropath
+RUN sudo pip3 install ./AstroPathPipelinePrivate[all]
+RUN sudo pip3 uninstall -y astropath
 
 from base as final
 
@@ -373,7 +403,7 @@ COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/share/proj/ ${PROJ_INSTALL_PREFIX
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/include/ ${PROJ_INSTALL_PREFIX}/include/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/bin/ ${PROJ_INSTALL_PREFIX}/bin/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/lib/ ${PROJ_INSTALL_PREFIX}/lib/
-copy --from=python_packages /usr/local/lib/python3.6/site-packages/ /usr/local/lib/python3.6/site-packages/
+copy --from=python_packages /usr/local/lib/python3.8/dist-packages/ /usr/local/lib/python3.8/dist-packages/
 copy --from=latex_packages /usr/local/texlive/ /usr/local/texlive/
 RUN sudo ldconfig
 #RUN sudo projsync --system-directory --all
@@ -387,7 +417,7 @@ COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
 ENV CLASSPATH="/usr/share/java/jackcess-1.1.14.jar:/usr/share/java/commons-logging-1.1.1.jar:/usr/share/java/commons-lang-2.4.jar"
-ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
+ENV PATH=/usr/local/texlive/bin/x86_64-linux:/home/astropath/.local/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
 
 CMD ["/bin/bash"]

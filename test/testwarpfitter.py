@@ -7,7 +7,7 @@ import pathlib, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
-working_dir = folder/'warpfitter_test_for_jenkins'
+working_dir = folder/'test_for_jenkins'/'warpfitter'
 
 args = Namespace(
         mode='warp_fit',

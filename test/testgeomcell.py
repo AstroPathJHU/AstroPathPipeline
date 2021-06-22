@@ -11,14 +11,14 @@ class TestGeomCell(TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"geomcell_test_for_jenkins"/SlideID/"geom"/filename.name
+      thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/filename.name
       for SlideID in ("M206",)
       for filename in (thisfolder/"reference"/"geomcell"/SlideID/"geom").iterdir()
     ]
 
   def testGeomCell(self, SlideID="M206", units="safe"):
     root = thisfolder/"data"
-    geomroot = thisfolder/"geomcell_test_for_jenkins"
+    geomroot = thisfolder/"test_for_jenkins"/"geomcell"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rerun-finished"]
     GeomCellCohort.runfromargumentparser(args=args)
 

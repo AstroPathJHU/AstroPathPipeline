@@ -687,7 +687,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
   @methodtools.lru_cache()
   def __getvertices(self, **kwargs):
     """
-    read in the original vertices from vertices.csv
+    read in the original vertices from the xml file
     """
     vertices = self.getXMLpolygonannotations(**kwargs)[2]
     return [

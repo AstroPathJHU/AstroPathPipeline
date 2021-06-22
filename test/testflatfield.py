@@ -12,9 +12,9 @@ slide_ID = 'M21_1'
 
 #First make a flatfield
 flatfield_logger.info('TESTING make_flatfield')
-make_flatfield_workingdir_name = 'make_flatfield_test_for_jenkins'
-make_flatfield_working_dir = folder/make_flatfield_workingdir_name
-make_flatfield_working_dir.mkdir(exist_ok=True)
+make_flatfield_workingdir_name = 'make_flatfield'
+make_flatfield_working_dir = folder/'test_for_jenkins'/make_flatfield_workingdir_name
+make_flatfield_working_dir.mkdir(exist_ok=True, parents=True)
 args = Namespace(
         mode='make_flatfield',
         filetype='raw',
@@ -45,9 +45,9 @@ with open(flp,'w') as fp :
 
 #Then apply it to the same images
 flatfield_logger.info('TESTING apply_flatfield')
-apply_flatfield_workingdir_name = 'apply_flatfield_test_for_jenkins'
-apply_flatfield_working_dir = folder/apply_flatfield_workingdir_name
-apply_flatfield_working_dir.mkdir(exist_ok=True)
+apply_flatfield_workingdir_name = 'apply_flatfield'
+apply_flatfield_working_dir = folder/'test_for_jenkins'/apply_flatfield_workingdir_name
+apply_flatfield_working_dir.mkdir(exist_ok=True, parents=True)
 args = Namespace(
         mode='apply_flatfield',
         filetype='raw',

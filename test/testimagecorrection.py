@@ -8,9 +8,9 @@ import pathlib, glob, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
-workingdir_name = 'image_correction_test_for_jenkins'
-working_dir = folder/workingdir_name
-working_dir.mkdir(exist_ok=True)
+workingdir_name = 'image_correction'
+working_dir = folder/'test_for_jenkins'/workingdir_name
+working_dir.mkdir(exist_ok=True, parents=True)
 multilayer_ref_path = folder/'reference'/'imagecorrection'/'multilayer'
 singlelayer_ref_path = folder/'reference'/'imagecorrection'/'singlelayer'
 dims = (1004,1344,35)
