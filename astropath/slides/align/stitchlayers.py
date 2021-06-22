@@ -4,9 +4,9 @@ Aligning layers with respect to each other is not fully implemented yet.
 
 import itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 
+from ...shared.logging import dummylogger
 from ...shared.overlap import OverlapCollection
 from ...utilities import units
-from ...utilities.misc import dummylogger
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .overlap import LayerAlignmentResult

@@ -1,7 +1,7 @@
 import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
-from ..utilities.dataclasses import MyDataClass
+from ..utilities.dataclasses import MyDataClassFrozen
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
@@ -13,7 +13,7 @@ from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter,
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .workflowdependency import WorkflowDependencySlideID
 
-class SampleDef(MyDataClass):
+class SampleDef(MyDataClassFrozen):
   """
   The sample definition from sampledef.csv in the cohort folder.
   To construct it, you can give all the arguments, or you can give
@@ -90,7 +90,7 @@ class SampleDef(MyDataClass):
   def __bool__(self):
     return bool(self.isGood)
 
-class APIDDef(MyDataClass):
+class APIDDef(MyDataClassFrozen):
   SlideID: str
   SampleName: str
   Project: int

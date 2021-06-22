@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, itertools, logging, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, PIL.Image, re, scipy.stats, sys, uncertainties as unc
+import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, PIL.Image, re, scipy.stats, sys, uncertainties as unc
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -287,11 +287,3 @@ def checkwindowsnewlines(filename):
       raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
     if re.search(r"\r\r", contents):
       raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
-
-dummylogger = logging.getLogger("dummy")
-dummylogger.addHandler(logging.NullHandler())
-dummylogger.warningglobal = dummylogger.warning
-
-printlogger = logging.getLogger("print")
-printlogger.addHandler(logging.StreamHandler())
-printlogger.warningglobal = printlogger.warning

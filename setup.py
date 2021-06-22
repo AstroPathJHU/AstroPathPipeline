@@ -47,7 +47,7 @@ setupkwargs = dict(
   install_requires = [
     "contextlib2>=0.6.0",
     "cvxpy",
-    "dataclassy>=0.10.0,<0.10.3",
+    "dataclassy>=0.10.0",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",

@@ -1,11 +1,12 @@
 import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
+from ...shared.logging import dummylogger
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
 from ...shared.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
-from ...utilities.misc import dict_product, dummylogger
+from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
 from ...utilities.units import ThingWithApscale, ThingWithPscale
 from ...utilities.units.dataclasses import distancefield

@@ -1,4 +1,4 @@
-import contextlib, more_itertools, numpy as np, os, pathlib, re
+import more_itertools, numpy as np, os, pathlib, re
 
 from astropath.shared.csvclasses import Region
 from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
@@ -7,7 +7,7 @@ from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohortInformTissueM
 from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.utilities import units
 
-from .testbase import assertAlmostEqual, temporarilyremove, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -119,10 +119,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     logroot = thisfolder/"test_for_jenkins"/"annowarp"
     maskroot = thisfolder/"reference"/"stitchmask"
     args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot), "--ignore-dependencies", "--rerun-finished"]
-    with contextlib.ExitStack() as stack:
-      for csv in "annotations", "regions", "vertices":
-        stack.enter_context(temporarilyremove(root/SlideID/"dbload"/f"{SlideID}_{csv}.csv"))
-      AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
+    AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
 
   def testConstraint(self, SlideID="M206"):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"reference"/"zoom", maskroot=thisfolder/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp")
