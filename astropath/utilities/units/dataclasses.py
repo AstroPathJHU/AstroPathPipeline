@@ -1,5 +1,5 @@
 import dataclassy, functools, methodtools, numbers, numpy as np
-from ..dataclasses import MetaDataAnnotation, MyDataClass
+from ..dataclasses import MetaDataAnnotation, MyDataClass, MyDataClassFrozen
 from ..misc import floattoint
 from .core import ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
@@ -140,38 +140,23 @@ class DataClassWithDistances(MyDataClass):
 
     super().__post_init__(*args, readingfromfile=readingfromfile, **kwargs)
 
-class DataClassWithPscale(DataClassWithDistances, ThingWithPscale):
-  pscale: float
-  @property
-  def pscale(self): return self.__pscale
-  @pscale.setter
-  def pscale(self, pscale): self.__pscale = pscale
-  pscale = pscalefield(pscale)
-DataClassWithPscale.__defaults__.pop("pscale")
+def makedataclasswithpscale(classname, pscalename, thingwithpscalecls):
+  class cls(DataClassWithDistances, thingwithpscalecls): pass
+  cls.__name__ = classname
+  cls.__annotations__[pscalename] = float
+  varname = f"_{classname}__{pscalename}"
+  def getter(self): return getattr(self, varname)
+  def setter(self, pscale): setattr(self, varname, pscale)
+  setattr(cls, pscalename, pscalefield(property(getter, setter)))
+  cls = dataclassy.dataclass(cls)
+  cls.__defaults__.pop(pscalename)
 
-class DataClassWithQpscale(DataClassWithDistances, ThingWithQpscale):
-  qpscale: float
-  @property
-  def qpscale(self): return self.__qpscale
-  @qpscale.setter
-  def qpscale(self, qpscale): self.__qpscale = qpscale
-  qpscale = pscalefield(qpscale)
-DataClassWithQpscale.__defaults__.pop("qpscale")
+  class frozen(cls, MyDataClassFrozen): pass
+  frozen.__name__ = f"{classname}Frozen"
 
-class DataClassWithApscale(DataClassWithDistances, ThingWithApscale):
-  apscale: float
-  @property
-  def apscale(self): return self.__apscale
-  @apscale.setter
-  def apscale(self, apscale): self.__apscale = apscale
-  apscale = pscalefield(apscale)
-DataClassWithApscale.__defaults__.pop("apscale")
+  return cls, frozen
 
-class DataClassWithImscale(DataClassWithDistances, ThingWithImscale):
-  imscale: float
-  @property
-  def imscale(self): return self.__imscale
-  @imscale.setter
-  def imscale(self, imscale): self.__imscale = imscale
-  imscale = pscalefield(imscale)
-DataClassWithImscale.__defaults__.pop("imscale")
+DataClassWithPscale, DataClassWithPscaleFrozen = makedataclasswithpscale("DataClassWithPscale", "pscale", ThingWithPscale)
+DataClassWithQpscale, DataClassWithQpscaleFrozen = makedataclasswithpscale("DataClassWithQpscale", "qpscale", ThingWithQpscale)
+DataClassWithApscale, DataClassWithApscaleFrozen = makedataclasswithpscale("DataClassWithApscale", "apscale", ThingWithApscale)
+DataClassWithImscale, DataClassWithImscaleFrozen = makedataclasswithpscale("DataClassWithImscale", "imscale", ThingWithImscale)
