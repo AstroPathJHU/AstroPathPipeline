@@ -12,9 +12,6 @@ class DataClassTransformArgs(metaclass=DataClassTransformArgsMeta):
   def transforminitargs(cls, *args, **kwargs):
     return args, kwargs
 
-@dataclass(meta=DataClassTransformArgsMeta, frozen=True)
-class DataClassTransformArgsFrozen(DataClassTransformArgs): pass
-
 class MetaDataAnnotation:
   __notgiven = object()
   def __init__(self, defaultvalue=__notgiven, **kwargs):
@@ -49,9 +46,6 @@ class DataClassWithMetaData(metaclass=DataClassWithMetaDataMeta):
   def metadata(cls, fieldname):
     return cls.__annotationmetadata__.get(fieldname, {})
 
-@dataclass(meta=DataClassWithMetaDataMeta, frozen=True)
-class DataClassWithMetaDataFrozen(DataClassWithMetaData): pass
-
 class MyDataClassMeta(abc.ABCMeta, DataClassTransformArgsMeta, DataClassWithMetaDataMeta):
   pass
 
@@ -59,4 +53,7 @@ class MyDataClass(DataClassTransformArgs, DataClassWithMetaData, metaclass=MyDat
   def __post_init__(self, *, readingfromfile=False):
     pass
 
-class MyDataClassFrozen(MyDataClass, DataClassTransformArgsFrozen, DataClassWithMetaDataFrozen, metaclass=MyDataClassMeta): pass
+@dataclass(meta=MyDataClassMeta, frozen=True)
+class MyDataClassFrozen(MyDataClass): pass
+@dataclass(meta=MyDataClassMeta, unsafe_hash=True)
+class MyDataClassUnsafeHash(MyDataClass): pass

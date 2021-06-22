@@ -90,7 +90,7 @@ class SampleDef(MyDataClassFrozen):
   def __bool__(self):
     return bool(self.isGood)
 
-class APIDDef(MyDataClass):
+class APIDDef(MyDataClassFrozen):
   SlideID: str
   SampleName: str
   Project: int
