@@ -287,11 +287,3 @@ def checkwindowsnewlines(filename):
       raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
     if re.search(r"\r\r", contents):
       raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
-
-dummylogger = logging.getLogger("dummy")
-dummylogger.addHandler(logging.NullHandler())
-dummylogger.warningglobal = dummylogger.warning
-
-printlogger = logging.getLogger("print")
-printlogger.addHandler(logging.StreamHandler())
-printlogger.warningglobal = printlogger.warning

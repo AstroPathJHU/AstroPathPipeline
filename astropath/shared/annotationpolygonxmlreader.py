@@ -1,9 +1,10 @@
 import argparse, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
-from ..utilities.misc import dummylogger, floattoint, printlogger
+from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .csvclasses import Annotation, Region, Vertex
+from .logging import dummylogger, printlogger
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
 
@@ -289,7 +290,7 @@ def main(args=None):
   add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    writeannotationcsvs(**args.__dict__, logger=printlogger)
+    writeannotationcsvs(**args.__dict__, logger=printlogger("annotations"))
 
 def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
@@ -301,5 +302,5 @@ def checkannotations(args=None):
   add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    XMLPolygonAnnotationReader(**args.__dict__, logger=printlogger).getXMLpolygonannotations()
+    XMLPolygonAnnotationReader(**args.__dict__, logger=printlogger("annotations")).getXMLpolygonannotations()
   print(f"{args.xmlfile} looks good!")

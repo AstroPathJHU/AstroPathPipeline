@@ -49,35 +49,44 @@ class MyLogger:
   """
   def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
-    self.root = pathlib.Path(root)
+    self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
     self.uselogfiles = uselogfiles
     self.nentered = 0
     self.threshold = threshold
-    if mainlog is None:
-      mainlog = self.root/"logfiles"/f"{self.module}.log"
-    if samplelog is None:
-      self.root
-      self.samp.SlideID
-      self.module
-      samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
-    self.mainlog = pathlib.Path(mainlog)
-    self.samplelog = pathlib.Path(samplelog)
+    if uselogfiles:
+      if root is None:
+        raise ValueError("Have to provide non-None root if using log files")
+      if mainlog is None:
+        mainlog = self.root/"logfiles"/f"{self.module}.log"
+      if samplelog is None:
+        self.root
+        self.samp.SlideID
+        self.module
+        samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
+      mainlog = pathlib.Path(mainlog)
+      samplelog = pathlib.Path(samplelog)
+
+    self.mainlog = mainlog
+    self.samplelog = samplelog
     self.imagelog = None if imagelog is None else pathlib.Path(imagelog)
     self.isglobal = isglobal
     self.reraiseexceptions = reraiseexceptions
-    if uselogfiles and (self.Project is None or self.Cohort is None):
-      raise ValueError("Have to give a non-None Project and Cohort when writing to log files")
-
-    if not uselogfiles:
-      self.__enter__()
+    if uselogfiles and (self.samp is None or self.Project is None or self.Cohort is None):
+      raise ValueError("Have to give a non-None SlideID, Project and Cohort when writing to log files")
 
   @property
-  def SlideID(self): return self.samp.SlideID
+  def SlideID(self):
+    if self.samp is None: return None
+    return self.samp.SlideID
   @property
-  def Project(self): return self.samp.Project
+  def Project(self):
+    if self.samp is None: return None
+    return self.samp.Project
   @property
-  def Cohort(self): return self.samp.Cohort
+  def Cohort(self):
+    if self.samp is None: return None
+    return self.samp.Cohort
 
   @property
   def formatter(self):
@@ -87,6 +96,14 @@ class MyLogger:
     )
   def __enter__(self):
     if self.nentered == 0:
+      self.root
+      self.module
+      self.Project
+      self.Cohort
+      self.SlideID
+      self.uselogfiles
+      self.threshold
+      self.isglobal
       self.logger = logging.getLogger(f"{self.root}.{self.module}.{self.Project}.{self.Cohort}.{self.SlideID}.{self.uselogfiles}.{self.threshold}.{self.isglobal}")
       self.logger.setLevel(self.threshold)
 
@@ -159,6 +176,9 @@ class MyLogger:
 
   def __getattr__(self, attr):
     if attr == "logger":
+      if not self.uselogfiles:
+        self.__enter__()
+        return getattr(self, attr)
       raise RuntimeError("Have to use this in a context manager if you want to uselogfiles")
     return getattr(self.logger, attr)
   def warningglobal(self, *args, **kwargs):
@@ -239,5 +259,13 @@ def __getlogger(*, module, root, samp, uselogfiles, threshold, isglobal, mainlog
 
 def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None):
   from .sample import SampleDef
-  samp = SampleDef(root=root, samp=samp, apidfile=apidfile)
+  if samp is not None:
+    samp = SampleDef(root=root, samp=samp, apidfile=apidfile)
   return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+
+dummylogger = logging.getLogger("dummy")
+dummylogger.addHandler(logging.NullHandler())
+dummylogger.warningglobal = dummylogger.warning
+
+def printlogger(module):
+  return getlogger(module=module, root=None, samp=None)

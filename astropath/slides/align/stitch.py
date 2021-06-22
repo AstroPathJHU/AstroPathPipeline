@@ -1,9 +1,10 @@
 import abc, collections, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
+from ...shared.logging import dummylogger
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.rectangle import Rectangle, rectangledict, RectangleList
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation, MyDataClass
-from ...utilities.misc import dummylogger, floattoint, weightedstd
+from ...utilities.misc import floattoint, weightedstd
 from ...utilities.tableio import writetable
 from .field import Field, FieldOverlap
 

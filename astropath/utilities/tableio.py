@@ -1,7 +1,8 @@
 import abc, contextlib, csv, dataclasses, dataclassy, datetime, pathlib
 
+from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
-from .misc import checkwindowsnewlines, dummylogger
+from .misc import checkwindowsnewlines
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """
