@@ -3,7 +3,7 @@ from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.misc import floattoint
 from ..utilities.tableio import datefield, optionalfield, readtable
-from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, Polygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
@@ -126,7 +126,7 @@ def constantsdict(filename, *, pscale=None, apscale=None, qpscale=None):
 
   return dct
 
-class RectangleFile(DataClassWithPscale):
+class RectangleFile(DataClassWithPscaleFrozen):
   """
   Info about a rectangle im3 file (used for sanity checking the
   HPF info in the annotations).

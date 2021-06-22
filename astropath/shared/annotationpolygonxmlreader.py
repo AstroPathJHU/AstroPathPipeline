@@ -1,6 +1,6 @@
 import argparse, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib
 from ..utilities import units
-from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
+from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .csvclasses import Annotation, Region, Vertex
@@ -8,7 +8,7 @@ from .logging import dummylogger, printlogger
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
 
-class AllowedAnnotation(MyDataClass):
+class AllowedAnnotation(MyDataClassFrozen):
   name: str = MetaDataAnnotation(readfunction=str.lower)
   layer: int
   color: str

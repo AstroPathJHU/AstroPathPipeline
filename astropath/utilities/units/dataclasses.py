@@ -151,7 +151,15 @@ def makedataclasswithpscale(classname, pscalename, thingwithpscalecls):
   cls = dataclassy.dataclass(cls)
   cls.__defaults__.pop(pscalename)
 
-  class frozen(cls, MyDataClassFrozen): pass
+  finishedinitvarname = f"_{classname}Frozen__finishedinit"
+  class frozen(cls, MyDataClassFrozen):
+    def __post_init__(self, *args, **kwargs):
+      super().__post_init__(*args, **kwargs)
+      object.__setattr__(self, finishedinitvarname, True)
+  def frozensetter(self, pscale):
+    if getattr(self, finishedinitvarname, False): raise AttributeError("Frozen class")
+    object.__setattr__(self, varname, pscale)
+  setattr(frozen, pscalename, pscalefield(property(getter, frozensetter)))
   frozen.__name__ = f"{classname}Frozen"
 
   return cls, frozen
