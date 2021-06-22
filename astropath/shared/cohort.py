@@ -204,6 +204,8 @@ class Cohort(CohortBase, RunFromArgumentParser):
       "slideidfilters": [],
       "samplefilters": [],
     }
+    if dct["dry_run"]:
+      kwargs["uselogfiles"] = False
     regex = dct.pop("sampleregex")
     if regex is not None:
       kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
