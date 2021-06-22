@@ -1,7 +1,7 @@
 import abc, contextlib, csv, dataclasses, dataclassy, datetime, pathlib
 
 from ..shared.logging import dummylogger
-from .dataclasses import MetaDataAnnotation, MyDataClassBase
+from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import checkwindowsnewlines
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
@@ -44,8 +44,8 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
       fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
     reader = csv.DictReader(f, fieldnames=fieldnames)
     Row = rowclass
-    if not issubclass(Row, (MyDataClassBase)):
-      raise TypeError(f"{Row} should inherit from {MyDataClassBase}")
+    if not issubclass(Row, (MyDataClass)):
+      raise TypeError(f"{Row} should inherit from {MyDataClass}")
     if checkorder:
       columnnames = list(reader.fieldnames)
       fieldnames = [field for field in dataclassy.fields(Row) if field in columnnames]
@@ -105,8 +105,8 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
         + "\n  ".join(_.__name__ for _ in badclasses)
       )
 
-  if not issubclass(rowclass, MyDataClassBase):
-    raise TypeError(f"{rowclass} should inherit from {MyDataClassBase}")
+  if not issubclass(rowclass, MyDataClass):
+    raise TypeError(f"{rowclass} should inherit from {MyDataClass}")
 
   fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
 
@@ -144,8 +144,8 @@ def asrow(obj, *, dict_factory=dict):
   """
   loosely inspired by https://github.com/python/cpython/blob/77c623ba3d084e99d68c30f368bd7fbd7f175b60/Lib/dataclasses.py#L1052
   """
-  if not isinstance(obj, MyDataClassBase):
-    raise TypeError("asrow() should be called on MyDataClassBase instances")
+  if not isinstance(obj, MyDataClass):
+    raise TypeError("asrow() should be called on MyDataClass instances")
 
   result = []
   for f in dataclassy.fields(obj):
