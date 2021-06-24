@@ -1,6 +1,9 @@
 #class for shared constant variables
 class Const :
     @property
+    def DEFAULT_N_THREADS(self) :
+        return 10 #default number of threads to use for parallelized portions of the code
+    @property
     def IMAGE_MASKING_SUBDIR_NAME(self) :
         return 'image_masking' #name of the image masking subdirectory in the workingdirectory (if masking is run)
     @property

@@ -20,9 +20,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pathlib, methodtools, random
 
-#some file-scope constants
-DEFAULT_N_THREADS = 10
-
 class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
     """
     Main class to handle creating the meanimage for a slide
@@ -30,7 +27,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),et_offset_file=None,skip_masking=False,n_threads=DEFAULT_N_THREADS,**kwargs) :
+    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),et_offset_file=None,skip_masking=False,n_threads=CONST.DEFAULT_N_THREADS,**kwargs) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
         self.__workingdirpath = workingdir
@@ -177,8 +174,8 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         p.add_argument('--skip_masking', action='store_true',
                         help='''Add this flag to entirely skip masking out the background regions of the images as they get added
                         [use this argument to completely skip the background thresholding and masking]''')
-        p.add_argument('--n_threads', type=int, default=DEFAULT_N_THREADS,
-                        help=f'Number of threads to use for parallelized portions of the code (default={DEFAULT_N_THREADS})')
+        p.add_argument('--n_threads', type=int, default=CONST.DEFAULT_N_THREADS,
+                        help=f'Number of threads to use for parallelized portions of the code (default={CONST.DEFAULT_N_THREADS})')
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
