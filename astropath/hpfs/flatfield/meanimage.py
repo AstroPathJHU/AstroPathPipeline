@@ -159,7 +159,7 @@ class MeanImage :
                 normalized_masked_im = normalized_im*mask*layers_to_add[np.newaxis,np.newaxis,:]
                 self.__image_stack+=normalized_masked_im
                 self.__image_squared_stack+=np.power(normalized_masked_im,2)
-                self.__mask_stack+=mask
+                self.__mask_stack+=mask*layers_to_add[np.newaxis,np.newaxis,:]
                 self.__n_images_read+=1
                 self.__n_images_stacked_by_layer+=layers_to_add
                 stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
