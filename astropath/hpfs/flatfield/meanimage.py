@@ -84,14 +84,14 @@ class MeanImage :
         with cd(workingdirpath) :
             write_image_to_file(self.__mean_image,f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
             write_image_to_file(self.__image_squared_stack,f'{slide_id}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
-            write_image_to_file(self.__std_err_of_meanimage,f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+            write_image_to_file(self.__std_err_of_mean_image,f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
             if self.__mask_stack is not None :
                 write_image_to_file(self.__mask_stack,f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
         self.__logger.info(f'Making plots of image layers and collecting them in the summary pdf....')
         #save .pngs of the mean image/mask stack etc. layers
         plotdir_path = workingdirpath / CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
         plot_image_layers(self.__mean_image,f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
-        plot_image_layers(self.__std_err_of_meanimage,f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
+        plot_image_layers(self.__std_err_of_mean_image,f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
         if self.__mask_stack is not None :
             plot_image_layers(self.__mask_stack,f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
         #collect the plots that were just saved in a .pdf file from a LatexSummary
@@ -195,5 +195,5 @@ class MeanImage :
         zero_fixed_mask_stack = np.copy(self.__mask_stack)
         zero_fixed_mask_stack[zero_fixed_mask_stack==0] = np.min(zero_fixed_mask_stack[zero_fixed_mask_stack!=0])
         self.__mean_image = self.__image_stack/zero_fixed_mask_stack
-        self.__std_err_of_meanimage = np.sqrt(np.abs(self.__image_squared_stack/zero_fixed_mask_stack-(np.power(self.__mean_image,2)))/zero_fixed_mask_stack)
+        self.__std_err_of_mean_image = np.sqrt(np.abs(self.__image_squared_stack/zero_fixed_mask_stack-(np.power(self.__mean_image,2)))/zero_fixed_mask_stack)
 
