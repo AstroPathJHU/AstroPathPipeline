@@ -325,6 +325,7 @@ def mountedpathtopath(filename):
     mounttarget = mount.device
     if mountpoint == mounttarget: continue
     if mounttarget.startswith("auto"): continue
+    if "/" not in mounttarget and "\\" not in mounttarget: continue
     mountpoint = pathlib.Path(mountpoint)
     mounttarget = mountedpath(mounttarget)
     if not is_relative_to(filename, mounttarget): continue
@@ -355,7 +356,7 @@ def guesspathtype(path):
     except NotImplementedError:
       return pathlib.PureWindowsPath(path)
   else:
-    assert False, path
+    raise ValueError(f"Can't guess the path type for {path}")
 
 def mountedpath(filename):
   if filename.startswith("//"):
