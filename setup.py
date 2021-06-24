@@ -47,7 +47,7 @@ setupkwargs = dict(
   install_requires = [
     "contextlib2>=0.6.0",
     "cvxpy",
-    "dataclassy>=0.10.0,<0.10.3",
+    "dataclassy>=0.10.0",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",
@@ -65,12 +65,12 @@ setupkwargs = dict(
     "scikit-learn>=0.17",
     "scipy>=0.12",
     "setuptools-scm",
-    "slurm-python-utils>=1.2.2",
+    "slurm-python-utils>=1.2.9",
     "uncertainties",
   ],
   extras_require = {
     "test": ["beautifulsoup4", "flake8", "gitpython", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
-    "gdal": ["gdal>=3.2.1"],
+    "gdal": ["gdal>=3.3.0"],
     "vips": ["pyvips"],
   },
   package_data = {

@@ -1,5 +1,6 @@
-import contextlib, cv2, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, skimage
+import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, skimage
 
+from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels
@@ -27,7 +28,7 @@ class ZoomSampleBase(ReadRectanglesDbload):
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
-class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample):
+class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, SelectLayersArgumentParser):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
@@ -233,7 +234,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         with tile:
           for layer in self.layers:
             filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
-            with job_lock.JobLock(filename.with_suffix(".lock"), outputfiles=[filename], checkoutputfiles=False) as lock:
+            with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
               assert lock
               if not filename.exists():
                 break
@@ -339,7 +340,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         #save the tile images
         for layer in self.layers:
           filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
-          with job_lock.JobLock(filename.with_suffix(".lock"), outputfiles=[filename], checkoutputfiles=False) as lock:
+          with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
             assert lock
             if filename.exists():
               self.logger.info(f"  {filename.name} was already created")

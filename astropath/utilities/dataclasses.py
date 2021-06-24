@@ -1,4 +1,5 @@
 import abc
+from dataclassy import dataclass
 from dataclassy.dataclass import DataClassMeta
 
 class DataClassTransformArgsMeta(DataClassMeta):
@@ -51,3 +52,8 @@ class MyDataClassMeta(abc.ABCMeta, DataClassTransformArgsMeta, DataClassWithMeta
 class MyDataClass(DataClassTransformArgs, DataClassWithMetaData, metaclass=MyDataClassMeta):
   def __post_init__(self, *, readingfromfile=False):
     pass
+
+@dataclass(meta=MyDataClassMeta, frozen=True)
+class MyDataClassFrozen(MyDataClass): pass
+@dataclass(meta=MyDataClassMeta, unsafe_hash=True)
+class MyDataClassUnsafeHash(MyDataClass): pass

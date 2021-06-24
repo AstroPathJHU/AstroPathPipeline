@@ -1,19 +1,19 @@
 import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
-from ..utilities.dataclasses import MyDataClass
+from ..utilities.dataclasses import MyDataClassFrozen
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .workflowdependency import WorkflowDependencySlideID
 
-class SampleDef(MyDataClass):
+class SampleDef(MyDataClassFrozen):
   """
   The sample definition from sampledef.csv in the cohort folder.
   To construct it, you can give all the arguments, or you can give
@@ -90,7 +90,7 @@ class SampleDef(MyDataClass):
   def __bool__(self):
     return bool(self.isGood)
 
-class APIDDef(MyDataClass):
+class APIDDef(MyDataClassFrozen):
   SlideID: str
   SampleName: str
   Project: int
@@ -613,9 +613,9 @@ class WorkflowSample(SampleBase, WorkflowDependencySlideID):
   def workflowdependencies(self):
     return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses()]
 
-  def joblock(self, **kwargs):
+  def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     self.samplelog.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), **kwargs)
+    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, **kwargs)
 
 class DbloadSampleBase(SampleBase, DbloadArgumentParser):
   """
@@ -877,7 +877,7 @@ class CellPhenotypeSampleBase(SampleBase):
   def phenotypeQAQCtablesfolder(self):
     return self.phenotypefolder/"Results"/"QA_QC"/"Tables_QA_QC"
 
-class SelectLayersSample(SampleBase, SelectLayersArgumentParser):
+class SelectLayersSample(SampleBase):
   """
   Base class for any sample that needs a layer selection.
   """

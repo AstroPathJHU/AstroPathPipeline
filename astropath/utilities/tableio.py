@@ -1,7 +1,8 @@
 import abc, contextlib, csv, dataclasses, dataclassy, datetime, pathlib
 
+from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
-from .misc import checkwindowsnewlines, dummylogger
+from .misc import checkwindowsnewlines
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """
@@ -43,7 +44,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
       fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
     reader = csv.DictReader(f, fieldnames=fieldnames)
     Row = rowclass
-    if not issubclass(Row, MyDataClass):
+    if not issubclass(Row, (MyDataClass)):
       raise TypeError(f"{Row} should inherit from {MyDataClass}")
     if checkorder:
       columnnames = list(reader.fieldnames)

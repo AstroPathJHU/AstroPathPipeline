@@ -16,7 +16,7 @@ class TestDeepZoom(TestBaseSaveOutput):
   def testDeepZoom(self, SlideID="M206", units="safe", **kwargs):
     root = thisfolder/"data"
     zoomroot = thisfolder/"reference"/"zoom"
-    deepzoomroot = thisfolder/"deepzoom_test_for_jenkins"
+    deepzoomroot = thisfolder/"test_for_jenkins"/"deepzoom"
     args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     DeepZoomCohort.runfromargumentparser(args)
 
@@ -41,7 +41,7 @@ class TestDeepZoom(TestBaseSaveOutput):
         new = readtable(zoomlist, DeepZoomFile, checkorder=True, checknewlines=True)
         ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/zoomlist.name, DeepZoomFile, checkorder=True, checknewlines=True)
         for resultnew, resultref in more_itertools.zip_equal(new, ref):
-          resultnew.name = pathlib.PurePosixPath(resultnew.name.relative_to(thisfolder))
+          resultnew.name = pathlib.PurePosixPath(resultnew.name.relative_to(thisfolder/"test_for_jenkins"))
           resultref.name = pathlib.PurePosixPath(resultref.name.relative_to(resultref.name.parent.parent.parent.parent.parent))
           assertAlmostEqual(resultnew, resultref, rtol=0, atol=0)
 
@@ -53,14 +53,17 @@ class TestDeepZoom(TestBaseSaveOutput):
 
   @property
   def outputfilenames(self):
-    return sum(
+    return [
+      thisfolder/"test_for_jenkins"/"deepzoom"/"logfiles"/"deepzoom.log",
+    ] + sum(
       (
         [
-          thisfolder/"deepzoom_test_for_jenkins"/SlideID/"L1_files"/filename.parent.name/filename.name
+          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"L1_files"/filename.parent.name/filename.name
           for filename in (thisfolder/"reference"/"deepzoom"/SlideID/"L1_files").glob("*/*.png")
         ] + [
-          thisfolder/"deepzoom_test_for_jenkins"/SlideID/"L1.dzi",
-          thisfolder/"deepzoom_test_for_jenkins"/SlideID/f"{SlideID}_zoomlist.csv",
+          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"L1.dzi",
+          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"zoomlist.csv",
+          thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"logfiles"/f"{SlideID}-deepzoom.log",
         ]
         for SlideID in ("M206",)
       ), []
