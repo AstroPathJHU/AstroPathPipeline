@@ -1,4 +1,5 @@
 #imports
+from .meanimagesample import MeanImageSample
 from .flatfield import Flatfield
 from .config import CONST
 from ...shared.sample import WorkflowSample
@@ -31,6 +32,20 @@ class BatchFlatfieldSample(WorkflowSample) :
     @property
     def inputfiles(self,**kwargs) :
         return [self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
+    def run(self,**kwargs) :
+        pass
+    @classmethod
+    def getoutputfiles(cls,**kwargs) :
+        return []
+    @classmethod
+    def defaultunits(cls) :
+        return MeanImageSample.defaultunits()
+    @classmethod
+    def logmodule(cls) : 
+        return "batchflatfield"
+    @classmethod
+    def workflowdependencyclasses(cls):
+        return super().workflowdependencyclasses()
 
 class BatchFlatfieldCohort(WorkflowCohort) :
     """
@@ -51,7 +66,7 @@ class BatchFlatfieldCohort(WorkflowCohort) :
         #actually create the flatfield after all the samples have been added
         self.__flatfield.create_flatfield_model()
         #write out the flatfield model
-        self.__flatfield.write_output(self.workingdir)
+        self.__flatfield.write_output(self.__batchID,self.workingdir)
 
     def runsample(self,sample,**kwargs) :
         """
@@ -80,12 +95,6 @@ class BatchFlatfieldCohort(WorkflowCohort) :
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'batchID': parsed_args_dict.pop('batchID'), 
         }
-    @classmethod
-    def defaultunits(cls) :
-        return "fast"
-    @classmethod
-    def logmodule(cls) : 
-        return "batchflatfield"
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
