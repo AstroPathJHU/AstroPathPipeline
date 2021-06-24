@@ -18,7 +18,7 @@ from ...utilities.config import CONST as UNIV_CONST
 from multiprocessing import get_context
 import numpy as np
 import matplotlib.pyplot as plt
-import pathlib, methodtools
+import pathlib, methodtools, random
 
 #some file-scope constants
 DEFAULT_N_THREADS = 10
@@ -467,8 +467,12 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
             top_saturation_keys.add(lmr.image_key)
             if len(top_saturation_keys)>=10 :
                 break
+        #if fewer than twenty total plots are being made, add up to ten random rectangles to plot
+        random_keys = set()
+        if len((top_blur_keys | top_saturation_keys)) < 20 :
+            random_keys = set([r.file.rstrip(UNIV_CONST.IM3_EXT) for r in random.sample(self.rectangles,min(10,20-len((top_blur_keys | top_saturation_keys)),len(self.rectangles)))])
         #recompute the masks for those images and write out the masking plots for them
-        rects_to_plot = [r for r in self.rectangles if r.file.rstrip(UNIV_CONST.IM3_EXT) in (top_blur_keys | top_saturation_keys)]
+        rects_to_plot = [r for r in self.rectangles if r.file.rstrip(UNIV_CONST.IM3_EXT) in (top_blur_keys | top_saturation_keys | random_keys)]
         if self.__n_threads>1 :
             proc_results = {}
             with get_context('spawn').Pool(processes=self.__n_threads) as pool :

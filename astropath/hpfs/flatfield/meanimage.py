@@ -128,7 +128,10 @@ class MeanImage :
         """
         #make sure the masking files exist for every image, otherwise throw a warning and remove the associated image from the list of those to stack
         rectangles_to_stack = rectangles
-        keys_with_full_masks = set([lmr.image_key for lmr in readtable(maskingdirpath/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,LabelledMaskRegion)])
+        if (maskingdirpath/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME).is_file() :
+            keys_with_full_masks = set([lmr.image_key for lmr in readtable(maskingdirpath/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,LabelledMaskRegion)])
+        else :
+            keys_with_full_masks = set()
         for r in rectangles :
             imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
             if not (maskingdirpath / f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}').is_file() :
