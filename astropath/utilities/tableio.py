@@ -1,4 +1,4 @@
-import abc, contextlib, csv, dataclasses, dataclassy, datetime, pathlib
+import abc, contextlib, csv, dataclasses, dataclassy, datetime
 
 from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass

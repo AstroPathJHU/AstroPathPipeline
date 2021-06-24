@@ -305,11 +305,12 @@ def pathtomountedpath(filename):
     if bestmount is None or is_relative_to(mountpoint, bestmountpoint):
       bestmount = mount
       bestmountpoint = mountpoint
+      bestmounttarget = mounttarget
 
   if bestmount is None:
     return filename
 
-  bestmounttarget = mountedpath(bestmount.device)
+  bestmounttarget = mountedpath(bestmounttarget)
 
   return bestmounttarget/filename.relative_to(bestmountpoint)
 
@@ -318,24 +319,26 @@ def mountedpathtopath(filename):
     #please note that the AstroPath framework is NOT tested on cygwin
     return pathlib.Path(subprocess.check_output(["cygpath", "-u", filename]).strip().decode("utf-8"))
 
-  bestmount = bestmounttarget = None
+  bestmount = bestmountexists = bestresult = None
   for mount in psutil.disk_partitions(all=True):
     mountpoint = mount.mountpoint
     mounttarget = mount.device
-    if mounttarget == mountpoint: continue
-    if mountpoint.startswith("auto"): continue
+    if mountpoint == mounttarget: continue
+    if mounttarget.startswith("auto"): continue
+    mountpoint = pathlib.Path(mountpoint)
     mounttarget = mountedpath(mounttarget)
     if not is_relative_to(filename, mounttarget): continue
-    if bestmount is None or is_relative_to(mounttarget, bestmounttarget):
+    result = mountpoint/filename.relative_to(mounttarget)
+    mountexists = result.exists()
+    if bestmount is None or mountexists and not bestmountexists:
       bestmount = mount
-      bestmounttarget = mounttarget
+      bestresult = result
+      bestmountexists = mountexists
 
   if bestmount is None:
     return filename
 
-  bestmountpoint = pathlib.Path(bestmount.mountpoint)
-
-  return bestmountpoint/filename.relative_to(bestmounttarget)
+  return bestresult
 
 def guesspathtype(path):
   if isinstance(path, pathlib.PurePath):
@@ -361,4 +364,4 @@ def mountedpath(filename):
     except NotImplementedError:
       return pathlib.PureWindowsPath(filename)
   else:
-    return pathlib.Path(filename)
+    return guesspathtype(filename)
