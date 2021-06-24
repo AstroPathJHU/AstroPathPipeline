@@ -1,4 +1,5 @@
-import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, PIL.Image, re, scipy.stats, sys, uncertainties as unc
+import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
+if sys.platform != "cygwin": import psutil
 
 def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
@@ -263,11 +264,11 @@ def dict_product(dct):
 def is_relative_to(path1, path2):
   if sys.version_info >= (3, 9):
     return path1.is_relative_to(path2)
-    try:
-      path1.relative_to(*path2)
-      return True
-    except ValueError:
-      return False
+  try:
+    path1.relative_to(path2)
+    return True
+  except ValueError:
+    return False
 
 def commonroot(*paths, __niter=0):
   assert __niter <= 100*len(paths)
@@ -287,3 +288,77 @@ def checkwindowsnewlines(filename):
       raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
     if re.search(r"\r\r", contents):
       raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
+
+def pathtomountedpath(filename):
+  if sys.platform == "cygwin":
+    #please note that the AstroPath framework is NOT tested on cygwin
+    return pathlib.PureWindowsPath(subprocess.check_output(["cygpath", "-w", filename]).strip().decode("utf-8"))
+
+  bestmount = bestmountpoint = None
+  for mount in psutil.disk_partitions(all=True):
+    mountpoint = mount.mountpoint
+    mounttarget = mount.device
+    if mountpoint == mounttarget: continue
+    if mounttarget.startswith("auto"): continue
+    mountpoint = pathlib.Path(mountpoint)
+    if not is_relative_to(filename, mountpoint): continue
+    if bestmount is None or is_relative_to(mountpoint, bestmountpoint):
+      bestmount = mount
+      bestmountpoint = mountpoint
+
+  if bestmount is None:
+    return filename
+
+  bestmounttarget = mountedpath(bestmount.device)
+
+  return bestmounttarget/filename.relative_to(bestmountpoint)
+
+def mountedpathtopath(filename):
+  if sys.platform == "cygwin":
+    #please note that the AstroPath framework is NOT tested on cygwin
+    return pathlib.Path(subprocess.check_output(["cygpath", "-u", filename]).strip().decode("utf-8"))
+
+  bestmount = bestmounttarget = None
+  for mount in psutil.disk_partitions(all=True):
+    mountpoint = mount.mountpoint
+    mounttarget = mount.device
+    if mounttarget == mountpoint: continue
+    if mountpoint.startswith("auto"): continue
+    mounttarget = mountedpath(mounttarget)
+    if not is_relative_to(filename, mounttarget): continue
+    if bestmount is None or is_relative_to(mounttarget, bestmounttarget):
+      bestmount = mount
+      bestmounttarget = mounttarget
+
+  if bestmount is None:
+    return filename
+
+  bestmountpoint = pathlib.Path(bestmount.mountpoint)
+
+  return bestmountpoint/filename.relative_to(bestmounttarget)
+
+def guesspathtype(path):
+  if isinstance(path, pathlib.PurePath):
+    return path
+  if pathlib.Path(path).exists(): return pathlib.Path(path)
+  if "/" in path and "\\" not in path:
+    try:
+      return pathlib.PosixPath(path)
+    except NotImplementedError:
+      return pathlib.PurePosixPath(path)
+  elif "\\" in path and "/" not in path:
+    try:
+      return pathlib.WindowsPath(path)
+    except NotImplementedError:
+      return pathlib.PureWindowsPath(path)
+  else:
+    assert False, path
+
+def mountedpath(filename):
+  if filename.startswith("//"):
+    try:
+      return pathlib.WindowsPath(filename)
+    except NotImplementedError:
+      return pathlib.PureWindowsPath(filename)
+  else:
+    return pathlib.Path(filename)

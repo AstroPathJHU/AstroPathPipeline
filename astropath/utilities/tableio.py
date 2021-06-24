@@ -2,7 +2,7 @@ import abc, contextlib, csv, dataclasses, dataclassy, datetime, pathlib
 
 from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
-from .misc import checkwindowsnewlines
+from .misc import checkwindowsnewlines, guesspathtype, mountedpathtopath, pathtomountedpath
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """
@@ -170,25 +170,9 @@ def field_size_limit_context(limit):
     csv.field_size_limit(oldlimit)
 
 def pathfield(*args, **metadata):
-  def guesspathtype(path):
-    if isinstance(path, pathlib.PurePath):
-      return path
-    if pathlib.Path(path).exists(): return pathlib.Path(path)
-    if "/" in path and "\\" not in path:
-      try:
-        return pathlib.PosixPath(path)
-      except NotImplementedError:
-        return pathlib.PurePosixPath(path)
-    elif "\\" in path and "/" not in path:
-      try:
-        return pathlib.WindowsPath(path)
-      except NotImplementedError:
-        return pathlib.PureWindowsPath(path)
-    else:
-      assert False, path
-
   metadata = {
-    "readfunction": guesspathtype,
+    "readfunction": lambda x: mountedpathtopath(guesspathtype(x)),
+    "writefunction": pathtomountedpath,
     **metadata,
   }
 
