@@ -54,5 +54,11 @@ class Const :
     @property
     def MEANIMAGE_SUMMARY_PDF_FILENAME(self) :
         return 'meanimage_summary.pdf' #name of the .pdf file containing plots of layers of the meanimage for this sample, etc.
+    @property
+    def TOP_FLATFIELD_DIRNAME(self) :
+        return 'Flatfield'
+    @property
+    def FLATFIELD_DIRNAME_STEM(self) :
+        return 'flatfield_BatchID_'
 
 CONST=Const()

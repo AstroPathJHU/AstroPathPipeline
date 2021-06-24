@@ -51,7 +51,9 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
         self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
         self.__output_files.append(self.__workingdirpath / CONST.FIELDS_USED_CSV_FILENAME)
-        self.__output_files.append(self.__workingdirpath / CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME)
+        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
+        if not self.__skip_masking :
+            self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
 
     def initrectangles(self) :
         """
