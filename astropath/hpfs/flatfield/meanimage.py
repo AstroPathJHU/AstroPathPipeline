@@ -5,9 +5,10 @@ from .utilities import FieldLog
 from .config import CONST 
 from ..image_masking.image_mask import ImageMask
 from ..image_masking.utilities import LabelledMaskRegion
+from ...shared.logging import dummylogger
 from ...utilities.img_file_io import write_image_to_file, smooth_image_worker, smooth_image_with_uncertainty_worker
 from ...utilities.tableio import readtable,writetable
-from ...utilities.misc import cd, dummylogger
+from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 from multiprocessing.pool import Pool
 import numpy as np

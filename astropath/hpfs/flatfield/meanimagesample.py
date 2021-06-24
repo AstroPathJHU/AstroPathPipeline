@@ -251,18 +251,18 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 for ri,r in enumerate(self.rectangles) :
                     self.logger.info(f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....')
                     with r.using_image() as im :
-                        proc_results[r] = pool.apply_async(return_new_mask_labelled_regions,
+                        proc_results[(r.n,r.file)] = pool.apply_async(return_new_mask_labelled_regions,
                                                            (im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                                             self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
                                                             self.__image_masking_dirpath,
                                                            )
                                                           )
-                for rect,res in proc_results.items() :
+                for (rn,rfile),res in proc_results.items() :
                     try :
                         new_lmrs =res.get()
                         labelled_mask_regions+=new_lmrs
                     except Exception as e :
-                        warnmsg = f'WARNING: getting image mask for rectangle {rect.n} ({rect.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
+                        warnmsg = f'WARNING: getting image mask for rectangle {rn} ({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed '
                         warnmsg+= f'with the error "{e}" and this rectangle WILL BE SKIPPED when stacking images in the meanimage!'
                         self.logger.warning(warnmsg)
         #do the same as above except serially
@@ -399,21 +399,21 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 for ri,r in enumerate(self.tissue_edge_rects) :
                     self.logger.info(f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.tissue_edge_rects)})....')
                     with r.using_image() as im :
-                        proc_results[r] = pool.apply_async(get_background_thresholds_and_pixel_hists_for_rectangle_image,(im,))
-                for rect,res in proc_results.items() :
+                        proc_results[(r.n,r.file)] = pool.apply_async(get_background_thresholds_and_pixel_hists_for_rectangle_image,(im,))
+                for (rn,rfile),res in proc_results.items() :
                     try :
                         thresholds, hists = res.get()
                         for li,t in enumerate(thresholds) :
                             if self.__et_offset_file is not None :
-                                rectangle_data_table_entries.append(RectangleThresholdTableEntry(rect.n,li+1,int(t),t/self.__med_ets[li]))
+                                rectangle_data_table_entries.append(RectangleThresholdTableEntry(rn,li+1,int(t),t/self.__med_ets[li]))
                             else :
-                                rectangle_data_table_entries.append(RectangleThresholdTableEntry(rect.n,li+1,int(t),t/r.allexposuretimes[li]))
+                                rectangle_data_table_entries.append(RectangleThresholdTableEntry(rn,li+1,int(t),t/r.allexposuretimes[li]))
                         image_background_thresholds_by_layer[current_image_i,:] = thresholds
                         tissue_edge_layer_hists+=hists
-                        self.__field_logs.append(FieldLog(self.SlideID,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'edge','thresholding'))
+                        self.__field_logs.append(FieldLog(self.SlideID,rfile.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),'edge','thresholding'))
                         current_image_i+=1
                     except Exception as e :
-                        warnmsg = f'WARNING: finding thresholds for rectangle {rect.n} ({rect.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
+                        warnmsg = f'WARNING: finding thresholds for rectangle {rn} ({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed '
                         warnmsg+= f'with the error "{e}" and this rectangle WILL BE SKIPPED when finding thresholds for the overall slide!'
                         self.logger.warning(warnmsg)
         #run the thresholding/histogram function serially in this current single process
@@ -475,7 +475,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                 for ri,r in enumerate(rects_to_plot) :
                     self.logger.info(f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots ({ri+1} of {len(rects_to_plot)})....')
                     with r.using_image() as im :
-                        proc_results[r] = pool.apply_async(save_plots_for_image,
+                        proc_results[(r.n,r.file)] = pool.apply_async(save_plots_for_image,
                                                            (im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                                             self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
                                                             r.allexposuretimes,
@@ -483,11 +483,11 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                                                             self.__image_masking_dirpath,
                                                            )
                                                           )
-                for rect,res in proc_results.items() :
+                for (rn,rfile),res in proc_results.items() :
                     try :
                         res.get()
                     except Exception as e :
-                        warnmsg = f'WARNING: saving masking plots for rectangle {rect.n} ({rect.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
+                        warnmsg = f'WARNING: saving masking plots for rectangle {rn} ({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed '
                         warnmsg+= f'with the error "{e}"'
                         self.logger.warning(warnmsg)
         #do the same as above except serially
