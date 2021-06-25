@@ -4,7 +4,7 @@ from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
-from ...shared.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
+from ...shared.sample import DbloadSample, GeomSampleBase, ParallelSample, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
 from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
@@ -19,7 +19,7 @@ class GeomLoadField(Field, GeomLoadRectangle):
 class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, WorkflowSample):
+class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample):
   segmentationorder = ["Tumor", "Immune"]
   ignoresegmentations = []
   def celltype(self, layer):
@@ -72,52 +72,71 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   def defaultunits(cls):
     return "fast_microns"
 
-  def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea=None):
+  def rungeomcell(self, *, minarea=None, **kwargs):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
-    if not _debugdraw: _onlydebug = False
-    nfields = len(self.rectangles)
     if minarea is None: minarea = (3 * self.onemicron)**2
-    for i, field in enumerate(self.rectangles, start=1):
-      with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
-        if not lock: continue
-        if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): continue
-        self.logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
-        geomload = []
-        pxvec = units.nominal_values(field.pxvec)
-        with field.using_image() as im:
-          im = im.astype(np.uint32)
-          for imlayernumber, imlayer in more_itertools.zip_equal(self.layers, im.transpose(2, 0, 1)):
-            celltype = self.celltype(imlayernumber)
-            properties = skimage.measure.regionprops(imlayer)
-            for cellproperties in properties:
-              if not np.any(cellproperties.image):
-                assert False
-                continue
-              celllabel = cellproperties.label
-              if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-              polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembranelayer(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
-              if polygon is None: continue
-              if polygon.area < minarea: continue
-
-              box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
-              box += pxvec
-              box = box // self.onepixel * self.onepixel
-
-              geomload.append(
-                CellGeomLoad(
-                  field=field.n,
-                  ctype=celltype,
-                  n=celllabel,
-                  box=box,
-                  poly=polygon,
-                  pscale=self.pscale,
-                  apscale=self.apscale,
-                )
-              )
-
-        writetable(field.geomloadcsv, geomload, rowclass=CellGeomLoad)
+    kwargs.update({
+      "nfields": len(self.rectangles),
+      "minarea": minarea,
+      "logger": self.logger,
+      "layers": self.layers,
+      "celltypes": [self.celltype(imlayernumber) for imlayernumber in self.layers],
+      "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layers],
+      "pscale": self.pscale,
+      "apscale": self.apscale,
+      "unitsmode": units.currentmode,
+    })
+    with self.pool() as pool:
+      results = [
+        pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
+        for i, field in enumerate(self.rectangles, start=1)
+      ]
+      for r in results:
+        r.get()
 
   run = rungeomcell
+
+  @staticmethod
+  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsmode):
+    with units.setup_context(unitsmode), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
+      if not lock: return
+      if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): return
+      onepixel = units.onepixel(pscale)
+      if not _debugdraw: _onlydebug = False
+      logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
+      geomload = []
+      pxvec = units.nominal_values(field.pxvec)
+      with field.using_image() as im:
+        im = im.astype(np.uint32)
+        for imlayernumber, imlayer, celltype, ismembranelayer in more_itertools.zip_equal(layers, im.transpose(2, 0, 1), celltypes, arelayersmembrane):
+          properties = skimage.measure.regionprops(imlayer)
+          for cellproperties in properties:
+            if not np.any(cellproperties.image):
+              assert False
+              continue
+            celllabel = cellproperties.label
+            if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
+            polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=pscale, apscale=apscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+            if polygon is None: continue
+            if polygon.area < minarea: continue
+
+            box = np.array(cellproperties.bbox).reshape(2, 2) * onepixel * 1.0
+            box += pxvec
+            box = box // onepixel * onepixel
+
+            geomload.append(
+              CellGeomLoad(
+                field=field.n,
+                ctype=celltype,
+                n=celllabel,
+                box=box,
+                poly=polygon,
+                pscale=pscale,
+                apscale=apscale,
+              )
+            )
+
+      writetable(field.geomloadcsv, geomload, rowclass=CellGeomLoad)
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
