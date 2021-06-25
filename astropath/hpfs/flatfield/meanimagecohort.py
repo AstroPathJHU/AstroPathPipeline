@@ -17,6 +17,11 @@ class MeanImageCohort(Im3Cohort,WorkflowCohort) :
         self.skip_masking = skip_masking
         self.n_threads = n_threads
 
+    @classmethod
+    def initkwargsfromargumentparser(cls, parsed_args_dict):
+        return {**super().initkwargsfromargumentparser(parsed_args_dict),
+                **sampleclass.initkwargsfromargumentparser(parsed_args_dict)}
+
     @property
     def initiatesamplekwargs(self) :
         return {**super().initiatesamplekwargs,

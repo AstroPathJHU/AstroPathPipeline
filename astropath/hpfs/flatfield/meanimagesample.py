@@ -122,10 +122,6 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
             *(r.imagefile for r in self.rectangles),
         ]
     @property
-    def getoutputfiles(self) :
-        print(f'RUNNING GETOUTPUTFILES')
-        return self.__output_files
-    @property
     def mask_layer_groups(self) :
         if self.nlayers==35 :
             return UNIV_CONST.LAYER_GROUPS_35
@@ -187,6 +183,10 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
             'skip_masking': parsed_args_dict.pop('skip_masking'),
             'n_threads': parsed_args_dict.pop('n_threads'),
         }
+    @classmethod
+    def getoutputfiles(cls,**workflowkwargs) :
+        print(f'workflowkwargs = {workflowkwargs}')
+        return self.__output_files
     @classmethod
     def defaultunits(cls) :
         return "fast"
@@ -258,7 +258,7 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                                                           )
                 for (rn,rfile),res in proc_results.items() :
                     try :
-                        new_lmrs =res.get()
+                        new_lmrs = res.get()
                         labelled_mask_regions+=new_lmrs
                     except Exception as e :
                         warnmsg = f'WARNING: getting image mask for rectangle {rn} ({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed '
