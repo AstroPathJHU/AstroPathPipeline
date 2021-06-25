@@ -1,4 +1,4 @@
-import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, multiprocessing as mp, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
@@ -72,27 +72,44 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   def defaultunits(cls):
     return "fast_microns"
 
-  def rungeomcell(self, **kwargs):
+  def rungeomcell(self, *, minarea=None, **kwargs):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
-    for i, field in enumerate(self.rectangles, start=1):
-      self.rungeomcellfield(i, field, **kwargs)
+    nworkers = mp.cpu_count()
+    if minarea is None: minarea = (3 * self.onemicron)**2
+    kwargs.update({
+      "nfields": len(self.rectangles),
+      "minarea": minarea,
+      "logger": self.logger,
+      "layers": self.layers,
+      "celltypes": [self.celltype(imlayernumber) for imlayernumber in self.layers],
+      "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layers],
+      "pscale": self.pscale,
+      "apscale": self.apscale,
+      "unitsmode": units.currentmode,
+    })
+    with mp.get_context().Pool(nworkers) as pool:
+      results = [
+        pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
+        for i, field in enumerate(self.rectangles, start=1)
+      ]
+      for r in results:
+        r.get()
 
   run = rungeomcell
 
-  def rungeomcellfield(self, i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea=None):
-    with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
+  @staticmethod
+  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsmode):
+    with units.setup_context(unitsmode), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
       if not lock: return
       if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): return
+      onepixel = units.onepixel(pscale)
       if not _debugdraw: _onlydebug = False
-      nfields = len(self.rectangles)
-      if minarea is None: minarea = (3 * self.onemicron)**2
-      self.logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
+      logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
       geomload = []
       pxvec = units.nominal_values(field.pxvec)
       with field.using_image() as im:
         im = im.astype(np.uint32)
-        for imlayernumber, imlayer in more_itertools.zip_equal(self.layers, im.transpose(2, 0, 1)):
-          celltype = self.celltype(imlayernumber)
+        for imlayernumber, imlayer, celltype, ismembranelayer in more_itertools.zip_equal(layers, im.transpose(2, 0, 1), celltypes, arelayersmembrane):
           properties = skimage.measure.regionprops(imlayer)
           for cellproperties in properties:
             if not np.any(cellproperties.image):
@@ -100,13 +117,13 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
               continue
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-            polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembranelayer(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+            polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=pscale, apscale=apscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
             if polygon is None: continue
             if polygon.area < minarea: continue
 
-            box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
+            box = np.array(cellproperties.bbox).reshape(2, 2) * onepixel * 1.0
             box += pxvec
-            box = box // self.onepixel * self.onepixel
+            box = box // onepixel * onepixel
 
             geomload.append(
               CellGeomLoad(
@@ -115,8 +132,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
                 n=celllabel,
                 box=box,
                 poly=polygon,
-                pscale=self.pscale,
-                apscale=self.apscale,
+                pscale=pscale,
+                apscale=apscale,
               )
             )
 

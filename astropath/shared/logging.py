@@ -175,6 +175,8 @@ class MyLogger:
     return self.nentered == 0 and not self.reraiseexceptions
 
   def __getattr__(self, attr):
+    if attr in ("uselogfiles", "__enter__"):
+      raise AttributeError(f"{type(self).__name__} instance has no attribute '{attr}'")
     if attr == "logger":
       if not self.uselogfiles:
         self.__enter__()
