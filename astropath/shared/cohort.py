@@ -1,7 +1,7 @@
 import abc, datetime, job_lock, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
 from .sample import SampleDef
@@ -451,6 +451,17 @@ class PhenotypeFolderCohort(Cohort):
 
   @property
   def rootnames(self): return {"phenotyperoot", *super().rootnames}
+
+class ParallelCohort(Cohort, ParallelArgumentParser):
+  def __init__(self, *args, njobs, **kwargs):
+    self.__njobs = njobs
+    super().__init__(*args, **kwargs)
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "njobs": self.__njobs,
+    }
 
 class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
   def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):

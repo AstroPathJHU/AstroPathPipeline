@@ -1,10 +1,10 @@
-import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, multiprocessing as mp, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
-from ...shared.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
+from ...shared.sample import DbloadSample, GeomSampleBase, ParallelSample, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
 from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
@@ -19,7 +19,7 @@ class GeomLoadField(Field, GeomLoadRectangle):
 class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, WorkflowSample):
+class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample):
   segmentationorder = ["Tumor", "Immune"]
   ignoresegmentations = []
   def celltype(self, layer):
@@ -74,7 +74,6 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   def rungeomcell(self, *, minarea=None, **kwargs):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
-    nworkers = mp.cpu_count()
     if minarea is None: minarea = (3 * self.onemicron)**2
     kwargs.update({
       "nfields": len(self.rectangles),
@@ -87,7 +86,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       "apscale": self.apscale,
       "unitsmode": units.currentmode,
     })
-    with mp.get_context().Pool(nworkers) as pool:
+    with self.pool() as pool:
       results = [
         pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
         for i, field in enumerate(self.rectangles, start=1)
