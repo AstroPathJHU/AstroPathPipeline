@@ -44,19 +44,18 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         self.__meanimage = MeanImage(self.logger)
         #set up the list of output files to add to as the code runs (though some will always be required)
         self.__output_files = []
-        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
-        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
-        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
-        self.__output_files.append(self.__workingdirpath / CONST.FIELDS_USED_CSV_FILENAME)
-        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
-        if not self.__skip_masking :
-            self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
+
+    def inputfiles(self,**kwargs) :
+        return [*super().inputfiles(**kwargs),
+                *(r.imagefile for r in self.rectangles),
+               ]
 
     def initrectangles(self) :
         """
         Init Rectangles with additional transformations for exposure time differences after getting median exposure times and offsets
         (only if exposure time corrections aren't being skipped)
         """
+        self.enter_context(self.logger)
         super().initrectangles()
         self.__med_ets = None
         #find the median exposure times
@@ -116,11 +115,8 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
     nclip = UNIV_CONST.N_CLIP
     
     @property
-    def inputfiles(self,**kwargs) :
-        print(f'RUNNING INPUTFILES')
-        return super().inputfiles(**kwargs) + [
-            *(r.imagefile for r in self.rectangles),
-        ]
+    def workflowkwargs(self) :
+        return{**super().workflowkwargs,'skip_masking':self.__skip_masking}
     @property
     def mask_layer_groups(self) :
         if self.nlayers==35 :
@@ -157,6 +153,10 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
+        cls.addargumentstoparser(p)
+        return p
+    @classmethod
+    def addargumentstoparser(cls,p) :
         p.add_argument('--filetype',choices=['raw','flatWarp'],default='raw',
                         help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatWarp" files (extension {UNIV_CONST.FLATW_EXT})')
         p.add_argument('--workingdir', type=pathlib.Path, default=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),
@@ -172,7 +172,6 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
                         [use this argument to completely skip the background thresholding and masking]''')
         p.add_argument('--n_threads', type=int, default=CONST.DEFAULT_N_THREADS,
                         help=f'Number of threads to use for parallelized portions of the code (default={CONST.DEFAULT_N_THREADS})')
-        return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         return {
@@ -184,9 +183,16 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
             'n_threads': parsed_args_dict.pop('n_threads'),
         }
     @classmethod
-    def getoutputfiles(cls,**workflowkwargs) :
-        print(f'workflowkwargs = {workflowkwargs}')
-        return self.__output_files
+    def getoutputfiles(cls,SlideID,root,skip_masking,**otherworkflowkwargs) :
+        outputfiles = []
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / CONST.FIELDS_USED_CSV_FILENAME)
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
+        if not skip_masking :
+            outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
+        return outputfiles
     @classmethod
     def defaultunits(cls) :
         return "fast"

@@ -18,9 +18,20 @@ class MeanImageCohort(Im3Cohort,WorkflowCohort) :
         self.n_threads = n_threads
 
     @classmethod
+    def makeargumentparser(cls):
+        p = super().makeargumentparser()
+        cls.sampleclass.addargumentstoparser(p)
+        return p
+
+    @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         return {**super().initkwargsfromargumentparser(parsed_args_dict),
-                **sampleclass.initkwargsfromargumentparser(parsed_args_dict)}
+                'filetype': parsed_args_dict.pop('filetype'), 
+                'workingdir': parsed_args_dict.pop('workingdir'),
+                'et_offset_file': None if parsed_args_dict.pop('skip_exposure_time_correction') else parsed_args_dict.pop('exposure_time_offset_file'),
+                'skip_masking': parsed_args_dict.pop('skip_masking'),
+                'n_threads': parsed_args_dict.pop('n_threads'),
+               }
 
     @property
     def initiatesamplekwargs(self) :
@@ -31,6 +42,10 @@ class MeanImageCohort(Im3Cohort,WorkflowCohort) :
                 'skip_masking':self.skip_masking,
                 'n_threads':self.n_threads
                }
+
+    @property
+    def workflowkwargs(self) :
+        return{**super().workflowkwargs,'skip_masking':self.skip_masking}
 
 def main(args=None):
     MeanImageCohort.runfromargumentparser(args)
