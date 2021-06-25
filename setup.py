@@ -58,6 +58,7 @@ setupkwargs = dict(
     "numpy>=1.17.0",
     "opencv-python",
     "openpyxl",
+    "psutil;sys_platform!='cygwin'", #please note astropath is NOT been tested on cygwin
     "pyopencl",
     "reikna",
     "seaborn",
