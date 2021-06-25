@@ -1447,5 +1447,6 @@ class ParallelSample(SampleBase, ParallelArgumentParser):
   def njobs(self):
     return self.__njobs
   def pool(self):
-    nworkers = min(mp.cpu_count(), self.njobs)
+    nworkers = mp.cpu_count()
+    if self.njobs is not None: nworkers = min(nworkers, self.njobs)
     return mp.get_context().Pool(nworkers)
