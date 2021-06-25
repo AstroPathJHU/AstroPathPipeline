@@ -19,7 +19,7 @@ class TestGeomCell(TestBaseSaveOutput):
   def testGeomCell(self, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     geomroot = thisfolder/"test_for_jenkins"/"geomcell"
-    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rerun-finished"]
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rerun-finished", "--njobs", "2"]
     GeomCellCohort.runfromargumentparser(args=args)
 
     s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, selectrectangles=[1])

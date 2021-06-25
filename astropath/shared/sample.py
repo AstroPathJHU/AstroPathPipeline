@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
 from ..utilities.dataclasses import MyDataClassFrozen
@@ -6,7 +6,7 @@ from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
@@ -1433,3 +1433,20 @@ class TempDirSample(SampleBase, TempDirArgumentParser):
 
   def tempfile(self, *args, **kwargs):
     return self.enter_context(tempfile.NamedTemporaryFile(*args, dir=self.tempfolder, **kwargs))
+
+class ParallelSample(SampleBase, ParallelArgumentParser):
+  """
+  Base class for any sample that runs jobs in parallel
+  njobs: maximum number of jobs to use (default is no maximum)
+  """
+  def __init__(self, *args, njobs=None, **kwargs):
+    self.__njobs = njobs
+    super().__init__(*args, **kwargs)
+
+  @property
+  def njobs(self):
+    return self.__njobs
+  def pool(self):
+    nworkers = mp.cpu_count()
+    if self.njobs is not None: nworkers = min(nworkers, self.njobs)
+    return mp.get_context().Pool(nworkers)
