@@ -88,11 +88,13 @@ class MyLogger:
     if self.samp is None: return None
     return self.samp.Cohort
 
+  dateformat = "%Y-%m-%d %H:%M:%S"
+
   @property
   def formatter(self):
     return logging.Formatter(
       ";".join(str(_) for _ in (self.Project, self.Cohort, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None),
-      "%Y-%m-%d %H:%M:%S",
+      self.dateformat,
     )
   def __enter__(self):
     if self.nentered == 0:

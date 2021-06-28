@@ -1,5 +1,6 @@
-import contextlib, job_lock, more_itertools, os, pathlib
+import contextlib, datetime, job_lock, more_itertools, os, pathlib
 
+from astropath.shared.logger import MyLogger
 from astropath.slides.csvscan.csvscancohort import CsvScanCohort
 from astropath.slides.csvscan.csvscansample import LoadFile, CsvScanSample
 from astropath.utilities.misc import commonroot
@@ -51,8 +52,8 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
     ]
 
   def setUp(self):
-    super().setUp()
     stack = self.__stack = contextlib.ExitStack()
+    super().setUp()
     try:
       slideids = "M206",
   
@@ -63,12 +64,25 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for SlideID in slideids:
         logfolder = testroot/SlideID/"logfiles"
         logfolder.mkdir(exist_ok=True, parents=True)
-        for module in "annowarp", "geom", "geomcell":
+        for module in "annowarp", "geom", "geomcell", "csvscan":
+          now = datetime.datetime.now()
+          if module == "csvscan":
+            starttime = now - datetime.timedelta(seconds=45)
+          else:
+            starttime = now
+          endtime = starttime + datetime.timedelta(seconds=30)
+
           filename = logfolder/f"{SlideID}-{module}.log"
           assert stack.enter_context(job_lock.JobLock(filename))
           with open(filename, "w", newline="") as f:
-            f.write(f"0;0;{SlideID};{module} {astropathversion};1900-01-01 00:00:00\r\n")
-            f.write(f"0;0;{SlideID};end {module};1900-01-01 00:00:00\r\n")
+            f.write(f"0;0;{SlideID};{module} {astropathversion};{starttime.strftime(MyLogger.dateformat)}\r\n")
+            f.write(f"0;0;{SlideID};end {module};{endtime.strftime(MyLogger.dateformat)}\r\n")
+
+        dbloadfolder = testroot/SlideID/"dbload"
+        dbloadfolder.mkdir(exist_ok=True, parents=True)
+        (dbloadfolder/f"{SlideID}_loadfiles.csv").touch()
+
+        assert CsvScanSample.getrunstatus(SlideID=SlideID, root=dataroot, logroot=testroot, dbloadroot=testroot)
   
       sampledef = testroot/"sampledef.csv"
       assert stack.enter_context(job_lock.JobLock(sampledef))
