@@ -5,6 +5,7 @@ from .utilities import FieldLog
 from .config import CONST
 from ...shared.logging import dummylogger
 from ...utilities.img_file_io import get_raw_as_hwl, smooth_image_with_uncertainty_worker, write_image_to_file
+from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary
 import numpy as np
 
@@ -46,7 +47,7 @@ class Flatfield :
         self.__image_stack+=thismaskstack*thismeanimage
         self.__image_squared_stack+=thisimagesquaredstack
         #aggregate some metadata as well
-        self.__metadata_summaries+=readtable(sample.MetadataSummary,MetadataSummary)
+        self.__metadata_summaries+=readtable(sample.metadatasummary,MetadataSummary)
         self.__field_logs+=readtable(sample.fieldsused,FieldLog)
 
     def create_flatfield_model(self) :
@@ -65,7 +66,7 @@ class Flatfield :
         zero_fixed_mask_stack = np.copy(self.__mask_stack)
         zero_fixed_mask_stack[zero_fixed_mask_stack==0] = np.min(zero_fixed_mask_stack[zero_fixed_mask_stack!=0])
         mean_image = self.__image_stack/zero_fixed_mask_stack
-        std_err_of_mean_image = np.sqrt(np.abs(self.__image_squared_stack/zero_fixed_mask_stack-(np.power(self.__mean_image,2)))/zero_fixed_mask_stack)
+        std_err_of_mean_image = np.sqrt(np.abs(self.__image_squared_stack/zero_fixed_mask_stack-(np.power(mean_image,2)))/zero_fixed_mask_stack)
         #smooth the mean image with its uncertainty
         smoothed_mean_image,sm_mean_img_err = smooth_image_with_uncertainty_worker(mean_image,std_err_of_mean_image,100)
         #create the flatfield image layer-by-layer
@@ -83,9 +84,9 @@ class Flatfield :
                     self.__flatfield_image[:,:,li] = 1.0
                     self.__flatfield_image_err[:,:,li] = 1.0
                 else :
-                    layermean = np.average(self.smoothed_mean_image[:,:,li],weights=weights)
+                    layermean = np.average(smoothed_mean_image[:,:,li],weights=weights)
                     self.__flatfield_image[:,:,li]=smoothed_mean_image[:,:,li]/layermean
-                    self.__flatfield_image_err[:,:,li]=sm_mean_img_err/layermean
+                    self.__flatfield_image_err[:,:,li]=sm_mean_img_err[:,:,li]/layermean
 
     def write_output(self,batchID,workingdirpath) :
         """
@@ -105,13 +106,13 @@ class Flatfield :
         if len(self.__metadata_summaries)>0 :
             with cd(workingdirpath) :
                 writetable(f'{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',self.__metadata_summaries)
-        if len(self._field_logs)>0 :
+        if len(self.__field_logs)>0 :
             with cd(workingdirpath) :
                 writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}.csv',
-                           self._field_logs)
+                           self.__field_logs)
         #make some plots of the image layers and the pixel intensities
         plotdir_path = workingdirpath / f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_plots'
-        plotdir_path.mkdir()
+        plotdir_path.mkdir(exist_ok=True)
         plot_image_layers(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}',plotdir_path)
         plot_image_layers(self.__flatfield_image_err,f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_uncertainty',plotdir_path)
         plot_image_layers(self.__mask_stack,f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_mask_stack',plotdir_path)
@@ -119,8 +120,8 @@ class Flatfield :
         #make the summary PDF
         latex_summary = FlatfieldLatexSummary(self.__flatfield_image,plotdir_path,batchID)
         latex_summary.build_tex_file()
-        check = latex_summary.compile()
-        if check!=0 :
-            warnmsg = f'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
-            warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
-            self.__logger.warning(warnmsg)
+        #check = latex_summary.compile()
+        #if check!=0 :
+        #    warnmsg = f'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
+        #    warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+        #    self.__logger.warning(warnmsg)

@@ -30,7 +30,6 @@ class BatchFlatfieldSample(ReadRectanglesIm3FromXML,WorkflowSample) :
     @property
     def metadatasummary(self) :
         return self.meanimagefolder/f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}'
-    @property
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
     def run(self,**kwargs) :
@@ -65,12 +64,13 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
     def run(self,**kwargs) :
         #run all of the samples individually first like any other cohort (just checks that files exist)
         super().run(**kwargs)
-        #actually create the flatfield after all the samples have been added
-        self.logger.info(f'Creating final flatfield model for batch {self.__batchID:02d}....')
-        self.__flatfield.create_flatfield_model()
-        #write out the flatfield model
-        self.logger.info(f'Writing out flatfield model, plots, and summary pdf for batch {self.__batchID:02d}....')
-        self.__flatfield.write_output(self.workingdir)
+        with self.globallogger() as logger :
+            #actually create the flatfield after all the samples have been added
+            logger.info(f'Creating final flatfield model for batch {self.__batchID:02d}....')
+            self.__flatfield.create_flatfield_model()
+            #write out the flatfield model
+            logger.info(f'Writing out flatfield model, plots, and summary pdf for batch {self.__batchID:02d}....')
+            self.__flatfield.write_output(self.__batchID,self.workingdir)
 
     def runsample(self,sample,**kwargs) :
         """
@@ -80,9 +80,10 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         super().runsample(sample,**kwargs)
         #add the sample's information to the flatfield model that's being created
         msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch {self.__batchID:02d} '
-        msg+= f'({self.__samples_added+1} of {len(self.filteredsamples)})....'
-        self.logger.info(msg)
+        msg+= f'({self.__samples_added+1} of {len(list(self.filteredsamples))})....'
+        sample.logger.info(msg)
         self.__flatfield.add_sample(sample)
+        self.__samples_added+=1
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -101,6 +102,7 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
+        parsed_args_dict['skip_finished']=False
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'batchID': parsed_args_dict.pop('batchID'), 

@@ -123,17 +123,15 @@ class LatexSummaryWithPlotdir(LatexSummaryBase) :
     Class to make a LatexSummary with all of its plots in a single directory
     """
 
-    def __init__(self,*args,plot_dirpath,plot_patterns=['*']) :
+    def __init__(self,title,filename,plot_dirpath,plot_patterns=['*']) :
         """
         plot_dirpath  = path to directory holding the plots that will be used (.pdf file is saved in this directory's parent)
         plot_patterns = list of patterns to use for glob in finding all of the plots to remove if the compilation is successful
                        (default is everything in the directory)
-
-        other arguments are passed to LatexSummaryBase
         """
         self.__plot_dirpath = plot_dirpath
         self.__plot_patterns = plot_patterns
-        super().__init__(*args,plot_dirpath.parent)
+        super().__init__(title,filename,plot_dirpath.parent)
 
     @property
     def failed_compilation_tex_file_path(self) :
