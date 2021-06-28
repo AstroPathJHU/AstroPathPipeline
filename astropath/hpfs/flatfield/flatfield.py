@@ -120,8 +120,8 @@ class Flatfield :
         #make the summary PDF
         latex_summary = FlatfieldLatexSummary(self.__flatfield_image,plotdir_path,batchID)
         latex_summary.build_tex_file()
-        #check = latex_summary.compile()
-        #if check!=0 :
-        #    warnmsg = f'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
-        #    warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
-        #    self.__logger.warning(warnmsg)
+        check = latex_summary.compile()
+        if check!=0 :
+            warnmsg = f'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
+            warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+            self.__logger.warning(warnmsg)
