@@ -9,25 +9,24 @@ from .config import CONST
 from ..image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
 from ..image_masking.utilities import LabelledMaskRegion
 from ..image_masking.config import CONST as MASK_CONST
-from ...shared.sample import ReadRectanglesOverlapsIm3FromXML, WorkflowSample
+from ...shared.sample import ReadRectanglesOverlapsIm3FromXML, WorkflowSample, ParallelSample
 from ...shared.overlap import Overlap
 from ...utilities.img_file_io import LayerOffset
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary, ThresholdTableEntry
 from ...utilities.config import CONST as UNIV_CONST
-from multiprocessing import get_context
 import numpy as np
 import matplotlib.pyplot as plt
 import pathlib, methodtools, random
 
-class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
+class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,ParallelSample,WorkflowSample) :
     """
     Main class to handle creating the meanimage for a slide
     """
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),et_offset_file=None,skip_masking=False,n_threads=CONST.DEFAULT_N_THREADS,**kwargs) :
+    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),et_offset_file=None,skip_masking=False,**kwargs) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
         self.__workingdirpath = workingdir
@@ -38,12 +37,9 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         #set some other variables
         self.__et_offset_file = et_offset_file
         self.__skip_masking = skip_masking
-        self.__n_threads = n_threads
         self.__field_logs = []
         #start up the meanimage
         self.__meanimage = MeanImage(self.logger)
-        #set up the list of output files to add to as the code runs (though some will always be required)
-        self.__output_files = []
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
@@ -153,14 +149,14 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
+        p.add_argument('--workingdir', type=pathlib.Path, default=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),
+                        help=f'path to the working directory (default: new subdirectory called "{UNIV_CONST.MEANIMAGE_DIRNAME}" in the slide im3 directory)')
         cls.addargumentstoparser(p)
         return p
     @classmethod
     def addargumentstoparser(cls,p) :
         p.add_argument('--filetype',choices=['raw','flatWarp'],default='raw',
                         help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatWarp" files (extension {UNIV_CONST.FLATW_EXT})')
-        p.add_argument('--workingdir', type=pathlib.Path, default=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),
-                        help=f'path to the working directory (default: new subdirectory called "{UNIV_CONST.MEANIMAGE_DIRNAME}" in the slide im3 directory)')
         g = p.add_mutually_exclusive_group(required=True)
         g.add_argument('--exposure_time_offset_file',
                         help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
@@ -170,8 +166,6 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         p.add_argument('--skip_masking', action='store_true',
                         help='''Add this flag to entirely skip masking out the background regions of the images as they get added
                         [use this argument to completely skip the background thresholding and masking]''')
-        p.add_argument('--n_threads', type=int, default=CONST.DEFAULT_N_THREADS,
-                        help=f'Number of threads to use for parallelized portions of the code (default={CONST.DEFAULT_N_THREADS})')
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         return {
@@ -250,9 +244,9 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         background_thresholds = self.__get_background_thresholds()
         #and then create masks for every rectangle's image
         labelled_mask_regions = []
-        if self.__n_threads>1 :
+        if self.njobs>1 :
             proc_results = {}
-            with get_context('spawn').Pool(processes=self.__n_threads) as pool :
+            with self.pool() as pool :
                 for ri,r in enumerate(self.rectangles) :
                     self.logger.info(f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....')
                     with r.using_image() as im :
@@ -345,10 +339,6 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         """
         self.logger.info(f'Finding background thresholds for {self.SlideID} using images on the edges of the tissue')
         thresholding_plot_dir_path = self.__workingdirpath / CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
-        #add the output file(s) that will be created to the list
-        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}')
-        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}')
-        self.__output_files.append(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}')
         #get the list of rectangles that are on the edge of the tissue, plot their locations, and save a summary of their metadata
         self.logger.info(f'Found {len(self.tissue_edge_rects)} images on the edge of the tissue from a set of {len(self.rectangles)} total images')
         self.logger.info('Plotting rectangle locations and saving tissue edge HPF MetadataSummary')
@@ -398,9 +388,9 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
         tissue_edge_layer_hists = np.zeros((np.iinfo(np.uint16).max+1,self.nlayers),dtype=np.uint64)
         rectangle_data_table_entries = []
         #run the thresholding/histogram function in multiple parallel processes
-        if self.__n_threads>1 :
+        if self.njobs>1 :
             proc_results = {}; current_image_i = 0
-            with get_context('spawn').Pool(processes=self.__n_threads) as pool :
+            with self.pool() as pool :
                 for ri,r in enumerate(self.tissue_edge_rects) :
                     self.logger.info(f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.tissue_edge_rects)})....')
                     with r.using_image() as im :
@@ -478,9 +468,9 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,WorkflowSample) :
             random_keys = set([r.file.rstrip(UNIV_CONST.IM3_EXT) for r in random.sample(self.rectangles,min(10,20-len((top_blur_keys | top_saturation_keys)),len(self.rectangles)))])
         #recompute the masks for those images and write out the masking plots for them
         rects_to_plot = [r for r in self.rectangles if r.file.rstrip(UNIV_CONST.IM3_EXT) in (top_blur_keys | top_saturation_keys | random_keys)]
-        if self.__n_threads>1 :
+        if self.njobs>1 :
             proc_results = {}
-            with get_context('spawn').Pool(processes=self.__n_threads) as pool :
+            with self.pool() as pool :
                 for ri,r in enumerate(rects_to_plot) :
                     self.logger.info(f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots ({ri+1} of {len(rects_to_plot)})....')
                     with r.using_image() as im :
