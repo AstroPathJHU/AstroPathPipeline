@@ -41,7 +41,12 @@ def __floattoint(flt, atol, rtol):
   raise ValueError("not an int")
 
 def floattoint(flt, *, atol=0, rtol=1e-10):
-  return __floattoint(flt, atol, rtol)
+  try:
+    return __floattoint(flt, atol, rtol)
+  except ValueError as e:
+    if str(e) == "not an int":
+      raise ValueError(f"not an int: {flt}")
+    raise
 
 def weightedaverage(a, *args, **kwargs):
   from . import units

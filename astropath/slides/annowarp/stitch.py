@@ -3,7 +3,7 @@ import abc, collections, cvxpy as cp, itertools, more_itertools, numpy as np, re
 from ...utilities import units
 from ...utilities.misc import dict_zip_equal
 from ...utilities.tableio import writetable
-from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
+from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 
 class AnnoWarpStitchResultBase(units.ThingWithImscale):
   """
@@ -13,12 +13,15 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
    1. the stitching model to use
    2. how to solve the equation (with cvxpy or standalone linear algebra)
   """
-  def __init__(self, *, imscale, **kwargs):
-    self.__imscale = imscale
+  def __init__(self, *, pscale, apscale, **kwargs):
+    self.__pscale = pscale
+    self.__apscale = apscale
     super().__init__(**kwargs)
 
   @property
-  def imscale(self): return self.__imscale
+  def pscale(self): return self.__pscale
+  @property
+  def apscale(self): return self.__apscale
 
   @abc.abstractmethod
   def dxvec(self, qptiffcoordinate, *, apscale):
@@ -59,7 +62,8 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
         n=n,
         value=units.nominal_value(value),
         description=description,
-        pscale=self.imscale,
+        pscale=self.pscale,
+        apscale=self.apscale,
       )
 
   @property
@@ -74,7 +78,8 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
         n=n,
         value=np.array(units.covariance_matrix([value1, value2]))[0, 1],
         description="cov("+description1+", "+description2+")",
-        pscale=self.imscale,
+        pscale=self.pscale,
+        apscale=self.apscale,
       )
 
   @property
@@ -522,13 +527,12 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
   """
   Stitch result for the default model with cvxpy
   """
-  def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, imscale, **kwargs):
-    onepixel = units.onepixel(pscale=imscale)
+  def __init__(self, *, coeffrelativetobigtile, bigtileindexcoeff, constant, pscale, apscale, **kwargs):
+    onepixel = units.onepixel(pscale=pscale / np.round(float(pscale/apscale)))
     super().__init__(
       coeffrelativetobigtile=coeffrelativetobigtile.value,
       bigtileindexcoeff=bigtileindexcoeff.value * onepixel,
       constant=constant.value * onepixel,
-      imscale=imscale,
       **kwargs,
     )
     self.coeffrelativetobigtilevar = coeffrelativetobigtile
@@ -551,7 +555,7 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
       + constant
     )
 
-class AnnoWarpStitchResultEntry(DataClassWithPscale):
+class AnnoWarpStitchResultEntry(DataClassWithImscale):
   """
   Stitch result entry dataclass for the csv file
 
@@ -583,5 +587,5 @@ class AnnoWarpStitchResultEntry(DataClassWithPscale):
     else:
       return dct[description]
   n: int
-  value: units.Distance = distancefield(pixelsormicrons="pixels", power=lambda self: self.powerfordescription(self))
+  value: units.Distance = distancefield(pixelsormicrons="pixels", power=lambda self: self.powerfordescription(self), pscalename="imscale")
   description: str

@@ -1,4 +1,5 @@
-import abc, collections, methodtools
+import abc, collections, methodtools, numpy as np
+from ..misc import floattoint
 from ..tableio import TableReader
 
 currentmodule = None
@@ -78,4 +79,17 @@ class ThingWithScale(TableReader):
 class ThingWithPscale(ThingWithScale, scale="pscale"): pass
 class ThingWithQpscale(ThingWithScale, scale="qpscale"): pass
 class ThingWithApscale(ThingWithScale, scale="apscale"): pass
-class ThingWithImscale(ThingWithScale, scale="imscale"): pass
+class ThingWithImscale(ThingWithPscale, ThingWithApscale, scale="imscale"):
+  @property
+  def ipscale(self): return self.pscale / self.apscale
+  @property
+  def ppscale(self): return floattoint(np.round(float(self.ipscale)))
+  @property
+  def iqscale(self): return self.ipscale / self.ppscale
+  @property
+  def imscale(self):
+    result, = {self.apscale * self.iqscale, self.pscale / self.ppscale}
+    return result
+  @imscale.setter
+  def imscale(self, value):
+    raise AttributeError("Can't set imscale")

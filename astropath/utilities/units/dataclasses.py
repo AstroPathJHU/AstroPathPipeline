@@ -167,4 +167,9 @@ def makedataclasswithpscale(classname, pscalename, thingwithpscalecls):
 DataClassWithPscale, DataClassWithPscaleFrozen = makedataclasswithpscale("DataClassWithPscale", "pscale", ThingWithPscale)
 DataClassWithQpscale, DataClassWithQpscaleFrozen = makedataclasswithpscale("DataClassWithQpscale", "qpscale", ThingWithQpscale)
 DataClassWithApscale, DataClassWithApscaleFrozen = makedataclasswithpscale("DataClassWithApscale", "apscale", ThingWithApscale)
-DataClassWithImscale, DataClassWithImscaleFrozen = makedataclasswithpscale("DataClassWithImscale", "imscale", ThingWithImscale)
+class DataClassWithImscale(DataClassWithPscale, DataClassWithApscale, ThingWithImscale):
+  @methodtools.lru_cache()
+  @classmethod
+  def pscalefields(cls):
+    return super(DataClassWithImscale, cls).pscalefields() + ["imscale"]
+class DataClassWithImscaleFrozen(DataClassWithPscaleFrozen, DataClassWithApscaleFrozen, DataClassWithImscale): pass
