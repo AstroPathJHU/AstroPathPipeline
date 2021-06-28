@@ -32,12 +32,12 @@ class BatchFlatfieldSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         return self.meanimagefolder/f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}'
     @property
     def inputfiles(self,**kwargs) :
-        return [**super().inputfiles(**kwargs),self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
+        return [*super().inputfiles(**kwargs),self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
     def run(self,**kwargs) :
         pass
     @classmethod
     def getoutputfiles(cls,**kwargs) :
-        return [**super().getoutputfiles(**kwargs),self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
+        return [*super().getoutputfiles(**kwargs)]
     @classmethod
     def defaultunits(cls) :
         return MeanImageSample.defaultunits()
@@ -46,7 +46,7 @@ class BatchFlatfieldSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         return "batchflatfield"
     @classmethod
     def workflowdependencyclasses(cls):
-        return [**super().workflowdependencyclasses(),MeanImageSample]
+        return [*super().workflowdependencyclasses(),MeanImageSample]
 
 class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
     """
@@ -60,7 +60,7 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         self.__batchID = batchID
         self.__samples_added = 0
         #start up the flatfield
-        self.__flatfield = Flatfield(self.logger,self.__batchID)
+        self.__flatfield = Flatfield(self.logger)
 
     def run(self,**kwargs) :
         #run all of the samples individually first like any other cohort (just checks that files exist)
@@ -105,6 +105,14 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'batchID': parsed_args_dict.pop('batchID'), 
         }
+    @property
+    def initiatesamplekwargs(self) :
+        return {**super().initiatesamplekwargs,
+                'filetype':'raw',
+               }
+    @property
+    def workflowkwargs(self) :
+        return{**super().workflowkwargs,'skip_masking':False}
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
