@@ -1,6 +1,6 @@
 import contextlib, datetime, job_lock, more_itertools, os, pathlib
 
-from astropath.shared.logger import MyLogger
+from astropath.shared.logging import MyLogger
 from astropath.slides.csvscan.csvscancohort import CsvScanCohort
 from astropath.slides.csvscan.csvscansample import LoadFile, CsvScanSample
 from astropath.utilities.misc import commonroot
@@ -67,7 +67,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
         for module in "annowarp", "geom", "geomcell", "csvscan":
           now = datetime.datetime.now()
           if module == "csvscan":
-            starttime = now - datetime.timedelta(seconds=45)
+            starttime = now - datetime.timedelta(seconds=15)
           else:
             starttime = now
           endtime = starttime + datetime.timedelta(seconds=30)
@@ -102,7 +102,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False):
     root = thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"
     geomroot = thisfolder/"reference"/"geomcell"
-    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--rerun-finished"]
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
     if selectrectangles is not None:
       args.append("--selectrectangles")
       for rid in selectrectangles: args.append(str(rid))

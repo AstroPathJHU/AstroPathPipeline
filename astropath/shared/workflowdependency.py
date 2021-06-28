@@ -199,7 +199,7 @@ class SampleRunStatus:
           elif not row["message"]:
             continue
           elif re.match(startregex, row["message"]):
-            started = datetime.strptime(row["time"], MyLogger.dateformat)
+            started = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
             error = None
             ended = None
             previousrun = result
@@ -211,7 +211,7 @@ class SampleRunStatus:
             else:
               error = row["message"]
           elif re.match(endregex, row["message"]):
-            ended = datetime.strptime(row["time"], MyLogger.dateformat)
+            ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
             result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
     if result is None:
       result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
