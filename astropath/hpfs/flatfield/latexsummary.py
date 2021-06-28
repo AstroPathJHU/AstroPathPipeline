@@ -449,8 +449,8 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
 
     @property
     def pixel_intensities_and_data_table(self) :
-        yclip = int(flatfield_image.shape[0]*0.1)
-        xclip = int(flatfield_image.shape[1]*0.1)
+        yclip = int(self.__flatfield_image.shape[0]*0.1)
+        xclip = int(self.__flatfield_image.shape[1]*0.1)
         flatfield_image_clipped=self.__flatfield_image[yclip:-yclip,xclip:-xclip,:]
         overall_max = np.max(self.__flatfield_image)
         overall_min = np.min(self.__flatfield_image)

@@ -299,14 +299,3 @@ def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpa
         fn+=f'_BatchID_{batchID:02d}'
     fn+='_pixel_intensities.png'
     save_figure_in_dir(plt,fn,save_dirpath)
-    #print some extra stats from the flatfield image (will remove later to put in latex summary)
-    print(f'Overall max, whole image = {np.max(flatfield_image)}')
-    print(f'Overall min, whole image = {np.min(flatfield_image)}')
-    print(f'Overall max, central 64% = {np.max(flatfield_image_clipped)}')
-    print(f'Overall min, central 64% = {np.min(flatfield_image_clipped)}')
-    u_hi_lo_spread = [u_highs[li]-u_lows[li] for li in range(nlayers)]
-    c_hi_lo_spread = [c_highs[li]-c_lows[li] for li in range(nlayers)]
-    print(f'Mean whole image 5th-95th %ile = {np.mean(np.array(u_hi_lo_spread))}')
-    print(f'Mean central 64% 5th-95th %ile = {np.mean(np.array(c_hi_lo_spread))}')
-    print(f'Mean whole image std. dev. = {np.mean(np.array(u_std_devs))}')
-    print(f'Mean central 64% std. dev. = {np.mean(np.array(c_std_devs))}')
