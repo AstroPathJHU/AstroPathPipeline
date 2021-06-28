@@ -53,6 +53,8 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
     except:
       self.saveoutput()
       raise
+    finally:
+      self.removeoutput()
 
   def testAlignLayersFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast"):
@@ -84,16 +86,22 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
     )
 
   def testReadAlignlayers(self, SlideID="M21_1"):
-    a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
-    readfilename = thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv"
-    writefilename = a.csv("align")
+    try:
+      a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
+      readfilename = thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv"
+      writefilename = a.csv("alignlayers")
 
-    a.readalignments(filename=readfilename)
-    a.writealignments(filename=writefilename)
-    rows = a.readtable(writefilename, LayerAlignmentResult, checkorder=True, checknewlines=True)
-    targetrows = a.readtable(readfilename, LayerAlignmentResult, checkorder=True, checknewlines=True)
-    for row, target in more_itertools.zip_equal(rows, targetrows):
-      assertAlmostEqual(row, target, rtol=1e-5)
+      a.readalignments(filename=readfilename)
+      a.writealignments(filename=writefilename)
+      rows = a.readtable(writefilename, LayerAlignmentResult, checkorder=True, checknewlines=True)
+      targetrows = a.readtable(readfilename, LayerAlignmentResult, checkorder=True, checknewlines=True)
+      for row, target in more_itertools.zip_equal(rows, targetrows):
+        assertAlmostEqual(row, target, rtol=1e-5)
+    except:
+      self.saveoutput()
+      raise
+    finally:
+      self.removeoutput()
 
   def testBroadbandFilters(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
