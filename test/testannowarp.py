@@ -36,11 +36,11 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     return [
       thisfolder/"test_for_jenkins"/"annowarp"/"logfiles"/"annowarp.log",
     ] + sum(([
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"annotations.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"annowarp.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"annowarp-stitch.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"regions.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/"vertices.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annotations.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_regions.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_vertices.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/f"{SlideID}-annowarp.log",
     ] for SlideID in ("M206",)), [])
 

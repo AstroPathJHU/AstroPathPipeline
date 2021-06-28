@@ -126,6 +126,8 @@ class TestMisc(TestBaseSaveOutput):
     except:
       self.saveoutput()
       raise
+    finally:
+      self.removeoutput()
 
   def testStandaloneAnnotationsFastUnits(self, SlideID="M206"):
     with units.setup_context("fast"):
