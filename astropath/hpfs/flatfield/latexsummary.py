@@ -449,22 +449,144 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
 
     @property
     def pixel_intensities_and_data_table(self) :
+        yclip = int(flatfield_image.shape[0]*0.1)
+        xclip = int(flatfield_image.shape[1]*0.1)
+        flatfield_image_clipped=self.__flatfield_image[yclip:-yclip,xclip:-xclip,:]
+        overall_max = np.max(self.__flatfield_image)
+        overall_min = np.min(self.__flatfield_image)
+        central_max = np.max(flatfield_image_clipped)
+        central_min = np.min(flatfield_image_clipped)
+        overall_spreads_by_layer = []; overall_stddevs_by_layer = []
+        central_spreads_by_layer = []; central_stddevs_by_layer = []
+        for li in range(self.__flatfield_image.shape[-1]) :
+            sorted_u_layer = np.sort((self.__flatfield_image[:,:,layer_i]).flatten())/np.mean(self.__flatfield_image[:,:,layer_i])
+            sorted_c_layer = np.sort((flatfield_image_clipped[:,:,layer_i]).flatten())/np.mean(self.__flatfield_image[:,:,layer_i])
+            overall_spreads_by_layer.append(sorted_u_layer[int(0.95*len(sorted_u_layer))]-sorted_u_layer[int(0.05*len(sorted_u_layer))])
+            overall_stddevs_by_layer.append(np.std(sorted_u_layer))
+            central_spreads_by_layer.append(sorted_c_layer[int(0.95*len(sorted_c_layer))]-sorted_c_layer[int(0.05*len(sorted_c_layer))])
+            central_stddevs_by_layer.append(np.std(sorted_c_layer))
+        overall_spread = np.mean(np.array(overall_spreads_by_layer))
+        overall_stddev = np.mean(np.array(overall_stddevs_by_layer))
+        central_spread = np.mean(np.array(central_spreads_by_layer))
+        central_stddev = np.mean(np.array(central_stddevs_by_layer))
         lines = []
+        lines.append('\\section{Flatfield Correction Factors}\n')
+        lines.append('\n')
+        l = 'Figure~\\ref{fig:flatflield_pixel_intensities} shows the 5th and 95th percentile, as well as the standard deviation, of the pixel-by-pixel '
+        l+= f'correction factors in each layer of the flatfield model'
+        if self.__batchID is not None :
+            l+=f' created for batch {self.__batchID:02d}'
+        l+='. The red lines and green shaded areas show the values calculated over the entire area of the correction image, and the blue lines and yellow '
+        l+='shading show the values calculated considering only the central 64\\% ``primary region" of the correction image.'
+        lines.append(l+'\n')
+        lines.append('\n')
+        lines.append('\\begin{figure}[!ht]\n')
+        lines.append('\\centering\n')
+        l = f'\\includegraphics[width=\\textwidth]{{{self.plot_dirpath_tex}/flatfield'
+        if self.__batchID is not None :
+            l+=f'_BatchID_{self.__batchID:02d}'
+        l+='_pixel_intensities}'
+        lines.append(l+'\n')
+        l = '\\caption{\\footnotesize 5th and 95th percentile and standard deviation of flatfield correction factors in each image layer. Red lines and green '
+        l+= 'shaded areas show statistics calculated using the entire area of each image layer. Blue lines and yellow shading show statistics calculated in the '
+        l+= 'central ``primary region" of each image layer.}'
+        lines.append(l+'\n')
+        lines.append('\\label{fig:flatflield_pixel_intensities}\n')
+        lines.append('\\end{figure}\n')
+        lines.append('\n')
+        l = 'Table~\\ref{tab:average_correction_factors} lists the overall largest and smallest correction factors in any layer of the entire image and its '
+        l+= 'primary region. It also denotes the average, over all image layers, of the 5th-95th percentile spread and standard deviation of the correction '
+        l+= 'factors in the entire image and its primary region.'
+        lines.append(l+'\n')
+        lines.append('\n')
+        lines.append('\\begin{table}[!htb]\n')
+        lines.append('\\centering\n')
+        lines.append('\\footnotesize\n')
+        lines.append('\\begin{tabular}{c c c}\n')
+        lines.append('\\hline\n')
+        lines.append('Statistic & Whole image area & Central 64\\% ``primary region" \\\\\n')
+        lines.append('\\hline\n')
+        lines.append(f'Maximum correction factor & {overall_max:.04f} & {central_max:.04f} \\\\\n')
+        lines.append(f'Minimum correction factor & {overall_min:.04f} & {central_min:.04f} \\\\\n')
+        lines.append(f'5th-95th pctile spread, avg. over all layers & {overall_spread:.04f} & {central_spread:.04f} \\\\\n')
+        lines.append(f'Standard deviation, avg. over all layers & {overall_stddev:.04f} & {central_stddev:.04f} \\\\\n')
+        lines.append('\\hline\n')
+        lines.append('\\end{tabular}\n')
+        l = '\\caption{\\footnotesize Summarizing statistics for the flatfield correction model. The central and rightmost columns list values calculated using '
+        l+= ' the entire area of the image and the central 64\\% ``primary region" of the image, respectively. From the upper to lower row the values listed are '
+        l+= 'the maximum and minimum correction factors in any image layer, the average over all image layers of the spread from the 5th-95th percentile '
+        l+= 'correction factors, and the average over all layers of the standard deviation of the correction factors.}'
+        lines.append(l+'\n')
+        lines.append('\\label{tab:average_correction_factors}\n')
+        lines.append('\\end{table}\n')
         return lines
 
     @property
     def flatfield_layers(self) :
         lines = []
+        lines.append('\\section{Layers of the flatfield correction image}\n')
+        lines.append('Figure~\\ref{fig:flatfield_image_layers} shows the flatfield correction factors found for every image layer.\n')
+        lines.append('\n')
+        lines.append('\\begin{figure}[!ht]\n')
+        lines.append('\\centering\n')
+        all_plot_names = []
+        pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
+        if self.__batchID is not None :
+            pattern+= f'{batchID:02d}_'
+        pattern+='layer_*.png'
+        for fn in self.plot_dirpath.glob(pattern) :
+            all_plot_names.append(fn.name)
+        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
+        lines.append('\\caption{\\footnotesize Flatfield correction factors in each image layer}\n')
+        lines.append('\\label{fig:flatfield_image_layers}\n')
+        lines.append('\\end{figure}\n')
         return lines
 
     @property
     def flatfield_uncertainty_layers(self) :
         lines = []
+        lines.append('\\section{Layers of the flatfield correction image}\n')
+        lines.append('Figure~\\ref{fig:flatfield_uncertainty_image_layers} shows the uncertainties on the flatfield correction factors for every image layer.\n')
+        lines.append('\n')
+        lines.append('\\begin{figure}[!ht]\n')
+        lines.append('\\centering\n')
+        all_plot_names = []
+        pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
+        if self.__batchID is not None :
+            pattern+= f'{batchID:02d}_'
+        pattern+='_uncertainty_layer_*.png'
+        for fn in self.plot_dirpath.glob(pattern) :
+            all_plot_names.append(fn.name)
+        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
+        lines.append('\\caption{\\footnotesize Uncertainties on the flatfield correction factors in each image layer}\n')
+        lines.append('\\label{fig:flatfield_uncertainty_image_layers}\n')
+        lines.append('\\end{figure}\n')
         return lines
 
     @property
     def mask_stack_layers(self) :
         lines = []
+        lines.append('\\section{Layers of the flatfield correction image}\n')
+        l = 'Figure~\\ref{fig:flatfield_mask_stack_layers} shows every layer of the overall mask stack used to measure the flatfield correction factors. '
+        l+= 'These plots give some insight as to how many total images contribute to the measurements made.'
+        lines.append(l+'\n')
+        lines.append('\n')
+        lines.append('\\begin{figure}[!ht]\n')
+        lines.append('\\centering\n')
+        all_plot_names = []
+        pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
+        if self.__batchID is not None :
+            pattern+= f'{batchID:02d}_'
+        pattern+='_mask_stack_layer_*.png'
+        for fn in self.plot_dirpath.glob(pattern) :
+            all_plot_names.append(fn.name)
+        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
+        lines.append('\\caption{\\footnotesize The stack of all image masks combined over every sample used to measure the flatfield corrections}\n')
+        lines.append('\\label{fig:flatfield_mask_stack_layers}\n')
+        lines.append('\\end{figure}\n')
         return lines
 
 
