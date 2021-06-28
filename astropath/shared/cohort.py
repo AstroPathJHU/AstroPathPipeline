@@ -503,23 +503,48 @@ class WorkflowCohort(Cohort):
     if parsed_args_dict["print_errors"]:
       kwargs["uselogfiles"] = False
       parsed_args_dict["skip_finished"] = parsed_args_dict["dependencies"] = False
-    if parsed_args_dict.pop("skip_finished"):
-      kwargs["slideidfilters"].append(lambda self, sample: not self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs))
-    if parsed_args_dict.pop("dependencies"):
-      kwargs["slideidfilters"].append(
-        lambda self, sample:
-          all(
-            dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
-            for dependency in self.sampleclass.workflowdependencyclasses()
-          )
+
+    dependencies = parsed_args_dict.pop("dependencies")
+    skip_finished = parsed_args_dict.pop("skip_finished")
+
+    def filter(runstatus, dependencyrunstatuses):
+      if not skip_finished and not dependencies:
+        return True
+      elif skip_finished and not dependencies:
+        return not runstatus
+      elif dependencies and not skip_finished:
+        for dependencyrunstatus in dependencyrunstatuses:
+          if not dependencyrunstatus: return False
+        return True
+      elif dependencies and skip_finished:
+        for dependencyrunstatus in dependencyrunstatuses:
+          if not dependencyrunstatus: return False
+          if runstatus and runstatus.started < dependencyrunstatus.ended:
+            runstatus = False #it's as if this step hasn't run
+        return not runstatus
+      else:
+        assert False
+
+    def slideidfilter(self, sample):
+      return filter(
+        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs),
+        dependencyrunstatuses=[
+          dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
+          for dependency in self.sampleclass.workflowdependencyclasses()
+        ],
       )
-      kwargs["samplefilters"].append(
-        lambda self, sample:
-          all(
-            dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
-            for dependency, SlideID in sample.workflowdependencies()
-          )
+    kwargs["slideidfilters"].append(slideidfilter)
+
+    def samplefilter(self, sample):
+      return filter(
+        runstatus=sample.runstatus,
+        dependencyrunstatuses=[
+          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
+          for dependency, SlideID in sample.workflowdependencies()
+        ],
       )
+    kwargs["samplefilters"].append(samplefilter)
+
     return kwargs
 
   @classmethod
