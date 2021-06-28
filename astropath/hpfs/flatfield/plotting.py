@@ -225,3 +225,88 @@ def plot_image_layers(image,name_stem,save_dirpath=None) :
         cax = f.add_axes([ax.get_position().x1+0.006,ax.get_position().y0,0.02,ax.get_position().height])
         f.colorbar(pos,cax=cax)
         save_figure_in_dir(plt,layer_fn,save_dirpath)
+
+def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpath=None) :
+    """
+    Plot the max/min, 5th/95th %ile, and std. dev. of a flatfield image's correction factors by layer 
+
+    flatfield_image = the flatfield image array for which the plot should be made
+    batchID = the batchID for the given flatfield model (used in titles and names, optional)
+    save_dirpath = path to directory to save the plots in (if None the plot is saved in the current directory)
+    """
+    #figure out the number of layers and the filter breaks
+    nlayers=flatfield_image.shape[-1]
+    if nlayers==35 :
+        last_filter_layers = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_35[:-1]] 
+    elif nlayers==43 :
+        last_filter_layers = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_43[:-1]]
+    else :
+        raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
+    yclip = int(flatfield_image.shape[0]*0.1)
+    xclip = int(flatfield_image.shape[1]*0.1)
+    flatfield_image_clipped=flatfield_image[yclip:-yclip,xclip:-xclip,:]
+    u_mins=[]; u_lows=[]; u_maxs=[]; u_highs=[]
+    c_mins=[]; c_lows=[]; c_maxs=[]; c_highs=[]
+    u_std_devs=[]; c_std_devs=[]
+    plt.figure(figsize=(16.8,(27./64.)*16.8))
+    xaxis_vals = list(range(1,nlayers+1))
+    #iterate over the layers
+    for layer_i in range(nlayers) :
+        #find the min, max, and 5/95%ile pixel intensities for this uncorrected and corrected image layer
+        sorted_u_layer = np.sort((flatfield_image[:,:,layer_i]).flatten())/np.mean(flatfield_image[:,:,layer_i])
+        u_mins.append(sorted_u_layer[0]); u_lows.append(sorted_u_layer[int(0.05*len(sorted_u_layer))])
+        u_stddev = np.std(sorted_u_layer); u_std_devs.append(u_stddev)
+        u_maxs.append(sorted_u_layer[-1]); u_highs.append(sorted_u_layer[int(0.95*len(sorted_u_layer))])
+        sorted_c_layer = np.sort((flatfield_image_clipped[:,:,layer_i]).flatten())/np.mean(flatfield_image_clipped[:,:,layer_i])
+        c_mins.append(sorted_c_layer[0]); c_lows.append(sorted_c_layer[int(0.05*len(sorted_c_layer))])
+        c_stddev = np.std(sorted_c_layer); c_std_devs.append(c_stddev)
+        c_maxs.append(sorted_c_layer[-1]); c_highs.append(sorted_c_layer[int(0.95*len(sorted_c_layer))])
+        if layer_i==0 :
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5,label='overall std. dev.')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5,label='std. dev. (central 64%)')
+        else :
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
+    #plot the relative intensity plots together, with the broadband filter breaks
+    plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='darkgreen',linestyle='dashed',label='mean')
+    totalmin=min(min(u_lows),min(c_lows))
+    totalmax=max(max(u_highs),max(c_highs))
+    for i in range(len(last_filter_layers)+1) :
+        f_i = 0 if i==0 else last_filter_layers[i-1]
+        l_i = xaxis_vals[-1] if i==len(last_filter_layers) else last_filter_layers[i]
+        if i==0 :
+            plt.plot(xaxis_vals[f_i:l_i],u_lows[f_i:l_i],color='darkred',marker='v',label=r'overall 5th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],u_highs[f_i:l_i],color='darkred',marker='^',label=r'overall 95th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],c_lows[f_i:l_i],color='darkblue',marker='v',label=r'5th %ile (central 64%)')
+            plt.plot(xaxis_vals[f_i:l_i],c_highs[f_i:l_i],color='darkblue',marker='^',label=r'95th %ile (central 64%)')
+            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+        else :
+            plt.plot(xaxis_vals[f_i:l_i],u_lows[f_i:l_i],color='darkred',marker='v')
+            plt.plot(xaxis_vals[f_i:l_i],u_highs[f_i:l_i],color='darkred',marker='^')
+            plt.plot(xaxis_vals[f_i:l_i],c_lows[f_i:l_i],color='darkblue',marker='v')
+            plt.plot(xaxis_vals[f_i:l_i],c_highs[f_i:l_i],color='darkblue',marker='^')
+            if i!=len(last_filter_layers) :
+                plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted')
+    plt.title('flatfield image pixel intensity relative to layer mean',fontsize=14)
+    plt.xlabel('layer number',fontsize=14)
+    #fix the range on the x-axis to accommodate the legend
+    plt.xlim(0,nlayers+12)
+    plt.ylabel('pixel intensity relative to layer mean',fontsize=14)
+    plt.legend(loc='lower right')
+    #write out the figure
+    fn = 'flatfield'
+    if batchID is not None :
+        fn+=f'_BatchID_{batchID:02d}'
+    fn+='_pixel_intensities.png'
+    save_figure_in_dir(plt,fn,save_dirpath)
+    #print some extra stats from the flatfield image (will remove later to put in latex summary)
+    print(f'Overall max, whole image = {np.max(flatfield_image)}')
+    print(f'Overall min, whole image = {np.min(flatfield_image)}')
+    print(f'Overall max, central 64% = {np.max(flatfield_image_clipped)}')
+    print(f'Overall min, central 64% = {np.min(flatfield_image_clipped)}')
+    u_hi_lo_spread = [u_highs[li]-u_lows[li] for li in range(nlayers)]
+    c_hi_lo_spread = [c_highs[li]-c_lows[li] for li in range(nlayers)]
+    print(f'Mean whole image 5th-95th %ile = {np.mean(np.array(u_hi_lo_spread))}')
+    print(f'Mean central 64% 5th-95th %ile = {np.mean(np.array(c_hi_lo_spread))}')
+    print(f'Mean whole image std. dev. = {np.mean(np.array(u_std_devs))}')
+    print(f'Mean central 64% std. dev. = {np.mean(np.array(c_std_devs))}')

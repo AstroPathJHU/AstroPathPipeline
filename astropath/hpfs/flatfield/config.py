@@ -63,5 +63,8 @@ class Const :
     @property
     def FLATFIELD_DIRNAME_STEM(self) :
         return 'flatfield_BatchID_'
+    @property
+    def FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
+        return 'flatfield_summary'
 
 CONST=Const()

@@ -118,33 +118,31 @@ class LatexSummaryBase :
         lines.append('\n')
         return lines
 
-class LatexSummaryForSlideWithPlotdir(LatexSummaryBase) :
+class LatexSummaryWithPlotdir(LatexSummaryBase) :
     """
-    Class to make a LatexSummary for a single slide with all of its plots in a single directory
+    Class to make a LatexSummary with all of its plots in a single directory
     """
 
-    def __init__(self,titlestem,filenamestem,slideID,plot_dirpath,plot_patterns=['*']) :
+    def __init__(self,*args,plot_dirpath,plot_patterns=['*']) :
         """
-        titlestem     = prefix for the title of the document
-        filenamestem  = suffix for the name of the file
-        slideID       = ID of the slide used
-        plot_dirpath  = path to directory holding the plots that will be used
+        plot_dirpath  = path to directory holding the plots that will be used (.pdf file is saved in this directory's parent)
         plot_patterns = list of patterns to use for glob in finding all of the plots to remove if the compilation is successful
                        (default is everything in the directory)
+
+        other arguments are passed to LatexSummaryBase
         """
-        self.__slideID = slideID
         self.__plot_dirpath = plot_dirpath
         self.__plot_patterns = plot_patterns
-        super().__init__(f'{titlestem} for {self.slideID_tex}',
-                         f'{self.__slideID}-{filenamestem}',
-                         plot_dirpath.parent)
+        super().__init__(*args,plot_dirpath.parent)
 
     @property
     def failed_compilation_tex_file_path(self) :
+        #put the .tex file in the plot directory if it couldn't be compiled
         return self.__plot_dirpath
 
     @property
     def filepaths_to_remove_on_success(self) :
+        #remove any of the plots the were used at the end, possibly even the whole plot directory if everything was used
         to_remove = super().filepaths_to_remove_on_success
         for pattern in self.__plot_patterns :
             for fp in self.__plot_dirpath.glob(pattern) :
@@ -160,6 +158,24 @@ class LatexSummaryForSlideWithPlotdir(LatexSummaryBase) :
     @property
     def plot_dirpath_tex(self) :
         return str(self.__plot_dirpath.as_posix())
+
+
+class LatexSummaryForSlideWithPlotdir(LatexSummaryWithPlotdir) :
+    """
+    Class to make a LatexSummary for a single slide with all of its plots in a single directory
+    """
+
+    def __init__(self,titlestem,filenamestem,slideID,plot_dirpath,plot_patterns=['*']) :
+        """
+        titlestem     = prefix for the title of the document
+        filenamestem  = suffix for the name of the file
+        slideID       = ID of the slide used
+        
+        """
+        self.__slideID = slideID
+        super().__init__(f'{titlestem} for {self.slideID_tex}',
+                         f'{self.__slideID}-{filenamestem}',
+                         plot_dirpath.parent,plot_patterns)
 
     @property
     def slideID(self) :
@@ -407,3 +423,50 @@ class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
         lines.append('\\label{fig:mask_stack_layers}\n')
         lines.append('\\end{figure}\n')
         return lines
+
+class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
+    """
+    Class to make a LatexSummary about a batch's flatfield model
+    """
+
+    def __init__(self,flatfield_image,plot_dirpath,batchID=None) :
+        """
+        flatfield_image = the actual flatfield image that was created (used to make a data table of the intensity ranges)
+        plot_dirpath = path to the directory that has all the individual .png plots in it
+        batchID = the batchID for the model in question (used in figure/filenames, optional)
+        """
+        self.__flatfield_image = flatfield_image
+        self.__batchID = batchID
+        title = 'Flatfield Summary'
+        filename = CONST.FLATFIELD_SUMMARY_PDF_FILENAME_STEM
+        if self.__batchID is not None :
+            title+=f' for Batch {self.__batchID:02d}'
+            filename+=f'_BatchID_{self.__batchID:02d}'
+        filename+='.pdf'
+        super().__init__(title,filename,plot_dirpath)
+
+    @property
+    def sections(self) :
+        return super().sections+[self.pixel_intensities_and_data_table,self.flatfield_layers,self.flatfield_uncertainty_layers,self.mask_stack_layers]
+
+    @property
+    def pixel_intensities_and_data_table(self) :
+        lines = []
+        return lines
+
+    @property
+    def flatfield_layers(self) :
+        lines = []
+        return lines
+
+    @property
+    def flatfield_uncertainty_layers(self) :
+        lines = []
+        return lines
+
+    @property
+    def mask_stack_layers(self) :
+        lines = []
+        return lines
+
+
