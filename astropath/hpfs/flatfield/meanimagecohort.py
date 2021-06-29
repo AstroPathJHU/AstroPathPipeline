@@ -1,11 +1,12 @@
 #imports
 from .meanimagesample import MeanImageSample
 from .config import CONST
+from ...shared.argumentparser import FileTypeArgumentParser, ImageCorrectionArgumentParser
 from ...shared.cohort import Im3Cohort, ParallelCohort, WorkflowCohort
 from ...utilities.config import CONST as UNIV_CONST
 import pathlib
 
-class MeanImageCohort(Im3Cohort,ParallelCohort,WorkflowCohort) :
+class MeanImageCohort(Im3Cohort, ParallelCohort, WorkflowCohort, FileTypeArgumentParser, ImageCorrectionArgumentParser) :
     sampleclass = MeanImageSample
     __doc__ = sampleclass.__doc__
 
@@ -26,8 +27,6 @@ class MeanImageCohort(Im3Cohort,ParallelCohort,WorkflowCohort) :
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         return {**super().initkwargsfromargumentparser(parsed_args_dict),
-                'filetype': parsed_args_dict.pop('filetype'), 
-                'et_offset_file': None if parsed_args_dict.pop('skip_exposure_time_correction') else parsed_args_dict.pop('exposure_time_offset_file'),
                 'skip_masking': parsed_args_dict.pop('skip_masking'),
                }
 

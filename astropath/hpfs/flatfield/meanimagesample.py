@@ -1,6 +1,5 @@
 #imports
 from .imagestack import MeanImage
-from .rectangle import RectangleCorrectedIm3MultiLayer
 from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms
 from .plotting import plot_background_thresholds_by_layer, plot_flagged_HPF_locations
 from .latexsummary import ThresholdingLatexSummary, MaskingLatexSummary
@@ -11,6 +10,7 @@ from ..image_masking.utilities import LabelledMaskRegion
 from ..image_masking.config import CONST as MASK_CONST
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, WorkflowSample, ParallelSample
+from ...shared.rectangle import RectangleCorrectedIm3MultiLayer
 from ...shared.overlap import Overlap
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary, ThresholdTableEntry

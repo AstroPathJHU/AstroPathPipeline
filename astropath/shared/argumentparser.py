@@ -1,5 +1,6 @@
 import abc, argparse, pathlib, re
 from ..utilities.tableio import TableReader
+from ..utilities.config import CONST as UNIV_CONST
 from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .workflowdependency import ThingWithRoots
 
@@ -188,8 +189,7 @@ class WorkingDirArgumentParser(RunFromArgumentParser) :
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument('--workingdir', type=pathlib.Path, default=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),
-                    help=f'path to the working directory (default: new subdirectory called "{UNIV_CONST.MEANIMAGE_DIRNAME}" in the slide im3 directory)')
+    p.add_argument('--workingdir', type=pathlib.Path,help=f'path to the working directory where output should be stored')
     return p
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
