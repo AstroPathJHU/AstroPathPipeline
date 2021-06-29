@@ -1,8 +1,9 @@
 #imports
 from .meanimagesample import MeanImageSampleBase
-from .meanimage import CorrectedMeanImage
-from .flatfield import Flatfield
+from .imagestack import CorrectedMeanImage, Flatfield
+from .rectangle import RectangleCorrectedIm3MultiLayer
 from ...shared.cohort import Im3Cohort, WorkflowCohort
+import random
 
 class AppliedFlatfieldSample(MeanImageSampleBase) :
     """
@@ -20,20 +21,11 @@ class AppliedFlatfieldSample(MeanImageSampleBase) :
         """
         if not self.skip_masking :
             self.create_or_find_image_masks()
-        #make the mean image from all of the tissue bulk rectangles
-        new_field_logs = self.__meanimage.stack_images(self.tissue_bulk_rects,self.med_ets,self.image_masking_dirpath)
-        for fl in new_field_logs :
-            fl.slide = self.SlideID
-            self.field_logs.append(fl)
-        bulk_rect_ts = [r.t for r in self.tissue_bulk_rects]
-        with cd(self.workingdirpath) :
-            writetable(self.workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',
-                      [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))])
-        #create and write out the final mask stack, mean image, and std. error of the mean image
-        self.__meanimage.write_output(self.SlideID,self.workingdirpath)
-        #write out the field log
-        with cd(self.workingdirpath) :
-            writetable(CONST.FIELDS_USED_CSV_FILENAME,self.field_logs)
+
+    multilayer = True
+    rectangletype = RectangleCorrectedIm3MultiLayer
+    overlaptype = Overlap
+    nclip = UNIV_CONST.N_CLIP
 
     @classmethod
     def getoutputfiles(cls,**kwargs) :
@@ -86,8 +78,19 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         """
         Add the sample's meanimage and mask stack to the batch flatfield meanimage and collect its metadata
         """
-        #running the sample just makes sure that its file exist
+        #make sure the sample has enough rectangles in the bulk of the tissue to be used
+        if len(sample.tissue_bulk_rects)<2 :
+            sample.logger.info(f'{sample.SlideID} only has {len(sample.tissue_bulk_rects)} images in the bulk of the tissue and so it will be ignored in the AppliedFlatfieldCohort.')
+            return
+        #run the sample to find or create its masking files if necessary
         super().runsample(sample,**kwargs)
+        #split the set of sample rectangles in the bulk of the tissue in half randomly
+        flatfield_rectangles = random.sample(sample.tissue_bulk_rects,len(sample.tissue_bulk_rects)/2)
+        meanimage_rectangles = [r for r in sample.tissue_bulk_rects if r not in flatfield_rectangles]
+        #add half the rectangles to the flatfield model
+        self.__flatfield.stack_rectangle_images(flatfield_rectangles,med_ets,)
+
+
         #add the sample's information to the flatfield model that's being created
         msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch {self.__batchID:02d} '
         msg+= f'({self.__samples_added+1} of {len(list(self.filteredsamples))})....'

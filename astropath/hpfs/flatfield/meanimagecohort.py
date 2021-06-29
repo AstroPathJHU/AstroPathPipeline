@@ -18,7 +18,9 @@ class MeanImageCohort(Im3Cohort,ParallelCohort,WorkflowCohort) :
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
-        cls.sampleclass.addargumentstoparser(p)
+        p.add_argument('--skip_masking', action='store_true',
+                       help='''Add this flag to entirely skip masking out the background regions of the images as they get added
+                       [use this argument to completely skip the background thresholding and masking]''')
         return p
 
     @classmethod

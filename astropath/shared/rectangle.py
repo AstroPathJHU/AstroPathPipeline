@@ -4,6 +4,7 @@ from ..utilities.misc import floattoint, memmapcontext
 from ..utilities.tableio import timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from ..utilities.config import CONST as UNIV_CONST
+from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer
 
 class Rectangle(DataClassWithPscale):
   """
@@ -142,7 +143,7 @@ class RectangleWithImageBase(Rectangle):
 
   A rectangle can also have transformations, which are applied to the
   raw image to make the final image returned by `using_image()` or `image`.
-  They should inherit from RectangleTransformationBase below.
+  They should inherit from RectangleTransformationBase.
   """
 
   #if _DEBUG is true, then when the rectangle is deleted, it will print
@@ -294,13 +295,6 @@ class RectangleWithImageBase(Rectangle):
       plt.imshow(im, extent=(extent / units.onepixel(imagescale)).astype(float))
       plt.xlim(*xlim)
       plt.ylim(*ylim)
-
-class RectangleTransformationBase(abc.ABC):
-  @abc.abstractmethod
-  def transform(self, previousimage):
-    """
-    Takes in the previous image, returns the new image.
-    """
 
 class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   """
@@ -480,6 +474,36 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
     """
     _, = self.broadbandfilters
     return _
+
+class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
+  """
+  Class for Rectangles whose multilayer im3 data should be corrected for differences in exposure time 
+  and/or flatfielding (either or both can be omitted)
+  """
+  
+  def __post_init__(self, *args, transformations=None, **kwargs) :
+    if transformations is None : 
+      transformations = []
+    super().__post_init__(*args, transformations=transformations, **kwargs)
+
+  def add_exposure_time_correction_transformation(self,med_ets,offsets) :
+    """
+    Add a transformation to a rectangle to correct it for differences in exposure time given:
+
+    med_ets = the median exposure times in the rectangle's slide 
+    offsets = the list of dark current offsets for the rectangle's slide
+    """
+    if (med_ets is not None) and (offsets is not None) :
+      self.add_transformation(RectangleExposureTimeTransformationMultiLayer(self.allexposuretimes,med_ets,offsets))
+
+  def add_flatfield_correction_transformation(self,flatfield) :
+    """
+    Add a transformation to a rectangle to correct it with a given flatfield
+
+    flatfield = the flatfield correction factor image to apply
+    """
+    if flatfield is not None:
+      self.add_transformation(RectangleFlatfieldTransformationMultilayer(flatfield))
 
 class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   """

@@ -9,9 +9,9 @@ from .config import CONST
 from ..image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
 from ..image_masking.utilities import LabelledMaskRegion
 from ..image_masking.config import CONST as MASK_CONST
-from ...shared.sample import ReadRectanglesOverlapsIm3FromXML, WorkflowSample, ParallelSample
+from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, WorkflowSample, ParallelSample
 from ...shared.overlap import Overlap
-from ...utilities.img_file_io import LayerOffset
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary, ThresholdTableEntry
 from ...utilities.config import CONST as UNIV_CONST
@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pathlib, methodtools, random
 
-class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
+class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, ParallelSample, FileTypeArgumentParser, WorkingDirArgumentParser) :
     """
     Base class to use in running the basic MeanImage methods (i.e. not to be used bare in workflows)
     Used as the starting point for actual MeanImageSamples as well as other types of samples that use MeanImage information
@@ -27,7 +27,7 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),et_offset_file=None,skip_masking=False,**kwargs) :
+    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),skip_masking=False,**kwargs) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
         self.__workingdirpath = workingdir
@@ -36,30 +36,8 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
             self.__workingdirpath = self.im3folder / workingdir
         self.__workingdirpath.mkdir(parents=True,exist_ok=True)
         #set some other variables
-        self.__et_offset_file = et_offset_file
         self.__skip_masking = skip_masking
         self.field_logs = []
-
-    def initrectangles(self) :
-        """
-        Init Rectangles with additional transformations for exposure time differences after getting median exposure times and offsets
-        (only if exposure time corrections aren't being skipped)
-        """
-        self.enter_context(self.logger)
-        super().initrectangles()
-        self.__med_ets = None
-        #find the median exposure times
-        slide_exp_times = np.zeros(shape=(len(self.rectangles),self.nlayers)) 
-        for ir,r in enumerate(self.rectangles) :
-            slide_exp_times[ir,:] = r.allexposuretimes
-        self.__med_ets = np.median(slide_exp_times,axis=0)
-        #read the exposure time offsets
-        if self.__et_offset_file is None :
-            return
-        offsets = self.__read_exposure_time_offsets()
-        #add the exposure time correction to every rectangle's transformations
-        for r in self.rectangles :
-            r.add_exposure_time_correction_transformation(self.__med_ets,offsets)
 
     def create_or_find_image_masks(self) :
         """
@@ -84,8 +62,6 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
-    multilayer = True
-    rectangletype = RectangleCorrectedIm3MultiLayer
     overlaptype = Overlap
     nclip = UNIV_CONST.N_CLIP
     
@@ -95,9 +71,6 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
     @property
     def skip_masking(self) :
         return self.__skip_masking
-    @property
-    def med_ets(self) :
-        return self.__med_ets
     @property
     def image_masking_dirpath(self) :
         return self.__image_masking_dirpath
@@ -137,23 +110,10 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
-        p.add_argument('--workingdir', type=pathlib.Path, default=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),
-                        help=f'path to the working directory (default: new subdirectory called "{UNIV_CONST.MEANIMAGE_DIRNAME}" in the slide im3 directory)')
-        cls.addargumentstoparser(p)
-        return p
-    @classmethod
-    def addargumentstoparser(cls,p) :
-        p.add_argument('--filetype',choices=['raw','flatWarp'],default='raw',
-                        help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatWarp" files (extension {UNIV_CONST.FLATW_EXT})')
-        g = p.add_mutually_exclusive_group(required=True)
-        g.add_argument('--exposure_time_offset_file',
-                        help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
-                        [use this argument to apply corrections for differences in image exposure time]''')
-        g.add_argument('--skip_exposure_time_correction', action='store_true',
-                        help='Add this flag to entirely skip correcting image flux for exposure time differences')
         p.add_argument('--skip_masking', action='store_true',
-                        help='''Add this flag to entirely skip masking out the background regions of the images as they get added
-                        [use this argument to completely skip the background thresholding and masking]''')
+                   help='''Add this flag to entirely skip masking out the background regions of the images as they get added
+                   [use this argument to completely skip the background thresholding and masking]''')
+        return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         return {
@@ -167,7 +127,6 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
     @classmethod
     def defaultunits(cls) :
         return "fast"
-
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -187,26 +146,6 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
                     return False
         return True
 
-    def __read_exposure_time_offsets(self) :
-        """
-        Read in the offset factors for exposure time corrections from the file defined by command line args
-        """
-        self.logger.info(f'Copying exposure time offsets for {self.SlideID} from file {self.__et_offset_file}')
-        layer_offsets_from_file = readtable(self.__et_offset_file,LayerOffset)
-        offsets_to_return = []
-        for ln in range(1,self.nlayers+1) :
-            this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
-            if len(this_layer_offset)==1 :
-                offsets_to_return.append(this_layer_offset[0])
-            elif len(this_layer_offset)==0 :
-                warnmsg = f'WARNING: LayerOffset file {self.__et_offset_file} does not have an entry for layer {ln}'
-                warnmsg+=  ', so that offset will be set to zero!'
-                self.logger.warning(warnmsg)
-                offsets_to_return.append(0)
-            else :
-                raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.__et_offset_file} for layer {ln}!')
-        return offsets_to_return
-
     def __create_sample_image_masks(self) :
         """
         Find the optimal background thresholds for the sample and use them to create masks for every image
@@ -224,7 +163,7 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
                     with r.using_image() as im :
                         proc_results[(r.n,r.file)] = pool.apply_async(return_new_mask_labelled_regions,
                                                            (im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
-                                                            self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
+                                                            self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
                                                             self.__image_masking_dirpath,
                                                            )
                                                           )
@@ -243,7 +182,7 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
                 try :
                     with r.using_image() as im :
                         labelled_mask_regions+=return_new_mask_labelled_regions(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
-                                                            self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
+                                                            self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
                                                             self.__image_masking_dirpath)
                 except Exception as e :
                     warnmsg = f'WARNING: getting image mask for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
@@ -328,8 +267,8 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
             valid_layer_thresholds = image_background_thresholds_by_layer[:,li][image_background_thresholds_by_layer[:,li]!=0]
             if len(valid_layer_thresholds)<1 :
                 raise RuntimeError(f"ERROR: not enough image background thresholds were found in layer {li+1} for {self.SlideID} and so this slide can't be used")
-            if not self.__et_offset_file is None :
-                chosen_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),np.median(valid_layer_thresholds)/self.__med_ets[li]))
+            if not self.et_offset_file is None :
+                chosen_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),np.median(valid_layer_thresholds)/self.med_ets[li]))
             else :
                 chosen_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),-1.))
         with cd(self.__workingdirpath) :
@@ -371,8 +310,8 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
                     try :
                         thresholds, hists = res.get()
                         for li,t in enumerate(thresholds) :
-                            if self.__et_offset_file is not None :
-                                rectangle_data_table_entries.append(RectangleThresholdTableEntry(rn,li+1,int(t),t/self.__med_ets[li]))
+                            if self.et_offset_file is not None :
+                                rectangle_data_table_entries.append(RectangleThresholdTableEntry(rn,li+1,int(t),t/self.med_ets[li]))
                             else :
                                 rectangle_data_table_entries.append(RectangleThresholdTableEntry(rn,li+1,int(t),t/r.allexposuretimes[li]))
                         image_background_thresholds_by_layer[current_image_i,:] = thresholds
@@ -392,8 +331,8 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
                     with r.using_image() as im :
                         thresholds, hists = get_background_thresholds_and_pixel_hists_for_rectangle_image(im)
                     for li,t in enumerate(thresholds) :
-                        if self.__et_offset_file is not None :
-                            rectangle_data_table_entries.append(RectangleThresholdTableEntry(r.n,li+1,int(t),t/self.__med_ets[li]))
+                        if self.et_offset_file is not None :
+                            rectangle_data_table_entries.append(RectangleThresholdTableEntry(r.n,li+1,int(t),t/self.med_ets[li]))
                         else :
                             rectangle_data_table_entries.append(RectangleThresholdTableEntry(r.n,li+1,int(t),t/r.allexposuretimes[li]))
                     image_background_thresholds_by_layer[current_image_i,:] = thresholds
@@ -448,7 +387,7 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
                     with r.using_image() as im :
                         proc_results[(r.n,r.file)] = pool.apply_async(save_plots_for_image,
                                                            (im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
-                                                            self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
+                                                            self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
                                                             r.allexposuretimes,
                                                             self.exposure_time_histograms_and_bins_by_layer_group,
                                                             self.__image_masking_dirpath,
@@ -468,7 +407,7 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
                 try :
                     with r.using_image() as im :
                         labelled_mask_regions.append(save_plots_for_image(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
-                                                            self.__med_ets if self.__et_offset_file is not None else r.allexposuretimes,
+                                                            self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
                                                             r.allexposuretimes,
                                                             self.exposure_time_histograms_and_bins_by_layer_group,
                                                             self.__image_masking_dirpath))

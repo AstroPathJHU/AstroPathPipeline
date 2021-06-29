@@ -184,6 +184,52 @@ class Im3ArgumentParser(RunFromArgumentParser):
       "root2": parsed_args_dict.pop("root2"),
     }
 
+class WorkingDirArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument('--workingdir', type=pathlib.Path, default=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),
+                    help=f'path to the working directory (default: new subdirectory called "{UNIV_CONST.MEANIMAGE_DIRNAME}" in the slide im3 directory)')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'workingdir': parsed_args_dict.pop('workingdir'),
+    }
+
+class FileTypeArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument('--filetype',choices=['raw','flatWarp'],default='raw',
+                   help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatWarp" files (extension {UNIV_CONST.FLATW_EXT})')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'filetype': parsed_args_dict.pop('filetype'), 
+    }
+
+class ImageCorrectionArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    g1 = p.add_mutually_exclusive_group(required=True)
+    g1.add_argument('--exposure_time_offset_file',
+                    help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
+                    [use this argument to apply corrections for differences in image exposure time]''')
+    g1.add_argument('--skip_exposure_time_correction', action='store_true',
+                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'et_offset_file': None if parsed_args_dict.pop('skip_exposure_time_correction') else parsed_args_dict.pop('exposure_time_offset_file'),
+    }
+
 class DbloadArgumentParser(RunFromArgumentParser):
   @classmethod
   def makeargumentparser(cls, **kwargs):
