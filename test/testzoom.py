@@ -70,13 +70,13 @@ class TestZoom(TestBaseSaveOutput):
           sample.logger.info("comparing "+filename)
           with sample.PILmaximagepixels(), \
                PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"/filename) as img, \
-               PIL.Image.open(thisfolder/"reference"/"zoom"/SlideID/"big"/filename) as targetimg:
+               PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"big"/filename) as targetimg:
             np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
         filename = f"{SlideID}-Z9-L{i}-wsi.png"
         sample.logger.info("comparing "+filename)
         with sample.PILmaximagepixels(), \
              PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/filename) as img, \
-             PIL.Image.open(thisfolder/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
+             PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
           np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
     except:
       self.saveoutput()
@@ -91,7 +91,7 @@ class TestZoom(TestBaseSaveOutput):
     self.testZoomWsi("M206", mode="memmap", **kwargs)
 
 def gunzipreference(SlideID):
-  folder = thisfolder/"reference"/"zoom"/SlideID
+  folder = thisfolder/"data"/"reference"/"zoom"/SlideID
   for filename in folder.glob("*/*.gz"):
     newfilename = filename.with_suffix("")
     if newfilename.exists(): continue

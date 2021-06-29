@@ -22,7 +22,7 @@ Running the above command will produce:
     - **a `[slideID]-mask_stack.bin` file** that is the stack of the binary image masks from every selected HPF, stored as 64-bit unsigned integers
     - **a very detailed "global" log file** called "`global-slide_mean_image.log`"
     - **a list of every field used** in finding the background thresholds and in making the mean image, called "`fields_used_meanimage.csv`", stored as [`FieldLog` objects](./utilities.py#L23-L29)
-    - **a list of every slide used** in stacking images, including date ranges, called "`metadata_summary_stacked_images_meanimage.csv`" and stored as [`MetadataSummary` objects](../../utilities/misc.py#L123-L130)
+    - **a list of every slide used** in stacking images, including date ranges, called "`metadata_summary_stacked_images_meanimage.csv`" and stored as [`MetadataSummary` objects](../../utilities/misc.py#L128-L135)
     - **a "`thresholding_info`" subdirectory** containing plots/details about how the background thresholding proceeded. Most important in this subdirectory is the `[slideID]_background_thresholds.txt` file, which lists the background thresholds in each image layer (after exposure time corrections are applied).
     - **a "`postrun_info`" subdirectory** containing information about how many HPFs were stacked in each layer of the meanimage, how many raw HPFs were read, and a subdirectory of .png images of the individual mean image, mask stack, and standard error of the mean image layers.
     - **a "`image_masking`" subdirectory** containing:

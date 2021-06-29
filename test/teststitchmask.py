@@ -38,14 +38,14 @@ class TestStitchMask(TestBaseCopyInput, TestBaseSaveOutput):
     }[masktype]
 
     dbloadroot = None
-    if SlideID == "M21_1": dbloadroot = thisfolder/"reference"/"alignment"
+    if SlideID == "M21_1": dbloadroot = thisfolder/"data"/"reference"/"alignment"
 
     args = [os.fspath(root), "--maskroot", os.fspath(maskroot), "--logroot", os.fspath(maskroot), "--mask-file-suffix", maskfilesuffix, "--allow-local-edits", "--sampleregex", SlideID+"$", "--debug", "--ignore-dependencies", "--rerun-finished", "--units", units]
     if dbloadroot is not None: args += ["--dbloadroot", os.fspath(dbloadroot)]
     cohortcls.runfromargumentparser(args)
 
     sample = samplecls(root, SlideID, maskroot=maskroot, logroot=maskroot, dbloadroot=dbloadroot, maskfilesuffix=maskfilesuffix)
-    refsample = samplecls(root, SlideID, maskroot=thisfolder/"reference"/"stitchmask", logroot=maskroot, dbloadroot=dbloadroot)
+    refsample = samplecls(root, SlideID, maskroot=thisfolder/"data"/"reference"/"stitchmask", logroot=maskroot, dbloadroot=dbloadroot)
 
     try:
       mask1 = sample.readmask()
