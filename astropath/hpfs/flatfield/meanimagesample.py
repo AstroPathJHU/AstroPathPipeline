@@ -1,5 +1,5 @@
 #imports
-from .meanimage import MeanImage
+from .imagestack import MeanImage
 from .rectangle import RectangleCorrectedIm3MultiLayer
 from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms
 from .plotting import plot_background_thresholds_by_layer, plot_flagged_HPF_locations
@@ -503,7 +503,7 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         if not self.skip_masking :
             self.create_or_find_image_masks()
         #make the mean image from all of the tissue bulk rectangles
-        new_field_logs = self.__meanimage.stack_images(self.tissue_bulk_rects,self.med_ets,self.image_masking_dirpath)
+        new_field_logs = self.__meanimage.stack_rectangle_images(self.tissue_bulk_rects,self.med_ets,self.image_masking_dirpath)
         for fl in new_field_logs :
             fl.slide = self.SlideID
             self.field_logs.append(fl)

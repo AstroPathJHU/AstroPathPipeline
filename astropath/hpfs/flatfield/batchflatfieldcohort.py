@@ -82,7 +82,7 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch {self.__batchID:02d} '
         msg+= f'({self.__samples_added+1} of {len(list(self.filteredsamples))})....'
         sample.logger.info(msg)
-        self.__flatfield.add_sample(sample)
+        self.__flatfield.add_batchflatfieldsample(sample)
         self.__samples_added+=1
 
     #################### CLASS VARIABLES + PROPERTIES ####################

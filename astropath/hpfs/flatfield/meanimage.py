@@ -103,6 +103,20 @@ class MeanImage :
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
             self.__logger.warning(warnmsg)
 
+    #################### PROPERTIES ####################
+
+    @property
+    def mean_image(self) :
+        return self.__mean_image
+    @property
+    def image_stack(self) :
+        return self.__image_stack
+    @property
+    def image_squared_stack(self) :
+        return self.__image_squared_stack
+    @property
+    def mask_stack(self) :
+        return self.__mask_stack
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -197,3 +211,36 @@ class MeanImage :
         self.__mean_image = self.__image_stack/zero_fixed_mask_stack
         self.__std_err_of_mean_image = np.sqrt(np.abs(self.__image_squared_stack/zero_fixed_mask_stack-(np.power(self.__mean_image,2)))/zero_fixed_mask_stack)
 
+class CorrectedMeanImage(MeanImage) :
+    """
+    Class to work with a mean image that will be corrected with a set of flatfield correction factors
+    """
+
+    def __init__(self,*args,**kwargs) :
+        super().__init__()
+        self.__flatfield_image = None
+        self.__flatfield_image_err = None
+        self.__corrected_mean_image = None
+        self.__corrected_mean_image_err = None
+
+    def apply_flatfield_corrections(self,flatfield) :
+        """
+        Correct the meanimage using the given flatfield object
+        """
+        flatfield_image = flatfield.flatfield_image
+        flatfield_err = flatfield.flatfield_image_err
+        if self.mean_image is None :
+            raise RuntimeError('ERROR: mean image is not yet set but apply_flatfield_corrections was called!')
+        elif self.mean_image.shape != flatfield_image.shape :
+            errmsg = f'ERROR: shape mismatch in apply_flatfield_corrections, meanimage shape = {self.mean_image.shape} but flatfield shape = {flatfield_image.shape}'
+            raise ValueError(errmsg)
+        self.__flatfield_image = flatfield_image
+        self.__flatfield_image_err = flatfield_err
+        self.__corrected_mean_image = self.mean_image/flatfield_image
+        self.__corrected_mean_image_err = self.__corrected_mean_image*(flatfield_image_err/flatfield_image)
+
+    def write_output(self,workingdirpath) :
+        """
+        Write out the relevant information for the corrected mean image to the given working directory
+        """
+        pass
