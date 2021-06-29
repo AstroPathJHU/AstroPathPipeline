@@ -512,6 +512,7 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
             writetable(self.workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',
                       [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))])
         #create and write out the final mask stack, mean image, and std. error of the mean image
+        self.__meanimage.make_mean_image()
         self.__meanimage.write_output(self.SlideID,self.workingdirpath)
         #write out the field log
         with cd(self.workingdirpath) :
