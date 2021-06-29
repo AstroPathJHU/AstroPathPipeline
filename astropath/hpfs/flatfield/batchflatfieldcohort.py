@@ -1,6 +1,6 @@
 #imports
 from .meanimagesample import MeanImageSample
-from .flatfield import Flatfield
+from .imagestack import Flatfield
 from .config import CONST
 from ...shared.sample import ReadRectanglesIm3FromXML, WorkflowSample
 from ...shared.cohort import Im3Cohort, WorkflowCohort

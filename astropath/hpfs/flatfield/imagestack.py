@@ -243,7 +243,7 @@ class MeanImage(ImageStack) :
         with cd(workingdirpath) :
             write_image_to_file(self.__mean_image,f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
             write_image_to_file(self.image_squared_stack,f'{slide_id}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
-            write_image_to_file(self.std_err_of_mean_image,f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+            write_image_to_file(self.__std_err_of_mean_image,f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
             if self.mask_stack is not None :
                 write_image_to_file(self.mask_stack,f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
         self.logger.info(f'Making plots of image layers and collecting them in the summary pdf....')
@@ -251,7 +251,7 @@ class MeanImage(ImageStack) :
         plotdir_path = workingdirpath / CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
         plot_image_layers(self.__mean_image,f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
         plot_image_layers(self.__std_err_of_mean_image,f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
-        if self.__mask_stack is not None :
+        if self.mask_stack is not None :
             plot_image_layers(self.mask_stack,f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
         #collect the plots that were just saved in a .pdf file from a LatexSummary
         latex_summary = MeanImageLatexSummary(slide_id,plotdir_path)
@@ -276,10 +276,11 @@ class Flatfield(ImageStack) :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,logger=dummylogger) :
+    def __init__(self,*args,**kwargs) :
         """
         logger = the logging object to use (passed from whatever is using this meanimage)
         """
+        super().__init__(*args,**kwargs)
         self.__flatfield_image = None
         self.__flatfield_image_err = None
         self.__metadata_summaries = []
@@ -302,7 +303,7 @@ class Flatfield(ImageStack) :
         self.__flatfield_image = np.empty_like(self.image_stack)
         self.__flatfield_image_err = np.empty_like(self.image_stack)
         #warn if not enough image were stacked overall
-        if np.max(self.__mask_stack)<1 :
+        if np.max(self.mask_stack)<1 :
             self.logger.warningglobal(f'WARNING: not enough images were stacked overall, so the flatfield model will be all ones!')
             self.__flatfield_image = np.ones_like(self.image_stack)
             self.__flatfield_image_err = np.ones_like(self.image_stack)
@@ -312,9 +313,9 @@ class Flatfield(ImageStack) :
         #smooth the mean image with its uncertainty
         smoothed_mean_image,sm_mean_img_err = smooth_image_with_uncertainty_worker(mean_image,std_err_of_mean_image,100)
         #create the flatfield image layer-by-layer
-        for li in range(self.__mask_stack.shape[-1]) :
+        for li in range(self.mask_stack.shape[-1]) :
             #warn if the layer is missing a substantial number of images in the stack
-            if np.max(self.__mask_stack[:,:,li])<1 :
+            if np.max(self.mask_stack[:,:,li])<1 :
                 self.logger.warningglobal(f'WARNING: not enough images were stacked in layer {li+1}, so this layer of the flatfield model will be all ones!')
                 self.__flatfield_image[:,:,li] = 1.0
                 self.__flatfield_image_err[:,:,li] = 1.0
