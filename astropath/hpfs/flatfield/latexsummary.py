@@ -1,6 +1,7 @@
 #imports
 from .config import CONST
 from ...utilities.misc import cd
+import numpy as np
 import pathlib, subprocess
 
 class LatexSummaryBase :
@@ -459,8 +460,8 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         overall_spreads_by_layer = []; overall_stddevs_by_layer = []
         central_spreads_by_layer = []; central_stddevs_by_layer = []
         for li in range(self.__flatfield_image.shape[-1]) :
-            sorted_u_layer = np.sort((self.__flatfield_image[:,:,layer_i]).flatten())/np.mean(self.__flatfield_image[:,:,layer_i])
-            sorted_c_layer = np.sort((flatfield_image_clipped[:,:,layer_i]).flatten())/np.mean(self.__flatfield_image[:,:,layer_i])
+            sorted_u_layer = np.sort((self.__flatfield_image[:,:,li]).flatten())/np.mean(self.__flatfield_image[:,:,li])
+            sorted_c_layer = np.sort((flatfield_image_clipped[:,:,li]).flatten())/np.mean(self.__flatfield_image[:,:,li])
             overall_spreads_by_layer.append(sorted_u_layer[int(0.95*len(sorted_u_layer))]-sorted_u_layer[int(0.05*len(sorted_u_layer))])
             overall_stddevs_by_layer.append(np.std(sorted_u_layer))
             central_spreads_by_layer.append(sorted_c_layer[int(0.95*len(sorted_c_layer))]-sorted_c_layer[int(0.05*len(sorted_c_layer))])
@@ -532,7 +533,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         all_plot_names = []
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
         if self.__batchID is not None :
-            pattern+= f'{batchID:02d}_'
+            pattern+= f'{self.__batchID:02d}_'
         pattern+='layer_*.png'
         for fn in self.plot_dirpath.glob(pattern) :
             all_plot_names.append(fn.name)
@@ -554,8 +555,8 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         all_plot_names = []
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
         if self.__batchID is not None :
-            pattern+= f'{batchID:02d}_'
-        pattern+='_uncertainty_layer_*.png'
+            pattern+= f'{self.__batchID:02d}_'
+        pattern+='uncertainty_layer_*.png'
         for fn in self.plot_dirpath.glob(pattern) :
             all_plot_names.append(fn.name)
         for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
@@ -578,8 +579,8 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         all_plot_names = []
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
         if self.__batchID is not None :
-            pattern+= f'{batchID:02d}_'
-        pattern+='_mask_stack_layer_*.png'
+            pattern+= f'{self.__batchID:02d}_'
+        pattern+='mask_stack_layer_*.png'
         for fn in self.plot_dirpath.glob(pattern) :
             all_plot_names.append(fn.name)
         for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
