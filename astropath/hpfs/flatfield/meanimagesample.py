@@ -211,7 +211,7 @@ class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
         """
         Find the optimal background thresholds for the sample and use them to create masks for every image
         """
-        self.logger.info(f'Creating masks for all images in {self.SlideID}')
+        self.logger.info(f'Will create masks for all images in {self.SlideID}')
         #start by finding the background thresholds
         background_thresholds = self.__get_background_thresholds()
         #and then create masks for every rectangle's image
