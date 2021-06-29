@@ -54,59 +54,11 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     (various scales and the x and y position)
     """
     with self.using_qptiff() as fqptiff:
-      zoomlevel = fqptiff.zoomlevels[0]
-      apscale = zoomlevel.qpscale
-      ipscale = self.pscale / apscale
-      ppscale = floattoint(np.round(float(ipscale)))
-      iqscale = ipscale / ppscale
-      imscales = {apscale * iqscale, self.pscale / ppscale}
-      imscale, = imscales
       return {
-        "apscale": apscale,
-        "ipscale": ipscale,
-        "ppscale": ppscale,
-        "iqscale": iqscale,
-        "imscale": imscale,
         "xposition": fqptiff.xposition,
         "yposition": fqptiff.yposition,
       }
 
-  @property
-  def apscale(self):
-    """
-    The pixels/micron scale of the qptiff image
-    """
-    return self.__imageinfo["apscale"]
-  @property
-  def ipscale(self):
-    """
-    The ratio of pixels/micron scales of the im3 and qptiff images
-    """
-    return self.__imageinfo["ipscale"]
-  @property
-  def ppscale(self):
-    """
-    The ratio of pixels/micron scales of the im3 and qptiff images,
-    rounded to an integer
-    """
-    return self.__imageinfo["ppscale"]
-  @property
-  def iqscale(self):
-    """
-    The ratio of ipscale and ppscale, i.e. the remaining non-integer
-    part of the ratio of pixels/micron scales of the im3 and qptiff
-    images
-    """
-    return self.__imageinfo["iqscale"]
-  @property
-  def imscale(self):
-    """
-    The scale used for alignment: the wsi is scaled by ppscale,
-    which is the integer that brings it closest to the qptiff's
-    scale, and the qptiff is scaled by whatever 1.00x is needed
-    to bring it to the same scale.
-    """
-    return self.__imageinfo["imscale"]
   @property
   def xposition(self):
     """

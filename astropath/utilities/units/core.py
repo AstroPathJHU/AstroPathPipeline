@@ -81,13 +81,34 @@ class ThingWithQpscale(ThingWithScale, scale="qpscale"): pass
 class ThingWithApscale(ThingWithScale, scale="apscale"): pass
 class ThingWithImscale(ThingWithPscale, ThingWithApscale, scale="imscale"):
   @property
-  def ipscale(self): return self.pscale / self.apscale
+  def ipscale(self):
+    """
+    The ratio of pixels/micron scales of the im3 and qptiff images
+    """
+    return self.pscale / self.apscale
   @property
-  def ppscale(self): return floattoint(np.round(float(self.ipscale)))
+  def ppscale(self):
+    """
+    The ratio of pixels/micron scales of the im3 and qptiff images,
+    rounded to an integer
+    """
+    return floattoint(np.round(float(self.ipscale)))
   @property
-  def iqscale(self): return self.ipscale / self.ppscale
+  def iqscale(self):
+    """
+    The ratio of ipscale and ppscale, i.e. the remaining non-integer
+    part of the ratio of pixels/micron scales of the im3 and qptiff
+    images
+    """
+    return self.ipscale / self.ppscale
   @property
   def imscale(self):
+    """
+    The scale used for alignment of the im3 and qptiff images:
+    the wsi is scaled by ppscale, which is the integer that brings
+    it closest to the qptiff's scale, and the qptiff is scaled by
+    whatever 1.00x is needed to bring it to the same scale.
+    """
     result, = {self.apscale * self.iqscale, self.pscale / self.ppscale}
     return result
   @imscale.setter
