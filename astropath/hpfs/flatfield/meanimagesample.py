@@ -19,9 +19,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pathlib, methodtools, random
 
-class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,ParallelSample,WorkflowSample) :
+class MeanImageSampleBase(ReadRectanglesOverlapsIm3FromXML,ParallelSample) :
     """
-    Main class to handle creating the meanimage for a slide
+    Base class to use in running the basic MeanImage methods (i.e. not to be used bare in workflows)
+    Used as the starting point for actual MeanImageSamples as well as other types of samples that use MeanImage information
     """
 
     #################### PUBLIC FUNCTIONS ####################
@@ -38,8 +39,6 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,ParallelSample,WorkflowSa
         self.__et_offset_file = et_offset_file
         self.__skip_masking = skip_masking
         self.__field_logs = []
-        #start up the meanimage
-        self.__meanimage = MeanImage(self.logger)
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
@@ -67,42 +66,6 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,ParallelSample,WorkflowSa
         for r in self.rectangles :
             r.add_exposure_time_correction_transformation(self.__med_ets,offsets)
 
-    def run(self) :
-        """
-        Main "run" function to be looped when entire cohorts are run
-        """
-        #Create masks for all of the images in the sample if requested 
-        if not self.__skip_masking :
-            #set the image masking directory path (could either be in the workingdir or in the sample's meanimage directory)
-            self.__image_masking_dirpath = self.__workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME if not self.__skip_masking else None
-            self.__use_precomputed_masks = False
-            if self.__image_masking_dirpath.is_dir() :
-                self.__use_precomputed_masks = self.__dir_has_precomputed_masks(self.__image_masking_dirpath)
-            if not self.__use_precomputed_masks :
-                other_dirpath = self.root / f'{self.SlideID}' / f'{UNIV_CONST.IM3_DIR_NAME}' / f'{UNIV_CONST.MEANIMAGE_DIRNAME}' / CONST.IMAGE_MASKING_SUBDIR_NAME
-                if other_dirpath.is_dir() :
-                    self.__use_precomputed_masks = self.__dir_has_precomputed_masks(other_dirpath)
-                if self.__use_precomputed_masks :
-                    self.__image_masking_dirpath = other_dirpath
-            if not self.__use_precomputed_masks :
-                self.__create_sample_image_masks()
-            else :
-                self.logger.info(f'Will use already-created image masks in {self.__image_masking_dirpath}')
-        #make the mean image from all of the tissue bulk rectangles
-        new_field_logs = self.__meanimage.stack_images(self.tissue_bulk_rects,self.__med_ets,self.__image_masking_dirpath)
-        for fl in new_field_logs :
-            fl.slide = self.SlideID
-            self.__field_logs.append(fl)
-        bulk_rect_ts = [r.t for r in self.tissue_bulk_rects]
-        with cd(self.__workingdirpath) :
-            writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',
-                      [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))])
-        #create and write out the final mask stack, mean image, and std. error of the mean image
-        self.__meanimage.write_output(self.SlideID,self.__workingdirpath)
-        #write out the field log
-        with cd(self.__workingdirpath) :
-            writetable(CONST.FIELDS_USED_CSV_FILENAME,self.__field_logs)
-
     #################### CLASS VARIABLES + PROPERTIES ####################
 
     multilayer = True
@@ -110,9 +73,6 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,ParallelSample,WorkflowSa
     overlaptype = Overlap
     nclip = UNIV_CONST.N_CLIP
     
-    @property
-    def workflowkwargs(self) :
-        return{**super().workflowkwargs,'skip_masking':self.__skip_masking}
     @property
     def mask_layer_groups(self) :
         if self.nlayers==35 :
@@ -177,27 +137,32 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,ParallelSample,WorkflowSa
             'n_threads': parsed_args_dict.pop('n_threads'),
         }
     @classmethod
-    def getoutputfiles(cls,SlideID,root,skip_masking,**otherworkflowkwargs) :
-        outputfiles = []
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / CONST.FIELDS_USED_CSV_FILENAME)
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
-        if not skip_masking :
-            outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
-        return outputfiles
-    @classmethod
     def defaultunits(cls) :
         return "fast"
-    @classmethod
-    def logmodule(cls) : 
-        return "meanimage"
-    @classmethod
-    def workflowdependencyclasses(cls):
-        return super().workflowdependencyclasses()
+
 
     #################### PRIVATE HELPER FUNCTIONS ####################
+
+    def __create_or_find_image_masks(self) :
+        """
+        Sets some variables as to where to find the image masks for the sample
+        If they can't be found they will be created
+        """
+        #set the image masking directory path (could either be in the workingdir or in the sample's meanimage directory)
+        self.__image_masking_dirpath = self.__workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME if not self.__skip_masking else None
+        self.__use_precomputed_masks = False
+        if self.__image_masking_dirpath.is_dir() :
+            self.__use_precomputed_masks = self.__dir_has_precomputed_masks(self.__image_masking_dirpath)
+        if not self.__use_precomputed_masks :
+            other_dirpath = self.root / f'{self.SlideID}' / f'{UNIV_CONST.IM3_DIR_NAME}' / f'{UNIV_CONST.MEANIMAGE_DIRNAME}' / CONST.IMAGE_MASKING_SUBDIR_NAME
+            if other_dirpath.is_dir() :
+                self.__use_precomputed_masks = self.__dir_has_precomputed_masks(other_dirpath)
+            if self.__use_precomputed_masks :
+                self.__image_masking_dirpath = other_dirpath
+        if not self.__use_precomputed_masks :
+            self.__create_sample_image_masks()
+        else :
+            self.logger.info(f'Will use already-created image masks in {self.__image_masking_dirpath}')
 
     def __dir_has_precomputed_masks(self,dirpath) :
         """
@@ -505,6 +470,66 @@ class MeanImageSample(ReadRectanglesOverlapsIm3FromXML,ParallelSample,WorkflowSa
                     warnmsg+= f'with the error "{e}"'
                     self.logger.warning(warnmsg) 
                     raise e
+
+class MeanImageSample(MeanImageSampleBase) :
+    """
+    Main class to handle creating the meanimage for a slide
+    """
+
+    #################### PUBLIC FUNCTIONS ####################
+
+    def __init__(self,*args,**kwargs) :
+        #initialize the parent classes
+        super().__init__(*args,**kwargs)
+        #start up the meanimage
+        self.__meanimage = MeanImage(self.logger)
+
+    def run(self) :
+        """
+        Main "run" function to be looped when entire cohorts are run
+        """
+        if not self.__skip_masking :
+            super().__create_or_find_image_masks()
+        #make the mean image from all of the tissue bulk rectangles
+        new_field_logs = self.__meanimage.stack_images(self.tissue_bulk_rects,self.__med_ets,self.__image_masking_dirpath)
+        for fl in new_field_logs :
+            fl.slide = self.SlideID
+            self.__field_logs.append(fl)
+        bulk_rect_ts = [r.t for r in self.tissue_bulk_rects]
+        with cd(self.__workingdirpath) :
+            writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',
+                      [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))])
+        #create and write out the final mask stack, mean image, and std. error of the mean image
+        self.__meanimage.write_output(self.SlideID,self.__workingdirpath)
+        #write out the field log
+        with cd(self.__workingdirpath) :
+            writetable(CONST.FIELDS_USED_CSV_FILENAME,self.__field_logs)
+
+    #################### CLASS VARIABLES + PROPERTIES ####################
+
+    @property
+    def workflowkwargs(self) :
+        return{**super().workflowkwargs,'skip_masking':self.__skip_masking}
+
+    #################### CLASS METHODS ####################
+
+    @classmethod
+    def getoutputfiles(cls,SlideID,root,skip_masking,**otherworkflowkwargs) :
+        outputfiles = []
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / CONST.FIELDS_USED_CSV_FILENAME)
+        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
+        if not skip_masking :
+            outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
+        return outputfiles
+    @classmethod
+    def logmodule(cls) : 
+        return "meanimage"
+    @classmethod
+    def workflowdependencyclasses(cls):
+        return super().workflowdependencyclasses()
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
