@@ -50,8 +50,7 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
   @property
   def __imageinfo(self):
     """
-    Get the image info from the wsi and qptiff
-    (various scales and the x and y position)
+    Get the x and y position from the qptiff
     """
     with self.using_qptiff() as fqptiff:
       return {
@@ -71,6 +70,36 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     y position of the qptiff image
     """
     return self.__imageinfo["yposition"]
+
+class WSISample(ZoomFolderSampleBase):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
+    self.__nentered = 0
+    self.__using_wsi_context = self.enter_context(contextlib.ExitStack())
+    self.__wsi = None
+
+  @contextlib.contextmanager
+  def using_wsi(self):
+    """
+    Context manager for opening the wsi
+    """
+    if self.__nentered == 0:
+      #if it's not currently open
+      #disable PIL's warning when opening big images
+      self.__using_wsi_context.enter_context(self.PILmaximagepixels())
+      #open the wsi
+      self.__wsi = self.__using_wsi_context.enter_context(PIL.Image.open(self.wsifilename(layer=self.wsilayer)))
+    self.__nentered += 1
+    try:
+      yield self.__wsi
+    finally:
+      self.__nentered -= 1
+      if self.__nentered == 0:
+        #if we don't have any other copies of this context manager going,
+        #close the wsi and free the memory
+        self.__wsi = None
+        self.__using_wsi_context.close()
 
 class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
   defaulttilepixels = 100
@@ -103,7 +132,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, WorkflowSample, XMLPolygonReader, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, WSISample, ZoomSampleBase, WorkflowSample, XMLPolygonReader, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -135,10 +164,6 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
 
-    self.__nentered = 0
-    self.__using_images_context = self.enter_context(contextlib.ExitStack())
-    self.__wsi = self.__qptiff = None
-
     self.__images = None
 
   @contextlib.contextmanager
@@ -146,23 +171,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     """
     Context manager for opening the wsi and qptiff images
     """
-    if self.__nentered == 0:
-      #if they're not currently open
-      #disable PIL's warning when opening big images
-      self.__using_images_context.enter_context(self.PILmaximagepixels())
-      #open the images
-      self.__wsi = self.__using_images_context.enter_context(PIL.Image.open(self.wsifilename(layer=self.wsilayer)))
-      self.__qptiff = self.__using_images_context.enter_context(self.using_qptiff())
-    self.__nentered += 1
-    try:
-      yield self.__wsi, self.__qptiff
-    finally:
-      self.__nentered -= 1
-      if self.__nentered == 0:
-        #if we don't have any other copies of this context manager going,
-        #close the images and free the memory
-        self.__wsi = self.__qptiff = None
-        self.__using_images_context.close()
+    with self.using_wsi() as wsi, self.using_qptiff() as qptiff:
+      yield wsi, qptiff
 
   @property
   def tilesize(self):
