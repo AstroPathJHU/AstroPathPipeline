@@ -69,6 +69,9 @@ class DataClassWithDistances(MyDataClass):
   @classmethod
   def pscalefields(cls):
     return [field for field in dataclassy.fields(cls) if cls.metadata(field).get("ispscalefield", False)]
+  @classmethod
+  def otherpscales(cls):
+    return []
 
   def _distances_passed_to_init(self):
     return [getattr(self, fieldname) for fieldname in self.distancefields()]
@@ -113,7 +116,7 @@ class DataClassWithDistances(MyDataClass):
         usedistances = False
 
     pscales = {}
-    for pscalefieldname in self.pscalefields():
+    for pscalefieldname in self.pscalefields()+self.otherpscales():
       pscale = {getattr(self, pscalefieldname)}
       distancefieldnames = [distancefieldname for distancefieldname in self.distancefields() if pscalenames[distancefieldname] == pscalefieldname]
       nonzerodistancefieldnames = [distancefieldname for distancefieldname in distancefieldnames if getattr(self, distancefieldname)]
@@ -168,8 +171,7 @@ DataClassWithPscale, DataClassWithPscaleFrozen = makedataclasswithpscale("DataCl
 DataClassWithQpscale, DataClassWithQpscaleFrozen = makedataclasswithpscale("DataClassWithQpscale", "qpscale", ThingWithQpscale)
 DataClassWithApscale, DataClassWithApscaleFrozen = makedataclasswithpscale("DataClassWithApscale", "apscale", ThingWithApscale)
 class DataClassWithImscale(DataClassWithPscale, DataClassWithApscale, ThingWithImscale):
-  @methodtools.lru_cache()
   @classmethod
-  def pscalefields(cls):
-    return super(DataClassWithImscale, cls).pscalefields() + ["imscale"]
+  def otherpscales(cls):
+    return ["imscale"]
 class DataClassWithImscaleFrozen(DataClassWithPscaleFrozen, DataClassWithApscaleFrozen, DataClassWithImscale): pass

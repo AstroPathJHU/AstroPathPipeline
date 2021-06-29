@@ -72,7 +72,7 @@ class ThingWithScale(TableReader):
     if extrakwargs is None: extrakwargs = {}
     if issubclass(rowclass, ThingWithScale):
       for scale in self.__scales & rowclass.__scales:
-        if scale.scalename not in extrakwargs:
+        if scale.scalename in rowclass.__annotations__ and scale.scalename not in extrakwargs:
           extrakwargs[scale.scalename] = getattr(self, scale.scalename)
     return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
 

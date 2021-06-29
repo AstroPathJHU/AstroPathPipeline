@@ -644,7 +644,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
       tominimize += cp.quad_form(residual, units.np.linalg.inv(result.covariance) * onepixel**2)
 
     #add the constraint quadratic forms to the problem
-    tominimize += stitchresultcls.constraintquadforms(variables, constraintmus, constraintsigmas, pscale=self.pscale, apscale=self.apscale)
+    tominimize += stitchresultcls.constraintquadforms(variables, constraintmus, constraintsigmas, imscale=self.imscale)
 
     #do the minimization
     minimize = cp.Minimize(tominimize)

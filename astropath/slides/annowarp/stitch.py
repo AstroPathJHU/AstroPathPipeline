@@ -533,6 +533,8 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
       coeffrelativetobigtile=coeffrelativetobigtile.value,
       bigtileindexcoeff=bigtileindexcoeff.value * onepixel,
       constant=constant.value * onepixel,
+      pscale=pscale,
+      apscale=apscale,
       **kwargs,
     )
     self.coeffrelativetobigtilevar = coeffrelativetobigtile
