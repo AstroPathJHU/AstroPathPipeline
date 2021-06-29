@@ -1128,7 +1128,6 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     self.__bigtileoffset = bigtileoffset
     self.exception = exception
     self.imageshandle = imageshandle
-    print(self)
 
   @property
   def bigtilesize(self): return self.__bigtilesize
