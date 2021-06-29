@@ -174,7 +174,7 @@ class LatexSummaryForSlideWithPlotdir(LatexSummaryWithPlotdir) :
         self.__slideID = slideID
         super().__init__(f'{titlestem} for {self.slideID_tex}',
                          f'{self.__slideID}-{filenamestem}',
-                         plot_dirpath.parent,plot_patterns)
+                         plot_dirpath,plot_patterns)
 
     @property
     def slideID(self) :
