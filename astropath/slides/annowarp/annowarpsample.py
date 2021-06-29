@@ -388,7 +388,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
         n=n,
         x=x+qptiffx1,
         y=y+qptiffy1,
-        imscale=imscale,
+        pscale=self.pscale,
+        apscale=self.apscale,
         tilesize=tilesize,
         bigtilesize=bigtilesize,
         bigtileoffset=bigtileoffset,
@@ -583,7 +584,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
     #initialize the stitch result object
-    stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
+    stitchresult = stitchresultcls(result, A=A, b=b, c=c, pscale=self.pscale, apscale=self.apscale)
 
     #check if there are any outliers
     #if there are, log them, remove them, and recursively rerun
@@ -655,7 +656,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     #create the stitch result object
     self.__stitchresult = stitchresultcls(
       problem=prob,
-      imscale=self.imscale,
+      pscale=self.pscale,
+      apscale=self.apscale,
       **variables,
     )
 
@@ -1201,8 +1203,13 @@ class AnnoWarpAlignmentResults(list, units.ThingWithImscale):
     return result
   @methodtools.lru_cache()
   @property
-  def imscale(self):
-    result, = {_.imscale for _ in self}
+  def pscale(self):
+    result, = {_.pscale for _ in self}
+    return result
+  @methodtools.lru_cache()
+  @property
+  def apscale(self):
+    result, = {_.apscale for _ in self}
     return result
   @methodtools.lru_cache()
   @property

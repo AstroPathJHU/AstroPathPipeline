@@ -177,7 +177,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
         }[match.group(1)]
         allrectangles = self.readcsv("rect", Rectangle)
         extrakwargs = {
-          "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0, "imscale": 1},
+          "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0},
           "fieldoverlaps": {"nclip": 8, "rectangles": allrectangles},
           "overlap": {"nclip": 8, "rectangles": allrectangles},
           "vertices": {"bigtilesize": 0, "bigtileoffset": 0}
