@@ -209,7 +209,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
     imagescale: the scale to use for converting to pixels
                 (default: pscale)
-    shiftby: a 2D vector (distance in imscale) to shift all the vertices by
+    shiftby: a 2D vector (distance in imagescale) to shift all the vertices by
              (default: 0)
     """
     if imagescale is None: imagescale = self.pscale
