@@ -109,6 +109,9 @@ class ImageStack :
     @property
     def logger(self) :
         return self.__logger
+    @logger.setter
+    def logger(self,new_logger) :
+        self.__logger = new_logger
     @property
     def image_stack(self) :
         return self.__image_stack
@@ -129,7 +132,7 @@ class ImageStack :
         n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
         field_logs = []
         for ri,r in enumerate(rectangles) :
-            self.__logger.info(f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the meanimage stack ({ri+1} of {len(rectangles)})....')
+            self.__logger.info(f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....')
             with r.using_image() as im :
                 normalized_image = im / med_ets if med_ets is not None else im / r.allexposuretimes[np.newaxis,np.newaxis,:]
                 self.__image_stack+=normalized_image
@@ -165,7 +168,7 @@ class ImageStack :
         n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
         field_logs = []
         for ri,r in enumerate(rectangles_to_stack) :
-            self.__logger.info(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the meanimage stack ({ri+1} of {len(rectangles_to_stack)})....')
+            self.__logger.info(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles_to_stack)})....')
             imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
             with r.using_image() as im :
                 normalized_im = im / med_ets if med_ets is not None else masked_im / r.allexposuretimes[np.newaxis,np.newaxis,:]
@@ -220,8 +223,8 @@ class MeanImage(ImageStack) :
             else :
                 msg = 'WARNING: There are no layers with images stacked in them and so the mean image will be zero everywhere!'    
             self.logger.warningglobal(msg)
-            self.__mean_image = self.__image_stack
-            self.__std_err_of_mean_image = self.__image_squared_stack
+            self.__mean_image = self.image_stack
+            self.__std_err_of_mean_image = self.image_squared_stack
             return
         #warn if any image layers are missing a substantial number of images in the stack
         for li,nlis in enumerate(self.__n_images_stacked_by_layer,start=1) :
@@ -307,7 +310,6 @@ class Flatfield(ImageStack) :
         new_n_images_read, new_n_images_stacked_by_layer, new_field_logs = super().stack_rectangle_images(rectangles,*otherstackimagesargs)
         self.__n_images_read+=new_n_images_read
         self.__n_images_stacked_by_layer+=new_n_images_stacked_by_layer
-        self.__metadata_summaries.append(MetadataSummary())
         return new_field_logs
 
     def create_flatfield_model(self) :
@@ -418,7 +420,7 @@ class CorrectedMeanImage(MeanImage) :
         self.__flatfield_image = flatfield_image
         self.__flatfield_image_err = flatfield_err
         self.__corrected_mean_image = self.mean_image/flatfield_image
-        self.__corrected_mean_image_err = self.__corrected_mean_image*np.sqrt(np.power(flatfield_image_err/flatfield_image,2)*np.power(self.std_err_of_mean_image/self.mean_image,2))
+        self.__corrected_mean_image_err = self.__corrected_mean_image*np.sqrt(np.power(self.__flatfield_image_err/self.__flatfield_image,2)*np.power(self.std_err_of_mean_image/self.mean_image,2))
 
     def write_output(self,workingdirpath) :
         """
@@ -450,10 +452,8 @@ class CorrectedMeanImage(MeanImage) :
         plot_image_layers(self.mean_image,'mean_image',plotdir_path)
         plot_image_layers(self.__corrected_mean_image,'corrected_mean_image',plotdir_path)
         plot_image_layers(self.__corrected_mean_image_err,'corrected_mean_image_uncertainty',plotdir_path)
-        delta_over_sigma = (self.__corrected_mean_image - np.ones_like(self.__corrected_mean_image))/self.__corrected_mean_image_err
-        plot_image_layers(delta_over_sigma,'corrected_mean_image_delta_over_sigma',plotdir_path)
         flatfield_image_pixel_intensity_plot(self.__flatfield_image,save_dirpath=plotdir_path)
-        smoothed_mean_image = smooth_image_worker(self.meanimage,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA)
+        smoothed_mean_image = smooth_image_worker(self.mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA)
         smoothed_corrected_mean_image = smooth_image_worker(self.__corrected_mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA)
         corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=False,save_dirpath=plotdir_path)
         corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=True,save_dirpath=plotdir_path)

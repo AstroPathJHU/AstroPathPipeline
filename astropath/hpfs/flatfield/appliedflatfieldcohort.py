@@ -1,12 +1,18 @@
 #imports
 from .meanimagesample import MeanImageSampleBase
 from .imagestack import CorrectedMeanImage, Flatfield
-from .rectangle import RectangleCorrectedIm3MultiLayer
+from .config import CONST
+from ...shared.argumentparser import FileTypeArgumentParser, ImageCorrectionArgumentParser
 from ...shared.cohort import Im3Cohort, WorkflowCohort
-from ...utilities.misc import MetadataSummary
-import random
+from ...shared.sample import WorkflowSample
+from ...shared.rectangle import RectangleCorrectedIm3MultiLayer
+from ...shared.overlap import Overlap
+from ...utilities.tableio import writetable
+from ...utilities.misc import cd, MetadataSummary
+from ...utilities.config import CONST as UNIV_CONST
+import random, pathlib
 
-class AppliedFlatfieldSample(MeanImageSampleBase) :
+class AppliedFlatfieldSample(MeanImageSampleBase,WorkflowSample) :
     """
     Class to use in running most of the MeanImageSample functions but handling the output differently
     """
@@ -16,8 +22,8 @@ class AppliedFlatfieldSample(MeanImageSampleBase) :
         self.__metadata_summary_ff = None
         self.__metadata_summary_cmi = None
         if len(self.tissue_bulk_rects)>1 :
-            self.__flatfield_rectangles = random.sample(self.tissue_bulk_rects,len(self.tissue_bulk_rects)/2)
-            self.__meanimage_rectangles = [r for r in self.tissue_bulk_rects if r not in flatfield_rectangles]
+            self.__flatfield_rectangles = random.sample(self.tissue_bulk_rects,round(len(self.tissue_bulk_rects)/2))
+            self.__meanimage_rectangles = [r for r in self.tissue_bulk_rects if r not in self.__flatfield_rectangles]
         else :
             self.__flatfield_rectangles = []
             self.__meanimage_rectangles = []
@@ -65,7 +71,7 @@ class AppliedFlatfieldSample(MeanImageSampleBase) :
     def workflowdependencyclasses(cls):
         return super().workflowdependencyclasses()
 
-class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
+class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, ImageCorrectionArgumentParser) :
     """
     Class to use in investigating the effects of applying flatfield corrections within a cohort
     Each sample in the cohort will have its tissue bulk rectangles randomly split in two. 
@@ -96,6 +102,8 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         super().run(**kwargs)
         #after all of the samples have run individually
         with self.globallogger() as logger :
+            self.__flatfield.logger = logger
+            self.__corrected_meanimage.logger = logger
             #derive the corrections
             logger.info('Creating flatfield model....')
             self.__flatfield.create_flatfield_model()
@@ -107,6 +115,8 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
             self.__corrected_meanimage.apply_flatfield_corrections(self.__flatfield)
             #save the metadata summaries and the field logs
             logger.info('Writing out metadata summaries and field logs....')
+            if not self.__workingdir.is_dir() :
+                self.__workingdir.mkdir(parents=True)
             if len(self.__metadata_summaries_ff)>0 :
                 with cd(self.__workingdir) :
                     writetable(f'metadata_summary_flatfield_stacked_images.csv',self.__metadata_summaries_ff)
@@ -127,6 +137,8 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         """
         Add the sample's meanimage and mask stack to the batch flatfield meanimage and collect its metadata
         """
+        self.__flatfield.logger = sample.logger
+        self.__corrected_meanimage.logger = sample.logger
         #make sure the sample has enough rectangles in the bulk of the tissue to be used
         if len(sample.flatfield_rectangles)<1 or len(sample.meanimage_rectangles)<1 :
             sample.logger.info(f'{sample.SlideID} only has {len(sample.tissue_bulk_rects)} images in the bulk of the tissue and so it will be ignored in the AppliedFlatfieldCohort.')
@@ -140,7 +152,7 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         self.__metadata_summaries_ff.append(sample.flatfield_metadata_summary)
         #add the other half of the rectangles to the corrected mean image
         sample.logger.info(f'{sample.SlideID} will add {len(sample.meanimage_rectangles)} images to the corrected mean image')
-        new_field_logs = self.__flatfield.stack_rectangle_images(sample.meanimage_rectangles,sample.med_ets,sample.image_masking_dirpath)
+        new_field_logs = self.__corrected_meanimage.stack_rectangle_images(sample.meanimage_rectangles,sample.med_ets,sample.image_masking_dirpath)
         self.__field_logs_cmi+=new_field_logs
         self.__metadata_summaries_cmi.append(sample.corrected_meanimage_metadata_summary)
 
@@ -159,25 +171,30 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
 
     @property
     def workflowkwargs(self) :
-        return{**super().workflowkwargs,'skip_masking':self.skip_masking}
+        return{**super().workflowkwargs,'skip_masking':self.__skip_masking}
 
     #################### CLASS METHODS ####################
 
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
-        p.add_argument('workingdir', type=pathlib.Path, help='path to the working directory where results will be saved')
-        cls.sampleclass.addargumentstoparser(p)
+        p.add_argument('workingdir', type=pathlib.Path, help='Path to the directory that should hold the results')
+        p.add_argument('--skip_masking', action='store_true',
+                       help='Add this flag to entirely skip masking out the background regions of the images as they get added')
         return p
 
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         parsed_args_dict['skip_finished']=False #always rerun the samples, they don't produce any output
         return {**super().initkwargsfromargumentparser(parsed_args_dict),
-                'filetype': parsed_args_dict.pop('filetype'), 
-                'et_offset_file': None if parsed_args_dict.pop('skip_exposure_time_correction') else parsed_args_dict.pop('exposure_time_offset_file'),
+                'workingdir': parsed_args_dict.pop('workingdir'),
                 'skip_masking': parsed_args_dict.pop('skip_masking'),
                }
 
+#################### FILE-SCOPE FUNCTIONS ####################
 
+def main(args=None) :
+    AppliedFlatfieldCohort.runfromargumentparser(args)
 
+if __name__=='__main__' :
+    main()
