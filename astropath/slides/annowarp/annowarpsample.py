@@ -71,7 +71,7 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     """
     return self.__imageinfo["yposition"]
 
-class WSISample(ZoomFolderSampleBase):
+class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
@@ -80,7 +80,7 @@ class WSISample(ZoomFolderSampleBase):
     self.__wsi = None
 
   @contextlib.contextmanager
-  def using_wsi(self):
+  def using_wsi(self, layer):
     """
     Context manager for opening the wsi
     """
@@ -89,7 +89,7 @@ class WSISample(ZoomFolderSampleBase):
       #disable PIL's warning when opening big images
       self.__using_wsi_context.enter_context(self.PILmaximagepixels())
       #open the wsi
-      self.__wsi = self.__using_wsi_context.enter_context(PIL.Image.open(self.wsifilename(layer=self.wsilayer)))
+      self.__wsi = self.__using_wsi_context.enter_context(PIL.Image.open(self.wsifilename(layer=layer)))
     self.__nentered += 1
     try:
       yield self.__wsi
@@ -132,7 +132,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(QPTiffSample, WSISample, ZoomSampleBase, WorkflowSample, XMLPolygonReader, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonReader, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -171,7 +171,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, ZoomSampleBase, WorkflowSample
     """
     Context manager for opening the wsi and qptiff images
     """
-    with self.using_wsi() as wsi, self.using_qptiff() as qptiff:
+    with self.using_wsi(layer=self.wsilayer) as wsi, self.using_qptiff() as qptiff:
       yield wsi, qptiff
 
   @property
