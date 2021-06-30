@@ -3,6 +3,7 @@ from .meanimagesample import MeanImageSampleBase
 from .imagestack import CorrectedMeanImage, Flatfield
 from .rectangle import RectangleCorrectedIm3MultiLayer
 from ...shared.cohort import Im3Cohort, WorkflowCohort
+from ...utilities.misc import MetadataSummary
 import random
 
 class AppliedFlatfieldSample(MeanImageSampleBase) :
@@ -10,17 +11,44 @@ class AppliedFlatfieldSample(MeanImageSampleBase) :
     Class to use in running most of the MeanImageSample functions but handling the output differently
     """
 
+    def __init__(self,*args,**kwargs) :
+        super().__init__(*args,**kwargs)
+        self.__metadata_summary_ff = None
+        self.__metadata_summary_cmi = None
+        if len(self.tissue_bulk_rects)>1 :
+            self.__flatfield_rectangles = random.sample(self.tissue_bulk_rects,len(self.tissue_bulk_rects)/2)
+            self.__meanimage_rectangles = [r for r in self.tissue_bulk_rects if r not in flatfield_rectangles]
+        else :
+            self.__flatfield_rectangles = []
+            self.__meanimage_rectangles = []
+
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
                 *(r.imagefile for r in self.rectangles),
                ]
 
     def run(self) :
-        """
-        Main "run" function to be looped when entire cohorts are run
-        """
+        #find or create the masks for the sample if they're needed
         if not self.skip_masking :
             self.create_or_find_image_masks()
+        #set the metadata summaries for the sample
+        ff_rect_ts = [r.t for r in self.__flatfield_rectangles]
+        cmi_rect_ts = [r.t for r in self.__meanimage_rectangles]
+        self.__metadata_summary_ff = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(ff_rect_ts)),str(max(ff_rect_ts)))
+        self.__metadata_summary_cmi = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(cmi_rect_ts)),str(max(cmi_rect_ts)))
+
+    @property
+    def flatfield_rectangles(self) :
+        return self.__flatfield_rectangles
+    @property
+    def meanimage_rectangles(self) :
+        return self.__meanimage_rectangles
+    @property
+    def flatfield_metadata_summary(self) :
+        return self.__metadata_summary_ff
+    @property
+    def corrected_meanimage_metadata_summary(self) :
+        return self.__metadata_summary_cmi
 
     multilayer = True
     rectangletype = RectangleCorrectedIm3MultiLayer
@@ -58,6 +86,10 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         self.__skip_masking = skip_masking
         self.__flatfield = Flatfield(self.logger)
         self.__corrected_meanimage = CorrectedMeanImage(self.logger)
+        self.__metadata_summaries_ff = []
+        self.__metadata_summaries_cmi = []
+        self.__field_logs_ff = []
+        self.__field_logs_cmi = []
 
     def run(self,**kwargs) :
         #run all of the samples individually first like any other cohort (just checks that files exist)
@@ -67,11 +99,28 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
             #derive the corrections
             logger.info('Creating flatfield model....')
             self.__flatfield.create_flatfield_model()
+            #create the mean image that will be corrected
+            logger.info('Creating mean image to correct....')
+            self.__corrected_meanimage.make_mean_image()
             #correct the meanimage with the flatfield model
             logger.info('Applying flatfield corrections to meanimage....')
             self.__corrected_meanimage.apply_flatfield_corrections(self.__flatfield)
+            #save the metadata summaries and the field logs
+            logger.info('Writing out metadata summaries and field logs....')
+            if len(self.__metadata_summaries_ff)>0 :
+                with cd(self.__workingdir) :
+                    writetable(f'metadata_summary_flatfield_stacked_images.csv',self.__metadata_summaries_ff)
+            if len(self.__metadata_summaries_cmi)>0 :
+                with cd(self.__workingdir) :
+                    writetable(f'metadata_summary_corrected_mean_image_stacked_images.csv',self.__metadata_summaries_cmi)
+            if len(self.__field_logs_ff)>0 :
+                with cd(self.__workingdir) :
+                    writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}_flatfield.csv',self.__field_logs_ff)
+            if len(self.__field_logs_cmi)>0 :
+                with cd(self.__workingdir) :
+                    writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}_corrected_mean_image.csv',self.__field_logs_cmi)
             #write the output from the corrected mean image
-            logger.info('Creating plots and writing output....')
+            logger.info('Creating plots and writing output for corrected mean image....')
             self.__corrected_meanimage.write_output(self.__workingdir)
 
     def runsample(self,sample,**kwargs) :
@@ -79,24 +128,21 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         Add the sample's meanimage and mask stack to the batch flatfield meanimage and collect its metadata
         """
         #make sure the sample has enough rectangles in the bulk of the tissue to be used
-        if len(sample.tissue_bulk_rects)<2 :
+        if len(sample.flatfield_rectangles)<1 or len(sample.meanimage_rectangles)<1 :
             sample.logger.info(f'{sample.SlideID} only has {len(sample.tissue_bulk_rects)} images in the bulk of the tissue and so it will be ignored in the AppliedFlatfieldCohort.')
             return
         #run the sample to find or create its masking files if necessary
         super().runsample(sample,**kwargs)
-        #split the set of sample rectangles in the bulk of the tissue in half randomly
-        flatfield_rectangles = random.sample(sample.tissue_bulk_rects,len(sample.tissue_bulk_rects)/2)
-        meanimage_rectangles = [r for r in sample.tissue_bulk_rects if r not in flatfield_rectangles]
         #add half the rectangles to the flatfield model
-        self.__flatfield.stack_rectangle_images(flatfield_rectangles,med_ets,)
-
-
-        #add the sample's information to the flatfield model that's being created
-        msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch {self.__batchID:02d} '
-        msg+= f'({self.__samples_added+1} of {len(list(self.filteredsamples))})....'
-        sample.logger.info(msg)
-        self.__flatfield.add_sample(sample)
-        self.__samples_added+=1
+        sample.logger.info(f'{sample.SlideID} will add {len(sample.flatfield_rectangles)} images to the flatfield model')
+        new_field_logs = self.__flatfield.stack_rectangle_images(sample.flatfield_rectangles,sample.med_ets,sample.image_masking_dirpath)
+        self.__field_logs_ff+=new_field_logs
+        self.__metadata_summaries_ff.append(sample.flatfield_metadata_summary)
+        #add the other half of the rectangles to the corrected mean image
+        sample.logger.info(f'{sample.SlideID} will add {len(sample.meanimage_rectangles)} images to the corrected mean image')
+        new_field_logs = self.__flatfield.stack_rectangle_images(sample.meanimage_rectangles,sample.med_ets,sample.image_masking_dirpath)
+        self.__field_logs_cmi+=new_field_logs
+        self.__metadata_summaries_cmi.append(sample.corrected_meanimage_metadata_summary)
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -126,9 +172,12 @@ class AppliedFlatfieldCohort(Im3Cohort,WorkflowCohort) :
 
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
-        parsed_args_dict['skip_finished']=False
+        parsed_args_dict['skip_finished']=False #always rerun the samples, they don't produce any output
         return {**super().initkwargsfromargumentparser(parsed_args_dict),
                 'filetype': parsed_args_dict.pop('filetype'), 
                 'et_offset_file': None if parsed_args_dict.pop('skip_exposure_time_correction') else parsed_args_dict.pop('exposure_time_offset_file'),
                 'skip_masking': parsed_args_dict.pop('skip_masking'),
                }
+
+
+

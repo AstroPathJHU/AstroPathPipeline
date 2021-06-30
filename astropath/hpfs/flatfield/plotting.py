@@ -299,3 +299,180 @@ def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpa
         fn+=f'_BatchID_{batchID:02d}'
     fn+='_pixel_intensities.png'
     save_figure_in_dir(plt,fn,save_dirpath)
+
+def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None) :
+    """
+    Plot the max/min, 5th/95th %ile, and std. dev. of a mask stack's number of images stacked by layer 
+    in the whole image and in the central region of the image only
+
+    mask_stack = the mask stack to plot
+    save_dirpath = path to directory to save the plots in (if None the plot is saved in the current directory)
+    """
+    nlayers=mask_stack.shape[-1]
+    if nlayers==35 :
+        last_filter_layers = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_35[:-1]] 
+    elif nlayers==43 :
+        last_filter_layers = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_43[:-1]]
+    else :
+        raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
+    yclip = int(mask_stack.shape[0]*0.1)
+    xclip = int(mask_stack.shape[1]*0.1)
+    clipped_mask_stack = mask_stack[yclip:-yclip,xclip:-xclip,:]
+    u_mins=[]; u_lows=[]; u_maxs=[]; u_highs=[]
+    c_mins=[]; c_lows=[]; c_maxs=[]; c_highs=[]
+    u_std_devs=[]; c_std_devs=[]
+    plt.figure(figsize=(16.8,7.2))
+    xaxis_vals = list(range(1,nlayers+1))
+    #iterate over the layers
+    for layer_i in range(nlayers) :
+        #find the min, max, and 5/95%ile pixel intensities for this uncorrected and corrected image layer
+        sorted_u_layer = np.sort((mask_stack[:,:,layer_i]).flatten())/np.mean(mask_stack[:,:,layer_i])
+        u_mins.append(sorted_u_layer[0]); u_lows.append(sorted_u_layer[int(0.05*len(sorted_u_layer))])
+        u_stddev = np.std(sorted_u_layer); u_std_devs.append(u_stddev)
+        u_maxs.append(sorted_u_layer[-1]); u_highs.append(sorted_u_layer[int(0.95*len(sorted_u_layer))])
+        sorted_c_layer = np.sort((clipped_mask_stack[:,:,layer_i]).flatten())/np.mean(clipped_mask_stack[:,:,layer_i])
+        c_mins.append(sorted_c_layer[0]); c_lows.append(sorted_c_layer[int(0.05*len(sorted_c_layer))])
+        c_stddev = np.std(sorted_c_layer); c_std_devs.append(c_stddev)
+        c_maxs.append(sorted_c_layer[-1]); c_highs.append(sorted_c_layer[int(0.95*len(sorted_c_layer))])
+        if layer_i==0 :
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5,label='overall std. dev.')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5,label='std. dev. (central 64%)')
+        else :
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
+    #plot the relative intensity plots together, with the broadband filter breaks
+    plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='darkgreen',linestyle='dashed',label='mean')
+    totalmin=min(min(u_lows),min(c_lows))
+    totalmax=max(max(u_highs),max(c_highs))
+    for i in range(len(last_filter_layers)+1) :
+        f_i = 0 if i==0 else last_filter_layers[i-1]
+        l_i = xaxis_vals[-1] if i==len(last_filter_layers) else last_filter_layers[i]
+        if i==0 :
+            plt.plot(xaxis_vals[f_i:l_i],u_lows[f_i:l_i],color='darkred',marker='v',label=r'overall 5th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],u_highs[f_i:l_i],color='darkred',marker='^',label=r'overall 95th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],c_lows[f_i:l_i],color='darkblue',marker='v',label=r'5th %ile (central 64%)')
+            plt.plot(xaxis_vals[f_i:l_i],c_highs[f_i:l_i],color='darkblue',marker='^',label=r'95th %ile (central 64%)')
+            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+        else :
+            plt.plot(xaxis_vals[f_i:l_i],u_lows[f_i:l_i],color='darkred',marker='v')
+            plt.plot(xaxis_vals[f_i:l_i],u_highs[f_i:l_i],color='darkred',marker='^')
+            plt.plot(xaxis_vals[f_i:l_i],c_lows[f_i:l_i],color='darkblue',marker='v')
+            plt.plot(xaxis_vals[f_i:l_i],c_highs[f_i:l_i],color='darkblue',marker='^')
+            if i!=len(last_filter_layers) :
+                plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted')
+    plt.title('relative spread in number of images stacked per layer for whole and central 64% images',fontsize=14)
+    plt.xlabel('layer number',fontsize=14)
+    #fix the range on the x-axis to accommodate the legend
+    plt.xlim(0,nlayers+(10 if nlayers==35 else 12))
+    plt.ylabel('number of images stacked relative to layer mean',fontsize=14)
+    plt.legend(loc='best')
+    save_figure_in_dir(plt,'mask_stack_whole_image_vs_central_region.png',save_dirpath)
+    u_hi_lo_spread = [u_highs[li]-u_lows[li] for li in range(nlayers)]
+    c_hi_lo_spread = [c_highs[li]-c_lows[li] for li in range(nlayers)]
+    print(f'Mean whole image 5th-95th %ile = {np.mean(np.array(u_hi_lo_spread))}')
+    print(f'Mean central 64% 5th-95th %ile = {np.mean(np.array(c_hi_lo_spread))}')
+    print(f'Mean whole image std. dev. = {np.mean(np.array(u_std_devs))}')
+    print(f'Mean central 64% std. dev. = {np.mean(np.array(c_std_devs))}')
+
+def corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=False,save_dirpath=None) :
+    """
+    Plot the max/min, 5th/95th %ile, and std. dev. of a mean image's pixel intensities by layer, before and after correction by a flatfield model
+    Also creates a second plot of the pre/post correction std. dev. and 5th-95th percentile relative intensity variations
+    Plots can be created for the entire image region or for the central region only.
+
+    smoothed_mean_image = the smoothed pre-correction mean image array
+    smoothed_corrected_mean_image = the smoothed post-correction mean image array
+    central_region = True if only the central 64% should be used to calculate the plotted statistics, False otherwise.
+    save_dirpath = path to directory to save the plots in (if None the plot is saved in the current directory)
+    """
+    assert smoothed_mean_image.shape == smoothed_corrected_mean_image.shape
+    #clip the outer edges off if the plots are for the central region only
+    if central_region :
+        yclip = int(smoothed_mean_image.shape[0]*0.1)
+        xclip = int(smoothed_mean_image.shape[1]*0.1)
+        smoothed_mean_image = smoothed_mean_image[yclip:-yclip,xclip:-xclip,:]
+        smoothed_corrected_mean_image = smoothed_corrected_mean_image[yclip:-yclip,xclip:-xclip,:]
+    #figure out the number of layers and filter breaks
+    nlayers=smoothed_mean_image.shape[-1]
+    if nlayers==35 :
+        last_filter_layers = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_35[:-1]] 
+    elif nlayers==43 :
+        last_filter_layers = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_43[:-1]]
+    else :
+        raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
+    #keep track of the uncorrected and corrected images' minimum and maximum (and 5/95%ile) pixel intensities while the other plots are made
+    u_low_pixel_intensities=[]; u_high_pixel_intensities=[]
+    c_low_pixel_intensities=[]; c_high_pixel_intensities=[]
+    u_std_devs=[]; c_std_devs=[]
+    plt.figure(figsize=(16.8,(27./64.)*16.8))
+    xaxis_vals = list(range(1,nlayers+1))
+    #iterate over the layers
+    for layer_i in range(nlayers) :
+        #find the min, max, and 5/95%ile pixel intensities for this uncorrected and corrected image layer
+        sorted_u_layer = np.sort((smoothed_mean_image[:,:,layer_i]).flatten())/np.mean(smoothed_mean_image[:,:,layer_i])
+        u_low_pixel_intensities.append(sorted_u_layer[int(0.05*len(sorted_u_layer))])
+        u_stddev = np.std(sorted_u_layer); u_std_devs.append(u_stddev)
+        u_high_pixel_intensities.append(sorted_u_layer[int(0.95*len(sorted_u_layer))])
+        sorted_c_layer = np.sort((smoothed_corrected_mean_image[:,:,layer_i]).flatten())/np.mean(smoothed_corrected_mean_image[:,:,layer_i])
+        c_low_pixel_intensities.append(sorted_c_layer[int(0.05*len(sorted_c_layer))])
+        c_stddev = np.std(sorted_c_layer); c_std_devs.append(c_stddev)
+        c_high_pixel_intensities.append(sorted_c_layer[int(0.95*len(sorted_c_layer))])
+        if layer_i==0 :
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5,label='uncorrected std. dev.')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5,label='corrected std. dev.')
+        else :
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
+    #plot the relative intensity plots together, with the broadband filter breaks
+    plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='darkgreen',linestyle='dashed',label='mean')
+    totalmin=min(min(u_low_pixel_intensities),min(c_low_pixel_intensities))
+    totalmax=max(max(u_high_pixel_intensities),max(c_high_pixel_intensities))
+    for i in range(len(last_filter_layers)+1) :
+        f_i = 0 if i==0 else last_filter_layers[i-1]
+        l_i = xaxis_vals[-1] if i==len(last_filter_layers) else last_filter_layers[i]
+        if i==0 :
+            plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],color='darkred',marker='v',label=r'uncorrected 5th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],u_high_pixel_intensities[f_i:l_i],color='darkred',marker='^',label=r'uncorrected 95th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],c_low_pixel_intensities[f_i:l_i],color='darkblue',marker='v',label=r'corrected 5th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],c_high_pixel_intensities[f_i:l_i],color='darkblue',marker='^',label=r'corrected 95th %ile')
+            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+        else :
+            plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],color='darkred',marker='v')
+            plt.plot(xaxis_vals[f_i:l_i],u_high_pixel_intensities[f_i:l_i],color='darkred',marker='^')
+            plt.plot(xaxis_vals[f_i:l_i],c_low_pixel_intensities[f_i:l_i],color='darkblue',marker='v')
+            plt.plot(xaxis_vals[f_i:l_i],c_high_pixel_intensities[f_i:l_i],color='darkblue',marker='^')
+            if i!=len(last_filter_layers) :
+                plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted')
+    plt.title('uncorrected/corrected smoothed mean image relative pixel intensities',fontsize=14)
+    plt.xlabel('layer number',fontsize=14)
+    #fix the range on the x-axis to accommodate the legend
+    plt.xlim(0,nlayers+(10 if nlayers==35 else 12))
+    plt.ylabel('pixel intensity relative to layer mean',fontsize=14)
+    plt.legend(loc='lower right')
+    fn = 'smoothed_mean_image_pixel_intensities'
+    if central_region :
+        fn+='_central_region'
+    fn+='.png'
+    save_figure_in_dir(plt,fn,save_dirpath)
+    #plot the reduction in illumination variation
+    u_hi_lo_spread = [u_high_pixel_intensities[li]-u_low_pixel_intensities[li] for li in range(nlayers)]
+    c_hi_lo_spread = [c_high_pixel_intensities[li]-c_low_pixel_intensities[li] for li in range(nlayers)]
+    print(f'Mean uncorrected 5th-95th %ile = {np.mean(np.array(u_hi_lo_spread))}')
+    print(f'Mean corrected 5th-95th %ile = {np.mean(np.array(c_hi_lo_spread))}')
+    print(f'Mean uncorrected std. dev. = {np.mean(np.array(u_std_devs))}')
+    print(f'Mean corrected std. dev. = {np.mean(np.array(c_std_devs))}')
+    f,ax=plt.subplots(figsize=(9.6,0.5*9.6))
+    ax.plot(xaxis_vals,u_hi_lo_spread,marker='v',linestyle='dashed',linewidth=2,label='uncorrected 5th-95th %ile')
+    ax.plot(xaxis_vals,c_hi_lo_spread,marker='^',linestyle='dashed',linewidth=2,label='corrected 5th-95th %ile')
+    ax.plot(xaxis_vals,u_std_devs,marker='<',linestyle='dotted',linewidth=2,label='uncorrected std. dev.')
+    ax.plot(xaxis_vals,c_std_devs,marker='>',linestyle='dotted',linewidth=2,label='corrected std. dev.')
+    ax.set_ylim(0,(ax.get_ylim())[-1]*1.25)
+    ax.set_title('illumination variation reduction by layer')
+    ax.set_xlabel('image layer')
+    ax.set_ylabel('relative flux')
+    ax.legend(loc='best')
+    fn = 'illumination_variation_reduction'
+    if central_region :
+        fn+='_central_region'
+    fn+='.png'
+    save_figure_in_dir(plt,fn,save_dirpath)

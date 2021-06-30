@@ -1,6 +1,6 @@
 #imports
-from .plotting import plot_image_layers, flatfield_image_pixel_intensity_plot
-from .latexsummary import MeanImageLatexSummary, FlatfieldLatexSummary
+from .plotting import plot_image_layers, flatfield_image_pixel_intensity_plot, corrected_mean_image_PI_and_IV_plots
+from .latexsummary import MeanImageLatexSummary, FlatfieldLatexSummary, AppliedFlatfieldLatexSummary
 from .utilities import FieldLog
 from .config import CONST
 from ..image_masking.image_mask import ImageMask
@@ -267,6 +267,9 @@ class MeanImage(ImageStack) :
     @property
     def mean_image(self) :
         return self.__mean_image
+    @property
+    def std_err_of_mean_image(self) :
+        return self.__std_err_of_mean_image
 
 class Flatfield(ImageStack) :
     """
@@ -281,6 +284,8 @@ class Flatfield(ImageStack) :
         logger = the logging object to use (passed from whatever is using this meanimage)
         """
         super().__init__(*args,**kwargs)
+        self.__n_images_read = 0
+        self.__n_images_stacked_by_layer = None
         self.__flatfield_image = None
         self.__flatfield_image_err = None
         self.__metadata_summaries = []
@@ -296,6 +301,15 @@ class Flatfield(ImageStack) :
         self.__metadata_summaries+=readtable(sample.metadatasummary,MetadataSummary)
         self.__field_logs+=readtable(sample.fieldsused,FieldLog)
 
+    def stack_rectangle_images(self,rectangles,*otherstackimagesargs) :
+        if self.__n_images_stacked_by_layer is None :
+            self.__n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
+        new_n_images_read, new_n_images_stacked_by_layer, new_field_logs = super().stack_rectangle_images(rectangles,*otherstackimagesargs)
+        self.__n_images_read+=new_n_images_read
+        self.__n_images_stacked_by_layer+=new_n_images_stacked_by_layer
+        self.__metadata_summaries.append(MetadataSummary())
+        return new_field_logs
+
     def create_flatfield_model(self) :
         """
         After all the samples have been added, this method creates the actual flatfield object
@@ -303,7 +317,7 @@ class Flatfield(ImageStack) :
         self.__flatfield_image = np.empty_like(self.image_stack)
         self.__flatfield_image_err = np.empty_like(self.image_stack)
         #warn if not enough image were stacked overall
-        if np.max(self.mask_stack)<1 :
+        if (self.mask_stack is not None and np.max(self.mask_stack)<1) or (self.mask_stack is None and (self.__n_images_read<1 or np.max(self.__n_images_stacked_by_layer)<1)) :
             self.logger.warningglobal(f'WARNING: not enough images were stacked overall, so the flatfield model will be all ones!')
             self.__flatfield_image = np.ones_like(self.image_stack)
             self.__flatfield_image_err = np.ones_like(self.image_stack)
@@ -311,11 +325,11 @@ class Flatfield(ImageStack) :
         #create the mean image and its standard error from the stacks
         mean_image, std_err_of_mean_image = self.get_meanimage_and_stderr()
         #smooth the mean image with its uncertainty
-        smoothed_mean_image,sm_mean_img_err = smooth_image_with_uncertainty_worker(mean_image,std_err_of_mean_image,100)
+        smoothed_mean_image,sm_mean_img_err = smooth_image_with_uncertainty_worker(mean_image,std_err_of_mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA)
         #create the flatfield image layer-by-layer
         for li in range(self.mask_stack.shape[-1]) :
             #warn if the layer is missing a substantial number of images in the stack
-            if np.max(self.mask_stack[:,:,li])<1 :
+            if (self.mask_stack is not None and np.max(self.mask_stack[:,:,li])<1) or (self.mask_stack is None and self.__n_images_stacked_by_layer[li]<1) :
                 self.logger.warningglobal(f'WARNING: not enough images were stacked in layer {li+1}, so this layer of the flatfield model will be all ones!')
                 self.__flatfield_image[:,:,li] = 1.0
                 self.__flatfield_image_err[:,:,li] = 1.0
@@ -404,10 +418,50 @@ class CorrectedMeanImage(MeanImage) :
         self.__flatfield_image = flatfield_image
         self.__flatfield_image_err = flatfield_err
         self.__corrected_mean_image = self.mean_image/flatfield_image
-        self.__corrected_mean_image_err = self.__corrected_mean_image*(flatfield_image_err/flatfield_image)
+        self.__corrected_mean_image_err = self.__corrected_mean_image*np.sqrt(np.power(flatfield_image_err/flatfield_image,2)*np.power(self.std_err_of_mean_image/self.mean_image,2))
 
     def write_output(self,workingdirpath) :
         """
         Write out the relevant information for the corrected mean image to the given working directory
         """
-        pass
+        if not workingdirpath.is_dir() :
+            workingdirpath.mkdir(parents=True)
+        #save the flatfield image and its uncertainty
+        self.logger.info('Saving flatfield image and its uncertainty....')
+        with cd(workingdirpath) :
+            write_image_to_file(self.__flatfield_image,'flatfield.bin')
+            write_image_to_file(self.__flatfield_image_err,'flatfield_uncertainty.bin')
+        #write out the mask stack
+        if self.mask_stack is not None :
+            self.logger.info('Writing out mask stack for mean image....')
+            write_image_to_file(self.mask_stack,f'corrected_mean_image_mask_stack.bin')
+        #write out the corrected mean image and its uncertainty
+        self.logger.info('Writing out the corrected mean image and its uncertainty')
+        with cd(workingdirpath) :
+            write_image_to_file(self.__corrected_mean_image,'corrected_mean_image.bin')
+            write_image_to_file(self.__corrected_mean_image_err,'corrected_mean_image_uncertainty.bin')
+        #make some plots of the image layers and the pixel intensities
+        plotdir_path = workingdirpath / 'corrected_meanimage_plots'
+        plotdir_path.mkdir(exist_ok=True)
+        plot_image_layers(self.__flatfield_image,'flatfield',plotdir_path)
+        plot_image_layers(self.__flatfield_image_err,'flatfield_uncertainty',plotdir_path)
+        if self.mask_stack is not None :
+            plot_image_layers(self.mask_stack,'corrected_mean_image_mask_stack',plotdir_path)
+        plot_image_layers(self.mean_image,'mean_image',plotdir_path)
+        plot_image_layers(self.__corrected_mean_image,'corrected_mean_image',plotdir_path)
+        plot_image_layers(self.__corrected_mean_image_err,'corrected_mean_image_uncertainty',plotdir_path)
+        delta_over_sigma = (self.__corrected_mean_image - np.ones_like(self.__corrected_mean_image))/self.__corrected_mean_image_err
+        plot_image_layers(delta_over_sigma,'corrected_mean_image_delta_over_sigma',plotdir_path)
+        flatfield_image_pixel_intensity_plot(self.__flatfield_image,save_dirpath=plotdir_path)
+        smoothed_mean_image = smooth_image_worker(self.meanimage,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA)
+        smoothed_corrected_mean_image = smooth_image_worker(self.__corrected_mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA)
+        corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=False,save_dirpath=plotdir_path)
+        corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=True,save_dirpath=plotdir_path)
+        #make the summary PDF
+        latex_summary = AppliedFlatfieldLatexSummary(self.__flatfield_image,smoothed_mean_image,smoothed_corrected_mean_image,plotdir_path)
+        latex_summary.build_tex_file()
+        #check = latex_summary.compile()
+        #if check!=0 :
+        #    warnmsg = f'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
+        #    warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+        #    self.logger.warning(warnmsg)

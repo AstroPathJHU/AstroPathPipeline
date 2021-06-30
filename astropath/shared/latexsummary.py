@@ -132,6 +132,28 @@ class LatexSummaryWithPlotdir(LatexSummaryBase) :
         self.__plot_patterns = plot_patterns
         super().__init__(title,filename,plot_dirpath.parent)
 
+    def image_layer_grid_plot_tex_lines(self,pattern,caption,label) :
+        """
+        return a list of tex lines for an entire grid of plots of individual image layers, sorted by layer number
+        image layer plots should have filenames ending in "_layer_[n].png" to get filenames right automatically
+
+        pattern = the pattern to search for to find the individual image layer plots
+        caption = the caption of the plot
+        label = the label of the plot
+        """
+        lines = []
+        lines.append('\\begin{figure}[!ht]\n')
+        lines.append('\\centering\n')
+        all_plot_names = []
+        for fn in self.__plot_dirpath.glob(pattern) :
+            all_plot_names.append(fn.name)
+        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
+            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
+        lines.append(f'\\caption{{\\footnotesize {caption}}}\n')
+        lines.append(f'\\label{{{label}}}\n')
+        lines.append('\\end{figure}\n')
+        return lines
+
     @property
     def failed_compilation_tex_file_path(self) :
         #put the .tex file in the plot directory if it couldn't be compiled

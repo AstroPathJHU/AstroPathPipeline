@@ -102,7 +102,7 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
-        parsed_args_dict['skip_finished']=False
+        parsed_args_dict['skip_finished']=False #always rerun the samples, they don't produce any output
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'batchID': parsed_args_dict.pop('batchID'), 

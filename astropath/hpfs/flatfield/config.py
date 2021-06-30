@@ -53,18 +53,24 @@ class Const :
         return 'masking_summary.pdf' #name of the .pdf file containing plots of how the image masking worked for this sample
     @property
     def MIN_PIXEL_FRAC(self) :
-        return 0.8
+        return 0.8 #minimum fraction of pixels that must be "good tissue" in a given image to add it to an image stack
     @property
     def MEANIMAGE_SUMMARY_PDF_FILENAME(self) :
         return 'meanimage_summary.pdf' #name of the .pdf file containing plots of layers of the meanimage for this sample, etc.
     @property
+    def FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA(self) :
+        return 100 #Sigma (in pixels) for the wide Gaussian filter applied to smooth the meanimage when creating a flatfield model
+    @property
     def TOP_FLATFIELD_DIRNAME(self) :
-        return 'Flatfield'
+        return 'Flatfield' #name of the directory holding flatfield model results for an entire cohort (directory with this name gets created in root)
     @property
     def FLATFIELD_DIRNAME_STEM(self) :
-        return 'flatfield_BatchID_'
+        return 'flatfield_BatchID_' #prepend for name of the directory holding batch flatfield results (also used for some plot names)
     @property
     def FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
-        return 'flatfield_summary'
+        return 'flatfield_summary' #prepend for the name of the batch flatfield summary pdf file
+    @property
+    def APPLIED_FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
+        return 'applied_flatfield_summary' #prepend for the name of the applied flatfield summary pdf file
 
 CONST=Const()

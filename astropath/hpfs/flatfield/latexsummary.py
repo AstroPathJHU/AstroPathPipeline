@@ -183,63 +183,45 @@ class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
     def mean_image_plots(self) :
         lines = []
         lines.append('\\section{Layers of the mean image}\n')
-        l = f'Figure~\\ref{{fig:mean_image_layers}} shows all individual layers of the computed mean image for {self.slideID_tex}. '
+        figlabel = 'fig:mean_image_layers'
+        l = f'Figure~\\ref{{{figlabel}}} shows all individual layers of the computed mean image for {self.slideID_tex}. '
         l+= 'The units in these plots are units of intensity in average counts/ms.'
         lines.append(l+'\n')
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        all_plot_names = []
-        for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
-            all_plot_names.append(fn.name)
-        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
-        lines.append(f'\\caption{{\\footnotesize All layers of the mean image computed for {self.slideID_tex}}}\n')
-        lines.append('\\label{fig:mean_image_layers}\n')
-        lines.append('\\end{figure}\n')
+        pattern = f'{self.slideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png'
+        caption = f'All layers of the mean image computed for {self.slideID_tex}'
+        lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)
         return lines
 
     @property
     def std_err_mean_image_plots(self) :
         lines = []
         lines.append('\\section{Layers of the standard error on the mean image}\n')
-        l = f'Figure~\\ref{{fig:mean_image_std_err_layers}} shows the standard error of the {self.slideID_tex} mean image in all individual image layers. '
+        figlabel = 'fig:mean_image_std_err_layers'
+        l = f'Figure~\\ref{{{figlabel}}} shows the standard error of the {self.slideID_tex} mean image in all individual image layers. '
         l+= 'The units in these plots are also units of intensity in average counts/ms; they represent the uncertainties on the mean image layers shown in '
         l+= 'Figure~\\ref{fig:mean_image_layers}. Any overly bright regions that were not masked out will be especially apparent in these plots.'
         lines.append(l+'\n')
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        all_plot_names = []
-        for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
-            all_plot_names.append(fn.name)
-        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
-        lines.append(f'\\caption{{\\footnotesize The standard error of the mean image for {self.slideID_tex} in all layers}}\n')
-        lines.append('\\label{fig:mean_image_std_err_layers}\n')
-        lines.append('\\end{figure}\n')
+        pattern = f'{self.slideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png'
+        caption = f'The standard error of the mean image for {self.slideID_tex} in all layers'
+        lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)
         return lines
 
     @property
     def mask_stack_plots(self) :
         lines = []
         lines.append('\\section{Layers of the mask stack}\n')
-        l = f'Figure~\\ref{{fig:mask_stack_layers}} shows every layer of the mask stack for {self.slideID_tex}. The units in these plots are the number of '
+        figlabel = 'fig:mask_stack_layers'
+        l = f'Figure~\\ref{{{figlabel}}} shows every layer of the mask stack for {self.slideID_tex}. The units in these plots are the number of '
         l+= 'individual images contributing to the mean image at every location. They should be identical unless one or more image layer groups exhibited a '
         l+= 'great deal of saturation that was masked out. Referencing the general number of images stacked to find the mean illumination of each pixel helps '
         l+= 'contextualize the results above.'
         lines.append(l+'\n')
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        all_plot_names = []
-        for fn in self.plot_dirpath.glob(f'{self.slideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png') :
-            all_plot_names.append(fn.name)
-        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
-        lines.append(f'\\caption{{\\footnotesize The stack of all masked images used to compute the {self.slideID_tex} mean image in all layers}}\n')
-        lines.append('\\label{fig:mask_stack_layers}\n')
-        lines.append('\\end{figure}\n')
+        pattern = f'{self.slideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png'
+        caption = f'The stack of all masked images used to compute the {self.slideID_tex} mean image in all layers'
+        lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)
         return lines
 
 class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
@@ -345,68 +327,69 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     def flatfield_layers(self) :
         lines = []
         lines.append('\\section{Layers of the flatfield correction image}\n')
-        lines.append('Figure~\\ref{fig:flatfield_image_layers} shows the flatfield correction factors found for every image layer.\n')
+        figlabel = 'fig:flatfield_image_layers'
+        lines.append(f'Figure~\\ref{{{figlabel}}} shows the flatfield correction factors found for every image layer.\n')
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        all_plot_names = []
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
         if self.__batchID is not None :
             pattern+= f'{self.__batchID:02d}_'
         pattern+='layer_*.png'
-        for fn in self.plot_dirpath.glob(pattern) :
-            all_plot_names.append(fn.name)
-        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
-        lines.append('\\caption{\\footnotesize Flatfield correction factors in each image layer}\n')
-        lines.append('\\label{fig:flatfield_image_layers}\n')
-        lines.append('\\end{figure}\n')
+        caption = 'Flatfield correction factors in each image layer'
+        lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)
         return lines
 
     @property
     def flatfield_uncertainty_layers(self) :
         lines = []
         lines.append('\\section{Layers of the flatfield correction image}\n')
-        lines.append('Figure~\\ref{fig:flatfield_uncertainty_image_layers} shows the uncertainties on the flatfield correction factors for every image layer.\n')
+        figlabel = 'fig:flatfield_uncertainty_image_layers'
+        lines.append(f'Figure~\\ref{{{figlabel}}} shows the uncertainties on the flatfield correction factors for every image layer.\n')
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        all_plot_names = []
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
         if self.__batchID is not None :
             pattern+= f'{self.__batchID:02d}_'
         pattern+='uncertainty_layer_*.png'
-        for fn in self.plot_dirpath.glob(pattern) :
-            all_plot_names.append(fn.name)
-        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
-        lines.append('\\caption{\\footnotesize Uncertainties on the flatfield correction factors in each image layer}\n')
-        lines.append('\\label{fig:flatfield_uncertainty_image_layers}\n')
-        lines.append('\\end{figure}\n')
+        caption = 'Uncertainties on the flatfield correction factors in each image layer'
+        lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)
         return lines
 
     @property
     def mask_stack_layers(self) :
         lines = []
         lines.append('\\section{Layers of the flatfield correction image}\n')
-        l = 'Figure~\\ref{fig:flatfield_mask_stack_layers} shows every layer of the overall mask stack used to measure the flatfield correction factors. '
+        figlabel = 'fig:flatfield_mask_stack_layers'
+        l = f'Figure~\\ref{{{figlabel}}} shows every layer of the overall mask stack used to measure the flatfield correction factors. '
         l+= 'These plots give some insight as to how many total images contribute to the measurements made.'
         lines.append(l+'\n')
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        all_plot_names = []
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
         if self.__batchID is not None :
             pattern+= f'{self.__batchID:02d}_'
         pattern+='mask_stack_layer_*.png'
-        for fn in self.plot_dirpath.glob(pattern) :
-            all_plot_names.append(fn.name)
-        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
-        lines.append('\\caption{\\footnotesize The stack of all image masks combined over every sample used to measure the flatfield corrections}\n')
-        lines.append('\\label{fig:flatfield_mask_stack_layers}\n')
-        lines.append('\\end{figure}\n')
+        caption = 'The stack of all image masks combined over every sample used to measure the flatfield corrections'
+        lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)
         return lines
 
+class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
+    """
+    Class to make a LatexSummary about the effects of applying a flatfield model 
+    to a meanimage created from an orthogonal set of images in the same sample
+    """
 
+    def __init__(self,flatfield_image,smoothed_mean_image,smoothed_corrected_mean_image,plot_dirpath) :
+        """
+        flatfield_image = the flatfield image that was applied
+        smoothed_mean_image = the pre-correction smoothed mean image
+        smoothed_corrected_mean_image = the post-correction smoothed mean image
+        plot_dirpath = the directory with all of the necessary plots in it
+        """
+        self.__flatfield_image = flatfield_image
+        self.__smoothed_mean_image = smoothed_mean_image
+        self.__smoothed_corrected_mean_image = smoothed_corrected_mean_image
+        title = 'Applied Flatfield Summary'
+        filename = f'{CONST.APPLIED_FLATFIELD_SUMMARY_PDF_FILENAME_STEM}.pdf'
+        super().__init__(title,filename,plot_dirpath)
+
+    @property
+    def sections(self) :
+        return super().sections

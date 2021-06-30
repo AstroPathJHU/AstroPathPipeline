@@ -1451,6 +1451,8 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ReadRectanglesIm3FromXML, Imag
     return self.__et_offset_file
   @property
   def med_ets(self) :
+    if self.__et_offset_file is not None and self.__med_ets is None :
+      self.initrectangles()
     return self.__med_ets
 
 class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRectanglesFromXML):
