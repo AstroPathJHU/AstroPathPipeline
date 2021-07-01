@@ -86,7 +86,7 @@ class LatexSummaryBase :
         if widths is None :
             widths = [0.95 for p in paths]
         elif type(widths)==float :
-            widths = [width for p in paths]
+            widths = [widths for p in paths]
         assert len(paths)==len(widths)
         lines = []
         lines.append('\\begin{figure}[!ht]')

@@ -135,7 +135,8 @@ class MaskingLatexSummary(LatexSummaryForSlideWithPlotdir) :
                 figlabel = 'fig:first_masking_plot'
             elif ifn==len(all_fns)-1 :
                 figlabel = 'fig:last_masking_plot'
-            caption = f'Masking plots for {fn.rstrip("_masking_plots.png").replace("_","\\_")}'
+            img_key = fn.rstrip("_masking_plots.png").replace("_","\\_")
+            caption = f'Masking plots for {img_key}'
             width = 1.0
             lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/{fn}',caption,figlabel,width)
             lines.append('\\clearpage\n\n')
@@ -423,7 +424,7 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         flatfield_layers_caption = 'Flatfield correction factors in each image layer'
         flatfield_layers_figlabel = 'fig:flatfield_layers'
         l = f'Figure~\\ref{{{flatfield_layers_figlabel}}} shows each layer of the flatfield correction factor image. These correction factors were '
-        l+= 'applied to the mean image shown in Fig.~\\ref{fig:mean_image_layers_before_correction}. The mean image and flatfield correction factors were measured using '
+        l+= 'applied to the mean image shown in Fig.~\\ref{fig:mean_image_layers}. The mean image and flatfield correction factors were measured using '
         l+= 'equally-sized orthogonal subsets of the HPF images in each sample considered.'
         lines.append(l+'\n')
         lines+=self.image_layer_grid_plot_tex_lines(flatfield_layers_pattern,flatfield_layers_caption,flatfield_layers_figlabel)
@@ -481,11 +482,11 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         lines.append('\n')
         caption_3 = 'Spread from 5th to 95th percentile and standard deviation of mean relative flux observed for the entire region of '
         caption_3+= 'the smoothed mean image before and after application of the flatfield correction factors.'
-        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/illumination_variation_reduction',caption_3,figlabel_3)
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/illumination_variation_reduction',caption_3,figlabel_3,widths=0.8)
         lines.append('\n')
         caption_4 = 'Spread from 5th to 95th percentile and standard deviation of mean relative flux observed for the central ``primary" '
         caption_4+= 'region of the smoothed mean image before and after application of the flatfield correction factors.'
-        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/illumination_variation_reduction_central_region',caption_4,figlabel_4)
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/illumination_variation_reduction_central_region',caption_4,figlabel_4,widths=0.8)
         lines.append('\n')
         tablabel = 'tab:illumination_variation_reduction'
         l = f'Table~\\ref{{{tablabel}}} lists the reductions in illumination variation, averaged over all image layers, observed '
@@ -500,7 +501,7 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         caption+= "image region and the central primary region, both before and after application of the flatfield corrections. The lower table lists the percent "
         caption+= "changes in the same statistics between the pre- and post-correction smoothed mean images, both for the overall image and in the central "
         caption+= "primary region."
-        datatable = LatexDataTable(caption,label)
+        datatable = LatexDataTable(caption,tablabel)
         mean_rel_pre_smi = self.__smoothed_mean_image/(np.mean(self.__smoothed_mean_image,axis=(0,1))[np.newaxis,np.newaxis,:])
         o_pre_max, o_pre_min, o_pre_spread, o_pre_stddev, c_pre_max, c_pre_min, c_pre_spread, c_pre_stddev = calculate_statistics_for_image(mean_rel_pre_smi)
         mean_rel_post_smi = self.__smoothed_corrected_mean_image/(np.mean(self.__smoothed_corrected_mean_image,axis=(0,1))[np.newaxis,np.newaxis,:])
