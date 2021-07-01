@@ -426,12 +426,12 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
             l+= 'to this mean image at each location.'
         lines.append(l+'\n')
         lines.append('\n')
-        lines.append(self.image_layer_grid_plot_tex_lines(mean_image_pattern,mean_image_caption,mean_image_figlabel))
+        lines+=self.image_layer_grid_plot_tex_lines(mean_image_pattern,mean_image_caption,mean_image_figlabel)
         lines.append('\n')
-        lines.append(self.image_layer_grid_plot_tex_lines(mean_image_unc_pattern,mean_image_unc_caption,mean_image_unc_figlabel))
+        lines+=self.image_layer_grid_plot_tex_lines(mean_image_unc_pattern,mean_image_unc_caption,mean_image_unc_figlabel)
         if has_mask_stack :
             lines.append('\n')
-            lines.append(self.image_layer_grid_plot_tex_lines(mask_stack_pattern,mask_stack_caption,mask_stack_figlabel))
+            lines+=self.image_layer_grid_plot_tex_lines(mask_stack_pattern,mask_stack_caption,mask_stack_figlabel)
         return lines
 
     @property
@@ -489,13 +489,13 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         l+= 'applied to the mean image shown in Fig.~\\ref{fig:mean_image_layers_before_correction}. The mean image and flatfield correction factors were measured using '
         l+= 'equally-sized orthogonal subsets of the HPF images in each sample considered.'
         lines.append(l+'\n')
-        lines.append(self.image_layer_grid_plot_tex_lines(flatfield_layers_pattern,flatfield_layers_caption,flatfield_layers_figlabel))
+        lines+=self.image_layer_grid_plot_tex_lines(flatfield_layers_pattern,flatfield_layers_caption,flatfield_layers_figlabel)
         lines.append('\n')
         ff_unc_pattern = 'flatfield_uncertainty_layer_*.png'
         ff_unc_caption = 'Uncertainties on the flatfield correction factors in each image layer'
         ff_unc_figlabel = 'fig:flatfield_uncertainty'
         lines.append(f'Figure~\\ref{{{ff_unc_figlabel}}} shows the uncertainties on the flatfield correction factors.\n')
-        lines.append(self.image_layer_grid_plot_tex_lines(ff_unc_pattern,ff_unc_caption,ff_unc_figlabel))
+        lines+=self.image_layer_grid_plot_tex_lines(ff_unc_pattern,ff_unc_caption,ff_unc_figlabel)
         return lines
 
     @property
@@ -513,8 +513,8 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         l+= f' of the flatfield correction factors shown in Fig.~\\ref{{fig:flatfield_layers}}. Figure ~\\ref{{{cmi_unc_layers_figlabel}}} '
         l+= 'shows the uncertainties on this corrected mean image.'
         lines.append(l+'\n')
-        lines.append(self.image_layer_grid_plot_tex_lines(cmi_layers_pattern,cmi_layers_caption,cmi_layers_figlabel))
-        lines.append(self.image_layer_grid_plot_tex_lines(cmi_unc_layers_pattern,cmi_unc_layers_caption,cmi_unc_layers_figlabel))
+        lines+=self.image_layer_grid_plot_tex_lines(cmi_layers_pattern,cmi_layers_caption,cmi_layers_figlabel)
+        lines+=self.image_layer_grid_plot_tex_lines(cmi_unc_layers_pattern,cmi_unc_layers_caption,cmi_unc_layers_figlabel)
         l = 'The mean images before and after application of the flatfield correction factors were smoothed with a wide Gaussian filter to remove '
         l+= 'small variations in pixel intensity. Figure~\\ref{fig:smoothed_mean_image_pixel_intensities} shows the 5th and 95th percentile and '
         l+= 'standard deviation of the mean-relative pixel intensity in each layer of the smoothed mean images before and after corrections were applied. '
@@ -595,7 +595,7 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         lines.append('\\end{tabular}\n')
         lines.append('\\begin{tabular}{c c c}\n')
         lines.append('\\hline\n')
-        lines.append(f'Statistic & \\% change due to correction,  & \\% change due to correction, & \\\\\n')
+        lines.append(f'Statistic & change due to correction,  & change due to correction, & \\\\\n')
         lines.append('          & whole image area              & central primary region       & \\\\\n')
         lines.append('\\hline\n')
         lines.append(f'5th-95th \\%ile spread, avg. over all layers & {o_spread_change:.02f}\\% & {c_spread_change:.02f}\\% \\\\\n')

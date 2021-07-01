@@ -457,10 +457,6 @@ def corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_
     #plot the reduction in illumination variation
     u_hi_lo_spread = [u_high_pixel_intensities[li]-u_low_pixel_intensities[li] for li in range(nlayers)]
     c_hi_lo_spread = [c_high_pixel_intensities[li]-c_low_pixel_intensities[li] for li in range(nlayers)]
-    print(f'Mean uncorrected 5th-95th %ile = {np.mean(np.array(u_hi_lo_spread))}')
-    print(f'Mean corrected 5th-95th %ile = {np.mean(np.array(c_hi_lo_spread))}')
-    print(f'Mean uncorrected std. dev. = {np.mean(np.array(u_std_devs))}')
-    print(f'Mean corrected std. dev. = {np.mean(np.array(c_std_devs))}')
     f,ax=plt.subplots(figsize=(9.6,0.5*9.6))
     ax.plot(xaxis_vals,u_hi_lo_spread,marker='v',linestyle='dashed',linewidth=2,label='uncorrected 5th-95th %ile')
     ax.plot(xaxis_vals,c_hi_lo_spread,marker='^',linestyle='dashed',linewidth=2,label='corrected 5th-95th %ile')

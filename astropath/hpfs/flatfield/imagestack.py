@@ -327,7 +327,7 @@ class Flatfield(ImageStack) :
         #create the mean image and its standard error from the stacks
         mean_image, std_err_of_mean_image = self.get_meanimage_and_stderr()
         #smooth the mean image with its uncertainty
-        smoothed_mean_image,sm_mean_img_err = smooth_image_with_uncertainty_worker(mean_image,std_err_of_mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA)
+        smoothed_mean_image,sm_mean_img_err = smooth_image_with_uncertainty_worker(mean_image,std_err_of_mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA,gpu=True)
         #create the flatfield image layer-by-layer
         for li in range(self.mask_stack.shape[-1]) :
             #warn if the layer is missing a substantial number of images in the stack
@@ -443,6 +443,7 @@ class CorrectedMeanImage(MeanImage) :
             write_image_to_file(self.__corrected_mean_image,'corrected_mean_image.bin')
             write_image_to_file(self.__corrected_mean_image_err,'corrected_mean_image_uncertainty.bin')
         #make some plots of the image layers and the pixel intensities
+        self.logger.info('Writing out image layer plots....')
         plotdir_path = workingdirpath / 'corrected_meanimage_plots'
         plotdir_path.mkdir(exist_ok=True)
         plot_image_layers(self.__flatfield_image,'flatfield',plotdir_path)
@@ -453,16 +454,19 @@ class CorrectedMeanImage(MeanImage) :
         plot_image_layers(self.std_err_of_mean_image,'mean_image_uncertainty',plotdir_path)
         plot_image_layers(self.__corrected_mean_image,'corrected_mean_image',plotdir_path)
         plot_image_layers(self.__corrected_mean_image_err,'corrected_mean_image_uncertainty',plotdir_path)
+        self.logger.info('Building smoothed mean images pre/post correction....')
+        smoothed_mean_image = smooth_image_worker(self.mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA,gpu=True)
+        smoothed_corrected_mean_image = smooth_image_worker(self.__corrected_mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA,gpu=True)
+        self.logger.info('Plotting pixel intensities....')
         flatfield_image_pixel_intensity_plot(self.__flatfield_image,save_dirpath=plotdir_path)
-        smoothed_mean_image = smooth_image_worker(self.mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA)
-        smoothed_corrected_mean_image = smooth_image_worker(self.__corrected_mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA)
         corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=False,save_dirpath=plotdir_path)
         corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=True,save_dirpath=plotdir_path)
         #make the summary PDF
+        self.logger.info('Making the summary pdf....')
         latex_summary = AppliedFlatfieldLatexSummary(self.__flatfield_image,smoothed_mean_image,smoothed_corrected_mean_image,plotdir_path)
         latex_summary.build_tex_file()
-        #check = latex_summary.compile()
-        #if check!=0 :
-        #    warnmsg = f'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
-        #    warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
-        #    self.logger.warning(warnmsg)
+        check = latex_summary.compile()
+        if check!=0 :
+            warnmsg = f'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
+            warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+            self.logger.warning(warnmsg)
