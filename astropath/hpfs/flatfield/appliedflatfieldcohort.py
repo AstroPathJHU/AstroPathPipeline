@@ -125,10 +125,10 @@ class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, 
                     writetable(f'metadata_summary_corrected_mean_image_stacked_images.csv',self.__metadata_summaries_cmi)
             if len(self.__field_logs_ff)>0 :
                 with cd(self.__workingdir) :
-                    writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}_flatfield.csv',self.__field_logs_ff)
+                    writetable(f'{CONST.FIELDS_USED_CSV_FILENAME.rstrip('.csv')}_flatfield.csv',self.__field_logs_ff)
             if len(self.__field_logs_cmi)>0 :
                 with cd(self.__workingdir) :
-                    writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}_corrected_mean_image.csv',self.__field_logs_cmi)
+                    writetable(f'{CONST.FIELDS_USED_CSV_FILENAME.rstrip('.csv')}_corrected_mean_image.csv',self.__field_logs_cmi)
             #write the output from the corrected mean image
             logger.info('Creating plots and writing output for corrected mean image....')
             self.__corrected_meanimage.write_output(self.__workingdir)

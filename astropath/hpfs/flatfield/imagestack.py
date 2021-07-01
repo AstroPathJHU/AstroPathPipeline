@@ -450,6 +450,7 @@ class CorrectedMeanImage(MeanImage) :
         if self.mask_stack is not None :
             plot_image_layers(self.mask_stack,'corrected_mean_image_mask_stack',plotdir_path)
         plot_image_layers(self.mean_image,'mean_image',plotdir_path)
+        plot_image_layers(self.std_err_of_mean_image,'mean_image_uncertainty',plotdir_path)
         plot_image_layers(self.__corrected_mean_image,'corrected_mean_image',plotdir_path)
         plot_image_layers(self.__corrected_mean_image_err,'corrected_mean_image_uncertainty',plotdir_path)
         flatfield_image_pixel_intensity_plot(self.__flatfield_image,save_dirpath=plotdir_path)
