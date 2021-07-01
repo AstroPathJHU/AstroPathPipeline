@@ -37,6 +37,8 @@ class LatexSummaryBase :
         with cd(self.__output_dir) :
             with open(f'{self.__tex_filename}','w') as fp :
                 for line in tex_file_lines :
+                    if not line.endswith('\n') :
+                        line+='\n'
                     fp.write(line)
 
     def compile(self) :
@@ -69,6 +71,40 @@ class LatexSummaryBase :
                     except Exception :
                         pass
         return 0
+
+    def image_figure_lines(self,paths,caption=None,label=None,widths=None) :
+        """
+        Return a list of lines that will create a single figure that is some number of images shown together
+
+        paths = either a single image path or a list of image paths in tex format to add to the figure
+        caption = the caption for the figure (optional)
+        label = the label for the figure (optional)
+        widths = either a single float or a list of them to describe how wide each image in "paths" should be as a fraction of the textwidth (optional)
+        """
+        if type(paths)!=list :
+            paths = [paths]
+        if widths is None :
+            widths = [0.95 for p in paths]
+        elif type(widths)==float :
+            widths = [width for p in paths]
+        assert len(paths)==len(widths)
+        lines = []
+        lines.append('\\begin{figure}[!ht]')
+        lines.append('\\centering')
+        for path,width in zip(paths,widths) :
+            lines.append(f'\\includegraphics[width={width}\\textwidth]{{{path}}}')
+        if caption is not None :
+            lines.append(f'\\caption{{\\footnotesize {caption}}}')
+        if label is not None :
+            lines.append(f'\\label{{{label}}}')
+        lines.append('\\end{figure}\n\n')
+        return lines
+
+    def section_start(self,section_title) :
+        """
+        Return the tex line to start a new section with the given title
+        """
+        return f'\\section{{{section_title}}}'
 
     #################### PROPERTIES ####################
 
@@ -132,27 +168,21 @@ class LatexSummaryWithPlotdir(LatexSummaryBase) :
         self.__plot_patterns = plot_patterns
         super().__init__(title,filename,plot_dirpath.parent)
 
-    def image_layer_grid_plot_tex_lines(self,pattern,caption,label) :
+    def image_layer_grid_plot_tex_lines(self,pattern,caption=None,label=None) :
         """
         return a list of tex lines for an entire grid of plots of individual image layers, sorted by layer number
         image layer plots should have filenames ending in "_layer_[n].png" to get filenames right automatically
 
         pattern = the pattern to search for to find the individual image layer plots
-        caption = the caption of the plot
-        label = the label of the plot
+        caption = the caption of the plot (optional)
+        label = the label of the plot (optional)
         """
-        lines = []
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
         all_plot_names = []
         for fn in self.__plot_dirpath.glob(pattern) :
             all_plot_names.append(fn.name)
-        for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0])) :
-            lines.append(f'\\includegraphics[width=0.175\\textwidth]{{{self.plot_dirpath_tex}/{pn}}}\n')
-        lines.append(f'\\caption{{\\footnotesize {caption}}}\n')
-        lines.append(f'\\label{{{label}}}\n')
-        lines.append('\\end{figure}\n')
-        return lines
+        all_plot_paths = [f'{self.plot_dirpath_tex}/{pn}' for pn in sorted(all_plot_names,key=lambda x:int(x.split('_')[-1].split('.')[0]))]
+        width = 0.175
+        return self.image_figure_lines(all_plot_paths,caption,label,width)
 
     @property
     def failed_compilation_tex_file_path(self) :
@@ -178,7 +208,6 @@ class LatexSummaryWithPlotdir(LatexSummaryBase) :
     def plot_dirpath_tex(self) :
         return str(self.__plot_dirpath.as_posix())
 
-
 class LatexSummaryForSlideWithPlotdir(LatexSummaryWithPlotdir) :
     """
     Class to make a LatexSummary for a single slide with all of its plots in a single directory
@@ -203,3 +232,57 @@ class LatexSummaryForSlideWithPlotdir(LatexSummaryWithPlotdir) :
     @property
     def slideID_tex(self) :
         return self.__slideID.replace("_","\\_")
+
+class LatexDataTable :
+    """
+    Class to create a datatable to use in a LaTeX document and get its .tex file lines
+    """
+
+    def __init__(self,caption=None,label=None) :
+        self.__caption = caption
+        self.__label = label
+        self.__lines = []
+        self.__lines.append('\\begin{table}[!htb]')
+        self.__lines.append('\\centering')
+        self.__lines.append('\\footnotesize')
+
+    def add_tabular(self,headings,rows) :
+        """
+        add a new tabular environment to the overall table
+
+        headings = a single string or a list of strings describing the heading portion of the tabular environment
+        rows = a single string or a list of strings describing the rows of the tabular environment
+        """
+        if type(headings)==str :
+            headings = [headings]
+        if type(rows)==str :
+            rows = [rows]
+        n_cols = headings[0].count('&')+1
+        self.__lines.append(f'\\begin{{tabular}}{{{" "+n_cols*"c "}}}')
+        self.__lines.append('\\hline')
+        for heading in headings :
+            if heading.endswith('\n') :
+                heading = heading.rstrip('\n')
+            if not heading.endswith('\\\\') :
+                heading = heading+'\\\\\n'
+            self.__lines.append(heading)
+        self.__lines.append('\\hline')
+        for row in rows :
+            if row.endswith('\n') :
+                row = row.rstrip('\n')
+            if not row.endswith('\\\\') :
+                row = row+'\\\\\n'
+            self.__lines.append(row)
+        self.__lines.append('\\hline')
+        self.__lines.append('\\end{tabular}')
+
+    def get_table_lines(self) :
+        """
+        Return the list of .tex line strings for the whole table
+        """
+        if self.__caption is not None :
+            self.__lines.append(f'\\caption{{\\footnotesize {self.__caption}}}')
+        if self.__label is not None :
+            self.__lines.append(f'\\label{{{self.__label}}}')
+        self.__lines.append('\\end{table}')
+        return self.__lines 

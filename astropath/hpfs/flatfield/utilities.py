@@ -20,6 +20,33 @@ class FieldLog(MyDataClass) :
     use      : str
     stacked_in_layers : str = ''
 
+def calculate_statistics_for_image(image) :
+    """
+    Return the maximum, minimum, 5th-95th percentile spread, and standard deviation 
+    of the numbers in a given image in the entire image region and in the central "primary region"
+    """
+    yclip = int(image.shape[0]*0.1)
+    xclip = int(image.shape[1]*0.1)
+    flatfield_image_clipped=image[yclip:-yclip,xclip:-xclip,:]
+    overall_max = np.max(image)
+    overall_min = np.min(image)
+    central_max = np.max(flatfield_image_clipped)
+    central_min = np.min(flatfield_image_clipped)
+    overall_spreads_by_layer = []; overall_stddevs_by_layer = []
+    central_spreads_by_layer = []; central_stddevs_by_layer = []
+    for li in range(image.shape[-1]) :
+        sorted_u_layer = np.sort((image[:,:,li]).flatten())/np.mean(image[:,:,li])
+        sorted_c_layer = np.sort((flatfield_image_clipped[:,:,li]).flatten())/np.mean(image[:,:,li])
+        overall_spreads_by_layer.append(sorted_u_layer[int(0.95*len(sorted_u_layer))]-sorted_u_layer[int(0.05*len(sorted_u_layer))])
+        overall_stddevs_by_layer.append(np.std(sorted_u_layer))
+        central_spreads_by_layer.append(sorted_c_layer[int(0.95*len(sorted_c_layer))]-sorted_c_layer[int(0.05*len(sorted_c_layer))])
+        central_stddevs_by_layer.append(np.std(sorted_c_layer))
+    overall_spread = np.mean(np.array(overall_spreads_by_layer))
+    overall_stddev = np.mean(np.array(overall_stddevs_by_layer))
+    central_spread = np.mean(np.array(central_spreads_by_layer))
+    central_stddev = np.mean(np.array(central_stddevs_by_layer))
+    return overall_max, overall_min, overall_spread, overall_stddev, central_max, central_min, central_spread, central_stddev
+
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 
 #helper function to determine the Otsu threshold given a histogram of pixel values 

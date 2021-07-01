@@ -1,34 +1,8 @@
 #imports
+from .utilities import calculate_statistics_for_image
 from .config import CONST
-from ...shared.latexsummary import LatexSummaryWithPlotdir, LatexSummaryForSlideWithPlotdir
+from ...shared.latexsummary import LatexSummaryWithPlotdir, LatexSummaryForSlideWithPlotdir, LatexDataTable
 import numpy as np
-
-def calculate_statistics_for_image(image) :
-    """
-    Return the maximum, minimum, 5th-95th percentile spread, and standard deviation 
-    of the numbers in a given image in the entire image region and in the central "primary region"
-    """
-    yclip = int(image.shape[0]*0.1)
-    xclip = int(image.shape[1]*0.1)
-    flatfield_image_clipped=image[yclip:-yclip,xclip:-xclip,:]
-    overall_max = np.max(image)
-    overall_min = np.min(image)
-    central_max = np.max(flatfield_image_clipped)
-    central_min = np.min(flatfield_image_clipped)
-    overall_spreads_by_layer = []; overall_stddevs_by_layer = []
-    central_spreads_by_layer = []; central_stddevs_by_layer = []
-    for li in range(image.shape[-1]) :
-        sorted_u_layer = np.sort((image[:,:,li]).flatten())/np.mean(image[:,:,li])
-        sorted_c_layer = np.sort((flatfield_image_clipped[:,:,li]).flatten())/np.mean(image[:,:,li])
-        overall_spreads_by_layer.append(sorted_u_layer[int(0.95*len(sorted_u_layer))]-sorted_u_layer[int(0.05*len(sorted_u_layer))])
-        overall_stddevs_by_layer.append(np.std(sorted_u_layer))
-        central_spreads_by_layer.append(sorted_c_layer[int(0.95*len(sorted_c_layer))]-sorted_c_layer[int(0.05*len(sorted_c_layer))])
-        central_stddevs_by_layer.append(np.std(sorted_c_layer))
-    overall_spread = np.mean(np.array(overall_spreads_by_layer))
-    overall_stddev = np.mean(np.array(overall_stddevs_by_layer))
-    central_spread = np.mean(np.array(central_spreads_by_layer))
-    central_stddev = np.mean(np.array(central_stddevs_by_layer))
-    return overall_max, overall_min, overall_spread, overall_stddev, central_max, central_min, central_spread, central_stddev
 
 class ThresholdingLatexSummary(LatexSummaryForSlideWithPlotdir) :
     """
@@ -48,37 +22,28 @@ class ThresholdingLatexSummary(LatexSummaryForSlideWithPlotdir) :
     @property
     def rect_locations(self) :
         lines = []
-        lines.append('\\section{Locations of images used}\n')
+        lines.append(self.section_start('Locations of images used'))
+        figlabel = 'fig:rectangle_locations'
         l = 'All High Power Fields (HPFs) located on the edges of the tissue were used to find the best overall background thresholds in every image layer. '
-        l+= 'Figure~\\ref{fig:rectangle_locations} shows the locations of the tissue edge HPFs in red and the locations of the ``bulk" (non-edge) HPFs in blue.'
-        lines.append(l+'\n')
+        l+= f'Figure~\\ref{{{figlabel}}} shows the locations of the tissue edge HPFs in red and the locations of the ``bulk" (non-edge) HPFs in blue.'
+        lines.append(l)
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.slideID}_rectangle_locations}}\n')
-        l = f'\\caption{{\\footnotesize Locations of HPFs in slide {self.slideID_tex},'
-        l+= ' with tissue edge HPFs shown in red and non-edge HPFs shown in blue.}'
-        lines.append(l+'\n')
-        lines.append('\\label{fig:rectangle_locations}\n')
-        lines.append('\\end{figure}\n\n')
+        caption = f'Locations of HPFs in slide {self.slideID_tex}, with tissue edge HPFs shown in red and non-edge HPFs shown in blue.'
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/{self.slideID}_rectangle_locations',caption,figlabel)
         return lines
 
     @property
     def thresholds_by_layer(self) :
         lines = []
-        lines.append('\\section{Distributions of thresholds found by layer}')
-        l = 'Figure~\\ref{fig:thresholds_by_layer} shows the 10th and 90th percentiles in the set of all individual HPF thresholds found in each image layer, '
+        lines.append(self.section_start('Distributions of thresholds found by layer'))
+        figlabel = 'fig:thresholds_by_layer'
+        l = f'Figure~\\ref{{{figlabel}}} shows the 10th and 90th percentiles in the set of all individual HPF thresholds found in each image layer, '
         l+= 'as well as the final overall chosen thresholds, as a function of image layer, in both counts and counts/ms.'
-        lines.append(l+'\n')
+        lines.append(l)
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.slideID}_background_thresholds_by_layer}}')
-        l = '\\caption{\\footnotesize 10th and 90th percentiles (in red and blue, respectively) of the entire set of individual HPF thresholds found '
-        l+= 'in each image layer in raw counts (upper) and in counts/ms (lower). Also shown in black are the overall optimal thresholds chosen.}'
-        lines.append(l+'\n')
-        lines.append('\\label{fig:thresholds_by_layer}\n')
-        lines.append('\\end{figure}\n\n')
+        caption = '10th and 90th percentiles (in red and blue, respectively) of the entire set of individual HPF thresholds found '
+        caption+= 'in each image layer in raw counts (upper) and in counts/ms (lower). Also shown in black are the overall optimal thresholds chosen.'
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/{self.slideID}_background_thresholds_by_layer',caption,figlabel)
         return lines
 
     @property
@@ -88,20 +53,17 @@ class ThresholdingLatexSummary(LatexSummaryForSlideWithPlotdir) :
             all_fns.append(fn.name)
         figure_lines = []
         for ifn,fn in enumerate(sorted(all_fns,key=lambda x:int(str(x).split('_')[1]))) :
-            figure_lines.append('\\begin{figure}[!ht]\n')
-            figure_lines.append('\\centering\n')
-            figure_lines.append(f'\\includegraphics[width=0.9\\textwidth]{{{self.plot_dirpath_tex}/{fn}}}\n')
-            figure_lines.append(f'\\label{{fig:layer_{ifn+1}_threshold_plots}}\n')
-            figure_lines.append('\\end{figure}\n\n')
+            figlabel=f'fig:layer_{ifn+1}_threshold_plots'
+            figure_lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/{fn}',label=figlabel,widths=0.9)
             if ifn==1 or (ifn>1 and (ifn-1)%3==0) :
                 figure_lines.append('\\clearpage\n\n')
         lines = []
-        lines.append('\\section{Detailed thresholding results for each image layer}\n')
+        lines.append(self.section_start('Detailed thresholding results for each image layer'))
         l = f'Figures~\\ref{{fig:layer_1_threshold_plots}}-\\ref{{fig:layer_{len(all_fns)}_threshold_plots}} show detailed views of the thresholding results '
         l+= 'in each image layer. The left columns in those figures show histograms of all individual HPF thresholds found for a given image layer, along with '
         l+= 'the means and medians of the distributions. The right columns in those figures show pixel intensity histograms for the same image layer, '
         l+= 'on a log-log scale, summed over all tissue edge HPFs, with the signal and background pixels shown in different colors.'
-        lines.append(l+'\n')
+        lines.append(l)
         lines.append('\n')
         lines+=figure_lines
         return lines
@@ -125,19 +87,15 @@ class MaskingLatexSummary(LatexSummaryForSlideWithPlotdir) :
     @property
     def flagged_hpf_locations(self) :
         lines = []
-        lines.append('\\section{Flagged HPF locations}')
-        l = f'Figure~\\ref{{fig:flagged_hpf_locations}} shows the locations of every HPF in {self.slideID_tex}, color-coded by their reason for being flagged.'
-        lines.append(l+'\n')
+        lines.append(self.section_start('Flagged HPF locations'))
+        figlabel = 'fig:flagged_hpf_locations'
+        lines.append(f'Figure~\\ref{{{figlabel}}} shows the locations of every HPF in {self.slideID_tex}, color-coded by their reason for being flagged.')
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=0.95\\textwidth]{{{self.plot_dirpath_tex}/{self.slideID}_flagged_hpf_locations}}')
-        l = f'\\caption{{\\footnotesize locations of all HPFs in {self.slideID_tex}. Those shown in gray did not have any blur or saturation flagged in them. '
-        l+= 'Those shown in blue had some region(s) flagged due to blur (either dust or folded tissue). Those shown in gold had some region(s) flagged due to '
-        l+= 'saturation in at least one layer group. Those shown in green had some region(s) flagged due to both blur and saturation.}'
-        lines.append(l+'\n')
-        lines.append('\\label{fig:flagged_hpf_locations}\n')
-        lines.append('\\end{figure}\n\n')
+        caption = f'Locations of all HPFs in {self.slideID_tex}. Those shown in gray did not have any blur or saturation flagged in them. '
+        caption+= 'Those shown in blue had some region(s) flagged due to blur (either dust or folded tissue). Those shown in gold had some '
+        caption+= 'region(s) flagged due to saturation in at least one layer group. Those shown in green had some region(s) flagged due to '
+        caption+= 'both blur and saturation.'
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/{self.slideID}_flagged_hpf_locations',caption,figlabel)
         return lines
 
     @property
@@ -146,7 +104,7 @@ class MaskingLatexSummary(LatexSummaryForSlideWithPlotdir) :
         for fn in self.plot_dirpath.glob('*_masking_plots.png') :
             all_fns.append(fn.name)
         lines = []
-        lines.append('\\section{Example masking plots}\n')
+        lines.append(self.section_start('Example masking plots'))
         lines.append('\n')
         l = f'Figures~\\ref{{fig:first_masking_plot}}-\\ref{{fig:last_masking_plot}} below show examples of how the image masking proceeded for {len(all_fns)} '
         l+= f'individual images in {self.slideID_tex}. The examples shown are for the images in the sample with the largest numbers of pixels flagged due to '
@@ -169,20 +127,18 @@ class MaskingLatexSummary(LatexSummaryForSlideWithPlotdir) :
         full_mask_fn_tex = CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM.replace("_","\\_")
         labelled_mask_regions_fn_tex = CONST.LABELLED_MASK_REGIONS_CSV_FILENAME.replace("_","\\_")
         l = f'The bottom row in each plot shows the layers of the compressed ``{full_mask_fn_tex}" file, with the '
-        l+= f'numerical values pictured corresponding to entries in the ``{labelled_mask_regions_fn_tex} file for the sample.'
+        l+= f'numerical values pictured corresponding to entries in the ``{labelled_mask_regions_fn_tex}" file for the sample.'
         lines.append(l+'\n\n')
         for ifn,fn in enumerate(all_fns) :
-            lines.append('\\begin{figure}[!ht]\n')
-            lines.append('\\centering\n')
-            lines.append(f'\\includegraphics[width=\\textwidth]{{{self.plot_dirpath_tex}/{fn}}}\n')
-            img_key_tex = fn.rstrip("_masking_plots.png").replace("_","\\_")
-            lines.append(f'\\caption{{\\footnotesize Masking plots for {img_key_tex}}}\n')
+            figlabel=None
             if ifn==0 :
-                lines.append('\\label{fig:first_masking_plot}\n')
+                figlabel = 'fig:first_masking_plot'
             elif ifn==len(all_fns)-1 :
-                lines.append('\\label{fig:last_masking_plot}\n')
-            lines.append('\\end{figure}\n')
-            lines.append('\\clearpage\n')
+                figlabel = 'fig:last_masking_plot'
+            caption = f'Masking plots for {fn.rstrip("_masking_plots.png").replace("_","\\_")}'
+            width = 1.0
+            lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/{fn}',caption,figlabel,width)
+            lines.append('\\clearpage\n\n')
         return lines
 
 class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
@@ -209,11 +165,11 @@ class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
     @property
     def mean_image_plots(self) :
         lines = []
-        lines.append('\\section{Layers of the mean image}\n')
+        lines.append(self.section_start('Layers of the mean image'))
         figlabel = 'fig:mean_image_layers'
         l = f'Figure~\\ref{{{figlabel}}} shows all individual layers of the computed mean image for {self.slideID_tex}. '
         l+= 'The units in these plots are units of intensity in average counts/ms.'
-        lines.append(l+'\n')
+        lines.append(l)
         lines.append('\n')
         pattern = f'{self.slideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png'
         caption = f'All layers of the mean image computed for {self.slideID_tex}'
@@ -223,12 +179,12 @@ class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
     @property
     def std_err_mean_image_plots(self) :
         lines = []
-        lines.append('\\section{Layers of the standard error on the mean image}\n')
+        lines.append(self.section_start('Layers of the standard error on the mean image'))
         figlabel = 'fig:mean_image_std_err_layers'
         l = f'Figure~\\ref{{{figlabel}}} shows the standard error of the {self.slideID_tex} mean image in all individual image layers. '
         l+= 'The units in these plots are also units of intensity in average counts/ms; they represent the uncertainties on the mean image layers shown in '
         l+= 'Figure~\\ref{fig:mean_image_layers}. Any overly bright regions that were not masked out will be especially apparent in these plots.'
-        lines.append(l+'\n')
+        lines.append(l)
         lines.append('\n')
         pattern = f'{self.slideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png'
         caption = f'The standard error of the mean image for {self.slideID_tex} in all layers'
@@ -238,13 +194,13 @@ class MeanImageLatexSummary(LatexSummaryForSlideWithPlotdir) :
     @property
     def mask_stack_plots(self) :
         lines = []
-        lines.append('\\section{Layers of the mask stack}\n')
+        lines.append(self.section_start('Layers of the mask stack'))
         figlabel = 'fig:mask_stack_layers'
         l = f'Figure~\\ref{{{figlabel}}} shows every layer of the mask stack for {self.slideID_tex}. The units in these plots are the number of '
         l+= 'individual images contributing to the mean image at every location. They should be identical unless one or more image layer groups exhibited a '
         l+= 'great deal of saturation that was masked out. Referencing the general number of images stacked to find the mean illumination of each pixel helps '
         l+= 'contextualize the results above.'
-        lines.append(l+'\n')
+        lines.append(l)
         lines.append('\n')
         pattern = f'{self.slideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM.rstrip(".bin")}_layer_*.png'
         caption = f'The stack of all masks for images used to compute the {self.slideID_tex} mean image in all layers'
@@ -280,55 +236,46 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     def pixel_intensities_and_data_table(self) :
         o_max, o_min, o_spread, o_stddev, c_max, c_min, c_spread, c_stddev = calculate_statistics_for_image(self.__flatfield_image)
         lines = []
-        lines.append('\\section{Flatfield Correction Factors}\n')
+        lines.append(self.section_start('Flatfield Correction Factors'))
         lines.append('\n')
-        l = 'Figure~\\ref{fig:flatflield_pixel_intensities} shows the 5th and 95th percentile, as well as the standard deviation, of the pixel-by-pixel '
+        figlabel = 'fig:flatflield_pixel_intensities'
+        l = f'Figure~\\ref{{{figlabel}}} shows the 5th and 95th percentile, as well as the standard deviation, of the pixel-by-pixel '
         l+= f'correction factors in each layer of the flatfield model'
         if self.__batchID is not None :
             l+=f' created for batch {self.__batchID:02d}'
         l+='. The red lines and green shaded areas show the values calculated over the entire area of the correction image, and the blue lines and yellow '
         l+='shading show the values calculated considering only the central 64\\% ``primary region" of the correction image.'
-        lines.append(l+'\n')
+        lines.append(l)
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        l = f'\\includegraphics[width=\\textwidth]{{{self.plot_dirpath_tex}/flatfield'
+        path = f'{self.plot_dirpath_tex}/flatfield'
         if self.__batchID is not None :
-            l+=f'_BatchID_{self.__batchID:02d}'
-        l+='_pixel_intensities}'
-        lines.append(l+'\n')
-        l = '\\caption{\\footnotesize 5th and 95th percentile and standard deviation of flatfield correction factors in each image layer. Red lines and green '
-        l+= 'shaded areas show statistics calculated using the entire area of each image layer. Blue lines and yellow shading show statistics calculated in the '
-        l+= 'central ``primary region" of each image layer.}'
-        lines.append(l+'\n')
-        lines.append('\\label{fig:flatflield_pixel_intensities}\n')
-        lines.append('\\end{figure}\n')
+            path+=f'_BatchID_{self.__batchID:02d}'
+        path+='_pixel_intensities'
+        caption = '5th and 95th percentile and standard deviation of flatfield correction factors in each image layer. Red lines and green '
+        caption+= 'shaded areas show statistics calculated using the entire area of each image layer. Blue lines and yellow shading show '
+        caption+= 'statistics calculated in the central ``primary region" of each image layer.'
+        lines+=self.image_figure_lines(path,caption,figlabel,widths=1.0)
         lines.append('\n')
-        l = 'Table~\\ref{tab:average_correction_factors} lists the overall largest and smallest correction factors in any layer of the entire image and its '
+        tablabel = 'tab:average_correction_factors'
+        l = f'Table~\\ref{{{tablabel}}} lists the overall largest and smallest correction factors in any layer of the entire image and its '
         l+= 'primary region. It also denotes the average, over all image layers, of the 5th-95th percentile spread and standard deviation of the correction '
         l+= 'factors in the entire image and its primary region.'
-        lines.append(l+'\n')
+        lines.append(l)
         lines.append('\n')
-        lines.append('\\begin{table}[!htb]\n')
-        lines.append('\\centering\n')
-        lines.append('\\footnotesize\n')
-        lines.append('\\begin{tabular}{c c c}\n')
-        lines.append('\\hline\n')
-        lines.append('Statistic & Whole image area & Central 64\\% ``primary region" \\\\\n')
-        lines.append('\\hline\n')
-        lines.append(f'Maximum correction factor & {o_max:.05f} & {c_max:.05f} \\\\\n')
-        lines.append(f'Minimum correction factor & {o_min:.05f} & {c_min:.05f} \\\\\n')
-        lines.append(f'5th-95th pctile spread, avg. over all layers & {o_spread:.05f} & {c_spread:.05f} \\\\\n')
-        lines.append(f'Standard deviation, avg. over all layers & {o_stddev:.05f} & {c_stddev:.05f} \\\\\n')
-        lines.append('\\hline\n')
-        lines.append('\\end{tabular}\n')
-        l = '\\caption{\\footnotesize Summarizing statistics for the flatfield correction model. The central and rightmost columns list values calculated using '
-        l+= ' the entire area of the image and the central 64\\% ``primary region" of the image, respectively. From the upper to lower row the values listed are '
-        l+= 'the maximum and minimum correction factors in any image layer, the average over all image layers of the spread from the 5th-95th percentile '
-        l+= 'correction factors, and the average over all layers of the standard deviation of the correction factors.}'
-        lines.append(l+'\n')
-        lines.append('\\label{tab:average_correction_factors}\n')
-        lines.append('\\end{table}\n')
+        caption = 'Summarizing statistics for the flatfield correction model. The central and rightmost columns list values calculated using '
+        caption+= 'the entire area of the image and the central 64\\% ``primary region" of the image, respectively. From the upper to lower '
+        caption+= 'row the values listed are the maximum and minimum correction factors in any image layer, the average over all image layers '
+        caption+= 'of the spread from the 5th-95th percentile correction factors, and the average over all layers of the standard deviation '
+        caption+= 'of the correction factors.'
+        datatable = LatexDataTable(caption,tablabel)
+        heading = 'Statistic & Whole image area & Central 64\\% ``primary region"'
+        rows = [f'Maximum correction factor & {o_max:.05f} & {c_max:.05f}',
+                f'Minimum correction factor & {o_min:.05f} & {c_min:.05f}',
+                f'5th-95th pctile spread, avg. over all layers & {o_spread:.05f} & {c_spread:.05f}',
+                f'Standard deviation, avg. over all layers & {o_stddev:.05f} & {c_stddev:.05f}'
+               ]
+        datatable.add_tabular(heading,rows)
+        lines+=datatable.get_table_lines()
         return lines
 
     @property
@@ -349,7 +296,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     @property
     def flatfield_uncertainty_layers(self) :
         lines = []
-        lines.append('\\section{Layers of the flatfield correction image}\n')
+        lines.append(self.section_start('Layers of the flatfield correction image'))
         figlabel = 'fig:flatfield_uncertainty_image_layers'
         lines.append(f'Figure~\\ref{{{figlabel}}} shows the uncertainties on the flatfield correction factors for every image layer.\n')
         lines.append('\n')
@@ -364,7 +311,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     @property
     def mask_stack_layers(self) :
         lines = []
-        lines.append('\\section{Layers of the flatfield correction image}\n')
+        lines.append(self.section_start('Layers of the flatfield correction image'))
         figlabel = 'fig:flatfield_mask_stack_layers'
         l = f'Figure~\\ref{{{figlabel}}} shows every layer of the overall mask stack used to measure the flatfield correction factors. '
         l+= 'These plots give some insight as to how many total images contribute to the measurements made.'
@@ -405,7 +352,7 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     @property
     def mean_image_before_correction(self) :
         lines = []
-        lines.append('\\section{Mean image before correction}\n')
+        lines.append(self.section_start('Mean image before correction'))
         lines.append('\n')
         mean_image_figlabel = 'fig:mean_image_layers'
         mean_image_pattern = 'mean_image_layer_*.png'
@@ -437,50 +384,40 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     @property
     def flatfield_corrections_applied(self) :
         lines = []
-        lines.append('\\section{Flatfield correction factors applied}\n')
+        lines.append(self.section_start('Flatfield correction factors applied'))
         lines.append('\n')
-        l = 'Figure~\\ref{fig:flatflield_pixel_intensities} shows the 5th and 95th percentile, as well as the standard deviation, '
+        figlabel = 'fig:flatflield_pixel_intensities'
+        l = f'Figure~\\ref{{{figlabel}}} shows the 5th and 95th percentile, as well as the standard deviation, '
         l+= 'of the pixel-by-pixel correction factors in each layer of the flatfield model. The red lines and green shaded areas show '
         l+= 'the values calculated over the entire area of the correction image, and the blue lines and yellow shading show the values '
         l+= 'calculated considering only the central 64\\% ``primary region" of the correction image.'
-        lines.append(l+'\n')
+        lines.append(l)
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=\\textwidth]{{{self.plot_dirpath_tex}/flatfield_pixel_intensities}}\n')
-        l = '\\caption{\\footnotesize 5th and 95th percentile and standard deviation of flatfield correction factors in each image layer. Red lines and green '
-        l+= 'shaded areas show statistics calculated using the entire area of each image layer. Blue lines and yellow shading show statistics calculated in the '
-        l+= 'central ``primary region" of each image layer.}'
-        lines.append(l+'\n')
-        lines.append('\\label{fig:flatflield_pixel_intensities}\n')
-        lines.append('\\end{figure}\n')
+        caption = '5th and 95th percentile and standard deviation of flatfield correction factors in each image layer. Red lines and green '
+        caption+= 'shaded areas show statistics calculated using the entire area of each image layer. Blue lines and yellow shading show '
+        caption+= 'statistics calculated in the central ``primary region" of each image layer.'
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/flatfield_pixel_intensities',caption,figlabel,widths=1.0)
         lines.append('\n')
-        l = 'Table\\ref{tab:average_correction_factors} lists the overall largest and smallest correction factors in any layer of the entire image and its '
-        l+= 'primary region. It also denotes the average, over all image layers, of the 5th-95th percentile spread and standard deviation of the correction '
-        l+= 'factors in the entire image and its primary region.'
-        lines.append(l+'\n')
+        tablabel = 'tab:average_correction_factors'
+        l = f'Table\\ref{{{tablabel}}} lists the overall largest and smallest correction factors in any layer of the entire image and its '
+        l+= 'primary region. It also denotes the average, over all image layers, of the 5th-95th percentile spread and standard deviation '
+        l+= 'of the correction factors in the entire image and its primary region.'
+        lines.append(l)
+        caption = 'Summarizing statistics for the flatfield correction model. The central and rightmost columns list values calculated using '
+        caption+= ' the entire area of the image and the central 64\\% ``primary region" of the image, respectively. From the upper to lower '
+        caption+= 'row the values listed are the maximum and minimum correction factors in any image layer, the average over all image layers '
+        caption+= 'of the spread from the 5th-95th percentile correction factors, and the average over all layers of the standard deviation '
+        caption+= 'of the correction factors.'
+        datatable = LatexDataTable(caption,tablabel)
         o_max, o_min, o_spread, o_stddev, c_max, c_min, c_spread, c_stddev = calculate_statistics_for_image(self.__flatfield_image)
-        lines.append('\n')
-        lines.append('\\begin{table}[!htb]\n')
-        lines.append('\\centering\n')
-        lines.append('\\footnotesize\n')
-        lines.append('\\begin{tabular}{c c c}\n')
-        lines.append('\\hline\n')
-        lines.append('Statistic & Whole image area & Central 64\\% ``primary region" \\\\\n')
-        lines.append('\\hline\n')
-        lines.append(f'Maximum correction factor & {o_max:.05f} & {c_max:.05f} \\\\\n')
-        lines.append(f'Minimum correction factor & {o_min:.05f} & {c_min:.05f} \\\\\n')
-        lines.append(f'5th-95th pctile spread, avg. over all layers & {o_spread:.05f} & {c_spread:.05f} \\\\\n')
-        lines.append(f'Standard deviation, avg. over all layers & {o_stddev:.05f} & {c_stddev:.05f} \\\\\n')
-        lines.append('\\hline\n')
-        lines.append('\\end{tabular}\n')
-        l = '\\caption{\\footnotesize Summarizing statistics for the flatfield correction model. The central and rightmost columns list values calculated using '
-        l+= ' the entire area of the image and the central 64\\% ``primary region" of the image, respectively. From the upper to lower row the values listed are '
-        l+= 'the maximum and minimum correction factors in any image layer, the average over all image layers of the spread from the 5th-95th percentile '
-        l+= 'correction factors, and the average over all layers of the standard deviation of the correction factors.}'
-        lines.append(l+'\n')
-        lines.append('\\label{tab:average_correction_factors}\n')
-        lines.append('\\end{table}\n')
+        heading = 'Statistic & Whole image area & Central 64\\% ``primary region"'
+        rows = [f'Maximum correction factor & {o_max:.05f} & {c_max:.05f}',
+                f'Minimum correction factor & {o_min:.05f} & {c_min:.05f}',
+                f'5th-95th pctile spread, avg. over all layers & {o_spread:.05f} & {c_spread:.05f}',
+                f'Standard deviation, avg. over all layers & {o_stddev:.05f} & {c_stddev:.05f}'
+               ]
+        datatable.add_tabular(heading,rows)
+        lines+=datatable.get_table_lines()
         lines.append('\n')
         flatfield_layers_pattern = 'flatfield_layer_*.png'
         flatfield_layers_caption = 'Flatfield correction factors in each image layer'
@@ -501,7 +438,7 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     @property
     def effects_of_applying_corrections(self) :
         lines = []
-        lines.append('\\section{Effects of applying flatfield corrections}')
+        lines.append(self.section_start('Effects of applying flatfield corrections'))
         lines.append('\n')
         cmi_layers_pattern = 'corrected_mean_image_layer_*.png'
         cmi_layers_caption = 'Layers of the mean image after application of the flatfield correction factors'
@@ -515,62 +452,55 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         lines.append(l+'\n')
         lines+=self.image_layer_grid_plot_tex_lines(cmi_layers_pattern,cmi_layers_caption,cmi_layers_figlabel)
         lines+=self.image_layer_grid_plot_tex_lines(cmi_unc_layers_pattern,cmi_unc_layers_caption,cmi_unc_layers_figlabel)
+        figlabel_1 = 'fig:smoothed_mean_image_pixel_intensities'
+        figlabel_2 = 'fig:smoothed_mean_image_pixel_intensities_central_region'
         l = 'The mean images before and after application of the flatfield correction factors were smoothed with a wide Gaussian filter to remove '
-        l+= 'small variations in pixel intensity. Figure~\\ref{fig:smoothed_mean_image_pixel_intensities} shows the 5th and 95th percentile and '
+        l+= f'small variations in pixel intensity. Figure~\\ref{{{figlabel_1}}} shows the 5th and 95th percentile and '
         l+= 'standard deviation of the mean-relative pixel intensity in each layer of the smoothed mean images before and after corrections were applied. '
-        l+= 'Figure~\\ref{fig:smoothed_mean_image_pixel_intensities_central_region} shows the same statistics, but calculated using only the central '
+        l+= f'Figure~\\ref{{{figlabel_2}}} shows the same statistics, but calculated using only the central '
         l+= '64\\% ``primary region" of the image instead of the entire image region.'
-        lines.append(l+'\n')
+        lines.append(l)
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=\\textwidth]{{{self.plot_dirpath_tex}/smoothed_mean_image_pixel_intensities}}\n')
-        l = '\\caption{\\footnotesize 5th and 95th percentile and standard deviation of mean-relative pixel intensity in each layer of the smoothed '
-        l+= 'mean images. Red lines and green shaded areas show statistics calculated for the smoothed mean image before application of the flatfield '
-        l+= 'correction factors. Blue lines and yellow shading show statistics calculated for the smoothed post-correction mean image.}'
-        lines.append(l+'\n')
-        lines.append('\\label{fig:smoothed_mean_image_pixel_intensities}\n')
-        lines.append('\\end{figure}\n')
+        caption_1 = '5th and 95th percentile and standard deviation of mean-relative pixel intensity in each layer of the smoothed '
+        caption_1+= 'mean images. Red lines and green shaded areas show statistics calculated for the smoothed mean image before application of the flatfield '
+        caption_1+= 'correction factors. Blue lines and yellow shading show statistics calculated for the smoothed post-correction mean image.'
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/smoothed_mean_image_pixel_intensities',caption_1,figlabel_1)
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=\\textwidth]{{{self.plot_dirpath_tex}/smoothed_mean_image_pixel_intensities_central_region}}\n')
-        l = '\\caption{\\footnotesize 5th and 95th percentile and standard deviation of mean-relative pixel intensity in the central ``primary '
-        l+= 'region" of each layer of the smoothed mean images. Red lines and green shaded areas show statistics calculated for the smoothed '
-        l+= 'mean image before application of the flatfield correction factors. Blue lines and yellow shading show statistics calculated for '
-        l+= 'the smoothed post-correction mean image.}'
-        lines.append(l+'\n')
-        lines.append('\\label{fig:smoothed_mean_image_pixel_intensities_central_region}\n')
-        lines.append('\\end{figure}\n')
+        caption_2 = '5th and 95th percentile and standard deviation of mean-relative pixel intensity in the central ``primary '
+        caption_2+= 'region" of each layer of the smoothed mean images. Red lines and green shaded areas show statistics calculated for the smoothed '
+        caption_2+= 'mean image before application of the flatfield correction factors. Blue lines and yellow shading show statistics calculated for '
+        caption_2+= 'the smoothed post-correction mean image.'
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/smoothed_mean_image_pixel_intensities_central_region',caption_2,figlabel_2)
         lines.append('\n')
-        l = 'Figure~\\ref{fig:illumination_variation_reduction} shows how the spread from the 5th to 95th percentile mean-relative flux and the standard '
+        figlabel_3 = 'fig:illumination_variation_reduction'
+        figlabel_4 = 'fig:illumination_variation_reduction_central_region'
+        l = f'Figure~\\ref{{{figlabel_3}}} shows how the spread from the 5th to 95th percentile mean-relative flux and the standard '
         l+= 'deviation of the mean-relative flux in the smoothed mean images changed as a result of application of the correction factors in each image '
-        l+= 'layer. Figure.~\\ref{fig:illumination_variation_reduction_central_region} shows the same, calculated using the central ``primary region" of the image.'
-        lines.append(l+'\n')
+        l+= f'layer. Figure.~\\ref{{{figlabel_4}}} shows the same, calculated using the central ``primary region" of the image.'
+        lines.append(l)
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=\\textwidth]{{{self.plot_dirpath_tex}/illumination_variation_reduction}}\n')
-        l = '\\caption{\\footnotesize Spread from 5th to 95th percentile and standard deviation of mean relative flux observed for the entire region of '
-        l+= 'the smoothed mean image before and after application of the flatfield correction factors.}'
-        lines.append(l+'\n')
-        lines.append('\\label{fig:illumination_variation_reduction}\n')
-        lines.append('\\end{figure}\n')
+        caption_3 = 'Spread from 5th to 95th percentile and standard deviation of mean relative flux observed for the entire region of '
+        caption_3+= 'the smoothed mean image before and after application of the flatfield correction factors.'
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/illumination_variation_reduction',caption_3,figlabel_3)
         lines.append('\n')
-        lines.append('\\begin{figure}[!ht]\n')
-        lines.append('\\centering\n')
-        lines.append(f'\\includegraphics[width=\\textwidth]{{{self.plot_dirpath_tex}/illumination_variation_reduction_central_region}}\n')
-        l = '\\caption{\\footnotesize Spread from 5th to 95th percentile and standard deviation of mean relative flux observed for the central ``primary" '
-        l+= 'region of the smoothed mean image before and after application of the flatfield correction factors.}'
-        lines.append(l+'\n')
-        lines.append('\\label{fig:illumination_variation_reduction}\n')
-        lines.append('\\end{figure}\n')
+        caption_4 = 'Spread from 5th to 95th percentile and standard deviation of mean relative flux observed for the central ``primary" '
+        caption_4+= 'region of the smoothed mean image before and after application of the flatfield correction factors.'
+        lines+=self.image_figure_lines(f'{self.plot_dirpath_tex}/illumination_variation_reduction_central_region',caption_4,figlabel_4)
         lines.append('\n')
-        l = 'Table~\\ref{tab:illumination_variation_reduction} lists the reductions in illumination variation, averaged over all image layers, observed '
+        tablabel = 'tab:illumination_variation_reduction'
+        l = f'Table~\\ref{{{tablabel}}} lists the reductions in illumination variation, averaged over all image layers, observed '
         l+= 'in the smoothed mean images as a result of applying the flatfield corrections. The illumination variations listed are the 5th-95th percentile '
         l+= 'spread and standard deviation of the mean-relative pixel intensity in the smoothed mean images before and after correction. Values are shown '
         l+= 'for the entire images as well as for the central ``primary regions" of the images.'
-        lines.append(l+'\n')
+        lines.append(l)
+        caption = 'Summarizing statistics describing the effects of applying flatfield corrections to a mean image created from '
+        caption+= "an orthogonal subsample of HPF images. Each statistic in the upper portion of the table describes the distribution of a smoothed mean "
+        caption+= "image's mean-relative pixel intensities. The maxima and minima listed are the maximum/minimum mean-relative intensity in any image layer, "
+        caption+= "and the 5th-95th percentile spread and standard deviation listed are the averages over all image layers. Values are given for both the entire "
+        caption+= "image region and the central primary region, both before and after application of the flatfield corrections. The lower table lists the percent "
+        caption+= "changes in the same statistics between the pre- and post-correction smoothed mean images, both for the overall image and in the central "
+        caption+= "primary region."
+        datatable = LatexDataTable(caption,label)
         mean_rel_pre_smi = self.__smoothed_mean_image/(np.mean(self.__smoothed_mean_image,axis=(0,1))[np.newaxis,np.newaxis,:])
         o_pre_max, o_pre_min, o_pre_spread, o_pre_stddev, c_pre_max, c_pre_min, c_pre_spread, c_pre_stddev = calculate_statistics_for_image(mean_rel_pre_smi)
         mean_rel_post_smi = self.__smoothed_corrected_mean_image/(np.mean(self.__smoothed_corrected_mean_image,axis=(0,1))[np.newaxis,np.newaxis,:])
@@ -579,37 +509,21 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         c_spread_change = 100.*(c_post_spread-c_pre_spread)/c_pre_spread
         o_stddev_change = 100.*(o_post_stddev-o_pre_stddev)/o_pre_stddev
         c_stddev_change = 100.*(c_post_stddev-c_pre_stddev)/c_pre_stddev
-        lines.append('\\begin{table}[!htb]\n')
-        lines.append('\\centering\n')
-        lines.append('\\footnotesize\n')
-        lines.append('\\begin{tabular}{c c c c c}\n')
-        lines.append('\\hline\n')
-        lines.append('Statistic & Pre-correction,  & Pre-correction,        & Post-correction, & Post-correction,       \\\\\n')
-        lines.append('          & whole image area & central primary region & whole image area & central primary region \\\\\n')
-        lines.append('\\hline\n')
-        lines.append(f'Maximum mean-relative pixel intensity & {o_pre_max:.05f} & {c_pre_max:.05f} & {o_post_max:.05f} & {c_post_max:.05f} \\\\\n')
-        lines.append(f'Minimum mean-relative pixel intensity & {o_pre_min:.05f} & {c_pre_min:.05f} & {o_post_min:.05f} & {c_post_min:.05f} \\\\\n')
-        lines.append(f'5th-95th \\%ile spread, avg. over all layers & {o_pre_spread:.05f} & {c_pre_spread:.05f} & {o_post_spread:.05f} & {c_post_spread:.05f} \\\\\n')
-        lines.append(f'Standard deviation, avg. over all layers & {o_pre_stddev:.05f} & {c_pre_stddev:.05f} & {o_post_stddev:.05f} & {c_post_stddev:.05f} \\\\\n')
-        lines.append('\\hline\n')
-        lines.append('\\end{tabular}\n')
-        lines.append('\\begin{tabular}{c c c}\n')
-        lines.append('\\hline\n')
-        lines.append(f'Statistic & change due to correction,  & change due to correction, & \\\\\n')
-        lines.append('          & whole image area              & central primary region       & \\\\\n')
-        lines.append('\\hline\n')
-        lines.append(f'5th-95th \\%ile spread, avg. over all layers & {o_spread_change:.02f}\\% & {c_spread_change:.02f}\\% \\\\\n')
-        lines.append(f'Standard deviation, avg. over all layers & {o_stddev_change:.02f}\\% & {c_stddev_change:.02f}\\% \\\\\n')
-        lines.append('\\hline\n')
-        lines.append('\\end{tabular}\n')
-        l = "\\caption{\\footnotesize Summarizing statistics describing the effects of applying flatfield corrections to a mean image created from "
-        l+= "an orthogonal subsample of HPF images. Each statistic in the upper portion of the table describes the distribution of a smoothed mean "
-        l+= "image's mean-relative pixel intensities. The maxima and minima listed are the maximum/minimum mean-relative intensity in any image layer, "
-        l+= "and the 5th-95th percentile spread and standard deviation listed are the averages over all image layers. Values are given for both the entire "
-        l+= "image region and the central primary region, both before and after application of the flatfield corrections. The lower table lists the percent "
-        l+= "changes in the same statistics between the pre- and post-correction smoothed mean images, both for the overall image and in the central "
-        l+= "primary region.}"
-        lines.append(l+'\n')
-        lines.append('\\label{tab:illumination_variation_reduction}\n')
-        lines.append('\\end{table}\n')
+        headings = ['Statistic & Pre-correction,  & Pre-correction,        & Post-correction, & Post-correction,',
+                    '          & whole image area & central primary region & whole image area & central primary region'
+                   ]
+        rows = [f'Maximum mean-relative pixel intensity & {o_pre_max:.05f} & {c_pre_max:.05f} & {o_post_max:.05f} & {c_post_max:.05f}',
+                f'Minimum mean-relative pixel intensity & {o_pre_min:.05f} & {c_pre_min:.05f} & {o_post_min:.05f} & {c_post_min:.05f}',
+                f'5th-95th \\%ile spread, avg. over all layers & {o_pre_spread:.05f} & {c_pre_spread:.05f} & {o_post_spread:.05f} & {c_post_spread:.05f}',
+                f'Standard deviation, avg. over all layers & {o_pre_stddev:.05f} & {c_pre_stddev:.05f} & {o_post_stddev:.05f} & {c_post_stddev:.05f}'
+               ]
+        datatable.add_tabular(headings,rows)
+        headings = [f'Statistic & change due to correction,  & change due to correction,',
+                     '          & whole image area           & central primary region'
+                   ]
+        rows = [f'5th-95th \\%ile spread, avg. over all layers & {o_spread_change:.02f}\\% & {c_spread_change:.02f}\\%',
+                f'Standard deviation, avg. over all layers & {o_stddev_change:.02f}\\% & {c_stddev_change:.02f}\\%'
+               ]
+        datatable.add_tabular(headings,rows)
+        lines+=datatable.get_table_lines()
         return lines
