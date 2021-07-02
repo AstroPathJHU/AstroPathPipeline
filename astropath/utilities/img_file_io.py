@@ -133,7 +133,7 @@ def smooth_image_with_uncertainty_worker(im_array,im_unc_array,smoothsigma,gpu=F
     return sm_im,sm_im_unc
 
 #helper function to get an image dimension tuple from the slide's XML file
-def getImageHWLFromXMLFile(root_dir,slideID) :
+def get_image_hwl_from_xml_file(root_dir,slideID) :
   subdir_filepath = pathlib.Path(f'{root_dir}/{slideID}/im3/xml/{slideID}{PARAMETER_XMLFILE_EXT}')
   if pathlib.Path.is_file(subdir_filepath) :
     xmlfile_path = subdir_filepath

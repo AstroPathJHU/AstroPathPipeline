@@ -2,28 +2,11 @@
 from .utilities import RectangleThresholdTableEntry
 from ..image_masking.config import CONST as MASKING_CONST
 from ...utilities.tableio import readtable
-from ...utilities.misc import cd, crop_and_overwrite_image
+from ...utilities.misc import cd, save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
 import matplotlib.pyplot as plt
 import pathlib
-
-def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
-    """
-    Helper function to save the current figure with a given name and crop it. 
-    If save_dirpath is given the figure is saved in that directory (possibly creating it)
-    """
-    if save_dirpath is not None :
-        if not save_dirpath.is_dir() :
-            save_dirpath.mkdir()
-        with cd(save_dirpath) :
-            pyplot_inst.savefig(figname)
-            pyplot_inst.close()
-            crop_and_overwrite_image(figname)
-    else :
-        pyplot_inst.savefig(figname)
-        pyplot_inst.close()
-        crop_and_overwrite_image(figname)
 
 def plot_tissue_edge_rectangle_locations(all_rects,edge_rects,root_dir,slideID,save_dirpath=None) :
     """

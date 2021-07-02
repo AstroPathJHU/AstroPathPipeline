@@ -29,6 +29,23 @@ def cd(dir):
   finally:
     os.chdir(cdminus)
 
+def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
+  """
+  Save the current figure in the given pyplot instance with a given name and crop it. 
+  If save_dirpath is given the figure is saved in that directory (possibly creating it)
+  """
+  if save_dirpath is not None :
+    if not save_dirpath.is_dir() :
+      save_dirpath.mkdir()
+    with cd(save_dirpath) :
+      pyplot_inst.savefig(figname)
+      pyplot_inst.close()
+      crop_and_overwrite_image(figname)
+  else :
+    pyplot_inst.savefig(figname)
+    pyplot_inst.close()
+    crop_and_overwrite_image(figname)
+
 @nb.vectorize([nb.int64(nb.float64, nb.float64, nb.float64)])
 def __floattoint(flt, atol, rtol):
   result = int(flt)

@@ -1,10 +1,10 @@
 #imports
-from astropath.shared.sample import SampleDef
-from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL
-from astropath.utilities.dataclasses import MyDataClass
-from astropath.utilities.tableio import readtable,writetable
-from astropath.utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_floats, cropAndOverwriteImage
-from astropath.utilities.config import CONST as UNIV_CONST
+from ...shared.sample import SampleDef
+from ...utilities.img_file_io import get_image_hwl_from_xml_file, get_raw_as_hwl
+from ...utilities.dataclasses import MyDataClass
+from ...utilities.tableio import readtable,writetable
+from ...utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_floats, save_figure_in_dir
+from ...utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -209,10 +209,7 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
     cbar = fig.colorbar(pos,cax=cax)
     cbar.ax.tick_params(labelsize=scaled_title_font_size)
     #save the plot
-    with cd(workingdir) :
-        plt.savefig(figname)
-        plt.close()
-        cropAndOverwriteImage(figname)
+    save_figure_in_dir(plt,figname,workingdir)
 
 #helper function to make the consistency check grid plot
 def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,sort_by,lines_after,bounds,all_or_brightest,save_all_layers,flatw) :
@@ -236,7 +233,7 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
     dims = None 
     for root_dir,slide_ids in slide_ids_by_rootdir.items() :
         for sid in slide_ids :
-            this_slide_dims = getImageHWLFromXMLFile(root_dir,sid)
+            this_slide_dims = get_image_hwl_from_xml_file(root_dir,sid)
             if dims is None :
                 dims = this_slide_dims
             if this_slide_dims!=dims :
@@ -254,8 +251,8 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
             while si in range(len(sids)) :
                 sid=sids[si]
                 logger.info(f'\tChecking {sid}...')
-                mi   = getRawAsHWL((root_dir / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-mean_image.bin'),*(dims),np.float64)
-                semi = getRawAsHWL((pathlib.Path(root_dir) / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-std_error_of_mean_image.bin'),*(dims),np.float64)
+                mi   = get_raw_as_hwl((root_dir / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-mean_image.bin'),*(dims),np.float64)
+                semi = get_raw_as_hwl((pathlib.Path(root_dir) / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-std_error_of_mean_image.bin'),*(dims),np.float64)
                 if np.min(mi)==np.max(mi) or np.max(semi)==0. : #or sum([np.min(semi[:,:,li])==0. for li in range(dims[-1])])==dims[-1] :
                     logger.warning(f'WARNING: slide {sid} will be skipped because not enough images were stacked!')
                     slide_ids_by_rootdir[root_dir].remove(sid)
@@ -289,9 +286,9 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
         pairs_done = set()
         for is1,sid1 in enumerate(slide_ids) :
             s1rd = ([rd for rd,sids in slide_ids_by_rootdir.items() if sid1 in sids])[0]
-            mi1   = getRawAsHWL((s1rd / sid1 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-mean_image.bin'),
+            mi1   = get_raw_as_hwl((s1rd / sid1 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-mean_image.bin'),
                                 *(dims),np.float64)
-            semi1 = getRawAsHWL((s1rd / sid1 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-std_error_of_mean_image.bin'),
+            semi1 = get_raw_as_hwl((s1rd / sid1 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-std_error_of_mean_image.bin'),
                                 *(dims),np.float64)
             for is2,sid2 in enumerate(slide_ids) :
                 if sid2==sid1 :
@@ -303,9 +300,9 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
                     continue
                 logger.info(f'Finding std. devs. of delta/sigma for {sid1} vs. {sid2}...')
                 s2rd = ([rd for rd,sids in slide_ids_by_rootdir.items() if sid2 in sids])[0]
-                mi2   = getRawAsHWL((s2rd / sid2 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-mean_image.bin'),
+                mi2   = get_raw_as_hwl((s2rd / sid2 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-mean_image.bin'),
                                     *(dims),np.float64)
-                semi2 = getRawAsHWL((s2rd / sid2 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-std_error_of_mean_image.bin'),
+                semi2 = get_raw_as_hwl((s2rd / sid2 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-std_error_of_mean_image.bin'),
                                     *(dims),np.float64)
                 dossd_list = get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2)
                 dos_std_dev_plot_values[is1,is2,:] = dossd_list
