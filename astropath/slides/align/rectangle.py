@@ -1,7 +1,8 @@
 import collections, contextlib, contextlib2, cv2, more_itertools, numpy as np, sklearn.decomposition
 
 from ...shared.logging import dummylogger
-from ...shared.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleTransformationBase, RectangleReadIm3, RectangleWithImageBase, RectangleReadIm3MultiLayer
+from ...shared.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleWithImageBase, RectangleReadIm3MultiLayer
+from ...shared.rectangletransformation import RectangleTransformationBase
 from ...utilities import units
 from .flatfield import meanimage
 

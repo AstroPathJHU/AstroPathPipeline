@@ -168,11 +168,11 @@ pipeline {
           }
         }
 
-        stage('interactive flatfielding') {
+        stage('meanimage') {
           stages {
-            stage('test flatfield') {
+            stage('test meanimage') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfield'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimage'
               }
             }
             stage('flatfield documents') {
@@ -181,12 +181,6 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
               }
             }
-          }
-        }
-
-        stage('test batch mode flatfield') {
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testflatfieldbatchmodes'
           }
         }
 

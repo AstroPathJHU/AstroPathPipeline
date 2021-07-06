@@ -1,5 +1,5 @@
 #imports
-from ...shared.rectangle import RectangleTransformationBase
+from ...shared.rectangletransformation import RectangleTransformationBase
 from ...slides.align.alignsample import AlignSampleFromXML
 from ...slides.align.rectangle import AlignmentRectangle
 from ...utilities.img_file_io import smoothImageWorker

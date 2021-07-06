@@ -1,7 +1,7 @@
 import abc, contextlib, numpy as np, pathlib
 from ...shared.rectangle import MaskRectangle
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
-from ...hpfs.image_masking.utilities import unpackTissueMask
+from ...hpfs.image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.misc import floattoint
 from ..align.alignsample import AlignSample
@@ -47,7 +47,7 @@ class MaskSample(MaskSampleBase):
       dct = np.load(filename)
       return dct["mask"]
     elif filetype == ".bin":
-      return unpackTissueMask(
+      return ImageMask.unpack_tissue_mask(
         filename, tuple((self.ntiles * self.zoomtilesize)[::-1])
       )
     else:
@@ -294,7 +294,7 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
   @property
   def backgroundvalue(self): return False
   def getHPFmask(self, field):
-    return unpackTissueMask(
+    return ImageMask.unpack_tissue_mask(
         field.tissuemaskfile,
         (
           floattoint(float(self.fheight/self.onepixel)),
