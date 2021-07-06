@@ -40,7 +40,7 @@ class TestMeanImage(TestBaseSaveOutput) :
         masking_dir = meanimage_dir/CONST.IMAGE_MASKING_SUBDIR_NAME
         all_fps.append(masking_dir/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME)
         for fn in (folder/'data'/'raw'/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}') :
-            all_fps.append(masking_dir/f'{fn.rstrip(UNIV_CONST.RAW_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}')
+            all_fps.append(masking_dir/f'{fn.name.rstrip(UNIV_CONST.RAW_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}')
         for fns in rectangle_files_with_full_masks :
             all_fps.append(masking_dir/f'{fns}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}')
         return all_fps
