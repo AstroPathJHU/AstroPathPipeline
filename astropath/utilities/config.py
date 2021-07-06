@@ -16,6 +16,9 @@ class Const :
     @property
     def QPTIFF_SUFFIX(self) :
         return '_qptiff.jpg' # suffix for the qptiff files
+    @property
+    def EXPOSURE_XML_EXTS(self) :
+        return ['.SpectralBasisInfo.Exposure.xml','.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml'] #extensions for exposure time xml files
     #subdirectory names
     @property
     def IM3_DIR_NAME(self) :

@@ -9,7 +9,6 @@ import pathlib, glob, cv2, logging, time
 
 #global variables
 PARAMETER_XMLFILE_EXT = '.Parameters.xml'
-EXPOSURE_XML_EXTS     = ['.SpectralBasisInfo.Exposure.xml','.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml']
 EXPOSURE_ELEMENT_NAME = 'Exposure'
 CORRECTED_EXPOSURE_XML_EXT = '.Corrected.Exposure.xml'
 XML_START_LINE_TEXT = '<IM3Fragment>'
@@ -158,19 +157,19 @@ def findExposureTimeXMLFile(rfp,search_dir) :
   for i in range(1,len(fn_split)) :
     file_ext+=f'.{fn_split[i]}'
   slideID = ((pathlib.Path.resolve(pathlib.Path(rfp))).parent).name
-  poss_path_1 = pathlib.Path(f'{search_dir}/{slideID}/im3/xml/{((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,EXPOSURE_XML_EXTS[0])}')
+  poss_path_1 = pathlib.Path(f'{search_dir}/{slideID}/im3/xml/{((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,CONST.EXPOSURE_XML_EXTS[0])}')
   if pathlib.Path.is_file(poss_path_1) :
     xmlfile_path = poss_path_1
   else :
-    poss_path_2 = pathlib.Path(f'{search_dir}/{slideID}/im3/xml/{((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,EXPOSURE_XML_EXTS[1])}')
+    poss_path_2 = pathlib.Path(f'{search_dir}/{slideID}/im3/xml/{((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,CONST.EXPOSURE_XML_EXTS[1])}')
     if pathlib.Path.is_file(poss_path_2) :
       xmlfile_path = poss_path_2
     else :
-      poss_path_3 = pathlib.Path(f'{search_dir}/{slideID}/{((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,EXPOSURE_XML_EXTS[0])}')
+      poss_path_3 = pathlib.Path(f'{search_dir}/{slideID}/{((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,CONST.EXPOSURE_XML_EXTS[0])}')
       if pathlib.Path.is_file(poss_path_3) :
         xmlfile_path = poss_path_3
       else :
-        poss_path_4 = pathlib.Path(f'{search_dir}/{slideID}/{((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,EXPOSURE_XML_EXTS[1])}')
+        poss_path_4 = pathlib.Path(f'{search_dir}/{slideID}/{((pathlib.Path.resolve(pathlib.Path(rfp))).name).replace(file_ext,CONST.EXPOSURE_XML_EXTS[1])}')
         if pathlib.Path.is_file(poss_path_4) :
           xmlfile_path = poss_path_4
         else :
@@ -269,10 +268,10 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
   all_new_lines = new_header_lines+new_xml_lines
   try :
     old_filename = (pathlib.Path.resolve(pathlib.Path(infile_path))).name
-    if EXPOSURE_XML_EXTS[0] in old_filename :
-      outfile_name = old_filename.replace(EXPOSURE_XML_EXTS[0],CORRECTED_EXPOSURE_XML_EXT)
-    elif EXPOSURE_XML_EXTS[1] in old_filename :
-      outfile_name = old_filename.replace(EXPOSURE_XML_EXTS[1],CORRECTED_EXPOSURE_XML_EXT)
+    if CONST.EXPOSURE_XML_EXTS[0] in old_filename :
+      outfile_name = old_filename.replace(CONST.EXPOSURE_XML_EXTS[0],CORRECTED_EXPOSURE_XML_EXT)
+    elif CONST.EXPOSURE_XML_EXTS[1] in old_filename :
+      outfile_name = old_filename.replace(CONST.EXPOSURE_XML_EXTS[1],CORRECTED_EXPOSURE_XML_EXT)
     with open(outfile_name,'w') as ofp :
       for il,line in enumerate(all_new_lines) :
         if il<len(all_new_lines)-1 :
@@ -295,7 +294,7 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
 #but if it's a raw file the root dir must also be provided
 def getExposureTimesByLayer(fp,root_dir=None) :
   layer_exposure_times_to_return = []
-  if (EXPOSURE_XML_EXTS[0] in str(fp)) or (EXPOSURE_XML_EXTS[1] in str(fp)) or (CORRECTED_EXPOSURE_XML_EXT in str(fp)) :
+  if (CONST.EXPOSURE_XML_EXTS[0] in str(fp)) or (CONST.EXPOSURE_XML_EXTS[1] in str(fp)) or (CORRECTED_EXPOSURE_XML_EXT in str(fp)) :
     xmlfile_path = fp
     if not pathlib.Path.is_file(pathlib.Path(xmlfile_path)) :
       raise RuntimeError(f"ERROR: {xmlfile_path} searched in getExposureTimesByLayer not found!")
@@ -322,9 +321,9 @@ def getSlideMedianExposureTimesByLayer(root_dir,slideID,logger=None) :
   if not pathlib.Path.is_dir(checkdir) :
     checkdir = pathlib.Path(f'{root_dir}/{slideID}')
   with cd(checkdir) :
-    all_fps = [pathlib.Path(f'{checkdir}/{fn}') for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[0]}')]
+    all_fps = [pathlib.Path(f'{checkdir}/{fn}') for fn in glob.glob(f'*{CONST.EXPOSURE_XML_EXTS[0]}')]
     if len(all_fps)==0 :
-      all_fps = [pathlib.Path(f'{checkdir}/{fn}') for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[1]}')]
+      all_fps = [pathlib.Path(f'{checkdir}/{fn}') for fn in glob.glob(f'*{CONST.EXPOSURE_XML_EXTS[1]}')]
   if len(all_fps)<1 :
     raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
   msg = f'Finding median exposure times for {slideID} ({len(all_fps)} images with {nlayers} layers each)....'
@@ -387,9 +386,9 @@ def getExposureTimeHistogramsByLayerGroupForSlide(root_dir,slideID,nbins=50,logg
   if not pathlib.Path.is_dir(checkdir) :
     checkdir = pathlib.Path(f'{root_dir}/{slideID}')
   with cd(checkdir) :
-    all_fps = [pathlib.Path(f'{checkdir}/{fn}') for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[0]}')]
+    all_fps = [pathlib.Path(f'{checkdir}/{fn}') for fn in glob.glob(f'*{CONST.EXPOSURE_XML_EXTS[0]}')]
     if len(all_fps)==0 :
-      all_fps = [pathlib.Path(f'{checkdir}/{fn}') for fn in glob.glob(f'*{EXPOSURE_XML_EXTS[1]}')]
+      all_fps = [pathlib.Path(f'{checkdir}/{fn}') for fn in glob.glob(f'*{CONST.EXPOSURE_XML_EXTS[1]}')]
   if len(all_fps)<1 :
     raise ValueError(f'ERROR: no exposure time xml files found in directory {checkdir}!')
   msg = f'Getting exposure time histograms for {slideID} ({len(all_fps)} images with {nlayers} layers each)....'
