@@ -2,7 +2,7 @@
 from .config import CONST
 from ...utilities.dataclasses import MyDataClass
 import numpy as np
-import pathlib, cv2
+import cv2
 
 #mask region information helper class
 class LabelledMaskRegion(MyDataClass) :

@@ -10,13 +10,11 @@ from ..image_masking.utilities import LabelledMaskRegion
 from ..image_masking.config import CONST as MASK_CONST
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, WorkflowSample, ParallelSample
-from ...shared.rectangle import RectangleCorrectedIm3MultiLayer
 from ...shared.overlap import Overlap
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary, ThresholdTableEntry
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
-import matplotlib.pyplot as plt
 import pathlib, methodtools, random
 
 class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, ParallelSample, FileTypeArgumentParser, WorkingDirArgumentParser) :
@@ -203,7 +201,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, P
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :
-            warnmsg = f'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
+            warnmsg = 'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
             self.logger.warning(warnmsg)
 
@@ -283,7 +281,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, P
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :
-            warnmsg = f'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
+            warnmsg = 'WARNING: failed while compiling thresholding summary LaTeX file into a PDF. '
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
             self.logger.warning(warnmsg)
         #return the list of background thresholds in counts

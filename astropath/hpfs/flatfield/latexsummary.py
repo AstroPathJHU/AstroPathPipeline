@@ -108,7 +108,7 @@ class MaskingLatexSummary(LatexSummaryForSlideWithPlotdir) :
         lines.append('\n')
         l = f'Figures~\\ref{{fig:first_masking_plot}}-\\ref{{fig:last_masking_plot}} below show examples of how the image masking proceeded for {len(all_fns)} '
         l+= f'individual images in {self.slideID_tex}. The examples shown are for the images in the sample with the largest numbers of pixels flagged due to '
-        l+= f'blur and/or saturation.'
+        l+= 'blur and/or saturation.'
         lines.append(l+'\n\n')
         l = 'Every row (except the last) in each plot shows the same information, for the different broadband filter groups. The leftmost column shows the raw '
         l+= 'brightest image layer in the layer group. The second column from the left shows a grayscale overlay of that same brightest image layer with the '
@@ -241,7 +241,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         lines.append('\n')
         figlabel = 'fig:flatflield_pixel_intensities'
         l = f'Figure~\\ref{{{figlabel}}} shows the 5th and 95th percentile, as well as the standard deviation, of the pixel-by-pixel '
-        l+= f'correction factors in each layer of the flatfield model'
+        l+= 'correction factors in each layer of the flatfield model'
         if self.__batchID is not None :
             l+=f' created for batch {self.__batchID:02d}'
         l+='. The red lines and green shaded areas show the values calculated over the entire area of the correction image, and the blue lines and yellow '
@@ -519,8 +519,8 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
                 f'Standard deviation, avg. over all layers & {o_pre_stddev:.05f} & {c_pre_stddev:.05f} & {o_post_stddev:.05f} & {c_post_stddev:.05f}'
                ]
         datatable.add_tabular(headings,rows)
-        headings = [f'Statistic & change due to correction,  & change due to correction,',
-                     '          & whole image area           & central primary region'
+        headings = ['Statistic & change due to correction,  & change due to correction,',
+                    '          & whole image area           & central primary region'
                    ]
         rows = [f'5th-95th \\%ile spread, avg. over all layers & {o_spread_change:.02f}\\% & {c_spread_change:.02f}\\%',
                 f'Standard deviation, avg. over all layers & {o_stddev_change:.02f}\\% & {c_stddev_change:.02f}\\%'

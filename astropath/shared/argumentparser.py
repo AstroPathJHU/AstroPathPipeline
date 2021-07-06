@@ -189,7 +189,7 @@ class WorkingDirArgumentParser(RunFromArgumentParser) :
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument('--workingdir', type=pathlib.Path,help=f'path to the working directory where output should be stored')
+    p.add_argument('--workingdir', type=pathlib.Path,help='Path to the working directory where output should be stored')
     return p
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):

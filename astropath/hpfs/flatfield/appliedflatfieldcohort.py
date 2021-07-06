@@ -119,10 +119,10 @@ class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, 
                 self.__workingdir.mkdir(parents=True)
             if len(self.__metadata_summaries_ff)>0 :
                 with cd(self.__workingdir) :
-                    writetable(f'metadata_summary_flatfield_stacked_images.csv',self.__metadata_summaries_ff)
+                    writetable('metadata_summary_flatfield_stacked_images.csv',self.__metadata_summaries_ff)
             if len(self.__metadata_summaries_cmi)>0 :
                 with cd(self.__workingdir) :
-                    writetable(f'metadata_summary_corrected_mean_image_stacked_images.csv',self.__metadata_summaries_cmi)
+                    writetable('metadata_summary_corrected_mean_image_stacked_images.csv',self.__metadata_summaries_cmi)
             if len(self.__field_logs_ff)>0 :
                 with cd(self.__workingdir) :
                     writetable(f"{CONST.FIELDS_USED_CSV_FILENAME.rstrip('.csv')}_flatfield.csv",self.__field_logs_ff)

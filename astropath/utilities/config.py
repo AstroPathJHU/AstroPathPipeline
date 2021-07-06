@@ -1,6 +1,3 @@
-#imports 
-import numpy as np
-
 #class for shared constant variables
 class Const :
     #file extensions

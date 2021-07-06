@@ -7,13 +7,14 @@ from ...utilities.tableio import readtable,writetable
 from ...utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_floats, save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
-import numpy as np, matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import pathlib, math, logging
 
 #name of the meanimage subdirectory (may be overwritten if 'flatw' flag is added)
-MEANIMAGE_SUBDIR_NAME = 'meanimage'
-FLATW_MEANIMAGE_SUBDIR_NAME = 'meanimage_from_fw_files'
+MEANIMAGE_SUBDIR_NAME = UNIV_CONST.MEANIMAGE_DIRNAME
+FLATW_MEANIMAGE_SUBDIR_NAME = f'{UNIV_CONST.MEANIMAGE_DIRNAME}_from_fw_files'
 
 #logger
 logger = logging.getLogger("flatfield_consistency")
@@ -154,7 +155,7 @@ def get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2) :
         mil2 = mi2[:,:,ln-1]; semil2 = semi2[:,:,ln-1]
         mil1max=np.max(mil1); mil1min=np.min(mil1)
         mil2max=np.max(mil2); mil2min=np.min(mil2)
-        semil1min = np.min(semil1); semil2min = np.min(semil2)
+        #semil1min = np.min(semil1); semil2min = np.min(semil2)
         if mil1max==mil1min or mil2max==mil2min : #or semil1min==0. or semil2min==0. :
             delta_over_sigma_std_devs.append(0.)
             continue

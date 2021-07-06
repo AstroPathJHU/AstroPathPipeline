@@ -1,9 +1,9 @@
 #imports
-from astropath.hpfs.flatfield.meanimagesample import MeanImageSample
+#from astropath.hpfs.flatfield.meanimagesample import MeanImageSample
 from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
 from astropath.hpfs.flatfield.config import CONST
 from astropath.utilities.config import CONST as UNIV_CONST
-from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import TestBaseSaveOutput
 import os, pathlib
 
 folder = pathlib.Path(__file__).parent
@@ -16,14 +16,14 @@ rectangle_files_with_full_masks = [
 
 ]
 
-class TestMeanImage(TestBaseCopyInput, TestBaseSaveOutput) :
+class TestMeanImage(TestBaseSaveOutput) :
     """
     Class to test MeanImageSample and MeanImageCohort functions
     """
 
     @property
     def outputfilenames(self) :
-        meanimage_dir = folder/'data'/sid/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME
+        meanimage_dir = folder/'data'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME
         all_fps = []
         all_fps.append(meanimage_dir/CONST.FIELDS_USED_CSV_FILENAME)
         all_fps.append(meanimage_dir/f'{SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}')

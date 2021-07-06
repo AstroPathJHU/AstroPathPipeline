@@ -1,10 +1,7 @@
 #imports
 from .meanimagesample import MeanImageSample
-from .config import CONST
 from ...shared.argumentparser import FileTypeArgumentParser, ImageCorrectionArgumentParser
 from ...shared.cohort import Im3Cohort, ParallelCohort, WorkflowCohort
-from ...utilities.config import CONST as UNIV_CONST
-import pathlib
 
 class MeanImageCohort(Im3Cohort, ParallelCohort, WorkflowCohort, FileTypeArgumentParser, ImageCorrectionArgumentParser) :
     sampleclass = MeanImageSample

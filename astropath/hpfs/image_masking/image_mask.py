@@ -7,7 +7,7 @@ from ...utilities.img_file_io import smooth_image_worker, im3writeraw, write_ima
 from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
-import pathlib, cv2, copy
+import pathlib, cv2
 
 class ImageMask() :
     """

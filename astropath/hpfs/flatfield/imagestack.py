@@ -11,7 +11,6 @@ from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
-import pathlib
 
 class ImageStack :
     """
@@ -56,12 +55,11 @@ class ImageStack :
         if med_ets is not None :
             med_ets = med_ets[np.newaxis,np.newaxis,:]
         #if the images aren't going to be masked, this whole step is pretty trivial. Otherwise it's a bit more complex
-        field_logs_to_return = None
         if maskingdirpath is None :
-            self.__logger.info(f'Images will NOT be masked before stacking')
+            self.__logger.info('Images will NOT be masked before stacking')
             return self.__stack_images_no_masking(rectangles,med_ets)
         else :
-            self.__logger.info(f'Images WILL be masked before stacking')
+            self.__logger.info('Images WILL be masked before stacking')
             return self.__stack_images_with_masking(rectangles,med_ets,maskingdirpath)
 
     def add_sample_meanimage_from_files(self,sample) :
@@ -171,7 +169,7 @@ class ImageStack :
             self.__logger.info(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles_to_stack)})....')
             imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
             with r.using_image() as im :
-                normalized_im = im / med_ets if med_ets is not None else masked_im / r.allexposuretimes[np.newaxis,np.newaxis,:]
+                normalized_im = im / med_ets if med_ets is not None else im / r.allexposuretimes[np.newaxis,np.newaxis,:]
                 if imkey in keys_with_full_masks :
                     mask = ImageMask.onehot_mask_from_full_mask_file(maskingdirpath / f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}',self.__image_stack.shape)
                     layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
@@ -241,7 +239,7 @@ class MeanImage(ImageStack) :
         slide_id       = the ID of the slide to add to the filenames
         workingdirpath = path to the directory where the images etc. should be saved
         """
-        self.logger.info(f'Writing out the mean image, std. err., mask stack....')
+        self.logger.info('Writing out the mean image, std. err., mask stack....')
         #write out the mean image, std. err. image, and mask stack
         with cd(workingdirpath) :
             write_image_to_file(self.__mean_image,f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
@@ -249,7 +247,7 @@ class MeanImage(ImageStack) :
             write_image_to_file(self.__std_err_of_mean_image,f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
             if self.mask_stack is not None :
                 write_image_to_file(self.mask_stack,f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
-        self.logger.info(f'Making plots of image layers and collecting them in the summary pdf....')
+        self.logger.info('Making plots of image layers and collecting them in the summary pdf....')
         #save .pngs of the mean image/mask stack etc. layers
         plotdir_path = workingdirpath / CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
         plot_image_layers(self.__mean_image,f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
@@ -261,7 +259,7 @@ class MeanImage(ImageStack) :
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :
-            warnmsg = f'WARNING: failed while compiling meanimage summary LaTeX file into a PDF. '
+            warnmsg = 'WARNING: failed while compiling meanimage summary LaTeX file into a PDF. '
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
             self.logger.warning(warnmsg)
 
@@ -320,7 +318,7 @@ class Flatfield(ImageStack) :
         self.__flatfield_image_err = np.empty_like(self.image_stack)
         #warn if not enough image were stacked overall
         if (self.mask_stack is not None and np.max(self.mask_stack)<1) or (self.mask_stack is None and (self.__n_images_read<1 or np.max(self.__n_images_stacked_by_layer)<1)) :
-            self.logger.warningglobal(f'WARNING: not enough images were stacked overall, so the flatfield model will be all ones!')
+            self.logger.warningglobal('WARNING: not enough images were stacked overall, so the flatfield model will be all ones!')
             self.__flatfield_image = np.ones_like(self.image_stack)
             self.__flatfield_image_err = np.ones_like(self.image_stack)
             return
@@ -381,7 +379,7 @@ class Flatfield(ImageStack) :
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :
-            warnmsg = f'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
+            warnmsg = 'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
             self.logger.warning(warnmsg)
 
@@ -436,7 +434,7 @@ class CorrectedMeanImage(MeanImage) :
         #write out the mask stack
         if self.mask_stack is not None :
             self.logger.info('Writing out mask stack for mean image....')
-            write_image_to_file(self.mask_stack,f'corrected_mean_image_mask_stack.bin')
+            write_image_to_file(self.mask_stack,'corrected_mean_image_mask_stack.bin')
         #write out the corrected mean image and its uncertainty
         self.logger.info('Writing out the corrected mean image and its uncertainty')
         with cd(workingdirpath) :
@@ -467,6 +465,6 @@ class CorrectedMeanImage(MeanImage) :
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :
-            warnmsg = f'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
+            warnmsg = 'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
             self.logger.warning(warnmsg)

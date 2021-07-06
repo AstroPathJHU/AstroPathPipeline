@@ -2,11 +2,11 @@
 from .utilities import RectangleThresholdTableEntry
 from ..image_masking.config import CONST as MASKING_CONST
 from ...utilities.tableio import readtable
-from ...utilities.misc import cd, save_figure_in_dir
+from ...utilities.misc import save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
 import matplotlib.pyplot as plt
-import pathlib
+import matplotlib.image as mpimg
 
 def plot_tissue_edge_rectangle_locations(all_rects,edge_rects,root_dir,slideID,save_dirpath=None) :
     """

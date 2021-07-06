@@ -316,7 +316,7 @@ def getExposureTimesByLayer(fp,root_dir=None) :
 
 #helper function to return a list of the median exposure times observed in each layer of a given slide
 def getSlideMedianExposureTimesByLayer(root_dir,slideID,logger=None) :
-  _,_,nlayers = getImageHWLFromXMLFile(root_dir,slideID)
+  _,_,nlayers = get_image_hwl_from_xml_file(root_dir,slideID)
   checkdir = pathlib.Path(f'{root_dir}/{slideID}/im3/xml')
   if not pathlib.Path.is_dir(checkdir) :
     checkdir = pathlib.Path(f'{root_dir}/{slideID}')
@@ -375,7 +375,7 @@ def getMedianExposureTimeAndCorrectionOffsetForSlideLayer(root_dir,slideID,et_co
 
 #helper function to return a list of exposure time histograms by layer group for a given slide
 def getExposureTimeHistogramsByLayerGroupForSlide(root_dir,slideID,nbins=50,logger=None) :
-  _,_,nlayers = getImageHWLFromXMLFile(root_dir,slideID)
+  _,_,nlayers = get_image_hwl_from_xml_file(root_dir,slideID)
   if nlayers==35 :
     mask_layer_groups=CONST.LAYER_GROUPS_35
   elif nlayers==43 :

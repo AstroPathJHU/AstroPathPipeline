@@ -66,6 +66,6 @@ class RectangleFlatfieldTransformationMultilayer(RectangleTransformationBase):
       raise ValueError(errmsg)
     raw_dtype = originalimage.dtype
     if np.issubdtype(raw_dtype,np.integer) :
-      return (np.clip(np.rint(originalimage/flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
+      return (np.clip(np.rint(originalimage/self._flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
     else :
-      return (originalimage/flatfield).astype(raw_dtype,casting='same_kind')
+      return (originalimage/self._flatfield).astype(raw_dtype,casting='same_kind')

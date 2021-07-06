@@ -179,6 +179,7 @@ class RectangleWithImageBase(Rectangle):
     new_transformation: the new transformation to add (should inherit from RectangleTransformationBase)
     """
     old_nimages = self.nimages
+    old_nimages = old_nimages #make pyflakes happy
     self.__transformations.append(new_transformation)
     self.__images_cache.append(None)
     self.__accessed_image = np.append(self.__accessed_image,0)
