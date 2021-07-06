@@ -9,7 +9,7 @@ from ..image_masking.image_mask import return_new_mask_labelled_regions, save_pl
 from ..image_masking.utilities import LabelledMaskRegion
 from ..image_masking.config import CONST as MASK_CONST
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
-from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, WorkflowSample, ParallelSample
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase, WorkflowSample, ParallelSample
 from ...shared.overlap import Overlap
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, MetadataSummary, ThresholdTableEntry
@@ -17,7 +17,7 @@ from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
 import pathlib, methodtools, random
 
-class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, ParallelSample, FileTypeArgumentParser, WorkingDirArgumentParser) :
+class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase, ParallelSample, FileTypeArgumentParser, WorkingDirArgumentParser) :
     """
     Base class to use in running the basic MeanImage methods (i.e. not to be used bare in workflows)
     Used as the starting point for actual MeanImageSamples as well as other types of samples that use MeanImage information
@@ -43,16 +43,10 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, P
         If they can't be found they will be created
         """
         #set the image masking directory path (could either be in the workingdir or in the sample's meanimage directory)
-        self.__image_masking_dirpath = self.__workingdirpath / CONST.IMAGE_MASKING_SUBDIR_NAME if not self.__skip_masking else None
+        self.__image_masking_dirpath = self.maskfolder if not self.__skip_masking else None
         self.__use_precomputed_masks = False
         if self.__image_masking_dirpath.is_dir() :
             self.__use_precomputed_masks = self.__dir_has_precomputed_masks(self.__image_masking_dirpath)
-        if not self.__use_precomputed_masks :
-            other_dirpath = self.root / f'{self.SlideID}' / f'{UNIV_CONST.IM3_DIR_NAME}' / f'{UNIV_CONST.MEANIMAGE_DIRNAME}' / CONST.IMAGE_MASKING_SUBDIR_NAME
-            if other_dirpath.is_dir() :
-                self.__use_precomputed_masks = self.__dir_has_precomputed_masks(other_dirpath)
-            if self.__use_precomputed_masks :
-                self.__image_masking_dirpath = other_dirpath
         if not self.__use_precomputed_masks :
             self.__create_sample_image_masks()
         else :

@@ -40,6 +40,8 @@ class ImageMask() :
         return uncompressed_mask
     @property
     def labelled_mask_regions(self):
+        if self._labelled_mask_regions is None :
+            return []
         return self._labelled_mask_regions #the list of labelled mask region objects for this mask
 
     #################### PUBLIC FUNCTIONS ####################

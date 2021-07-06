@@ -8,6 +8,7 @@ import os, pathlib
 
 folder = pathlib.Path(__file__).parent
 SlideID = 'M21_1'
+rectangle_ns_with_raw_files = [23,24,25,29,30,31,35,36,37,38,39,40]
 rectangle_files_with_full_masks = [
     'M21_1_[45093,14453]',
     'M21_1_[45093,14853]',
@@ -37,7 +38,7 @@ class TestMeanImage(TestBaseSaveOutput) :
         all_fps.append(meanimage_dir/f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
         all_fps.append(meanimage_dir/f'{SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}')
         all_fps.append(meanimage_dir/f'{SlideID}-{CONST.THRESHOLDING_SUMMARY_PDF_FILENAME}')
-        masking_dir = meanimage_dir/CONST.IMAGE_MASKING_SUBDIR_NAME
+        masking_dir = folder/'test_for_jenkins'/'mean_image'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME
         all_fps.append(masking_dir/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME)
         for fn in (folder/'data'/'raw'/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}') :
             all_fps.append(masking_dir/f'{fn.name.rstrip(UNIV_CONST.RAW_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}')
@@ -45,15 +46,20 @@ class TestMeanImage(TestBaseSaveOutput) :
             all_fps.append(masking_dir/f'{fns}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}')
         return all_fps
 
-    def test_mean_image(self,n_threads=10) :
+    def test_mean_image(self,n_threads=1) :
         root = folder/'data'
         root2 = folder/'data'/'raw'
         et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
+        (folder/'test_for_jenkins'/'mean_image'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME).mkdir(parents=True,exist_ok=True)
         args = [os.fspath(root),os.fspath(root2),
                 '--exposure_time_offset_file',os.fspath(et_offset_file),
                 '--njobs',str(n_threads),
                 '--sampleregex',SlideID,
-                '--allow-local-edits',
-               ]
+                '--maskroot',os.fspath(folder/'test_for_jenkins'/'mean_image'),
+                '--selectrectangles'
+                ]
+        for rn in rectangle_ns_with_raw_files :
+            args.append(str(rn))
+        args.append('--allow-local-edits')
         MeanImageCohort.runfromargumentparser(args=args)
         self.saveoutput()
