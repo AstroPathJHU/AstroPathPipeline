@@ -3,7 +3,7 @@ from astropath.slides.align.alignsample import AlignSampleComponentTiffFromXML
 from astropath.utilities.tableio import writetable
 from astropath.utilities import units
 from astropath.utilities.dataclasses import MyDataClass
-from astropath.utilities.misc import cd, cropAndOverwriteImage
+from astropath.utilities.misc import cd, save_figure_in_dir
 from astropath.utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
 import numpy as np, matplotlib.pyplot as plt
@@ -90,8 +90,7 @@ def plotRectangleInfo(sid,rects) :
     ax3.legend(loc='best')
     ax3.set_title(f'{sid} mean overlap rel. mse diff. sep. btwn DAPI and AF layers per pixel')
     fn = f'{sid}_hpf_plots.png'
-    plt.savefig(fn)
-    cropAndOverwriteImage(fn)
+    save_figure_in_dir(plt,fn)
 
 #helper function to return the mean separation between the overlap mse relative differences in the DAPI and AF layers
 def getRectangleRelativeDifferenceSeparation(rn,this_rect_olaps) :

@@ -6,11 +6,11 @@ from ..flatfield.config import CONST as FF_CONST
 from ..warping.config import CONST as WARP_CONST
 from ...utilities.img_correction import correctImageForExposureTime, correctImageLayerForExposureTime
 from ...utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
-from ...utilities.img_file_io import getImageHWLFromXMLFile, getRawAsHWL, getRawAsHW, writeImageToFile, findExposureTimeXMLFile
+from ...utilities.img_file_io import get_image_hwl_from_xml_file, get_raw_as_hwl, getRawAsHW, write_image_to_file, findExposureTimeXMLFile
 from ...utilities.img_file_io import writeModifiedExposureTimeXMLFile, getMedianExposureTimesAndCorrectionOffsetsForSlide
 from ...utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSlideLayer, getExposureTimesByLayer, LayerOffset, CORRECTED_EXPOSURE_XML_EXT
 from ...utilities.tableio import readtable, writetable
-from ...utilities.misc import cd, cropAndOverwriteImage
+from ...utilities.misc import cd, crop_and_overwrite_image
 import numpy as np, matplotlib.pyplot as plt
 import pathlib, time, glob
 
@@ -44,7 +44,7 @@ class RawfileCorrector :
         #start up the logfile
         self._setUpLogger(logger)
         #get the image dimensions and layer argument
-        self._img_dims = getImageHWLFromXMLFile(self._root_dir,self._slide_ID)
+        self._img_dims = get_image_hwl_from_xml_file(self._root_dir,self._slide_ID)
         if args.layer!=-1 and (args.layer<1 or args.layer>self._img_dims[2]) :
             raise ValueError(f'ERROR: layer argument {args.layer} is not compatible with image dimensions {self._img_dims}!')
         self._layer = args.layer
@@ -193,7 +193,7 @@ class RawfileCorrector :
             self._ff = None
             self.__writeLog('Flatfielding corrections WILL NOT be applied.')
             return
-        self._ff = getRawAsHWL(ff_file,*(self._img_dims),dtype=FF_CONST.IMG_DTYPE_OUT)
+        self._ff = get_raw_as_hwl(ff_file,*(self._img_dims),dtype=FF_CONST.IMG_DTYPE_OUT)
         if self._layer!=-1 :
             self._ff = self._ff[:,:,self._layer-1]
         try :
@@ -212,7 +212,7 @@ class RawfileCorrector :
                         savename = f'applied_flatfield_layer_{ln}.png'
                         plt.savefig(savename)
                         plt.close()
-                        cropAndOverwriteImage(savename)
+                        crop_and_overwrite_image(savename)
         except Exception as e :
             self.__writeLog(f'applied flatfield plots could not be saved. Exception: {e}',level='warning')
         self.__writeLog(f'Flatfield corrections WILL be applied as read from {ff_file}')
@@ -292,7 +292,7 @@ class RawfileCorrector :
                     savename = 'applied_warping_correction_model.png'
                     plt.savefig(savename)
                     plt.close()
-                    cropAndOverwriteImage(savename)
+                    crop_and_overwrite_image(savename)
             except Exception as e :
                 self.__writeLog(f'applied warp field plots could not be saved. Exception: {e}',level='warning')
         if w_sf!=1.0 :
@@ -314,7 +314,7 @@ class RawfileCorrector :
              (self._warps is not None or ((self._dx_warp_field is not None) and (self._dy_warp_field is not None))) ) :
             msg+='corrected for '
         #first read in the rawfile
-        raw = getRawAsHWL(rawfile_path,*(self._img_dims))
+        raw = get_raw_as_hwl(rawfile_path,*(self._img_dims))
         #get the layer of interest (if necessary)
         if self._layer!=-1 :
             raw = raw[:,:,self._layer-1]
@@ -370,7 +370,7 @@ class RawfileCorrector :
         #write out the new image to the working directory
         outfile_name = ((pathlib.Path.resolve(pathlib.Path(rawfile_path))).name).replace(self._infile_ext,self._outfile_ext)
         with cd(self._working_dir_path) :
-            writeImageToFile(unwarped,outfile_name)
+            write_image_to_file(unwarped,outfile_name)
         #double check that it's there
         new_image_path = pathlib.Path(f'{self._working_dir_path}/{outfile_name}')
         if pathlib.Path.is_file(new_image_path) :

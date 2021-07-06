@@ -5,6 +5,13 @@ from ...utilities.img_file_io import smooth_image_worker
 import numpy as np
 import math
 
+#helper class for inputting slides with their names and raw/root directories
+########### THIS WILL BE DEPRECATED ASAP (not actually used in meanimage/flatfielding code ###########
+class FlatfieldSlideInfo(MyDataClass) :
+    name : str
+    rawfile_top_dir : str
+    root_dir : str
+
 #A small dataclass to hold entries in the background threshold datatable
 class RectangleThresholdTableEntry(MyDataClass) :
     rect_n                  : int

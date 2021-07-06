@@ -2,7 +2,7 @@
 from .warp import CameraWarp
 from .utilities import warp_logger, WarpingError, loadRawImageWorker, WarpImage
 from .config import CONST
-from ...utilities.img_file_io import getRawAsHWL
+from ...utilities.img_file_io import get_raw_as_hwl
 from ...utilities.misc import cd
 import numpy as np
 import cv2, contextlib2
@@ -58,7 +58,7 @@ class WarpSet :
         """
         #first load the flatfield corrections
         warp_logger.info(f'Loading flatfield file {flatfield_file} to correct raw image illumination')
-        flatfield_layer = (getRawAsHWL(flatfield_file,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1] if flatfield_file is not None else None
+        flatfield_layer = (get_raw_as_hwl(flatfield_file,self.m,self.n,self.nlayers,np.float64))[:,:,self.layer-1] if flatfield_file is not None else None
         if rawfiles is not None :
             self.raw_filenames=rawfiles
         #load the raw images

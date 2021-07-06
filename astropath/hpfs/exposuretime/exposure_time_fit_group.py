@@ -1,9 +1,9 @@
 #imports
 from .exposure_time_fit import SingleLayerExposureTimeFit
 from .utilities import et_fit_logger, getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
-from ...utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, LayerOffset
+from ...utilities.img_file_io import get_raw_as_hwl, get_image_hwl_from_xml_file, getExposureTimesByLayer, LayerOffset
 from ...utilities.tableio import writetable
-from ...utilities.misc import cd, cropAndOverwriteImage
+from ...utilities.misc import cd, save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import pathlib, glob
@@ -35,7 +35,7 @@ class ExposureTimeOffsetFitGroup :
         self.rawfile_top_dir = rawfile_top_dir
         self.root_dir = root_dir
         self.workingdir_name = workingdir_name
-        self.img_dims = getImageHWLFromXMLFile(self.rawfile_top_dir,self.slideID)
+        self.img_dims = get_image_hwl_from_xml_file(self.rawfile_top_dir,self.slideID)
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
@@ -117,11 +117,8 @@ class ExposureTimeOffsetFitGroup :
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
         plt.xlabel('image layer')
         plt.ylabel('best-fit offset')
-        with cd(self.workingdir_name) :
-            fn = f'{self.slideID}_best_fit_offsets_by_layer.png'
-            plt.savefig(fn)
-            plt.close()
-            cropAndOverwriteImage(fn)
+        fn = f'{self.slideID}_best_fit_offsets_by_layer.png'
+        save_figure_in_dir(plt,fn,self.workingdir_name)
         et_fit_logger.info('All fits finished.')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -169,7 +166,7 @@ class ExposureTimeOffsetFitGroup :
             et_fit_logger.warn('WARNING: No flatfield file path specified; corrections will not be applied!')
             return np.ones(self.img_dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
         else :
-            return getRawAsHWL(flatfield_filepath,*(self.img_dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+            return get_raw_as_hwl(flatfield_filepath,*(self.img_dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
 
     #helper function to return the list of layer numbers to run from the given arguments
     def __getLayers(self,layers) :
@@ -208,11 +205,8 @@ class ExposureTimeOffsetFitGroup :
             ax.set_xlabel('exposure time (ms)')
             ax.set_ylabel('HPF count')
             ax.legend(loc='best')
-            with cd(self.workingdir_name) :
-                fn = f'exposure_times_{self.slideID}_layer_{ln}.png'
-                plt.savefig(fn)
-                plt.close()
-                cropAndOverwriteImage(fn)
+            fn = f'exposure_times_{self.slideID}_layer_{ln}.png'
+            save_figure_in_dir(plt,fn,self.workingdir_name)
         return exp_times, med_exp_times
 
     #helper function to set up and return a list of single-layer fit objects

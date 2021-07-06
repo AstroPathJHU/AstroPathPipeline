@@ -176,6 +176,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                         new_lmrs=return_new_mask_labelled_regions(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                                                   self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
                                                                   self.__image_masking_dirpath)
+                        labelled_mask_regions+=new_lmrs
                 except Exception as e :
                     warnmsg = f'WARNING: getting image mask for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
                     warnmsg+= f'with the error "{e}" and this rectangle WILL BE SKIPPED when stacking images in the meanimage!'
