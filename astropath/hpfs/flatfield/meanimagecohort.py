@@ -1,9 +1,9 @@
 #imports
 from .meanimagesample import MeanImageSample
 from ...shared.argumentparser import FileTypeArgumentParser, ImageCorrectionArgumentParser
-from ...shared.cohort import Im3Cohort, ParallelCohort, WorkflowCohort
+from ...shared.cohort import Im3Cohort, SelectRectanglesCohort, ParallelCohort, WorkflowCohort
 
-class MeanImageCohort(Im3Cohort, ParallelCohort, WorkflowCohort, FileTypeArgumentParser, ImageCorrectionArgumentParser) :
+class MeanImageCohort(Im3Cohort, SelectRectanglesCohort, ParallelCohort, WorkflowCohort, FileTypeArgumentParser, ImageCorrectionArgumentParser) :
     sampleclass = MeanImageSample
     __doc__ = sampleclass.__doc__
 

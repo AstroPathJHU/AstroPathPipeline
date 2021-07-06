@@ -53,6 +53,7 @@ class TestMeanImage(TestBaseSaveOutput) :
                 '--exposure_time_offset_file',os.fspath(et_offset_file),
                 '--njobs',str(n_threads),
                 '--sampleregex',SlideID,
+                '--allow-local-edits',
                ]
         MeanImageCohort.runfromargumentparser(args=args)
         self.saveoutput()
