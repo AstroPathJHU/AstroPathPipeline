@@ -399,11 +399,11 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                 self.logger.info(f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots ({ri+1} of {len(rects_to_plot)})....')
                 try :
                     with r.using_image() as im :
-                        labelled_mask_regions.append(save_plots_for_image(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
-                                                            self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
-                                                            r.allexposuretimes,
-                                                            self.exposure_time_histograms_and_bins_by_layer_group,
-                                                            self.__image_masking_dirpath))
+                        save_plots_for_image(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
+                                             self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
+                                             r.allexposuretimes,
+                                             self.exposure_time_histograms_and_bins_by_layer_group,
+                                             self.__image_masking_dirpath)
                 except Exception as e :
                     warnmsg = f'WARNING: saving masking plots for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
                     warnmsg+= f'with the error "{e}"'
