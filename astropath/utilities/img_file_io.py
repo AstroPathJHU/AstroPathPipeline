@@ -34,24 +34,24 @@ class LayerOffset(MyDataClass):
   offset     : float
   final_cost : float
 
-#helper function to read the binary dump of a raw im3 file 
+#read the binary dump of a raw im3 file 
 def im3readraw(f,dtype=np.uint16) :
   with open(f,mode='rb') as fp : #read as binary
     content = np.memmap(fp,dtype=dtype,mode='r')
   return content
 
-#helper function to write an array of uint16s as an im3 file
+#write an array of uint16s as an im3 file
 def im3writeraw(outname,a) :
   with open(outname,mode='wb') as fp : #write as binary
     a.tofile(fp)
 
-#helper function to read a raw image file and return it as an array of shape (height,width,n_layers)
-def get_raw_as_hwl(fname,height,width,nlayers,dtype=np.uint16) :
+#read a raw image file and return it as an array of shape (height,width,n_layers)
+def get_raw_as_hwl(fpath,height,width,nlayers,dtype=np.uint16) :
   #get the .raw file as a vector of uint16s
   try :
-    img = im3readraw(fname,dtype)
+    img = im3readraw(fpath,dtype)
   except Exception as e :
-    raise ValueError(f'ERROR: file {fname} cannot be read as binary type {dtype}! Exception: {e}')
+    raise ValueError(f'ERROR: file {fpath} cannot be read as binary type {dtype}! Exception: {e}')
   #reshape it to the given dimensions
   try :
     img_a = np.reshape(img,(nlayers,width,height),order="F")
@@ -63,13 +63,13 @@ def get_raw_as_hwl(fname,height,width,nlayers,dtype=np.uint16) :
   img_to_return = np.transpose(img_a,(2,1,0))
   return img_to_return
 
-#helper function to read a single-layer image and return it as an array of shape (height,width)
-def getRawAsHW(fname,height,width,dtype=np.uint16) :
+#read a single-layer image and return it as an array of shape (height,width)
+def get_raw_as_hw(fpath,height,width,dtype=np.uint16) :
   #get the file as a vector of uint16s
   try :
-    img = im3readraw(fname,dtype)
+    img = im3readraw(fpath,dtype)
   except Exception as e :
-    raise ValueError(f'ERROR: file {fname} cannot be read as binary type {dtype}! Exception: {e}')
+    raise ValueError(f'ERROR: file {fpath} cannot be read as binary type {dtype}! Exception: {e}')
   #reshape it
   try :
     img_a = np.reshape(img,(height,width),order="F")
@@ -79,7 +79,7 @@ def getRawAsHW(fname,height,width,dtype=np.uint16) :
     raise ValueError(msg)
   return img_a
 
-#helper function to flatten and write out a given image as binary content
+#flatten and write out a given image as binary content
 def write_image_to_file(img_array,filename_to_write,dtype=None) :
   #if the image is three dimensional (with the smallest dimension last, probably the number of layers), it has to be transposed
   if len(img_array.shape)==3 and (img_array.shape[2]<img_array.shape[0] and img_array.shape[2]<img_array.shape[1]) :
@@ -98,8 +98,29 @@ def write_image_to_file(img_array,filename_to_write,dtype=None) :
   except Exception as e :
     raise RuntimeError(f'ERROR: failed to save file {filename_to_write}. Exception: {e}')
 
-#helper function to smooth an image
-#runs on the CPU by default but can be run on the GPU by passing gpu=True
+#write out each layer of a given image array as a separate image file with the same name and "*_layer_n" appended
+def write_out_image_as_layers(img_array,filename_to_write,dtype=None) :
+  if len(img_array.shape)!=3 :
+    raise ValueError(f'ERROR: write_out_image_as_layers only takes a three-dimensional image array, but was given an array with shape {img_array.shape}!')
+  for li in range(img_array.shape[-1]) :
+    filename_stem = filename_to_write.split('.')[0]
+    filename_ext = f'.{filename_to_write.split(".")[1]}'
+    this_layer_filename = f'{filename_stem}_layer_{li+1}{filename_ext}'
+    write_image_to_file(img_array[:,:,li],this_layer_filename,dtype)
+
+#read a set of specifically-named image layer files and return them combined as a single image array
+def read_image_from_layer_files(fpath,height,width,nlayers,dtype=np.uint16) :
+  fname = fpath.name
+  filename_stem = fname.split('.')[0]
+  filename_ext = f".{fname.split('.')[1]}"
+  img_array_to_return = np.empty((height,width,nlayers),dtype=dtype)
+  for li in range(nlayers) :
+    this_layer_filepath = fpath.parent/f'{filename_stem}_layer_{li+1}{filename_ext}'
+    img_array_to_return[:,:,li] = get_raw_as_hw(this_layer_filepath,height,width,dtype)
+  return img_array_to_return
+
+#smooth an image with a Gaussian filter of the specified size
+#runs on the CPU by default, but can be run on the GPU by passing gpu=True
 def smooth_image_worker(im_array,smoothsigma,gpu=False) :
   if gpu :
     im_in_umat = cv2.UMat(im_array)
@@ -109,8 +130,8 @@ def smooth_image_worker(im_array,smoothsigma,gpu=False) :
   else :
     return cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
 
-#helper function to smooth an image and its uncertainty image
-#runs on the CPU by default but can be run on the GPU by passing gpu=True
+#smooth an image and its uncertainty with a Gaussian filter of the specified size
+#runs on the CPU by default, but can be run on the GPU by passing gpu=True
 def smooth_image_with_uncertainty_worker(im_array,im_unc_array,smoothsigma,gpu=False) :
   ksize = 5*smoothsigma
   if ksize%2==0 :
@@ -131,7 +152,7 @@ def smooth_image_with_uncertainty_worker(im_array,im_unc_array,smoothsigma,gpu=F
     sm_im_unc = np.where(sm_im_var>0,np.sqrt(sm_im_var),0.)
     return sm_im,sm_im_unc
 
-#helper function to get an image dimension tuple from the slide's XML file
+#get an image dimension tuple from a slide's XML file
 def get_image_hwl_from_xml_file(root_dir,slideID) :
   subdir_filepath = pathlib.Path(f'{root_dir}/{slideID}/im3/xml/{slideID}{PARAMETER_XMLFILE_EXT}')
   if pathlib.Path.is_file(subdir_filepath) :
@@ -150,7 +171,7 @@ def get_image_hwl_from_xml_file(root_dir,slideID) :
       break
   return img_height, img_width, img_nlayers
 
-#helper function to figure out where a raw file's exposure time xml file is given the raw file path and the root directory
+#figure out where a raw file's exposure time xml file is given the raw file path and the root directory
 def findExposureTimeXMLFile(rfp,search_dir) :
   file_ext = ''
   fn_split = ((pathlib.Path.resolve(pathlib.Path(rfp))).name).split(".")
@@ -183,7 +204,7 @@ def findExposureTimeXMLFile(rfp,search_dir) :
     raise RuntimeError(msg)
   return xmlfile_path
 
-#helper function to write out a new exposure time xml file with the layer exposure times replaced
+#write out a new exposure time xml file with the layer exposure times replaced
 def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logger=None) :
   if not pathlib.Path.is_file(pathlib.Path(infile_path)) :
     raise FileNotFoundError(f'ERROR: original exposure time .xml file path {infile_path} does not exist!')
@@ -289,7 +310,7 @@ def writeModifiedExposureTimeXMLFile(infile_path,new_ets,edit_header=False,logge
     else :
       logger.info(msg)
 
-#helper function to get a list of exposure times by each layer for a given raw image
+#get a list of exposure times by each layer for a given raw image
 #fp can be a path to a raw file or to an exposure XML file 
 #but if it's a raw file the root dir must also be provided
 def getExposureTimesByLayer(fp,root_dir=None) :
@@ -314,7 +335,7 @@ def getExposureTimesByLayer(fp,root_dir=None) :
       layer_exposure_times_to_return+=[float(v) for v in (et_element.text).split()]
   return layer_exposure_times_to_return
 
-#helper function to return a list of the median exposure times observed in each layer of a given slide
+#return a list of the median exposure times observed in each layer of a given slide
 def getSlideMedianExposureTimesByLayer(root_dir,slideID,logger=None) :
   _,_,nlayers = get_image_hwl_from_xml_file(root_dir,slideID)
   checkdir = pathlib.Path(f'{root_dir}/{slideID}/im3/xml')
@@ -344,7 +365,7 @@ def getSlideMedianExposureTimesByLayer(root_dir,slideID,logger=None) :
       all_exp_times_by_layer[li].append(this_image_layer_exposure_times[li])
   return np.median(np.array(all_exp_times_by_layer),1) #return the medians along the second axis
 
-#helper function to return lists of the median exposure times and the exposure time correction offsets for all layers of a slide
+#return lists of the median exposure times and the exposure time correction offsets for all layers of a slide
 def getMedianExposureTimesAndCorrectionOffsetsForSlide(root_dir,slideID,et_correction_offset_file) :
   if not pathlib.Path.is_file(pathlib.Path(et_correction_offset_file)) :
     raise FileNotFoundError(f'ERROR: Exposure time correction info cannot be determined from et_correction_offset_file = {et_correction_offset_file}!')
@@ -367,13 +388,13 @@ def getMedianExposureTimesAndCorrectionOffsetsForSlide(root_dir,slideID,et_corre
       raise RuntimeError(f'ERROR: more than one entry found in LayerOffset file {et_correction_offset_file} for layer {ln}!')
   return median_exp_times, et_correction_offsets
 
-#helper function to return the median exposure time and the exposure time correction offset for a given layer of a slide
+#return the median exposure time and the exposure time correction offset for a given layer of a slide
 def getMedianExposureTimeAndCorrectionOffsetForSlideLayer(root_dir,slideID,et_correction_offset_file,layer) :
   med_ets, et_offsets = getMedianExposureTimesAndCorrectionOffsetsForSlide(root_dir,slideID,et_correction_offset_file) 
   med_et = med_ets[layer-1]; et_offset = et_offsets[layer-1]
   return med_et, et_offset
 
-#helper function to return a list of exposure time histograms by layer group for a given slide
+#return a list of exposure time histograms by layer group for a given slide
 def getExposureTimeHistogramsByLayerGroupForSlide(root_dir,slideID,nbins=50,logger=None) :
   _,_,nlayers = get_image_hwl_from_xml_file(root_dir,slideID)
   if nlayers==35 :

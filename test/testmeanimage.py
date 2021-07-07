@@ -14,7 +14,6 @@ rectangle_files_with_full_masks = [
     'M21_1_[45093,14853]',
     'M21_1_[45628,14853]',
     'M21_1_[46163,14053]',
-
 ]
 
 class TestMeanImage(TestBaseSaveOutput) :
@@ -47,6 +46,7 @@ class TestMeanImage(TestBaseSaveOutput) :
         return all_fps
 
     def test_mean_image(self,n_threads=1) :
+        #run the MeanImageCohort selecting just the single sample with raw files
         root = folder/'data'
         root2 = folder/'data'/'raw'
         et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
@@ -62,4 +62,5 @@ class TestMeanImage(TestBaseSaveOutput) :
             args.append(str(rn))
         args.append('--allow-local-edits')
         MeanImageCohort.runfromargumentparser(args=args)
+        #compare the output files with the references
         self.saveoutput()

@@ -1,7 +1,7 @@
 #imports
 from .utilities import WarpingError
 from .config import CONST
-from ...utilities.img_file_io import get_raw_as_hwl, getRawAsHW, write_image_to_file
+from ...utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, write_image_to_file
 from ...utilities.img_correction import correctImageLayerWithWarpFields
 from ...utilities.misc import save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
@@ -83,7 +83,7 @@ class Warp :
         """
         Function to read a file that contains one layer of an image into an array with the Warp's dimensions 
         """
-        return getRawAsHW(fname,self.m,self.n)
+        return get_raw_as_hw(fname,self.m,self.n)
 
     def writeSingleLayerImage(self,im,outfname) :
         """
