@@ -1,9 +1,12 @@
 #imports
 #from astropath.hpfs.flatfield.meanimagesample import MeanImageSample
 from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
+from astropath.hpfs.flatfield.utilities import FieldLog, RectangleThresholdTableEntry
 from astropath.hpfs.flatfield.config import CONST
+from astropath.hpfs.image_masking.utilities import LabelledMaskRegion
+from astropath.utilities.misc import ThresholdTableEntry, MetadataSummary
 from astropath.utilities.config import CONST as UNIV_CONST
-from .testbase import TestBaseSaveOutput
+from .testbase import compare_two_csv_files, TestBaseSaveOutput
 import os, pathlib
 
 folder = pathlib.Path(__file__).parent
@@ -22,27 +25,33 @@ class TestMeanImage(TestBaseSaveOutput) :
     """
 
     @property
+    def meanimage_dir(self) :
+        return folder/'data'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME
+
+    @property
+    def masking_dir(self) :
+        return folder/'test_for_jenkins'/'mean_image'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME
+
+    @property
     def outputfilenames(self) :
-        meanimage_dir = folder/'data'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME
         all_fps = []
-        all_fps.append(meanimage_dir/CONST.FIELDS_USED_CSV_FILENAME)
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.MASKING_SUMMARY_PDF_FILENAME}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.MEANIMAGE_SUMMARY_PDF_FILENAME}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}')
-        all_fps.append(meanimage_dir/f'{SlideID}-{CONST.THRESHOLDING_SUMMARY_PDF_FILENAME}')
-        masking_dir = folder/'test_for_jenkins'/'mean_image'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME
-        all_fps.append(masking_dir/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME)
+        all_fps.append(self.meanimage_dir/CONST.FIELDS_USED_CSV_FILENAME)
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.MASKING_SUMMARY_PDF_FILENAME}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.MEANIMAGE_SUMMARY_PDF_FILENAME}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}')
+        all_fps.append(self.meanimage_dir/f'{SlideID}-{CONST.THRESHOLDING_SUMMARY_PDF_FILENAME}')
+        all_fps.append(self.masking_dir/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME)
         for fn in (folder/'data'/'raw'/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}') :
-            all_fps.append(masking_dir/f'{fn.name.rstrip(UNIV_CONST.RAW_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}')
+            all_fps.append(self.masking_dir/f'{fn.name.rstrip(UNIV_CONST.RAW_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}')
         for fns in rectangle_files_with_full_masks :
-            all_fps.append(masking_dir/f'{fns}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}')
+            all_fps.append(self.masking_dir/f'{fns}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}')
         return all_fps
 
     def test_mean_image(self,n_threads=1) :
@@ -63,4 +72,17 @@ class TestMeanImage(TestBaseSaveOutput) :
         args.append('--allow-local-edits')
         MeanImageCohort.runfromargumentparser(args=args)
         #compare the output files with the references
-        self.saveoutput()
+        reffolder = folder/'data'/'reference'/'meanimage'
+        try :
+            compare_two_csv_files(self.meanimage_dir,reffolder,CONST.FIELDS_USED_CSV_FILENAME,FieldLog)
+            compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',ThresholdTableEntry)
+            compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',MetadataSummary)
+            compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}',MetadataSummary)
+            compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}',RectangleThresholdTableEntry)
+            compare_two_csv_files(self.masking_dir,reffolder,CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,LabelledMaskRegion)
+        except :
+            self.saveoutput()
+            raise
+        else :
+            self.removeoutput()
+

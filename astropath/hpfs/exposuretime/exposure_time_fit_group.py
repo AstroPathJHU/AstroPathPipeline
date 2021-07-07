@@ -111,7 +111,7 @@ class ExposureTimeOffsetFitGroup :
         #write out all the results
         with cd(self.workingdir_path) :
             all_results_fn = f'{self.slideID}_layers_{self.layers[0]}-{self.layers[-1]}_'
-            all_results_fn+= f'{UNIV_CONST.LAYER_ET_OFFSET_FILE_NAME_STEM}_{self.workingdir_path.name}.csv'
+            all_results_fn+= f'best_fit_offsets_{self.workingdir_path.name}.csv'
             writetable(all_results_fn,offsets)
         #save the plot of the offsets by layer
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')

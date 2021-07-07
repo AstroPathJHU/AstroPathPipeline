@@ -6,7 +6,7 @@ from ..flatfield.config import CONST as FF_CONST
 from ..warping.config import CONST as WARP_CONST
 from ...utilities.img_correction import correctImageForExposureTime, correctImageLayerForExposureTime
 from ...utilities.img_correction import correctImageLayerWithFlatfield, correctImageWithFlatfield, correctImageLayerWithWarpFields
-from ...utilities.img_file_io import get_image_hwl_from_xml_file, get_raw_as_hwl, getRawAsHW, write_image_to_file, findExposureTimeXMLFile
+from ...utilities.img_file_io import get_image_hwl_from_xml_file, get_raw_as_hwl, get_raw_as_hw, write_image_to_file, findExposureTimeXMLFile
 from ...utilities.img_file_io import writeModifiedExposureTimeXMLFile, getMedianExposureTimesAndCorrectionOffsetsForSlide
 from ...utilities.img_file_io import getMedianExposureTimeAndCorrectionOffsetForSlideLayer, getExposureTimesByLayer, LayerOffset, CORRECTED_EXPOSURE_XML_EXT
 from ...utilities.tableio import readtable, writetable
@@ -273,8 +273,8 @@ class RawfileCorrector :
                 raise FileNotFoundError(f'ERROR: dx warp field path {dx_warp_field_path} does not exist!')
             if not pathlib.Path.is_file(pathlib.Path(dy_warp_field_path)) :
                 raise FileNotFoundError(f'ERROR: dy warp field path {dy_warp_field_path} does not exist!')
-            self._dx_warp_field = (w_sf)*(getRawAsHW(dx_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
-            self._dy_warp_field = (w_sf)*(getRawAsHW(dy_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
+            self._dx_warp_field = (w_sf)*(get_raw_as_hw(dx_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
+            self._dy_warp_field = (w_sf)*(get_raw_as_hw(dy_warp_field_path,*(self._img_dims[:-1]),dtype=WARP_CONST.OUTPUT_FIELD_DTYPE))
             msg+=f'{dx_warp_field_path} and {dy_warp_field_path}'
             try :
                 r_warp_field = np.sqrt((self._dx_warp_field**2)+(self._dy_warp_field**2))
