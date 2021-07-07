@@ -1,6 +1,6 @@
 #imports
 from astropath.hpfs.image_correction.run_image_correction import main
-from astropath.utilities.img_file_io import get_raw_as_hwl, getRawAsHW
+from astropath.utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw
 from astropath.utilities.misc import cd
 import numpy as np
 from argparse import Namespace
@@ -71,8 +71,8 @@ main(args)
 with cd(working_dir) :
     img_filenames = glob.glob('*.fw01')
 for imfn in img_filenames :
-    test_img = getRawAsHW(working_dir/imfn,dims[0],dims[1])
-    ref_img = getRawAsHW(singlelayer_ref_path/imfn,dims[0],dims[1])
+    test_img = get_raw_as_hw(working_dir/imfn,dims[0],dims[1])
+    ref_img = get_raw_as_hw(singlelayer_ref_path/imfn,dims[0],dims[1])
     np.testing.assert_array_equal(test_img,ref_img)
 #remove the working directory
 shutil.rmtree(working_dir,ignore_errors=True)

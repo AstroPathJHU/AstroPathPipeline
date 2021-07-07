@@ -28,9 +28,9 @@ args = Namespace(
         gtol=1e-8,
         eps=0.25,
         print_every=10,
-        n_threads=5,
-        layers=[26,33],
-        overlaps=[46],
+        n_threads=1,
+        layers=[19,26],
+        overlaps=[-1],
         n_comparisons_to_save=1,
         allow_edge_HPFs=True,
     )
