@@ -4,12 +4,15 @@ from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
 from astropath.hpfs.flatfield.utilities import FieldLog, RectangleThresholdTableEntry
 from astropath.hpfs.flatfield.config import CONST
 from astropath.hpfs.image_masking.utilities import LabelledMaskRegion
+from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
 from astropath.utilities.misc import ThresholdTableEntry, MetadataSummary
 from astropath.utilities.config import CONST as UNIV_CONST
 from .testbase import compare_two_csv_files, TestBaseSaveOutput
+import numpy as np
 import os, pathlib
 
 folder = pathlib.Path(__file__).parent
+dims = (1004,1344,35)
 SlideID = 'M21_1'
 rectangle_ns_with_raw_files = [23,24,25,29,30,31,35,36,37,38,39,40]
 rectangle_files_with_full_masks = [
@@ -80,6 +83,12 @@ class TestMeanImage(TestBaseSaveOutput) :
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}',MetadataSummary)
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}',RectangleThresholdTableEntry)
             compare_two_csv_files(self.masking_dir,reffolder,CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,LabelledMaskRegion)
+            mia = get_raw_as_hwl(self.meanimage_dir/f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}',*dims,np.float64)
+            ref_mia = read_image_from_layer_files(reffolder/f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}',*dims,np.float64)
+            np.testing.assert_array_equal(mia,ref_mia)
+            semia = get_raw_as_hwl(self.meanimage_dir/f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}',*dims,np.float64)
+            ref_semia = read_image_from_layer_files(reffolder/f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}',*dims,np.float64)
+            np.testing.assert_array_equal(semia,ref_semia)
         except :
             self.saveoutput()
             raise
