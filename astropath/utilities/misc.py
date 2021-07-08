@@ -371,3 +371,8 @@ def mountedpath(filename):
       return pathlib.PureWindowsPath(filename)
   else:
     return guesspathtype(filename)
+
+def sorted_eig(*args, **kwargs):
+  val, vec = np.linalg.eig(*args, **kwargs)
+  order = np.argsort(val)[::-1]
+  return val[order], vec[:,order]
