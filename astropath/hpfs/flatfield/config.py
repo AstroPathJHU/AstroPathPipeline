@@ -65,7 +65,7 @@ class Const :
         return 'Flatfield' #name of the directory holding flatfield model results for an entire cohort (directory with this name gets created in root)
     @property
     def FLATFIELD_DIRNAME_STEM(self) :
-        return 'flatfield_BatchID_' #prepend for name of the directory holding batch flatfield results (also used for some plot names)
+        return 'flatfield_BatchID_' #prepend for name of the directory holding batch flatfield results (also used for some other image/plot names)
     @property
     def FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
         return 'flatfield_summary' #prepend for the name of the batch flatfield summary pdf file

@@ -23,7 +23,7 @@ Running the above command will produce a "`meanimage`" directory in `<Dpath>\<Dn
 1. **a list of every field used** in finding the background thresholds and in making the mean image, called "`fields_used.csv`", stored as [`FieldLog` objects](./utilities.py#L22-L28)
 1. **an overview of the image files used to determine the background thresholds**, including the name of the miscroscope and date ranges, called "`<SlideID>-metadata_summary_thresholding_images.csv`", stored as [`MetadataSummary` objects](../../utilities/misc.py#L145-L152)
 1. **an overview of the image files stacked to create the mean image** in the same format as the above, called "`<SlideID>-metadata_summary_stacked_images.csv`"
-1. **a "`<SlideID>_background_thresholds.txt`" file**, which lists the optimal background thresholds in each image layer, stored as [`ThresholdTableEntry` objects](../../utilities.misc.py#L154-L158).
+1. **a "`<SlideID>_background_thresholds.txt`" file**, which lists the optimal background thresholds in each image layer, stored as [`ThresholdTableEntry` objects](../../utilities/misc.py#L154-L158).
 1. **a "`<SlideID>-thresholding_data_table.csv`" file**, which lists the background thresholds found for each individual tissue edge HPF image, stored as [`RectangleThresholdTableEntry` objects](./utilities.py#L15-L20)
 1. Three summary .pdf files:
     - **`<SlideID>-thresholding_summary.pdf`** containing plots describing which images were used to find the optimal background thresholds, how the optimal background thresholds found vary as a function of image layer, and the distributions of the optimal thresholds found for each tissue edge HPF with signal vs. background histograms summed over all images used.

@@ -365,8 +365,7 @@ class Flatfield(ImageStack) :
                 writetable(f'{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',self.__metadata_summaries)
         if len(self.__field_logs)>0 :
             with cd(workingdirpath) :
-                writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}.csv',
-                           self.__field_logs)
+                writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}',self.__field_logs)
         #make some plots of the image layers and the pixel intensities
         plotdir_path = workingdirpath / f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_plots'
         plotdir_path.mkdir(exist_ok=True)

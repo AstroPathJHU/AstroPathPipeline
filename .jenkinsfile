@@ -184,6 +184,12 @@ pipeline {
           }
         }
 
+	stage('batchflatfieldcohort') {
+	  steps {
+	    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest $(folder).test.testbatchflatfieldcohort'
+	  }
+	}
+
         stage('exposure time correction') {
           stages {
             stage('test exposuretime') {

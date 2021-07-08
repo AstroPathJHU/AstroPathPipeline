@@ -14,7 +14,7 @@ import os, pathlib
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
 SlideID = 'M21_1'
-rectangle_ns_with_raw_files = [23,24,25,29,30,31,35,36,37,38,39,40]
+rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
 rectangle_files_with_full_masks = [
     'M21_1_[45093,14453]',
     'M21_1_[45093,14853]',
@@ -83,12 +83,18 @@ class TestMeanImage(TestBaseSaveOutput) :
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}',MetadataSummary)
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}',RectangleThresholdTableEntry)
             compare_two_csv_files(self.masking_dir,reffolder,CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,LabelledMaskRegion)
+            msa = get_raw_as_hwl(self.meanimage_dir/f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}',*dims,np.float64)
+            ref_msa = read_image_from_layer_files(reffolder/f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}',*dims,np.float64)
+            np.testing.assert_allclose(msa,ref_msa,rtol=1e-09)
             mia = get_raw_as_hwl(self.meanimage_dir/f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}',*dims,np.float64)
             ref_mia = read_image_from_layer_files(reffolder/f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}',*dims,np.float64)
-            np.testing.assert_array_equal(mia,ref_mia)
+            np.testing.assert_allclose(mia,ref_mia,rtol=1e-09)
             semia = get_raw_as_hwl(self.meanimage_dir/f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}',*dims,np.float64)
             ref_semia = read_image_from_layer_files(reffolder/f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}',*dims,np.float64)
-            np.testing.assert_array_equal(semia,ref_semia)
+            np.testing.assert_allclose(semia,ref_semia,rtol=1e-09)
+            sisa = get_raw_as_hwl(self.meanimage_dir/f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}',*dims,np.float64)
+            ref_sisa = read_image_from_layer_files(reffolder/f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}',*dims,np.float64)
+            np.testing.assert_allclose(sisa,ref_sisa,rtol=1e-08)
         except :
             self.saveoutput()
             raise
