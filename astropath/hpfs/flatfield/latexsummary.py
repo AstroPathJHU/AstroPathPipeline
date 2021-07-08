@@ -297,7 +297,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     @property
     def flatfield_uncertainty_layers(self) :
         lines = []
-        lines.append(self.section_start('Layers of the flatfield correction image'))
+        lines.append(self.section_start('Uncertainties on the flatfield corrections'))
         figlabel = 'fig:flatfield_uncertainty_image_layers'
         lines.append(f'Figure~\\ref{{{figlabel}}} shows the uncertainties on the flatfield correction factors for every image layer.\n')
         lines.append('\n')
@@ -312,7 +312,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     @property
     def mask_stack_layers(self) :
         lines = []
-        lines.append(self.section_start('Layers of the flatfield correction image'))
+        lines.append(self.section_start('Layers of the combined mask stack'))
         figlabel = 'fig:flatfield_mask_stack_layers'
         l = f'Figure~\\ref{{{figlabel}}} shows every layer of the overall mask stack used to measure the flatfield correction factors. '
         l+= 'These plots give some insight as to how many total images contribute to the measurements made.'

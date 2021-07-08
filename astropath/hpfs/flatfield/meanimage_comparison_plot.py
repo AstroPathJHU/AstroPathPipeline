@@ -17,14 +17,14 @@ MEANIMAGE_SUBDIR_NAME = UNIV_CONST.MEANIMAGE_DIRNAME
 FLATW_MEANIMAGE_SUBDIR_NAME = f'{UNIV_CONST.MEANIMAGE_DIRNAME}_from_fw_files'
 
 #logger
-logger = logging.getLogger("flatfield_consistency")
+logger = logging.getLogger("meanimage_comparison")
 logger.setLevel(logging.DEBUG)
 stream_handler = logging.StreamHandler()
 logging_formatter = logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S")
 stream_handler.setFormatter(logging_formatter)
 logger.addHandler(stream_handler)
 
-#little helper dataclass to organize numerical entries
+#helper dataclass to organize numerical entries in the outputted table
 class TableEntry(MyDataClass) :
     root_dir_1               : str
     slide_ID_1               : str
@@ -129,7 +129,7 @@ def checkArgs(args) :
     if not wdp.is_dir() :
         pathlib.Path.mkdir(wdp)
     #add the log file in the working directory to the logger handlers
-    file_handler = logging.FileHandler(wdp/'flatfield_consistency.log')
+    file_handler = logging.FileHandler(wdp/'meanimage_comparison.log')
     file_handler.setFormatter(logging_formatter)
     logger.addHandler(file_handler)
 

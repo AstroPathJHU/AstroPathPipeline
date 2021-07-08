@@ -32,6 +32,7 @@ setupkwargs = dict(
       "run_exposure_time_fits=astropath.hpfs.exposuretime.run_exposure_time_fits:main",
       "meanimagesample=astropath.hpfs.flatfield.meanimagesample:main",
       "meanimagecohort=astropath.hpfs.flatfield.meanimagecohort:main",
+      "meanimagecomparison=astropath.hpfs.flatfield.meanimage_comparison_plot:main",
       "batchflatfieldcohort=astropath.hpfs.flatfield.batchflatfieldcohort:main",
       "appliedflatfieldcohort=astropath.hpfs.flatfield.appliedflatfieldcohort:main",
       "run_image_correction=astropath.hpfs.image_correction.run_image_correction:main",
