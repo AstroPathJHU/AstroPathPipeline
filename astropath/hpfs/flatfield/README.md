@@ -48,7 +48,7 @@ The meanimage routine can be run for an entire cohort of samples at once using t
 
 where the arguments are the same as those listed above for `meanimagesample`. To see more command line arguments available for both routines, run `meanimagesample --help` or `meanimagecohort --help`.
 
-##Finding the set of samples to combine into a flatfield model
+## Finding the set of samples to combine into a flatfield model
 
 After running the meanimage routine for a whole cohort, the set of samples whose mean images should be used to determine a single flatfield correction model can be found using the plot(s)/datatable(s) created by the "[meanimage_comparison_plot.py](./meanimage_comparison_plot.py)" script. The comparison between any two samples' mean images is determined using the standard deviation of the distribution of the pixel-wise differences between the two mean images divided by their uncertainties. This comparison statistic is calculated for every image layer and every pair of samples, and the average over all image layers is plotted for each pair in a grid. The resulting plot shows values near one for samples whose mean images are comparable, and values far from one for samples whose mean images are very different. The plot can be run several times (more quickly, after the initial data table is produced) to find the best grouping of slides to use for a single flatfield model. It can also be used to check a new cohort of samples' mean images against previously-run cohorts. To run the script in the most common use case, enter the following command and arguments:
 
@@ -71,7 +71,7 @@ Other options for running the code include:
 - Changing the limits on the z-axis of the plot: Add the `--bounds [bounds]` argument where `[bounds]` is two values for the lower and upper bound of the z-axis. The default value for this argument is `0.85,1.15`.
 - Save plots for every layer individually instead of the average over all layers: add the `--save_all_layers` flag
 
-##Creating a flatfield model from a group of slides' mean image files
+## Creating a flatfield model from a group of slides' mean image files
 
 After the mean images for each slide have been run and a suitable set of slides has been determined, the mean images from all of those slides are combined together to produce a single flatfield correction model using the "[batchflatfieldcohort.py](./batchflatfieldcohort.py)" code. To run this code in the most common use case, enter the following command and arguments:
 
@@ -89,7 +89,7 @@ Running the above command will create a `flatfield_BatchID_[batch_ID].bin` file,
 
 To see more command line arguments available, run `batchflatfieldcohort --help`.
 
-##Testing the effect of applying a set of flatfield corrections
+## Testing the effect of applying a set of flatfield corrections
 
 One last routine in this portion of the code can be used to test the effect of applying a set of flatfield corrections. The "[appliedflatfieldcohort.py](./appliedflatfieldcohort.py)" code splits the images in each slide in a given set randomly into two equally-sized subsamples. It creates a mean image from each subsample using the same methods as in `meanimagesample`, and uses one subsample to calculate a set of flatfield correction factors to apply to the mean image created using the other subsample. It outputs the test flatfield model and the corrected mean image. To run the code in the most common use case, enter the following command and arguments:
 
@@ -110,7 +110,7 @@ Running the above command will create a new directory at `[workingdir_path]` tha
 
 To see more command line arguments available, run `appliedflatfieldcohort --help`.
 
-##Note
+## Note
 
 Producing the summary PDF file requires running on a system that recognizes `pdflatex` as a command. If the runtime environment doesn't have LaTeX installed (along with the `graphicx` and `geometry` packages), the template .tex files for the PDFs described above are still created but the output PDFs are not, and a low-level warning is output to the log files. The plots that would be in the summary PDFs will exist in the output directories as individual image files, and the .tex file can be compiled at a later time.
 
