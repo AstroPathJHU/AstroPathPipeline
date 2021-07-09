@@ -76,8 +76,8 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
         root = folder/'data'
         root2 = folder/'data'/'raw'
         args = [os.fspath(root),os.fspath(root2),
-                '--sampleregex','M.*',
-                '--batchID','('+'|'.join(slide_IDs)+')',
+                '--sampleregex','('+'|'.join(slide_IDs)+')',
+                '--batchID',str(batchID),
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
