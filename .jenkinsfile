@@ -186,7 +186,7 @@ pipeline {
 
 	stage('batchflatfieldcohort') {
 	  steps {
-	    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest $(folder).test.testbatchflatfieldcohort'
+	    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbatchflatfieldcohort'
 	  }
 	}
 
