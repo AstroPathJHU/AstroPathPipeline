@@ -380,7 +380,7 @@ if exist(mbin,'file')
         [~,idx] = min([flatw(:).datenum]);
         flatwdf = flatw(idx).date;
         %
-        if actualim3num  == flatwnum && datetime(flatwdf) > datetime(mbindf)
+        if actualim3num  == flatwnum
             dd = extractBefore(Scanpath,'\Scan');
             dd = dir(dd);
             idx = strcmp({dd(:).name},'flatw');

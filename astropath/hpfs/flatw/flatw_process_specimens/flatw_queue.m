@@ -6,12 +6,11 @@ i1 = 1;
 %
 while i1 == 1
     %
-    try
         process_flt2bin(main)
         process_flatw_queue(main)
         Send_process(main)
-    catch
-    end
+    %catch
+    %end
     %
     pause(30*60)
     %

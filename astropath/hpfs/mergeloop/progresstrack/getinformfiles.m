@@ -158,25 +158,7 @@ function [insnum, expectedinform, infm, infmd, trackinform,...
                 % expected number of files
                 %
                 Bf = dir([inspath,'\Batch.*']);
-                if ~isempty(Bf)
-                    fileID = fopen([Bf.folder,'\',Bf.name]);
-                    Batch = textscan(fileID,'%s','HeaderLines',...
-                        2,'EndofLine','\r', 'whitespace','\t\n');
-                    fclose(fileID);
-                    Batch = Batch{1};
-                    %
-                    ii = contains(Batch,sname);
-                    Batch = Batch (ii);
-                    Batch = extractBefore(Batch, ']');
-                    %
-                    ii = unique(extractAfter(Batch, '_['));
-                    InformErrors = length(ii);
-                    %
-                    errs = [errs;ii];
-                    expectedinform(i2) = actualim3num - InformErrors;
-                else
-                    expectedinform(i2) = actualim3num;
-                end
+                expectedinform(i2) = getInFormErrors(sname, Bf, actualim3num);
                 %
                 % make the number of files string
                 %
@@ -188,6 +170,9 @@ function [insnum, expectedinform, infm, infmd, trackinform,...
                 infmd{i2} = insnames(idx).date(1:11);
                 dt{i2} = insnames(idx).date(1:11);
             end
+            %
+            transferComponents(inspath);
+            %
         end
     end
     if ~isempty(gcp('nocreate'))

@@ -41,7 +41,7 @@ i1 = 0;
 %
 for i2 = 1:length(drives)
     %
-    d = ['\\bki08\',drives{i2},'\Processing_Specimens'];
+    d = ['\\bki09\',drives{i2},'\Processing_Specimens'];
     %
     % open the queue on that drive and collect only lines with a
     % specimen name filled in and lines without a finished tag
