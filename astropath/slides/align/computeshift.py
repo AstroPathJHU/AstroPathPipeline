@@ -1,6 +1,6 @@
 import cv2, matplotlib.pyplot as plt, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc
 
-def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None, usemaxmovementcut=True, other_peaks_min_distance=None):
+def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None, usemaxmovementcut=True, mindistancetootherpeak=None):
   """
   Compute the relative shift between two images by maximizing the cross correlation.
   The cross correlation is computed using the FFT.
@@ -16,6 +16,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   errorfactor: scale the computed error by this factor (default: 1/4; see the LaTeX document in the documentation folder)
   staterrorimages: precomputed statistical error on the images (default: None; the statistical error is computed as difference between the two images after alignment)
   usemaxmovementcut: report the alignment as failed if the shift is more than 10% of the image size
+  mindistancetootherpeak: report the alignment as failed if there's another peak in the cross correlation within this distance of the main peak (default: np.max(windowsize))
 
   #the remaining arguments are for debugging
   showsmallimage: show the zoomed cross correlation image
@@ -140,7 +141,9 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
 
   #various error codes:
   #  if there are other significant peaks in the cross correlation
-  otherbigindices = skimage.feature.corner_peaks(z, min_distance=max(windowsize), threshold_abs=z[maxidx] - 3*error_crosscorrelation, threshold_rel=0)
+  if mindistancetootherpeak is None:
+    mindistancetootherpeak = np.max(windowsize)
+  otherbigindices = skimage.feature.corner_peaks(z, min_distance=mindistancetootherpeak, threshold_abs=z[maxidx] - 3*error_crosscorrelation, threshold_rel=0)
   for idx in otherbigindices:
     if np.all(idx == maxidx): continue
     if np.all(np.abs(idx - maxidx) < windowsize): continue
