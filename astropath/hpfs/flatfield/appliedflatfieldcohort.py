@@ -17,12 +17,15 @@ class AppliedFlatfieldSample(MeanImageSampleBase,WorkflowSample) :
     Class to use in running most of the MeanImageSample functions but handling the output differently
     """
 
-    def __init__(self,*args,**kwargs) :
+    def __init__(self,*args,image_set_split='random',**kwargs) :
         super().__init__(*args,**kwargs)
         self.__metadata_summary_ff = None
         self.__metadata_summary_cmi = None
         if len(self.tissue_bulk_rects)>1 :
-            self.__flatfield_rectangles = random.sample(self.tissue_bulk_rects,round(len(self.tissue_bulk_rects)/2))
+            if image_set_split=='random' :
+                self.__flatfield_rectangles = random.sample(self.tissue_bulk_rects,round(len(self.tissue_bulk_rects)/2))
+            elif image_set_split=='sequential' :
+                self.__flatfield_rectangles = self.tissue_bulk_rects[:round(len(self.tissue_bulk_rects)/2)]
             self.__meanimage_rectangles = [r for r in self.tissue_bulk_rects if r not in self.__flatfield_rectangles]
         else :
             self.__flatfield_rectangles = []
@@ -81,7 +84,7 @@ class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, 
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir,filetype='raw',et_offset_file=None,skip_masking=False,**kwargs) :
+    def __init__(self,*args,workingdir,filetype='raw',et_offset_file=None,skip_masking=False,image_set_split='random',**kwargs) :
         """
         workingdir = Path to a directory that will hold the results
         """
@@ -90,6 +93,7 @@ class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, 
         self.__filetype = filetype
         self.__et_offset_file = et_offset_file
         self.__skip_masking = skip_masking
+        self.__image_set_split = image_set_split
         self.__flatfield = Flatfield(self.logger)
         self.__corrected_meanimage = CorrectedMeanImage(self.logger)
         self.__metadata_summaries_ff = []
@@ -167,6 +171,7 @@ class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, 
                 'filetype':self.__filetype,
                 'et_offset_file':self.__et_offset_file,
                 'skip_masking':self.__skip_masking,
+                'image_set_split':self.__image_set_split,
                }
 
     @property
@@ -181,6 +186,8 @@ class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, 
         p.add_argument('workingdir', type=pathlib.Path, help='Path to the directory that should hold the results')
         p.add_argument('--skip_masking', action='store_true',
                        help='Add this flag to entirely skip masking out the background regions of the images as they get added')
+        p.add_argument('--image_set_split',choices=['random','sequential'],default='random',
+                       help='Whether to split the set of all images into subgroups randomly or sequentially (default is random)')
         return p
 
     @classmethod
@@ -189,6 +196,7 @@ class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, 
         return {**super().initkwargsfromargumentparser(parsed_args_dict),
                 'workingdir': parsed_args_dict.pop('workingdir'),
                 'skip_masking': parsed_args_dict.pop('skip_masking'),
+                'image_set_split': parsed_args_dict.pop('image_set_split'),
                }
 
 #################### FILE-SCOPE FUNCTIONS ####################

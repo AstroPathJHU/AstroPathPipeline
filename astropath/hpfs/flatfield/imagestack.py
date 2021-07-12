@@ -433,7 +433,8 @@ class CorrectedMeanImage(MeanImage) :
         #write out the mask stack
         if self.mask_stack is not None :
             self.logger.info('Writing out mask stack for mean image....')
-            write_image_to_file(self.mask_stack,'corrected_mean_image_mask_stack.bin')
+            with cd(workingdirpath) :
+                write_image_to_file(self.mask_stack,'corrected_mean_image_mask_stack.bin')
         #write out the corrected mean image and its uncertainty
         self.logger.info('Writing out the corrected mean image and its uncertainty')
         with cd(workingdirpath) :
