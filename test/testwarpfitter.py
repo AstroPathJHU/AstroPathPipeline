@@ -36,7 +36,7 @@ args = Namespace(
         octet_selection='random_2',
         workers=None,
         layer=1,
-        overlaps=[46],
+        overlaps=[134],
         octets=[-999],
         save_warp_fields=False
     )

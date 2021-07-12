@@ -3,7 +3,7 @@ from .corrector import RawfileCorrector
 from .utilities import getWarpFieldPathsFromWarpDef
 from ...shared.sample import SampleDef
 from ...shared.logging import getlogger
-from ...utilities.img_file_io import getImageHWLFromXMLFile
+from ...utilities.img_file_io import get_image_hwl_from_xml_file
 from ...utilities.misc import addCommonArgumentsToParser
 from ...utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser
@@ -27,7 +27,7 @@ def checkArgs(args) :
     if not pathlib.Path.is_dir(root_dirpath) :
         raise ValueError(f'ERROR: root directory {root_dirpath} for slide {args.slideID} does not exist!')
     #make sure the image dimensions work with the layer argument
-    img_dims = getImageHWLFromXMLFile(args.root_dir,args.slideID)
+    img_dims = get_image_hwl_from_xml_file(args.root_dir,args.slideID)
     if (args.layer!=-1) and (not args.layer in range(1,img_dims[-1]+1)) :
         raise ValueError(f'ERROR: requested copying layer {args.layer} but raw files have dimensions {img_dims}!')
     ##make sure the exposure time correction file exists if necessary

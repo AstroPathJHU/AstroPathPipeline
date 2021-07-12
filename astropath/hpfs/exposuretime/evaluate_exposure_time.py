@@ -2,7 +2,7 @@
 from .alignsample import AlignSampleForExposureTime
 from .utilities import getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
 from ..flatfield.utilities import FlatfieldSlideInfo
-from ...utilities.img_file_io import LayerOffset, getExposureTimesByLayer, getImageHWLFromXMLFile, getRawAsHWL, getSlideMedianExposureTimesByLayer
+from ...utilities.img_file_io import LayerOffset, getExposureTimesByLayer, get_image_hwl_from_xml_file, get_raw_as_hwl, getSlideMedianExposureTimesByLayer
 from ...utilities.img_correction import correctImageLayerForExposureTime
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd
@@ -87,9 +87,9 @@ def writeResultsForSlide(slide,offsets,ff_file,workingdir,smoothsigma,allow_edge
             logger.info(done_msg)
             return                    
     #get the image dimensions for files from this slide
-    h,w,nlayers = getImageHWLFromXMLFile(slide.rawfile_top_dir,slide.name)
+    h,w,nlayers = get_image_hwl_from_xml_file(slide.rawfile_top_dir,slide.name)
     #read the flatfield from the file
-    flatfield = getRawAsHWL(ff_file,h,w,nlayers,UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+    flatfield = get_raw_as_hwl(ff_file,h,w,nlayers,UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
     #get the median exposure times for this slide by layer
     logger.info(f'Getting median exposure times for {slide.name}')
     med_exp_times_by_layer = getSlideMedianExposureTimesByLayer(slide.rawfile_top_dir,slide.name)

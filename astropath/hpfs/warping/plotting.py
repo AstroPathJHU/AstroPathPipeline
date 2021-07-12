@@ -2,7 +2,7 @@
 from .warp import PolyFieldWarp, CameraWarp
 from .utilities import warp_logger
 from .config import CONST
-from ...utilities.misc import cropAndOverwriteImage
+from ...utilities.misc import save_figure_in_dir
 import numpy as np, matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 
@@ -67,9 +67,7 @@ def principalPointPlot(all_results,save_stem=None) :
     f.colorbar(pos,ax=ax)
     if save_stem is not None :
         fn = f'{save_stem}_principal_point_plot.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
     else :
         plt.show()
 
@@ -124,9 +122,7 @@ def radWarpAmtPlots(all_results,save_stem=None) :
     f.colorbar(pos,ax=ax[2])
     if save_stem is not None :
         fn = f'{save_stem}_radial_warp_amount_plots.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
     else :
         plt.show()
 
@@ -140,9 +136,7 @@ def radWarpParPlots(all_results,save_stem=None) :
     f.colorbar(pos,ax=ax)
     if save_stem is not None :
         fn = f'{save_stem}_all_radial_warp_parameters_plot.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
     else :
         plt.show()
     f,ax=plt.subplots(1,3,figsize=(3*6.4,4.6))
@@ -160,9 +154,7 @@ def radWarpParPlots(all_results,save_stem=None) :
     ax[2].set_xlabel('k3')
     if save_stem is not None :
         fn = f'{save_stem}_cost_redux_vs_radial_warp_parameters_plots.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
     else :
         plt.show()
 
@@ -186,9 +178,7 @@ def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
     f.colorbar(pos, ax=ax)
     if save_stem is not None :
         fn = f'{save_stem}_all_{"weighted_" if weighted else ""}standardized_radial_warp_parameters_plot.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
     else :
         plt.show()
     #do the principal component analysis
@@ -214,9 +204,7 @@ def radWarpPCAPlots(all_results,weighted=False,save_stem=None) :
     f.colorbar(pos,ax=ax)
     if save_stem is not None :
         fn = f'{save_stem}_cost_redux_vs_radial_warp_{"weighted_" if weighted else ""}PCA_components.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
     else :
         plt.show()
 
@@ -315,9 +303,7 @@ def warpFieldVariationPlots(all_results,save_stem=None) :
     f.colorbar(pos,ax=ax[3][2])
     if save_stem is not None :
         fn = f'{save_stem}_warp_field_variation_plots.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
     else :
         plt.show()
 
@@ -406,9 +392,7 @@ class OctetComparisonVisualization :
         ax.imshow(np.clip(self.whole_image,0.,1.))
         ax.set_title(self.name_stem.replace('_',' '))
         savename = f'{self.name_stem}.png'
-        plt.savefig(savename)
-        plt.close()
-        cropAndOverwriteImage(savename)
+        save_figure_in_dir(plt,savename)
 
     #helper function to add a single overlap's set of overlays to the total image
     def __addSingleOverlap(self,code) :

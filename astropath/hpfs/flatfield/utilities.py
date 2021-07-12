@@ -1,24 +1,23 @@
-from .config import CONST
+#imports
+from ..image_masking.config import CONST as MASKING_CONST
 from ...utilities.dataclasses import MyDataClass
-from ...utilities.img_file_io import getRawAsHWL, smoothImageWorker
-from ...utilities.img_correction import correctImageForExposureTime
-from concurrent.futures import ThreadPoolExecutor
-from typing import List
+from ...utilities.img_file_io import smooth_image_worker
 import numpy as np
-import pathlib, logging, math, more_itertools
+import math
 
-#################### GENERAL USEFUL OBJECTS ####################
+#helper class for inputting slides with their names and raw/root directories
+########### THIS WILL BE DEPRECATED ASAP (not actually used in meanimage/flatfielding code ###########
+class FlatfieldSlideInfo(MyDataClass) :
+    name : str
+    rawfile_top_dir : str
+    root_dir : str
 
-#Class for errors encountered during flatfielding
-class FlatFieldError(Exception) :
-    pass
-
-#logger
-flatfield_logger = logging.getLogger("flatfield")
-flatfield_logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S"))
-flatfield_logger.addHandler(handler)
+#A small dataclass to hold entries in the background threshold datatable
+class RectangleThresholdTableEntry(MyDataClass) :
+    rect_n                  : int
+    layer_n                 : int
+    counts_threshold        : int
+    counts_per_ms_threshold : float
 
 #helper class for logging included/excluded fields
 class FieldLog(MyDataClass) :
@@ -28,89 +27,39 @@ class FieldLog(MyDataClass) :
     use      : str
     stacked_in_layers : str = ''
 
-#helper class for inputting slides with their names and raw/root directories
-class FlatfieldSlideInfo(MyDataClass) :
-    name : str
-    rawfile_top_dir : str
-    root_dir : str
-
-#################### GENERAL HELPER FUNCTIONS ####################
-
-#helper function to return the slide name from a whole filepath
-def slideNameFromFilepath(fp) :
-    return (((pathlib.Path(fp)).resolve()).parent).name
-
-#helper function to make the automatic directory path for a single slide's mean image (and associated info)
-def getSlideMeanImageWorkingDirPath(slide,filetype) :
-    #path = pathlib.Path(pathlib.Path.cwd() / CONST.AUTOMATIC_MEANIMAGE_DIRNAME)
-    if filetype=='raw' :
-        path = (pathlib.Path(slide.root_dir)).resolve() / slide.name / 'im3' / CONST.AUTOMATIC_MEANIMAGE_DIRNAME
-    elif filetype=='flatw' :
-        path = (pathlib.Path(slide.root_dir)).resolve() / slide.name / 'im3' / CONST.AUTOMATIC_FLATW_FILE_MEANIMAGE_DIRNAME
-    else :
-        raise ValueError(f'ERROR: filetype {filetype} is not recognized!')
-    if not (path.parent).is_dir() :
-        try :
-            (path.parent).mkdir()
-        except Exception as e :
-            raise FlatFieldError(f'ERROR: working directory location {path.parent} does not exist and could not be created! Exception: {e}')
-    if not path.is_dir() :
-        path.mkdir()
-    return path
-
-#helper function to make the automatic directory path for running the flatfield for a batch of slides
-def getBatchFlatfieldWorkingDirPath(rootdir,batchID) :
-    #path = pathlib.Path(pathlib.Path.cwd() / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}')
-    path = (pathlib.Path(rootdir)).resolve() / 'flatfield' / f'{CONST.BATCH_FF_DIRNAME_STEM}_{batchID:02d}'
-    if not (path.parent).is_dir() :
-        try :
-            (path.parent).mkdir()
-        except Exception as e :
-            raise FlatFieldError(f'ERROR: working directory location {(path).parent} does not exist and could not be created! Exception: {e}')
-    if not path.is_dir() :
-        path.mkdir()
-    return path
-
-#helper function to return the automatic path to a given slide's mean image file
-def getSlideMeanImageFilepath(slide) :
-    p = pathlib.Path(f'{slide.root_dir}/{slide.name}/im3/{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}/{slide.name}-{CONST.MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
-    return p
-
-#helper function to return the automatic path to a given slide's sum of images squared file
-def getSlideImageSquaredFilepath(slide) :
-    p = pathlib.Path(f'{slide.root_dir}/{slide.name}/im3/{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}/{slide.name}-{CONST.SUM_IMAGES_SQUARED_FILE_NAME_STEM}{CONST.FILE_EXT}')
-    return p
-
-#helper function to return the automatic path to a given slide's standard error of the mean image file
-def getSlideStdErrMeanImageFilepath(slide) :
-    p = pathlib.Path(f'{slide.root_dir}/{slide.name}/im3/{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}/{slide.name}-{CONST.STD_ERR_MEAN_IMAGE_FILE_NAME_STEM}{CONST.FILE_EXT}')
-    return p
-
-#helper function to return the automatic path to a given slide's mean image file
-def getSlideMaskStackFilepath(slide) :
-    p = pathlib.Path(f'{slide.root_dir}/{slide.name}/im3/{CONST.AUTOMATIC_MEANIMAGE_DIRNAME}/{slide.name}-{CONST.MASK_STACK_FILE_NAME_STEM}{CONST.FILE_EXT}')
-    return p
-
-#helper function to convert an image array into a flattened pixel histogram
-def getImageArrayLayerHistograms(img_array, mask=slice(None)) :
-    nbins = np.iinfo(img_array.dtype).max+1
-    nlayers = img_array.shape[2] if len(img_array.shape)>2 else 1
-    if nlayers>1 :
-        layer_hists = np.empty((nbins,nlayers),dtype=np.int64)
-        for li in range(nlayers) :
-            layer_hist,_ = np.histogram(img_array[:,:,li][mask],nbins,(0,nbins))
-            layer_hists[:,li]=layer_hist
-        return layer_hists
-    else :
-        layer_hist,_ = np.histogram(img_array[mask],nbins,(0,nbins))
-        return layer_hist
+def calculate_statistics_for_image(image) :
+    """
+    Return the maximum, minimum, 5th-95th percentile spread, and standard deviation 
+    of the numbers in a given image in the entire image region and in the central "primary region"
+    """
+    yclip = int(image.shape[0]*0.1)
+    xclip = int(image.shape[1]*0.1)
+    flatfield_image_clipped=image[yclip:-yclip,xclip:-xclip,:]
+    overall_max = np.max(image)
+    overall_min = np.min(image)
+    central_max = np.max(flatfield_image_clipped)
+    central_min = np.min(flatfield_image_clipped)
+    overall_spreads_by_layer = []; overall_stddevs_by_layer = []
+    central_spreads_by_layer = []; central_stddevs_by_layer = []
+    for li in range(image.shape[-1]) :
+        sorted_u_layer = np.sort((image[:,:,li]).flatten())/np.mean(image[:,:,li])
+        sorted_c_layer = np.sort((flatfield_image_clipped[:,:,li]).flatten())/np.mean(image[:,:,li])
+        overall_spreads_by_layer.append(sorted_u_layer[int(0.95*len(sorted_u_layer))]-sorted_u_layer[int(0.05*len(sorted_u_layer))])
+        overall_stddevs_by_layer.append(np.std(sorted_u_layer))
+        central_spreads_by_layer.append(sorted_c_layer[int(0.95*len(sorted_c_layer))]-sorted_c_layer[int(0.05*len(sorted_c_layer))])
+        central_stddevs_by_layer.append(np.std(sorted_c_layer))
+    overall_spread = np.mean(np.array(overall_spreads_by_layer))
+    overall_stddev = np.mean(np.array(overall_stddevs_by_layer))
+    central_spread = np.mean(np.array(central_spreads_by_layer))
+    central_stddev = np.mean(np.array(central_stddevs_by_layer))
+    return overall_max, overall_min, overall_spread, overall_stddev, central_max, central_min, central_spread, central_stddev
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 
 #helper function to determine the Otsu threshold given a histogram of pixel values 
 #algorithm from python code at https://docs.opencv.org/3.4/d7/d4d/tutorial_py_thresholding.html
 #reimplemented here for speed and to increase resolution to 16bit
-def getOtsuThreshold(pixel_hist) :
+def get_otsu_threshold(pixel_hist) :
     # normalize histogram
     hist_norm = pixel_hist/pixel_hist.sum()
     # get cumulative distribution function
@@ -165,13 +114,13 @@ def moment(hist,n,standardized=True) :
 
 #helper function to get a list of all the Otsu thresholds for a single layer's pixel histogram
 #and a corresponding list of weights for which is the best
-def getLayerOtsuThresholdsAndWeights(hist) :
+def get_layer_otsu_thresholds_and_weights(hist) :
     next_it_pixels = hist; skew = 1000.
     test_thresholds=[]; test_weighted_skew_slopes=[]
     #iterate calculating and applying the Otsu threshold values
     while not math.isnan(skew) :
         #get the threshold from OpenCV's Otsu thresholding procedure
-        test_threshold = getOtsuThreshold(next_it_pixels)
+        test_threshold = get_otsu_threshold(next_it_pixels)
         #calculate the skew and kurtosis of the pixels that would be background at this threshold
         bg_pixels = hist[:test_threshold+1]
         skew = moment(bg_pixels,3)
@@ -189,8 +138,7 @@ def getLayerOtsuThresholdsAndWeights(hist) :
     return test_thresholds, test_weighted_skew_slopes
 
 # a helper function to take a list of layer histograms and return the list of optimal thresholds
-#can be run in parallel with an index and returndict
-def findLayerThresholds(layer_hists,i=None,rdict=None) :
+def find_layer_thresholds(layer_hists) :
     #first figure out how many layers there are
     nlayers = layer_hists.shape[-1] if len(layer_hists.shape)>1 else 1
     best_thresholds = []
@@ -198,9 +146,9 @@ def findLayerThresholds(layer_hists,i=None,rdict=None) :
     for li in range(nlayers) :
         #get the list of thresholds and their weights
         if nlayers>1 :
-            test_thresholds, test_weighted_skew_slopes = getLayerOtsuThresholdsAndWeights(layer_hists[:,li])
+            test_thresholds, test_weighted_skew_slopes = get_layer_otsu_thresholds_and_weights(layer_hists[:,li])
         else : 
-            test_thresholds, test_weighted_skew_slopes = getLayerOtsuThresholdsAndWeights(layer_hists)
+            test_thresholds, test_weighted_skew_slopes = get_layer_otsu_thresholds_and_weights(layer_hists)
         #figure out the best threshold from them and add it to the list
         if len(test_thresholds)<1 :
             best_thresholds.append(0)
@@ -208,118 +156,17 @@ def findLayerThresholds(layer_hists,i=None,rdict=None) :
             best_thresholds.append(test_thresholds[0])
     if nlayers==1 :
         best_thresholds = best_thresholds[0]
-    if i is not None and rdict is not None :
-        #put the list of thresholds in the return dict
-        rdict[i]=best_thresholds
-    else :
-        return best_thresholds
+    return best_thresholds
 
-#################### IMAGE I/O HELPER FUNCTIONS ####################
-
-#helper dataclass to use in multithreading some image handling
-class FileReadInfo(MyDataClass) :
-    rawfile_path     : str                # the path to the raw file
-    sequence_print   : str                # a string of "({i} of {N})" to print
-    height           : int                # img height
-    width            : int                # img width
-    nlayers          : int                # number of img layers
-    root_dir         : str                # Clinical_Specimen directory
-    smooth_sigma     : int = -1           # gaussian sigma for applying smoothing as images are read (-1 = no smoothing)
-    med_exp_times    : List[float] = None # a list of the median exposure times in this image's slide by layer 
-    corr_offsets     : List[float] = None # a list of the exposure time correction offsets for this image's slide by layer 
-
-#helper function to parallelize calls to getRawAsHWL (plus optional smoothing and normalization)
-def getImageArray(fri) :
-    flatfield_logger.info(f'  reading file {fri.rawfile_path} {fri.sequence_print}')
-    img_arr = getRawAsHWL(fri.rawfile_path,fri.height,fri.width,fri.nlayers)
-    if fri.med_exp_times is not None and fri.corr_offsets is not None and fri.corr_offsets[0] is not None :
-        try :
-            img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,fri.root_dir,fri.med_exp_times,fri.corr_offsets)
-        except (ValueError, RuntimeError) :
-            rtd = ((pathlib.Path.resolve(pathlib.Path(fri.rawfile_path))).parent).parent
-            img_arr = correctImageForExposureTime(img_arr,fri.rawfile_path,rtd,fri.med_exp_times,fri.corr_offsets)
-    if fri.smooth_sigma !=-1 :
-        img_arr = smoothImageWorker(img_arr,fri.smooth_sigma)
-    return img_arr
-
-#helper function to get the result of getImageArray as a histogram of pixel fluxes instead of an array
-def getImageLayerHists(fri) :
-    img_array = getImageArray(fri)
-    return getImageArrayLayerHistograms(img_array)
-
-#helper function to read and return a group of raw images with multithreading
-#set 'smooth_sigma' to some positive integer to smooth images as they're read in
-#pass in a list of median exposure times and correction offsets by layer to correct image layer flux 
-def readImagesMT(slide_image_filereads,smooth_sigma=-1,med_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
-    for fr in slide_image_filereads :
-        fr.smooth_sigma = smooth_sigma
-        fr.med_exp_times = med_exposure_times_by_layer
-        fr.corr_offsets = et_corr_offsets_by_layer
-    e = ThreadPoolExecutor(len(slide_image_filereads))
-    new_img_arrays = list(e.map(getImageArray,[fr for fr in slide_image_filereads]))
-    e.shutdown()
-    return new_img_arrays
-
-#helper function to read and return a group of image pixel histograms with multithreading
-#set 'smooth_sigma' to to some numpy array element to smooth images as they're read in
-#pass in a list of median exposure times and correction offsets by layer to correct image layer flux 
-def getImageLayerHistsMT(slide_image_filereads,smooth_sigma=-1,med_exposure_times_by_layer=None,et_corr_offsets_by_layer=None) :
-    for fr in slide_image_filereads :
-        fr.smooth_sigma = smooth_sigma
-        fr.med_exp_times = med_exposure_times_by_layer
-        fr.corr_offsets = et_corr_offsets_by_layer
-    e = ThreadPoolExecutor(len(slide_image_filereads))
-    new_img_layer_hists = list(e.map(getImageLayerHists,[fr for fr in slide_image_filereads]))
-    e.shutdown()
-    return new_img_layer_hists
-
-#helper function to split a list of filenames into chunks to be read in in parallel
-def chunkListOfFilepaths(fps,dims,root_dir,n_threads) :
-    fileread_chunks = [[]]
-    for i,fp in enumerate(fps,start=1) :
-        if len(fileread_chunks[-1])>=n_threads :
-            fileread_chunks.append([])
-        fileread_chunks[-1].append(FileReadInfo(fp,f'({i} of {len(fps)})',dims[0],dims[1],dims[2],root_dir))
-    return fileread_chunks
-
-#################### USEFUL PLOTTING FUNCTION ####################
-
-def drawThresholds(img_array, *, layer_index=0, emphasize_mask=None, show_regions=False, saveas=None, plotstyling = lambda fig, ax: None):
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(1, 1)
-    if len(img_array.shape)>2 :
-        img_array = img_array[layer_index]
-    hist = getImageArrayLayerHistograms(img_array)
-    if emphasize_mask is not None:
-        hist_emphasize = getImageArrayLayerHistograms(img_array, mask=emphasize_mask)
-    thresholds, weights = getLayerOtsuThresholdsAndWeights(hist)
-    histmax = np.max(np.argwhere(hist!=0))
-    hist = hist[:histmax+1]
-    plt.bar(range(len(hist)), hist, width=1)
-    if emphasize_mask is not None:
-        hist_emphasize = hist_emphasize[:histmax+1]
-        plt.bar(range(len(hist)), hist_emphasize, width=1)
-    for threshold, weight in zip(thresholds, weights):
-        plt.axvline(x=threshold, color="red", alpha=0.5+0.5*(weight-min(weights))/(max(weights)-min(weights)))
-    plotstyling(fig, ax)
-    if saveas is None:
-        plt.show()
-    else:
-        plt.savefig(saveas)
-        plt.close()
-    if show_regions:
-        for t1, t2 in more_itertools.pairwise([0]+sorted(thresholds)+[float("inf")]):
-            if t1 == t2: continue #can happen if 0 is a threshold
-            print(t1, t2)
-            plt.imshow(img_array)
-            lower = np.array(
-              [0*img_array+1, 0*img_array, 0*img_array, img_array < t1],
-              dtype=float
-            ).transpose(1, 2, 0)
-            higher = np.array(
-              [0*img_array, 0*img_array+1, 0*img_array, img_array > t2],
-              dtype=float
-            ).transpose(1, 2, 0)
-            plt.imshow(lower)
-            plt.imshow(higher)
-            plt.show()
+def get_background_thresholds_and_pixel_hists_for_rectangle_image(rimg) :
+    """
+    Return the optimal background thresholds and pixel histograms by layer for a given rectangle image
+    (this function is in utilities and not a function of a rectangle so several iterations of it can be run in parallel)
+    """
+    smoothed_im = smooth_image_worker(rimg,MASKING_CONST.TISSUE_MASK_SMOOTHING_SIGMA,gpu=True)
+    nbins = np.iinfo(rimg.dtype).max+1
+    layer_hists = np.zeros((nbins,rimg.shape[-1]),dtype=np.uint64)
+    for li in range(rimg.shape[-1]) :
+        layer_hists[:,li],_ = np.histogram(smoothed_im[:,:,li],nbins,(0,nbins))
+    thresholds = find_layer_thresholds(layer_hists)
+    return thresholds, layer_hists

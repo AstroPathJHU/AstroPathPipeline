@@ -2,6 +2,7 @@
 
 #imports
 from astropath.hpfs.warping.warp import PolyFieldWarp, CameraWarp
+#from astropath.utilities.img_file_io import write_image_to_file
 import pathlib, numpy as np
 
 #constants
@@ -11,8 +12,8 @@ slide_ID = r"M21_1"
 folder = (pathlib.Path(__file__)).parent
 
 #file stems
-file1stem = slide_ID+'_[46163,12453]'
-file2stem = slide_ID+'_[46698,12453]'
+file1stem = slide_ID+'_[45093,13653]'
+file2stem = slide_ID+'_[45093,14053]'
 
 # .raw file paths
 rawfile1path = folder / 'data' / 'raw' / slide_ID / f'{file1stem}.Data.dat'
@@ -52,12 +53,19 @@ warp1file1layer1 = warp1.getWarpedLayer(file1_raw[:,:,0])
 warp1file1layer2 = warp1.getWarpedLayer(file1_raw[:,:,1])
 warp1file2layer1 = warp1.getWarpedLayer(file2_raw[:,:,0])
 warp1file2layer2 = warp1.getWarpedLayer(file2_raw[:,:,1])
+#write_image_to_file(warp1file1layer1,f'{file1stem}.fieldWarp_layer01')
+#write_image_to_file(warp1file1layer2,f'{file1stem}.fieldWarp_layer02')
+#write_image_to_file(warp1file2layer1,f'{file2stem}.fieldWarp_layer01')
+#write_image_to_file(warp1file2layer2,f'{file2stem}.fieldWarp_layer02')
 #with warp 2
 warp2file1layer1 = warp2.getWarpedLayer(file1_raw[:,:,0])
 warp2file1layer2 = warp2.getWarpedLayer(file1_raw[:,:,1])
 warp2file2layer1 = warp2.getWarpedLayer(file2_raw[:,:,0])
 warp2file2layer2 = warp2.getWarpedLayer(file2_raw[:,:,1])
-
+#write_image_to_file(warp2file1layer1,f'{file1stem}.camWarp_layer01')
+#write_image_to_file(warp2file1layer2,f'{file1stem}.camWarp_layer02')
+#write_image_to_file(warp2file2layer1,f'{file2stem}.camWarp_layer01')
+#write_image_to_file(warp2file2layer2,f'{file2stem}.camWarp_layer02')
 #make sure the warped images are identical to the examples
 np.testing.assert_array_equal(warp1file1layer1,warp1file1layer1ex)
 np.testing.assert_array_equal(warp1file1layer2,warp1file1layer2ex)

@@ -121,9 +121,11 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
 
     meanimagecsvs = {
       self.im3folder/f"{self.SlideID}-mean.csv",
-      self.im3folder/"meanimage"/"fields_used_meanimage.csv",
-      self.im3folder/"meanimage"/"metadata_summary_stacked_images_meanimage.csv",
-      self.im3folder/"meanimage"/"thresholding_info"/f"{self.SlideID}_thresholding_plots"/f"metadata_summary_tissue_edges_{self.SlideID}.csv",
+      self.im3folder/"meanimage"/"fields_used.csv",
+      self.im3folder/"meanimage"/f"{self.SlideID}-background_thresholds.csv",
+      self.im3folder/"meanimage"/f"{self.SlideID}-metadata_summary_stacked_images.csv",
+      self.im3folder/"meanimage"/f"{self.SlideID}-metadata_summary_thresholding_images.csv",
+      self.im3folder/"meanimage"/f"{self.SlideID}-thresholding_data_table.csv",
       self.im3folder/"meanimage"/"image_masking"/"labelled_mask_regions.csv",
     }
     optionalcsvs = {

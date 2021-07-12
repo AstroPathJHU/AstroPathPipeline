@@ -29,6 +29,23 @@ def cd(dir):
   finally:
     os.chdir(cdminus)
 
+def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
+  """
+  Save the current figure in the given pyplot instance with a given name and crop it. 
+  If save_dirpath is given the figure is saved in that directory (possibly creating it)
+  """
+  if save_dirpath is not None :
+    if not save_dirpath.is_dir() :
+      save_dirpath.mkdir()
+    with cd(save_dirpath) :
+      pyplot_inst.savefig(figname)
+      pyplot_inst.close()
+      crop_and_overwrite_image(figname)
+  else :
+    pyplot_inst.savefig(figname)
+    pyplot_inst.close()
+    crop_and_overwrite_image(figname)
+
 @nb.vectorize([nb.int64(nb.float64, nb.float64, nb.float64)])
 def __floattoint(flt, atol, rtol):
   result = int(flt)
@@ -64,7 +81,7 @@ def weightedstd(*args, **kwargs):
   return weightedvariance(*args, **kwargs) ** 0.5
 
 #small helper function to crop white border out of an image
-def cropAndOverwriteImage(im_path,border=0.03) :
+def crop_and_overwrite_image(im_path,border=0.03) :
   im = cv2.imread(im_path)
   y_border = int(im.shape[0]*(border/2))
   x_border = int(im.shape[1]*(border/2))
@@ -133,6 +150,12 @@ class MetadataSummary(MyDataClass):
   microscope_name : str
   mindate         : str
   maxdate         : str
+
+#A small dataclass to hold entries in the background threshold datatable
+class ThresholdTableEntry(MyDataClass) :
+  layer_n                 : int
+  counts_threshold        : int
+  counts_per_ms_threshold : float
 
 #helper function to return a list of rectangle ns for all rectangles on the edge of the tissue for this slide
 def getAlignSampleTissueEdgeRectNs(aset) :
