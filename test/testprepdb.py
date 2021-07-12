@@ -4,6 +4,7 @@ from astropath.shared.overlap import Overlap
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
+from astropath.utilities.misc import checkwindowsnewlines
 from .testbase import assertAlmostEqual, temporarilyreplace
 
 thisfolder = pathlib.Path(__file__).parent
@@ -46,16 +47,19 @@ class TestPrepDb(unittest.TestCase):
         self.assertFalse((thisfolder/"data"/SlideID/"dbload"/filename).exists())
         continue
       try:
-        rows = sample.readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, checkorder=True, extrakwargs=extrakwargs)
-        targetrows = sample.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, extrakwargs=extrakwargs)
+        rows = sample.readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+        targetrows = sample.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
         for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:
         raise ValueError("Error in "+filename)
 
     with PIL.Image.open(thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
-         PIL.Image.open(thisfolder/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff.jpg") as targetimg:
+         PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff.jpg") as targetimg:
       np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+
+    for log in logs:
+      checkwindowsnewlines(log)
 
   def testPrepDbFastUnits(self, SlideID="M21_1"):
     self.testPrepDb(SlideID, units="fast")

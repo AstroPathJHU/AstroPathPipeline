@@ -1,11 +1,12 @@
 import collections, errno, functools, jxmlease, numpy as np, os, pathlib, PIL, re, shutil
 
+from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield, readtable, writetable
 from ..zoom.zoomsample import ZoomSample
 
-class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample):
+class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, SelectLayersArgumentParser):
   """
   The deepzoom step takes the whole slide image and produces an image pyramid
   of different zoom levels.
@@ -301,8 +302,8 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     return result
 
   @classmethod
-  def workflowdependencies(cls):
-    return [ZoomSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [ZoomSample] + super().workflowdependencyclasses()
 
 @functools.total_ordering
 class DeepZoomFile(MyDataClass):

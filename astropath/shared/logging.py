@@ -1,16 +1,20 @@
-import collections, functools, job_lock, logging, os, pathlib, traceback
+import collections, datetime, functools, job_lock, logging, os, pathlib, traceback
 
 class MyLogger:
-  """
+  r"""
   Logger that follows the astropath logging conventions.
   It should always be used in a with statement that contains everything
   you want to do in the module.
+
+  Don't construct MyLogger directly.  You should use the getlogger function
+  at the bottom of this module.
 
   module: name of the process that's being run, e.g. "align"
   root: the Clinical_Specimen_* folder (or another folder if you want to log somewhere else)
   samp: the SampleDef object
   uselogfiles: should we write to log files (default: false)
   threshold: minimum level of messages that should be logged (default: logging.DEBUG)
+  isglobal: is this a global log for the cohort? in that case samplelog is set to None and all the info goes in the mainlog
   mainlog: main log file, which gets errors and the most important warnings
            (default: root/logfiles/module.log)
   samplelog: sample log file, which gets errors, warnings, and info
@@ -19,46 +23,90 @@ class MyLogger:
             (default: None)
   reraiseexceptions: should the logger reraise exceptions after logging them
                      (default: True)
+
+  To use the logger, you should write:
+    with getlogger(module="module", root=r"\\bki0X\Clinical_Specimen_Y", samp="APIDXXXXXXXX", uselogfiles=True) as logger:
+      #as soon as you enter the with statement, it will log "module v<version>" to both logs
+      logger.critical("this gets logged to both logs")
+      logger.error("this gets logged to both logs with ERROR: in front")
+      #also if there is a python exception, it gets logged to both logs with ERROR: in front,
+      # and the full traceback is logged to the sample log
+      logger.warningglobal("this gets logged to both logs with WARNING: in front")
+      logger.warning("this gets logged to the sample log with WARNING: in front")
+      logger.info("this gets logged to the sample log")
+      logger.imageinfo("this gets logged only to the image log, if it exists")
+      logger.debug("this gets printed but doesn't go in any log")
+      #when you exit the with statement, successfully or due to an error, it will log "end module"
+
+  getlogger requires information about the project and cohort, because those
+  go in the log.  You can provide that information in one of three ways:
+    1) give a SampleDef or APIDDef object to getlogger using the samp argument
+    or, you can give a SlideID as the samp argument and it will determine
+         the Project and Cohort automatically:
+    2) if sampledef.csv exists in root, the information will be read from there
+    3) if sampledef.csv does not exist yet, you can provide an apidfile argument
+       to getlogger and it will read the information from there
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
-    self.root = pathlib.Path(root)
+    self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
     self.uselogfiles = uselogfiles
     self.nentered = 0
     self.threshold = threshold
-    if mainlog is None:
-      mainlog = self.root/"logfiles"/f"{self.module}.log"
-    if samplelog is None:
-      samplelog = self.root/self.SlideID/"logfiles"/f"{self.SlideID}-{self.module}.log"
-    self.mainlog = pathlib.Path(mainlog)
-    self.samplelog = pathlib.Path(samplelog)
+    if uselogfiles:
+      if root is None:
+        raise ValueError("Have to provide non-None root if using log files")
+      if mainlog is None:
+        mainlog = self.root/"logfiles"/f"{self.module}.log"
+      if samplelog is None:
+        self.root
+        self.samp.SlideID
+        self.module
+        samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
+      mainlog = pathlib.Path(mainlog)
+      samplelog = pathlib.Path(samplelog)
+
+    self.mainlog = mainlog
+    self.samplelog = samplelog
     self.imagelog = None if imagelog is None else pathlib.Path(imagelog)
+    self.isglobal = isglobal
     self.reraiseexceptions = reraiseexceptions
-    if uselogfiles and (self.Project is None or self.SampleID is None or self.Cohort is None):
-      raise ValueError("Have to give a non-None SampleID, Project, and Cohort when writing to log files")
-
-    if not uselogfiles:
-      self.__enter__()
+    if uselogfiles and (self.samp is None or self.Project is None or self.Cohort is None):
+      raise ValueError("Have to give a non-None SlideID, Project and Cohort when writing to log files")
 
   @property
-  def SampleID(self): return self.samp.SampleID
+  def SlideID(self):
+    if self.samp is None: return None
+    return self.samp.SlideID
   @property
-  def SlideID(self): return self.samp.SlideID
+  def Project(self):
+    if self.samp is None: return None
+    return self.samp.Project
   @property
-  def Project(self): return self.samp.Project
-  @property
-  def Cohort(self): return self.samp.Cohort
+  def Cohort(self):
+    if self.samp is None: return None
+    return self.samp.Cohort
+
+  dateformat = "%Y-%m-%d %H:%M:%S"
 
   @property
   def formatter(self):
     return logging.Formatter(
       ";".join(str(_) for _ in (self.Project, self.Cohort, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None),
-      "%Y-%m-%d %H:%M:%S",
+      self.dateformat,
     )
   def __enter__(self):
     if self.nentered == 0:
-      self.logger = logging.getLogger(f"{self.root}.{self.module}.{self.Project}.{self.Cohort}.{self.SlideID}.{self.uselogfiles}.{self.threshold}")
+      self.root
+      self.module
+      self.Project
+      self.Cohort
+      self.SlideID
+      self.uselogfiles
+      self.threshold
+      self.isglobal
+      self.logger = logging.getLogger(f"{self.root}.{self.module}.{self.Project}.{self.Cohort}.{self.SlideID}.{self.uselogfiles}.{self.threshold}.{self.isglobal}")
       self.logger.setLevel(self.threshold)
 
       printhandler = logging.StreamHandler()
@@ -72,15 +120,16 @@ class MyLogger:
         mainhandler = MyFileHandler(self.mainlog)
         mainhandler.setFormatter(self.formatter)
         mainhandler.addFilter(self.filter)
-        mainhandler.setLevel(logging.WARNING+1)
+        mainhandler.setLevel(logging.INFO if self.isglobal else logging.WARNING+1)
         self.logger.addHandler(mainhandler)
 
-        self.samplelog.parent.mkdir(exist_ok=True, parents=True)
-        samplehandler = MyFileHandler(self.samplelog)
-        samplehandler.setFormatter(self.formatter)
-        samplehandler.addFilter(self.filter)
-        samplehandler.setLevel(logging.INFO)
-        self.logger.addHandler(samplehandler)
+        if not self.isglobal:
+          self.samplelog.parent.mkdir(exist_ok=True, parents=True)
+          samplehandler = MyFileHandler(self.samplelog)
+          samplehandler.setFormatter(self.formatter)
+          samplehandler.addFilter(self.filter)
+          samplehandler.setLevel(logging.INFO)
+          self.logger.addHandler(samplehandler)
 
         if self.imagelog is not None :
           self.imagelog.parent.mkdir(exist_ok=True, parents=True)
@@ -128,7 +177,12 @@ class MyLogger:
     return self.nentered == 0 and not self.reraiseexceptions
 
   def __getattr__(self, attr):
+    if attr in ("uselogfiles", "__enter__"):
+      raise AttributeError(f"{type(self).__name__} instance has no attribute '{attr}'")
     if attr == "logger":
+      if not self.uselogfiles:
+        self.__enter__()
+        return getattr(self, attr)
       raise RuntimeError("Have to use this in a context manager if you want to uselogfiles")
     return getattr(self.logger, attr)
   def warningglobal(self, *args, **kwargs):
@@ -154,7 +208,18 @@ class MyFileHandler:
     self.__filename = pathlib.Path(filename)
     self.__lockfilename = self.__filename.with_suffix(self.__filename.suffix+".lock")
     if filename not in self.__handlers:
-      self.__handlers[filename] = logging.FileHandler(filename)
+      handler = self.__handlers[filename] = logging.FileHandler(filename, delay=True)
+      kwargs = {"newline": "", "mode": handler.mode, "encoding": handler.encoding}
+      try:
+        kwargs["errors"] = handler.errors
+      except AttributeError: #python < 3.9
+        pass
+      newfile = open(filename, **kwargs)
+      try:
+        handler.setStream(newfile)
+      except AttributeError: #python < 3.7
+        handler.stream = newfile
+      handler.terminator = "\r\n"
     self.__handler = self.__handlers[filename]
     self.__counts[filename] += 1
     self.__formatter = self.__handler.formatter
@@ -184,7 +249,7 @@ class MyFileHandler:
     self.__handler.setFormatter(self.__formatter)
     self.__handler.setLevel(self.__level)
     self.__handler.filters = self.__filters
-    with job_lock.JobLockAndWait(self.__lockfilename, 1, task=f"logging to {self.__filename}"):
+    with job_lock.JobLockAndWait(self.__lockfilename, 1, corruptfiletimeout=datetime.timedelta(minutes=10), task=f"logging to {self.__filename}"):
       self.__handler.handle(record)
 
   def __repr__(self):
@@ -193,17 +258,18 @@ class MyFileHandler:
 __notgiven = object()
 
 @functools.lru_cache(maxsize=None)
-def getlogger(*, module, root, samp, uselogfiles=__notgiven, threshold=__notgiven, mainlog=__notgiven, samplelog=__notgiven, imagelog=__notgiven, reraiseexceptions=__notgiven):
-  if uselogfiles is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=False, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
-  if threshold is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=logging.DEBUG, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
-  if mainlog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=None, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
-  if samplelog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=None, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
-  if imagelog is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=None, reraiseexceptions=reraiseexceptions)
-  if reraiseexceptions is __notgiven:
-    return getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=True)
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+def __getlogger(*, module, root, samp, uselogfiles, threshold, isglobal, mainlog, samplelog, imagelog, reraiseexceptions):
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None):
+  from .sample import SampleDef
+  if samp is not None:
+    samp = SampleDef(root=root, samp=samp, apidfile=apidfile)
+  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+
+dummylogger = logging.getLogger("dummy")
+dummylogger.addHandler(logging.NullHandler())
+dummylogger.warningglobal = dummylogger.warning
+
+def printlogger(module):
+  return getlogger(module=module, root=None, samp=None)

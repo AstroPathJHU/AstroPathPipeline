@@ -1,13 +1,14 @@
 import argparse, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib
 from ..utilities import units
-from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
-from ..utilities.misc import dummylogger, floattoint, printlogger
+from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
+from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .csvclasses import Annotation, Region, Vertex
+from .logging import dummylogger, printlogger
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
 
-class AllowedAnnotation(MyDataClass):
+class AllowedAnnotation(MyDataClassFrozen):
   name: str = MetaDataAnnotation(readfunction=str.lower)
   layer: int
   color: str
@@ -155,7 +156,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         if not node["Regions"]: continue
         regions = node["Regions"]["Region"]
         if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
-        for m, region in enumerate(regions, start=1):
+        m = 1
+        for region in regions:
+          regioncounter = itertools.count(m)
           regionid = 1000*layer + m
           vertices = region["Vertices"]["V"]
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
@@ -173,9 +176,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                 pscale=self.pscale,
               )
             )
-          allvertices += regionvertices
-
           isNeg = bool(int(region.get_xml_attr("NegativeROA")))
+
+          polygon = SimplePolygon(vertices=regionvertices)
+          valid = polygon.makevalid(round=True, imagescale=self.apscale)
 
           perimeter = 0
           maxlength = 0
@@ -210,29 +214,40 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                 )
                 ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.apscale))
 
-                openvertex1 = poly.vertexarray[0]
-                openvertex2 = poly.vertexarray[{1: 1, len(regionvertices): -1}[longestidx]]
-                boxxmin, boxymin = np.min([openvertex1, openvertex2], axis=0) - xybuffer/2
-                boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
-                ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
+              openvertex1 = poly.vertexarray[0]
+              openvertex2 = poly.vertexarray[{1: 1, len(regionvertices): -1}[longestidx]]
+              boxxmin, boxymin = np.min([openvertex1, openvertex2], axis=0) - xybuffer/2
+              boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
+              ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
 
-                fig.savefig(self.__badpolygonimagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__badpolygonimagefiletype}").name)
-                plt.close(fig)
+              fig.savefig(self.__badpolygonimagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__badpolygonimagefiletype}").name)
+              plt.close(fig)
 
-          allregions.append(
-            Region(
-              regionid=regionid,
-              sampleid=0,
-              layer=layer,
-              rid=m,
-              isNeg=isNeg,
-              type=region.get_xml_attr("Type"),
-              nvert=len(vertices),
-              poly=None,
-              apscale=self.apscale,
-              pscale=self.pscale,
+          for polygon, m in zip(valid, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
+            if valid is not polygon:
+              regionid = 1000*layer + m
+              polygon.regionid = regionid
+              assert not polygon.subtractpolygons
+              regionvertices = polygon.outerpolygon.vertices
+
+            allvertices += list(regionvertices)
+
+            allregions.append(
+              Region(
+                regionid=regionid,
+                sampleid=0,
+                layer=layer,
+                rid=m,
+                isNeg=isNeg,
+                type=region.get_xml_attr("Type"),
+                nvert=len(regionvertices),
+                poly=None,
+                apscale=self.apscale,
+                pscale=self.pscale,
+              )
             )
-          )
+
+          m = next(regioncounter)
 
     if not any(a.name == "good tissue" for a in annotations):
       errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations if _.name != 'empty')})")
@@ -275,7 +290,7 @@ def main(args=None):
   add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    writeannotationcsvs(**args.__dict__, logger=printlogger)
+    writeannotationcsvs(**args.__dict__, logger=printlogger("annotations"))
 
 def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
@@ -287,5 +302,5 @@ def checkannotations(args=None):
   add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    XMLPolygonAnnotationReader(**args.__dict__, logger=printlogger).getXMLpolygonannotations()
+    XMLPolygonAnnotationReader(**args.__dict__, logger=printlogger("annotations")).getXMLpolygonannotations()
   print(f"{args.xmlfile} looks good!")

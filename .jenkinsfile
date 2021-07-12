@@ -16,7 +16,8 @@ pipeline {
 
   environment {
     JENKINS_NO_GPU = "1"
-    HOME = "/home/circleci"
+    JENKINS_PARALLEL = "1"
+    HOME = "/home/astropath"
     GITHUB_TOKEN = credentials('astropath-github')
   }
 
@@ -224,6 +225,7 @@ pipeline {
         sh 'if ! [ -z "$(git status --porcelain)" ]; then echo "tests created uncommitted changes"; git status; git diff; git submodule foreach bash -c "git status; git diff"; exit 1; fi'
         sh 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)'
         sh '''git submodule foreach bash -c 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)\''''
+        sh '! find test/test_for_jenkins -type f | grep . || (echo "expected the test_for_jenkins folder to be empty when tests succeed (feel free to modify this check if you want to keep output files from successful tests)"; exit 1)'
       }
     }
   }
@@ -234,11 +236,7 @@ pipeline {
       archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/exposuretime/exposuretime_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/layerPCA/layerPCA.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'test/annowarp_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/deepzoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/exposuretimefit_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/warpfitter_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
-      archiveArtifacts artifacts: 'test/zoom_test_for_jenkins/*', fingerprint: true, allowEmptyArchive: true
+      archiveArtifacts artifacts: 'test/test_for_jenkins/**', fingerprint: true, allowEmptyArchive: true
     }
   }
 }

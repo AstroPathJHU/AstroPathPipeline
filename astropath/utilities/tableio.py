@@ -1,9 +1,10 @@
-import contextlib, csv, dataclasses, dataclassy, datetime, pathlib
+import abc, contextlib, csv, dataclasses, dataclassy, datetime
 
+from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
-from .misc import dummylogger
+from .misc import checkwindowsnewlines, guesspathtype, mountedpathtopath, pathtomountedpath
 
-def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, maxrows=float("inf"), header=True, **columntypes):
+def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """
   Read a csv table into a list of named tuples
 
@@ -34,6 +35,8 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
   """
 
   result = []
+  if checknewlines:
+    checkwindowsnewlines(filename)
   with field_size_limit_context(fieldsizelimit), open(filename) as f:
     if header:
       fieldnames = None
@@ -41,7 +44,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
       fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
     reader = csv.DictReader(f, fieldnames=fieldnames)
     Row = rowclass
-    if not issubclass(Row, MyDataClass):
+    if not issubclass(Row, (MyDataClass)):
       raise TypeError(f"{Row} should inherit from {MyDataClass}")
     if checkorder:
       columnnames = list(reader.fieldnames)
@@ -108,8 +111,8 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
 
   try:
-    with open(filename, "w") as f:
-      writer = csv.DictWriter(f, fieldnames, lineterminator='\n')
+    with open(filename, "w", newline='') as f:
+      writer = csv.DictWriter(f, fieldnames, lineterminator='\r\n')
       if header: writer.writeheader()
       for i, row in enumerate(rows, start=1):
         if printevery is not None and not i % printevery:
@@ -129,7 +132,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   if printevery is not None:
     logger.info("finished!")
 
-class TableReader:
+class TableReader(abc.ABC):
   """
   Base class that has a readtable function
   so that you can override it and call super()
@@ -167,25 +170,9 @@ def field_size_limit_context(limit):
     csv.field_size_limit(oldlimit)
 
 def pathfield(*args, **metadata):
-  def guesspathtype(path):
-    if isinstance(path, pathlib.PurePath):
-      return path
-    if pathlib.Path(path).exists(): return pathlib.Path(path)
-    if "/" in path and "\\" not in path:
-      try:
-        return pathlib.PosixPath(path)
-      except NotImplementedError:
-        return pathlib.PurePosixPath(path)
-    elif "\\" in path and "/" not in path:
-      try:
-        return pathlib.WindowsPath(path)
-      except NotImplementedError:
-        return pathlib.PureWindowsPath(path)
-    else:
-      assert False, path
-
   metadata = {
-    "readfunction": guesspathtype,
+    "readfunction": lambda x: mountedpathtopath(guesspathtype(x)),
+    "writefunction": pathtomountedpath,
     **metadata,
   }
 

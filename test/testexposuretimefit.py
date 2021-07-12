@@ -10,7 +10,7 @@ import pathlib, shutil
 
 #some constants
 folder = pathlib.Path(__file__).parent
-working_dir = folder/'exposuretimefit_test_for_jenkins'
+working_dir = folder/'test_for_jenkins'/'exposuretimefit'
 
 #arguments namespace
 args = Namespace(
@@ -40,8 +40,8 @@ main(args)
 
 #check the results against the reference
 print('Checking fit results....')
-new = readtable(working_dir/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
-ref = readtable(folder/"reference"/"exposuretimefit"/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit_test_for_jenkins.csv", LayerOffset)
+new = readtable(working_dir/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit.csv", LayerOffset, checkorder=True, checknewlines=True)
+ref = readtable(folder/"data"/"reference"/"exposuretimefit"/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit.csv", LayerOffset, checkorder=True, checknewlines=True)
 for offsetnew, offsetref in zip(new, ref):
   assertAlmostEqual(offsetnew, offsetref, rtol=1e-4, atol=1e-8)
 

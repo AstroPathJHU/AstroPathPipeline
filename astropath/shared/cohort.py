@@ -1,36 +1,24 @@
-import abc, os, job_lock, pathlib, re
+import abc, datetime, job_lock, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
-from .sample import SampleBase, SampleDef
+from .rectangle import rectanglefilter
+from .sample import SampleDef
+from .workflowdependency import ThingWithRoots, WorkflowDependency
 
-class Cohort(RunFromArgumentParser):
+class CohortBase(ThingWithRoots):
   """
-  Base class for a cohort - a bunch of samples that can be run in a loop
-
-  root: the root path of the Cohort, i.e. Clinical_Specimen_*
-  filters: functions that are called on each sample to filter it
-           if any filter returns False, the sample is skipped
-           (default: [])
-  debug: raise error messages instead of logging them and continuing
-         (default: False)
-  uselogfiles, logroot: these arguments are passed to the logger
+  Base class for a cohort.  This class doesn't actually run anything
+  (for that use Cohort, below).
   """
-  def __init__(self, root, *, slideidfilters=[], samplefilters=[], debug=False, uselogfiles=True, logroot=None, im3root=None, informdataroot=None, xmlfolders=[], version_requirement=None):
-    super().__init__()
-    self.root = pathlib.Path(root)
-    if logroot is None: logroot = root
-    self.logroot = pathlib.Path(logroot)
-    if im3root is None: im3root = root
-    self.im3root = pathlib.Path(im3root)
-    if informdataroot is None: informdataroot = root
-    self.informdataroot = pathlib.Path(informdataroot)
-    self.slideidfilters = slideidfilters
-    self.samplefilters = samplefilters
-    self.debug = debug
+  def __init__(self, *args, root, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__root = pathlib.Path(root)
+    if logroot is None: logroot = self.__root
+    self.__logroot = pathlib.Path(logroot)
     self.uselogfiles = uselogfiles
-    self.xmlfolders = xmlfolders
+    self.reraiseexceptions = reraiseexceptions
 
   @property
   def sampledefs(self): return readtable(self.root/"sampledef.csv", SampleDef)
@@ -45,7 +33,62 @@ class Cohort(RunFromArgumentParser):
     Cohort, = {_.Cohort for _ in self.sampledefs}
     return Cohort
 
-  def __iter__(self):
+  def globallogger(self):
+    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
+    return self.getlogger(samp, isglobal=True)
+
+  @property
+  def logger(self): return self.globallogger()
+  @property
+  def mainlog(self): return self.logger.mainlog
+
+  def globaljoblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
+    lockfile = self.globallogger().mainlog.with_suffix(".lock")
+    lockfile.parent.mkdir(exist_ok=True, parents=True)
+    return job_lock.JobLock(lockfile, corruptfiletimeout=corruptfiletimeout, **kwargs)
+
+  def getlogger(self, samp, *, isglobal=False, **kwargs):
+    if isinstance(samp, WorkflowDependency):
+      isglobal = isglobal or samp.usegloballogger()
+      samp = samp.samp
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, **kwargs)
+
+  @classmethod
+  @abc.abstractmethod
+  def logmodule(cls): pass
+
+  @property
+  def root(self): return self.__root
+  @property
+  def logroot(self): return self.__logroot
+  @property
+  def rootnames(self):
+    return {*super().rootnames, "root", "logroot"}
+
+class Cohort(CohortBase, RunFromArgumentParser):
+  """
+  Base class for a cohort that can be run in a loop
+
+  root: the root path of the Cohort, i.e. Clinical_Specimen_*
+  filters: functions that are called on each sample to filter it
+           if any filter returns False, the sample is skipped
+           (default: [])
+  debug: raise error messages instead of logging them and continuing
+         (default: False)
+  uselogfiles, logroot: these arguments are passed to the logger
+  """
+  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, xmlfolders=[], version_requirement=None, **kwargs):
+    super().__init__(*args, reraiseexceptions=debug, **kwargs)
+    if im3root is None: im3root = self.root
+    self.im3root = pathlib.Path(im3root)
+    if informdataroot is None: informdataroot = self.root
+    self.informdataroot = pathlib.Path(informdataroot)
+    self.slideidfilters = slideidfilters
+    self.samplefilters = samplefilters
+    self.xmlfolders = xmlfolders
+
+  @property
+  def filteredsampledefs(self):
     """
     Iterate over the sample's sampledef.csv file.
     It yields all the good samples (as defined by the isGood column)
@@ -59,6 +102,28 @@ class Cohort(RunFromArgumentParser):
         with self.getlogger(samp):
           raise
       yield samp
+
+
+  @property
+  def samples(self):
+    for samp in self.filteredsampledefs:
+      try:
+        sample = self.initiatesample(samp)
+        if sample.logmodule() != self.logmodule():
+          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+      except Exception:
+        #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
+        with self.getlogger(samp):
+          raise
+      yield sample
+
+  @property
+  def filteredsamples(self):
+    for sample in self.samples:
+      if not all(filter(self, sample) for filter in self.samplefilters):
+        continue
+      yield sample
 
   def runsample(self, sample, **kwargs):
     "actually run whatever is supposed to be run on the sample"
@@ -76,7 +141,7 @@ class Cohort(RunFromArgumentParser):
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.debug, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders}
+    return {"root": self.root, "reraiseexceptions": self.reraiseexceptions, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders}
 
   @classmethod
   def logmodule(cls):
@@ -85,42 +150,17 @@ class Cohort(RunFromArgumentParser):
 
   @property
   def rootnames(self):
-    return {*super().rootnames, "root", "logroot", "im3root", "informdataroot"}
+    return {*super().rootnames, "im3root", "informdataroot"}
   @property
   def workflowkwargs(self):
     return self.rootkwargs
-
-  def globallogger(self):
-    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
-    return self.getlogger(samp, samplelog=os.devnull)
-
-  def globaljoblock(self, **kwargs):
-    lockfile = self.globallogger().mainlog.with_suffix(".lock")
-    lockfile.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(lockfile, **kwargs)
-
-  def getlogger(self, samp, **kwargs):
-    if isinstance(samp, SampleBase): samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.debug, **kwargs)
 
   def run(self, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
-    for samp in self:
-      try:
-        sample = self.initiatesample(samp)
-      except Exception:
-        #enter the logger here to log exceptions in __init__ of the sample
-        #but not KeyboardInterrupt
-        with self.getlogger(samp):
-          raise
-      else:
-        if not all(filter(self, sample) for filter in self.samplefilters):
-          continue
-        if sample.logmodule() != self.logmodule():
-          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
-        self.processsample(sample, **kwargs)
+    for sample in self.filteredsamples:
+      self.processsample(sample, **kwargs)
 
   def processsample(self, sample, **kwargs):
     with sample:
@@ -134,7 +174,7 @@ class Cohort(RunFromArgumentParser):
     Print which samples would be run if you run the cohort
     """
     print(self.dryrunheader)
-    for samp in self: print(samp)
+    for samp in self.filteredsampledefs: print(samp)
 
   @classmethod
   def defaultunits(cls):
@@ -164,6 +204,8 @@ class Cohort(RunFromArgumentParser):
       "slideidfilters": [],
       "samplefilters": [],
     }
+    if dct["dry_run"]:
+      kwargs["uselogfiles"] = False
     regex = dct.pop("sampleregex")
     if regex is not None:
       kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
@@ -215,13 +257,7 @@ class Im3Cohort(Cohort, Im3ArgumentParser):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "root2": self.root2}
 
-class DbloadCohort(Cohort, DbloadArgumentParser):
-  """
-  Base class for any cohort that uses the dbload folder
-  dbloadroot: an alternate root to use for the dbload folder instead of root
-              (mostly useful for testing)
-              (default: same as root)
-  """
+class DbloadCohortBase(CohortBase):
   def __init__(self, *args, dbloadroot=None, **kwargs):
     super().__init__(*args, **kwargs)
     if dbloadroot is None: dbloadroot = self.root
@@ -231,13 +267,19 @@ class DbloadCohort(Cohort, DbloadArgumentParser):
   def rootnames(self):
     return {*super().rootnames, "dbloadroot"}
 
+class DbloadCohort(Cohort, DbloadCohortBase, DbloadArgumentParser):
+  """
+  Base class for any cohort that uses the dbload folder
+  dbloadroot: an alternate root to use for the dbload folder instead of root
+              (mostly useful for testing)
+              (default: same as root)
+  """
+
   @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
 
-class GlobalDbloadCohort(DbloadCohort, TableReader):
-  @property
-  def logger(self): return self.globallogger()
+class GlobalDbloadCohortBase(DbloadCohortBase, TableReader):
   @property
   def dbload(self):
     return self.dbloadroot/"dbload"
@@ -247,6 +289,9 @@ class GlobalDbloadCohort(DbloadCohort, TableReader):
     return self.readtable(self.csv(csv), *args, **kwargs)
   def writecsv(self, csv, *args, **kwargs):
     return writetable(self.csv(csv), *args, logger=self.logger, **kwargs)
+
+class GlobalDbloadCohort(GlobalDbloadCohortBase, DbloadCohort):
+  pass
 
 class ZoomFolderCohort(Cohort, ZoomFolderArgumentParser):
   """
@@ -316,11 +361,18 @@ class SelectRectanglesCohort(Cohort, SelectRectanglesArgumentParser):
   """
   def __init__(self, *args, selectrectangles=None, **kwargs):
     super().__init__(*args, **kwargs)
-    self.selectrectangles = selectrectangles
+    self.selectrectangles = rectanglefilter(selectrectangles)
 
   @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "selectrectangles": self.selectrectangles}
+
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "selectrectangles": self.selectrectangles,
+    }
 
 class SelectLayersCohort(Cohort, SelectLayersArgumentParser):
   """
@@ -400,6 +452,17 @@ class PhenotypeFolderCohort(Cohort):
   @property
   def rootnames(self): return {"phenotyperoot", *super().rootnames}
 
+class ParallelCohort(Cohort, ParallelArgumentParser):
+  def __init__(self, *args, njobs, **kwargs):
+    self.__njobs = njobs
+    super().__init__(*args, **kwargs)
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "njobs": self.__njobs,
+    }
+
 class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
   def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
     self.__annotationsynonyms = annotationsynonyms
@@ -440,10 +503,48 @@ class WorkflowCohort(Cohort):
     if parsed_args_dict["print_errors"]:
       kwargs["uselogfiles"] = False
       parsed_args_dict["skip_finished"] = parsed_args_dict["dependencies"] = False
-    if parsed_args_dict.pop("skip_finished"):
-      kwargs["slideidfilters"].append(lambda self, sample: not self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs))
-    if parsed_args_dict.pop("dependencies"):
-      kwargs["slideidfilters"].append(lambda self, sample: all(dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs) for dependency in self.sampleclass.workflowdependencies()))
+
+    dependencies = parsed_args_dict.pop("dependencies")
+    skip_finished = parsed_args_dict.pop("skip_finished")
+
+    def filter(runstatus, dependencyrunstatuses):
+      if not skip_finished and not dependencies:
+        return True
+      elif skip_finished and not dependencies:
+        return not runstatus
+      elif dependencies and not skip_finished:
+        for dependencyrunstatus in dependencyrunstatuses:
+          if not dependencyrunstatus: return False
+        return True
+      elif dependencies and skip_finished:
+        for dependencyrunstatus in dependencyrunstatuses:
+          if not dependencyrunstatus: return False
+          if runstatus and runstatus.started < dependencyrunstatus.ended:
+            runstatus = False #it's as if this step hasn't run
+        return not runstatus
+      else:
+        assert False
+
+    def slideidfilter(self, sample):
+      return filter(
+        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs),
+        dependencyrunstatuses=[
+          dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
+          for dependency in self.sampleclass.workflowdependencyclasses()
+        ],
+      )
+    kwargs["slideidfilters"].append(slideidfilter)
+
+    def samplefilter(self, sample):
+      return filter(
+        runstatus=sample.runstatus,
+        dependencyrunstatuses=[
+          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
+          for dependency, SlideID in sample.workflowdependencies()
+        ],
+      )
+    kwargs["samplefilters"].append(samplefilter)
+
     return kwargs
 
   @classmethod
@@ -482,4 +583,4 @@ class WorkflowCohort(Cohort):
           #was already logged so no need to log it again and confuse the issue.
           if status.missingfiles and status.error is None:
             status.ended = True #to get the missing files in the __str__
-            raise RuntimeError(f"{sample.SlideID} {status}")
+            raise RuntimeError(f"{sample.logger.SlideID} {status}")

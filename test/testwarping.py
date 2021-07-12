@@ -19,14 +19,14 @@ rawfile1path = folder / 'data' / 'raw' / slide_ID / f'{file1stem}.Data.dat'
 rawfile2path = folder / 'data' / 'raw' / slide_ID / f'{file2stem}.Data.dat'
 
 # warp test file paths
-warp1file1layer1p=folder / 'reference' / 'warping' / f'{file1stem}.fieldWarp_layer01'
-warp1file1layer2p=folder / 'reference' / 'warping' / f'{file1stem}.fieldWarp_layer02'
-warp1file2layer1p=folder / 'reference' / 'warping' / f'{file2stem}.fieldWarp_layer01'
-warp1file2layer2p=folder / 'reference' / 'warping' / f'{file2stem}.fieldWarp_layer02'
-warp2file1layer1p=folder / 'reference' / 'warping' / f'{file1stem}.camWarp_layer01'
-warp2file1layer2p=folder / 'reference' / 'warping' / f'{file1stem}.camWarp_layer02'
-warp2file2layer1p=folder / 'reference' / 'warping' / f'{file2stem}.camWarp_layer01'
-warp2file2layer2p=folder / 'reference' / 'warping' / f'{file2stem}.camWarp_layer02'
+warp1file1layer1p=folder / 'data' / 'reference' / 'warping' / f'{file1stem}.fieldWarp_layer01'
+warp1file1layer2p=folder / 'data' / 'reference' / 'warping' / f'{file1stem}.fieldWarp_layer02'
+warp1file2layer1p=folder / 'data' / 'reference' / 'warping' / f'{file2stem}.fieldWarp_layer01'
+warp1file2layer2p=folder / 'data' / 'reference' / 'warping' / f'{file2stem}.fieldWarp_layer02'
+warp2file1layer1p=folder / 'data' / 'reference' / 'warping' / f'{file1stem}.camWarp_layer01'
+warp2file1layer2p=folder / 'data' / 'reference' / 'warping' / f'{file1stem}.camWarp_layer02'
+warp2file2layer1p=folder / 'data' / 'reference' / 'warping' / f'{file2stem}.camWarp_layer01'
+warp2file2layer2p=folder / 'data' / 'reference' / 'warping' / f'{file2stem}.camWarp_layer02'
 
 #first make a few warps
 warp1 = PolyFieldWarp() #Alex's default polynomial field warp

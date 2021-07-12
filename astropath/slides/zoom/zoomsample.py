@@ -1,5 +1,6 @@
-import contextlib, cv2, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, skimage
+import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, skimage
 
+from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
 from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels
@@ -27,7 +28,7 @@ class ZoomSampleBase(ReadRectanglesDbload):
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
 
-class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample):
+class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, SelectLayersArgumentParser):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
@@ -55,20 +56,21 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     """
     onepixel = self.onepixel
     self.logger.info("allocating memory for the global array")
+    bigimageshape = tuple((self.ntiles * self.zoomtilesize)[::-1]) + (len(self.layers),)
     with contextlib.ExitStack() as stack:
       if usememmap:
         tempfile = stack.enter_context(self.tempfile())
         bigimage = stack.enter_context(
           memmapcontext(
             tempfile,
-            shape=(len(self.layers),)+tuple((self.ntiles * self.zoomtilesize)[::-1]),
+            shape=bigimageshape,
             dtype=np.uint8,
             mode="w+",
           )
         )
         bigimage[:] = 0
       else:
-        bigimage = np.zeros(shape=(len(self.layers),)+tuple((self.ntiles * self.zoomtilesize)[::-1]), dtype=np.uint8)
+        bigimage = np.zeros(shape=bigimageshape, dtype=np.uint8)
 
       #loop over HPFs and fill them into the big image
       nrectangles = len(self.rectangles)
@@ -102,7 +104,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
           newlocalx2 = localx2 + shiftby[0]
           newlocaly2 = localy2 + shiftby[1]
 
-          for i, layer in enumerate(image):
+          for i, layer in enumerate(image.transpose(2, 0, 1)):
             shifted = cv2.warpAffine(
               layer,
               np.array(
@@ -126,9 +128,9 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
             #fill the big image with the HPF image
             kw = {"atol": 1e-7}
             bigimage[
-              i,
               floattoint(float(globaly1/onepixel), **kw):floattoint(float(globaly2/onepixel), **kw),
               floattoint(float(globalx1/onepixel), **kw):floattoint(float(globalx2/onepixel), **kw),
+              i,
             ] = shifted[
               floattoint(float(newlocaly1/onepixel), **kw):floattoint(float(newlocaly2/onepixel), **kw),
               floattoint(float(newlocalx1/onepixel), **kw):floattoint(float(newlocalx2/onepixel), **kw),
@@ -142,14 +144,14 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         xmax = (tilex+1) * self.zoomtilesize
         ymin = tiley * self.zoomtilesize
         ymax = (tiley+1) * self.zoomtilesize
-        slc = bigimage[:, ymin:ymax, xmin:xmax]
+        slc = bigimage[ymin:ymax, xmin:xmax, :]
         if not np.any(slc):
           self.logger.info(f"       tile {tilen} / {ntiles} is empty")
           continue
         for i, layer in enumerate(self.layers):
           filename = self.zoomfilename(layer, tilex, tiley)
           self.logger.info(f"saving tile {tilen} / {ntiles} {filename.name}")
-          image = PIL.Image.fromarray(slc[i])
+          image = PIL.Image.fromarray(slc[:, :, i])
           image.save(filename, "PNG")
 
       #save the wsi
@@ -157,7 +159,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       for i, layer in enumerate(self.layers):
         filename = self.wsifilename(layer)
         self.logger.info(f"saving {filename.name}")
-        image = PIL.Image.fromarray(bigimage[i])
+        image = PIL.Image.fromarray(bigimage[:, :, i])
         image.save(filename, "PNG")
 
   def zoom_memory(self, fmax=50):
@@ -232,7 +234,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         with tile:
           for layer in self.layers:
             filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
-            with job_lock.JobLock(filename.with_suffix(".lock"), outputfiles=[filename], checkoutputfiles=False) as lock:
+            with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
               assert lock
               if not filename.exists():
                 break
@@ -267,7 +269,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
               if othertile.overlapsrectangle(globalx1=globalx1, globalx2=globalx2, globaly1=globaly1, globaly2=globaly2):
                 othertile.enter_context(field.using_image())
 
-            if tileimage is None: tileimage = np.zeros(shape=(len(self.layers),)+tuple((self.zoomtilesize + 2*floattoint((buffer/onepixel).astype(float)))[::-1]), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=tuple((self.zoomtilesize + 2*floattoint((buffer/onepixel).astype(float)))[::-1]) + (len(self.layers),), dtype=np.uint8)
 
             with field.using_image() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
@@ -300,8 +302,8 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
                   flags=cv2.INTER_CUBIC,
                   borderMode=cv2.BORDER_REPLICATE,
                   dsize=layer.T.shape,
-                ) for layer in image
-              ])
+                ) for layer in image.transpose(2, 0, 1)
+              ]).transpose(1, 2, 0)
 
               #new local coordinates after the shift
               #they should be integer pixels (will be checked when filling the image)
@@ -318,33 +320,33 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
                 tilex1 -= tilex1
               kw = {"atol": 1e-7}
               tileimage[
-                :,
                 floattoint(float(tiley1/onepixel), **kw):floattoint(float(tiley2/onepixel), **kw),
                 floattoint(float(tilex1/onepixel), **kw):floattoint(float(tilex2/onepixel), **kw),
-              ] = shifted[
                 :,
+              ] = shifted[
                 floattoint(float(newlocaly1/onepixel), **kw):floattoint(float(newlocaly2/onepixel), **kw),
                 floattoint(float(newlocalx1/onepixel), **kw):floattoint(float(newlocalx2/onepixel), **kw),
+                :,
               ]
 
         if tileimage is None: continue
         #remove the buffer
         slc = tileimage[
-          :,
           floattoint(float(buffer[1]/self.onepixel)):floattoint(float(-buffer[1]/self.onepixel)),
           floattoint(float(buffer[0]/self.onepixel)):floattoint(float(-buffer[0]/self.onepixel)),
+          :,
         ]
         if not np.any(slc): continue
         #save the tile images
         for layer in self.layers:
           filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
-          with job_lock.JobLock(filename.with_suffix(".lock"), outputfiles=[filename], checkoutputfiles=False) as lock:
+          with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
             assert lock
             if filename.exists():
               self.logger.info(f"  {filename.name} was already created")
               continue
             self.logger.info(f"  saving {filename.name}")
-            image = PIL.Image.fromarray(slc[layer-1])
+            image = PIL.Image.fromarray(slc[:, :, layer-1])
             image.save(filename, "PNG")
 
   def wsi_vips(self):
@@ -413,8 +415,8 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     ]
 
   @classmethod
-  def workflowdependencies(cls):
-    return [AlignSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [AlignSample] + super().workflowdependencyclasses()
 
 def main(args=None):
   ZoomSample.runfromargumentparser(args)

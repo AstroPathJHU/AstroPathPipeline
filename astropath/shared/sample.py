@@ -1,35 +1,40 @@
-import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile
 
 from ..utilities import units
-from ..utilities.dataclasses import MyDataClass
+from ..utilities.dataclasses import MyDataClassFrozen
 from ..utilities.misc import floattoint
 from ..utilities.tableio import readtable, writetable
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
-from .workflowdependency import WorkflowDependency
+from .workflowdependency import WorkflowDependencySlideID
 
-class SampleDef(MyDataClass):
+class SampleDef(MyDataClassFrozen):
   """
   The sample definition from sampledef.csv in the cohort folder.
   To construct it, you can give all the arguments, or you can give
   SlideID and leave out some of the others.  If you give a root,
   it will try to figure out the other arguments from there.
   """
-  SampleID: int
-  SlideID: str
+  SampleID: int = None
+  SlideID: str = None
   Project: int = None
   Cohort: int = None
   Scan: int = None
   BatchID: int = None
   isGood: int = True
 
+  def __post_init__(self, *args, **kwargs):
+    if self.SlideID is None:
+      raise TypeError("Have to give a non-None SlideID to SampleDef")
+    super().__post_init__(*args, **kwargs)
+
   @classmethod
-  def transforminitargs(cls, *args, root=None, samp=None, **kwargs):
+  def transforminitargs(cls, *args, root=None, samp=None, apidfile=None, **kwargs):
     if samp is not None:
       if isinstance(samp, str):
         if "SlideID" in kwargs:
@@ -37,9 +42,13 @@ class SampleDef(MyDataClass):
         else:
           kwargs["SlideID"] = samp
       else:
-        if args or kwargs:
-          raise TypeError("Have to give either a sample or other arguments, not both.")
-        return super().transforminitargs(*args, **kwargs, **{field: getattr(samp, field) for field in dataclassy.fields(SampleDef)})
+        newkwargs = {field: getattr(samp, field) for field in set(dataclassy.fields(type(samp))) & set(dataclassy.fields(cls))}
+        duplicates = set(newkwargs.keys()) & set(kwargs.keys())
+        if duplicates:
+          raise TypeError(f"Provided {', '.join(duplicates)} multiple times, explicitly and within samp")
+        kwargs.update(newkwargs)
+        if isinstance(samp, SampleDef):
+          return super().transforminitargs(*args, **kwargs)
 
     if "SlideID" in kwargs and root is not None:
       root = pathlib.Path(root)
@@ -52,6 +61,18 @@ class SampleDef(MyDataClass):
           if row.SlideID == kwargs["SlideID"]:
             return cls.transforminitargs(root=root, samp=row)
 
+    if "SlideID" in kwargs and apidfile is not None:
+      apidtable = readtable(apidfile, APIDDef)
+      for row in apidtable:
+        if row.SlideID == kwargs["SlideID"]:
+          if "Cohort" not in kwargs:
+            kwargs["Cohort"] = row.Cohort
+          if "Project" not in kwargs:
+            kwargs["Project"] = row.Project
+          if "BatchID" not in kwargs:
+            kwargs["BatchID"] = row.BatchID
+
+    if "SlideID" in kwargs and root is not None:
       if "Scan" not in kwargs:
         try:
           kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/"im3").glob("Scan*/"))
@@ -64,12 +85,17 @@ class SampleDef(MyDataClass):
         except FileNotFoundError:
           pass
 
-    if "SampleID" not in kwargs: kwargs["SampleID"] = 0
-
     return super().transforminitargs(*args, **kwargs)
 
   def __bool__(self):
     return bool(self.isGood)
+
+class APIDDef(MyDataClassFrozen):
+  SlideID: str
+  SampleName: str
+  Project: int
+  Cohort: int
+  BatchID: int
 
 class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentParser):
   """
@@ -113,6 +139,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   def informdataroot(self): return self.__informdataroot
   @property
   def logger(self): return self.__logger
+  @classmethod
+  def usegloballogger(cls): return False
 
   @property
   def rootnames(self):
@@ -560,7 +588,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
   def run(self, **kwargs):
     "actually run whatever is supposed to be run on the sample"
 
-class WorkflowSample(SampleBase, WorkflowDependency):
+class WorkflowSample(SampleBase, WorkflowDependencySlideID):
   """
   Base class for a sample that will be used in a workflow,
   i.e. it takes in input files and creates output files.
@@ -576,15 +604,18 @@ class WorkflowSample(SampleBase, WorkflowDependency):
 
   @classmethod
   @abc.abstractmethod
-  def workflowdependencies(cls):
+  def workflowdependencyclasses(cls):
     """
     Previous steps that this step depends on
     """
     return []
 
-  def joblock(self, **kwargs):
+  def workflowdependencies(self):
+    return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses()]
+
+  def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     self.samplelog.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), **kwargs)
+    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, **kwargs)
 
 class DbloadSampleBase(SampleBase, DbloadArgumentParser):
   """
@@ -846,7 +877,7 @@ class CellPhenotypeSampleBase(SampleBase):
   def phenotypeQAQCtablesfolder(self):
     return self.phenotypefolder/"Results"/"QA_QC"/"Tables_QA_QC"
 
-class SelectLayersSample(SampleBase, SelectLayersArgumentParser):
+class SelectLayersSample(SampleBase):
   """
   Base class for any sample that needs a layer selection.
   """
@@ -1402,3 +1433,20 @@ class TempDirSample(SampleBase, TempDirArgumentParser):
 
   def tempfile(self, *args, **kwargs):
     return self.enter_context(tempfile.NamedTemporaryFile(*args, dir=self.tempfolder, **kwargs))
+
+class ParallelSample(SampleBase, ParallelArgumentParser):
+  """
+  Base class for any sample that runs jobs in parallel
+  njobs: maximum number of jobs to use (default is no maximum)
+  """
+  def __init__(self, *args, njobs=None, **kwargs):
+    self.__njobs = njobs
+    super().__init__(*args, **kwargs)
+
+  @property
+  def njobs(self):
+    return self.__njobs
+  def pool(self):
+    nworkers = mp.cpu_count()
+    if self.njobs is not None: nworkers = min(nworkers, self.njobs)
+    return mp.get_context().Pool(nworkers)

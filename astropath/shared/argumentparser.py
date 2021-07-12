@@ -1,4 +1,5 @@
 import abc, argparse, pathlib, re
+from ..utilities.tableio import TableReader
 from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .workflowdependency import ThingWithRoots
 
@@ -26,7 +27,7 @@ class MRODebuggingMetaClass(abc.ABCMeta):
         print("========================")
       raise
 
-class RunFromArgumentParserBase(metaclass=MRODebuggingMetaClass):
+class RunFromArgumentParserBase(ThingWithRoots, TableReader, metaclass=MRODebuggingMetaClass):
   @classmethod
   def argumentparserhelpmessage(cls):
     return cls.__doc__
@@ -312,4 +313,18 @@ class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "annotationsynonyms": parsed_args_dict.pop("annotationsynonyms"),
       "reorderannotations": parsed_args_dict.pop("reorderannotations"),
+    }
+
+class ParallelArgumentParser(RunFromArgumentParser):
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--njobs", type=int, help="maximum number of parallel jobs to run")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "njobs": parsed_args_dict.pop("njobs"),
     }

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typin
 
 from ...shared.overlap import Overlap
 from ...utilities import units
-from ...utilities.dataclasses import MetaDataAnnotation
+from ...utilities.dataclasses import MetaDataAnnotation, MyDataClassUnsafeHash
 from ...utilities.misc import covariance_matrix, floattoint
 from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .computeshift import computeshift, mse, shiftimg
@@ -91,7 +91,7 @@ class AlignmentComparison(abc.ABC):
       plt.savefig(saveas, **savekwargs)
       plt.close()
 
-class AlignmentOverlap(AlignmentComparison, Overlap):
+class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
   """
   Overlap to be used for align.
 

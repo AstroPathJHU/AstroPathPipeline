@@ -20,16 +20,16 @@ from ...utilities.tableio import TableReader
 class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
   pass
 
-class CsvScanBase(RunFromArgumentParser, TableReader):
+class CsvScanBase(TableReader):
   @property
   @abc.abstractmethod
-  def logger(self): pass
+  def logger(self): return super().logger
 
   def processcsv(self, csv, csvclass, tablename, extrakwargs={}, *, SlideID, checkcsv=True, fieldsizelimit=None):
     self.logger.debug(f"Processing {csv}")
     #read the csv, to check that it's valid
     if checkcsv:
-      rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs, fieldsizelimit=fieldsizelimit)
+      rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs, fieldsizelimit=fieldsizelimit, checknewlines=True, checkorder=True)
       nrows = len(rows)
     else:
       with open(csv) as f:
@@ -45,6 +45,10 @@ class CsvScanBase(RunFromArgumentParser, TableReader):
     )
 
   @classmethod
+  def logmodule(cls): return "csvscan"
+
+class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
+  @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
@@ -58,8 +62,11 @@ class CsvScanBase(RunFromArgumentParser, TableReader):
     }
     return kwargs
 
-class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase, CsvScanBase):
+class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
   rectangletype = CsvScanRectangle
+  @property
+  def logger(self): return super().logger
+
   @property
   def rectangleextrakwargs(self):
     return {
@@ -117,6 +124,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
       self.im3folder/"meanimage"/"fields_used_meanimage.csv",
       self.im3folder/"meanimage"/"metadata_summary_stacked_images_meanimage.csv",
       self.im3folder/"meanimage"/"thresholding_info"/f"{self.SlideID}_thresholding_plots"/f"metadata_summary_tissue_edges_{self.SlideID}.csv",
+      self.im3folder/"meanimage"/"image_masking"/"labelled_mask_regions.csv",
     }
     optionalcsvs = {
       self.csv(_) for _ in (
@@ -169,13 +177,14 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         }[match.group(1)]
         allrectangles = self.readcsv("rect", Rectangle)
         extrakwargs = {
-          "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0, "imscale": 1},
+          "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0},
           "fieldoverlaps": {"nclip": 8, "rectangles": allrectangles},
           "overlap": {"nclip": 8, "rectangles": allrectangles},
           "vertices": {"bigtilesize": 0, "bigtileoffset": 0}
         }.get(match.group(1), {})
         fieldsizelimit = {
           "regions": 500000,
+          "tumorGeometry": 500000,
         }.get(match.group(1), None)
       elif csv.parent == self.geomfolder:
         csvclass = CellGeomLoad
@@ -219,11 +228,8 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     return super().inputfiles(**kwargs)
 
   @classmethod
-  def logmodule(cls): return "csvscan"
-
-  @classmethod
-  def workflowdependencies(cls):
-    return [AnnoWarpSampleInformTissueMask, GeomCellSample, GeomSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls):
+    return [AnnoWarpSampleInformTissueMask, GeomCellSample, GeomSample] + super().workflowdependencyclasses()
 
   run = runcsvscan
 

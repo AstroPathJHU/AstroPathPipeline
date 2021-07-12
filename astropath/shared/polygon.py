@@ -5,6 +5,36 @@ from ..utilities.misc import floattoint
 from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale
 
+class InvalidPolygonError(Exception):
+  def __init__(self, polygon, reason=None):
+    self.polygon = polygon
+    self.reason = reason
+    message = "Polygon is not valid"
+    if reason is not None: message += " ("+reason+")"
+    message += ": "+str(polygon)
+    try:
+      self.madevalid = polygon.MakeValid()
+    except RuntimeError as e:
+      self.madevalid = None
+      message += f"\n\nMakeValid failed: {e}"
+    else:
+      message += "\n\nMakeValid result:"
+      for _ in self.madevalid:
+        message += "\n"+str(_)
+    super().__init__(message)
+
+  @property
+  def validcomponents(self):
+    if self.madevalid is None: return []
+    result = []
+    for component in self.madevalid:
+      if "MULTI" in str(component):
+        for subcomponent in component:
+          result.append(subcomponent)
+      else:
+        result.append(component)
+    return result
+
 class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   """
   This class represents a polygon with holes in it.
@@ -40,6 +70,43 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   @property
   def apscale(self):
     return self.__apscale
+
+  def checkvalidity(self):
+    poly = self.gdalpolygon()
+    try:
+      bad = not poly.IsValid()
+    except Exception as e:
+      raise InvalidPolygonError(poly, reason=str(e))
+    if bad:
+      raise InvalidPolygonError(poly)
+
+  def makevalid(self, *, round=False, imagescale=None):
+    try:
+      self.checkvalidity()
+    except InvalidPolygonError as e:
+      if e.madevalid is None:
+        raise
+      polygons = []
+      for component in e.validcomponents:
+        if "MULTI" in str(component):
+          assert False
+        if "LINESTRING" in str(component):
+          continue
+        elif "POLYGON" in str(component):
+          polygons.append(component)
+        elif "LINEARRING" in str(component):
+          poly = ogr.Geometry(ogr.wkbPolygon)
+          poly.AddGeometry(component)
+          polygons.append(poly)
+        else:
+          raise ValueError(f"Unknown component from MakeValid: {component}")
+      polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, apscale=self.apscale, regionid=self.regionid) for p in polygons]
+      if round: polygons = [p.round(imagescale=imagescale) for p in polygons]
+      polygons = sum((p.makevalid(round=round, imagescale=imagescale) for p in polygons), [])
+      polygons.sort(key=lambda x: x.area, reverse=True)
+      return polygons
+    else:
+      return [self]
 
   @property
   def outerpolygon(self): return self.__outerpolygon
@@ -142,7 +209,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
     imagescale: the scale to use for converting to pixels
                 (default: pscale)
-    shiftby: a 2D vector (distance in imscale) to shift all the vertices by
+    shiftby: a 2D vector (distance in imagescale) to shift all the vertices by
              (default: 0)
     """
     if imagescale is None: imagescale = self.pscale
@@ -155,22 +222,42 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       **kwargs,
     )
 
-  def numpyarray(self, *, shape, dtype, imagescale=None, shiftby=0):
+  def numpyarray(self, *, shape=None, dtype=bool, imagescale=None, shiftby=None, showvertices=False):
     """
     A numpy array corresponding to the polygon, with 1 inside the
     polygon and 0 outside.
 
-    shape: shape of the numpy array
-    dtype: dtype of the numpy array
+    shape: shape of the numpy array (default: automatically determined to include the whole polygon plus a little buffer)
+    dtype: dtype of the numpy array (default: bool)
     imagescale: the scale to use for converting to pixels (default: pscale)
-    shiftby: vector to shift all the vertices by (default: [0, 0])
+    shiftby: vector to shift all the vertices by (default: [0, 0], unless shape is None in which case it is determined automatically)
+    showvertices: also show the vertices in the output array
     """
     if imagescale is None: imagescale = self.pscale
-    array = np.zeros(shape, dtype)
+
     vv = self.outerpolygon.vertexarray
+
+    if shape is None:
+      if shiftby is not None:
+        raise TypeError("If you provide shiftby, you also have to provide the array shape")
+      shiftby = units.convertpscale(-np.min(vv, axis=0), self.apscale, imagescale) + units.onepixel(imagescale)
+    if shiftby is None:
+      shiftby = 0
+
     vv = (units.convertpscale(vv, self.apscale, imagescale) + shiftby) // units.onepixel(imagescale)
+    if shape is None:
+      shape = floattoint(np.max(vv, axis=0).astype(float)[::-1]+2)
+
     coordinates = skimage.draw.polygon(r=vv[:, 1], c=vv[:, 0], shape=shape)
+
+    array = np.zeros(shape, dtype)
     array[coordinates] = 1
+    if showvertices:
+      if self.subtractpolygons:
+        raise ValueError("Can't do showvertices when a polygon has holes")
+      for vertex in floattoint(vv.astype(float)):
+        array[vertex[1], vertex[0]] += 2
+
     for p in self.subtractpolygons:
       array = array & ~p.numpyarray(
         shape=shape,
@@ -185,17 +272,19 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
     assert self.pscale == other.pscale and self.apscale == other.apscale
     return self.outerpolygon == other.outerpolygon and self.subtractpolygons == other.subtractpolygons
 
-  def __str__(self, *, round=True):
+  def __str__(self, *, round=True, _rounded=False):
     if any(p.subtractpolygons for p in self.subtractpolygons):
       return self.__repr__(round=round)
     else:
+      if round: return self.round().__str__(round=False, _rounded=True)
       onepixel = self.onepixel
       result = "POLYGON ("
       for i, p in enumerate([self.outerpolygon] + self.subtractpolygons):
         if i != 0: result += ","
         result += "("
-        vertices = units.convertpscale(p.vertexarray, self.apscale, self.pscale)
-        if round: vertices = floattoint(((vertices+1e-10*onepixel)//onepixel).astype(float))
+        vertices = units.convertpscale(p.vertexarray, self.apscale, self.pscale) / onepixel
+        if _rounded:
+          vertices = floattoint(vertices.astype(float))
         vertices = itertools.chain(vertices, [vertices[0]])
         result += ",".join("{} {}".format(*v) for v in vertices)
         result += ")"
@@ -204,6 +293,23 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
 
   def __repr__(self, *, round=True):
     return f"{type(self).__name__}({self.outerpolygon!r}, [{', '.join(_.__repr__(round=round) for _ in self.subtractpolygons)}])"
+
+  @property
+  def regionid(self):
+    regionids = {self.outerpolygon.regionid, *(_.regionid for _ in self.subtractpolygons)}
+    try:
+      result, = regionids
+    except ValueError:
+      raise ValueError(f"Inconsistent regionids {regionids}")
+    return result
+  @regionid.setter
+  def regionid(self, regionid):
+    self.outerpolygon.regionid = regionid
+    for _ in self.subtractpolygons:
+      _.regionid = regionid
+
+  def round(self, **kwargs):
+    return Polygon(outerpolygon=self.outerpolygon.round(**kwargs), subtractpolygons=[p.round(**kwargs) for p in self.subtractpolygons])
 
 class SimplePolygon(Polygon):
   """
@@ -217,12 +323,13 @@ class SimplePolygon(Polygon):
   apscale: apscale of the polygon
   """
 
-  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1):
+  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, apscale=None, power=1, regionid=None, requirevalidity=False):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
 
     apscale = {apscale}
     pscale = {pscale}
+    regionid = {regionid}
 
     if vertexarray is not None is vertices:
       vertexarray = np.array(vertexarray)
@@ -231,6 +338,7 @@ class SimplePolygon(Polygon):
       vertexarray = np.array([v.xvec for v in vertices])
       apscale |= {v.apscale for v in vertices}
       pscale |= {v.pscale for v in vertices}
+      regionid |= {v.regionid for v in vertices}
     else:
       raise TypeError("Have to provide exactly one of vertices or vertexarray")
 
@@ -244,8 +352,13 @@ class SimplePolygon(Polygon):
     elif not pscale: raise ValueError("No pscale provided")
     self.__pscale, = pscale
 
+    regionid.discard(None)
+    if len(regionid) > 1: raise ValueError(f"Inconsistent regionids {regionid}")
+    elif not regionid: regionid = {None}
+    self.__regionid, = regionid
+
     self.__vertices = vertices
-    self.__vertexarray = vertexarray
+    self.__vertexarray = np.array(vertexarray)
 
     super().__init__(self, [])
 
@@ -258,12 +371,29 @@ class SimplePolygon(Polygon):
       if self.__vertices is not None:
         self.__vertices = [self.__vertices[0]] + self.__vertices[:0:-1]
 
+    lexsorted = np.lexsort(self.__vertexarray.T)
+    self.__vertexarray = np.roll(self.__vertexarray, -lexsorted[0], axis=0)
+    if self.__vertices is not None:
+      self.__vertices = np.roll(self.__vertices, -lexsorted[0], axis=0)
+
+    if requirevalidity:
+      self.checkvalidity()
+
   @property
   def pscale(self):
     return self.__pscale
   @property
   def apscale(self):
     return self.__apscale
+  @property
+  def regionid(self):
+    return self.__regionid
+  @regionid.setter
+  def regionid(self, regionid):
+    self.__regionid = regionid
+    if self.__vertices is not None:
+      for v in self.__vertices:
+        v.regionid = regionid
 
   @property
   def vertexarray(self): return self.__vertexarray
@@ -272,31 +402,37 @@ class SimplePolygon(Polygon):
     if self.__vertices is None:
       from .csvclasses import Vertex
       self.__vertices = [
-        Vertex(x=x, y=y, vid=i, regionid=None, apscale=self.apscale, pscale=self.pscale)
-        for i, (x, y) in enumerate(self.vertexarray)
+        Vertex(x=x, y=y, vid=i, regionid=self.regionid, apscale=self.apscale, pscale=self.pscale)
+        for i, (x, y) in enumerate(self.vertexarray, start=1)
       ]
     return self.__vertices
+
+  def __len__(self): return len(self.__vertexarray)+1 #include the first and last points separately
 
   def __eq__(self, other):
     if other is None: return False
     return np.all(self.vertexarray == other.vertexarray)
 
-  def gdallinearring(self, *, imagescale=None, round=False):
+  def round(self, *, imagescale=None):
+    if imagescale is None: imagescale = self.pscale
+    onepixel = units.convertpscale(units.onepixel(imagescale), imagescale, self.apscale)
+    vertexarray = (self.vertexarray+1e-10*onepixel) // onepixel * onepixel
+    return SimplePolygon(vertexarray=vertexarray, pscale=self.pscale, apscale=self.apscale, regionid=self.regionid)
+
+  def gdallinearring(self, *, imagescale=None, round=False, _rounded=False):
     """
     Convert to a gdal linear ring.
 
     imagescale: the scale to use for converting to pixels (default: pscale)
     round: round to the nearest pixel (default: False)
     """
+    if round: return self.round(imagescale=imagescale).gdallinearring(imagescale=imagescale, _rounded=True)
     if imagescale is None: imagescale = self.pscale
     ring = ogr.Geometry(ogr.wkbLinearRing)
-    for v in itertools.chain(self.vertexarray, [self.vertexarray[0]]):
-      point = units.convertpscale(v, self.apscale, imagescale)
-      onepixel = units.onepixel(imagescale)
-      if round:
-        point = (point+1e-10*onepixel) // onepixel
-      else:
-        point = point / onepixel
+    onepixel = units.onepixel(imagescale)
+    vertexarray = units.convertpscale(self.vertexarray, self.apscale, imagescale) / onepixel
+    if _rounded: vertexarray = floattoint(vertexarray.astype(float))
+    for point in itertools.chain(vertexarray, [vertexarray[0]]):
       ring.AddPoint_2D(*point.astype(float))
     return ring
 
@@ -333,7 +469,7 @@ class SimplePolygon(Polygon):
   def __repr__(self, *, round=True):
     return f"PolygonFromGdal(pixels={str(self.gdalpolygon(round=round))!r}, pscale={self.pscale}, apscale={self.apscale})"
 
-def PolygonFromGdal(*, pixels, pscale, apscale):
+def PolygonFromGdal(*, pixels, pscale, apscale, **kwargs):
   """
   Create a polygon from a GDAL format string or an
   ogr.Geometry object
@@ -357,8 +493,8 @@ def PolygonFromGdal(*, pixels, pscale, apscale):
     polyvertices = units.convertpscale(polyvertices, pscale, apscale)
     vertices.append(polyvertices)
 
-  outerpolygon = SimplePolygon(vertexarray=vertices[0], pscale=pscale, apscale=apscale)
-  subtractpolygons = [SimplePolygon(vertexarray=vertices[1], pscale=pscale, apscale=apscale) for v in vertices[1:]]
+  outerpolygon = SimplePolygon(vertexarray=vertices[0], pscale=pscale, apscale=apscale, **kwargs)
+  subtractpolygons = [SimplePolygon(vertexarray=v, pscale=pscale, apscale=apscale, **kwargs) for v in vertices[1:]]
 
   return Polygon(outerpolygon, subtractpolygons)
 
@@ -390,6 +526,7 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithApscale):
           pixels=poly,
           pscale=self.pscale,
           apscale=self.apscale,
+          requirevalidity=True,
         ))
       else:
         raise TypeError(f"Unknown type {type(poly).__name__} for {field}")
