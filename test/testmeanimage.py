@@ -102,4 +102,5 @@ class TestMeanImage(TestBaseSaveOutput) :
             self.removeoutput()
             shutil.rmtree(self.meanimage_dir/(CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')))
             shutil.rmtree(self.meanimage_dir/(CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')))
+            shutil.rmtree(self.masking_dir)
 
