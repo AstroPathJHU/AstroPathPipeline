@@ -83,7 +83,11 @@ class Rectangle(DataClassWithPscale):
   def xmlfile(self):
     if self.__xmlfolder is None:
       raise ValueError("Can't get xml info if you don't provide the rectangle with an xml folder")
-    return self.__xmlfolder/self.file.replace(".im3", ".SpectralBasisInfo.Exposure.xml")
+    for xml_file_ext in UNIV_CONST.EXPOSURE_XML_EXTS :
+      xml_filepath = self.__xmlfolder/self.file.replace(".im3",xml_file_ext)
+      if xml_filepath.is_file() :
+        return xml_filepath
+    raise FileNotFoundError(f'ERROR: Could not find an xml file with any of the expected file extensions in {self.__xmlfolder}')
 
   @methodtools.lru_cache()
   @property
