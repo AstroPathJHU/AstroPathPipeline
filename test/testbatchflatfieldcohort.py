@@ -98,6 +98,7 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
             raise
         else :
             self.removeoutput()
+            shutil.rmtree(self.batchflatfield_dir)
 
     def tearDown(self) :
         for fp_to_remove in self.__files_to_remove :

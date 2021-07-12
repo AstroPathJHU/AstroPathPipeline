@@ -9,7 +9,7 @@ from astropath.utilities.misc import ThresholdTableEntry, MetadataSummary
 from astropath.utilities.config import CONST as UNIV_CONST
 from .testbase import compare_two_csv_files, TestBaseSaveOutput
 import numpy as np
-import os, pathlib
+import os, pathlib, shutil
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
@@ -100,4 +100,6 @@ class TestMeanImage(TestBaseSaveOutput) :
             raise
         else :
             self.removeoutput()
+            shutil.rmtree(self.meanimage_dir/(CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')))
+            shutil.rmtree(self.meanimage_dir/(CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')))
 
