@@ -33,88 +33,50 @@ class RegisterWSIs(contextlib.ExitStack):
       yield masks
 
   @methodtools.lru_cache()
-  def scaledwsis(self, zoomfactor, smoothsigma):
+  def scaledwsis(self, zoomfactor, smoothsigma, equalize=False):
     with self.using_wsis() as wsis:
-      wsis = [np.asarray(wsi.resize(np.array(wsi.size)//zoomfactor)) for wsi in wsis]
-      wsis = [skimage.filters.gaussian(wsi, smoothsigma, mode="nearest") for wsi in wsis]
+      if zoomfactor > 1:
+        wsis = [wsi.resize(np.array(wsi.size)//zoomfactor) for wsi in wsis]
+      wsis = [np.asarray(wsi) for wsi in wsis]
+      if smoothsigma is not None:
+        wsis = [skimage.filters.gaussian(wsi, smoothsigma, mode="nearest") for wsi in wsis]
+      if equalize:
+        wsis = [skimage.exposure.equalize_adapthist(wsi) for wsi in wsis]
       return wsis
 
   @methodtools.lru_cache()
-  def getmasks(self, zoomfactor, closesize, opensize, dilatesize):
-    with self.using_tissuemasks() as masks:
-      masks = [mask.astype(np.uint8) for mask in masks]
-      if zoomfactor > 1:
-        masks = [PIL.Image.fromarray(mask) for mask in masks]
-        masks = [np.asarray(mask.resize(np.array(mask.size)//zoomfactor)) for mask in masks]
-      smoothmasks = masks
-      if closesize > 1:
-        kernel = np.ones(dtype=np.uint8, shape=(closesize, closesize))
-        smoothmasks = [cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel) for mask in smoothmasks]
-      if opensize > 1:
-        kernel = np.ones(dtype=np.uint8, shape=(opensize, opensize))
-        smoothmasks = [cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel) for mask in smoothmasks]
-      if dilatesize > 1:
-        kernel = np.ones(dtype=np.uint8, shape=(dilatesize, dilatesize))
-        smoothmasks = [cv2.dilate(mask, kernel) for mask in smoothmasks]
-      return masks, smoothmasks
-
-  def alignwithmoments(self):
-    #find the islands
-    masks, smoothmasks = (mask1, mask2), (smoothmask1, smoothmask2) = self.getmasks(16, 20, 20, 50)
-    labeled1, nlabels1 = scipy.ndimage.label(smoothmask1)
-    labeled2, nlabels2 = scipy.ndimage.label(smoothmask2)
-    moments1 = {i: cv2.moments((labeled1 == i) & mask1) for i in range(1, nlabels1+1)}
-    moments2 = {i: cv2.moments((labeled2 == i) & mask2) for i in range(1, nlabels2+1)}
-    centroids1 = {i: np.array([m["m10"], m["m01"]]) / m["m00"] for i, m in moments1.items()}
-    centroids2 = {i: np.array([m["m10"], m["m01"]]) / m["m00"] for i, m in moments2.items()}
-    humoments1 = {i: cv2.HuMoments(m) for i, m in moments1.items()}
-    humoments2 = {i: cv2.HuMoments(m) for i, m in moments2.items()}
-    areas1 = {i: m["m00"] for i, m in moments1.items()}
-    areas2 = {i: m["m00"] for i, m in moments2.items()}
-    intertiatensors1 = {i: 2*np.array([[m["mu20"], m["mu11"]], [m["mu11"], m["mu02"]]])/m["m00"] for i, m in moments1.items()}
-    intertiatensors2 = {i: 2*np.array([[m["mu20"], m["mu11"]], [m["mu11"], m["mu02"]]])/m["m00"] for i, m in moments2.items()}
-    eig1 = {i: sorted_eig(I) for i, I in intertiatensors1.items()}
-    eig2 = {i: sorted_eig(I) for i, I in intertiatensors2.items()}
-    eigvals1 = {i: e[0] for i, e in eig1.items()}
-    eigvals2 = {i: e[0] for i, e in eig2.items()}
-    eigvecs1 = {i: e[1] for i, e in eig1.items()}
-    eigvecs2 = {i: e[1] for i, e in eig2.items()}
-    eccentricity1 = {i: (1-e[1]/e[0])**.5 for i, e in eigvals1.items()}
-    eccentricity2 = {i: (1-e[1]/e[0])**.5 for i, e in eigvals2.items()}
-    fixedpoints1 = {i: centroids1[i] + eigvecs1[i][:,0] * eigvals1[i]**.5 * eccentricity1[i] for i in moments1}
-    fixedpoints2 = {i: centroids2[i] + eigvecs2[i][:,0] * eigvals2[i]**.5 * eccentricity2[i] for i in moments2}
-
-    def correspondances(iterable1, iterable2):
-      iterable1 = list(iterable1)
-      iterable2 = list(iterable2)
-      if len(iterable2) > len(iterable1):
-        for correspondance in correspondances(iterable2, iterable1):
-          yield [(thing1, thing2) for thing2, thing1 in correspondance]
-      for permutation in itertools.permutations(iterable2):
-        yield [(thing1, thing2) for thing1, thing2 in more_itertools.zip_equal(iterable1, permutation)]
-
-    tominimize = collections.defaultdict(lambda: 0)
-    for correspondance in correspondances(moments1, moments2):
-      correspondance = tuple(correspondance)
-      for region1, region2 in correspondance:
-        ratios = areas1[region1] / areas2[region2], eccentricity1[region1] / eccentricity2[region2]
-        tominimize[correspondance] += sum(np.log(ratios))
-    correspondances, _ = zip(*sorted(tominimize.items(), key=lambda kv: kv[1]))
-    for correspondance in correspondances:
-      points1, points2 = [], []
-      for region1, region2 in correspondance:
-        points1.append(centroids1[region1])
-        points2.append(centroids2[region2])
-        points1.append(fixedpoints1[region1])
-        points2.append(fixedpoints2[region2])
-      result = skimage.transform.estimate_transform(points1, points2)
-      return result
-
-  def runalignment(self, _debugprint=False, rotationwindowsize=(50, 10), translationwindowsize=10, usemasks=False):
-    if usemasks:
-      wsis, _ = (wsi1, wsi2), _ = self.getmasks(256, 1, 1, 1)
+  def getmasks(self, zoomfactor, closesize=1, opensize=1, dilatesize=1, smoothsigma=None, usewsicut=False):
+    if usewsicut:
+      with self.using_wsis() as wsis:
+        masks = [np.asarray(wsi)>12 for wsi in wsis]
     else:
-      wsi1, wsi2 = wsis = self.scaledwsis(64, 10)
+      with self.using_tissuemasks() as masks:
+        masks = [mask.astype(np.uint8) for mask in masks]
+
+    if zoomfactor > 1:
+      masks = [PIL.Image.fromarray(mask) for mask in masks]
+      masks = [np.asarray(mask.resize(np.array(mask.size)//zoomfactor)) for mask in masks]
+    smoothmasks = masks
+    if closesize > 1:
+      kernel = np.ones(dtype=np.uint8, shape=(closesize, closesize))
+      smoothmasks = [cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel) for mask in smoothmasks]
+    if opensize > 1:
+      kernel = np.ones(dtype=np.uint8, shape=(opensize, opensize))
+      smoothmasks = [cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel) for mask in smoothmasks]
+    if dilatesize > 1:
+      kernel = np.ones(dtype=np.uint8, shape=(dilatesize, dilatesize))
+      smoothmasks = [cv2.dilate(mask, kernel) for mask in smoothmasks]
+    if smoothsigma is not None:
+      smoothmasks = [skimage.filters.gaussian(mask, smoothsigma, mode="nearest") for mask in smoothmasks]
+    return masks, smoothmasks
+
+  def runalignment(self, _debugprint=False, rotationwindowsize=(50, 10), translationwindowsize=10, usemasks=False, usewsicut=False, equalize=False):
+    if usemasks:
+      assert not equalize
+      wsis, _ = (wsi1, wsi2), _ = self.getmasks(16, smoothsigma=3, usewsicut=usewsicut)
+    else:
+      assert not usewsicut
+      wsi1, wsi2 = wsis = self.scaledwsis(64, 10, equalize=equalize)
     if _debugprint > .5:
       for _ in wsis:
         plt.imshow(_)
@@ -202,14 +164,16 @@ class RegisterWSIs(contextlib.ExitStack):
     rotationresult = OptimizeResult(dy=999)
     wsisrotated = wsis
 
-    while abs(rotationresult.dy) > 5 and cumulativerotationresult.exit == 0:
+    niterations = 0
+    while abs(rotationresult.dy) > 5 and cumulativerotationresult.exit == 0 and niterations < 10:
+      niterations += 1
       wsispolar = [skimage.transform.warp_polar(wsi) for wsi in wsisrotated]
       if _debugprint > .5:
         for _ in wsispolar:
           plt.imshow(_)
           plt.show()
   
-      rotationresult = computeshift(wsispolar, usemaxmovementcut=False, windowsize=rotationwindowsize, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
+      rotationresult = computeshift(wsispolar, usemaxmovementcut=False, windowsize=rotationwindowsize, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5, checkpositivedefinite=False, mindistancetootherpeak=10000)
       cumulativerotationresult = OptimizeResult(
         dx=cumulativerotationresult.dx+rotationresult.dx,
         dy=cumulativerotationresult.dy+rotationresult.dy,
@@ -223,5 +187,5 @@ class RegisterWSIs(contextlib.ExitStack):
           plt.imshow(_)
           plt.show()
 
-    translationresult = computeshift(wsisrotated, usemaxmovementcut=False, windowsize=translationwindowsize, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5, mindistancetootherpeak=100)
+    translationresult = computeshift(wsisrotated, usemaxmovementcut=False, windowsize=translationwindowsize, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5, mindistancetootherpeak=10000)
     return cumulativerotationresult, translationresult

@@ -1,6 +1,6 @@
 import cv2, matplotlib.pyplot as plt, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc
 
-def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None, usemaxmovementcut=True, mindistancetootherpeak=None):
+def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None, usemaxmovementcut=True, mindistancetootherpeak=None, checkpositivedefinite=True):
   """
   Compute the relative shift between two images by maximizing the cross correlation.
   The cross correlation is computed using the FFT.
@@ -17,6 +17,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   staterrorimages: precomputed statistical error on the images (default: None; the statistical error is computed as difference between the two images after alignment)
   usemaxmovementcut: report the alignment as failed if the shift is more than 10% of the image size
   mindistancetootherpeak: report the alignment as failed if there's another peak in the cross correlation within this distance of the main peak (default: np.max(windowsize))
+  checkpositivedefinite: report the alignment as failed if the Hessian matrix of the 2nd degree polynomial fitted to the peak is not positive definite
 
   #the remaining arguments are for debugging
   showsmallimage: show the zoomed cross correlation image
@@ -153,7 +154,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     break
 
   #  if the covariance matrix is not positive definite
-  if not np.all(np.linalg.eig(covariance)[0] > 0):
+  if checkpositivedefinite and not np.all(np.linalg.eig(covariance)[0] > 0):
     dx = unc.ufloat(0, 9999.)
     dy = unc.ufloat(0, 9999.)
     exit = 2
