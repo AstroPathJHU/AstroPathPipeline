@@ -45,7 +45,7 @@ class RegisterWSIs(contextlib.ExitStack):
       return wsis
 
   @methodtools.lru_cache()
-  def getmasks(self, zoomfactor, closesize=1, opensize=1, dilatesize=1, smoothsigma=None, usewsicut=False):
+  def getmasks(self, zoomfactor, closesize=1, opensize=1, dilatesize=1, smoothsigma=None, usewsicut=False, equalize=False):
     if usewsicut:
       with self.using_wsis() as wsis:
         masks = [np.asarray(wsi)>12 for wsi in wsis]
@@ -68,12 +68,13 @@ class RegisterWSIs(contextlib.ExitStack):
       smoothmasks = [cv2.dilate(mask, kernel) for mask in smoothmasks]
     if smoothsigma is not None:
       smoothmasks = [skimage.filters.gaussian(mask, smoothsigma, mode="nearest") for mask in smoothmasks]
+    if equalize:
+      smoothmasks = [skimage.exposure.equalize_adapthist(mask) for mask in masks]
     return masks, smoothmasks
 
   def runalignment(self, _debugprint=False, rotationwindowsize=(50, 10), translationwindowsize=10, usemasks=False, usewsicut=False, equalize=False):
     if usemasks:
-      assert not equalize
-      wsis, _ = (wsi1, wsi2), _ = self.getmasks(16, smoothsigma=3, usewsicut=usewsicut)
+      wsis, _ = (wsi1, wsi2), _ = self.getmasks(16, smoothsigma=3, usewsicut=usewsicut, equalize=equalize)
     else:
       assert not usewsicut
       wsi1, wsi2 = wsis = self.scaledwsis(64, 10, equalize=equalize)
@@ -83,7 +84,7 @@ class RegisterWSIs(contextlib.ExitStack):
         plt.show()
 
     ysize1, xsize1 = shape1 = wsi1.shape
-    ygrid1, xgrid1 = np.mgrid[0:ysize1,0:xsize1]
+    ygrid1, xgrid1 = np.mgrid[0:ysize1,0:xsize1].astype(np.int64)
     sumwsi1 = np.sum(wsi1)
     centroid1 = floattoint(np.rint(np.array([np.sum(wsi1*ygrid1) / sumwsi1, np.sum(wsi1*xgrid1) / sumwsi1])))
     xcumsum1 = np.cumsum(np.sum(wsi1, axis=0))
