@@ -13,7 +13,7 @@ class TestGeomCell(TestBaseSaveOutput):
     return [
       thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/filename.name
       for SlideID in ("M206",)
-      for filename in (thisfolder/"reference"/"geomcell"/SlideID/"geom").iterdir()
+      for filename in (thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom").iterdir()
     ]
 
   def testGeomCell(self, SlideID="M206", units="safe"):
@@ -27,7 +27,7 @@ class TestGeomCell(TestBaseSaveOutput):
     try:
       for filename, reffilename in more_itertools.zip_equal(
         sorted(s.geomfolder.iterdir()),
-        sorted((thisfolder/"reference"/"geomcell"/SlideID/"geom").iterdir()),
+        sorted((thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom").iterdir()),
       ):
         self.assertEqual(filename.name, reffilename.name)
   

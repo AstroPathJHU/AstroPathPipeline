@@ -48,14 +48,14 @@ class TestPrepDb(unittest.TestCase):
         continue
       try:
         rows = sample.readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
-        targetrows = sample.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+        targetrows = sample.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
         for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:
         raise ValueError("Error in "+filename)
 
     with PIL.Image.open(thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
-         PIL.Image.open(thisfolder/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff.jpg") as targetimg:
+         PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff.jpg") as targetimg:
       np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
     for log in logs:
