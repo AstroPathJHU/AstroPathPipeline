@@ -43,6 +43,7 @@ class DataClassTransformArgs(metaclass=DataClassTransformArgsMeta):
     Vector(x=1, y=2)
     >>> Vector(xvec=[1, 2])
     Vector(x=1, y=2)
+
   """
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
@@ -109,6 +110,7 @@ class DataClassWithMetaData(metaclass=DataClassWithMetaDataMeta):
     Traceback (most recent call last):
       ...
     TypeError: __init__() missing 2 required positional arguments: 'field1' and 'field2'
+
   """
   @classmethod
   def metadata(cls, fieldname):

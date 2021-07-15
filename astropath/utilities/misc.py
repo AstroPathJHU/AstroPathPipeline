@@ -348,7 +348,7 @@ def dict_zip_equal(*dicts):
     >>> dict_zip_equal({1: 2}, {1: 2, 3: 4})
     Traceback (most recent call last):
       ...
-    UnequalDictsError: Dicts have different keys: index 0 has keys dict_keys([1]); index 1 has keys dict_keys([1, 3])
+    astropath.utilities.misc.UnequalDictsError: Dicts have different keys: index 0 has keys dict_keys([1]); index 1 has keys dict_keys([1, 3])
   """
   for i, d in enumerate(dicts):
     if i == 0:
@@ -362,7 +362,7 @@ def dict_product(dct):
   """
   like itertools.product, but the input and outputs are dicts.
 
-    >>> for _ in dct_product({1: (2, 3), 4: (5, 6)}): print(_)
+    >>> for _ in dict_product({1: (2, 3), 4: (5, 6)}): print(_)
     {1: 2, 4: 5}
     {1: 2, 4: 6}
     {1: 3, 4: 5}
@@ -388,7 +388,7 @@ def is_relative_to(path1, path2):
 def commonroot(*paths, __niter=0):
   """
   Give the common root of a number of paths
-    >>> paths = [pathlib.Path(_) for _ in "/a/b/c", "/a/b/d", "/a/c"]
+    >>> paths = [pathlib.Path(_) for _ in ("/a/b/c", "/a/b/d", "/a/c")]
     >>> commonroot(*paths) == pathlib.Path("/a")
     True
   """
