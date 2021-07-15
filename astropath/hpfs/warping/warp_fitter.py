@@ -5,11 +5,12 @@ from .utilities import warp_logger, WarpingError, WarpFitResult, FieldLog
 from .plotting import OctetComparisonVisualization
 from .config import CONST
 from ...shared.rectangle import rectangleoroverlapfilter
+from ...shared.sample import MetadataSummary
 from ...slides.align.alignsample import AlignSampleFromXML
 from ...utilities.img_file_io import get_image_hwl_from_xml_file, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
 from ...utilities.tableio import writetable
 from ...utilities import units
-from ...utilities.misc import cd, MetadataSummary, save_figure_in_dir
+from ...utilities.misc import cd, save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, scipy, matplotlib.pyplot as plt
 import pathlib, copy, math, shutil, platform, time, logging

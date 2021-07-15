@@ -2,8 +2,8 @@
 from astropath.hpfs.flatfield.batchflatfieldcohort import BatchFlatfieldCohort
 from astropath.hpfs.flatfield.utilities import FieldLog
 from astropath.hpfs.flatfield.config import CONST
+from astropath.shared.sample import MetadataSummary
 from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files, write_image_to_file
-from astropath.utilities.misc import MetadataSummary
 from .testbase import compare_two_csv_files, TestBaseSaveOutput
 import numpy as np
 import os, pathlib, shutil

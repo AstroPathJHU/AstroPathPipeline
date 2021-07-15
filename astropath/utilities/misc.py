@@ -180,27 +180,6 @@ def split_csv_to_dict_of_bounds(value) :
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
 
-from .dataclasses import MyDataClass
-
-class MetadataSummary(MyDataClass):
-  """
-  helper dataclass for some common metadata information
-  """
-  slideID         : str
-  project         : int
-  cohort          : int
-  microscope_name : str
-  mindate         : str
-  maxdate         : str
-
-class ThresholdTableEntry(MyDataClass) :
-  """
-  A small dataclass to hold entries in the background threshold datatable
-  """
-  layer_n                 : int
-  counts_threshold        : int
-  counts_per_ms_threshold : float
-
 def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,flatfielding=True,warping=True) :
   """
   helper function to mutate an argument parser for some very generic options

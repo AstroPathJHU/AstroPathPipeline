@@ -2,8 +2,9 @@
 from .overlap_with_exposure_times import OverlapWithExposureTimes
 from .utilities import et_fit_logger, FieldLog
 from .alignsample import AlignSampleForExposureTime
+from ...shared.sample import MetadataSummary
 from ...utilities.tableio import writetable
-from ...utilities.misc import cd, MetadataSummary, save_figure_in_dir
+from ...utilities.misc import cd, save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt
 from matplotlib import colors

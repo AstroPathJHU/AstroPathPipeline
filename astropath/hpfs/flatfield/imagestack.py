@@ -6,9 +6,10 @@ from .config import CONST
 from ..image_masking.image_mask import ImageMask
 from ..image_masking.utilities import LabelledMaskRegion
 from ...shared.logging import dummylogger
+from ...shared.sample import MetadataSummary
 from ...utilities.img_file_io import get_raw_as_hwl, smooth_image_worker, smooth_image_with_uncertainty_worker, write_image_to_file
 from ...utilities.tableio import readtable, writetable
-from ...utilities.misc import cd, MetadataSummary
+from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
 

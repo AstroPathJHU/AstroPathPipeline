@@ -1,11 +1,11 @@
 #imports
 #from astropath.hpfs.flatfield.meanimagesample import MeanImageSample
 from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
-from astropath.hpfs.flatfield.utilities import FieldLog, RectangleThresholdTableEntry
+from astropath.hpfs.flatfield.utilities import FieldLog, RectangleThresholdTableEntry, ThresholdTableEntry
 from astropath.hpfs.flatfield.config import CONST
 from astropath.hpfs.image_masking.utilities import LabelledMaskRegion
+from astropath.shared.sample import MetadataSummary
 from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
-from astropath.utilities.misc import ThresholdTableEntry, MetadataSummary
 from astropath.utilities.config import CONST as UNIV_CONST
 from .testbase import compare_two_csv_files, TestBaseSaveOutput
 import numpy as np

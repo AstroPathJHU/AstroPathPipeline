@@ -1519,3 +1519,14 @@ class ParallelSample(SampleBase, ParallelArgumentParser):
     nworkers = mp.cpu_count()
     if self.njobs is not None: nworkers = min(nworkers, self.njobs)
     return mp.get_context().Pool(nworkers)
+
+class MetadataSummary(MyDataClassFrozen):
+  """
+  helper dataclass for some common sample metadata information
+  """
+  slideID         : str
+  project         : int
+  cohort          : int
+  microscope_name : str
+  mindate         : str
+  maxdate         : str
