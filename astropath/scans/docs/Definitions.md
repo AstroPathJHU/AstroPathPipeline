@@ -56,10 +56,12 @@ The file pathes have been standarized and are described below. Additional exampl
   - E.g. *\\\\bki03\Compressed_Clinical_Specimens_2*
 - ```<FWpath>```: This is the full path for the single column flat field and warping image (.fw) as well as the exposure time data for each image (.SpectralBasisInfo.xml). 
    - This path should preferably located on a different drive from the main path to improve pipeline performance. 
-   - E.g. “bki03\flatw_7”
+   - E.g. "\\bki03\flatw_7"
    - Usually the specifier used on the ```<Dname>``` folder is also found as an extension on this folder
    - Additional details on these files can be found in the flatw workflow description [5.8.3.2.](../../hpfs/flatw/docs/ImportantDefinitions.md#5832-output-formatting)
-- ```<Rpath>```: This is the same as ```<FWpath>``` above, exception with the distinction that the image files in the directory are single column raw image files (.Data.dat) instead of flat field and warping images (.fw).
+- ```<Rpath>```: This is the same as ```<FWpath>``` above, except with the distinction that the image files in the directory are single column raw image files (.Data.dat) instead of flat field and warping images (.fw).
+- ```<Zpath>```: The path to the zoomed whole slide images
+- ```<DZpath>```: The path to the deepzoomed images
 - ```base[sting]```: This is sometimes used throughout the documentation to refer to the combination of ```<Dpath>\<Dname>``` (both defined above)
 - ```<im3_path>```: The path between the ```<SlideID>``` and where the original im3 are kept
   - E.g. *im3\\```<ScanN>```\\MSI* or *im3\\```<ScanNN>```\\MSI*
