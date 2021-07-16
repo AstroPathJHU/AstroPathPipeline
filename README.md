@@ -96,7 +96,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
    - [6.5 Deepzoom](astropath/slides/deepzoom/#65-deepzoom)
    - [6.6 Stitch mask](astropath/slides/stitchmask/#66-stitch-mask)
    - [6.7 Warp annotations](astropath/slides/annowarp/#67-warp-annotations)
-   - [6.8 Tumor and field geometry](astropath/slides/geom/#68-tumor-and-field-geometry)
+   - [6.8 Tumor and field geometries](astropath/slides/geom/#68-tumor-and-field-geometries)
    - [6.9 Cell Geometries](astropath/slides/geomcell/#69-cell-geometries)
    - [6.10 Csvscan](astropath/slides/csvscan/#610-csvscan)
  - [7. Sample Processing (samples)](astropath/samples/)
