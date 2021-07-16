@@ -42,10 +42,12 @@ class MyLogger:
   getlogger requires information about the project and cohort, because those
   go in the log.  You can provide that information in one of three ways:
     1) give a SampleDef or APIDDef object to getlogger using the samp argument
+    2) give a SlideID as the samp argument and give the Project and Cohort
+       as keyword arguments
     or, you can give a SlideID as the samp argument and it will determine
          the Project and Cohort automatically:
-    2) if sampledef.csv exists in root, the information will be read from there
-    3) if sampledef.csv does not exist yet, you can provide an apidfile argument
+    3) if sampledef.csv exists in root, the information will be read from there
+    4) if sampledef.csv does not exist yet, you can provide an apidfile argument
        to getlogger and it will read the information from there
   """
   def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
@@ -263,10 +265,10 @@ __notgiven = object()
 def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, reraiseexceptions):
   return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.CRITICAL+1, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None):
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.CRITICAL+1, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None, Project=None, Cohort=None):
   from .sample import SampleDef
   if samp is not None:
-    samp = SampleDef(root=root, samp=samp, apidfile=apidfile)
+    samp = SampleDef(root=root, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)
   return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
 
 dummylogger = logging.getLogger("dummy")
