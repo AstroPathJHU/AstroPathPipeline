@@ -1,3 +1,4 @@
+from ...misc import covariance_matrix as dimensionless_covariance_matrix
 from ..core import UnitsError
 
 import collections, itertools, numbers, numpy as np, uncertainties as unc
@@ -249,7 +250,7 @@ std_devs = np.vectorize(std_dev)
 
 def covariance_matrix(distances):
   pixels = __pixels(distances, power=None)
-  covpixels = unc.covariance_matrix(pixels)
+  covpixels = dimensionless_covariance_matrix(pixels)
 
   pscale = {_._pscale for _ in distances if _._pscale is not None}
   if not pscale: pscale = {None}

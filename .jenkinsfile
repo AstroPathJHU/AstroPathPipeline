@@ -44,6 +44,7 @@ pipeline {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmarkdownlinks'
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcaseinsensitivenames'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
           }
         }
 

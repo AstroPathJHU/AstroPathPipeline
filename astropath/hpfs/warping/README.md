@@ -36,7 +36,7 @@ More concretely, running the above command will produce a directory at `[working
     - **a subdirectory of plots** and text files called `batch_plots` containing several visualizations and details of the individual results in the group (plots of radial warping distortion parameters, fractional cost reductions, center principal point locations, etc.). These plots can all be remade if necessary using the `all_results_*.csv` file.
     - **subdirectories for each individual fit** in the group called `warping_batch_octets_[slide_ID]_[octet_center_rectangle_n]` which in turn contain:
         1. a field log file that is a portion of the consolidated `field_log_*.csv` file
-        1. a metadata summary file called `metadata_summary_[dirname].csv` listing information about the HPFs used as [`MetadataSummary` objects](../../utilities/misc.py#L145-L152).
+        1. a metadata summary file called `metadata_summary_[dirname].csv` listing information about the HPFs used as [`MetadataSummary` objects](../../shared/samplemetadata.py#L95-L104).
         1. several more visualizations of the individual fit result, the fit progression, and comparisons of the warped/unwarped raw/aligned octet overlays
     - For the "`initial_pattern`" and "`center_principal_point`" subdirectories, **weighted average fit result and warp field .bin** files like those detailed above, just at these intermediate steps.
 1. **a .txt file of the commands run** for each of the three sets of fits, called `fit_group_commands.txt` (helpful in restarting a stalled run)

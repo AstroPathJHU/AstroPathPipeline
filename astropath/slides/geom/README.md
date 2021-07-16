@@ -1,15 +1,15 @@
-# 6.7. Tumor and field geometry
+# 6.8. Tumor and field geometries
 
 The geom step of the pipeline writes out the boundaries of the HPF
 primary regions and the boundaries of the tumor region determined
 by inform to csv files.
 
-To run `geom` on single slide, run:
+To run `geom` on a single slide, run:
 ```
 geomsample \\<Dpath>\<Dname> <SlideID>
 ```
 
-To run alignment on a whole cohort of slides, run:
+To run `geom` on a whole cohort of slides, run:
 ```
 geomcohort \\<Dpath>\<Dname>
 ```

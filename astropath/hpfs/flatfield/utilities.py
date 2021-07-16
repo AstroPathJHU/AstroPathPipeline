@@ -13,6 +13,12 @@ class FlatfieldSlideInfo(MyDataClass) :
     root_dir : str
 
 #A small dataclass to hold entries in the background threshold datatable
+class ThresholdTableEntry(MyDataClass) :
+  layer_n                 : int
+  counts_threshold        : int
+  counts_per_ms_threshold : float
+
+#A small dataclass to hold entries in the background threshold datatable
 class RectangleThresholdTableEntry(MyDataClass) :
     rect_n                  : int
     layer_n                 : int

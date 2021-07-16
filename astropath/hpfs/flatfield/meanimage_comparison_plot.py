@@ -1,6 +1,6 @@
 #imports
 from .config import CONST
-from ...shared.sample import SampleDef
+from ...shared.samplemetadata import SampleDef
 from ...utilities.img_file_io import get_image_hwl_from_xml_file, get_raw_as_hwl
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import readtable,writetable

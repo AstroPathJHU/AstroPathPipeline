@@ -1,5 +1,5 @@
 import logging, more_itertools, numpy as np, os, pathlib, re, unittest
-from astropath.shared.sample import SampleDef
+from astropath.shared.samplemetadata import SampleDef
 from astropath.slides.align.aligncohort import AlignCohort
 from astropath.slides.align.alignsample import AlignSample, AlignSampleComponentTiff, AlignSampleFromXML, ImageStats
 from astropath.slides.align.overlap import AlignmentResult
