@@ -45,6 +45,12 @@ class SampleDef(MyDataClassFrozen):
       else:
         newkwargs = {field: getattr(samp, field) for field in set(dataclassy.fields(type(samp))) & set(dataclassy.fields(cls))}
         duplicates = set(newkwargs.keys()) & set(kwargs.keys())
+        for dup in duplicates:
+          if kwargs[dup] is None:
+            kwargs[dup] = newkwargs[dup]
+          if kwargs[dup] == newkwargs[dup]:
+            del newkwargs[dup]
+        duplicates = set(newkwargs.keys()) & set(kwargs.keys())
         if duplicates:
           raise TypeError(f"Provided {', '.join(duplicates)} multiple times, explicitly and within samp")
         kwargs.update(newkwargs)
