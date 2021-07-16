@@ -12,6 +12,6 @@ This section of the documentation and code continues after the HPFs have been fu
 - [6.5 Deepzoom](deepzoom/#65-deepzoom)
 - [6.6 Stitch mask](stitchmask/#66-stitch-mask)
 - [6.7 Warp annotations](annowarp/#67-warp-annotations)
-- [6.8 Tumor and field geometry](geom/#68-tumor-and-field-geometr>
+- [6.8 Tumor and field geometry](geom/#68-tumor-and-field-geometries)
 - [6.9 Cell Geometries](geomcell/#69-cell-geometries)
 - [6.10 Csvscan](csvscan/#610-csvscan)
