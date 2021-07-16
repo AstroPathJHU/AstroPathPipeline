@@ -9,7 +9,8 @@ from ..image_masking.image_mask import return_new_mask_labelled_regions, save_pl
 from ..image_masking.utilities import LabelledMaskRegion
 from ..image_masking.config import CONST as MASK_CONST
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
-from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase, MetadataSummary, WorkflowSample, ParallelSample
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase, WorkflowSample, ParallelSample
+from ...shared.samplemetadata import MetadataSummary
 from ...shared.overlap import Overlap
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd

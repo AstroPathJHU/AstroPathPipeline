@@ -1,7 +1,7 @@
 #imports
 from .corrector import RawfileCorrector
 from .utilities import getWarpFieldPathsFromWarpDef
-from ...shared.sample import SampleDef
+from ...shared.samplemetadata import SampleDef
 from ...shared.logging import getlogger
 from ...utilities.img_file_io import get_image_hwl_from_xml_file
 from ...utilities.misc import addCommonArgumentsToParser

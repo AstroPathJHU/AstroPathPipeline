@@ -5,7 +5,7 @@ from astropath.shared.csvclasses import Annotation, Region, Vertex
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
-from astropath.shared.sample import APIDDef, SampleDef
+from astropath.shared.samplemetadata import APIDDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput

@@ -5,7 +5,7 @@ from .utilities import warp_logger, WarpingError, WarpFitResult, FieldLog
 from .plotting import OctetComparisonVisualization
 from .config import CONST
 from ...shared.rectangle import rectangleoroverlapfilter
-from ...shared.sample import MetadataSummary
+from ...shared.samplemetadata import MetadataSummary
 from ...slides.align.alignsample import AlignSampleFromXML
 from ...utilities.img_file_io import get_image_hwl_from_xml_file, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
 from ...utilities.tableio import writetable

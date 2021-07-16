@@ -4,7 +4,8 @@ from .imagestack import CorrectedMeanImage, Flatfield
 from .config import CONST
 from ...shared.argumentparser import FileTypeArgumentParser, ImageCorrectionArgumentParser
 from ...shared.cohort import Im3Cohort, WorkflowCohort
-from ...shared.sample import MetadataSummary, WorkflowSample
+from ...shared.sample import WorkflowSample
+from ...shared.samplemetadata import MetadataSummary
 from ...shared.rectangle import RectangleCorrectedIm3MultiLayer
 from ...shared.overlap import Overlap
 from ...utilities.tableio import writetable

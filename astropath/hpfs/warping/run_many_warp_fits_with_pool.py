@@ -3,7 +3,7 @@ from .warp import CameraWarp
 from .plotting import principalPointPlot, radWarpAmtPlots, radWarpParPlots, radWarpPCAPlots, warpFieldVariationPlots
 from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments, WarpFitResult, FieldLog, WarpingSummary
 from .config import CONST
-from ...shared.sample import MetadataSummary
+from ...shared.samplemetadata import MetadataSummary
 from ...utilities.tableio import readtable, writetable
 from ...utilities.misc import cd, split_csv_to_list
 from argparse import ArgumentParser
