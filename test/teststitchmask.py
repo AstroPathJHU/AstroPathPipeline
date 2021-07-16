@@ -1,6 +1,6 @@
 import numpy as np, os, pathlib
-from astropath.slides.zoom.stitchmasksample import StitchAstroPathTissueMaskSample, StitchInformMaskSample
-from astropath.slides.zoom.stitchmaskcohort import StitchAstroPathTissueMaskCohort, StitchInformMaskCohort
+from astropath.slides.stitchmask.stitchmasksample import StitchAstroPathTissueMaskSample, StitchInformMaskSample
+from astropath.slides.stitchmask.stitchmaskcohort import StitchAstroPathTissueMaskCohort, StitchInformMaskCohort
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
