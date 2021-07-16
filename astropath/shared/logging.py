@@ -14,6 +14,7 @@ class MyLogger:
   samp: the SampleDef object
   uselogfiles: should we write to log files (default: false)
   threshold: minimum level of messages that should be logged (default: logging.DEBUG)
+  printthreshold: minimum level of messages that should be printed to stderr (default: logging.DEBUG)
   isglobal: is this a global log for the cohort? in that case samplelog is set to None and all the info goes in the mainlog
   mainlog: main log file, which gets errors and the most important warnings
            (default: root/logfiles/module.log)
@@ -47,13 +48,14 @@ class MyLogger:
     3) if sampledef.csv does not exist yet, you can provide an apidfile argument
        to getlogger and it will read the information from there
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
     self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
     self.uselogfiles = uselogfiles
     self.nentered = 0
     self.threshold = threshold
+    self.printthreshold = printthreshold
     if uselogfiles:
       if root is None:
         raise ValueError("Have to provide non-None root if using log files")
@@ -112,7 +114,7 @@ class MyLogger:
       printhandler = logging.StreamHandler()
       printhandler.setFormatter(self.formatter)
       printhandler.addFilter(self.filter)
-      printhandler.setLevel(logging.DEBUG)
+      printhandler.setLevel(self.printthreshold)
       self.logger.addHandler(printhandler)
 
       if self.uselogfiles:
@@ -258,14 +260,14 @@ class MyFileHandler:
 __notgiven = object()
 
 @functools.lru_cache(maxsize=None)
-def __getlogger(*, module, root, samp, uselogfiles, threshold, isglobal, mainlog, samplelog, imagelog, reraiseexceptions):
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, reraiseexceptions):
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None):
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.CRITICAL+1, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None):
   from .sample import SampleDef
   if samp is not None:
     samp = SampleDef(root=root, samp=samp, apidfile=apidfile)
-  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
