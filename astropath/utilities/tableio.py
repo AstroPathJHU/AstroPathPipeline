@@ -12,26 +12,49 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
   rowclass:       class that will represent each row, to be called
                   with **kwargs with the keywords based on the column
                   headers.
-  extrakwargs:    will be passed to the the class that creates each row
+  extrakwargs:    will be passed to the the class that creates each row (default: {})
+  fieldsizelimit: maximum length of a field in the csv (default: keep the default from python)
+  filter:         only include rows that match this filter.
+                  should be a function that takes the row dict
+                  (default: use all rows)
+  maxrows:        only use this many rows of the csv file (default: use all rows)
   columntypes:    type (or function) to be called on each element in
                   that column.  Default is it's just left as a string.
+  header:         does the csv file have a header (default: True)
+  checkorder:     check that the order of columns is as expected from the dataclass
+                  and raise an error if it's not (default: False)
+  checknewlines:  check that the newlines in the csv file are windows format
+                  and raise an error if they're not (default: False)
 
   Example:
-    table.csv contains
-      ID,x,y
-      A,1,3
-      B,2,4.5
+    >>> import pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   with open(filename, "w") as f:
+    ...     f.write('''
+    ...       ID,x,y
+    ...       A,1,3
+    ...       B,2,4.5
+    ...     '''.replace(" ", "").strip()) and None #avoid printing return value of f.write
+    ...   class Point(MyDataClass):
+    ...     ID: str
+    ...     x: float
+    ...     y: float
+    ...   table = readtable(filename, Point)
+    ...   print(table)
+    [Point(ID='A', x=1.0, y=3.0), Point(ID='B', x=2.0, y=4.5)]
 
-    If you call
-      table = readtable("table.csv", "Point", x=float, y=float)
-    you will get
-      [
-        Point(ID="A", x=1.0, y=3.0),
-        Point(ID="B", x=2.0, y=4.5),
-      ]
-    where Point is a class created specially for this table.
+  You can access the column values through table[0].ID (= "A")
 
-    You can access the column values through table[0].ID (= "A")
+  The row class inherits from MyDataClass and therefore can have
+  fields with metadata.  readtable uses the following metadata:
+    readfunction:   called on the string read from the file to give the
+                    actual value of the field.  Default is the type
+                    of the annotation, which works for simple cases like
+                    int and float
+    includeintable: if this is False, the field is not read from the file.
+                    (it has to have a default value or the dataclass __init__
+                    will fail)
   """
 
   result = []
@@ -83,6 +106,41 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   """
   Write a csv table into filename based on the rows.
   The rows should all be the same dataclass type.
+
+  filename:   file to write to
+  rows:       list of dataclass objects, one for each row
+  rowclass:   class of the rows (optional unless the rows are not
+              all the same type, but are subclasses of the same class.
+              in that case you can provide the common base as rowclass)
+  retry:      interactively ask to try again if there's a permission error
+              (usually on windows if you have the file open in excel)
+  printevery: print after writing multiples of this many rows
+  logger:     logger object for printevery
+  header:     write the header row (default: True)
+
+  Example:
+    >>> import pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   class Point(MyDataClass):
+    ...     ID: str
+    ...     x: float
+    ...     y: float
+    ...   input = [Point("A", 1, 3), Point("B", 2, 4.5)]
+    ...   writetable(filename, input)
+    ...   output = readtable(filename, Point)
+    ...   input == output
+    True
+
+  The row class inherits from MyDataClass and therefore can have
+  fields with metadata.  readtable uses the following metadata:
+    writefunction:       called on the object in the dataclass field
+                         to return a string that gets written to the file
+                         (default: str)
+    writefunctionkwargs: a function that takes in the dataclass object
+                         and returns extra kwargs to be passed to writefunction
+                         (default: lambda obj: {})
+    includeintable:      if this is False, the field is not written in the table
   """
   size = len(rows)
   if printevery > size:
@@ -170,6 +228,11 @@ def field_size_limit_context(limit):
     csv.field_size_limit(oldlimit)
 
 def pathfield(*args, **metadata):
+  """
+  returns a MetaDataAnnotation for writing a path.
+  if the path location is on a mount, it tries to find the actual
+  path location through the mount.
+  """
   metadata = {
     "readfunction": lambda x: mountedpathtopath(guesspathtype(x)),
     "writefunction": pathtomountedpath,
@@ -178,15 +241,37 @@ def pathfield(*args, **metadata):
 
   return MetaDataAnnotation(*args, **metadata)
 
-def datefield(dateformat, *, optional=False, **metadata):
+def datefield(dateformat, *defaultvalue, optional=False, **metadata):
+  """
+  returns a MetaDataAnnotation for writing a date
+
+    >>> import pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   with open(filename, "w") as f:
+    ...     f.write('''
+    ...       x,date
+    ...       1,1/1/2021 1:00:00
+    ...       2,1/2/2021 2:00:00
+    ...     '''.replace("      ", "").strip()) and None #avoid printing return value of f.write
+    ...   class DateDataClass(MyDataClass):
+    ...     x: int
+    ...     date: datetime.datetime = datefield("%d/%m/%Y %H:%M:%S")
+    ...   table = readtable(filename, DateDataClass)
+    ...   print(table)
+    [DateDataClass(x=1, date=datetime.datetime(2021, 1, 1, 1, 0)), DateDataClass(x=2, date=datetime.datetime(2021, 2, 1, 2, 0))]
+  """
   metadata = {
     "readfunction": lambda x: datetime.datetime.strptime(x, dateformat),
     "writefunction": lambda x: x.strftime(format=dateformat),
     **metadata,
   }
-  return (optionalfield if optional else MetaDataAnnotation)(**metadata)
+  return (optionalfield if optional else MetaDataAnnotation)(*defaultvalue, **metadata)
 
 def timestampfield(*, optional=False, **metadata):
+  """
+  returns a MetaDataAnnotation for writing a as a unix timestamp
+  """
   metadata = {
     "readfunction": lambda x: None if optional and not x else datetime.datetime.fromtimestamp(int(x)),
     "writefunction": lambda x: "" if optional and x is None else int(datetime.datetime.timestamp(x)),
@@ -195,6 +280,26 @@ def timestampfield(*, optional=False, **metadata):
   return (optionalfield if optional else MetaDataAnnotation)(**metadata)
 
 def optionalfield(readfunction, *, writefunction=str, **metadata):
+  """
+  returns a MetaDataAnnotation for a field that is optional
+  (None <--> blank in the csv)
+
+    >>> import pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   with open(filename, "w") as f:
+    ...     f.write('''
+    ...       x,y
+    ...       1,2
+    ...       2,
+    ...     '''.replace("      ", "").strip()) and None #avoid printing return value of f.write
+    ...   class OptionalYDataClass(MyDataClass):
+    ...     x: int
+    ...     y: int = optionalfield(int)
+    ...   table = readtable(filename, OptionalYDataClass)
+    ...   print(table)
+    [OptionalYDataClass(x=1, y=2), OptionalYDataClass(x=2, y=None)]
+  """
   metadata = {
     "readfunction": lambda x: None if not x else readfunction(x),
     "writefunction": lambda x: "" if x is None else writefunction(x),
