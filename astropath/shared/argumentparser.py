@@ -216,18 +216,15 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    g1 = p.add_mutually_exclusive_group(required=True)
-    g1.add_argument('--exposure_time_offset_file',
+    p.add_argument('--exposure_time_offset_file',
                     help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
                     [use this argument to apply corrections for differences in image exposure time]''')
-    g1.add_argument('--skip_exposure_time_correction', action='store_true',
-                    help='Add this flag to entirely skip correcting image flux for exposure time differences')
     return p
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-      'et_offset_file': None if parsed_args_dict.pop('skip_exposure_time_correction') else parsed_args_dict.pop('exposure_time_offset_file'),
+      'et_offset_file': parsed_args_dict.pop('exposure_time_offset_file'),
     }
 
 class DbloadArgumentParser(RunFromArgumentParser):
