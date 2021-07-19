@@ -58,18 +58,17 @@ class MyLogger:
     self.nentered = 0
     self.threshold = threshold
     self.printthreshold = printthreshold
-    if uselogfiles:
-      if root is None:
-        raise ValueError("Have to provide non-None root if using log files")
-      if mainlog is None:
-        mainlog = self.root/"logfiles"/f"{self.module}.log"
-      if samplelog is None:
-        self.root
-        self.samp.SlideID
-        self.module
-        samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
-      mainlog = pathlib.Path(mainlog)
-      samplelog = pathlib.Path(samplelog)
+    if root is None:
+      raise ValueError("Have to provide non-None root if using log files")
+    if mainlog is None:
+      mainlog = self.root/"logfiles"/f"{self.module}.log"
+    if samplelog is None:
+      self.root
+      self.samp.SlideID
+      self.module
+      samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
+    mainlog = pathlib.Path(mainlog)
+    samplelog = pathlib.Path(samplelog)
 
     self.mainlog = mainlog
     self.samplelog = samplelog
