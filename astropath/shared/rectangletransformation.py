@@ -1,5 +1,5 @@
 #imports
-import abc
+import abc, cv2
 import numpy as np
 
 class RectangleTransformationBase(abc.ABC):
@@ -72,7 +72,7 @@ class RectangleFlatfieldTransformationMultilayer(RectangleTransformationBase):
 
 class RectangleWarpingTransformationMultilayer(RectangleTransformationBase) :
   """
-  Applied a set of defined warping objects to an image and returns the result
+  Applies a set of defined warping objects to an image and returns the result
   """
 
   def __init__(self,warps_by_layer) :
@@ -84,5 +84,8 @@ class RectangleWarpingTransformationMultilayer(RectangleTransformationBase) :
       if self._warps_by_layer[li] is None :
         corr_img[:,:,li] = originalimage[:,:,li]
       else :
-        self._warps_by_layer[li].warpLayerInPlace(originalimage[:,:,li],corr_img[:,:,li])
+        layer_in_umat = cv2.UMat(originalimage[:,:,li])
+        layer_out_umat = cv2.UMat(corr_img[:,:,li])
+        self._warps_by_layer[li].warpLayerInPlace(layer_in_umat,layer_out_umat)
+        corr_img[:,:,li] = layer_out_umat.get()
     return corr_img

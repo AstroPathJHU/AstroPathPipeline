@@ -2,6 +2,7 @@
 from ...shared.argumentparser import SelectLayersArgumentParser, WorkingDirArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample
 from ...utilities.img_file_io import write_image_to_file
+from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 
 class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, WorkingDirArgumentParser, SelectLayersArgumentParser) :
@@ -16,7 +17,8 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
         super().__init__(*args,**kwargs)
         self.__workingdir = workingdir
         if self.__workingdir is None :
-            self.__workingdir = self.automatic_output_dir
+            self.__workingdir = self.__class__.automatic_output_dir(self.SlideID,self.root)
+        self.__workingdir.mkdir(parents=True,exist_ok=True)
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
@@ -35,50 +37,66 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
                 msg_append+=' and'
             msg_append+=f' layer {",".join([str(ln) for ln in layers if ln!=-1])}'
         msg_append+=' files written out'
-        for ir,r in enumerate(self.rectangles,start=1) :
-            with r.using_image() as im :
-                with cd(self.__workingdir) :
-                    for ln in layers :
-                        if ln==-1 :
-                            write_image_to_file(im,r.imagefile.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.FLATW_EXT))
-                        else :
-                            write_image_to_file(im[:,:,ln-1],r.imagefile.replace(UNIV_CONST.IM3_EXT,f'{UNIV_CONST.FLATW_EXT}{ln:02d}'))
-            self.logger.debug(f'{r.imagefile.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})')
+        with cd(self.__workingdir) :
+            if self.njobs>1 :
+                proc_results = {}
+                with self.pool() as pool :
+                    for ri,r in enumerate(self.rectangles,start=1) :
+                        self.logger.debug(f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....')
+                        with r.using_image() as im :
+                            proc_results[(r.n,r.file)] = pool.apply_async(write_out_corrected_image_files,
+                                                                          (im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers)
+                                                                        )
+                    for (rn,rfile),res in proc_results.items() :
+                        try :
+                            res.get()
+                        except Exception as e :
+                            warnmsg = f'WARNING: writing out corrected images for rectangle {rn} ({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed '
+                            warnmsg+= f'with the error "{e}"'
+                            self.logger.warning(warnmsg)
+            else :
+                for ri,r in enumerate(self.rectangles,start=1) :
+                    self.logger.debug(f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....')
+                    try :
+                        with r.using_image() as im :
+                            write_out_corrected_image_files(im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers)
+                    except Exception as e :
+                        warnmsg = f'WARNING: writing out corrected images for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
+                        warnmsg+= f'with the error "{e}"'
+                        self.logger.warning(warnmsg) 
 
     #################### PROPERTIES ####################
 
     @property
-    def automatic_output_dir(self) :
-        flatw_dir_name = 'flatw'
-        if len(self.root.name.split('_'))>2 :
-            flatw_dir_name+=f'_{"_".join([s for s in self.root.split("_")[2:]])}'
-        return self.root.parent / flatw_dir_name / self.SlideID
-    @property
     def workflowkwargs(self) :
         return {
             **super().workflowkwargs,
-            'nlayers':self.nlayers,
             'layers':self.layers,
-            'output_dir':self.automatic_output_dir,
         }
 
     #################### CLASS METHODS ####################
 
     @classmethod
-    def getoutputfiles(cls,SlideID,root,nlayers,layers,output_dir,**otherworkflowkwargs) :
-        #if "layers" wasn't given in the command line arguments then reset the variable 
-        #to show that just the multilayer files should be saved
-        if layers==range(1,nlayers+1) :
-            layers = [-1]
-        #outputfiles are the corrected image files
+    def automatic_output_dir(cls,SlideID,root) :
+        flatw_dir_name = 'flatw'
+        if len(root.name.split('_'))>2 :
+            flatw_dir_name+=f'_{"_".join([s for s in root.split("_")[2:]])}'
+        return root.parent / flatw_dir_name / SlideID
+
+    @classmethod
+    def getoutputfiles(cls,SlideID,root,layers,**otherworkflowkwargs) :
         outputfiles = []
         for r in self.rectangles :
-            for ln in layers :
-                if ln==-1 : #then the multilayer files should be saved
-                    outputfilename = r.imagefile.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.FLATW_EXT)
-                else :
-                    outputfilename = r.imagefile.replace(UNIV_CONST.IM3_EXT,f'{UNIV_CONST.FLATW_EXT}{ln:02d}')
-                outputfiles.append(output_dir / outputfilename)
+            if type(layers)==range : #if it's a range then it's just the multilayer images
+                outputfilename = r.imagefile.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.FLATW_EXT)
+            else :
+                for ln in layers :
+                    if ln==-1 : #then the multilayer files should be saved
+                        outputfilename = r.imagefile.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.FLATW_EXT)
+                    else :
+                        outputfilename = r.imagefile.replace(UNIV_CONST.IM3_EXT,f'{UNIV_CONST.FLATW_EXT}{ln:02d}')
+            outputfiles.append(cls.automatic_output_dir(SlideID,root) / outputfilename)
+        return outputfiles
 
     @classmethod
     def logmodule(cls) : 
@@ -92,6 +110,15 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
             **super().initkwargsfromargumentparser(parsed_args_dict),
             "filetype": 'raw', # only ever run image correction on raw files
         }
+
+#################### FILE-SCOPE FUNCTIONS ####################
+
+def write_out_corrected_image_files(im,filenamestem,layers) :
+    for ln in layers :
+        if ln==-1 :
+            write_image_to_file(im,filenamestem+UNIV_CONST.FLATW_EXT)
+        else :
+            write_image_to_file(im[:,:,ln-1],f'{filenamestem}{UNIV_CONST.FLATW_EXT}{ln:02d}')
 
 def main(args=None) :
     ImageCorrectionSample.runfromargumentparser(args)

@@ -1397,7 +1397,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ReadRectanglesIm3FromXML, Imag
         errmsg+= f'dimensions ({",".join(self.rectangles[0].imageshapeinoutput[:2])})!'
         raise ValueError(errmsg)
       thiswarp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
-      for ln in range(ws.first_layer_n,ws.last_layer_n) :
+      for ln in range(ws.first_layer_n,ws.last_layer_n+1) :
         if warps_by_layer[ln-1] is not None :
           raise ValueError(f'ERROR: warping summary {self.__warping_file} has conflicting entries for image layer {ln}!')
         warps_by_layer[ln-1] = thiswarp
