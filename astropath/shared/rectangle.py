@@ -4,7 +4,7 @@ from ..utilities.misc import floattoint, memmapcontext
 from ..utilities.tableio import timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from ..utilities.config import CONST as UNIV_CONST
-from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer
+from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
 
 class Rectangle(DataClassWithPscale):
   """
@@ -327,7 +327,7 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     return [
       floattoint(float(self.__height / self.onepixel)),
       floattoint(float(self.__width / self.onepixel)),
-      len(self.__layers),
+      self.__nlayers if -1 in self.__layers else len(self.__layers),
     ]
 
   @property
@@ -355,7 +355,7 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     return (2, 1, 0)
   @property
   def imageslicefrominput(self):
-    return slice(None), slice(None), tuple(_-1 for _ in self.__layers)
+    return slice(None), slice(None), slice(None) if -1 in self.__layers else tuple(_-1 for _ in self.__layers)
   @property
   def imageshapeinoutput(self):
     return (np.empty((self.imageshapeininput)).transpose(self.imagetransposefrominput)[self.imageslicefrominput]).shape
@@ -510,6 +510,15 @@ class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
     """
     if flatfield is not None:
       self.add_transformation(RectangleFlatfieldTransformationMultilayer(flatfield))
+
+  def add_warping_correction_transformation(self,warps_by_layer) :
+    """
+    Add a transformation to a rectangle to correct it with given warping patterns
+
+    warps_by_layer = a list of the warping objects to use in each image layer
+    """
+    self.add_transformation(RectangleWarpingTransformationMultilayer(warps_by_layer))
+
 
 class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   """

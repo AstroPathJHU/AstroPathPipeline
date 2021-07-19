@@ -21,7 +21,7 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
   The three lists must have lengths equal to the number of image layers.
   """
 
-  def __init__(self, ets, med_ets, offsets):
+  def __init__(self, ets, med_ets, offsets) :
     self._exp_times = np.array(ets)
     self._med_ets = np.array(med_ets)
     self._offsets = np.array(offsets)
@@ -31,7 +31,7 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
       raise ValueError(errmsg)
     self._nlayers = len(self._exp_times)
   
-  def transform(self, originalimage):
+  def transform(self, originalimage) :
     if self._nlayers!=originalimage.shape[-1] :
       errmsg = f'ERROR: image with shape {originalimage.shape} cannot be corrected for exposure time '
       errmsg+= f'using a setup for images with {self._nlayers} layers!'
@@ -56,10 +56,10 @@ class RectangleFlatfieldTransformationMultilayer(RectangleTransformationBase):
   flatfield: flatfield correction factors (must be same dimensions as images to correct)
   """
 
-  def __init__(self, flatfield):
+  def __init__(self, flatfield) :
     self._flatfield = flatfield
   
-  def transform(self, originalimage):
+  def transform(self, originalimage) :
     if not self._flatfield.shape==originalimage.shape :
       errmsg = f'ERROR: shape mismatch (flatfield.shape = {self._flatfield.shape}, originalimage.shape '
       errmsg+= f'= {originalimage.shape}) in RectangleFlatfieldTransformationMultilayer.transform!'
@@ -69,3 +69,20 @@ class RectangleFlatfieldTransformationMultilayer(RectangleTransformationBase):
       return (np.clip(np.rint(originalimage/self._flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
     else :
       return (originalimage/self._flatfield).astype(raw_dtype,casting='same_kind')
+
+class RectangleWarpingTransformationMultilayer(RectangleTransformationBase) :
+  """
+  Applied a set of defined warping objects to an image and returns the result
+  """
+
+  def __init__(self,warps_by_layer) :
+    self._warps_by_layer = warps_by_layer
+
+  def transform(self, originalimage) :
+    corr_img = np.empty_like(originalimage)
+    for li in range(originalimage.shape[-1]) :
+      if self._warps_by_layer[li] is None :
+        corr_img[:,:,li] = originalimage[:,:,li]
+      else :
+        self._warps_by_layer[li].warpLayerInPlace(originalimage[:,:,li],corr_img[:,:,li])
+    return corr_img

@@ -1,9 +1,12 @@
 import abc, contextlib, cv2, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile
 
+from ..hpfs.warping.warp import CameraWarp
+from ..hpfs.warping.utilities import WarpingSummary
 from ..utilities import units
 from ..utilities.misc import floattoint
-from ..utilities.img_file_io import LayerOffset
+from ..utilities.img_file_io import get_raw_as_hwl, LayerOffset
 from ..utilities.tableio import readtable, writetable
+from ..utilities.config import CONST as UNIV_CONST
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
@@ -1317,10 +1320,19 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ReadRectanglesIm3FromXML, Imag
   multilayer = True
   rectangletype = RectangleCorrectedIm3MultiLayer
 
-  def __init__(self,*args,et_offset_file,**kwargs) :
+  def __init__(self,*args,et_offset_file,flatfield_file,warping_file,**kwargs) :
+    super().__init__(*args,**kwargs)
     self.__et_offset_file = et_offset_file
     self.__med_ets = None
-    super().__init__(*args,**kwargs)
+    self.__flatfield_file = flatfield_file
+    #if the flatfield file argument was given isn't a file, search the root/Flatfield directory for a file of the same name
+    if (self.__flatfield_file is not None) and (not self.__flatfield_file.is_file()) :
+      other_filepath = self.root / UNIV_CONST.FLATFIELD_DIRNAME / self.__flatfield_file.name
+      if other_filepath.is_file() :
+        self.__flatfield_file = other_filepath
+      else :
+        raise ValueError(f'ERROR: flatfield file {self.__flatfield_file} does not exist!')
+    self.__warping_file = warping_file
 
   def initrectangles(self) :
     """
@@ -1334,13 +1346,22 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ReadRectanglesIm3FromXML, Imag
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir,:] = r.allexposuretimes
     self.__med_ets = np.median(slide_exp_times,axis=0)
-    #read the exposure time offsets
-    if self.__et_offset_file is None :
-        return
-    offsets = self.__read_exposure_time_offsets()
-    #add the exposure time correction to every rectangle's transformations
-    for r in self.rectangles :
+    if self.__et_offset_file is not None :
+      #read the exposure time offsets
+      offsets = self.__read_exposure_time_offsets()
+      #add the exposure time correction to every rectangle's transformations
+      for r in self.rectangles :
         r.add_exposure_time_correction_transformation(self.__med_ets,offsets)
+    if self.__flatfield_file is not None :
+      #read the flatfield correction factors from the file
+      flatfield = get_raw_as_hwl(self.__flatfield_file,*(self.rectangles[0].imageshapeinoutput),np.float64)
+      self.logger.info(f'Flatfield corrections will be applied from {self.__flatfield_file}')
+      for r in self.rectangles :
+        r.add_flatfield_correction_transformation(flatfield)
+    if self.__warping_file is not None :
+      warps_by_layer = self.__get_warping_objects_by_layer()
+      for r in self.rectangles :
+        r.add_warping_correction_transformation(warps_by_layer)
 
   def __read_exposure_time_offsets(self) :
     """
@@ -1362,6 +1383,32 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ReadRectanglesIm3FromXML, Imag
             raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.__et_offset_file} for layer {ln}!')
     return offsets_to_return
 
+  def __get_warping_objects_by_layer(self) :
+    """
+    Read a WarpingSummary .csv file and return a list of CameraWarp objects to use for correcting images, one per layer
+    """
+    warpsummaries = readtable(self.__warping_file,WarpingSummary)
+    warps_by_layer = []
+    for li in range(self.nlayers) :
+      warps_by_layer.append(None)
+    for ws in warpsummaries :
+      if ws.n!=self.rectangles[0].imageshapeinoutput[1] or ws.m!=self.rectangles[0].imageshapeinoutput[0] :
+        errmsg = f'ERROR: a warp with dimensions ({ws.m},{ws.n}) cannot be applied to images with '
+        errmsg+= f'dimensions ({",".join(self.rectangles[0].imageshapeinoutput[:2])})!'
+        raise ValueError(errmsg)
+      thiswarp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
+      for ln in range(ws.first_layer_n,ws.last_layer_n) :
+        if warps_by_layer[ln-1] is not None :
+          raise ValueError(f'ERROR: warping summary {self.__warping_file} has conflicting entries for image layer {ln}!')
+        warps_by_layer[ln-1] = thiswarp
+    self.logger.info(f'Warping corrections will be applied from {self.__warping_file}')
+    for li in range(self.nlayers) :
+      if warps_by_layer[li] is None :
+        warnmsg = f'WARNING: warping summary file {self.__warping_file} does not contain any definitions for image layer '
+        warnmsg+= f'{li+1} and so warping corrections for this image layer WILL BE SKIPPED!'
+        self.logger.warning(warnmsg)
+    return warps_by_layer
+
   @property
   def et_offset_file(self) :
     return self.__et_offset_file
@@ -1370,6 +1417,23 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ReadRectanglesIm3FromXML, Imag
     if self.__et_offset_file is not None and self.__med_ets is None :
       self.initrectangles()
     return self.__med_ets
+  @property
+  def applied_corrections_string(self) :
+    corrs = []
+    if self.__et_offset_file is not None :
+      corrs.append('exposure time differences')
+    if self.__flatfield_file is not None :
+      corrs.append('flatfielding')
+    if self.__warping_file is not None :
+      corrs.append('warping')
+    if len(corrs)==0 :
+      return 'not corrected'
+    if len(corrs)==1 :
+      return f'corrected for {corrs[0]}'
+    elif len(corrs)==2 :
+      return f'corrected for {corrs[0]} and {corrs[1]}'
+    elif len(corrs)==3 :
+      return f'corrected for {corrs[0]}, {corrs[1]}, and {corrs[2]}'
 
 class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRectanglesFromXML):
   """

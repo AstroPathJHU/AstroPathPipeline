@@ -1,6 +1,7 @@
 #imports 
 from .warp_fitter import WarpFitter
-from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments
+from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs
+from .octet_finding import getOctetsFromArguments
 from .config import CONST
 from ...utilities.misc import split_csv_to_list, split_csv_to_list_of_ints, split_csv_to_dict_of_floats, split_csv_to_dict_of_bounds
 from ...utilities.config import CONST as UNIV_CONST
