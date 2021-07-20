@@ -23,10 +23,10 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
   def outputfilenames(self):
     return [
       thisfolder/"test_for_jenkins"/"alignlayers"/"M21_1"/"dbload"/filename.name
-      for filename in (thisfolder/"reference"/"alignlayers"/"M21_1").glob("M21_1_*")
+      for filename in (thisfolder/"data"/"reference"/"alignlayers"/"M21_1").glob("M21_1_*")
     ] + [
       thisfolder/"test_for_jenkins"/"alignlayers"/"YZ71"/"dbload"/filename.name
-      for filename in (thisfolder/"reference"/"alignlayers"/"YZ71").glob("YZ71_*")
+      for filename in (thisfolder/"data"/"reference"/"alignlayers"/"YZ71").glob("YZ71_*")
     ] + [
       thisfolder/"test_for_jenkins"/"alignlayers"/"logfiles"/"alignlayers.log",
       thisfolder/"test_for_jenkins"/"alignlayers"/"M21_1"/"logfiles"/"M21_1-alignlayers.log",
@@ -46,7 +46,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
         (f"{SlideID}_layerpositioncovariances.csv", LayerPositionCovariance),
       ):
         rows = a.readtable(thisfolder/"test_for_jenkins"/"alignlayers"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True)
-        targetrows = a.readtable(thisfolder/"reference"/"alignlayers"/SlideID/filename, cls, checkorder=True, checknewlines=True)
+        targetrows = a.readtable(thisfolder/"data"/"reference"/"alignlayers"/SlideID/filename, cls, checkorder=True, checknewlines=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == LayerAlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
@@ -62,7 +62,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testEliminateLayerInvariance(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
-    a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
+    a.readalignments(filename=thisfolder/"data"/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
     result1 = a.stitch(eliminatelayer=0)
     result2 = a.stitch(eliminatelayer=1)
     units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()), rtol=1e-7, atol=1e-7)
@@ -71,7 +71,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
   @units.setup_context("fast", "microns")
   def testStitchCvxpy(self, SlideID="M21_1"):
     a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
-    a.readalignments(filename=thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
+    a.readalignments(filename=thisfolder/"data"/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv")
 
     defaultresult = a.stitch(saveresult=False, eliminatelayer=0)
     cvxpyresult = a.stitch(saveresult=False, usecvxpy=True)
@@ -88,7 +88,7 @@ class TestAlignLayers(TestBaseCopyInput, TestBaseSaveOutput):
   def testReadAlignlayers(self, SlideID="M21_1"):
     try:
       a = AlignLayers(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, layers=range(1, 5), selectrectangles=(17, 23), use_mean_image=False, dbloadroot=thisfolder/"test_for_jenkins"/"alignlayers", logroot=thisfolder/"test_for_jenkins"/"alignlayers")
-      readfilename = thisfolder/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv"
+      readfilename = thisfolder/"data"/"reference"/"alignlayers"/SlideID/f"{SlideID}_alignlayers.csv"
       writefilename = a.csv("alignlayers")
 
       a.readalignments(filename=readfilename)

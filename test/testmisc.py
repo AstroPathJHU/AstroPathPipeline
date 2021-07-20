@@ -5,7 +5,7 @@ from astropath.shared.csvclasses import Annotation, Region, Vertex
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
-from astropath.shared.sample import APIDDef, SampleDef
+from astropath.shared.samplemetadata import APIDDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
@@ -118,7 +118,7 @@ class TestMisc(TestBaseSaveOutput):
       ):
         try:
           rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True)
-          targetrows = s.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True)
+          targetrows = s.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True)
           for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
         except:

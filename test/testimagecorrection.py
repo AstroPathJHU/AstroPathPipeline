@@ -1,6 +1,6 @@
 #imports
 from astropath.hpfs.image_correction.run_image_correction import main
-from astropath.utilities.img_file_io import getRawAsHWL, getRawAsHW
+from astropath.utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw
 from astropath.utilities.misc import cd
 import numpy as np
 from argparse import Namespace
@@ -11,8 +11,8 @@ folder = pathlib.Path(__file__).parent
 workingdir_name = 'image_correction'
 working_dir = folder/'test_for_jenkins'/workingdir_name
 working_dir.mkdir(exist_ok=True, parents=True)
-multilayer_ref_path = folder/'reference'/'imagecorrection'/'multilayer'
-singlelayer_ref_path = folder/'reference'/'imagecorrection'/'singlelayer'
+multilayer_ref_path = folder/'data'/'reference'/'imagecorrection'/'multilayer'
+singlelayer_ref_path = folder/'data'/'reference'/'imagecorrection'/'singlelayer'
 dims = (1004,1344,35)
 
 
@@ -37,11 +37,13 @@ args = Namespace(
     )
 main(args)
 #check the output image files
-with cd(working_dir) :
+with cd(multilayer_ref_path) :
     img_filenames = glob.glob('*.fw')
+if len(img_filenames)<5 :
+    raise RuntimeError(f'ERROR: not enough *.fw files in {multilayer_ref_path} to complete image correction test!')
 for imfn in img_filenames :
-    test_img = getRawAsHWL(working_dir/imfn,dims[0],dims[1],dims[2])
-    ref_img = getRawAsHWL(multilayer_ref_path/imfn,dims[0],dims[1],dims[2])
+    test_img = get_raw_as_hwl(working_dir/imfn,dims[0],dims[1],dims[2])
+    ref_img = get_raw_as_hwl(multilayer_ref_path/imfn,dims[0],dims[1],dims[2])
     np.testing.assert_array_equal(test_img,ref_img)
 #remove the working directory
 shutil.rmtree(working_dir,ignore_errors=True)
@@ -68,11 +70,13 @@ args = Namespace(
     )
 main(args)
 #check the output image files
-with cd(working_dir) :
+with cd(singlelayer_ref_path) :
     img_filenames = glob.glob('*.fw01')
+if len(img_filenames)<5 :
+    raise RuntimeError(f'ERROR: not enough *.fw01 files in {singlelayer_ref_path} to complete image correction test!')
 for imfn in img_filenames :
-    test_img = getRawAsHW(working_dir/imfn,dims[0],dims[1])
-    ref_img = getRawAsHW(singlelayer_ref_path/imfn,dims[0],dims[1])
+    test_img = get_raw_as_hw(working_dir/imfn,dims[0],dims[1])
+    ref_img = get_raw_as_hw(singlelayer_ref_path/imfn,dims[0],dims[1])
     np.testing.assert_array_equal(test_img,ref_img)
 #remove the working directory
 shutil.rmtree(working_dir,ignore_errors=True)

@@ -3,7 +3,7 @@ from .config import CONST
 from .alignsample import AlignSampleForWarping
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.img_correction import correctImageLayerForExposureTime, correctImageLayerWithFlatfield
-from ...utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
+from ...utilities.img_file_io import get_raw_as_hwl, get_image_hwl_from_xml_file, getExposureTimesByLayer, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
 from ...utilities.misc import cd, split_csv_to_list, addCommonArgumentsToParser
 from ...utilities.tableio import readtable, writetable
 from ...utilities.config import CONST as UNIV_CONST
@@ -248,7 +248,7 @@ def checkDirAndFixedArgs(args,parse=False) :
 #meant to be run in parallel
 def loadRawImageWorker(rfp,m,n,nlayers,layer,flatfield,med_et,offset,overlaps,rectangles,root_dir,smoothsigma,return_dict=None,return_dict_key=None) :
     #get the raw image
-    rawimage = (getRawAsHWL(rfp,m,n,nlayers))[:,:,layer-1]   
+    rawimage = (get_raw_as_hwl(rfp,m,n,nlayers))[:,:,layer-1]   
     #correct the raw image for exposure time if requested
     if med_et is not None and offset is not None :
         exp_time = (getExposureTimesByLayer(rfp,root_dir))[layer-1]
@@ -325,8 +325,8 @@ def findSlideOctets(rtd,rootdir,threshold_file_path,req_pixel_frac,slideID,worki
         logger.info(msg,slideID,rootdir)
     else :
         warp_logger.info(msg)
-    img_dims = getImageHWLFromXMLFile(rootdir,slideID)
-    flatfield = (getRawAsHWL(flatfield_file,*(img_dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
+    img_dims = get_image_hwl_from_xml_file(rootdir,slideID)
+    flatfield = (get_raw_as_hwl(flatfield_file,*(img_dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE))[:,:,layer-1] if flatfield_file is not None else None
     med_et, offset = getMedianExposureTimeAndCorrectionOffsetForSlideLayer(rootdir,slideID,et_offset_file,layer) if et_offset_file is not None else None
     use_GPU = platform.system()!='Darwin'
     a = AlignSampleForWarping(rootdir,rtd,slideID,med_et=med_et,offset=offset,flatfield=flatfield,nclip=UNIV_CONST.N_CLIP,

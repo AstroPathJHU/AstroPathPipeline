@@ -15,7 +15,7 @@ class TestDeepZoom(TestBaseSaveOutput):
 
   def testDeepZoom(self, SlideID="M206", units="safe", **kwargs):
     root = thisfolder/"data"
-    zoomroot = thisfolder/"reference"/"zoom"
+    zoomroot = thisfolder/"data"/"reference"/"zoom"
     deepzoomroot = thisfolder/"test_for_jenkins"/"deepzoom"
     args = [str(root), "--zoomroot", str(zoomroot), "--deepzoomroot", str(deepzoomroot), "--logroot", str(deepzoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--layers", "1", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     DeepZoomCohort.runfromargumentparser(args)
@@ -25,7 +25,7 @@ class TestDeepZoom(TestBaseSaveOutput):
 
     try:
       folder = sample.deepzoomfolder/"L1_files"
-      reffolder = thisfolder/"reference"/"deepzoom"/SlideID/"L1_files"
+      reffolder = thisfolder/"data"/"reference"/"deepzoom"/SlideID/"L1_files"
       for filename, reffilename in more_itertools.zip_equal(
         sorted(folder.glob("*/*.png")),
         sorted(reffolder.glob("*/*.png")),
@@ -39,7 +39,7 @@ class TestDeepZoom(TestBaseSaveOutput):
           np.testing.assert_array_equal(np.asarray(im), np.asarray(ref))
 
         new = readtable(zoomlist, DeepZoomFile, checkorder=True, checknewlines=True)
-        ref = readtable(thisfolder/"reference"/"deepzoom"/SlideID/zoomlist.name, DeepZoomFile, checkorder=True, checknewlines=True)
+        ref = readtable(thisfolder/"data"/"reference"/"deepzoom"/SlideID/zoomlist.name, DeepZoomFile, checkorder=True, checknewlines=True)
         for resultnew, resultref in more_itertools.zip_equal(new, ref):
           resultnew.name = pathlib.PurePosixPath(resultnew.name.relative_to(thisfolder/"test_for_jenkins"))
           resultref.name = pathlib.PurePosixPath(resultref.name.relative_to(resultref.name.parent.parent.parent.parent.parent))
@@ -59,7 +59,7 @@ class TestDeepZoom(TestBaseSaveOutput):
       (
         [
           thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"L1_files"/filename.parent.name/filename.name
-          for filename in (thisfolder/"reference"/"deepzoom"/SlideID/"L1_files").glob("*/*.png")
+          for filename in (thisfolder/"data"/"reference"/"deepzoom"/SlideID/"L1_files").glob("*/*.png")
         ] + [
           thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"L1.dzi",
           thisfolder/"test_for_jenkins"/"deepzoom"/SlideID/"zoomlist.csv",

@@ -1,12 +1,29 @@
+"""
+"""
+
 import abc, collections, methodtools, numpy as np
 from ..misc import floattoint
 from ..tableio import TableReader
 
 currentmodule = None
 
-class UnitsError(Exception): pass
+class UnitsError(Exception):
+  """
+  Exception raised when dimensional analysis gives an error
+  """
 
 class Distance:
+  """
+  When running in safe mode, this gives a Distance object.
+  When running in fast mode, this just returns a number.
+
+  Exactly one of these arguments is required:
+    pixels: number of pixels
+    microns: number of microns
+    centimeters: number of centimeters
+  pscale: pixels/micron scale
+  power: powers of distance in the dimension (1 for a length, 2 for length^2, etc.)
+  """
   def __new__(self, *args, **kwargs):
     return currentmodule.Distance(*args, **kwargs)
 

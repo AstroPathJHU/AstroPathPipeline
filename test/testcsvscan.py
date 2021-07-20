@@ -25,7 +25,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       newdbload = testroot/SlideID/"dbload"
       newtables = testroot/SlideID/"inform_data"/"Phenotyped"/"Results"/"Tables"
 
-      for olddbload in dataroot/SlideID/"dbload", thisfolder/"reference"/"geom"/SlideID/"dbload", thisfolder/"reference"/"annowarp"/SlideID/"dbload":
+      for olddbload in dataroot/SlideID/"dbload", thisfolder/"data"/"reference"/"geom"/SlideID/"dbload", thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload":
         for csv in olddbload.glob("*.csv"):
           if csv == dataroot/SlideID/"dbload"/f"{SlideID}_vertices.csv": continue
           if csv == dataroot/SlideID/"dbload"/f"{SlideID}_regions.csv": continue
@@ -99,20 +99,22 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
     super().tearDown()
     self.__stack.close()
 
-  def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False):
+  def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False, nolog=False):
     root = thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"
-    geomroot = thisfolder/"reference"/"geomcell"
+    geomroot = thisfolder/"data"/"reference"/"geomcell"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
     if selectrectangles is not None:
       args.append("--selectrectangles")
       for rid in selectrectangles: args.append(str(rid))
     if skipcheck:
       args.append("--skip-check")
+    if nolog:
+      args.append("--no-log")
     CsvScanCohort.runfromargumentparser(args=args)
 
     s = CsvScanSample(root=root, geomroot=geomroot, samp=SlideID)
     filename = s.csv("loadfiles")
-    reffolder = thisfolder/"reference"/"csvscan"/SlideID
+    reffolder = thisfolder/"data"/"reference"/"csvscan"/SlideID
     reference = reffolder/filename.name
 
     try:
@@ -130,7 +132,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
         assertAlmostEqual(row, target)
 
       filename = s.root/"dbload"/"project0_loadfiles.csv"
-      reference = thisfolder/"reference"/"csvscan"/filename.name
+      reference = thisfolder/"data"/"reference"/"csvscan"/filename.name
       rows = s.readtable(filename, LoadFile, header=False, checkorder=True, checknewlines=True)
       targetrows = s.readtable(reference, LoadFile, header=False, checkorder=True, checknewlines=True)
       for row in rows:
@@ -143,6 +145,12 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
         row.filename = row.filename.relative_to(targetcommonroot).as_posix()
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target)
+
+      logfile = s.root/"logfiles"/"csvscan.log"
+      if not nolog:
+        assert logfile.exists()
+      else:
+        assert not logfile.exists()
     except:
       self.saveoutput()
       raise
@@ -150,7 +158,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       self.removeoutput()
 
   def testCsvScanFastUnits(self, **kwargs):
-    self.testCsvScan(units="fast", **kwargs)
+    self.testCsvScan(units="fast", nolog=True, **kwargs)
 
   def testCsvScanNoCheck(self, **kwargs):
     self.testCsvScan(skipcheck=True)

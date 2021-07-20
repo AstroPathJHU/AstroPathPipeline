@@ -14,6 +14,7 @@ class MyLogger:
   samp: the SampleDef object
   uselogfiles: should we write to log files (default: false)
   threshold: minimum level of messages that should be logged (default: logging.DEBUG)
+  printthreshold: minimum level of messages that should be printed to stderr (default: logging.DEBUG)
   isglobal: is this a global log for the cohort? in that case samplelog is set to None and all the info goes in the mainlog
   mainlog: main log file, which gets errors and the most important warnings
            (default: root/logfiles/module.log)
@@ -41,30 +42,32 @@ class MyLogger:
   getlogger requires information about the project and cohort, because those
   go in the log.  You can provide that information in one of three ways:
     1) give a SampleDef or APIDDef object to getlogger using the samp argument
+    2) give a SlideID as the samp argument and give the Project and Cohort
+       as keyword arguments
     or, you can give a SlideID as the samp argument and it will determine
          the Project and Cohort automatically:
-    2) if sampledef.csv exists in root, the information will be read from there
-    3) if sampledef.csv does not exist yet, you can provide an apidfile argument
+    3) if sampledef.csv exists in root, the information will be read from there
+    4) if sampledef.csv does not exist yet, you can provide an apidfile argument
        to getlogger and it will read the information from there
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
     self.module = module
     self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
     self.uselogfiles = uselogfiles
     self.nentered = 0
     self.threshold = threshold
-    if uselogfiles:
-      if root is None:
-        raise ValueError("Have to provide non-None root if using log files")
+    self.printthreshold = printthreshold
+    if root is None and uselogfiles:
+      raise ValueError("Have to provide non-None root if using log files")
+    if root is not None:
       if mainlog is None:
         mainlog = self.root/"logfiles"/f"{self.module}.log"
       if samplelog is None:
-        self.root
-        self.samp.SlideID
-        self.module
         samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
+    if mainlog is not None:
       mainlog = pathlib.Path(mainlog)
+    if samplelog is not None:
       samplelog = pathlib.Path(samplelog)
 
     self.mainlog = mainlog
@@ -112,7 +115,7 @@ class MyLogger:
       printhandler = logging.StreamHandler()
       printhandler.setFormatter(self.formatter)
       printhandler.addFilter(self.filter)
-      printhandler.setLevel(logging.DEBUG)
+      printhandler.setLevel(self.printthreshold)
       self.logger.addHandler(printhandler)
 
       if self.uselogfiles:
@@ -258,14 +261,14 @@ class MyFileHandler:
 __notgiven = object()
 
 @functools.lru_cache(maxsize=None)
-def __getlogger(*, module, root, samp, uselogfiles, threshold, isglobal, mainlog, samplelog, imagelog, reraiseexceptions):
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, reraiseexceptions):
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None):
-  from .sample import SampleDef
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None, Project=None, Cohort=None):
+  from .samplemetadata import SampleDef
   if samp is not None:
-    samp = SampleDef(root=root, samp=samp, apidfile=apidfile)
-  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+    samp = SampleDef(root=root, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)
+  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())

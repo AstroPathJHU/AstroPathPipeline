@@ -3,6 +3,8 @@ from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext
 from ..utilities.tableio import timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
+from ..utilities.config import CONST as UNIV_CONST
+from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer
 
 class Rectangle(DataClassWithPscale):
   """
@@ -81,7 +83,11 @@ class Rectangle(DataClassWithPscale):
   def xmlfile(self):
     if self.__xmlfolder is None:
       raise ValueError("Can't get xml info if you don't provide the rectangle with an xml folder")
-    return self.__xmlfolder/self.file.replace(".im3", ".SpectralBasisInfo.Exposure.xml")
+    for xml_file_ext in UNIV_CONST.EXPOSURE_XML_EXTS :
+      xml_filepath = self.__xmlfolder/self.file.replace(".im3",xml_file_ext)
+      if xml_filepath.is_file() :
+        return xml_filepath
+    raise FileNotFoundError(f'ERROR: Could not find an xml file with any of the expected file extensions in {self.__xmlfolder}')
 
   @methodtools.lru_cache()
   @property
@@ -141,14 +147,14 @@ class RectangleWithImageBase(Rectangle):
 
   A rectangle can also have transformations, which are applied to the
   raw image to make the final image returned by `using_image()` or `image`.
-  They should inherit from RectangleTransformationBase below.
+  They should inherit from RectangleTransformationBase.
   """
 
-  #if __DEBUG is true, then when the rectangle is deleted, it will print
+  #if _DEBUG is true, then when the rectangle is deleted, it will print
   #a warning if its image has been loaded multiple times, for debug
   #purposes.  If __DEBUG_PRINT_TRACEBACK is also true, it will print the
   #tracebacks for each of the times the image was loaded.
-  __DEBUG = True
+  _DEBUG = True
   def __DEBUG_PRINT_TRACEBACK(self, i):
     return False
 
@@ -162,12 +168,28 @@ class RectangleWithImageBase(Rectangle):
     super().__post_init__(*args, **kwargs)
 
   def __del__(self):
-    if self.__DEBUG:
+    if self._DEBUG:
       for i, ctr in enumerate(self.__debug_load_images_counter):
         if ctr > 1:
           for formattedtb in self.__debug_load_images_tracebacks[i]:
             print("".join(formattedtb))
           warnings.warn(f"Loaded image {i} for rectangle {self} {ctr} times")
+
+  def add_transformation(self,new_transformation) :
+    """
+    Add a new transformation to this Rectangle post-initialization
+    Helpful in case a Rectangle needs to be transformed after calculating something from the whole set of Rectangles
+    
+    new_transformation: the new transformation to add (should inherit from RectangleTransformationBase)
+    """
+    old_nimages = self.nimages
+    old_nimages = old_nimages #make pyflakes happy
+    self.__transformations.append(new_transformation)
+    self.__images_cache.append(None)
+    self.__accessed_image = np.append(self.__accessed_image,0)
+    self.__using_image_counter = np.append(self.__using_image_counter,0)
+    self.__debug_load_images_counter = np.append(self.__debug_load_images_counter,0)
+    self.__debug_load_images_tracebacks.append([])
 
   @abc.abstractmethod
   def getimage(self):
@@ -279,13 +301,6 @@ class RectangleWithImageBase(Rectangle):
       plt.xlim(*xlim)
       plt.ylim(*ylim)
 
-class RectangleTransformationBase(abc.ABC):
-  @abc.abstractmethod
-  def transform(self, previousimage):
-    """
-    Takes in the previous image, returns the new image.
-    """
-
 class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   """
   Rectangle class that reads the image from a sharded im3
@@ -321,11 +336,11 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     The full file path to the image file
     """
     if self.__filetype=="flatWarp" :
-      ext = ".fw"
+      ext = UNIV_CONST.FLATW_EXT
     elif self.__filetype=="camWarp" :
       ext = ".camWarp"
     elif self.__filetype=="raw" :
-      ext = ".Data.dat"
+      ext = UNIV_CONST.RAW_EXT
     else :
       raise ValueError(f"requested file type {self.__filetype} not recognized")
 
@@ -341,6 +356,9 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   @property
   def imageslicefrominput(self):
     return slice(None), slice(None), tuple(_-1 for _ in self.__layers)
+  @property
+  def imageshapeinoutput(self):
+    return (np.empty((self.imageshapeininput)).transpose(self.imagetransposefrominput)[self.imageslicefrominput]).shape
 
   def getimage(self):
     image = np.ndarray(shape=self.imageshape, dtype=np.uint16)
@@ -359,7 +377,7 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     return image
 
   @property
-  def layers(self):
+  def layers(self) :
     return self.__layers
 
   @property
@@ -417,7 +435,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       basename = result.name
       if basename.endswith(".camWarp") or basename.endswith(".dat"):
         basename += f"_layer{self.layer:02d}"
-      elif basename.endswith(".fw"):
+      elif basename.endswith(UNIV_CONST.FLATW_EXT):
         basename += f"{self.layer:02d}"
       else:
         assert False
@@ -461,6 +479,37 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
     """
     _, = self.broadbandfilters
     return _
+
+class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
+  """
+  Class for Rectangles whose multilayer im3 data should be corrected for differences in exposure time 
+  and/or flatfielding (either or both can be omitted)
+  """
+  _DEBUG = False #Tend to use these images more than once per run
+  
+  def __post_init__(self, *args, transformations=None, **kwargs) :
+    if transformations is None : 
+      transformations = []
+    super().__post_init__(*args, transformations=transformations, **kwargs)
+
+  def add_exposure_time_correction_transformation(self,med_ets,offsets) :
+    """
+    Add a transformation to a rectangle to correct it for differences in exposure time given:
+
+    med_ets = the median exposure times in the rectangle's slide 
+    offsets = the list of dark current offsets for the rectangle's slide
+    """
+    if (med_ets is not None) and (offsets is not None) :
+      self.add_transformation(RectangleExposureTimeTransformationMultiLayer(self.allexposuretimes,med_ets,offsets))
+
+  def add_flatfield_correction_transformation(self,flatfield) :
+    """
+    Add a transformation to a rectangle to correct it with a given flatfield
+
+    flatfield = the flatfield correction factor image to apply
+    """
+    if flatfield is not None:
+      self.add_transformation(RectangleFlatfieldTransformationMultilayer(flatfield))
 
 class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   """

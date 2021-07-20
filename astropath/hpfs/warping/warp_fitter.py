@@ -5,11 +5,12 @@ from .utilities import warp_logger, WarpingError, WarpFitResult, FieldLog
 from .plotting import OctetComparisonVisualization
 from .config import CONST
 from ...shared.rectangle import rectangleoroverlapfilter
+from ...shared.samplemetadata import MetadataSummary
 from ...slides.align.alignsample import AlignSampleFromXML
-from ...utilities.img_file_io import getImageHWLFromXMLFile, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
+from ...utilities.img_file_io import get_image_hwl_from_xml_file, getMedianExposureTimeAndCorrectionOffsetForSlideLayer
 from ...utilities.tableio import writetable
 from ...utilities import units
-from ...utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
+from ...utilities.misc import cd, save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, scipy, matplotlib.pyplot as plt
 import pathlib, copy, math, shutil, platform, time, logging
@@ -53,11 +54,11 @@ class WarpFitter :
         """
         #store the directory paths
         self.slideID = slideID
-        self.rawfile_top_dir=rawfile_top_dir
-        self.root_dir=root_dir
-        self.working_dir=working_dir
+        self.rawfile_top_dir=pathlib.Path(rawfile_top_dir)
+        self.root_dir=pathlib.Path(root_dir)
+        self.working_dir=pathlib.Path(working_dir)
         #get the size of the images in the slide
-        m, n, nlayers = getImageHWLFromXMLFile(self.root_dir,slideID)
+        m, n, nlayers = get_image_hwl_from_xml_file(self.root_dir,slideID)
         if layer<1 or layer>nlayers :
             raise WarpingError(f'ERROR: Choice of layer ({layer}) is not valid for images with {nlayers} layers!')
         #make the alignsample object to use
@@ -71,12 +72,10 @@ class WarpFitter :
         for r in self.alignset.rectangles :
             field_logs.append(FieldLog(self.slideID,r.file,r.n))
         with cd(self.working_dir) :
-            writetable(f'metadata_summary_{(pathlib.Path.resolve(pathlib.Path(self.working_dir))).name}.csv',[ms])
-            writetable(f'field_log_{(pathlib.Path.resolve(pathlib.Path(self.working_dir))).name}.csv',field_logs)
+            writetable(f'metadata_summary_{self.working_dir.name}.csv',[ms])
+            writetable(f'field_log_{self.working_dir.name}.csv',field_logs)
         #get the list of raw file paths
-        self.rawfile_paths = [pathlib.Path(f'{self.rawfile_top_dir}/{self.slideID}/{fn.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)}') 
-                              for fn in [r.file for r in self.alignset.rectangles]]
-        
+        self.rawfile_paths = [self.rawfile_top_dir/self.slideID/f'{r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)}' for r in self.alignset.rectangles]
         #make the warpset object to use
         self.warpset = WarpSet(n=n,m=m,rawfiles=self.rawfile_paths,nlayers=nlayers,layer=layer)
         #for now leave the fitparameter set as None (until the actual fit is called)
@@ -88,7 +87,7 @@ class WarpFitter :
         """
         Remove the placeholder files when the object is being deleted
         """
-        if pathlib.Path.is_dir(pathlib.Path(f'{self.working_dir}/{self.slideID}')) :
+        if (self.working_dir/self.slideID).is_dir() :
             warp_logger.info('Removing copied raw layer files....')
             with cd(self.working_dir) :
                 shutil.rmtree(self.slideID)
@@ -115,10 +114,9 @@ class WarpFitter :
                                    flatfield_file_path,med_exp_time,et_correction_offset)
         #warp the loaded images and write them out once to replace the images in the alignment set
         self.warpset.warpLoadedImages()
-        with cd(self.working_dir) :
-            if not pathlib.Path.is_dir(pathlib.Path(self.slideID)) :
-                pathlib.Path.mkdir(pathlib.Path(self.slideID))
-        self.warpset.writeOutWarpedImages(pathlib.Path(f'{self.working_dir}/{self.slideID}'))
+        if not (self.working_dir/self.slideID).is_dir() :
+            (self.working_dir/self.slideID).mkdir()
+        self.warpset.writeOutWarpedImages(self.working_dir/self.slideID)
         self.alignset.getDAPI()
 
     def doFit(self,fixed,normalize,init_pars,init_bounds,float_p1p2_in_polish_fit=False,max_radial_warp=10.,max_tangential_warp=10.,
@@ -335,7 +333,7 @@ class WarpFitter :
         self.__writeFitResult()
         #write out the warp field binary file and plots
         with cd(self.working_dir) :
-            self._best_fit_warp.writeOutWarpFields((pathlib.Path.resolve(pathlib.Path(self.working_dir))).name,save_fields)
+            self._best_fit_warp.writeOutWarpFields(self.working_dir.name,save_fields)
 
     #function to plot the costs and warps over all the iterations of the fit
     def __makeFitProgressPlots(self,ninitev) :
@@ -407,11 +405,8 @@ class WarpFitter :
         ax[1][2].set_xlabel('final minimization iteration')
         ax[1][2].set_ylabel('max tangential warp')
         ax[1][2].legend(loc='best')
-        with cd(self.working_dir) :
-            savename = 'fit_progress.png'
-            plt.savefig(savename)
-            plt.close()
-            cropAndOverwriteImage(savename)
+        savename = 'fit_progress.png'
+        save_figure_in_dir(plt,savename,self.working_dir)
         return ninitev, nfev
 
     #function to save alignment comparison visualizations in a new directory inside the working directory
@@ -421,9 +416,8 @@ class WarpFitter :
         if self._best_fit_warp is None :
             raise WarpingError('Do not call __makeBestFitAlignmentComparisonImages until after the best fit warp has been set!')
         #make sure the plot directory exists
-        with cd(self.working_dir) :
-            if not pathlib.Path.is_dir(pathlib.Path(self.OVERLAP_COMPARISON_DIR_NAME)) :
-                pathlib.Path.mkdir(pathlib.Path(self.OVERLAP_COMPARISON_DIR_NAME))
+        if not (self.working_dir/self.OVERLAP_COMPARISON_DIR_NAME).is_dir() :
+            (self.working_dir/self.OVERLAP_COMPARISON_DIR_NAME).mkdir()
         #build octets and singlets from the alignment set's overlaps
         all_olaps = self.alignset.overlaps
         olap_octet_p1s   = [olap1.p1 for olap1 in all_olaps if len([olap2 for olap2 in all_olaps if olap2.p1==olap1.p1])==8]
@@ -448,7 +442,7 @@ class WarpFitter :
                 failed_p1s_and_codes = oci.stackOverlays()
                 for fp1,fc in failed_p1s_and_codes :
                     addl_singlet_p1s_and_codes.add((fp1,fc))
-                with cd(pathlib.Path(f'{self.working_dir}/{self.OVERLAP_COMPARISON_DIR_NAME}')) :
+                with cd(self.working_dir/self.OVERLAP_COMPARISON_DIR_NAME) :
                     oci.writeOutFigure()
         #next warp and align the images with the best fit warp and do the same thing
         self.warpset.warpLoadedImages()
@@ -466,7 +460,7 @@ class WarpFitter :
                 failed_p1s_and_codes = oci.stackOverlays()
                 for fp1,fc in failed_p1s_and_codes :
                     addl_singlet_p1s_and_codes.add((fp1,fc))
-                with cd(pathlib.Path(f'{self.working_dir}/{self.OVERLAP_COMPARISON_DIR_NAME}')) :
+                with cd(self.working_dir/self.OVERLAP_COMPARISON_DIR_NAME) :
                     oci.writeOutFigure()
         #plot the singlet overlap comparisons
         for overlap_identifier in raw_olap_comps.keys() :
@@ -503,10 +497,7 @@ class WarpFitter :
             order[2].set_title('warped overlap images')
             order[3].imshow(warped_olap_comps[overlap_identifier][1])
             order[3].set_title('warped overlap images aligned')
-            with cd(pathlib.Path(f'{self.working_dir}/{self.OVERLAP_COMPARISON_DIR_NAME}')) :
-                plt.savefig(fn)
-                plt.close()
-                cropAndOverwriteImage(fn)
+            save_figure_in_dir(plt,fn,self.working_dir/self.OVERLAP_COMPARISON_DIR_NAME)
         #print the cost differences
         warp_logger.info(f'Alignment cost from raw images = {rawcost:.08f}; alignment cost from warped images = {bestcost:.08f} ({(100*(1.-bestcost/rawcost)):.04f}% reduction)')
         #return the pre- and post-fit alignment costs

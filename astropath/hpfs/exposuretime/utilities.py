@@ -1,7 +1,6 @@
 #imports
 from .alignsample import AlignSampleForExposureTime
 from ...utilities.dataclasses import MyDataClass
-from ...utilities.misc import getAlignSampleTissueEdgeRectNs
 from ...utilities.config import CONST as UNIV_CONST
 from typing import List
 import pathlib, logging
@@ -49,7 +48,7 @@ def getOverlapsWithExposureTimeDifferences(rtd,rootdir,sn,exp_times,layer,overla
     else :
         a = AlignSampleForExposureTime(rootdir,rtd,sn,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=layer,
                                         selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,smoothsigma=None,flatfield=None)
-    tissue_edge_rect_ns = [] if include_tissue_edges else getAlignSampleTissueEdgeRectNs(a) 
+    tissue_edge_rect_ns = set() if include_tissue_edges else {r.n for r in a.edgerectangles}
     rect_rfkey_by_n = {}
     for r in a.rectangles :
         #skip tissue edge rectangles

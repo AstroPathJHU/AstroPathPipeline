@@ -13,7 +13,7 @@ from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import Field
 from ..align.overlap import AlignmentComparison
-from ..zoom.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
+from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 

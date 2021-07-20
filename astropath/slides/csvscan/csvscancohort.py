@@ -1,7 +1,7 @@
 import contextlib, datetime, job_lock, re
 from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
-from ...shared.sample import SampleDef
+from ...shared.samplemetadata import SampleDef
 from ...shared.workflowdependency import WorkflowDependency
 from .csvscansample import CsvScanBase, CsvScanSample, RunCsvScanBase
 

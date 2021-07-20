@@ -1,5 +1,7 @@
-import more_itertools, os, pathlib
+import contextlib, job_lock, logging, more_itertools, os, pathlib
 
+from astropath.shared.logging import getlogger
+from astropath.shared.sample import SampleDef
 from astropath.slides.geom.geomcohort import GeomCohort
 from astropath.slides.geom.geomsample import Boundary, GeomSample
 
@@ -25,23 +27,61 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"geom"/SlideID/"dbload"/f"{SlideID}_{csv}.csv"
       for csv in ("tumorGeometry", "fieldGeometry")
       for SlideID in ("M206", "M148")
+    ] + [
+      thisfolder/"test_for_jenkins"/"geom"/SlideID/"logfiles"/f"{SlideID}-{log}.log"
+      for log in ("geom",)
+      for SlideID in ("M206", "M148")
+    ] + [
+      thisfolder/"test_for_jenkins"/"geom"/"logfiles"/f"{log}.log"
+      for log in ("geom",)
     ]
+
+  def setUp(self):
+    stack = self.__stack = contextlib.ExitStack()
+    super().setUp()
+    try:
+      slideids = "M206", "M148"
+
+      testroot = thisfolder/"test_for_jenkins"/"geom"
+      for SlideID in slideids:
+        logfolder = testroot/SlideID/"logfiles"
+        logfolder.mkdir(exist_ok=True, parents=True)
+
+        filename = logfolder/f"{SlideID}-geom.log"
+        assert stack.enter_context(job_lock.JobLock(filename))
+        with getlogger(root=testroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="geom", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1):
+          raise ValueError("testing error regex matching")
+
+        dbloadfolder = testroot/SlideID/"dbload"
+        dbloadfolder.mkdir(exist_ok=True, parents=True)
+        for thing in "tumor", "field":
+          (dbloadfolder/f"{SlideID}_{thing}Geometry.csv").touch()
+
+    except:
+      stack.close()
+      raise
 
   def testGeom(self, SlideID="M206", units="safe", selectrectangles=None):
     root = thisfolder/"data"
-    dbloadroot = thisfolder/"test_for_jenkins"/"geom"
-    args = [os.fspath(root), "--dbloadroot", os.fspath(dbloadroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
+    testroot = thisfolder/"test_for_jenkins"/"geom"
+    args = [os.fspath(root), "--dbloadroot", os.fspath(testroot), "--logroot", os.fspath(testroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies"]
     if selectrectangles is not None:
       args.append("--selectrectangles")
       for rid in selectrectangles: args.append(str(rid))
-    GeomCohort.runfromargumentparser(args=args)
 
-    s = GeomSample(root=thisfolder/"data", dbloadroot=dbloadroot, samp=SlideID)
+    s = GeomSample(root=thisfolder/"data", dbloadroot=testroot, samp=SlideID)
     tumorfilename = s.csv("tumorGeometry")
     fieldfilename = s.csv("fieldGeometry")
-    reffolder = thisfolder/"reference"/"geom"/SlideID/"dbload"
+    reffolder = thisfolder/"data"/"reference"/"geom"/SlideID/"dbload"
     tumorreference = reffolder/tumorfilename.name
     fieldreference = reffolder/fieldfilename.name
+
+    #this should not run anything
+    GeomCohort.runfromargumentparser(args=args + ["--rerun-error", "anything but testing error regex matching"])
+    with open(tumorfilename) as f:
+      assert not f.read().strip()
+
+    GeomCohort.runfromargumentparser(args=args + ["--rerun-error", "testing error regex matching"])
 
     try:
       rows = s.readtable(fieldfilename, Boundary, checkorder=True, checknewlines=True)

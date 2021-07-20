@@ -28,9 +28,9 @@ args = Namespace(
         gtol=1e-8,
         eps=0.25,
         print_every=10,
-        n_threads=5,
-        layers=[26,33],
-        overlaps=[46],
+        n_threads=1,
+        layers=[19,26],
+        overlaps=[-1],
         n_comparisons_to_save=1,
         allow_edge_HPFs=True,
     )
@@ -41,7 +41,7 @@ main(args)
 #check the results against the reference
 print('Checking fit results....')
 new = readtable(working_dir/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit.csv", LayerOffset, checkorder=True, checknewlines=True)
-ref = readtable(folder/"reference"/"exposuretimefit"/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit.csv", LayerOffset, checkorder=True, checknewlines=True)
+ref = readtable(folder/"data"/"reference"/"exposuretimefit"/f"{args.slideID}_layers_{args.layers[0]}-{args.layers[-1]}_best_fit_offsets_exposuretimefit.csv", LayerOffset, checkorder=True, checknewlines=True)
 for offsetnew, offsetref in zip(new, ref):
   assertAlmostEqual(offsetnew, offsetref, rtol=1e-4, atol=1e-8)
 

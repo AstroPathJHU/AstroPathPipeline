@@ -2,10 +2,18 @@ import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, more_i
 if sys.platform != "cygwin": import psutil
 
 def covariance_matrix(*args, **kwargs):
+  """
+  Covariance matrix for the uncertainties module
+  that enforces symmetry (the normal one is symmetric up
+  to rounding errors)
+  """
   result = np.array(unc.covariance_matrix(*args, **kwargs))
   return (result + result.T) / 2
 
 def pullhist(array, *, binning=None, verbose=True, label="", stdinlabel=True, quantileforstats=1, **kwargs):
+  """
+  Make a histogram of uncertainties.nominal_values(array) / uncertainties.std_dev(array)
+  """
   pulls = np.array([_.n / _.s for _ in array], dtype=float)
   quantiles = np.array(sorted(((1-quantileforstats)/2, (1+quantileforstats)/2)))
   minpull, maxpull = np.quantile(pulls, quantiles)
@@ -15,19 +23,40 @@ def pullhist(array, *, binning=None, verbose=True, label="", stdinlabel=True, qu
   if stdinlabel:
     if label: label += ": "
     label += rf"$\text{{std dev}} = {np.std(pulls):.02f}$"
-  plt.hist(pulls, bins=binning, label=label, **kwargs)
   if verbose:
     print(f"mean of middle {100*quantileforstats}%:   ", unc.ufloat(np.mean(pulls), scipy.stats.sem(pulls)))
     print(f"std dev of middle {100*quantileforstats}%:", unc.ufloat(np.std(pulls), np.std(pulls) / np.sqrt(2*len(pulls)-2)))
     print("n outliers: ", outliers)
+  return plt.hist(pulls, bins=binning, label=label, **kwargs)
 
 @contextlib.contextmanager
 def cd(dir):
+  """
+  Change the current working directory to a different directory,
+  and go back when leaving the context manager.
+  """
   cdminus = os.getcwd()
   try:
     yield os.chdir(dir)
   finally:
     os.chdir(cdminus)
+
+def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
+  """
+  Save the current figure in the given pyplot instance with a given name and crop it. 
+  If save_dirpath is given the figure is saved in that directory (possibly creating it)
+  """
+  if save_dirpath is not None :
+    if not save_dirpath.is_dir() :
+      save_dirpath.mkdir()
+    with cd(save_dirpath) :
+      pyplot_inst.savefig(figname)
+      pyplot_inst.close()
+      crop_and_overwrite_image(figname)
+  else :
+    pyplot_inst.savefig(figname)
+    pyplot_inst.close()
+    crop_and_overwrite_image(figname)
 
 @nb.vectorize([nb.int64(nb.float64, nb.float64, nb.float64)])
 def __floattoint(flt, atol, rtol):
@@ -41,6 +70,10 @@ def __floattoint(flt, atol, rtol):
   raise ValueError("not an int")
 
 def floattoint(flt, *, atol=0, rtol=1e-10):
+  """
+  If flt is an integer within absolute and relative tolerance atol and rtol,
+  return it as an int.  Otherwise raise an error.
+  """
   try:
     return __floattoint(flt, atol, rtol)
   except ValueError as e:
@@ -49,10 +82,18 @@ def floattoint(flt, *, atol=0, rtol=1e-10):
     raise
 
 def weightedaverage(a, *args, **kwargs):
+  """
+  Weighted average of an array a, where the weights are 1/error^2.
+  a should contain objects from the uncertainties module.
+  """
   from . import units
   return np.average(units.nominal_values(a), weights=1/units.std_devs(a)**2, *args, **kwargs)
 
 def weightedvariance(a, *, subtractaverage=True):
+  """
+  Weighted variance of an array a, where the weights are 1/error^2.
+  a should contain objects from the uncertainties module.
+  """
   from . import units
   if subtractaverage:
     average = weightedaverage(a)
@@ -61,10 +102,16 @@ def weightedvariance(a, *, subtractaverage=True):
   return np.average(units.nominal_values(a)**2, weights=1/units.std_devs(a)**2)
 
 def weightedstd(*args, **kwargs):
+  """
+  Weighted standard deviation of an array a, where the weights are 1/error^2.
+  a should contain objects from the uncertainties module.
+  """
   return weightedvariance(*args, **kwargs) ** 0.5
 
-#small helper function to crop white border out of an image
-def cropAndOverwriteImage(im_path,border=0.03) :
+def crop_and_overwrite_image(im_path,border=0.03) :
+  """
+  small helper function to crop white border out of an image
+  """
   im = cv2.imread(im_path)
   y_border = int(im.shape[0]*(border/2))
   x_border = int(im.shape[1]*(border/2))
@@ -80,26 +127,34 @@ def cropAndOverwriteImage(im_path,border=0.03) :
       max_x-=1
   cv2.imwrite(im_path,im[min_y:max_y+1,min_x:max_x+1,:])
 
-#parser callback function to split a string of comma-separated values into a list
 def split_csv_to_list(value) :
+  """
+  parser callback function to split a string of comma-separated values into a list
+  """
   return value.split(',')
 
-#parser callback function to split a string of comma-separated values into a list of integers
 def split_csv_to_list_of_ints(value) :
+  """
+  parser callback function to split a string of comma-separated values into a list of integers
+  """
   try :
       return [int(v) for v in value.split(',')]
   except ValueError :
       raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
 
-#parser callback function to split a string of comma-separated values into a list of floats
 def split_csv_to_list_of_floats(value) :
+  """
+  parser callback function to split a string of comma-separated values into a list of floats
+  """
   try :
       return [float(v) for v in value.split(',')]
   except ValueError :
       raise ValueError(f'Option value {value} is expected to be a comma-separated list of floats!')
 
-#parser callback function to split a string of comma-separated name=value pairs into a dictionary
 def split_csv_to_dict_of_floats(value) :
+  """
+  parser callback function to split a string of comma-separated name=value pairs into a dictionary
+  """
   try :
     pairs = value.split(',')
     return_dict = {}
@@ -110,8 +165,10 @@ def split_csv_to_dict_of_floats(value) :
   except Exception :
       raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=float pairs!')
 
-#helper function to split a string of comma-separated name=(low bound:high bound) pairs into a dictionary
 def split_csv_to_dict_of_bounds(value) :
+  """
+  helper function to split a string of comma-separated name=(low bound:high bound) pairs into a dictionary
+  """
   try :
     pairs = value.split(',')
     return_dict = {}
@@ -123,58 +180,10 @@ def split_csv_to_dict_of_bounds(value) :
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
 
-from .dataclasses import MyDataClass
-
-#helper dataclass for some common metadata information
-class MetadataSummary(MyDataClass):
-  slideID         : str
-  project         : int
-  cohort          : int
-  microscope_name : str
-  mindate         : str
-  maxdate         : str
-
-#helper function to return a list of rectangle ns for all rectangles on the edge of the tissue for this slide
-def getAlignSampleTissueEdgeRectNs(aset) :
-  #get the list of sets of rectangle IDs by island
-  slide_islands = aset.islands()
-  edge_rect_ns = []
-  #for each island
-  for island in slide_islands :
-    island_rects = [r for r in aset.rectangles if r.n in island]
-    #get the width and height of the rectangles
-    #rw, rh = island_rects[0].w, island_rects[0].h
-    #get the x/y positions of the rectangles in the island
-    x_poss = sorted(list(set([r.x for r in island_rects])))
-    y_poss = sorted(list(set([r.y for r in island_rects])))
-    #make a list of the ns of the rectangles on the edge of this island
-    island_edge_rect_ns = []
-    #iterate over them first from top to bottom to add the vertical edges
-    for row_y in y_poss :
-      row_rects = [r for r in island_rects if r.y==row_y]
-      row_x_poss = sorted([r.x for r in row_rects])
-      #add the rectangles of the ends
-      island_edge_rect_ns+=[r.n for r in row_rects if r.x in (row_x_poss[0],row_x_poss[-1])]
-      ##add any rectangles that have a gaps between them and the previous
-      #for irxp in range(1,len(row_x_poss)) :
-      #  if abs(row_x_poss[irxp]-row_x_poss[irxp-1])>rw :
-      #    island_edge_rect_ns+=[r.n for r in row_rects if r.x in (row_x_poss[irxp-1],row_x_poss[irxp])]
-    #iterate over them again from left to right to add the horizontal edges
-    for col_x in x_poss :
-      col_rects = [r for r in island_rects if r.x==col_x]
-      col_y_poss = sorted([r.y for r in col_rects])
-      #add the rectangles of the ends
-      island_edge_rect_ns+=[r.n for r in col_rects if r.y in (col_y_poss[0],col_y_poss[-1])]
-      ##add any rectangles that have a gaps between them and the previous
-      #for icyp in range(1,len(col_y_poss)) :
-      #  if abs(col_y_poss[icyp]-col_y_poss[icyp-1])>rh :
-      #    island_edge_rect_ns+=[r.n for r in col_rects if r.y in (col_y_poss[icyp-1],col_y_poss[icyp])]
-    #add this island's edge rectangles' ns to the total list
-    edge_rect_ns+=island_edge_rect_ns
-  return list(set(edge_rect_ns))
-
-#helper function to mutate an argument parser for some very generic options
 def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,flatfielding=True,warping=True) :
+  """
+  helper function to mutate an argument parser for some very generic options
+  """
   #positional arguments
   if positional_args :
     parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[slideID]/*.Data.dat" files')
@@ -205,6 +214,11 @@ def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,fl
                                help='Add this flag to entirely skip warping corrections')
 
 class PILmaximagepixels(contextlib.AbstractContextManager):
+  """
+  Context manager to increase the maximum image pixels for PIL.
+  Using this context manager will never decrease the maximum pixels.
+  You can also set it to None, which is equivalent to infinity.
+  """
   __maximagepixelscounter = collections.Counter()
   __defaultmaximagepixels = PIL.Image.MAX_IMAGE_PIXELS
   def __init__(self, maximagepixels):
@@ -225,6 +239,10 @@ class PILmaximagepixels(contextlib.AbstractContextManager):
 
 @contextlib.contextmanager
 def memmapcontext(filename, *args, **kwargs):
+  """
+  Context manager for a numpy memmap that closes the memmap
+  on exit.
+  """
   try:
     memmap = np.memmap(filename, *args, **kwargs)
   except OSError as e:
@@ -237,22 +255,40 @@ def memmapcontext(filename, *args, **kwargs):
     memmap._mmap.close()
 
 def re_subs(string, *patternsandrepls, **kwargs):
+  """
+  Helper function to do multiple iterations of re.sub
+  in sequence.
+  """
   for p, r in patternsandrepls:
     string = re.sub(p, r, string, **kwargs)
   return string
 
 class UnequalDictsError(ValueError):
-    def __init__(self, details=None):
-        msg = 'Dicts have different keys'
-        if details is not None:
-            msg += (': index 0 has keys {}; index {} has keys {}').format(
-                *details
-            )
+  """
+  Copied from more_itertools.UnequalIterablesError,
+  but for dicts.
+  """
+  def __init__(self, details=None):
+    msg = 'Dicts have different keys'
+    if details is not None:
+      msg += (': index 0 has keys {}; index {} has keys {}').format(
+        *details
+      )
 
-        super().__init__(msg)
+    super().__init__(msg)
 
 def dict_zip_equal(*dicts):
-  for i, d in enumerate(dicts[1:]):
+  """
+  Similar to more_itertools.zip_equal(), but for dicts
+
+    >>> dict_zip_equal({1: 2, 3: 4}, {1: 3, 3: 5})
+    {1: (2, 3), 3: (4, 5)}
+    >>> dict_zip_equal({1: 2}, {1: 2, 3: 4})
+    Traceback (most recent call last):
+      ...
+    astropath.utilities.misc.UnequalDictsError: Dicts have different keys: index 0 has keys dict_keys([1]); index 1 has keys dict_keys([1, 3])
+  """
+  for i, d in enumerate(dicts):
     if i == 0:
       keys = dicts[i].keys()
       continue
@@ -261,12 +297,24 @@ def dict_zip_equal(*dicts):
   return {k: tuple(d[k] for d in dicts) for k in keys}
 
 def dict_product(dct):
+  """
+  like itertools.product, but the input and outputs are dicts.
+
+    >>> for _ in dict_product({1: (2, 3), 4: (5, 6)}): print(_)
+    {1: 2, 4: 5}
+    {1: 2, 4: 6}
+    {1: 3, 4: 5}
+    {1: 3, 4: 6}
+  """
   keys = dct.keys()
   valuelists = dct.values()
   for values in itertools.product(*valuelists):
     yield {k: v for k, v in more_itertools.zip_equal(keys, values)}
 
 def is_relative_to(path1, path2):
+  """
+  Like pathlib.Path.is_relative_to but backported to older python versions
+  """
   if sys.version_info >= (3, 9):
     return path1.is_relative_to(path2)
   try:
@@ -276,6 +324,12 @@ def is_relative_to(path1, path2):
     return False
 
 def commonroot(*paths, __niter=0):
+  """
+  Give the common root of a number of paths
+    >>> paths = [pathlib.Path(_) for _ in ("/a/b/c", "/a/b/d", "/a/c")]
+    >>> commonroot(*paths) == pathlib.Path("/a")
+    True
+  """
   assert __niter <= 100*len(paths)
   path1, *others = paths
   if not others: return path1
@@ -287,6 +341,9 @@ def commonroot(*paths, __niter=0):
   return commonroot(path1, path2.parent, *others, __niter=__niter+1)
 
 def checkwindowsnewlines(filename):
+  r"""
+  Check that the file consistently uses windows newlines \r\n
+  """
   with open(filename, newline="") as f:
     contents = f.read()
     if re.search(r"(?<!\r)\n", contents):
@@ -295,6 +352,9 @@ def checkwindowsnewlines(filename):
       raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
 
 def pathtomountedpath(filename):
+  """
+  Convert a path location to the mounted path location, if the filesystem is mounted
+  """
   if sys.platform == "cygwin":
     #please note that the AstroPath framework is NOT tested on cygwin
     return pathlib.PureWindowsPath(subprocess.check_output(["cygpath", "-w", filename]).strip().decode("utf-8"))
@@ -320,6 +380,10 @@ def pathtomountedpath(filename):
   return bestmounttarget/filename.relative_to(bestmountpoint)
 
 def mountedpathtopath(filename):
+  """
+  Convert a path on a mounted filesystem to the corresponding path on
+  the current filesystem.
+  """
   if sys.platform == "cygwin":
     #please note that the AstroPath framework is NOT tested on cygwin
     return pathlib.Path(subprocess.check_output(["cygpath", "-u", filename]).strip().decode("utf-8"))
@@ -347,6 +411,10 @@ def mountedpathtopath(filename):
   return bestresult
 
 def guesspathtype(path):
+  """
+  return a WindowsPath, PosixPath, PureWindowsPath, or PurePosixPath,
+  as appropriate, guessing based on the types of slashes in the path
+  """
   if isinstance(path, pathlib.PurePath):
     return path
   if pathlib.Path(path).exists(): return pathlib.Path(path)
@@ -364,6 +432,10 @@ def guesspathtype(path):
     raise ValueError(f"Can't guess the path type for {path}")
 
 def mountedpath(filename):
+  """
+  like guesspathtype, but if the path starts with // it will assume
+  it's a network path on windows
+  """
   if filename.startswith("//"):
     try:
       return pathlib.WindowsPath(filename)

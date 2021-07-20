@@ -128,6 +128,15 @@ class OverlapCollection(abc.ABC):
     """
     return list(nx.strongly_connected_components(self.overlapgraph(*args, **kwargs)))
 
+  def overlapsforrectangle(self,rectangle_n,*args,**kwargs):
+    """
+    Return the overlaps for a given rectangle as graph edges
+
+    rectangle_n: the identifier of the rectangle whose overlaps should be returned
+    other arguments can be anything passed to overlapgraph or DiGraph.edges()
+    """
+    return list(self.overlapgraph(*args,**kwargs).edges(rectangle_n))
+
   def overlapsdictkey(self, overlap):
     """
     Key to be used for computing overlaps dict (can be overridden in subclasses)
@@ -181,6 +190,48 @@ class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
     for r in self.rectangles:
       g.add_node(r.n, rectangle=r)
     return g
+
+  @property
+  def edgerectangles(self) :
+    """
+    helper function to return a list of rectangle ns for all rectangles on the edge of the tissue for this slide
+    """
+    #get the list of sets of rectangle IDs by island
+    slide_islands = self.islands()
+    edge_rects = set()
+    #for each island
+    for island in slide_islands :
+      island_rects = [r for r in self.rectangles if r.n in island]
+      #get the width and height of the rectangles
+      #rw, rh = island_rects[0].w, island_rects[0].h
+      #get the x/y positions of the rectangles in the island
+      x_poss = sorted({r.x for r in island_rects})
+      y_poss = sorted({r.y for r in island_rects})
+      #make a list of the ns of the rectangles on the edge of this island
+      island_edge_rects = set()
+      #iterate over them first from top to bottom to add the vertical edges
+      for row_y in y_poss :
+        row_rects = {r for r in island_rects if r.y==row_y}
+        row_x_poss = sorted(r.x for r in row_rects)
+        #add the rectangles of the ends
+        island_edge_rects|={r for r in row_rects if r.x in (row_x_poss[0],row_x_poss[-1])}
+        ##add any rectangles that have a gaps between them and the previous
+        #for irxp in range(1,len(row_x_poss)) :
+        #  if abs(row_x_poss[irxp]-row_x_poss[irxp-1])>rw :
+        #    island_edge_rects|={r for r in row_rects if r.x in (row_x_poss[irxp-1],row_x_poss[irxp])}
+      #iterate over them again from left to right to add the horizontal edges
+      for col_x in x_poss :
+        col_rects = {r for r in island_rects if r.x==col_x}
+        col_y_poss = sorted(r.y for r in col_rects)
+        #add the rectangles of the ends
+        island_edge_rects|={r for r in col_rects if r.y in (col_y_poss[0],col_y_poss[-1])}
+        ##add any rectangles that have a gaps between them and the previous
+        #for icyp in range(1,len(col_y_poss)) :
+        #  if abs(col_y_poss[icyp]-col_y_poss[icyp-1])>rh :
+        #    island_edge_rects|={r for r in col_rects if r.y in (col_y_poss[icyp-1],col_y_poss[icyp])}
+      #add this island's edge rectangles' ns to the total list
+      edge_rects|=island_edge_rects
+    return edge_rects
 
 class RectangleOverlapList(RectangleOverlapCollection):
   """

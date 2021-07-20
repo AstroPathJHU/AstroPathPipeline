@@ -4,7 +4,7 @@ from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
-from .sample import SampleDef
+from .samplemetadata import SampleDef
 from .workflowdependency import ThingWithRoots, WorkflowDependency
 
 class CohortBase(ThingWithRoots):
@@ -489,7 +489,9 @@ class WorkflowCohort(Cohort):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--rerun-error", type=re.compile, action="append", dest="rerun_errors", help="rerun only samples with an error that matches this regex")
+    g.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
     p.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
@@ -506,16 +508,23 @@ class WorkflowCohort(Cohort):
 
     dependencies = parsed_args_dict.pop("dependencies")
     skip_finished = parsed_args_dict.pop("skip_finished")
+    rerun_errors = parsed_args_dict.pop("rerun_errors")
 
     def filter(runstatus, dependencyrunstatuses):
+      if rerun_errors and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
+        runstatus = True
+
       if not skip_finished and not dependencies:
         return True
+
       elif skip_finished and not dependencies:
         return not runstatus
+
       elif dependencies and not skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
           if not dependencyrunstatus: return False
         return True
+
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
           if not dependencyrunstatus: return False

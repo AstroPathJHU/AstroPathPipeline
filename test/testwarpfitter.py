@@ -36,7 +36,7 @@ args = Namespace(
         octet_selection='random_2',
         workers=None,
         layer=1,
-        overlaps=[46],
+        overlaps=[134],
         octets=[-999],
         save_warp_fields=False
     )
@@ -48,8 +48,8 @@ from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual
 
 new = readtable(working_dir/"fit_result.csv", WarpFitResult, checkorder=True, checknewlines=True)
-ref = readtable(folder/"reference"/"warping"/"fit_result.csv", WarpFitResult, checkorder=True, checknewlines=True)
-ref2 = readtable(folder/"reference"/"warping"/"fit_result_2.csv", WarpFitResult, checkorder=True, checknewlines=True)
+ref = readtable(folder/"data"/"reference"/"warping"/"fit_result.csv", WarpFitResult, checkorder=True, checknewlines=True)
+ref2 = readtable(folder/"data"/"reference"/"warping"/"fit_result_2.csv", WarpFitResult, checkorder=True, checknewlines=True)
 for resultnew, resultref, resultref2 in zip(new, ref, ref2):
   for result in resultnew, resultref, resultref2:
     result.dirname = ""

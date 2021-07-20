@@ -1,65 +1,76 @@
-#imports
-import numpy as np
-
 #class for shared constant variables
 class Const :
-    #final overall outputs
     @property
-    def MASK_STACK_DTYPE_OUT(self) :
-        return np.uint64 #datatype for the mask stack output image
+    def DEFAULT_N_THREADS(self) :
+        return 10 #default number of threads to use for parallelized portions of the code
     @property
-    def FILE_EXT(self) :
-        return '.bin' #file extension for the main output files
+    def IMAGE_MASKING_SUBDIR_NAME(self) :
+        return 'image_masking' #name of the image masking subdirectory in the workingdirectory (if masking is run)
     @property
-    def FLATFIELD_FILE_NAME_STEM(self) :
-        return 'flatfield' #what the flatfield file is called
+    def FIELDS_USED_CSV_FILENAME(self) :
+        return 'fields_used.csv' #name of the .csv file listing every HPF used to make a meanimage/flatfield model
     @property
-    def MEAN_IMAGE_FILE_NAME_STEM(self) :
-        return 'mean_image' #name of the outputted mean image file
+    def MEAN_IMAGE_BIN_FILE_NAME_STEM(self) :
+        return 'mean_image.bin' #suffix to name of the meanimage .bin file created by meanimagesample
     @property
-    def SUM_IMAGES_SQUARED_FILE_NAME_STEM(self) :
-        return 'sum_images_squared'
+    def SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM(self) :
+        return 'sum_images_squared.bin' #suffix to name of the sum of images squared .bin file created by meanimagesample
     @property
-    def STD_ERR_MEAN_IMAGE_FILE_NAME_STEM(self) :
-        return 'std_error_of_mean_image' #name of the outputted standard error of the mean image file
+    def STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM(self) :
+        return 'std_err_of_mean_image.bin' #suffix to name of the standard error of the meanimage .bin file created by meanimagesample
     @property
-    def MASK_STACK_FILE_NAME_STEM(self) :
-        return 'mask_stack' #name of the outputted mask stack file
+    def MASK_STACK_BIN_FILE_NAME_STEM(self) :
+        return 'mask_stack.bin' #suffix to the name of the mask stack .bin file
     @property
-    def SMOOTHED_CORRECTED_MEAN_IMAGE_FILE_NAME_STEM(self) :
-        return 'smoothed_corrected_mean_image' #name of the outputted smoothed corrected mean image file
+    def BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM(self) :
+        return 'background_thresholds.csv' #suffix to name of the background threshold .txt file created by meanimagesample
     @property
-    def THRESHOLDING_PLOT_DIR_NAME(self) :
-        return 'thresholding_info' #name of the directory where the thresholding information will be stored
+    def METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME(self) :
+        return 'metadata_summary_stacked_images.csv' #name of the .csv file giving the metadata summary for the HPFs that were stacked 
+                                                     #to make the meanimage/flatfield model
     @property
-    def POSTRUN_PLOT_DIRECTORY_NAME(self) :
-        return 'postrun_info' #name of directory to hold postrun plots (pixel intensity, image layers, etc.) and other info
+    def METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME(self) :
+        return 'metadata_summary_thresholding_images.csv' #name of the .csv file giving the metadata summary for the HPFs that were used 
+                                                          #to find the optimal background thresholds
     @property
-    def IMAGE_LAYER_PLOT_DIRECTORY_NAME(self) :
-        return 'image_layer_pngs' #name of directory to hold image layer plots within postrun plot directory
+    def THRESHOLDING_DATA_TABLE_CSV_FILENAME(self) :
+        return 'thresholding_data_table.csv' #name of the .csv file listing optimal background thresholds found for individual images
     @property
-    def PIXEL_INTENSITY_PLOT_NAME(self) :
-        return 'pixel_intensity_plot.png' #name of the pixel intensity plot
+    def THRESHOLDING_SUMMARY_PDF_FILENAME(self) :
+        return 'thresholding_summary.pdf' #name of the .pdf file containing plots of how the thresholding algorithm worked for this sample
     @property
-    def N_IMAGES_STACKED_PER_LAYER_PLOT_NAME(self) :
-        return 'n_images_stacked_per_layer.png' #name of the images stacked per layer plot
+    def LABELLED_MASK_REGIONS_CSV_FILENAME(self) :
+        return 'labelled_mask_regions.csv' #name of the .csv file listing information about every region of every HPF masked due to blur or saturation 
+                                           #(like a key for the mask files)
     @property
-    def N_IMAGES_READ_TEXT_FILE_NAME(self) :
-        return 'n_images_read.txt' #name of the images stacked per layer text file
+    def BLUR_AND_SATURATION_MASK_FILE_NAME_STEM(self) :
+        return 'full_mask.bin' #end of the filename for the blur and saturation mask files
     @property
-    def AUTOMATIC_MEANIMAGE_DIRNAME(self) :
-        return 'meanimage'
+    def TISSUE_MASK_FILE_NAME_STEM(self) :
+        return 'tissue_mask.bin' #end of the filename for the blur and saturation mask files
     @property
-    def AUTOMATIC_FLATW_FILE_MEANIMAGE_DIRNAME(self):
-        return 'meanimage_from_fw_files'
+    def MASKING_SUMMARY_PDF_FILENAME(self) :
+        return 'masking_summary.pdf' #name of the .pdf file containing plots of how the image masking worked for this sample
     @property
-    def BATCH_FF_DIRNAME_STEM(self) :
-        return 'flatfield_BatchID'
+    def MIN_PIXEL_FRAC(self) :
+        return 0.8 #minimum fraction of pixels that must be "good tissue" in a given image to add it to an image stack
     @property
-    def INTENSITY_FIG_WIDTH(self) :
-        return 16.8 #width of the intensity plot figure
+    def MEANIMAGE_SUMMARY_PDF_FILENAME(self) :
+        return 'meanimage_summary.pdf' #name of the .pdf file containing plots of layers of the meanimage for this sample, etc.
     @property
-    def ILLUMINATION_VARIATION_PLOT_WIDTH(self) :
-        return 9.6 #width of the illumination variation plot
+    def FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA(self) :
+        return 100 #Sigma (in pixels) for the wide Gaussian filter applied to smooth the meanimage when creating a flatfield model
+    @property
+    def TOP_FLATFIELD_DIRNAME(self) :
+        return 'Flatfield' #name of the directory holding flatfield model results for an entire cohort (directory with this name gets created in root)
+    @property
+    def FLATFIELD_DIRNAME_STEM(self) :
+        return 'flatfield_BatchID_' #prepend for name of the directory holding batch flatfield results (also used for some other image/plot names)
+    @property
+    def FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
+        return 'flatfield_summary' #prepend for the name of the batch flatfield summary pdf file
+    @property
+    def APPLIED_FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
+        return 'applied_flatfield_summary' #prepend for the name of the applied flatfield summary pdf file
 
 CONST=Const()

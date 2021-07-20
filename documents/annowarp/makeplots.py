@@ -6,9 +6,9 @@ from astropath.utilities import units
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"
-zoomroot = here/".."/".."/"test"/"reference"/"zoom"
-annowarproot = here/".."/".."/"test"/"reference"/"annowarp"
-alignroot = here/".."/".."/"test"/"reference"/"alignment"/"component_tiff"
+zoomroot = here/".."/".."/"test"/"data"/"reference"/"zoom"
+annowarproot = here/".."/".."/"test"/"data"/"reference"/"annowarp"
+alignroot = here/".."/".."/"test"/"data"/"reference"/"alignment"/"component_tiff"
 samp = "M206"
 
 def makeplots():
