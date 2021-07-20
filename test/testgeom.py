@@ -1,4 +1,4 @@
-import contextlib, datetime, job_lock, logging, more_itertools, os, pathlib
+import contextlib, job_lock, logging, more_itertools, os, pathlib
 
 from astropath.shared.logging import getlogger
 from astropath.shared.sample import SampleDef
@@ -42,20 +42,14 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
     try:
       slideids = "M206", "M148"
 
-      from astropath.utilities.version import astropathversion
-
       testroot = thisfolder/"test_for_jenkins"/"geom"
-      dataroot = thisfolder/"data"
       for SlideID in slideids:
         logfolder = testroot/SlideID/"logfiles"
         logfolder.mkdir(exist_ok=True, parents=True)
-        now = datetime.datetime.now()
-        starttime = now
-        endtime = starttime + datetime.timedelta(seconds=30)
 
         filename = logfolder/f"{SlideID}-geom.log"
         assert stack.enter_context(job_lock.JobLock(filename))
-        with getlogger(root=testroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="geom", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1) as logger:
+        with getlogger(root=testroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="geom", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1):
           raise ValueError("testing error regex matching")
 
         dbloadfolder = testroot/SlideID/"dbload"
