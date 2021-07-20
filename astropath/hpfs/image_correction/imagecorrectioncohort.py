@@ -1,5 +1,5 @@
 #imports 
-from .image_correction_sample import ImageCorrectionSample
+from .imagecorrectionsample import ImageCorrectionSample
 from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort, WorkflowCohort, SelectLayersCohort
 

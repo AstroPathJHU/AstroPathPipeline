@@ -78,9 +78,9 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
         args = [os.fspath(root),os.fspath(root2),
                 '--sampleregex','('+'|'.join(slide_IDs)+')',
                 '--batchID',str(batchID),
+                '--allow-local-edits',
+                '--ignore-dependencies',
                ]
-        args.append('--allow-local-edits')
-        args.append('--ignore-dependencies')
         BatchFlatfieldCohort.runfromargumentparser(args=args)
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'batchflatfieldcohort'
