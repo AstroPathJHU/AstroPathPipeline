@@ -61,9 +61,6 @@ class Const :
     def FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA(self) :
         return 100 #Sigma (in pixels) for the wide Gaussian filter applied to smooth the meanimage when creating a flatfield model
     @property
-    def TOP_FLATFIELD_DIRNAME(self) :
-        return 'Flatfield' #name of the directory holding flatfield model results for an entire cohort (directory with this name gets created in root)
-    @property
     def FLATFIELD_DIRNAME_STEM(self) :
         return 'flatfield_BatchID_' #prepend for name of the directory holding batch flatfield results (also used for some other image/plot names)
     @property

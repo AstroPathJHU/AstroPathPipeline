@@ -91,7 +91,7 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
 
     @property
     def workingdir(self) :
-        return self.root / CONST.TOP_FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
+        return self.root / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
 
     #################### CLASS METHODS ####################
 

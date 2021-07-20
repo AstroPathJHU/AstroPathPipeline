@@ -1,7 +1,8 @@
 #imports
 from .warp import CameraWarp
 from .plotting import principalPointPlot, radWarpAmtPlots, radWarpParPlots, radWarpPCAPlots, warpFieldVariationPlots
-from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, getOctetsFromArguments, WarpFitResult, FieldLog, WarpingSummary
+from .utilities import warp_logger, addCommonWarpingArgumentsToParser, checkDirAndFixedArgs, WarpFitResult, FieldLog, WarpingSummary
+from .octet_finding import getOctetsFromArguments
 from .config import CONST
 from ...shared.samplemetadata import MetadataSummary
 from ...utilities.tableio import readtable, writetable
