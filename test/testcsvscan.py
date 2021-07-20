@@ -99,7 +99,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
     super().tearDown()
     self.__stack.close()
 
-  def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False):
+  def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False, nolog=False):
     root = thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"
     geomroot = thisfolder/"data"/"reference"/"geomcell"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
@@ -108,6 +108,8 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for rid in selectrectangles: args.append(str(rid))
     if skipcheck:
       args.append("--skip-check")
+    if nolog:
+      args.append("--no-log")
     CsvScanCohort.runfromargumentparser(args=args)
 
     s = CsvScanSample(root=root, geomroot=geomroot, samp=SlideID)
@@ -143,6 +145,12 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
         row.filename = row.filename.relative_to(targetcommonroot).as_posix()
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target)
+
+      logfile = s.root/"logfiles"/"csvscan.log"
+      if not nolog:
+        assert logfile.exists()
+      else:
+        assert not logfile.exists()
     except:
       self.saveoutput()
       raise
@@ -150,7 +158,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       self.removeoutput()
 
   def testCsvScanFastUnits(self, **kwargs):
-    self.testCsvScan(units="fast", **kwargs)
+    self.testCsvScan(units="fast", nolog=True, **kwargs)
 
   def testCsvScanNoCheck(self, **kwargs):
     self.testCsvScan(skipcheck=True)
