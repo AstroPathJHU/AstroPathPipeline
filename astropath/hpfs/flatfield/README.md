@@ -13,6 +13,7 @@ To run the routine for a single sample in the most common use case, enter the fo
 where:
 - `[path_to_exposure_time_offset_file]` is the path to a .csv file holding the exposure time correction "dark current" offsets as a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L30-L35), which is output by the code that does the exposure time correction fits.
 - `[njobs]` is the maximum number of parallel processes allowed to run at once during the parallelized portions of the code running
+
 See [here](../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
 
 Running the above command will produce a "`meanimage`" directory in `<Dpath>\<Dname>\SlideID\im3` that contains the following:
@@ -37,7 +38,7 @@ Running the above command will produce a "`meanimage`" directory in `<Dpath>\<Dn
 1. **a more detailed sample log file** called "`<SlideID>-meanimage.log`" in `<Dpath>\<Dname>\<SlideID>\logfiles`
 
 Other options for running the code include:
-- skipping corrections for differences in exposure time: replace the `--exposure_time_offset_file` argument with the `--skip_exposure_time_correction` flag
+- skipping corrections for differences in exposure time: remove the `--exposure_time_offset_file` argument
 - skipping determining background thresholds and creating masks: add the `--skip_masking` flag 
 - changing the output location: add the `--workingdir [workingdir_path]` argument where `[workingdir_path]` is the path to the directory where the output should go (the default is `<Dpath>\<Dname>\SlideID\im3\meanimage` as detailed above)
 - using pre-created mask/threshold files: If the routine has already been run and background thresholds and/or masking files have already been created in the expected location, those portions of the code will not be run again unless the existing files are deleted. If you would like to force recreation of the files, add the `--maskroot [mask_root_path]` argument, where `[mask_root_path]` is a path to a directory other than `<Dpath>\<Dname>`. This same argument can be used to reference pre-created threshold/masking files in any other location as well, and the sample log file will list details of which subroutines have been skipped or run and where the data they're using are coming from. 

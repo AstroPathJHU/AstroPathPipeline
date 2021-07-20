@@ -218,7 +218,7 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
     p = super().makeargumentparser()
     p.add_argument('--exposure_time_offset_file', type=pathlib.Path,
                     help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
-                    [use this argument to apply corrections for differences in image exposure time]''')
+                    [default=None skips corrections for differences in image exposure time]''')
     p.add_argument('--flatfield_file', type=pathlib.Path,
                     help='''Path to the flatfield .bin file, or name of the file in root/Flatfield, containing the correction factors to apply 
                     [default=None skips flatfield corrections]''')
