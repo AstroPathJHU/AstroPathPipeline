@@ -1,16 +1,15 @@
 #imports
 from .meanimagesample import MeanImageSample
-from ...shared.argumentparser import FileTypeArgumentParser, ImageCorrectionArgumentParser
-from ...shared.cohort import Im3Cohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort
+from ...shared.argumentparser import FileTypeArgumentParser
+from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort
 
-class MeanImageCohort(Im3Cohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort, FileTypeArgumentParser, ImageCorrectionArgumentParser) :
+class MeanImageCohort(CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort, FileTypeArgumentParser) :
     sampleclass = MeanImageSample
     __doc__ = sampleclass.__doc__
 
-    def __init__(self,*args,filetype='raw',et_offset_file=None,skip_masking=False,**kwargs) :
+    def __init__(self,*args,filetype='raw',skip_masking=False,**kwargs) :
         super().__init__(*args,**kwargs)
         self.filetype = filetype
-        self.et_offset_file = et_offset_file
         self.skip_masking = skip_masking
 
     @classmethod
@@ -31,7 +30,6 @@ class MeanImageCohort(Im3Cohort, SelectRectanglesCohort, MaskCohort, ParallelCoh
     def initiatesamplekwargs(self) :
         return {**super().initiatesamplekwargs,
                 'filetype':self.filetype,
-                'et_offset_file':self.et_offset_file,
                 'skip_masking':self.skip_masking,
                }
 
