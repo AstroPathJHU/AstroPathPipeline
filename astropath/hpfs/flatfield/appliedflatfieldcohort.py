@@ -2,8 +2,8 @@
 from .meanimagesample import MeanImageSampleBase
 from .imagestack import CorrectedMeanImage, Flatfield
 from .config import CONST
-from ...shared.argumentparser import FileTypeArgumentParser, ImageCorrectionArgumentParser
-from ...shared.cohort import Im3Cohort, WorkflowCohort
+from ...shared.argumentparser import FileTypeArgumentParser
+from ...shared.cohort import CorrectedImageCohort, WorkflowCohort
 from ...shared.sample import WorkflowSample
 from ...shared.samplemetadata import MetadataSummary
 from ...shared.rectangle import RectangleCorrectedIm3MultiLayer
@@ -75,7 +75,7 @@ class AppliedFlatfieldSample(MeanImageSampleBase,WorkflowSample) :
     def workflowdependencyclasses(cls):
         return super().workflowdependencyclasses()
 
-class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, ImageCorrectionArgumentParser) :
+class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgumentParser) :
     """
     Class to use in investigating the effects of applying flatfield corrections within a cohort
     Each sample in the cohort will have its tissue bulk rectangles randomly split in two. 
@@ -85,14 +85,13 @@ class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, 
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir,filetype='raw',et_offset_file=None,skip_masking=False,image_set_split='random',**kwargs) :
+    def __init__(self,*args,workingdir,filetype='raw',skip_masking=False,image_set_split='random',**kwargs) :
         """
         workingdir = Path to a directory that will hold the results
         """
         super().__init__(*args,**kwargs)
         self.__workingdir = workingdir
         self.__filetype = filetype
-        self.__et_offset_file = et_offset_file
         self.__skip_masking = skip_masking
         self.__image_set_split = image_set_split
         self.__flatfield = Flatfield(self.logger)
@@ -170,7 +169,6 @@ class AppliedFlatfieldCohort(Im3Cohort, WorkflowCohort, FileTypeArgumentParser, 
         return {**super().initiatesamplekwargs,
                 'workingdir':self.__workingdir,
                 'filetype':self.__filetype,
-                'et_offset_file':self.__et_offset_file,
                 'skip_masking':self.__skip_masking,
                 'image_set_split':self.__image_set_split,
                }
