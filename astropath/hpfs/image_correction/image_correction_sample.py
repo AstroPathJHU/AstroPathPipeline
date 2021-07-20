@@ -84,18 +84,21 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
         return root.parent / flatw_dir_name / SlideID
 
     @classmethod
-    def getoutputfiles(cls,SlideID,root,layers,**otherworkflowkwargs) :
+    def getoutputfiles(cls,SlideID,root,root2,layers,**otherworkflowkwargs) :
+        all_rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (root2/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
         outputfiles = []
-        for r in self.rectangles :
+        for rfs in all_rawfile_stems :
             if type(layers)==range : #if it's a range then it's just the multilayer images
-                outputfilename = r.imagefile.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.FLATW_EXT)
+                outputfilename = f'{rfs}{UNIV_CONST.FLATW_EXT}'
+                outputfiles.append(cls.automatic_output_dir(SlideID,root) / outputfilename)
             else :
                 for ln in layers :
                     if ln==-1 : #then the multilayer files should be saved
-                        outputfilename = r.imagefile.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.FLATW_EXT)
+                        outputfilename = f'{rfs}{UNIV_CONST.FLATW_EXT}'
+                        outputfiles.append(cls.automatic_output_dir(SlideID,root) / outputfilename)
                     else :
-                        outputfilename = r.imagefile.replace(UNIV_CONST.IM3_EXT,f'{UNIV_CONST.FLATW_EXT}{ln:02d}')
-            outputfiles.append(cls.automatic_output_dir(SlideID,root) / outputfilename)
+                        outputfilename = f'{rfs}{UNIV_CONST.FLATW_EXT}{ln:02d}'
+                        outputfiles.append(cls.automatic_output_dir(SlideID,root) / outputfilename)
         return outputfiles
 
     @classmethod

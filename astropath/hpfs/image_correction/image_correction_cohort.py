@@ -17,6 +17,7 @@ class ImageCorrectionCohort(CorrectedImageCohort, SelectRectanglesCohort, Parall
             **super().initiatesamplekwargs,
             'workingdir':self.workingdir,
             'layers':self.layers,
+            "filetype": 'raw', # only ever run image correction on raw files
             }
 
     @property
