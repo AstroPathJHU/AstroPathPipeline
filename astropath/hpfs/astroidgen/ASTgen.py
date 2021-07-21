@@ -15,6 +15,7 @@ import re
 import sys
 import numpy
 import time
+import traceback
 import argparse
 from operator import itemgetter
 from ...shared import shared_tools as st
@@ -23,21 +24,22 @@ from ...shared import shared_tools as st
 #
 # Reads source csv and takes directories
 #
-def update_source_csv(csv_file):
-    #
-    # Open and read file
-    #
+def update_source_csv(csv_file, debug):
     attempts = 0
     try:
+        if debug:
+            leading = ''
+        else:
+            leading = '//'
         lines = st.read_csv(csv_file)
         #
         # Get and return relevant strings and convert filepath format to something Jenkins can read
         #
         regex = '/|\\\\'
         proj = [i.split(',')[0] for i in lines[1:]]
-        dpath = ['/'.join(re.split(regex, i.split(',')[1])) for i in lines[1:]]
+        dpath = [leading + '/'.join(re.split(regex, i.split(',')[1])) for i in lines[1:]]
         dname = [i.split(',')[2] for i in lines[1:]]
-        spath = ['/'.join(re.split(regex, i.split(',')[3])) for i in lines[1:]]
+        spath = [leading + '/'.join(re.split(regex, i.split(',')[3])) for i in lines[1:]]
         return dname, dpath, spath, proj
     except OSError:
         attempts = attempts + 1
@@ -62,8 +64,11 @@ def create_folders(dname, dpath):
     return dpath + '/' + dname + '/' + folders[0]
 
 
-def ast_gen(mpath, csv_file, mastro_csv):
-    dname, dpath, spath, proj = update_source_csv(csv_file)
+#
+# Process all input files
+#
+def ast_gen(mpath, csv_file, mastro_csv, debug):
+    dname, dpath, spath, proj = update_source_csv(csv_file, debug)
     if not dname:
         return
     for pos in range(0, len(dname)):
@@ -90,11 +95,7 @@ def extract_data(dname, spath, mpath):
     attempts = 0
     try:
         #
-        # get patient#s and batch ids
-        #
         data_mat = st.extract_specimens(specimen_path, ['Patient #', 'Batch ID'])
-        #
-        # opening cohorts progress file and getting cohort information
         #
         cohorts = st.read_csv(cohort_path)
         projects = [i.split(',')[0] for i in cohorts[1:]]
@@ -110,13 +111,22 @@ def extract_data(dname, spath, mpath):
                                      + str(attempts) + " attempts."
             print(log_string)
             return [], [], []
+    except KeyError:
+        error_msg = traceback.format_exc().splitlines()[-1].split(':')[0]
+        missing_key = traceback.format_exc().splitlines()[-1].split(':')[1]
+        log_string = "WARNING: {0}:{1} missing in {2}.\n" \
+                     "Make sure 'Patient #' and 'Batch ID' are correctly " \
+                     "labeled.".format(error_msg, missing_key, specimen_path)
+        print(log_string)
+        return [], [], []
 
 
 #
 # Generate SlideIDs for all slides starting from highest SlideID in master Astrodef.csv
 #
 def next_slide_id(mastro_csv, local_string, st_patient, st_batch_id, proj):
-    tags = ['SlideID', 'SampleName', 'Project', 'Cohort', 'BatchID']
+    print(local_string)
+    tags = ['SlideID', 'SampleName', 'Project', 'Cohort', 'BatchID', 'isGood']
     if not os.path.exists(local_string):
         with open(local_string, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=tags)
@@ -126,16 +136,17 @@ def next_slide_id(mastro_csv, local_string, st_patient, st_batch_id, proj):
     #
     if os.path.exists(mastro_csv):
         lines = st.read_csv(mastro_csv)
-        slide_id_list = [i.split(',')[0] for i in lines[1:]]
-        slide_id_list = [s.replace('AP', '') for s in slide_id_list]
+        slide_id_list = [i.split(',')[0].replace('AP', '') for i in lines[1:]]
         slide_id_list = [idx[3:7] for idx in slide_id_list if idx[0:3].lower() == proj]
         if not slide_id_list:
             slide_id = 1
-            new_patient = st_patient
         else:
-            at_patient = [i1.split(',')[1] for i1 in lines[1:]]
             slide_id = max(map(int, slide_id_list)) + 1
-            new_patient = numpy.setdiff1d(st_patient, at_patient, assume_unique=True)
+        project_list = [i.split(',')[2] for i in lines[1:]]
+        indices = [i for i, x in enumerate(project_list) if int(x) == int(proj)]
+        sample_list = [i.split(',')[1] for i in lines[1:]]
+        at_patient = [sample_list[i1] for i1 in indices]
+        new_patient = numpy.setdiff1d(st_patient, at_patient, assume_unique=True)
     else:
         with open(mastro_csv, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=tags)
@@ -143,6 +154,7 @@ def next_slide_id(mastro_csv, local_string, st_patient, st_batch_id, proj):
         slide_id = 1
         new_patient = st_patient
     if len(new_patient) == 0:
+        print("nothing")
         return [], [], []
     new_batch_id = [st_batch_id[st_patient.index(new_patient[b])] for b in range(len(new_patient))]
     new_slide_id = ["AP" + proj + str(n + slide_id).zfill(4) for n in range(len(new_patient))]
@@ -173,23 +185,17 @@ def slide_id_csv(st_patient, st_batch_id, mastro_csv, uppath, proj, cohort):
     if new_slide_id:
         proj_list = [proj] * len(new_patient)
         cohort_list = [cohort[1][cohort[0].index(proj)]] * len(new_patient)
+        isGood_list = ['1'] * len(new_patient)
         if len(new_slide_id) == 1:
             new_data = list(zip(new_slide_id, new_patient, proj_list, cohort_list,
-                                new_batch_id))
+                                new_batch_id, isGood_list))
         else:
             id_index = [i for i, val in enumerate(new_patient) if val in set(st_patient)]
             new_data = list(zip(new_slide_id, list(itemgetter(*id_index)(new_patient)),
                                 proj_list, cohort_list,
-                                list(itemgetter(*id_index)(new_batch_id))))
+                                list(itemgetter(*id_index)(new_batch_id)), isGood_list))
         #
         # Append Astrodef_<project>.csv for working specimen
-        #
-        # Create shared tools function that opens csv and writes infromation with given headers
-        # Inputs: filename, cols, cols_data
-        # Check that you can open file and that it exists
-        # If DNE, write file with cols
-        # take out cols_data
-        # If file can't open return error
         #
         attempts = 0
         try:
@@ -205,33 +211,31 @@ def slide_id_csv(st_patient, st_batch_id, mastro_csv, uppath, proj, cohort):
                              + str(attempts) + " attempts."
                 print(log_string)
                 return
-    # with open(mastro_csv, newline='') as csvfile:
-    #     astroidreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-    #     for row in astroidreader:
-    #         print(', '.join(row))
-    #
-    # Get APID data for local file
-    #
     lines = st.read_csv(mastro_csv)
-    slide_id_list = [i.split(',')[0] for i in lines[1:]]
-    slide_id_list = [s.replace('AP', '') for s in slide_id_list]
-    indeces = [slide_id_list.index(idx) for idx in slide_id_list if int(idx[0:3]) == int(proj)]
+    project_list = [i.split(',')[2] for i in lines[1:]]
+    indices = [i for i, x in enumerate(project_list) if int(x) == int(proj)]
     new_data = []
-    for index in indeces:
+    for index in indices:
         new_data.append(lines[index + 1].replace('\n', '').split(','))
     #
     # Check if the new list doesn't match the old file data
     #
     old_data = []
     lines = st.read_csv(local_string)
-    slide_id_list = [i.split(',')[0] for i in lines[1:]]
-    for i1 in range(len(slide_id_list)):
+    project_list = [i.split(',')[2] for i in lines[1:]]
+    indices = [i for i, x in enumerate(project_list) if int(x) == int(proj)]
+    sample_list = [i.split(',')[1] for i in lines[1:]]
+    at_patient = [sample_list[i1] for i1 in indices]
+    for i1 in range(len(at_patient)):
         old_data.append(lines[i1 + 1].replace('\n', '').split(','))
     if old_data == new_data:
         return
     #
     try:
+        tags = ['SlideID', 'SampleName', 'Project', 'Cohort', 'BatchID', 'isGood']
         with open(local_string, 'w', newline='') as f:
+            header = csv.DictWriter(f, fieldnames=tags)
+            header.writeheader()
             writer = csv.writer(f, lineterminator='\r\n')
             writer.writerows(new_data)
     except OSError:
@@ -243,13 +247,6 @@ def slide_id_csv(st_patient, st_batch_id, mastro_csv, uppath, proj, cohort):
                                      + str(attempts) + " attempts."
             print(log_string)
             return
-    # with open(local_string, newline='') as csvfile:
-    #     astroidreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-    #     for row in astroidreader:
-    #         print(', '.join(row))
-    #
-    # Append master Astrodef.csv
-    #
 
 
 def apid_argparser():
@@ -261,6 +258,8 @@ def apid_argparser():
     parser.add_argument('--version', action='version', version='%(prog)s ' + version)
     parser.add_argument('mpath', type=str, nargs='?',
                         help='directory for astropath processing documents')
+    parser.add_argument('-d', action='store_true',
+                        help='runs debug mode')
     args, unknown = parser.parse_known_args()
     return args
 
@@ -272,33 +271,34 @@ def start_gen():
     #
     # Process user input for the csv file path
     #
-    cwd = '/'.join(os.getcwd().replace('\\', '/').split('/')[:-1])
-    print(cwd)
-    for root, dirs, files in os.walk(cwd, topdown=True):
-        if "shared_tools" in dirs:
-            os.chdir(root)
-            break
-    cwd = '/'.join(os.getcwd().replace('\\', '/').split('/'))
-    print(cwd)
-    print("Inputs: " + str(sys.argv))
-    arg = apid_argparser()
-    mpath = pathlib.Path(arg.mpath)
-    csv_file = mpath/"AstropathPaths.csv"
-    mastro_csv = mpath/"AstropathAPIDdef.csv"
-    if not os.path.exists(csv_file):
-        print("No AstropathPaths.csv found in " + str(mpath))
-        return
-    contents = os.listdir(mpath)
-    print(contents)
-    #
-    # Perform the SlideID generation
-    #
-    for t in range(2):
-        ast_gen(mpath, csv_file, mastro_csv)
-        minutes = 0.1
-        print("ALL AVAILABLE IDS GENERATED. SLEEP FOR " + str(minutes) + " MINUTES...")
-        wait_time = 60 * minutes
-        time.sleep(wait_time)
+    try:
+        cwd = '/'.join(os.getcwd().replace('\\', '/').split('/')[:-1])
+        for root, dirs, files in os.walk(cwd, topdown=True):
+            if "shared_tools" in dirs:
+                os.chdir(root)
+                break
+        cwd = '/'.join(os.getcwd().replace('\\', '/').split('/'))
+        print(cwd)
+        print("Inputs: " + str(sys.argv))
+        arg = apid_argparser()
+        mpath = pathlib.Path(arg.mpath)
+        csv_file = mpath/"AstropathPaths.csv"
+        mastro_csv = mpath/"AstropathAPIDdef.csv"
+        if not os.path.exists(csv_file):
+            print("No AstropathPaths.csv found in " + str(mpath))
+            return
+        contents = os.listdir(mpath)
+        #
+        # Perform the SlideID generation
+        #
+        for t in range(2):
+            ast_gen(mpath, csv_file, mastro_csv, arg.d)
+            minutes = 30
+            print("ALL AVAILABLE IDS GENERATED. SLEEP FOR " + str(minutes) + " MINUTES...")
+            wait_time = 60 * minutes
+            time.sleep(wait_time)
+    except KeyboardInterrupt:
+        print("ASTgen Closed")
 
 
 if __name__ == '__main__':
