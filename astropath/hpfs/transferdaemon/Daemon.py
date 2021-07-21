@@ -11,10 +11,11 @@ import traceback
 import subprocess
 import pandas
 import argparse
+from ...shared.logging import getlogger
+import logging
 from ...shared import shared_tools as st
 import lxml.etree as et
 from pathlib import Path
-from datetime import datetime
 from joblib import Parallel, delayed
 
 
@@ -38,7 +39,7 @@ def check_ready_files(paths_data, config_data, cohort_data, arg):
             paths_data_index = paths_data[3].index(i1)
         except ValueError:
             continue
-        specimen_path = sor_string[paths_data_index] + '/Specimen_Table.xlsx'
+        specimen_path = '{0}/Specimen_Table.xlsx'.format(sor_string[paths_data_index])
         #
         if not os.path.exists(sor_string[paths_data_index]) \
                 or not os.path.exists(des_string[paths_data_index]) \
@@ -47,59 +48,67 @@ def check_ready_files(paths_data, config_data, cohort_data, arg):
             continue
         #
         # build directory_waiting data. Uses project # from paths and
-        # finds coresponding project # in config and cohort to determine
+        # finds corresponding project # in config and cohort to determine
         # relevant cohort #, space allocation, and delete protocol
         #
         delete_i = config_data[1][config_data_index]
         space_i = config_data[2][config_data_index]
         cohort_i = cohort_data[1][cohort_data_index]
         #
-        specimen_table = pandas.read_excel(specimen_path, engine='openpyxl')
-        st_slide_ids = specimen_table['Patient #'].tolist()
-        st_batch_ids = specimen_table['Batch ID'].tolist()
+        try:
+            specimen_table = pandas.read_excel(specimen_path, engine='openpyxl')
+            st_slide_ids = specimen_table['Patient #'].tolist()
+            st_batch_ids = specimen_table['Batch ID'].tolist()
+        except KeyError:
+            error_msg = traceback.format_exc().splitlines()[-1].split(':')[0]
+            missing_key = traceback.format_exc().splitlines()[-1].split(':')[1]
+            log_string = "WARNING: {0}:{1} missing in {2}." \
+                         "\nMake sure 'Patient #' and 'Batch ID' are " \
+                         "correctly labeled.".format(error_msg, missing_key, specimen_path)
+            print(log_string)
+            continue
+        #
+        # If no AstroIDs have been generated for the current specimen, move on to next specimen
         #
         total_size = 0
         astro_ids = get_astro_id(des_string[paths_data_index], paths_proj[paths_data_index])
         if not astro_ids[0]:
             continue
         #
-        # get the paths with batchIDs and not in directory waiting
+        # get the paths with batchIDs
         #
         for root, dirs, files in os.walk(sor_string[paths_data_index], topdown=False):
-            if "Scan" in root and os.path.exists(root + "/BatchID.txt") and \
+            if "Scan" in root and os.path.exists("{0}/BatchID.txt".format(root)) and \
                     root not in directory_roots:
                 #
                 regex = '/|\\\\'
                 root = '/'.join(re.split(regex, root))
                 slide_id = str(root.split('/')[-2])
                 #
-                # SlideID is not in AstroID_def
+                # Check for valid SlideIDs and set new AstroID moving forward
                 #
+                logger_keys = [None, None]
                 if slide_id in astro_ids[1]:
                     astro_id = astro_ids[0][astro_ids[1].index(slide_id)]
-                    string_list = [i1, cohort_i, astro_id]
                 elif "Control" in slide_id:
+                    logger_keys = [i1, cohort_i]
                     astro_id = slide_id
-                    string_list = [i1, cohort_i, '_'.join(slide_id.split('_')[:-1])]
                 else:
                     continue
                 #
-                log_base = ';'.join(string_list)
+                # check on whether to skip specimen based on wrong BatchID or insufficient space
                 #
-                file = open(root + "/BatchID.txt", 'r')
-                batch_id = str(file.read())
+                skip = ["", ""]
+                #
+                file = open("{0}/BatchID.txt".format(root), 'r')
+                batch_id = str(file.read()).lstrip("0")
+                file.close()
                 if slide_id in st_slide_ids:
                     st_batch_id = str(st_batch_ids[st_slide_ids.index(slide_id)])
                 else:
                     st_batch_id = ''
                 if batch_id != st_batch_id and "Control" not in slide_id:
-                    log_string = log_base + ";ERROR: BatchID.txt does not match " \
-                                            "BatchID in Specimen Table. Skipping transfer"
-                    st.print_to_log(log_string, des_string[paths_data_index], arg.v, arg.q, astro_id, "master")
-                    continue
-                #
-                row = [comp_string[paths_data_index], des_string[paths_data_index], delete_i, root,
-                       i1, space_i, cohort_i, astro_id, log_base]
+                    skip[0] = "BatchID"
                 #
                 # If the directory to be transferred is larger than the space avaliable
                 # in the destination directory as given by AstropathConfig.csv, then
@@ -107,15 +116,16 @@ def check_ready_files(paths_data, config_data, cohort_data, arg):
                 #
                 total_size = total_size + st.get_size(root)
                 if total_size > space_i * 10 ** 12:
-                    log_string = log_base + ";ERROR: Insufficient space. Skipping transfer"
-                    st.print_to_log(log_string, des_string[paths_data_index], arg.v, arg.q, astro_id, "master")
-                    continue
+                    skip[1] = "Space"
+                #
+                row = [comp_string[paths_data_index], des_string[paths_data_index], delete_i, root,
+                       astro_id, skip, logger_keys]
                 #
                 # If automatic has been chosen the DoNotDelete texts files are ignored
                 # and deleted. Otherwise only add directory waiting queue if the text
                 # file does not exist
                 #
-                dnd_path = root + "/DoNotDelete.txt"
+                dnd_path = "{0}/DoNotDelete.txt".format(root)
                 delete_i = delete_i.upper()
                 if arg.delete_type == "automatic":
                     if delete_i == "YES" and os.path.exists(dnd_path):
@@ -136,55 +146,53 @@ def check_ready_files(paths_data, config_data, cohort_data, arg):
 def transfer_loop(directory_waiting, arg, zip_path):
     #
     for direct in directory_waiting:
-        transfer_one_sample(direct, arg, zip_path)
+        des_dir = direct[1]
+        astro_id = direct[4]
+        skip = direct[5]
+        Project, Cohort = direct[6][0], direct[6][1]
         #
-        # log file is to be saved in each specimen folder. To avoid conflicts with
-        # md5 checks, log file will be moved after all transfer processes have finished
+        apidfile = pathlib.Path(des_dir)
+        apidfile = apidfile / "upkeep_and_progress" / "AstropathAPIDdef_15.csv"
         #
-
-
-#
-# Needed to manage the log files if the destination needs to be deleted.
-# Want to keep what has been logged in before
-#
-def merge_logs(des, log_path):
-    new_log = des + '/transfer.log'
-    prev_log = open(log_path + '/transfer.log', 'a+')
-    with open(new_log) as f:
-        for line in f:
-            prev_log.write(line)
-    prev_log.close()
+        # set whether log entries print to console
+        #
+        if arg.q:
+            printthreshold = logging.CRITICAL+1
+        else:
+            printthreshold = logging.DEBUG
+        #
+        with getlogger(module="transfer", root=des_dir, samp=astro_id, uselogfiles=True,
+                       printthreshold=printthreshold, apidfile=apidfile, Project=Project, Cohort=Cohort) as logger:
+            if skip[0]:
+                logger.error("BatchID.txt does not match BatchID in Specimen Table")
+            if skip[1]:
+                logger.error("Insufficient space")
+            if skip == ["", ""]:
+                transfer_one_sample(direct, arg, zip_path, logger)
 
 
 #
 # transfer a single sample and delete based off of corresponding settings
 #
-def transfer_one_sample(direct, arg, zip_path):
-    astro_id = direct[7]
-    log_base = direct[8]
-    des_string = direct[1]
-    #
-    # set up transfer strings
-    #
-    current_sor_string = direct[3]
-    current_des_string = des_string + "/" + astro_id + "/im3" + "/" \
-                         + str(direct[3].split('/')[-1])
-    current_compress_string = direct[0] + "/" + astro_id + "/im3" + "/" \
-                              + str(direct[3].split('/')[-1])
+def transfer_one_sample(direct, arg, zip_path, logger):
+    comp_dir = direct[0]
+    des_dir = direct[1]
     if arg.delete_type == 'manual':
         del_string = 'YES'
     else:
         del_string = direct[2]
+    full_sor_dir = direct[3]
+    astro_id = direct[4]
     #
-    # If the destination path already exists, compare the files and determine if
-    # an error occurred in the transfer process. If it did then delete destination
-    # and compression then continue with this sample. If no error occurred then
-    # remove the source directory and continue to the next sample.
+    # build full transfer and compression directories
     #
-    if os.path.exists(current_des_string):
-        compare = compare_file_names(current_sor_string, direct[1], current_des_string,
-                                     current_compress_string, del_string, arg,
-                                     log_base=log_base, astro_id=astro_id)
+    full_des_dir = "{0}/{1}/im3/{2}".format(des_dir, astro_id, str(full_sor_dir.split('/')[-1]))
+    full_comp_dir = "{0}/{1}/im3/{2}".format(comp_dir, astro_id, str(full_sor_dir.split('/')[-1]))
+    #
+    if os.path.exists(full_des_dir):
+        compare = compare_file_names(full_sor_dir, des_dir, full_des_dir,
+                                     full_comp_dir, del_string, arg, logger,
+                                     astro_id=astro_id)
         if compare == 1:
             return
     #
@@ -192,25 +200,23 @@ def transfer_one_sample(direct, arg, zip_path):
     #
     i2 = 2
     while i2 == 2:
-        err, result, result2 = error_check("TRANSFER", direct[1], arg, current_sor_string,
-                                           current_des_string, astro=astro_id,
-                                           log_base=log_base)
+        err, result, result2 = error_check("TRANSFER", des_dir, arg, logger, full_sor_dir,
+                                           full_des_dir, astro=astro_id)
         if err:
             return
         if not arg.no_compress:
-            err, result, result2 = error_check("COMPRESS", direct[1], arg, current_sor_string,
-                                               current_des_string, current_compress_string,
-                                               log_base=log_base, astro=astro_id, zip_path=zip_path)
+            err, result, result2 = error_check("COMPRESS", des_dir, arg, logger, full_sor_dir,
+                                               full_des_dir, full_comp_dir,
+                                               astro=astro_id, zip_path=zip_path)
             if err:
                 return
-            log_string = log_base + ";Compression finished"
-            st.print_to_log(log_string, direct[1], arg.v, arg.q, astro_id, "master")
+            logger.critical("Compression finished")
         #
         # MD5 calculation and file comparison
         #
-        err = compare_file_names(current_sor_string, direct[1], current_des_string,
-                                 current_compress_string, del_string, arg, 1,
-                                 log_base, astro_id=astro_id)
+        err = compare_file_names(full_sor_dir, des_dir, full_des_dir,
+                                 full_comp_dir, del_string, arg, logger, 1,
+                                 astro_id=astro_id)
         if err == 2:
             continue
         elif err == 1:
@@ -224,8 +230,7 @@ def transfer_one_sample(direct, arg, zip_path):
 # next specimen
 #
 def get_astro_id(des_dir, proj):
-    astro_id_csv = str(des_dir) + '/upkeep_and_progress/AstropathAPIDdef_' + \
-                   str(proj) + '.csv'
+    astro_id_csv = "{0}/upkeep_and_progress/AstropathAPIDdef_{1}.csv".format(str(des_dir), str(proj))
     if not os.path.exists(astro_id_csv):
         return ['', '']
     lines = st.read_csv(astro_id_csv)
@@ -241,16 +246,14 @@ def get_astro_id(des_dir, proj):
 # be re-initiated
 #
 def compare_file_names(current_sor_string, main_des_string, current_des_string,
-                       current_compress_string, del_string, arg, post_transfer=0,
-                       log_base="", astro_id=""):
+                       current_compress_string, del_string, arg, logger,
+                       post_transfer=0, astro_id=""):
     slide_id = str(current_sor_string.split('/')[-2])
     #
-    annotation_file = astro_id + "_" + current_sor_string.split('/')[-1] \
-                      + "_annotations.xml"
+    annotation_file = "{0}_{1}_annotations.xml".format(astro_id, current_sor_string.split('/')[-1])
     #
     if post_transfer == 0:
-        log_string = log_base + ";Slide ID is in source and destination on source directory recheck comparing files"
-        st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+        logger.info("Slide ID is in source and destination on source directory recheck. Comparing files")
     #
     # Compute the number of files in each directory
     # Only compare those files which are transferred from source
@@ -272,10 +275,8 @@ def compare_file_names(current_sor_string, main_des_string, current_des_string,
     #
     if len(file_array[1]) < len(file_array[0]):
         if post_transfer == 1:
-            log_string = log_base + ";Source lost files after transfer"
-            st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id, "master")
-            log_string = log_base + ";Error sent. Next slide"
-            st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+            logger.critical("Source lost files after transfer")
+            logger.info("Error sent. Next slide")
             mail_string = "Source directory has less files after transfer."
             st.send_email(arg.email, mail_string, debug=arg.d)
             #
@@ -283,65 +284,56 @@ def compare_file_names(current_sor_string, main_des_string, current_des_string,
         #
         # delete source path if there are missing files in it
         #
-        log_string = log_base + ";Source directory missing files"
-        st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+        logger.info("Source directory missing files")
         #
-        if not os.path.exists(current_sor_string + "/DoNotDelete.txt") \
+        if not os.path.exists("{0}/DoNotDelete.txt".format(current_sor_string)) \
                 and del_string == "YES":
             to_delete = str(Path(current_sor_string).parents[0])
             shutil.rmtree(to_delete, ignore_errors=True)
             #
-            log_string = log_base + ";Deleted source directory"
-            st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+            logger.info("Deleted source directory")
         #
         # return 1 to continue to next specimen
         #
         return 1
         #
     elif len(file_array[1]) > len(file_array[0]):
+        logger.info("Destination directory missing files")
         #
-        # delete destination path if there are missing files in it
-        #
-        log_string = log_base + ";Destination directory missing files"
-        st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
-        #
-        delete_destination(main_des_string, current_des_string, current_compress_string,
-                           log_base, astro_id, arg)
+        delete_destination(current_des_string, current_compress_string, logger)
         #
         return 2
     #
-    # For the situation where the number of files is equal between the source
-    # directory and the destination directory, the following compares the hash values
-    # of each file.
-    #
     elif len(file_array[1]) == len(file_array[0]):
-        #
-        # compute the new hash files
-        #
-        #
         location_string = ['DEST', 'SOURCE']
         hash_list = []
         #
+        logger.info("MD5 calculations started")
         for x in [0, 1]:
             #
             # if old check sum file exists delete it
             #
-            c_hash_path = hash_path[x] + '/CheckSums.txt'
+            c_hash_path = '{0}/CheckSums.txt'.format(hash_path[x])
             if os.path.exists(c_hash_path):
                 os.remove(c_hash_path)
             #
-            # compute hash values and store them in the array hash_array
+            # compute hash values and store them in hash_array
             #
-            error_string = "COMPUTE " + location_string[x] + " MD5"
-            err, hash_value, sums_value = error_check(error_string, main_des_string, arg,
+            error_string = "COMPUTE {0} MD5".format(location_string[x])
+            err, hash_value, sums_value = error_check(error_string, main_des_string, arg, logger,
                                                       current_sor_string, current_des_string,
-                                                      log_base=log_base, astro=astro_id)
+                                                      astro=astro_id)
             if err:
                 return err
             hash_list.append(hash_value)
         #
-        log_string = log_base + ";MD5 calculations finished"
-        st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+        # remove check sum files
+        #
+        for x in [0, 1]:
+            c_hash_path = '{0}/CheckSums.txt'.format(hash_path[x])
+            if os.path.exists(c_hash_path):
+                os.remove(c_hash_path)
+        logger.info("MD5 calculations finished")
         #
         # If all the values in the arrays match between source and destination files,
         # the data was transferred successfully and the source directory should be
@@ -352,22 +344,20 @@ def compare_file_names(current_sor_string, main_des_string, current_des_string,
             # if do not delete text file does not exist and protocol allows deletion
             # then delete the source directory
             #
-            if not os.path.exists(current_sor_string + "/DoNotDelete.txt") \
+            if not os.path.exists("{0}/DoNotDelete.txt".format(current_sor_string)) \
                     and del_string == "YES":
-                log_string = log_base + ";Source and destination match"
-                st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+                logger.info("Source and destination match")
                 to_delete = str(Path(current_sor_string).parents[0])
                 shutil.rmtree(to_delete, ignore_errors=True)
-                log_string = log_base + ";Deleted source directory"
-                st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+                logger.info("Deleted source directory")
             #
-            elif not os.path.exists(current_sor_string + "/DoNotDelete.txt") \
-                    or not os.path.exists(current_des_string + "/DoNotDelete.txt"):
-                st.print_to_log(log_base + ";Source and destination match", main_des_string, arg.v, arg.q, astro_id)
+            elif not os.path.exists("{0}/DoNotDelete.txt".format(current_sor_string)) \
+                    or not os.path.exists("{0}/DoNotDelete.txt".format(current_des_string)):
+                logger.info("Source and destination match")
                 create_delete_txt(current_sor_string)
                 create_delete_txt(current_des_string)
-                st.print_to_log(log_base + ";Created DoNotDelete file", main_des_string, arg.v, arg.q, astro_id)
-            st.print_to_log(log_base + ";Processing finished", main_des_string, arg.v, arg.q, astro_id)
+                logger.info("Created DoNotDelete file")
+            logger.info("Processing finished")
             #
             # return 1 to continue to next specimen if we are before the transfer
             #
@@ -380,109 +370,85 @@ def compare_file_names(current_sor_string, main_des_string, current_des_string,
         # in the data during transfer and the process is re-initiated.
         #
         else:
-            log_string = log_base + ";Destination and source inconsistency"
-            st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
-            delete_destination(main_des_string, current_des_string, current_compress_string,
-                               log_base, astro_id, arg)
+            logger.info("Destination and source inconsistency")
+            delete_destination(current_des_string, current_compress_string, logger)
     return 0
 
 
 #
 # function that deletes the destination when necessary
 #
-def delete_destination(main_des_string, current_des_string, current_compress_string,
-                       log_base, astro_id, arg):
+def delete_destination(current_des_string, current_compress_string,
+                       logger):
     to_delete = str(Path(current_des_string).parents[0])
     shutil.rmtree(to_delete, ignore_errors=True)
     #
-    log_string = log_base + ";Deleted destination directory"
-    st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+    logger.info("Deleted destination directory")
     #
     # also delete the compressed path if it exists
     #
     if os.path.exists(current_compress_string):
         to_delete = str(Path(current_compress_string).parents[0])
         shutil.rmtree(to_delete, ignore_errors=True)
-        log_string = log_base + ";Deleted compression directory"
-        st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+        logger.info("Deleted compression directory")
     #
-    log_string = log_base + ";Re-initiating transfer process."
-    st.print_to_log(log_string, main_des_string, arg.v, arg.q, astro_id)
+    logger.info("Re-initiating transfer process.")
 
 
 #
 # evaluate the functions while checking for errors
 #
-def error_check(action, main_des_string, arg, current_sor_string="", current_des_string="",
-                comp="", astro="", log_base="", zip_path=""):
+def error_check(action, main_des_string, arg, logger, current_sor_string="", current_des_string="",
+                comp="", astro="", zip_path=""):
     slide_id = str(current_sor_string.split('/')[-2])
-    attempts = 2
+    attempts = 1
     err = 0
     warning = ""
-    mins = 0.1
+    mins = 5
     result = []
     result2 = []
     while err < attempts:
         try:
             if action == "TRANSFER":
                 transfer_directory(current_sor_string, main_des_string, current_des_string,
-                                   astro, arg, log_base=log_base)
-                st.print_to_log(log_base + ";Transfer finished", main_des_string, astro, arg, "master")
+                                   astro, arg, logger)
+                logger.critical("Transfer finished")
             elif action == "COMPUTE SOURCE MD5":
-                result, result2 = compute_md5(current_sor_string, main_des_string, "SOURCE", arg,
-                                              log_base=log_base, slide_id=slide_id,
+                result, result2 = compute_md5(current_sor_string, "SOURCE", logger, slide_id=slide_id,
                                               astro_id=astro)
             elif action == "COMPUTE DEST MD5":
-                result, result2 = compute_md5(current_des_string, main_des_string,
-                                              "DESTINATION", arg, log_base=log_base,
+                result, result2 = compute_md5(current_des_string, "DESTINATION", logger,
                                               slide_id=slide_id, astro_id=astro)
             elif action == "COMPRESS":
-                compress_directory(current_sor_string, main_des_string, comp, astro, arg,
-                                   zip_path, log_base=log_base)
+                compress_directory(current_sor_string, main_des_string, comp, astro,
+                                   zip_path, logger)
             elif action == "ANNOTATE":
-                xmlfile = main_des_string + '/' + astro + '/im3/' \
-                          + current_sor_string.split('/')[-1] \
-                          + '/' + astro + '_' + current_sor_string.split('/')[-1] \
-                          + '_annotations.xml'
+                xml = [main_des_string, astro, current_sor_string.split('/')[-1],
+                       current_sor_string.split('/')[-1]]
+                xmlfile = "{0}/{1}/im3/{2}/{3}_{4}_annotations.xml".format(xml[0], xml[1], xml[2], xml[1], xml[3])
                 warning = annotation_handler(xmlfile, str(current_sor_string.split('/')[-2]), astro)
             if err > 0:
-                log_string = log_base + ";Warning: " + action.lower() + " passed with " + \
-                             str(err) + " error(s)"
-                st.print_to_log(log_string, main_des_string, astro, arg, "master")
+                logger.warningglobal("{0} passed with {1} error(s)".format(action.lower(), str(err)))
             if warning:
-                log_string = log_base + warning
-                st.print_to_log(log_string, main_des_string, astro, arg)
+                logger.warning(warning)
             err = attempts
         except OSError:
-            #
-            # increase count and check if it is greater than number of allowed attempts
-            #
             err = err + 1
-            #
-            # send error message to log
-            #
             error_msg = traceback.format_exc().splitlines()[-1].split(':')[0]
-            descriptor = traceback.format_exc().splitlines()[-1].split(']')[-1]
-            log_string = log_base + ";WARNING: attempt " + str(err) + " failed for " \
-                         + action.lower()
-            st.print_to_log(log_string, main_des_string, astro, arg)
+            descriptor = traceback.format_exc().splitlines()[-1].split(':')[1]
+            logger.warning("attempt {0} failed for {1}".format(str(err), action.lower()))
+            #
             if err < attempts:
-                #
-                # if we have not met the allowed count wait <mins> minutes and try again
-                #
-                log_string = log_base + ";Attempting to " + action.lower() \
-                             + " again after " + str(mins) + " minutes"
-                st.print_to_log(log_string, main_des_string, astro, arg)
+                logger.info("Attempting to {0} again after {1} minutes".format(action.lower(), str(mins)))
                 time.sleep(mins * 60)
                 continue
-                #
             else:
                 #
                 # if we have met the allowed count something else must be wrong.
                 # Email, return positive err value
                 #
-                log_string = log_base + ";ERROR: " + error_msg + descriptor
-                st.print_to_log(log_string, main_des_string, astro, arg, "master")
+                time.sleep(30)
+                logger.error(error_msg + descriptor)
                 error = traceback.format_exc()
                 st.send_email(arg.email, error, err=err, error_check_dec=True, debug=arg.d)
                 err = 1
@@ -493,8 +459,7 @@ def error_check(action, main_des_string, arg, current_sor_string="", current_des
             #
             err = err + 1
             error_msg = traceback.format_exc().splitlines()[-1].split(':')[0]
-            log_string = log_base + ";ERROR: " + error_msg + " - " + str(what)
-            st.print_to_log(log_string, main_des_string, astro, arg, "master")
+            logger.error(error_msg + " - " + str(what))
             error = traceback.format_exc()
             st.send_email(arg.email, error, err=err, error_check_dec=True, debug=arg.d)
             return err, result, result2
@@ -505,15 +470,11 @@ def error_check(action, main_des_string, arg, current_sor_string="", current_des
 #
 # Generates Hash Values and CheckSums.txt files
 #
-def compute_md5(current_directory, main_des_string, location_string, arg, log_base="",
-                slide_id="", astro_id=""):
+def compute_md5(current_directory, location_string, logger, slide_id="", astro_id=""):
     #
     # print starting strings to log
     #
-    log_string = log_base + ";MD5 computation started"
-    st.print_to_log(log_string, main_des_string, astro_id, arg)
-    log_string = log_base + ";Computing " + location_string.lower() + " MD5 check sums"
-    st.print_to_log(log_string, main_des_string, astro_id, arg)
+    logger.info("Computing {0} MD5 check sums".format(location_string.lower()))
     #
     # create the md5 hash values in parallel for each file in the current directory
     # put the strings for the check sums file and the hash values into separate arrays
@@ -525,7 +486,7 @@ def compute_md5(current_directory, main_des_string, location_string, arg, log_ba
     hash_array = []
     for root, dirs, files in os.walk(current_directory):
         results = Parallel(n_jobs=4, backend="loky")(
-            delayed(md5)(root + '/' + file_1) for file_1 in files)
+            delayed(md5)("{0}/{1}".format(root, file_1)) for file_1 in files)
         for item in results:
             if ("annotations.xml" in item[0] and "xml.lock" not in item[0].lower()
                 and location_string != "SOURCE" and astro_id != slide_id) \
@@ -537,14 +498,12 @@ def compute_md5(current_directory, main_des_string, location_string, arg, log_ba
     #
     # write sums to checksum file
     #
-    sums_file = open(current_directory + "/CheckSums.txt", "w")
+    sums_file = open("{0}/CheckSums.txt".format(current_directory), "w")
     sums_file.writelines(["%s\n" % item for item in sums_array])
     sums_file.close()
     #
     end = time.time()
-    log_string = log_base + ";Completed " + str(num) + " files in " \
-                 + str(round(end - start, 2)) + " seconds"
-    st.print_to_log(log_string, main_des_string, astro_id, arg)
+    logger.info("Completed {0} files in {1} seconds".format(str(num), str(round(end - start, 2))))
     #
     return hash_array, sums_array
 
@@ -564,19 +523,16 @@ def md5(item):
 # creates DoNotDelete.txt
 #
 def create_delete_txt(current_directory):
-    text_file = open(current_directory + "/DoNotDelete.txt", "w")
+    text_file = open("{0}/DoNotDelete.txt".format(current_directory), "w")
     text_file.write("Do not delete me unless this folder is going to be removed.")
     text_file.close()
 
 
 #
 # Performs TransferItem() on every file in the source directory
-# For rename process, create a duplicate of the annotation file with "-original".
-# This will have the astroID in the filename but nothing changed inside.
-# The other version will have the .im3 portion inside changed to the AstroID
 #
 def transfer_directory(current_sor_string, main_des_string, current_des_string,
-                       astro_id, arg, log_base=""):
+                       astro_id, arg, logger):
     slide_id = str(current_sor_string.split('/')[-2])
     #
     # get the number of files and bytes in the source directory
@@ -594,9 +550,9 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
             if "]_M" in f:
                 M_files.append(f)
     if M_files:
-        st.print_to_log(log_base + ";Duplicate files found", main_des_string, astro_id, arg)
+        logger.info("Duplicate files found")
         st.M_file_handler(current_sor_string, all_files, M_files)
-        st.print_to_log(log_base + ";Duplicate files handled", main_des_string, astro_id, arg)
+        logger.info("Duplicate files handled")
     #
     names = [""] * 2
     names[1] = astro_id
@@ -608,11 +564,8 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
             n_sor_bytes += os.path.getsize(f)
         n_sor_files += len(files)
     #
-    log_string = log_base + ";Transfer process started"
-    st.print_to_log(log_string, main_des_string, astro_id, arg, "master")
-    log_string = (log_base + ";Source Contains " + str(n_sor_files) +
-                  " File(s) " + str(n_sor_bytes) + " bytes")
-    st.print_to_log(log_string, main_des_string, astro_id, arg)
+    logger.critical("Transfer process started")
+    logger.info("Source Contains {0} File(s) {1} bytes".format(str(n_sor_files), str(n_sor_bytes)))
     #
     pathlib.Path(current_des_string).mkdir(parents=True, exist_ok=True)
     #
@@ -633,11 +586,8 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
     # folder to match new naming convention
     #
     if slide_id != astro_id:
-        error_check("ANNOTATE", main_des_string, arg, current_sor_string, astro=astro_id,
-                    log_base=log_base)
-    log_string = (log_base + ";Transferred " + str(n_des_files) +
-                  " File(s) " + str(n_des_bytes) + " bytes")
-    st.print_to_log(log_string, main_des_string, astro_id, arg)
+        error_check("ANNOTATE", main_des_string, arg, logger, current_sor_string, astro=astro_id)
+    logger.info("Transferred {0} File(s) {1} bytes".format(str(n_des_files), str(n_des_bytes)))
 
 
 #
@@ -646,7 +596,7 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
 #
 def annotation_handler(xmlfile, slide_id, astro_id):
     if not os.path.exists(xmlfile):
-        return ";WARNING: " + xmlfile + " does not exist"
+        return "{0} does not exist".format(str(xmlfile))
     newfile = xmlfile.replace('.xml', '-original.xml')
     shutil.copy(xmlfile, newfile)
     with open(xmlfile, 'rb+') as f:
@@ -696,14 +646,14 @@ def transfer_one(item, src, dst, names):
 #
 # Runs Compress() on each file in the working directory
 #
-def compress_directory(current_sor_string, main_des_string, compress, astro_id, arg,
-                       zip_path, log_base=""):
+def compress_directory(current_sor_string, main_des_string, compress, astro_id,
+                       zip_path, logger):
     #
     # get the number of files and bytes in the source directory
     #
+    logger.critical("Compression started")
     n_sor_files, n_sor_bytes = 0, 0
-    xmlfile = astro_id + '_' + current_sor_string.split('/')[-1] \
-                       + '_annotations.xml'
+    xmlfile = "{0}_{1}_annotations.xml".format(astro_id, current_sor_string.split('/')[-1])
     xml_list = [xmlfile, xmlfile.replace('.xml', '-original.xml')]
     #
     names = [""] * 2
@@ -718,9 +668,7 @@ def compress_directory(current_sor_string, main_des_string, compress, astro_id, 
                 n_sor_bytes += os.path.getsize(f)
         n_sor_files += len(files)
     n_sor_files = n_sor_files
-    #
-    log_string = log_base + ";Compression started"
-    st.print_to_log(log_string, main_des_string, astro_id, arg, "master")
+    logger.info("Compressing {0} file(s) and {1} bytes from source".format(str(n_sor_files), str(n_sor_bytes)))
     #
     # do the compression one file at a time
     #
@@ -729,8 +677,7 @@ def compress_directory(current_sor_string, main_des_string, compress, astro_id, 
     #
     for item in os.listdir(current_sor_string):
         compress_item(item, current_sor_string, compress, names, zip_path)
-    annotation_path = main_des_string + '/' + astro_id + '/im3/' \
-                      + current_sor_string.split('/')[-1] + '/'
+    annotation_path = "{0}/{1}/im3/{2}/".format(main_des_string, astro_id, current_sor_string.split('/')[-1])
     for item in xml_list:
         if os.path.exists(annotation_path + item) and names[0] != names[1]:
             compress_item(item, annotation_path, compress, names, zip_path, ann=True)
@@ -745,12 +692,7 @@ def compress_directory(current_sor_string, main_des_string, compress, astro_id, 
             n_des_bytes += os.path.getsize(f)
         n_des_files += len(files)
     #
-    log_string = (log_base + ";Compressing " + str(n_sor_files) +
-                  " file(s) and " + str(n_sor_bytes) + " bytes from source")
-    st.print_to_log(log_string, main_des_string, astro_id, arg)
-    log_string = (log_base + ";Compressed " + str(n_des_files) +
-                  " total file(s) " + str(n_des_bytes) + " total bytes")
-    st.print_to_log(log_string, main_des_string, astro_id, arg)
+    logger.info("Compressed {0} total file(s) {1} total bytes".format(str(n_des_files), str(n_des_bytes)))
 
 
 #
@@ -788,9 +730,9 @@ def update_source_csv(arg):
         leading = ''
     else:
         leading = '//'
-    path = arg.mpath + '/AstropathPaths.csv'
-    config = arg.mpath + '/AstropathConfig.csv'
-    cohort_csv = arg.mpath + '/AstropathCohortsProgress.csv'
+    path = "{0}/AstropathPaths.csv".format(arg.mpath)
+    config = "{0}/AstropathConfig.csv".format(arg.mpath)
+    cohort_csv = "{0}/AstropathCohortsProgress.csv".format(arg.mpath)
     #
     # Catches and alerts user to which cource files weren't found
     #
@@ -800,13 +742,9 @@ def update_source_csv(arg):
     if a_non_exist:
         return [], a_non_exist, []
     #
-    # open and read files
-    #
     paths = st.read_csv(path)
     configs = st.read_csv(config)
     cohorts = st.read_csv(cohort_csv)
-    #
-    # get and return relevant strings
     #
     c_proj = [i.split(',')[0] for i in cohorts[1:]]
     cohort = [i.split(',')[1] for i in cohorts[1:]]
@@ -837,36 +775,6 @@ def update_source_csv(arg):
     config_data = [d_proj, delete, space]
     cohort_data = [c_proj, cohort]
     return paths_data, config_data, cohort_data
-
-
-#
-# Create and edit local transfer.log
-# create a log folder and save master file in there
-# <console> is a hard coded method of showing log entries
-# pending user input method
-#
-def print_to_log(log_string, des_string, astro_id, arg, loc=""):
-    #
-    # Make a check for starting and ending lines for version number entries
-    #
-    pathlib.Path(des_string + '/' + astro_id + '/logfiles').mkdir(parents=True, exist_ok=True)
-    if loc == "master":
-        if not os.path.exists(des_string + '/logfiles'):
-            os.mkdir(des_string + '/logfiles')
-        logfile = open(des_string + '/logfiles' + r"\transfer.log", 'ab')
-        now = datetime.now()
-        str1 = "{0}-{1};{2}\r\n".format(log_string, arg.v, now.strftime("%Y-%m-%d %H:%M:%S"))
-        strb = bytes(str1, 'utf-8')
-        logfile.write(strb)
-        logfile.close()
-    logfile = open(des_string + '/' + astro_id + '/logfiles' + r"\transfer.log", 'ab')
-    now = datetime.now()
-    str1 = "{0}-{1};{2}\r\n".format(log_string, arg.v, now.strftime("%Y-%m-%d %H:%M:%S"))
-    strb = bytes(str1, 'utf-8')
-    logfile.write(strb)
-    logfile.close()
-    if not arg.q:
-        print(log_string)
 
 
 def apid_argparser():
@@ -902,30 +810,22 @@ def apid_argparser():
 #
 def launch_transfer():
     #
-    # User input for the csv file path with all the transfer protocols.
-    #
     print(sys.argv)
     arg = apid_argparser()
     if not arg.mpath:
         print("No mpath")
+        sys.exit()
     if not arg.email:
         print("No email")
-    # cwd = '/'.join(os.getcwd().replace('\\', '/').split('/')[:-1])
-    # print(cwd)
-    # for root, dirs, files in os.walk(cwd, topdown=True):
-    #     if "shared_tools" in dirs:
-    #         os.chdir(root)
-    #         break
-    # cwd = '/'.join(os.getcwd().replace('\\', '/').split('/'))
-    # print(cwd)
+        sys.exit()
     #
-    # run the file checking and transfer algorithms in an infinite loop
-    #
+    checker = []
     print("Starting Server Demon for Clinical Specimen...")
     try:
-        for ii in range(3):
+        while True:
             paths_data, config_data, cohort_data = update_source_csv(arg)
             if not paths_data:
+                checker = config_data
                 sys.exit()
             cwd = '/'.join(os.getcwd().replace('\\', '/').split('/')[:-1])
             print(cwd)
@@ -935,12 +835,13 @@ def launch_transfer():
                     zip_path = os.path.join(root, "7-Zip")
                     break
             if not zip_path and not arg.no_compress:
+                checker = ["7zip"]
                 sys.exit()
             directory_waiting = check_ready_files(paths_data, config_data, cohort_data, arg)
             print("DIRECTORIES CHECKED. FOUND " + str(len(directory_waiting)) +
                   " POTENTIAL SAMPLES TO TRANSFER...")
             transfer_loop(directory_waiting, arg, zip_path)
-            minutes = 0.1
+            minutes = 30
             print("ALL DIRECTORIES CHECKED SLEEP FOR " + str(minutes) + " MINUTES...")
             wait_time = 60 * minutes
             time.sleep(wait_time)
@@ -954,11 +855,14 @@ def launch_transfer():
     except SystemExit:
         if arg.d:
             return
-        error = "ERROR: Missing source csv files.\n"
-        for file in config_data:
-            error = error + file + '\n'
+        error = ""
+        for file in checker:
+            error = "{0}ERROR: Missing  \n{1}\n".format(error, file)
+        print(error)
         st.send_email(arg.email, error, debug=arg.d)
         traceback.print_exc()
+    except KeyboardInterrupt:
+        print("Transfer Daemon Closed")
 
 
 #
