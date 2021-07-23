@@ -437,9 +437,10 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
             fl.slide = self.SlideID
             self.field_logs.append(fl)
         bulk_rect_ts = [r.t for r in self.tissue_bulk_rects]
-        with cd(self.workingdirpath) :
-            writetable(self.workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',
-                      [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))])
+        if len(bulk_rect_ts)>0 :
+            with cd(self.workingdirpath) :
+                writetable(self.workingdirpath / f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',
+                          [MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))])
         #create and write out the final mask stack, mean image, and std. error of the mean image
         self.__meanimage.make_mean_image()
         self.__meanimage.write_output(self.SlideID,self.workingdirpath)
@@ -462,7 +463,8 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
         outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
         outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / CONST.FIELDS_USED_CSV_FILENAME)
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
+        #the file below might not actually exist in the case that no images were stacked
+        #outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
         if not skip_masking :
             outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
         return outputfiles

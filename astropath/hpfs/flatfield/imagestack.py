@@ -203,6 +203,8 @@ class MeanImage(ImageStack) :
         self.__std_err_of_mean_image=None
 
     def stack_rectangle_images(self,rectangles,*otherstackimagesargs) :
+        if len(rectangles)<1 :
+            return []
         if self.__n_images_stacked_by_layer is None :
             self.__n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
         new_n_images_read, new_n_images_stacked_by_layer, new_field_logs = super().stack_rectangle_images(rectangles,*otherstackimagesargs)

@@ -193,10 +193,14 @@ class WorkingDirArgumentParser(RunFromArgumentParser) :
     return p
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      'workingdir': parsed_args_dict.pop('workingdir'),
-    }
+    wd = parsed_args_dict.pop('workingdir')
+    if wd is None :
+      return super().initkwargsfromargumentparser(parsed_args_dict)
+    else :
+      return {
+        **super().initkwargsfromargumentparser(parsed_args_dict),
+        'workingdir': parsed_args_dict.pop('workingdir'),
+      }
 
 class FileTypeArgumentParser(RunFromArgumentParser) :
   @classmethod
