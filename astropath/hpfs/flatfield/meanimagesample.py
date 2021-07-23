@@ -445,8 +445,9 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         self.__meanimage.make_mean_image()
         self.__meanimage.write_output(self.SlideID,self.workingdirpath)
         #write out the field log
-        with cd(self.workingdirpath) :
-            writetable(CONST.FIELDS_USED_CSV_FILENAME,self.field_logs)
+        if len(self.field_logs)>0 :
+            with cd(self.workingdirpath) :
+                writetable(CONST.FIELDS_USED_CSV_FILENAME,self.field_logs)
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -462,8 +463,8 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
         outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
         outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / CONST.FIELDS_USED_CSV_FILENAME)
-        #the file below might not actually exist in the case that no images were stacked
+        #the files below might not actually exist in the case that no images were stacked
+        #outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / CONST.FIELDS_USED_CSV_FILENAME)
         #outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
         if not skip_masking :
             outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
