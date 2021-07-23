@@ -21,11 +21,12 @@ class ImageStack :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,logger=dummylogger) :
+    def __init__(self,img_dims,logger=dummylogger) :
         self.__logger = logger
-        self.__image_stack = None
-        self.__image_squared_stack = None
+        self.__image_stack = np.zeros(img_dims,dtype=np.float64)
+        self.__image_squared_stack = np.zeros(img_dims,dtype=np.float64)
         self.__mask_stack = None
+        self.__mask_stack_inited = False
 
     def stack_rectangle_images(self,rectangles,med_ets=None,maskingdirpath=None) :
         """
@@ -40,13 +41,12 @@ class ImageStack :
         maskingdirpath = the path to the directory holding all of the slide's image masking files (if None then masking will be skipped)
         """
         self.__logger.info(f'Stacking {len(rectangles)} images')
-        #initialize the image and mask stacks based on the image dimensions
+        #initialize the mask stack if necessary
         img_dims = rectangles[0].imageshapeinoutput
-        if self.__image_stack is None :
-            self.__image_stack = np.zeros(img_dims,dtype=np.float64)
-            self.__image_squared_stack = np.zeros(img_dims,dtype=np.float64)
+        if not self.__mask_stack_inited :
             if maskingdirpath is not None :
-                self.__mask_stack = np.zeros(img_dims,dtype=np.uint64)
+                self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
+            self.__mask_stack_inited = True
         if img_dims!=self.__image_stack.shape :
             errmsg = f'ERROR: called stack_images with rectangles that have dimensions {img_dims} but an image stack with dimensions {self.__image_stack.shape}!'
             raise ValueError(errmsg)
@@ -68,10 +68,9 @@ class ImageStack :
         Add the already-created meanimage/mask stack for a single given sample to the model by reading its files
         """
         #if it's the first sample we're adding, initialize all of the flatfield's various images based on the sample's dimensions
-        if self.__image_stack is None :
-            self.__image_stack = np.zeros(sample.rectangles[0].imageshapeinoutput,dtype=np.float64)
-            self.__image_squared_stack = np.zeros(sample.rectangles[0].imageshapeinoutput,dtype=np.float64)
-            self.__mask_stack = np.zeros(sample.rectangles[0].imageshapeinoutput,dtype=np.uint64)
+        if not self.__mask_stack_inited is None :
+            self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
+            self.__mask_stack_inited = True
         #make sure the dimensions match
         if sample.rectangles[0].imageshapeinoutput!=self.__image_stack.shape :
             errmsg = f'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have dimensions {sample.rectangles[0].imageshapeinoutput}'
@@ -307,7 +306,7 @@ class Flatfield(ImageStack) :
 
     def stack_rectangle_images(self,rectangles,*otherstackimagesargs) :
         if self.__n_images_stacked_by_layer is None :
-            self.__n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
+            self.__n_images_stacked_by_layer = np.zeros((self.image_stack.shape[-1]),dtype=np.uint64)
         new_n_images_read, new_n_images_stacked_by_layer, new_field_logs = super().stack_rectangle_images(rectangles,*otherstackimagesargs)
         self.__n_images_read+=new_n_images_read
         self.__n_images_stacked_by_layer+=new_n_images_stacked_by_layer
@@ -330,7 +329,7 @@ class Flatfield(ImageStack) :
         #smooth the mean image with its uncertainty
         smoothed_mean_image,sm_mean_img_err = smooth_image_with_uncertainty_worker(mean_image,std_err_of_mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA,gpu=True)
         #create the flatfield image layer-by-layer
-        for li in range(self.mask_stack.shape[-1]) :
+        for li in range(self.image_stack.shape[-1]) :
             #warn if the layer is missing a substantial number of images in the stack
             if (self.mask_stack is not None and np.max(self.mask_stack[:,:,li])<1) or (self.mask_stack is None and self.__n_images_stacked_by_layer[li]<1) :
                 self.logger.warningglobal(f'WARNING: not enough images were stacked in layer {li+1}, so this layer of the flatfield model will be all ones!')
@@ -400,7 +399,7 @@ class CorrectedMeanImage(MeanImage) :
     """
 
     def __init__(self,*args,**kwargs) :
-        super().__init__()
+        super().__init__(*args,**kwargs)
         self.__flatfield_image = None
         self.__flatfield_image_err = None
         self.__corrected_mean_image = None

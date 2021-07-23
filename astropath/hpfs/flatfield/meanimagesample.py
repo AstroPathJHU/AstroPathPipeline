@@ -418,7 +418,7 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
         #start up the meanimage
-        self.__meanimage = MeanImage(self.logger)
+        self.__meanimage = MeanImage(self.rectangles[0].imageshapeinoutput,self.logger)
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
