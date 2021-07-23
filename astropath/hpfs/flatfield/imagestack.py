@@ -25,8 +25,7 @@ class ImageStack :
         self.__logger = logger
         self.__image_stack = np.zeros(img_dims,dtype=np.float64)
         self.__image_squared_stack = np.zeros(img_dims,dtype=np.float64)
-        self.__mask_stack = None
-        self.__mask_stack_inited = False
+        self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
 
     def stack_rectangle_images(self,rectangles,med_ets=None,maskingdirpath=None) :
         """
@@ -41,17 +40,10 @@ class ImageStack :
         maskingdirpath = the path to the directory holding all of the slide's image masking files (if None then masking will be skipped)
         """
         self.__logger.info(f'Stacking {len(rectangles)} images')
-        #initialize the mask stack if necessary
         img_dims = rectangles[0].imageshapeinoutput
-        if not self.__mask_stack_inited :
-            if maskingdirpath is not None :
-                self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
-            self.__mask_stack_inited = True
         if img_dims!=self.__image_stack.shape :
             errmsg = f'ERROR: called stack_images with rectangles that have dimensions {img_dims} but an image stack with dimensions {self.__image_stack.shape}!'
             raise ValueError(errmsg)
-        if (maskingdirpath is None)!=(self.__mask_stack is None) :
-            raise ValueError('ERROR: cannot mix masked and unmasked images in an ImageStack!')
         #expand the median exposure times to apply them in multiple layers at once
         if med_ets is not None :
             med_ets = med_ets[np.newaxis,np.newaxis,:]
@@ -67,10 +59,6 @@ class ImageStack :
         """
         Add the already-created meanimage/mask stack for a single given sample to the model by reading its files
         """
-        #if it's the first sample we're adding, initialize all of the flatfield's various images based on the sample's dimensions
-        if not self.__mask_stack_inited is None :
-            self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
-            self.__mask_stack_inited = True
         #make sure the dimensions match
         if sample.rectangles[0].imageshapeinoutput!=self.__image_stack.shape :
             errmsg = f'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have dimensions {sample.rectangles[0].imageshapeinoutput}'
@@ -90,7 +78,7 @@ class ImageStack :
         DOES NOT check that a sufficient number of images have been stacked; that must be done in some superclass that calls this method
         """
         #if the images haven't been masked then this is trivial
-        if self.__mask_stack is None :
+        if np.max(self.__mask_stack)==0 :
             self.__mean_image = self.__image_stack/self.__n_images_read
             self.__std_err_of_mean_image = np.sqrt(np.abs(self.__image_squared_stack/self.__n_images_read-(np.power(self.__mean_image,2)))/self.__n_images_read)
             return
