@@ -862,6 +862,7 @@ class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgume
     self.__initedrectangles = False
 
   def initrectangles(self):
+    self.enter_context(self.logger)
     self.__initedrectangles = True
     self.__rectangles  = self.readallrectangles()
     self.__rectangles = [r for r in self.rectangles if self.__rectanglefilter(r)]
