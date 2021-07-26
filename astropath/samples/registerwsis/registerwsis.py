@@ -1,7 +1,7 @@
 import contextlib, cv2, matplotlib.pyplot as plt, methodtools, numpy as np, PIL, skimage.registration, skimage.transform
 
 from ...slides.annowarp.annowarpsample import WSISample
-from ...slides.align.computeshift import computeshift, OptimizeResult
+from ...slides.align.computeshift import computeshift, crosscorrelation, OptimizeResult
 from ...slides.zoom.stitchmasksample import InformMaskSample
 from ...utilities.misc import floattoint
 
@@ -26,12 +26,6 @@ class RegisterWSIs(contextlib.ExitStack):
       wsis = [stack.enter_context(_.using_wsi(1)) for _ in self.samples]
       yield wsis
 
-  @contextlib.contextmanager
-  def using_tissuemasks(self):
-    with self.enter_context(contextlib.ExitStack()) as stack:
-      masks = [stack.enter_context(_.using_tissuemask()) for _ in self.samples]
-      yield masks
-
   @methodtools.lru_cache()
   def scaledwsis(self, zoomfactor, smoothsigma, equalize=False):
     with self.using_wsis() as wsis:
@@ -44,40 +38,8 @@ class RegisterWSIs(contextlib.ExitStack):
         wsis = [skimage.exposure.equalize_adapthist(wsi) for wsi in wsis]
       return wsis
 
-  @methodtools.lru_cache()
-  def getmasks(self, zoomfactor, closesize=1, opensize=1, dilatesize=1, smoothsigma=None, usewsicut=False, equalize=False):
-    if usewsicut:
-      with self.using_wsis() as wsis:
-        masks = [np.asarray(wsi)>12 for wsi in wsis]
-    else:
-      with self.using_tissuemasks() as masks:
-        masks = [mask.astype(np.uint8) for mask in masks]
-
-    if zoomfactor > 1:
-      masks = [PIL.Image.fromarray(mask) for mask in masks]
-      masks = [np.asarray(mask.resize(np.array(mask.size)//zoomfactor)) for mask in masks]
-    smoothmasks = masks
-    if closesize > 1:
-      kernel = np.ones(dtype=np.uint8, shape=(closesize, closesize))
-      smoothmasks = [cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel) for mask in smoothmasks]
-    if opensize > 1:
-      kernel = np.ones(dtype=np.uint8, shape=(opensize, opensize))
-      smoothmasks = [cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel) for mask in smoothmasks]
-    if dilatesize > 1:
-      kernel = np.ones(dtype=np.uint8, shape=(dilatesize, dilatesize))
-      smoothmasks = [cv2.dilate(mask, kernel) for mask in smoothmasks]
-    if smoothsigma is not None:
-      smoothmasks = [skimage.filters.gaussian(mask, smoothsigma, mode="nearest") for mask in smoothmasks]
-    if equalize:
-      smoothmasks = [skimage.exposure.equalize_adapthist(mask) for mask in masks]
-    return masks, smoothmasks
-
-  def runalignment(self, _debugprint=False, rotationwindowsize=(50, 10), translationwindowsize=10, usemasks=False, usewsicut=False, equalize=False):
-    if usemasks:
-      wsis, _ = (wsi1, wsi2), _ = self.getmasks(16, smoothsigma=3, usewsicut=usewsicut, equalize=equalize)
-    else:
-      assert not usewsicut
-      wsi1, wsi2 = wsis = self.scaledwsis(64, 10, equalize=equalize)
+  def runalignment(self, _debugprint=False, zoomfactor=8, smoothsigma):
+    wsi1, wsi2 = wsis = self.scaledwsis(zoomfactor=zoomfactor, smoothsigma=1, equalize=False)
     if _debugprint > .5:
       for _ in wsis:
         plt.imshow(_)
@@ -157,36 +119,43 @@ class RegisterWSIs(contextlib.ExitStack):
         plt.imshow(_)
         plt.show()
 
-    cumulativerotationresult = OptimizeResult(
-      dx=0,
-      dy=0,
-      exit=0,
+    wsis = [skimage.filters.gaussian(wsi>12, smoothsigma, mode="nearest") for wsi in wsis]
+    wsi1, wsi2 = wsis = [skimage.exposure.equalize_adapthist(wsi) for wsi in wsis]
+
+    if _debugprint > .5:
+      for _ in wsis:
+        plt.imshow(_)
+        plt.show()
+
+    zoommore = [skimage.transform.resize(wsi, wsi.shape//8) for wsi in wsis]
+    zoomevenmore = [skimage.transform.resize(wsi, wsi.shape//2) for wsi in zoommore]
+    r1 = getrotation(zoomevenmore, -180, 180-15, 15)
+    r2 = getrotation(zoomevenmore, r1.angle-15, r1.angle+15, 2)
+    r3 = getrotation(zoommore, r2.angle-2, r2.angle+2, 0.02)
+    rotationresult = r3
+    rotationresult.xcorr.update(r2.xcorr)
+    rotationresult.xcorr.update(r1.xcorr)
+
+    rotated = wsi1, skimage.transform.rotate(wsi2, rotationresult.angle)
+
+    if _debugprint > .5:
+      for _ in wsis:
+        plt.imshow(_)
+        plt.show()
+
+    translationresult = computeshift(rotated, usemaxmovementcut=False, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5, mindistancetootherpeak=10000)
+    return rotationresult, translationresult
+
+  def getrotation(rotationwsis, minangle, maxangle, stepangle):
+    wsi1, wsi2 = rotationwsis
+    bestxcorr = {}
+    for angle in np.arange(minangle, maxangle+stepangle, stepangle):
+      rotated = wsi1, skimage.transform.rotate(wsi2, angle)
+      xcorr = crosscorrelation(rotated)
+      bestxcorr[angle] = max(xcorr)
+    angle = max(bestxcorr, key=bestxcorr.get)
+    return OptimizeResult(
+      xcorr=bestxcorr,
+      angle=angle,
+      bestxcorr=bestxcorr[angle],
     )
-    rotationresult = OptimizeResult(dy=999)
-    wsisrotated = wsis
-
-    niterations = 0
-    while abs(rotationresult.dy) > 5 and cumulativerotationresult.exit == 0 and niterations < 10:
-      niterations += 1
-      wsispolar = [skimage.transform.warp_polar(wsi) for wsi in wsisrotated]
-      if _debugprint > .5:
-        for _ in wsispolar:
-          plt.imshow(_)
-          plt.show()
-  
-      rotationresult = computeshift(wsispolar, usemaxmovementcut=False, windowsize=rotationwindowsize, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5, checkpositivedefinite=False, mindistancetootherpeak=10000)
-      cumulativerotationresult = OptimizeResult(
-        dx=cumulativerotationresult.dx+rotationresult.dx,
-        dy=cumulativerotationresult.dy+rotationresult.dy,
-        exit=max(cumulativerotationresult.exit, rotationresult.exit),
-      )
-      angle = cumulativerotationresult.dy
-      wsisrotated = [wsis[0], skimage.transform.rotate(wsis[1], angle.n)]
-      if _debugprint:
-        print(rotationresult)
-        for _ in wsisrotated:
-          plt.imshow(_)
-          plt.show()
-
-    translationresult = computeshift(wsisrotated, usemaxmovementcut=False, windowsize=translationwindowsize, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5, mindistancetootherpeak=10000)
-    return cumulativerotationresult, translationresult
