@@ -190,7 +190,11 @@ def slide_id_csv(st_patient, st_batch_id, mastro_csv, uppath, proj, cohort):
             new_data = list(zip(new_slide_id, new_patient, proj_list, cohort_list,
                                 new_batch_id, isGood_list))
         else:
-            id_index = [i for i, val in enumerate(new_patient) if val in set(st_patient)]
+            #
+            # get Specimen Table indeces for new patients as long as the values have a digit
+            #
+            id_index = [i for i, val in enumerate(new_patient) if val in set(st_patient) 
+                        and any(map(str.isdigit, val))]
             new_data = list(zip(new_slide_id, list(itemgetter(*id_index)(new_patient)),
                                 proj_list, cohort_list,
                                 list(itemgetter(*id_index)(new_batch_id)), isGood_list))
