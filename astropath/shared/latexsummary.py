@@ -1,6 +1,5 @@
 #imports 
-import pathlib
-from latex import build_pdf
+import pathlib, subprocess
 from ..utilities.misc import cd
 
 class LatexSummaryBase :
@@ -48,10 +47,11 @@ class LatexSummaryBase :
         If the compilation fails for any reason then remove the aux/log files and put the .tex file in some specified location
         Returns 0 if the compilation was successful and 1 otherwise
         """
+        cmd = f'pdflatex {self.__tex_filename}'
         with cd(self.__output_dir) :
             try :
-                pdf = build_pdf(self.__tex_filename)
-                pdf.save_to(self.__pdf_filename)
+                subprocess.check_call(cmd)
+                subprocess.check_call(cmd)
             except Exception :
                 to_remove = [self.__output_dir / self.__aux_filename,
                              self.__output_dir / self.__log_filename,

@@ -55,7 +55,6 @@ setupkwargs = dict(
     "dataclassy>=0.10.0",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
-    "latex>=0.7.0",
     "matplotlib>=3.3.2",
     "methodtools",
     "more_itertools>=8.3.0",
