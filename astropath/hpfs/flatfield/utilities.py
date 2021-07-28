@@ -1,9 +1,9 @@
 #imports
-from ..image_masking.config import CONST as MASKING_CONST
+import math
+import numpy as np
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.img_file_io import smooth_image_worker
-import numpy as np
-import math
+from ...shared.image_masking.config import CONST as MASKING_CONST
 
 #helper class for inputting slides with their names and raw/root directories
 ########### THIS WILL BE DEPRECATED ASAP (not actually used in meanimage/flatfielding code ###########

@@ -3,8 +3,8 @@ from .plotting import plot_image_layers, flatfield_image_pixel_intensity_plot, c
 from .latexsummary import MeanImageLatexSummary, FlatfieldLatexSummary, AppliedFlatfieldLatexSummary
 from .utilities import FieldLog
 from .config import CONST
-from ..image_masking.image_mask import ImageMask
-from ..image_masking.utilities import LabelledMaskRegion
+from ...shared.image_masking.image_mask import ImageMask
+from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.logging import dummylogger
 from ...shared.samplemetadata import MetadataSummary
 from ...utilities.img_file_io import get_raw_as_hwl, smooth_image_worker, smooth_image_with_uncertainty_worker, write_image_to_file
