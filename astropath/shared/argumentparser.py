@@ -199,7 +199,7 @@ class WorkingDirArgumentParser(RunFromArgumentParser) :
     else :
       return {
         **super().initkwargsfromargumentparser(parsed_args_dict),
-        'workingdir': parsed_args_dict.pop('workingdir'),
+        'workingdir': wd,
       }
 
 class FileTypeArgumentParser(RunFromArgumentParser) :
