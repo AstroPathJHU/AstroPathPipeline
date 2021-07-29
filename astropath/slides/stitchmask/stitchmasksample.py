@@ -1,9 +1,11 @@
 import abc, contextlib, numpy as np, pathlib
+from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.rectangle import MaskRectangle
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
-from ...hpfs.image_masking.image_mask import ImageMask
+from ...shared.image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.misc import floattoint
+from ...utilities.config import CONST as UNIV_CONST
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiff
 from ..zoom.zoomsample import ZoomSampleBase
@@ -128,7 +130,7 @@ class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
   def getoutputfiles(cls, SlideID, *, maskroot, maskfilesuffix=None, **otherrootkwargs):
     if maskfilesuffix is None: maskfilesuffix = cls.defaultmaskfilesuffix
     return [
-      maskroot/SlideID/"im3"/"meanimage"/"image_masking"/pathlib.Path(f"{SlideID}_{cls.maskfilestem()}").with_suffix(maskfilesuffix)
+      maskroot/SlideID/"im3"/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME/pathlib.Path(f"{SlideID}_{cls.maskfilestem()}").with_suffix(maskfilesuffix)
     ]
 
 class InformMaskSample(TissueMaskSample):

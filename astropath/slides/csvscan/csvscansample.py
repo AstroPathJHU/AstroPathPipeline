@@ -1,5 +1,6 @@
 import abc, pathlib, re
 
+from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import RunFromArgumentParser
 from ...shared.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
@@ -7,6 +8,7 @@ from ...shared.overlap import Overlap
 from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield
+from ...utilities.config import CONST as UNIV_CONST
 from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
@@ -121,12 +123,12 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
 
     meanimagecsvs = {
       self.im3folder/f"{self.SlideID}-mean.csv",
-      self.im3folder/"meanimage"/"fields_used.csv",
-      self.im3folder/"meanimage"/f"{self.SlideID}-background_thresholds.csv",
-      self.im3folder/"meanimage"/f"{self.SlideID}-metadata_summary_stacked_images.csv",
-      self.im3folder/"meanimage"/f"{self.SlideID}-metadata_summary_thresholding_images.csv",
-      self.im3folder/"meanimage"/f"{self.SlideID}-thresholding_data_table.csv",
-      self.im3folder/"meanimage"/"image_masking"/"labelled_mask_regions.csv",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.FIELDS_USED_CSV_FILENAME,
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME/FF_CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,
     }
     optionalcsvs = {
       self.csv(_) for _ in (

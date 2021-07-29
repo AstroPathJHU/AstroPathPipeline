@@ -5,9 +5,9 @@ from .plotting import plot_background_thresholds_by_layer, plot_flagged_HPF_loca
 from .latexsummary import ThresholdingLatexSummary, MaskingLatexSummary
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image, RectangleThresholdTableEntry, FieldLog, ThresholdTableEntry
 from .config import CONST
-from ..image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
-from ..image_masking.utilities import LabelledMaskRegion
-from ..image_masking.config import CONST as MASK_CONST
+from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
+from ...shared.image_masking.utilities import LabelledMaskRegion
+from ...shared.image_masking.config import CONST as MASK_CONST
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase, WorkflowSample, ParallelSample
 from ...shared.samplemetadata import MetadataSummary
