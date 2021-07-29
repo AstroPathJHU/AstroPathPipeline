@@ -5,6 +5,7 @@ from ..utilities.tableio import timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from ..utilities.config import CONST as UNIV_CONST
 from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
+from .rectangletransformation import RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationSinglelayer
 
 class Rectangle(DataClassWithPscale):
   """
@@ -480,10 +481,47 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
     _, = self.broadbandfilters
     return _
 
+class RectangleCorrectedIm3SingleLayer(RectangleReadIm3MultiLayer) :
+  """
+  Class for Rectangles whose multilayer im3 data should have one layer extracted and corrected
+  for differences in exposure time, flatfielding effects, and warping effects (and or all can be omitted)
+  """
+  _DEBUG = False #tend to load these more than once
+
+  def __post_init__(self,*args,transformations=None,**kwargs) :
+    if transformations is None :
+      transformations = []
+    super().__post_init__(*args, transformations=transformations, **kwargs)
+
+  def add_exposure_time_correction_transformation(self,med_et,offset) :
+    """
+    Add a transformation to a rectangle to correct it for differences in exposure time given:
+
+    med_et = the median exposure time of the image layer in question across the whole sample
+    offset = the dark current offset to use for correcting the image layer of interest
+    """
+    if med_et is not None and offset is not None :
+      self.add_transformation(RectangleExposureTimeTransformationSingleLayer(self.allexposuretimes[self.layers[0]-1],
+                                                                             med_et,offset))
+
+  def add_flatfield_correction_transformation(self,flatfield_layer) :
+    """
+    Add a transformation to a rectangle to correct it with a given flatfield layer
+    """
+    if flatfield_layer is not None :
+      self.add_transformation(RectangleFlatfieldTransformationSinglelayer(flatfield_layer))
+
+  def add_warping_correction_transformation(self,warp) :
+    """
+    Add a transformation to a rectangle to correct its image layer with a given warping pattern
+    """
+    if warp is not None :
+      self.add_transformation(RectangleWarpingTransformationSinglelayer(warp))
+
 class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
   """
-  Class for Rectangles whose multilayer im3 data should be corrected for differences in exposure time 
-  and/or flatfielding (either or both can be omitted)
+  Class for Rectangles whose multilayer im3 data should be corrected for differences in exposure time,
+  flatfielding effects, and/or warping effects (any or all can be omitted)
   """
   _DEBUG = False #Tend to use these images more than once per run
   

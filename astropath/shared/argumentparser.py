@@ -216,6 +216,20 @@ class FileTypeArgumentParser(RunFromArgumentParser) :
       'filetype': parsed_args_dict.pop('filetype'), 
     }
 
+class GPUArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument('--noGPU', action='store_true',
+                   help='Add this flag to disable any major GPU computations')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'useGPU': (not parsed_args_dict.pop('noGPU')), 
+    }
+
 class ImageCorrectionArgumentParser(RunFromArgumentParser) :
   @classmethod
   def makeargumentparser(cls):

@@ -77,14 +77,6 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
     @methodtools.lru_cache()
     @property
-    def tissue_edge_rects(self) :
-        return [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))<8]
-    @methodtools.lru_cache()
-    @property
-    def tissue_bulk_rects(self) :
-        return [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))==8]
-    @methodtools.lru_cache()
-    @property
     def exposure_time_histograms_and_bins_by_layer_group(self) :
         all_exp_times = []
         for lgi in range(len(self.mask_layer_groups)) :

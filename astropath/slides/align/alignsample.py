@@ -3,6 +3,7 @@
 import contextlib, numpy as np, traceback
 
 from ...shared.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
+from ...utilities.misc import get_GPU_thread
 from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
@@ -27,7 +28,7 @@ class AlignSampleBase(SampleBase):
 
     if forceGPU: useGPU = True
     self.gpufftdict = None
-    self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
+    self.gputhread=get_GPU_thread(interactive) if useGPU else None
     self.__images = None
 
   def initrectangles(self):
@@ -190,37 +191,6 @@ class AlignSampleBase(SampleBase):
     for o in self.overlaps :
       overlap_shift_comparisons[o.getShiftComparisonDetailTuple()]=o.getShiftComparisonImages()
     return overlap_shift_comparisons
-
-  def __getGPUthread(self, interactive, force) :
-    """
-    Tries to create and return a Reikna Thread object to use for running some computations on the GPU
-    interactive : if True (and some GPU is available), user will be given the option to choose a device 
-    """
-    #first try to import Reikna
-    try :
-      import reikna as rk 
-    except ModuleNotFoundError :
-      if force: raise
-      self.logger.warningglobal("Reikna isn't installed. Please install with 'pip install reikna' to use GPU devices.")
-      return None
-    #create an API
-    #try :
-    #    api = rk.cluda.cuda_api()
-    #except Exception :
-    #  logger.info('CUDA-based GPU API not available, will try to get one based on OpenCL instead.')
-    #  try :
-    #    api = rk.cluda.ocl_api()
-    #  except Exception :
-    #    logger.warningglobal('WARNING: Failed to create an OpenCL API, no GPU computation will be available!!')
-    #    return None
-    try :
-      api = rk.cluda.ocl_api()
-      #return a thread from the API
-      return api.Thread.create(interactive=interactive)
-    except Exception :
-      if force: raise
-      self.logger.warningglobal('Failed to create an OpenCL API, no GPU computation will be available!!')
-      return None
 
   rectangletype = AlignmentRectangleBase
   overlaptype = AlignmentOverlap

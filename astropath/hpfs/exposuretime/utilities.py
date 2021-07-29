@@ -48,7 +48,7 @@ def getOverlapsWithExposureTimeDifferences(rtd,rootdir,sn,exp_times,layer,overla
     else :
         a = AlignSampleForExposureTime(rootdir,rtd,sn,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=layer,
                                         selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,smoothsigma=None,flatfield=None)
-    tissue_edge_rect_ns = set() if include_tissue_edges else {r.n for r in a.edgerectangles}
+    tissue_edge_rect_ns = set() if include_tissue_edges else set([r.n for r in a.tissue_edge_rects])
     rect_rfkey_by_n = {}
     for r in a.rectangles :
         #skip tissue edge rectangles

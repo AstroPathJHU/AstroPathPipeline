@@ -1,4 +1,5 @@
 import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
+import reikna as rk
 if sys.platform != "cygwin": import psutil
 
 def covariance_matrix(*args, **kwargs):
@@ -443,3 +444,12 @@ def mountedpath(filename):
       return pathlib.PureWindowsPath(filename)
   else:
     return guesspathtype(filename)
+
+def get_GPU_thread(interactive) :
+  """
+  Create and return a Reikna Thread object to use for running some computations on the GPU
+  interactive : if True (and some GPU is available), user will be given the option to choose a device 
+  """
+  api = rk.cluda.ocl_api()
+  #return a thread from the API
+  return api.Thread.create(interactive=interactive)
