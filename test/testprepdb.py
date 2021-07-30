@@ -14,9 +14,11 @@ class TestPrepDb(unittest.TestCase):
     self.maxDiff = None
 
   def testPrepDb(self, SlideID="M21_1", units="safe", skipannotations=False):
+    dbloadroot = thisfolder/"test_for_jenkins"/"prepdb"
+
     logs = (
-      thisfolder/"data"/"logfiles"/"prepdb.log",
-      thisfolder/"data"/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
+      dbloadroot/"logfiles"/"prepdb.log",
+      dbloadroot/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
     )
     for log in logs:
       try:
@@ -24,11 +26,11 @@ class TestPrepDb(unittest.TestCase):
       except FileNotFoundError:
         pass
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rename-annotation", "Good tisue", "Good tissue"]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rename-annotation", "Good tisue", "Good tissue", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)]
     if skipannotations:
       args.append("--skip-annotations")
     PrepDbCohort.runfromargumentparser(args)
-    sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
+    sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID], dbloadroot=dbloadroot, logroot=dbloadroot)
 
     for filename, cls, extrakwargs in (
       (f"{SlideID}_annotations.csv", Annotation, {}),
@@ -44,17 +46,17 @@ class TestPrepDb(unittest.TestCase):
     ):
       if filename == "M21_1_globals.csv": continue
       if skipannotations and cls in (Annotation, Vertex, Region):
-        self.assertFalse((thisfolder/"data"/SlideID/"dbload"/filename).exists())
+        self.assertFalse((dbloadroot/SlideID/"dbload"/filename).exists())
         continue
       try:
-        rows = sample.readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+        rows = sample.readtable(dbloadroot/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
         targetrows = sample.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
         for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
       except:
         raise ValueError("Error in "+filename)
 
-    with PIL.Image.open(thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
+    with PIL.Image.open(dbloadroot/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
          PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff.jpg") as targetimg:
       np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 

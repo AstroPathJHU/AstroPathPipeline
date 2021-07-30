@@ -31,12 +31,6 @@ pipeline {
       }
     }
 
-    stage('setup dbload folder') {
-      steps {
-        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
-      }
-    }
-
     stage('run tests') {
       parallel {
         stage('console scripts and documents') {
@@ -58,6 +52,12 @@ pipeline {
         stage('workflow') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
+          }
+        }
+
+        stage('prepdb') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
           }
         }
 
