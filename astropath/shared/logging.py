@@ -142,12 +142,15 @@ class MyLogger:
           imagehandler.setLevel(logging.INFO-1)
           self.logger.addHandler(imagehandler)
 
-        from ..utilities.version import astropathversion
-        self.astropathversion = astropathversion
         self.logger.critical(f"START: {self.module} {self.astropathversion}")
 
     self.nentered += 1
     return self
+
+  @property
+  def astropathversion(self):
+    from ..utilities.version import astropathversion
+    return astropathversion
 
   def filter(self, record):
     levelname = {
