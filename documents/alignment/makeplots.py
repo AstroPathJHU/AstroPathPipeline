@@ -41,7 +41,7 @@ def __alignsample(*, root1, root2, samp, dapi, dbloadroot, **kwargs):
   if dbloadroot is None:
     return alignsample(root1=root1, root2=root2, samp=samp, dbloadroot=root1, **kwargs)
 
-  A = AlignSample(root1, root2, dbloadroot=dbloadroot, samp, interactive=interactive, **kwargs)
+  A = AlignSample(root1, root2, dbloadroot=dbloadroot, samp=samp, interactive=interactive, **kwargs)
 
   A.readalignments()
   A.readstitchresult()
