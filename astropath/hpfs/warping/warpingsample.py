@@ -2,8 +2,8 @@
 import sys, numpy as np
 from reikna.fft import FFT
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import get_GPU_thread
-from ...utilities.tableio import readtable
+from ...utilities.misc import cd, get_GPU_thread
+from ...utilities.tableio import readtable, writetable
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample
 from ...shared.rectangle import RectangleCorrectedIm3SingleLayer
@@ -139,6 +139,9 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             octet_filepath.touch()
             self.__octets = []
             return
+        msg = f'Finding octets to use for warp fitting in {self.SlideID} from a set of {len(octet_candidate_rects)} '
+        msg+= f'possible central HPFs'
+        self.logger.debug(msg)
         #get the background threshold for this layer of this sample
         bg_thresholds = readtable(self.bg_threshold_filepath,ThresholdTableEntry)
         this_layer_bgts = [bgt for bgt in bg_thresholds if bgt.layer_n==self.layers[0]]
@@ -150,7 +153,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         #check each possible octet of overlaps to make sure all its overlaps can be aligned and its images have 
         #at least some base fraction of pixels with intensities above the background threshold
         self.__octets = []
-        for r in octet_candidate_rects :
+        for ir,r in enumerate(octet_candidate_rects,start=1) :
             n_good_overlaps = 0
             overlap_n_tuples = self.overlapsforrectangle(r.n)
             overlaps = [o for o in self.overlaps if (o.p1,o.p2) in overlap_n_tuples]
@@ -160,7 +163,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             for o in overlaps :
                 result = self.__align_overlap(o)
                 if result is not None and result.exit==0 :
-                    ip1,ip2 = overlap.cutimages
+                    ip1,ip2 = o.cutimages
                     p1frac = (np.sum(np.where(ip1>bg_threshold.counts_threshold,1,0)))/(ip1.shape[0]*ip1.shape[1])
                     p2frac = (np.sum(np.where(ip2>bg_threshold.counts_threshold,1,0)))/(ip2.shape[0]*ip2.shape[1])
                     if p1frac>CONST.REQ_OVERLAP_PIXEL_FRAC and p2frac>CONST.REQ_OVERLAP_PIXEL_FRAC :
@@ -169,27 +172,37 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
                         p2_pixel_fracs_by_tag[o.tag] = p2frac
                         n_good_overlaps+=1
                     else :
+                        msg = f'Overlap {o.n} for rectangle {r.n} ({ir}/{len(octet_candidate_rects)}) rejected '
+                        msg+= f'(pixel fractions: {p1frac:.02f},{p2frac:.02f})'
+                        self.logger.debug(msg)
                         break
                 else :
+                    msg = f'Overlap {o.n} for rectangle {r.n} ({ir}/{len(octet_candidate_rects)}) rejected '
+                    msg+= f'(alignment result: {result})'
+                    self.logger.debug(msg)
                     break
             if n_good_overlaps==8 :
                 new_octet = OverlapOctet(self.layers[0],
                                          bg_threshold.counts_threshold,bg_threshold.counts_per_ms_threshold,
                                          r.n,
                                          *([overlaps_by_tag[ot].n for ot in range(1,10) if ot!=5]),
-                                         *([p1_pixel_fracs_by_tag[ot].n for ot in range(1,10) if ot!=5]),
-                                         *([p2_pixel_fracs_by_tag[ot].n for ot in range(1,10) if ot!=5]))
+                                         *([p1_pixel_fracs_by_tag[ot] for ot in range(1,10) if ot!=5]),
+                                         *([p2_pixel_fracs_by_tag[ot] for ot in range(1,10) if ot!=5]))
                 self.__octets.append(new_octet)
+                self.logger.debug(f'Octet found surrounding rectangle {r.n} ({ir}/{len(octet_candidate_rects)})')
         #write out the octet file
         workingdir_octet_filepath = self.__workingdir / CONST.OCTET_SUBDIR_NAME
         workingdir_octet_filepath = workingdir_octet_filepath / f'{self.SlideID}-{CONST.OCTET_FILENAME_STEM}'
-        msg = f'Found {len(self.__octets)} octet{"s" if len(self.__octets>1) else ""} for {self.SlideID}, '
+        if not workingdir_octet_filepath.parent.is_dir() :
+            workingdir_octet_filepath.parent.mkdir(parents=True)
+        msg = f'Found {len(self.__octets)} octet{"s" if len(self.__octets)>1 else ""} for {self.SlideID}, '
         msg+= f'writing out octet table to {workingdir_octet_filepath.resolve()}'
         self.logger.info(msg)
         if len(self.__octets)==0 :
             workingdir_octet_filepath.touch()
         else :
-            writetable(self.__octets,workingdir_octet_filepath)
+            with cd(workingdir_octet_filepath.parent) :
+                writetable(workingdir_octet_filepath.name,self.__octets)
 
     def __align_overlap(self,overlap) :
         """

@@ -1446,7 +1446,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
   multilayer = True
   rectangletype = RectangleCorrectedIm3MultiLayer
 
-  def __init__(self,*args,et_offset_file,flatfield_file,warping_file,**kwargs) :
+  def __init__(self,*args,**kwargs) :
     super().__init__(*args,**kwargs)
     self.__med_ets = None
 
@@ -1482,27 +1482,27 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     """
     Read in the offset factors for exposure time corrections from the file defined by command line args
     """
-    self.logger.info(f'Copying exposure time offsets for {self.SlideID} from file {self.__et_offset_file}')
-    layer_offsets_from_file = readtable(self.__et_offset_file,LayerOffset)
+    self.logger.info(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
+    layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
     offsets_to_return = []
     for ln in range(1,self.nlayers+1) :
         this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
         if len(this_layer_offset)==1 :
             offsets_to_return.append(this_layer_offset[0])
         elif len(this_layer_offset)==0 :
-            warnmsg = f'WARNING: LayerOffset file {self.__et_offset_file} does not have an entry for layer {ln}'
+            warnmsg = f'WARNING: LayerOffset file {self.et_offset_file} does not have an entry for layer {ln}'
             warnmsg+=  ', so that offset will be set to zero!'
             self.logger.warning(warnmsg)
             offsets_to_return.append(0)
         else :
-            raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.__et_offset_file} for layer {ln}!')
+            raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.et_offset_file} for layer {ln}!')
     return offsets_to_return
 
   def __get_warping_objects_by_layer(self) :
     """
     Read a WarpingSummary .csv file and return a list of CameraWarp objects to use for correcting images, one per layer
     """
-    warpsummaries = readtable(self.__warping_file,WarpingSummary)
+    warpsummaries = readtable(self.warping_file,WarpingSummary)
     warps_by_layer = []
     for li in range(self.nlayers) :
       warps_by_layer.append(None)
@@ -1514,19 +1514,19 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
       thiswarp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
       for ln in range(ws.first_layer_n,ws.last_layer_n+1) :
         if warps_by_layer[ln-1] is not None :
-          raise ValueError(f'ERROR: warping summary {self.__warping_file} has conflicting entries for image layer {ln}!')
+          raise ValueError(f'ERROR: warping summary {self.warping_file} has conflicting entries for image layer {ln}!')
         warps_by_layer[ln-1] = thiswarp
-    self.logger.info(f'Warping corrections will be applied from {self.__warping_file}')
+    self.logger.info(f'Warping corrections will be applied from {self.warping_file}')
     for li in range(self.nlayers) :
       if warps_by_layer[li] is None :
-        warnmsg = f'WARNING: warping summary file {self.__warping_file} does not contain any definitions for image layer '
+        warnmsg = f'WARNING: warping summary file {self.warping_file} does not contain any definitions for image layer '
         warnmsg+= f'{li+1} and so warping corrections for this image layer WILL BE SKIPPED!'
         self.logger.warning(warnmsg)
     return warps_by_layer
 
   @property
   def med_ets(self) :
-    if self.__et_offset_file is not None and self.__med_ets is None :
+    if self.et_offset_file is not None and self.__med_ets is None :
       self.initrectangles()
     return self.__med_ets
 
