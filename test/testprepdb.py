@@ -20,12 +20,12 @@ class TestPrepDb(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"dbload"/filename.name
       for SlideID in SlideIDs
       for ext in ("csv", "jpg")
-      for filename in (thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload").glob(f"*.{ext}")
+      for filename in (thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload").glob(f"*.{ext}")
     ] + [
-      thisfolder/"test_for_jenkins"/"alignment"/SlideID/"logfiles"/f"{SlideID}-align.log"
+      thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"logfiles"/f"{SlideID}-prepdb.log"
       for SlideID in SlideIDs
     ] + [
-      thisfolder/"test_for_jenkins"/"alignment"/"logfiles"/"align.log",
+      thisfolder/"test_for_jenkins"/"prepdb"/"logfiles"/"prepdb.log",
     ]
 
 
