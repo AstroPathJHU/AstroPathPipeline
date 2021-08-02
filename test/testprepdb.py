@@ -10,9 +10,6 @@ from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseSaveOutput
 thisfolder = pathlib.Path(__file__).parent
 
 class TestPrepDb(TestBaseSaveOutput):
-  def setUp(self):
-    self.maxDiff = None
-
   @property
   def outputfilenames(self):
     SlideIDs = "M21_1", "YZ71", "M206"
@@ -20,9 +17,12 @@ class TestPrepDb(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"dbload"/filename.name
       for SlideID in SlideIDs
       for ext in ("csv", "jpg")
-      for filename in (thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload").glob(f"*.{ext}")
+      for filename in (thisfolder/"data"/"reference"/"prepdb"/SlideID).glob(f"*.{ext}")
     ] + [
       thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"logfiles"/f"{SlideID}-prepdb.log"
+      for SlideID in SlideIDs
+    ] + [
+      thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"dbload"/f"{SlideID}_qptiff.jpg"
       for SlideID in SlideIDs
     ] + [
       thisfolder/"test_for_jenkins"/"prepdb"/"logfiles"/"prepdb.log",
