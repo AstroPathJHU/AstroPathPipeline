@@ -342,8 +342,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     ):
       with open(log) as f:
         contents = f.read().splitlines()
-      if len(contents) != 1:
-        raise AssertionError(f"Expected only one line of log\n\n{contents}")
+      if len(contents) != 2:
+        raise AssertionError(f"Expected only two lines of log\n\n{contents}")
 
   def testFromXML(self, SlideID="M21_1", **kwargs):
     args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID

@@ -471,9 +471,9 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     "name of the log files for this class (e.g. align)"
 
   @classmethod
-  def logstartregex(cls): return rf"{cls.logmodule()} v[0-9a-f.devgd+]+$"
+  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} v[0-9a-f.devgd+]+$"
   @classmethod
-  def logendregex(cls): return rf"end {cls.logmodule()}"
+  def logendregex(cls): return rf"end {cls.logmodule()}$|FINISH: {cls.logmodule()} v[0-9a-f.devgd+]+$"
 
   @classmethod
   def makeargumentparser(cls, **kwargs):
