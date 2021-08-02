@@ -113,7 +113,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
     @classmethod
     def getoutputfiles(cls,SlideID,root,**otherworkflowkwargs) :
         #the octet file is the only required output for the sample
-        return root / UNIV_CONST.WARPING_DIRNAME / CONST.OCTET_SUBDIR_NAME / f'{SlideID}-{CONST.OCTET_FILENAME_STEM}'
+        return [root / UNIV_CONST.WARPING_DIRNAME / CONST.OCTET_SUBDIR_NAME / f'{SlideID}-{CONST.OCTET_FILENAME_STEM}']
     @classmethod
     def logmodule(cls) : 
         return "warping"
@@ -195,7 +195,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         workingdir_octet_filepath = workingdir_octet_filepath / f'{self.SlideID}-{CONST.OCTET_FILENAME_STEM}'
         if not workingdir_octet_filepath.parent.is_dir() :
             workingdir_octet_filepath.parent.mkdir(parents=True)
-        msg = f'Found {len(self.__octets)} octet{"s" if len(self.__octets)>1 else ""} for {self.SlideID}, '
+        msg = f'Found {len(self.__octets)} octet{"s" if len(self.__octets)!=1 else ""} for {self.SlideID}, '
         msg+= f'writing out octet table to {workingdir_octet_filepath.resolve()}'
         self.logger.info(msg)
         if len(self.__octets)==0 :

@@ -1370,7 +1370,8 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
 
   def __init__(self,*args,layer=1,**kwargs) :
     self.__layer = layer
-    super().__init__(*args,layers=[self.__layer],**kwargs)
+    kwargs['layers']=[self.__layer]
+    super().__init__(*args,**kwargs)
     self.__med_et = None
 
   def initrectangles(self) :

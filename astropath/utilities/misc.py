@@ -181,6 +181,18 @@ def split_csv_to_dict_of_bounds(value) :
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
 
+def dict_of_init_par_values_callback(value) :
+  """
+  argument parser callback to return a dictionary of fit parameter initial values
+  """
+  print(value)
+
+def dict_of_par_bounds_callback(value) :
+  """
+  argument parser callback to return a dictionary of fit parameter bounds
+  """
+  print(value)
+
 def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,flatfielding=True,warping=True) :
   """
   helper function to mutate an argument parser for some very generic options

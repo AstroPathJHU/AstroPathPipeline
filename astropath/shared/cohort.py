@@ -111,12 +111,12 @@ class Cohort(CohortBase, RunFromArgumentParser):
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
           raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+        yield sample
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
         with self.getlogger(samp):
           raise
-      yield sample
 
   @property
   def filteredsamples(self):
