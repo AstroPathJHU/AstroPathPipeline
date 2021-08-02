@@ -13,8 +13,8 @@ class OverlapOctet(MyDataClass) :
     olap_4_n                : int
     olap_6_n                : int
     olap_7_n                : int
-    olap_9_n                : int
     olap_8_n                : int
+    olap_9_n                : int
     olap_1_p1_pixel_frac    : float
     olap_2_p1_pixel_frac    : float
     olap_3_p1_pixel_frac    : float

@@ -33,6 +33,10 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
 
     def __init__(self,*args,workingdir=None,useGPU=True,**kwargs) :
         super().__init__(*args,**kwargs)
+        #make sure the user is only specifying a single layer
+        if len(self.layers)!=1 :
+            errmsg = f'ERROR: a WarpingSample can only be run for one layer at a time but layers = {self.layers}'
+            raise RuntimeError(errmsg)
         if self.et_offset_file is None :
             raise RuntimeError('ERROR: must supply an exposure time offset file to fit for warping!')
         if self.flatfield_file is None :
@@ -71,6 +75,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             if octet_filepath.is_file() :
                 try :
                     self.__octets = readtable(octet_filepath,OverlapOctet)
+                    return
                 except TypeError :
                     msg = f'Found an empty octet file for {self.SlideID} at {octet_filepath} and so it will be assumed '
                     msg+= f'this sample has no octets to use in fitting for warping'
@@ -134,29 +139,61 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             octet_filepath.touch()
             self.__octets = []
             return
-        #get the background thresholds for this sample and make sure they're valid
+        #get the background threshold for this layer of this sample
         bg_thresholds = readtable(self.bg_threshold_filepath,ThresholdTableEntry)
-        for li in range(self.nlayers) :
-            this_layer_bgts = [bgt for bgt in bg_thresholds if bgt.layer_n==li+1]
-            if len(this_layer_bgts)!=1 :
-                errmsg = f'ERROR: invalid set of background thresholds for {self.SlideID} found '
-                errmsg+= f'in {self.bg_threshold_filepath}!'
-                raise ValueError(errmsg)
-        #check each possible octet of overlaps to make sure all its images have at least some 
-        #base fraction of pixels with intensities above the background threshold
+        this_layer_bgts = [bgt for bgt in bg_thresholds if bgt.layer_n==self.layers[0]]
+        if len(this_layer_bgts)!=1 :
+            errmsg = f'ERROR: invalid set of background thresholds for {self.SlideID} found '
+            errmsg+= f'in {self.bg_threshold_filepath}!'
+            raise ValueError(errmsg)
+        bg_threshold = this_layer_bgts[0]
+        #check each possible octet of overlaps to make sure all its overlaps can be aligned and its images have 
+        #at least some base fraction of pixels with intensities above the background threshold
+        self.__octets = []
         for r in octet_candidate_rects :
+            n_good_overlaps = 0
             overlap_n_tuples = self.overlapsforrectangle(r.n)
             overlaps = [o for o in self.overlaps if (o.p1,o.p2) in overlap_n_tuples]
+            overlaps_by_tag = {}
+            p1_pixel_fracs_by_tag = {}
+            p2_pixel_fracs_by_tag = {}
             for o in overlaps :
                 result = self.__align_overlap(o)
-                print(result)
-
-
-
+                if result is not None and result.exit==0 :
+                    ip1,ip2 = overlap.cutimages
+                    p1frac = (np.sum(np.where(ip1>bg_threshold.counts_threshold,1,0)))/(ip1.shape[0]*ip1.shape[1])
+                    p2frac = (np.sum(np.where(ip2>bg_threshold.counts_threshold,1,0)))/(ip2.shape[0]*ip2.shape[1])
+                    if p1frac>CONST.REQ_OVERLAP_PIXEL_FRAC and p2frac>CONST.REQ_OVERLAP_PIXEL_FRAC :
+                        overlaps_by_tag[o.tag] = o
+                        p1_pixel_fracs_by_tag[o.tag] = p1frac
+                        p2_pixel_fracs_by_tag[o.tag] = p2frac
+                        n_good_overlaps+=1
+                    else :
+                        break
+                else :
+                    break
+            if n_good_overlaps==8 :
+                new_octet = OverlapOctet(self.layers[0],
+                                         bg_threshold.counts_threshold,bg_threshold.counts_per_ms_threshold,
+                                         r.n,
+                                         *([overlaps_by_tag[ot].n for ot in range(1,10) if ot!=5]),
+                                         *([p1_pixel_fracs_by_tag[ot].n for ot in range(1,10) if ot!=5]),
+                                         *([p2_pixel_fracs_by_tag[ot].n for ot in range(1,10) if ot!=5]))
+                self.__octets.append(new_octet)
+        #write out the octet file
+        workingdir_octet_filepath = self.__workingdir / CONST.OCTET_SUBDIR_NAME
+        workingdir_octet_filepath = workingdir_octet_filepath / f'{self.SlideID}-{CONST.OCTET_FILENAME_STEM}'
+        msg = f'Found {len(self.__octets)} octet{"s" if len(self.__octets>1) else ""} for {self.SlideID}, '
+        msg+= f'writing out octet table to {workingdir_octet_filepath.resolve()}'
+        self.logger.info(msg)
+        if len(self.__octets)==0 :
+            workingdir_octet_filepath.touch()
+        else :
+            writetable(self.__octets,workingdir_octet_filepath)
 
     def __align_overlap(self,overlap) :
         """
-        Return the result of aligning an overlap, after making some replacements etc. 
+        Return the result of aligning an overlap, after making some replacements
         to possibly run the alignment on the GPU
         """
         if self.gputhread is None or self.gpufftdict is None :
@@ -169,9 +206,6 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             new_fftc = new_fft.compile(self.gputhread)
             self.gpufftdict[cutimages_shapes[0]] = new_fftc
         return overlap.align(gputhread=self.gputhread,gpufftdict=self.gpufftdict)
-        
-
-
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

@@ -7,5 +7,9 @@ class Const :
     def OCTET_FILENAME_STEM(self) :
         return 'overlap_octets_for_warping_fits.csv' #stem of the filename that holds the list of 
                                                      #a sample's warping octets to use
+    @property
+    def REQ_OVERLAP_PIXEL_FRAC(self) :
+        return 0.85 #the required fraction of pixels whose intensities must be above the background 
+                    #threshold for an overlap to be used for fitting
 
 CONST = Const()
