@@ -1,4 +1,4 @@
-import more_itertools, numpy as np, os, pathlib, PIL.Image
+import more_itertools, numpy as np, os, pathlib, PIL.Image, sys
 from astropath.shared.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
 from astropath.shared.overlap import Overlap
 from astropath.shared.rectangle import Rectangle
@@ -75,7 +75,7 @@ class TestPrepDb(TestBaseSaveOutput):
           raise ValueError("Error in "+filename)
 
       with PIL.Image.open(dbloadroot/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
-           PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff.jpg") as targetimg:
+           PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff_{sys.platform}.jpg") as targetimg:
         np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
       for log in logs:
