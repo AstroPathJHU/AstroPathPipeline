@@ -18,19 +18,20 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, badpolygonimagefolder=None, badpolygonimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False):
+  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, saveallimages=False, imagefolder=None, imagefiletype="pdf", annotationsynonyms=None, reorderannotations=False):
     self.xmlfile = pathlib.Path(xmlfile)
     self.__logger = logger
-    if badpolygonimagefolder is not None: badpolygonimagefolder = pathlib.Path(badpolygonimagefolder)
-    self.__badpolygonimagefolder = badpolygonimagefolder
+    self.__saveallimages = saveallimages
+    if imagefolder is not None: imagefolder = pathlib.Path(imagefolder)
+    self.__imagefolder = imagefolder
     if pscale is None: pscale = 1
     if apscale is None:
-      if self.__badpolygonimagefolder is not None:
+      if self.__imagefolder is not None:
         with QPTiff(self.qptifffilename) as fqptiff:
           apscale = fqptiff.apscale
       else:
         apscale = 1
-    self.__badpolygonimagefiletype = badpolygonimagefiletype
+    self.__imagefiletype = imagefiletype
     self.__pscale = pscale
     self.__apscale = apscale
     if annotationsynonyms is None:
@@ -190,38 +191,44 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             maxlength, longestidx = max((maxlength, longestidx), (length, nlines))
             perimeter += length
 
+          saveimage = self.__saveallimages
+          badimage = False
           if (longestidx == 1 or longestidx == len(regionvertices)) and maxlength / (perimeter/nlines) > 30:
             self.__logger.warningglobal(f"annotation polygon might not be closed: region id {regionid}")
-            if self.__badpolygonimagefolder is not None:
-              poly = SimplePolygon(vertices=regionvertices)
-              with QPTiff(self.qptifffilename) as fqptiff:
-                zoomlevel = fqptiff.zoomlevels[0]
-                qptiff = zoomlevel[0].asarray()
-                pixel = self.oneappixel
-                xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
-                xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
-                xybuffer = (xymax - xymin) / 20
-                xymin -= xybuffer
-                xymax += xybuffer
-                (xmin, ymin), (xmax, ymax) = xymin, xymax
-                fig, ax = plt.subplots(1, 1)
-                plt.imshow(
-                  qptiff[
-                    floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
-                    floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
-                  ],
-                  extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
-                )
-                ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.apscale))
+            saveimage = True
+            badimage = True
 
+          if saveimage and self.__imagefolder is not None:
+            poly = SimplePolygon(vertices=regionvertices)
+            with QPTiff(self.qptifffilename) as fqptiff:
+              zoomlevel = fqptiff.zoomlevels[0]
+              qptiff = zoomlevel[0].asarray()
+              pixel = self.oneappixel
+              xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
+              xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
+              xybuffer = (xymax - xymin) / 20
+              xymin -= xybuffer
+              xymax += xybuffer
+              (xmin, ymin), (xmax, ymax) = xymin, xymax
+              fig, ax = plt.subplots(1, 1)
+              plt.imshow(
+                qptiff[
+                  floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
+                  floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
+                ],
+                extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
+              )
+              ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.apscale))
+
+            if badimage:
               openvertex1 = poly.vertexarray[0]
               openvertex2 = poly.vertexarray[{1: 1, len(regionvertices): -1}[longestidx]]
               boxxmin, boxymin = np.min([openvertex1, openvertex2], axis=0) - xybuffer/2
               boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
               ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
 
-              fig.savefig(self.__badpolygonimagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__badpolygonimagefiletype}").name)
-              plt.close(fig)
+            fig.savefig(self.__imagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__imagefiletype}").name)
+            plt.close(fig)
 
           for polygon, m in zip(valid, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
             if valid is not polygon:
@@ -296,11 +303,18 @@ def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
   g = p.add_mutually_exclusive_group()
-  g.add_argument("--save-bad-polygon-images", action="store_const", dest="badpolygonimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
-  g.add_argument("--save-bad-polygon-images-folder", dest="badpolygonimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
-  p.add_argument("--save-bad-polygon-images-filetype", default="pdf", choices=("pdf", "png"), dest="badpolygonimagefiletype", help="image format to save debug images")
+  g.add_argument("--save-polygon-images", action="store_const", dest="imagefolder", const=pathlib.Path("."), help="save all annotation images to the current folder")
+  g.add_argument("--save-polygon-images-folder", type=pathlib.Path, dest="imagefolder", help="save all annotation images to the given directory")
+  g.add_argument("--save-bad-polygon-images", action="store_const", dest="badimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
+  g.add_argument("--save-bad-polygon-images-folder", type=pathlib.Path, dest="badimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
+  p.add_argument("--save-images-filetype", default="pdf", choices=("pdf", "png"), dest="imagefiletype", help="image format to save debug images")
   add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
+  if args.imagefolder is not None:
+    args.saveallimages = True
+  else:
+    args.imagefolder = args.badimagefolder
+  del args.badimagefolder
   with units.setup_context("fast"):
     XMLPolygonAnnotationReader(**args.__dict__, logger=printlogger("annotations")).getXMLpolygonannotations()
   print(f"{args.xmlfile} looks good!")
