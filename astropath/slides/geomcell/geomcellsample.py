@@ -86,13 +86,17 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       "apscale": self.apscale,
       "unitsmode": units.currentmode,
     })
-    with self.pool() as pool:
-      results = [
-        pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
-        for i, field in enumerate(self.rectangles, start=1)
-      ]
-      for r in results:
-        r.get()
+    if self.njobs > 1:
+      with self.pool() as pool:
+        results = [
+          pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
+          for i, field in enumerate(self.rectangles, start=1)
+        ]
+        for r in results:
+          r.get()
+    else:
+      for i, field in enumerate(self.rectangles, start=1):
+        self.rungeomcellfield(i, field, **kwargs)
 
   run = rungeomcell
 
