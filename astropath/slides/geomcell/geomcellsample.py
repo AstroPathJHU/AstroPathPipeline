@@ -124,7 +124,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
             if polygon is None: continue
             if polygon.area < minarea: continue
 
-            box = np.array(cellproperties.bbox).reshape(2, 2) * onepixel * 1.0
+            box = np.array(cellproperties.bbox).reshape(2, 2)[:,::-1] * onepixel * 1.0
             box += pxvec
             box = box // onepixel * onepixel
 
