@@ -75,8 +75,12 @@ class TestMisc(TestBaseSaveOutput):
       print(xysx2)
       raise
 
-  def testPolygonAreasFastUnits(self):
-    with units.setup_context("fast"):
+  def testPolygonAreasFastUnitsPixels(self):
+    with units.setup_context("fast_pixels"):
+      self.testPolygonAreas()
+
+  def testPolygonAreasFastUnitsMicrons(self):
+    with units.setup_context("fast_microns"):
       self.testPolygonAreas()
 
   def testPolygonNumpyArray(self):
