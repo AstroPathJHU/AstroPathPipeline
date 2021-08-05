@@ -84,7 +84,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layers],
       "pscale": self.pscale,
       "apscale": self.apscale,
-      "unitsmode": units.currentmode,
+      "unitsargs": units.currentargs(),
     })
     if self.njobs > 1:
       with self.pool() as pool:
@@ -101,8 +101,8 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   run = rungeomcell
 
   @staticmethod
-  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsmode):
-    with units.setup_context(unitsmode), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
+  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsargs):
+    with units.setup_context(*unitsargs), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
       if not lock: return
       if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): return
       onepixel = units.onepixel(pscale)
