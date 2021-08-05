@@ -230,29 +230,29 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             fig.savefig(self.__imagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__imagefiletype}").name)
             plt.close(fig)
 
-          for polygon, m in zip(valid, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
-            if valid is not polygon:
+          bigpolygon = polygon
+          for subpolygon in valid:
+            for polygon, m in zip([subpolygon.outerpolygon] + subpolygon.subtractpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
               regionid = 1000*layer + m
               polygon.regionid = regionid
-              assert not polygon.subtractpolygons
               regionvertices = polygon.outerpolygon.vertices
 
-            allvertices += list(regionvertices)
+              allvertices += list(regionvertices)
 
-            allregions.append(
-              Region(
-                regionid=regionid,
-                sampleid=0,
-                layer=layer,
-                rid=m,
-                isNeg=isNeg,
-                type=region.get_xml_attr("Type"),
-                nvert=len(regionvertices),
-                poly=None,
-                apscale=self.apscale,
-                pscale=self.pscale,
+              allregions.append(
+                Region(
+                  regionid=regionid,
+                  sampleid=0,
+                  layer=layer,
+                  rid=m,
+                  isNeg=isNeg ^ (polygon is not subpolygon.outerpolygon),
+                  type=region.get_xml_attr("Type"),
+                  nvert=len(regionvertices),
+                  poly=None,
+                  apscale=self.apscale,
+                  pscale=self.pscale,
+                )
               )
-            )
 
           m = next(regioncounter)
 
