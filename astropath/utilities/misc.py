@@ -152,26 +152,26 @@ def split_csv_to_list_of_floats(value) :
   except ValueError :
       raise ValueError(f'Option value {value} is expected to be a comma-separated list of floats!')
 
-def split_csv_to_dict_of_floats(value) :
+def dict_of_init_par_values_callback(value) :
   """
-  parser callback function to split a string of comma-separated name=value pairs into a dictionary
+  argument parser callback to return a dictionary of fit parameter initial values
   """
   try :
-    pairs = value.split(',')
+    pairs = value.split()
     return_dict = {}
     for pair in pairs :
       name,value = pair.split('=')
       return_dict[name] = float(value)
     return return_dict
   except Exception :
-      raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=float pairs!')
+      raise ValueError(f'Option value {value} is expected to be a space-separated string of name=float pairs!')
 
-def split_csv_to_dict_of_bounds(value) :
+def dict_of_par_bounds_callback(value) :
   """
-  helper function to split a string of comma-separated name=(low bound:high bound) pairs into a dictionary
+  argument parser callback to return a dictionary of fit parameter bounds
   """
   try :
-    pairs = value.split(',')
+    pairs = value.split()
     return_dict = {}
     for pair in pairs :
       name,bounds = pair.split('=')
@@ -180,18 +180,6 @@ def split_csv_to_dict_of_bounds(value) :
     return return_dict
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
-
-def dict_of_init_par_values_callback(value) :
-  """
-  argument parser callback to return a dictionary of fit parameter initial values
-  """
-  print(value)
-
-def dict_of_par_bounds_callback(value) :
-  """
-  argument parser callback to return a dictionary of fit parameter bounds
-  """
-  print(value)
 
 def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,flatfielding=True,warping=True) :
   """

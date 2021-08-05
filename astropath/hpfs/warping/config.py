@@ -5,7 +5,7 @@ class Const :
                         #contains the lists of octets for every sample 
     @property
     def OCTET_FILENAME_STEM(self) :
-        return 'overlap_octets_for_warping_fits.csv' #stem of the filename that holds the list of 
+        return 'all_overlap_octets.csv' #stem of the filename that holds the list of 
                                                      #a sample's warping octets to use
     @property
     def REQ_OVERLAP_PIXEL_FRAC(self) :

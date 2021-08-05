@@ -1,6 +1,8 @@
 #imports
+import sys
+from random import choices
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import split_csv_to_dict_of_floats, split_csv_to_dict_of_bounds
+from ...utilities.misc import get_GPU_thread
 from ...shared.argumentparser import WarpFitArgumentParser, WorkingDirArgumentParser, FileTypeArgumentParser
 from ...shared.argumentparser import GPUArgumentParser, ParallelArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectLayersCohort, WorkflowCohort
@@ -39,6 +41,11 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             self.__workingdir.mkdir(parents=True)
         self.__useGPU = useGPU
         self.__njobs = njobs
+        #if running with the GPU, create a GPU thread and start a dictionary of GPU FFTs to give to each sample
+        self.gputhread = get_GPU_thread(sys.platform=='darwin') if useGPU else None
+        self.gpufftdict = None if self.gputhread is None else {}
+        #make a dictionary of all octets
+        self.__octets = {}
         #placeholders for metadata collection
         self.__field_logs = []
         self.__metadata_summaries = []
@@ -46,7 +53,16 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
     def run(self,**kwargs) :
         # Run all of the individual samples first (runs octet finding, which is independent for every sample)
         super().run(**kwargs)
-        # Get every sample's octets and randomly separate them into the three fit groups
+        # Randomly separate the octets into the three fit groups of the requested size
+        self.__split_octets()
+        # Run the three fit groups
+
+    def runsample(self,sample,**kwargs) :
+        #actually run the sample
+        super().runsample(sample,**kwargs)
+        #add the sample's octets to the overall dictionary
+        print(f'octets for {sample.SlideID} = {sample.octets}')
+        self.__octets[sample.SlideID] = sample.octets
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -78,6 +94,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
+        parsed_args_dict['skip_finished']=False #rerun every sample. If their output exists they'll just pick it up.
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'layer': parsed_args_dict.pop('layer'),
@@ -95,10 +112,42 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
                 'layer': self.__layer,
                 'workingdir':self.__workingdir,
                 'useGPU':self.__useGPU,
+                'gputhread':self.gputhread,
+                'gpufftdict':self.gpufftdict,
                }
     @property
     def workflowkwargs(self) :
-        return{**super().workflowkwargs,'skip_masking':False}
+        return{**super().workflowkwargs,'skip_masking':False,'workingdir':self.__workingdir}
+
+    #################### PRIVATE HELPER METHODS ####################
+
+    def __split_octets(self) :
+        """
+        Separate all of the octets found into three subgroups for each set of fits
+        """
+        #make sure there are enough octets overall 
+        n_total_octets_needed = self.__fit_1_octets+self.__fit_2_octets+self.__fit_3_octets
+        if len(self.__octets)<n_total_octets_needed :
+            errmsg = f'ERROR: only found {len(self.__octets)} octets in the cohort overall, but '
+            errmsg+= f'{n_total_octets_needed} are needed to run all three sets of fit groups! '
+            errmsg+= 'Please request fewer octets to use in fitting.'
+            raise RuntimeError(errmsg)
+        #randomly choose the three subsets of octets
+        octet_tuples = list(self.__octets.items())
+        selected_octet_tuples = choices(octet_tuples,n_total_octets_needed)
+        self.__fit_1_octets_by_sample = {}; self.__fit_2_octets_by_sample = {}; self.__fit_3_octets_by_sample = {}
+        for ot in selected_octet_tuples[:self.__fit_1_octets] :
+            if ot[0] not in self.__fit_1_octets_by_sample.keys() :
+                self.__fit_1_octets_by_sample[ot[0]] = []
+            self.__fit_1_octets_by_sample[ot[0]].append(ot[1])
+        for ot in selected_octet_tuples[self.__fit_1_octets:self.__fit_1_octets+self.__fit_2_octets] :
+            if ot[0] not in self.__fit_2_octets_by_sample.keys() :
+                self.__fit_2_octets_by_sample[ot[0]] = []
+            self.__fit_2_octets_by_sample[ot[0]].append(ot[1])
+        for ot in selected_octet_tuples[-self.__fit_3_octets:] :
+            if ot[0] not in self.__fit_3_octets_by_sample.keys() :
+                self.__fit_3_octets_by_sample[ot[0]] = []
+            self.__fit_3_octets_by_sample[ot[0]].append(ot[1])
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

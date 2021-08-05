@@ -31,7 +31,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=None,useGPU=True,**kwargs) :
+    def __init__(self,*args,workingdir=None,useGPU=True,gputhread=None,gpufftdict=None,**kwargs) :
         super().__init__(*args,**kwargs)
         #make sure the user is only specifying a single layer
         if len(self.layers)!=1 :
@@ -50,8 +50,16 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         if not self.__workingdir.is_dir() :
             self.__workingdir.mkdir(parents=True)
         #set things up to use the GPU to perform alignment
-        self.gputhread = get_GPU_thread(sys.platform=='darwin') if useGPU else None
-        self.gpufftdict = None if self.gputhread is None else {}
+        if gputhread is not None and gpufftdict is not None :
+            if not useGPU :
+                raise RuntimeError(f'ERROR: passed GPU parameters to a WarpingSample but useGPU = {useGPU}')
+            self.gputhread = gputhread
+            self.gpufftdict = gpufftdict
+        else :
+            self.gputhread = get_GPU_thread(sys.platform=='darwin') if useGPU else None
+            self.gpufftdict = None if self.gputhread is None else {}
+        #give the sample a placeholder octets variable
+        self.__octets = None
 
     def run(self) :
         """
@@ -70,11 +78,11 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         workingdir_octet_filepath = workingdir_octet_filepath / f'{self.SlideID}-{CONST.OCTET_FILENAME_STEM}'
         cohort_octet_filepath = self.root / UNIV_CONST.WARPING_DIRNAME / CONST.OCTET_SUBDIR_NAME
         cohort_octet_filepath = cohort_octet_filepath / f'{self.SlideID}-{CONST.OCTET_FILENAME_STEM}'
-        self.__octets = None
         for octet_filepath in (workingdir_octet_filepath,cohort_octet_filepath) :
             if octet_filepath.is_file() :
                 try :
                     self.__octets = readtable(octet_filepath,OverlapOctet)
+                    self.logger.info(f'Will use {len(self.__octets)} octets in {octet_filepath} for {self.SlideID}')
                     return
                 except TypeError :
                     msg = f'Found an empty octet file for {self.SlideID} at {octet_filepath} and so it will be assumed '
@@ -82,7 +90,6 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
                     self.logger.info(msg)
                     self.__octets = []
                     return
-                self.logger.info(f'Will use {len(self.__octets)} octets found in {octet_filepath} for {self.SlideID}')
         if self.__octets is None :
             self.logger.info(f'Will find octets to use for {self.SlideID}')
             self.__find_octets(workingdir_octet_filepath)
@@ -103,6 +110,9 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
     def workingdir(self) :
         return self.__workingdir
     @property
+    def octets(self) :
+        return self.__octets
+    @property
     def bg_threshold_filepath(self) :
         bgtfp = self.root / f'{self.SlideID}' / f'{UNIV_CONST.IM3_DIR_NAME}' / f'{UNIV_CONST.MEANIMAGE_DIRNAME}'
         bgtfp = bgtfp / f'{self.SlideID}-{FF_CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}'
@@ -111,15 +121,23 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
     #################### CLASS METHODS ####################
 
     @classmethod
-    def getoutputfiles(cls,SlideID,root,**otherworkflowkwargs) :
+    def getoutputfiles(cls,SlideID,root,workingdir=None,**otherworkflowkwargs) :
         #the octet file is the only required output for the sample
-        return [root / UNIV_CONST.WARPING_DIRNAME / CONST.OCTET_SUBDIR_NAME / f'{SlideID}-{CONST.OCTET_FILENAME_STEM}']
+        if workingdir is not None :
+            octet_filepath = workingdir
+        else :
+            octet_filepath = root / UNIV_CONST.WARPING_DIRNAME
+        octet_filepath = octet_filepath / CONST.OCTET_SUBDIR_NAME / f'{SlideID}-{CONST.OCTET_FILENAME_STEM}'
+        return [octet_filepath]
     @classmethod
     def logmodule(cls) : 
         return "warping"
     @classmethod
     def defaultunits(cls) :
         return "fast"
+    @property
+    def workflowkwargs(self) :
+        return{**super().workflowkwargs,'skip_masking':False,'workingdir':self.__workingdir}
     @classmethod
     def workflowdependencyclasses(cls):
         return [MeanImageSample]+super().workflowdependencyclasses()
