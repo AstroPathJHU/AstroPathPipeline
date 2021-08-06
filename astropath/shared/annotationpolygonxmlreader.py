@@ -230,7 +230,6 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             fig.savefig(self.__imagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__imagefiletype}").name)
             plt.close(fig)
 
-          bigpolygon = polygon
           for subpolygon in valid:
             for polygon, m in zip([subpolygon.outerpolygon] + subpolygon.subtractpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
               regionid = 1000*layer + m
