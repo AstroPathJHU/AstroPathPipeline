@@ -86,7 +86,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       "apscale": self.apscale,
       "unitsargs": units.currentargs(),
     })
-    if self.njobs > 1:
+    if self.njobs is None or self.njobs > 1:
       with self.pool() as pool:
         results = [
           pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
