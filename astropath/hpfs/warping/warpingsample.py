@@ -184,6 +184,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
                     ip1,ip2 = o.cutimages
                     p1frac = (np.sum(np.where(ip1>bg_threshold.counts_threshold,1,0)))/(ip1.shape[0]*ip1.shape[1])
                     p2frac = (np.sum(np.where(ip2>bg_threshold.counts_threshold,1,0)))/(ip2.shape[0]*ip2.shape[1])
+                    del ip1; del ip2 #prevent the images getting kept in memory
                     if p1frac>CONST.REQ_OVERLAP_PIXEL_FRAC and p2frac>CONST.REQ_OVERLAP_PIXEL_FRAC :
                         overlaps_by_tag[o.tag] = o
                         p1_pixel_fracs_by_tag[o.tag] = p1frac
@@ -200,7 +201,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
                     self.logger.debug(msg)
                     break
             if n_good_overlaps==8 :
-                new_octet = OverlapOctet(self.layers[0],
+                new_octet = OverlapOctet(self.SlideID,self.layers[0],
                                          bg_threshold.counts_threshold,bg_threshold.counts_per_ms_threshold,
                                          r.n,
                                          *([overlaps_by_tag[ot].n for ot in range(1,10) if ot!=5]),

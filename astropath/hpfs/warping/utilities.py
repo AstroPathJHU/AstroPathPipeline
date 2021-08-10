@@ -3,6 +3,7 @@ from ...utilities.dataclasses import MyDataClass
 
 #A single octet of overlaps
 class OverlapOctet(MyDataClass) :
+    slide_ID                : str
     layer                   : int
     counts_threshold        : float
     counts_per_ms_threshold : float
@@ -38,7 +39,7 @@ class OverlapOctet(MyDataClass) :
 
 #utility class for logging warping parameters and the slide they come from
 class WarpingSummary(MyDataClass) :
-    slide_ID     : str
+    slide_ID        : str
     project         : int
     cohort          : int
     microscope_name : str
@@ -57,3 +58,26 @@ class WarpingSummary(MyDataClass) :
     k3              : float
     p1              : float
     p2              : float
+
+#utility class to represent a warp fit result
+class WarpFitResult(MyDataClass) :
+    slide_ID       : str
+    octet_center_n : int
+    n              : int
+    m              : int
+    cx             : float
+    cy             : float
+    fx             : float
+    fy             : float
+    k1             : float
+    k2             : float
+    k3             : float
+    p1             : float
+    p2             : float
+    max_rad_warp   : float
+    max_tan_warp   : float
+    fit_its        : int
+    fit_time       : float
+    raw_cost       : float
+    best_cost      : float
+    cost_reduction : float
