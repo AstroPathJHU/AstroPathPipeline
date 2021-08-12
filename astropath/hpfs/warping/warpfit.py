@@ -47,6 +47,16 @@ class WarpFit :
                 if rect.n==rect_n :
                     self.__unwarped_images_by_rect_i[ri] = rect.image()
 
+    def __del__(self) :
+        """
+        Be very certain that the images are not held in memory once the fit is done
+        """
+        ris = [ri in self.__unwarped_images_by_rect_i.keys()]
+        del self.__unwarped_images_by_rect_i
+        for ri in ris :
+            rect = self.rectangles[ri]
+            del rect.image
+
     def run(self,max_iters,fixed,init_pars,init_bounds,max_rad_warp,max_tan_warp) :
         """
         Actually run the fit and return its WarpFitResult, FieldLog, and MetadataSummary objects
