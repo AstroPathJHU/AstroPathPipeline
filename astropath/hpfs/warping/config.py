@@ -11,5 +11,8 @@ class Const :
     def REQ_OVERLAP_PIXEL_FRAC(self) :
         return 0.85 #the required fraction of pixels whose intensities must be above the background 
                     #threshold for an overlap to be used for fitting
+    @property
+    def ORDERED_FIT_PAR_NAMES(self) :
+        return ['cx','cy','fx','fy','k1','k2','k3','p1','p2'] #names of fit parameters, in order
 
 CONST = Const()

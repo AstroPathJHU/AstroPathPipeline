@@ -81,3 +81,8 @@ class WarpFitResult(MyDataClass) :
     raw_cost       : float
     best_cost      : float
     cost_reduction : float
+
+#utilitiy class for logging fields used in fits
+class FieldLog(MyDataClass) :
+    file   : str
+    rect_n : int

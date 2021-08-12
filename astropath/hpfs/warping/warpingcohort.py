@@ -10,6 +10,7 @@ from ...shared.cohort import CorrectedImageCohort, SelectLayersCohort, WorkflowC
 from .config import CONST
 from .utilities import OverlapOctet, WarpFitResult
 from .plotting import principal_point_plot, rad_warp_amt_plots, rad_warp_par_plots, warp_field_variation_plots
+from .latexsummary import FitGroupLatexSummary
 from .warpingsample import WarpingSample
 from .warpfit import WarpFit
 
@@ -51,9 +52,6 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         self.gpufftdict = None if self.gputhread is None else {}
         #placeholders for the groups of octets
         self.__fit_1_octets = []; self.__fit_2_octets = []; self.__fit_3_octets = []
-        #placeholders for metadata collection
-        self.__field_logs = []
-        self.__metadata_summaries = []
 
     def run(self,**kwargs) :
         # First check to see if the octet groups have already been defined
@@ -68,7 +66,8 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             # Randomly separate the octets into the three fit groups of the requested size
             self.__split_octets()
         # Run the three fit groups
-        self.__run_initial_pattern_fits()
+        with self.globallogger() as logger :
+            self.__run_initial_pattern_fits(logger)
 
     def runsample(self,sample,**kwargs) :
         #actually run the sample
@@ -190,7 +189,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         writetable(self.fit_2_octet_fp,self.__fit_2_octets)
         writetable(self.fit_3_octet_fp,self.__fit_3_octets)
 
-    def __run_initial_pattern_fits(self) :
+    def __run_initial_pattern_fits(self,logger) :
         """
         Run fits for the first chosen group of octets and write out all of the individual results.
         Set a variable to use to initialize the second group of principal point fits.
@@ -201,7 +200,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             fit_1_results = readtable(self.fit_1_results_fp,WarpFitResult)
         else :
             #if it doesn't exist yet though we need to run each of the fits and then write it out
-            fit_1_results = []
+            fit_1_results = []; fit_1_field_logs = []; fit_1_metadata_summaries = []
             if self.njobs>1 :
                 proc_results = {}
                 with self.pool() as pool :
@@ -217,7 +216,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
                         if this_sample is None :
                             errmsg = f'ERROR: unable to find the appropriate initialized sample for slide {o.slide_ID}'
                             raise RuntimeError(errmsg)
-                        warp_fit = WarpFit(this_sample,o)
+                        warp_fit = WarpFit(this_sample,o,logger)
                         proc_results[(o.slide_ID,o.p1_rect_n)] = pool.apply_async(warp_fit.run(),
                                                                                   (self.__fit_1_iters,self.__fixed,
                                                                                    self.__init_pars,self.__init_bounds,
@@ -225,8 +224,10 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
                                                                                    self.__max_tan_warp))
                     for (sid,op1n),res in proc_results.items() :
                         try :
-                            wfr = res.get()
+                            wfr,wffls,wfms = res.get()
                             fit_1_results.append(wfr)
+                            fit_1_field_logs+=wffls
+                            fit_1_metadata_summaries.append(wfms)
                         except Exception as e :
                             warnmsg = f'WARNING: initial pattern fit for octet around {sid} rectangle {op1n} '
                             warnmsg+= f'failed with the error "{e}" and this result will be ignored moving forward'
@@ -244,37 +245,75 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
                     if this_sample is None :
                         errmsg = f'ERROR: unable to find the appropriate initialized sample for slide {o.slide_ID}'
                         raise RuntimeError(errmsg)
-                    warp_fit = WarpFit(this_sample,o)
+                    warp_fit = WarpFit(this_sample,o,logger)
                 
                 try :
-                    fit_1_results.append(warp_fit.run((self.__fit_1_iters,self.__fixed,
-                                                       self.__init_pars,self.__init_bounds,
-                                                       self.__max_rad_warp,
-                                                       self.__max_tan_warp)))
+                    wfr,wffls,wfms = warp_fit.run((self.__fit_1_iters,self.__fixed,
+                                                  self.__init_pars,self.__init_bounds,
+                                                  self.__max_rad_warp,
+                                                  self.__max_tan_warp))
+                    fit_1_results.append(wfr)
+                    fit_1_field_logs+=wffls
+                    fit_1_metadata_summaries.append(wfms)
                 except Exception as e :
                     warnmsg = f'WARNING: initial pattern fit for octet around {o.slide_ID} rectangle {o.p1_rect_n} '
                     warnmsg+= f'failed with the error "{e}" and this result will be ignored moving forward'
                     self.logger.warning(warnmsg)
-            #collect the results together
-            if len(fit_1_results)<1 :
-                raise RuntimeError(f'ERROR: {len(fit_1_results)} fit results were obtained for the initial pattern!')
-            #write out some plots and collect them in a summary .pdf
-            try :
-                plot_name_stem = f'initial_pattern_fits'
-                plotdirname = 'initial_pattern_fit_plots'
-                savedir = self.__workingdir / plotdirname
-                if not savedir.is_dir() :
-                    savedir.mkdir(parents=True)
-                principal_point_plot(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
-                rad_warp_amt_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
-                rad_warp_par_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
-                warp_field_variation_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
-            except Exception as e :
-                warp_logger.warning(f'WARNING: failed to create plots for group of results. Exception: {e}')
-            
-
-
-
+            if len(fit_1_field_logs)>0 :
+                writetable(self.__workingdir / 'initial_pattern_fit_field_logs.csv',fit_1_field_logs)
+            if len(fit_1_metadata_summaries)>0 :
+                writetable(self.__workingdir / 'initial_pattern_fit_metadata_summaries.csv',fit_1_metadata_summaries)
+        #collect the results together
+        if len(fit_1_results)<1 :
+            raise RuntimeError(f'ERROR: {len(fit_1_results)} fit results were obtained for the initial pattern!')
+        good_results = [r for r in fit_1_results if r.cost_reduction>0]
+        if len(good_results)<1 :
+            raise RuntimeError(f'ERROR: {len(good_results)} fits for the initial pattern resulted in reduced cost!')
+        #write out some plots and collect them in a summary .pdf
+        try :
+            plot_name_stem = f'initial_pattern_fits'
+            plotdirname = 'initial_pattern_fit_plots'
+            savedir = self.__workingdir / plotdirname
+            if not savedir.is_dir() :
+                savedir.mkdir(parents=True)
+            principal_point_plot(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
+            rad_warp_amt_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
+            rad_warp_par_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
+            fit_iteration_plot(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
+            warp_field_variation_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
+        except Exception as e :
+            warp_logger.warning(f'WARNING: failed to create plots for group of results. Exception: {e}')
+        self.logger.info('Making the summary pdf....')
+        latex_summary = FitGroupLatexSummary(savedir,plot_name_stem,'Initial Pattern Fit Group')
+        latex_summary.build_tex_file()
+        check = latex_summary.compile()
+        if check!=0 :
+            warnmsg = 'WARNING: failed while compiling fit group summary LaTeX file into a PDF. '
+            warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+            self.logger.warning(warnmsg)
+        #set variables to define and constrain the next group of fits
+        self.__fit_2_init_pars = {}
+        sum_weights = np.sum(np.array([r.cost_reduction for r in good_results]))
+        for fpn in CONST.ORDERED_FIT_PAR_NAMES :
+            if fpn=='cx' or fpn=='cy' :
+                if fpn in self.__init_pars.keys() :
+                    self.__fit_2_init_pars[fpn] = self.__init_pars[fpn]
+                continue
+            elif fpn=='fx' :
+                weighted_sum = np.sum(np.array([r.fx*r.cost_reduction for r in good_results]))
+            elif fpn=='fy' :
+                weighted_sum = np.sum(np.array([r.fy*r.cost_reduction for r in good_results]))
+            elif fpn=='k1' :
+                weighted_sum = np.sum(np.array([r.k1*r.cost_reduction for r in good_results]))
+            elif fpn=='k2' :
+                weighted_sum = np.sum(np.array([r.k2*r.cost_reduction for r in good_results]))
+            elif fpn=='k3' :
+                weighted_sum = np.sum(np.array([r.k3*r.cost_reduction for r in good_results]))
+            elif fpn=='p1' :
+                weighted_sum = np.sum(np.array([r.p1*r.cost_reduction for r in good_results]))
+            elif fpn=='p2' :
+                weighted_sum = np.sum(np.array([r.p2*r.cost_reduction for r in good_results]))
+            self.__fit_2_init_pars[fpn] = weighted_sum/sum_weights
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

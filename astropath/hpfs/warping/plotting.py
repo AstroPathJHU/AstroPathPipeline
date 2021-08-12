@@ -122,6 +122,21 @@ def rad_warp_par_plots(all_results,save_stem=None,save_dir=None) :
     else :
         plt.show()
 
+#makes a plot of the cost reduction vs. # of fit iterations
+def fit_iteration_plot(all_results,save_stem=None,save_dir=None) :
+    f,ax = plt.subplots()
+    xs = [r.fit_its for r in all_results]
+    ys = [r.cost_reduction for r in all_results]
+    ax.scatter(xs,ys)
+    ax.set_title('cost reduction vs. fit iterations')
+    ax.set_xlabel('number of fit iterations')
+    ax.set_ylabel('fractional reduction in fit cost')
+    if save_stem is not None :
+        fn = f'{save_stem}_cost_redux_vs_fit_iterations_plot.png'
+        save_figure_in_dir(plt,fn,save_dir)
+    else :
+        plt.show()
+
 ######## Several helper functions to translate lists of warp results ########
 ########    into various overall warp fields and their variations    ########
 def get_lists_of_warp_fields(all_results) :
@@ -176,7 +191,7 @@ def get_warp_field_weighted_std_err(all_results) :
 ###################################################################################################################################
 
 #plots the mean, weighted mean, and standard deviation dr, dx, and dy warp fields from a list of WarpFitResults
-def warpFieldVariationPlots(all_results,save_stem=None,save_dir=None) :
+def warp_field_variation_plots(all_results,save_stem=None,save_dir=None) :
     mean_dr, mean_dx, mean_dy = get_mean_warp_fields(all_results)
     f,ax = plt.subplots(4,3,figsize=(3*6.4,4*(mean_dr.shape[0]/mean_dr.shape[1])*6.4))
     pos = ax[0][0].imshow(mean_dr)

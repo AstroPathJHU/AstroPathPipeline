@@ -7,7 +7,7 @@ from ...utilities.tableio import readtable, writetable
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample
 from ...shared.rectangle import RectangleCorrectedIm3SingleLayer
-from ...slides.align.rectangle import AlignmentRectangleBase
+from ...slides.align.rectangle import AlignmentRectangleBase, AlignmentRectangleProvideImage
 from ...slides.align.overlap import AlignmentOverlap
 from ..flatfield.config import CONST as FF_CONST
 from ..flatfield.utilities import ThresholdTableEntry
@@ -179,7 +179,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             p1_pixel_fracs_by_tag = {}
             p2_pixel_fracs_by_tag = {}
             for o in overlaps :
-                result = self.__align_overlap(o)
+                result = self.align_overlap(o)
                 if result is not None and result.exit==0 :
                     ip1,ip2 = o.cutimages
                     p1frac = (np.sum(np.where(ip1>bg_threshold.counts_threshold,1,0)))/(ip1.shape[0]*ip1.shape[1])
@@ -223,7 +223,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             with cd(workingdir_octet_filepath.parent) :
                 writetable(workingdir_octet_filepath.name,self.__octets)
 
-    def __align_overlap(self,overlap) :
+    def align_overlap(self,overlap) :
         """
         Return the result of aligning an overlap, after making some replacements
         to possibly run the alignment on the GPU
@@ -238,6 +238,23 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             new_fftc = new_fft.compile(self.gputhread)
             self.gpufftdict[cutimages_shapes[0]] = new_fftc
         return overlap.align(gputhread=self.gputhread,gpufftdict=self.gpufftdict)
+
+    def update_rectangle_images(self,images_by_rect_i) :
+        """
+        Replace the current rectangle images with those given 
+        in the images_by_rect_i dictionary (keyed by rectangle index)
+        """
+        for rect_i, image in images_by_rect_i.items() :
+            r = self.rectangles[rect_i]
+            newr = AlignmentRectangleProvideImage(rectangle=r,layer=r.layer,
+                                                  mean_image=None,use_mean_image=False,
+                                                  image=image,readingfromfile=False)
+            self.rectangles[rect_i] = newr
+        p1_rect_n = self.rectangles[images_by_rect_i.keys()[0]].n
+        overlaps_to_update = [o for o in self.overlaps if o.p1==p1_rect_n]
+        for o in overlaps_to_update :
+            o.updaterectangles([self.rectangles[ri] for ri in images_by_rect_i.keys()])
+
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
