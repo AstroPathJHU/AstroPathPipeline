@@ -240,6 +240,8 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           self.logger.warningglobal(f"{estring} {self.loginfo}")
         return None
       else:
+        if not polygons:
+          return None
         if len(polygons) > 1:
           if self.isprimary:
             biggestarea = polygons[0].area
