@@ -101,7 +101,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
         else:
           raise ValueError(f"Unknown component from MakeValid: {component}")
       polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, apscale=self.apscale, regionid=self.regionid) for p in polygons]
-      if round: polygons = [p.round(imagescale=imagescale) for p in polygons]
+      if round:
+        polygons = [p.round(imagescale=imagescale) for p in polygons]
+        polygons = [p for p in polygons if len(p.outerpolygon.vertices) >= 3]
       polygons = sum((p.makevalid(round=round, imagescale=imagescale) for p in polygons), [])
       polygons.sort(key=lambda x: x.area, reverse=True)
       return polygons
