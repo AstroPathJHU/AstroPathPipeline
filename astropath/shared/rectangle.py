@@ -1,7 +1,7 @@
 import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext
-from ..utilities.tableio import timestampfield
+from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from ..utilities.config import CONST as UNIV_CONST
 from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
@@ -50,7 +50,7 @@ class Rectangle(DataClassWithPscale):
       rectanglekwargs = {
         **{
           field: getattr(rectangle, field)
-          for field in dataclassy.fields(type(rectangle))
+          for field in set(dataclassy.fields(type(rectangle))) & set(dataclassy.fields(cls))
         }
       }
     return super().transforminitargs(
@@ -313,22 +313,43 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   nlayers: the number of layers in the *input* file
   layers: which layers you actually want to access
   """
-
-  def __post_init__(self, *args, imagefolder, filetype, width, height, nlayers, layers, **kwargs):
-    super().__post_init__(*args, **kwargs)
-    self.__imagefolder = pathlib.Path(imagefolder)
-    self.__filetype = filetype
-    self.__width = width
-    self.__height = height
-    self.__nlayers = nlayers
-    self.__layers = layers
+  @property
+  def imagefolder(self): return self.__imagefolder
+  @imagefolder.setter
+  def imagefolder(self, imagefolder): self.__imagefolder = imagefolder
+  imagefolder: pathlib.Path = pathfield(imagefolder, includeintable=False)
+  @property
+  def filetype(self): return self.__filetype
+  @filetype.setter
+  def filetype(self, filetype): self.__filetype = filetype
+  filetype: str = MetaDataAnnotation(filetype, includeintable=False)
+  @property
+  def width(self): return self.__width
+  @width.setter
+  def width(self, width): self.__width = width
+  width: units.Distance = distancefield(width, includeintable=False, pixelsormicrons="pixels")
+  @property
+  def height(self): return self.__height
+  @height.setter
+  def height(self, height): self.__height = height
+  height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels")
+  @property
+  def nlayers(self): return self.__nlayers
+  @nlayers.setter
+  def nlayers(self, nlayers): self.__nlayers = nlayers
+  nlayers: int = MetaDataAnnotation(nlayers, includeintable=False)
+  @property
+  def layers(self): return self.__layers
+  @layers.setter
+  def layers(self, layers): self.__layers = layers
+  layers: list = MetaDataAnnotation(layers, includeintable=False)
 
   @property
   def imageshape(self):
     return [
-      floattoint(float(self.__height / self.onepixel)),
-      floattoint(float(self.__width / self.onepixel)),
-      self.__nlayers if -1 in self.__layers else len(self.__layers),
+      floattoint(float(self.height / self.onepixel)),
+      floattoint(float(self.width / self.onepixel)),
+      self.nlayers if -1 in self.layers else len(self.layers),
     ]
 
   @property
@@ -378,10 +399,6 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     return image
 
   @property
-  def layers(self) :
-    return self.__layers
-
-  @property
   def exposuretimes(self):
     """
     The exposure times for the HPF layers you access
@@ -406,18 +423,26 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   Also, in this class you can read a layer file (e.g. fw01).
   """
 
-  def __post_init__(self, *args, layer, readlayerfile=True, **kwargs):
+  @property
+  def readlayerfile(self): return self.__readlayerfile
+  @readlayerfile.setter
+  def readlayerfile(self, readlayerfile): self.__readlayerfile = readlayerfile
+  readlayerfile: bool = MetaDataAnnotation(True, includeintable=False)
+
+  @classmethod
+  def transforminitargs(cls, *args, layer, readlayerfile=True, **kwargs):
     morekwargs = {
       "layers": (layer,),
+      "readlayerfile": readlayerfile,
     }
-    if readlayerfile:
-      if kwargs.pop("nlayers", 1) != 1:
-        raise ValueError("Provided nlayers!=1, readlayerfile=True")
-      morekwargs.update({
-        "nlayers": 1,
-      })
-    self.__readlayerfile = readlayerfile
-    super().__post_init__(*args, **kwargs, **morekwargs)
+    if readlayerfile and "nlayers" not in kwargs:
+      morekwargs["nlayers"] = 1
+    return super().transforminitargs(*args, **kwargs, **morekwargs)
+
+  def __post_init__(self, *args, **kwargs):
+    if self.nlayers != 1 and self.readlayerfile:
+      raise ValueError("Provided nlayers!=1, readlayerfile=True")
+    super().__post_init__(*args, **kwargs)
 
   @property
   def layer(self):

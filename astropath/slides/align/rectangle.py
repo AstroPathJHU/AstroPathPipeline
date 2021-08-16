@@ -4,6 +4,7 @@ from ...shared.logging import dummylogger
 from ...shared.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleWithImageBase, RectangleReadIm3MultiLayer
 from ...shared.rectangletransformation import RectangleTransformationBase
 from ...utilities import units
+from ...utilities.dataclasses import MetaDataAnnotation
 from .flatfield import meanimage
 
 class ApplyMeanImage(RectangleTransformationBase):
@@ -101,12 +102,11 @@ class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideIma
   """
   Alignment rectangle that can be provided with an image (used for warping)
   """
-  def __post_init__(self, *args, layer, **kwargs):
-    self.__layer = layer
-    super().__post_init__(*args, **kwargs)
   @property
-  def layer(self):
-    return self.__layer
+  def layer(self): return self.__layer
+  @layer.setter
+  def layer(self, layer): self.__layer = layer
+  layer: int = MetaDataAnnotation(includeintable=False)
 
 class ConsolidateBroadbandFilters(RectangleTransformationBase):
   """
