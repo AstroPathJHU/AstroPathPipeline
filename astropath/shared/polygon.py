@@ -81,6 +81,8 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       raise InvalidPolygonError(poly)
 
   def makevalid(self, *, round=False, imagescale=None):
+    if len(self.outerpolygon.vertices) < 3:
+      return []
     try:
       self.checkvalidity()
     except InvalidPolygonError as e:
@@ -101,9 +103,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
         else:
           raise ValueError(f"Unknown component from MakeValid: {component}")
       polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, apscale=self.apscale, regionid=self.regionid) for p in polygons]
-      if round:
-        polygons = [p.round(imagescale=imagescale) for p in polygons]
-        polygons = [p for p in polygons if len(p.outerpolygon.vertices) >= 3]
+      if round: polygons = [p.round(imagescale=imagescale) for p in polygons]
       polygons = sum((p.makevalid(round=round, imagescale=imagescale) for p in polygons), [])
       polygons.sort(key=lambda x: x.area, reverse=True)
       return polygons
