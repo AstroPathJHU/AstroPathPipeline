@@ -123,7 +123,7 @@ class FitParameterSet :
         """
         #make a list of each parameter's grid of possible values
         par_variations = []
-        nperpar=5
+        nperpar=3
         for p in self.floating_parameters :
             #principal points and focal lengths are evenly spaced between their bounds
             if p.name in ['cx','cy','fx','fy'] :

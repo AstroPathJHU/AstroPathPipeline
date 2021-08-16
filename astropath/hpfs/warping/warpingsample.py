@@ -243,7 +243,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             new_fft = FFT(gpu_im)
             new_fftc = new_fft.compile(self.gputhread)
             self.gpufftdict[cutimages_shapes[0]] = new_fftc
-        return overlap.align(gputhread=self.gputhread,gpufftdict=self.gpufftdict)
+        return overlap.align(gputhread=self.gputhread,gpufftdict=self.gpufftdict,alreadyalignedstrategy='overwrite')
 
     def update_rectangle_images(self,images_by_rect_i,p1_rect_n) :
         """
@@ -252,8 +252,8 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         """
         for rect_i, image in images_by_rect_i.items() :
             r = self.rectangles[rect_i]
-            newr = AlignmentRectangleForWarpingProvideImage(rectangle=r,layer=self.layers[0],
-                                                            mean_image=None,use_mean_image=False,
+            newr = AlignmentRectangleForWarpingProvideImage(rectangle=r,
+                                                            mean_image=None,
                                                             image=image,readingfromfile=False)
             self.rectangles[rect_i] = newr
         overlaps_to_update = [o for o in self.overlaps if o.p1==p1_rect_n]
