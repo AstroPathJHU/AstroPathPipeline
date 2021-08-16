@@ -73,10 +73,11 @@ class DataClassWithDistances(MyDataClass):
   def otherpscales(cls):
     return []
 
-  def _distances_passed_to_init(self):
-    return [getattr(self, fieldname) for fieldname in self.distancefields()]
+  def _distances_passed_to_init(self, extrakwargs):
+    """return all the distances passed to __init__ that are NOT passed through the extrakwargs mechanism"""
+    return [getattr(self, fieldname) for fieldname in self.distancefields() if fieldname not in extrakwargs]
 
-  def __post_init__(self, *args, readingfromfile=False, **kwargs):
+  def __post_init__(self, *args, readingfromfile=False, extrakwargs={}, **kwargs):
     powers = {}
     pscalenames = {}
     types = dataclassy.fields(self)
@@ -103,7 +104,7 @@ class DataClassWithDistances(MyDataClass):
 
     usedistances = False
     if currentmode == "safe" and any(powers.values()):
-      distances = self._distances_passed_to_init()
+      distances = self._distances_passed_to_init(extrakwargs=extrakwargs)
       if distances and any(distances):
         try:
           usedistances, = {isinstance(_, safe.Distance) for _ in distances if _}
@@ -139,9 +140,10 @@ class DataClassWithDistances(MyDataClass):
 
     if readingfromfile:
       for fieldname in self.distancefields():
+        if fieldname in extrakwargs: continue
         setattr(self, fieldname, types[fieldname](power=powers[fieldname], pscale=pscales[fieldname], **{self.metadata(fieldname)["pixelsormicrons"](self): getattr(self, fieldname)}))
 
-    super().__post_init__(*args, readingfromfile=readingfromfile, **kwargs)
+    super().__post_init__(*args, readingfromfile=readingfromfile, extrakwargs=extrakwargs, **kwargs)
 
 def makedataclasswithpscale(classname, pscalename, thingwithpscalecls):
   class cls(DataClassWithDistances, thingwithpscalecls): pass

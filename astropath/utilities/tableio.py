@@ -90,6 +90,8 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
     if "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
+    if "extrakwargs" not in extrakwargs:
+      extrakwargs["extrakwargs"] = extrakwargs
 
     for i, row in enumerate(reader):
       if i >= maxrows: break
