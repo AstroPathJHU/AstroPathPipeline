@@ -87,10 +87,10 @@ class WarpFit :
         #set the fit parameter values after the minimization
         self.__fitpars.set_final_results(de_result)
         #Create the WarpFitResult
-        self.__warpsample.update_rectangle_images(self.__unwarped_images_by_rect_i)
+        self.__warpsample.update_rectangle_images(self.__unwarped_images_by_rect_i,self.__octet.p1_rect_n)
         raw_cost = self.__get_fit_cost()
         self.__warp.updateParams(self.__fitpars.best_fit_warp_parameters)
-        self.__warpsample.update_rectangle_images(self.__get_warped_images_by_rect_i())
+        self.__warpsample.update_rectangle_images(self.__get_warped_images_by_rect_i(),self.__octet.p1_rect_n)
         best_cost = self.__get_fit_cost()
         wfr = WarpFitResult(self.__warpsample.SlideID,self.__octet.p1_rect_n,
                             warp.n,warp.m,
@@ -122,7 +122,7 @@ class WarpFit :
         #update the warp with the new parameters
         self.__warp.updateParams(warp_pars)
         #then warp the images and replace them in the rectangle/overlap objects
-        self.__warpsample.update_rectangle_images(self.__get_warped_images_by_rect_i())
+        self.__warpsample.update_rectangle_images(self.__get_warped_images_by_rect_i(),self.__octet.p1_rect_n)
         #align the images and get the cost
         cost = self.__get_fit_cost()
         #print progress if applicable
