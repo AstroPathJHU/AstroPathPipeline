@@ -1,5 +1,7 @@
 #imports
+import copy
 from ...utilities.dataclasses import MyDataClass
+from .config import CONST
 
 #A single octet of overlaps
 class OverlapOctet(MyDataClass) :
@@ -86,3 +88,36 @@ class WarpFitResult(MyDataClass) :
 class FieldLog(MyDataClass) :
     file   : str
     rect_n : int
+
+#helper function to find the limit on a parameter that produces the maximum warp
+def find_default_parameter_limit(parindex,parincrement,warplimit,warpamtfunc,testpars) :
+    warpamt=0.; testparval=0.
+    while warpamt<warplimit :
+        testparval+=parincrement
+        testpars[parindex]=testparval
+        warpamt=warpamtfunc(tuple(testpars))
+    return testparval
+
+#helper function to make the default list of parameter constraints
+def build_default_parameter_bounds_dict(warp,max_rad_warp,max_tan_warp) :
+    bounds = {}
+    # cx/cy bounds are +/- 25% of the center point
+    bounds['cx']=(0.5*(warp.n/2.),1.5*(warp.n/2.))
+    bounds['cy']=(0.5*(warp.m/2.),1.5*(warp.m/2.))
+    # fx/fy bounds are +/- 2% of the nominal values 
+    bounds['fx']=(0.98*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
+    bounds['fy']=(0.98*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH,1.02*CONST.MICROSCOPE_OBJECTIVE_FOCAL_LENGTH)
+    # k1/k2/k3 and p1/p2 bounds are 2x those that would produce the max radial and tangential warp, respectively, with all others zero
+    # (except k1 can't be negative)
+    testpars=[warp.cx,warp.cy,warp.fx,warp.fy,0.,0.,0.,0.,0.]
+    maxk1 = find_default_parameter_limit(4,1,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
+    bounds['k1']=(0.,2.0*maxk1)
+    maxk2 = find_default_parameter_limit(5,1000,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
+    bounds['k2']=(-2.0*maxk2,2.0*maxk2)
+    maxk3 = find_default_parameter_limit(6,10000000,max_rad_warp,warp.maxRadialDistortAmount,copy.deepcopy(testpars))
+    bounds['k3']=(-2.0*maxk3,2.0*maxk3)
+    maxp1 = find_default_parameter_limit(7,0.01,max_tan_warp,warp.maxTangentialDistortAmount,copy.deepcopy(testpars))
+    bounds['p1']=(-2.0*maxp1,2.0*maxp1)
+    maxp2 = find_default_parameter_limit(8,0.01,max_tan_warp,warp.maxTangentialDistortAmount,copy.deepcopy(testpars))
+    bounds['p2']=(-2.0*maxp2,2.0*maxp2)
+    return bounds

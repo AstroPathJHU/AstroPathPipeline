@@ -1,5 +1,5 @@
 #imports
-import time, scipy
+import time, scipy, logging
 from ...shared.samplemetadata import MetadataSummary
 from .config import CONST
 from .utilities import WarpFitResult, FieldLog
@@ -45,16 +45,16 @@ class WarpFit :
         for rect_n in [octet.p1_rect_n,*(p2_rect_ns)] :
             for ri,rect in enumerate(self.__warpsample.rectangles) :
                 if rect.n==rect_n :
-                    self.__unwarped_images_by_rect_i[ri] = rect.image()
+                    self.__unwarped_images_by_rect_i[ri] = rect.image
 
     def __del__(self) :
         """
         Be very certain that the images are not held in memory once the fit is done
         """
-        ris = [ri in self.__unwarped_images_by_rect_i.keys()]
+        ris = self.__unwarped_images_by_rect_i.keys()
         del self.__unwarped_images_by_rect_i
         for ri in ris :
-            rect = self.rectangles[ri]
+            rect = self.__warpsample.rectangles[ri]
             del rect.image
 
     def run(self,max_iters,fixed,init_pars,init_bounds,max_rad_warp,max_tan_warp) :
@@ -70,11 +70,12 @@ class WarpFit :
         """
         #initialize the warp object that will be used
         warpkwargs = {}
-        warpkwargs['n'] = (self.__unwarped_images_by_rect_i.values())[0].shape[1]
-        warpkwargs['m'] = (self.__unwarped_images_by_rect_i.values())[0].shape[0]
+        ex_im = list(self.__unwarped_images_by_rect_i.values())[0]
+        warpkwargs['n'] = ex_im.shape[1]
+        warpkwargs['m'] = ex_im.shape[0]
         self.__warp = CameraWarp(**warpkwargs)
         #initialize the fit parameter set that will be used
-        self.__fitpars = FitParameterSet(fixed,init_pars,init_bounds,max_rad_warp,max_tan_warp,self.__warp)
+        self.__fitpars = FitParameterSet(fixed,init_pars,init_bounds,max_rad_warp,max_tan_warp,self.__warp,self.logger)
         #make the iteration counter
         self.minfunc_calls=0
         #silence the WarpingSample logger so we don't get a ton of output each time the images are aligned
@@ -125,7 +126,7 @@ class WarpFit :
         #align the images and get the cost
         cost = self.__get_fit_cost()
         #print progress if applicable
-        if self.minfunc_calls%100==0 :
+        if self.minfunc_calls%CONST.PRINT_EVERY==0 :
             msg = f'Call {self.minfunc_calls} cost={cost:.05f} ({self.__warp.paramString()})'
             self.logger.debug(msg)
         #return the cost from the alignment
@@ -175,7 +176,7 @@ class WarpFit :
             func=self._minimization_function,
             bounds=parameter_bounds,
             strategy='best1bin',
-            maxiter=int(maxiter/self._de_population_size)+1,
+            maxiter=int(max_iters/len(initial_population))+1,
             tol=self.DE_TOLERANCE,
             mutation=self.DE_MUTATION,
             recombination=self.DE_RECOMBINATION,

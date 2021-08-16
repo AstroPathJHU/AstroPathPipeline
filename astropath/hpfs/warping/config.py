@@ -12,7 +12,13 @@ class Const :
         return 0.85 #the required fraction of pixels whose intensities must be above the background 
                     #threshold for an overlap to be used for fitting
     @property
+    def MICROSCOPE_OBJECTIVE_FOCAL_LENGTH(self) :
+        return 40000. #focal length of the microscope objective (20mm) in pixels
+    @property
     def ORDERED_FIT_PAR_NAMES(self) :
         return ['cx','cy','fx','fy','k1','k2','k3','p1','p2'] #names of fit parameters, in order
+    @property
+    def PRINT_EVERY(self) :
+        return 10 #how often to print progress during fitting
 
 CONST = Const()

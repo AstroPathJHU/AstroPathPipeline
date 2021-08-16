@@ -6,8 +6,8 @@ from ...utilities.misc import cd, get_GPU_thread
 from ...utilities.tableio import readtable, writetable
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample
-from ...shared.rectangle import RectangleCorrectedIm3SingleLayer
-from ...slides.align.rectangle import AlignmentRectangleBase, AlignmentRectangleProvideImage
+from ...shared.rectangle import RectangleCorrectedIm3SingleLayer, RectangleProvideImage
+from ...slides.align.rectangle import AlignmentRectangleBase
 from ...slides.align.overlap import AlignmentOverlap
 from ..flatfield.config import CONST as FF_CONST
 from ..flatfield.utilities import ThresholdTableEntry
@@ -21,6 +21,12 @@ class AlignmentRectangleForWarping(RectangleCorrectedIm3SingleLayer,AlignmentRec
     """
     def __post_init__(self,*args,**kwargs) :
         super().__post_init__(*args,use_mean_image=False,**kwargs)
+
+class AlignmentRectangleForWarpingProvideImage(AlignmentRectangleForWarping,RectangleProvideImage) :
+    """
+    Rectangles used to replace other rectangles as images are updated
+    """
+    pass
 
 class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample,
                     FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser) :
@@ -246,11 +252,11 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         """
         for rect_i, image in images_by_rect_i.items() :
             r = self.rectangles[rect_i]
-            newr = AlignmentRectangleProvideImage(rectangle=r,layer=r.layer,
-                                                  mean_image=None,use_mean_image=False,
-                                                  image=image,readingfromfile=False)
+            newr = AlignmentRectangleForWarpingProvideImage(rectangle=r,layer=self.layers[0],
+                                                            mean_image=None,
+                                                            image=image,readingfromfile=False)
             self.rectangles[rect_i] = newr
-        p1_rect_n = self.rectangles[images_by_rect_i.keys()[0]].n
+        p1_rect_n = self.rectangles[list(images_by_rect_i.keys())[0]].n
         overlaps_to_update = [o for o in self.overlaps if o.p1==p1_rect_n]
         for o in overlaps_to_update :
             o.updaterectangles([self.rectangles[ri] for ri in images_by_rect_i.keys()])

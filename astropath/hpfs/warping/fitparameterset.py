@@ -1,10 +1,10 @@
 #imports
 import copy
 import numpy as np
-from config import CONST
+from .config import CONST
 from .utilities import build_default_parameter_bounds_dict
 from .warp import CameraWarp
-from .fit_parameter import FitParameter
+from .fitparameter import FitParameter
 
 #class to handle everything to do with the warp fitting parameters
 class FitParameterSet :
@@ -33,17 +33,19 @@ class FitParameterSet :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,fixed,init_pars,init_bounds,max_radial_warp,max_tangential_warp,warp) :
+    def __init__(self,fixed,init_pars,init_bounds,max_radial_warp,max_tangential_warp,warp,logger) :
         """
         fixed         = list of names of parameters that will be constant during fitting
         init_pars     = dictionary of initial parameter values; keyed by name
         init_bounds   = dictionary of initial parameter bounds; keyed by name
         max_*ial_warp = maximum amounts of radial/tangential warping allowed
         warp          = the warp object this parameter set will be applied to
+        logger        = the logger object to use
         """
         #make sure the parameters are going to be relevant to a CameraWarp object
         if not isinstance(warp,CameraWarp) :
             raise ValueError("ERROR: can only use a FitParameterSet with a CameraWarp!")
+        self.logger = logger
         #replace the warp parameters based on the dictionary of initial values
         if init_pars is not None :
             update_pars = [warp.parValueFromName(fpn) for fpn in CONST.ORDERED_FIT_PAR_NAMES]
@@ -54,7 +56,7 @@ class FitParameterSet :
                         raise ValueError(errmsg)
                     if warp.parValueFromName(pname)!=pval :
                         msg = f'Replacing default {pname} value {warp.parValueFromName(pname)} with {pval}.....'
-                        warp_logger.info(msg)
+                        self.logger.debug(msg)
                         update_pars[CONST.ORDERED_FIT_PAR_NAMES.index(pname)] = pval
             warp.updateParams(update_pars)
         #set the maximum warp amounts (always in units of pixels)
@@ -69,9 +71,9 @@ class FitParameterSet :
                         errmsg = f'ERROR: {pname} (initial bounds={pbounds}) is not recognized as a fit parameter!'
                         raise ValueError(errmsg)
                     if pbounds[0]!=bounds_dict[pname][0] or pbounds[1]!=bounds_dict[pname][1] :
-                        warp_logger.info(f'Replacing default {pname} bounds {bounds_dict[pname]} with {pbounds}....')
+                        self.logger.debug(f'Replacing default {pname} bounds {bounds_dict[pname]} with {pbounds}....')
                         if pname in fixed :
-                            warp_logger.warn(f'WARNING: Replaced bounds for FIXED PARAMETER {pname}!')
+                            self.logger.warn(f'WARNING: Replaced bounds for FIXED PARAMETER {pname}!')
                         bounds_dict[pname] = pbounds
         #make an ordered list of the fit parameters
         self.fit_parameters = [FitParameter(fpn,fpn in fixed,bounds_dict[fpn],warp.parValueFromName(fpn)) 
@@ -90,7 +92,7 @@ class FitParameterSet :
         if fixed_par_string!='' :
             msg+=f' ({fixed_par_string[:-2]} fixed)' 
         msg+='.'
-        warp_logger.info(msg)
+        self.logger.debug(msg)
         #print info about the floating parameter bounds
         lines = []
         lines.append('Bounds (warping_units) (fitting_units):')
@@ -108,7 +110,8 @@ class FitParameterSet :
                 println+=f'{field:<{spaces[fi]+2}}'
             println+='\n'
             printlns+=println
-        warp_logger.info(printlns)
+        for l in printlns.split('\n') :
+            self.logger.debug(l)
         #return the list of bounds tuples
         return list([p.fit_bounds for p in self.floating_parameters])
 
@@ -175,7 +178,7 @@ class FitParameterSet :
                         toadd[list_indices[2]]=par_variations[list_indices[2]][c[2]]
                     population_list.append(toadd)
         to_return = np.array(population_list)
-        warp_logger.info(f'Initial fit parameter population ({len(population_list)} members):\n{to_return}')
+        self.logger.debug(f'Initial fit parameter population has {len(population_list)} members')
         return to_return
 
     def set_final_results(self,diff_ev_result) :

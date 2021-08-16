@@ -1,11 +1,12 @@
 #imports
-import sys
+import sys, traceback
+import multiprocessing as mp
 from random import choices
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import get_GPU_thread
 from ...utilities.tableio import writetable, readtable
 from ...shared.argumentparser import WarpFitArgumentParser, WorkingDirArgumentParser, FileTypeArgumentParser
-from ...shared.argumentparser import GPUArgumentParser, ParallelArgumentParser
+from ...shared.argumentparser import GPUArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectLayersCohort, WorkflowCohort
 from .config import CONST
 from .utilities import OverlapOctet, WarpFitResult
@@ -16,7 +17,7 @@ from .warpfit import WarpFit
 
 
 class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpFitArgumentParser,
-                    WorkingDirArgumentParser,GPUArgumentParser,ParallelArgumentParser) :
+                    WorkingDirArgumentParser,GPUArgumentParser) :
     """
     Class to perform a set of warping fits for a cohort
     """
@@ -24,7 +25,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
     #################### PUBLIC FUNCTIONS ####################
 
     def __init__(self,*args,layer,fit_1_octets,fit_2_octets,fit_3_octets,fit_1_iters,fit_2_iters,fit_3_iters,
-                 fixed,init_pars,bounds,max_rad_warp,max_tan_warp,workingdir=None,useGPU=True,njobs=5,**kwargs) :
+                 fixed,init_pars,bounds,max_rad_warp,max_tan_warp,workingdir=None,useGPU=True,**kwargs) :
         super().__init__(*args,**kwargs)
         #set variables for how the fits should run
         self.__layer = layer
@@ -35,8 +36,9 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         self.__fit_2_iters = fit_2_iters
         self.__fit_3_iters = fit_3_iters
         self.__fixed = fixed
-        self.__init_pars = init_pars
-        self.__init_bounds = bounds
+        #next two parameters below are one-element lists because they are parsed as dictionaries
+        self.__init_pars = init_pars[0]
+        self.__init_bounds = bounds[0]
         self.__max_rad_warp = max_rad_warp
         self.__max_tan_warp = max_tan_warp
         #if the working directory wasn't given, set it to the "Warping" directory inside the root directory
@@ -46,7 +48,6 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         if not self.__workingdir.is_dir() :
             self.__workingdir.mkdir(parents=True)
         self.__useGPU = useGPU
-        self.__njobs = njobs
         #if running with the GPU, create a GPU thread and start a dictionary of GPU FFTs to give to each sample
         self.gputhread = get_GPU_thread(sys.platform=='darwin') if useGPU else None
         self.gpufftdict = None if self.gputhread is None else {}
@@ -201,64 +202,37 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         else :
             #if it doesn't exist yet though we need to run each of the fits and then write it out
             fit_1_results = []; fit_1_field_logs = []; fit_1_metadata_summaries = []
-            if self.njobs>1 :
-                proc_results = {}
-                with self.pool() as pool :
-                    for oi,o in enumerate(self.__fit_1_octets) :
-                        msg = f'Running initial pattern fit for octet around {o.slide_ID} rectangle {o.p1_rect_n} '
-                        msg+= f'({oi+1} of {len(self.__fit_1_octets)})....'
-                        self.logger.debug(msg)
-                        this_sample = None
-                        for s in self.samples :
-                            if s.SlideID==o.slide_ID :
-                                this_sample = s
-                                break
-                        if this_sample is None :
-                            errmsg = f'ERROR: unable to find the appropriate initialized sample for slide {o.slide_ID}'
-                            raise RuntimeError(errmsg)
-                        warp_fit = WarpFit(this_sample,o,logger)
-                        proc_results[(o.slide_ID,o.p1_rect_n)] = pool.apply_async(warp_fit.run(),
-                                                                                  (self.__fit_1_iters,self.__fixed,
-                                                                                   self.__init_pars,self.__init_bounds,
-                                                                                   self.__max_rad_warp,
-                                                                                   self.__max_tan_warp))
-                    for (sid,op1n),res in proc_results.items() :
-                        try :
-                            wfr,wffls,wfms = res.get()
-                            fit_1_results.append(wfr)
-                            fit_1_field_logs+=wffls
-                            fit_1_metadata_summaries.append(wfms)
-                        except Exception as e :
-                            warnmsg = f'WARNING: initial pattern fit for octet around {sid} rectangle {op1n} '
-                            warnmsg+= f'failed with the error "{e}" and this result will be ignored moving forward'
-                            self.logger.warning(warnmsg)
-            else :
-                for oi,o in enumerate(self.__fit_1_octets) :
-                    msg = f'Running initial pattern fit for octet around {o.slide_ID} rectangle {o.p1_rect_n} '
-                    msg+= f'({oi+1} of {len(self.__fit_1_octets)})....'
-                    self.logger.debug(msg)
-                    this_sample = None
-                    for s in self.samples :
-                        if s.SlideID==o.slide_ID :
-                            this_sample = s
-                            break
-                    if this_sample is None :
-                        errmsg = f'ERROR: unable to find the appropriate initialized sample for slide {o.slide_ID}'
-                        raise RuntimeError(errmsg)
-                    warp_fit = WarpFit(this_sample,o,logger)
-                
+            for oi,o in enumerate(self.__fit_1_octets) :
+                msg = f'Running initial pattern fit for octet around {o.slide_ID} rectangle {o.p1_rect_n} '
+                msg+= f'({oi+1} of {len(self.__fit_1_octets)})....'
+                self.logger.debug(msg)
+                this_sample = None
+                for s in self.samples :
+                    if s.SlideID==o.slide_ID :
+                        this_sample = s
+                        break
+                if this_sample is None :
+                    errmsg = f'ERROR: unable to find the appropriate initialized sample for slide {o.slide_ID}'
+                    raise RuntimeError(errmsg)
+                warp_fit = WarpFit(this_sample,o,logger)
                 try :
-                    wfr,wffls,wfms = warp_fit.run((self.__fit_1_iters,self.__fixed,
+                    wfr,wffls,wfms = warp_fit.run(self.__fit_1_iters,self.__fixed,
                                                   self.__init_pars,self.__init_bounds,
                                                   self.__max_rad_warp,
-                                                  self.__max_tan_warp))
+                                                  self.__max_tan_warp)
                     fit_1_results.append(wfr)
                     fit_1_field_logs+=wffls
                     fit_1_metadata_summaries.append(wfms)
                 except Exception as e :
                     warnmsg = f'WARNING: initial pattern fit for octet around {o.slide_ID} rectangle {o.p1_rect_n} '
-                    warnmsg+= f'failed with the error "{e}" and this result will be ignored moving forward'
+                    warnmsg+= f'failed with the error "{e}" and this result will be ignored moving forward. More info '
+                    warnmsg+= 'on the error below.'
                     self.logger.warning(warnmsg)
+                    try :
+                        raise e
+                    except Exception :
+                        for l in traceback.format_exc().split('\n') :
+                            self.logger.info(l)  
             if len(fit_1_field_logs)>0 :
                 writetable(self.__workingdir / 'initial_pattern_fit_field_logs.csv',fit_1_field_logs)
             if len(fit_1_metadata_summaries)>0 :
