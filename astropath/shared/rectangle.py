@@ -456,7 +456,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   @property
   def imagefile(self):
     result = super().imagefile
-    if self.__readlayerfile:
+    if self.readlayerfile:
       folder = result.parent
       basename = result.name
       if basename.endswith(".camWarp") or basename.endswith(".dat"):
@@ -472,13 +472,13 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   @property
   def imageshapeininput(self):
     result = super().imageshapeininput
-    if self.__readlayerfile:
+    if self.readlayerfile:
       assert result[0] == 1
       return result[0], result[2], result[1]
     return result
   @property
   def imagetransposefrominput(self):
-    if self.__readlayerfile:
+    if self.readlayerfile:
       #it's saved as (height, width), which is what we want
       return (0, 1, 2)
     else:
@@ -486,7 +486,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       return (2, 1, 0)
   @property
   def imageslicefrominput(self):
-    if self.__readlayerfile:
+    if self.readlayerfile:
       return 0, slice(None), slice(None)
     else:
       return slice(None), slice(None), self.layer-1

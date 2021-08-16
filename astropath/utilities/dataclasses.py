@@ -150,7 +150,7 @@ class MyDataClass(DataClassTransformArgs, DataClassWithMetaData, metaclass=MyDat
   All the dataclasses used in astropath that read from a file should inherit
   from MyDataClass.
   """
-  def __post_init__(self, *, readingfromfile=False):
+  def __post_init__(self, *, readingfromfile=False, extrakwargs={}):
     pass
 
 @dataclass(meta=MyDataClassMeta, frozen=True)
