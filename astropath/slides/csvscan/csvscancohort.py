@@ -1,4 +1,4 @@
-import contextlib, datetime, job_lock, re
+import contextlib, datetime, job_lock, os, re
 from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
 from ...shared.samplemetadata import SampleDef
