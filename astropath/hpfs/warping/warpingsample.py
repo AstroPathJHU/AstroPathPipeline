@@ -6,27 +6,13 @@ from ...utilities.misc import cd, get_GPU_thread
 from ...utilities.tableio import readtable, writetable
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample
-from ...shared.rectangle import RectangleCorrectedIm3SingleLayer, RectangleProvideImage
-from ...slides.align.rectangle import AlignmentRectangleBase
-from ...slides.align.overlap import AlignmentOverlap
 from ..flatfield.config import CONST as FF_CONST
 from ..flatfield.utilities import ThresholdTableEntry
 from ..flatfield.meanimagesample import MeanImageSample
 from .config import CONST
 from .utilities import OverlapOctet
-
-class AlignmentRectangleForWarping(RectangleCorrectedIm3SingleLayer,AlignmentRectangleBase) :
-    """
-    Rectangles that are used to fit warping
-    """
-    def __post_init__(self,*args,**kwargs) :
-        super().__post_init__(*args,use_mean_image=False,**kwargs)
-
-class AlignmentRectangleForWarpingProvideImage(AlignmentRectangleForWarping,RectangleProvideImage) :
-    """
-    Rectangles used to replace other rectangles as images are updated
-    """
-    pass
+from .rectangle import AlignmentRectangleForWarping
+from .overlap import AlignmentOverlapForWarping
 
 class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample,
                     FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser) :
@@ -109,7 +95,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
     #################### CLASS VARIABLES + PROPERTIES ####################
 
     rectangletype = AlignmentRectangleForWarping
-    overlaptype = AlignmentOverlap
+    overlaptype = AlignmentOverlapForWarping
     nclip = UNIV_CONST.N_CLIP
 
     @property
@@ -235,30 +221,27 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         to possibly run the alignment on the GPU
         """
         if self.gputhread is None or self.gpufftdict is None :
-            return overlap.align()
-        cutimages_shapes = tuple(im.shape for im in overlap.cutimages)
-        assert cutimages_shapes[0] == cutimages_shapes[1]
-        if cutimages_shapes[0] not in self.gpufftdict.keys() :
-            gpu_im = np.ndarray(cutimages_shapes[0],dtype=np.csingle)
+            return overlap.align(alreadyalignedstrategy='overwrite')
+        fft_shape = overlap.overlap_shape
+        if fft_shape not in self.gpufftdict.keys() :
+            gpu_im = np.ndarray(fft_shape,dtype=np.csingle)
             new_fft = FFT(gpu_im)
             new_fftc = new_fft.compile(self.gputhread)
-            self.gpufftdict[cutimages_shapes[0]] = new_fftc
-        return overlap.align(gputhread=self.gputhread,gpufftdict=self.gpufftdict,alreadyalignedstrategy='overwrite')
+            self.gpufftdict[fft_shape] = new_fftc
+        return overlap.align(debug=True,gputhread=self.gputhread,gpufftdict=self.gpufftdict,alreadyalignedstrategy='overwrite')
 
     def update_rectangle_images(self,images_by_rect_i,p1_rect_n) :
         """
         Replace the current rectangle images with those given 
         in the images_by_rect_i dictionary (keyed by rectangle index)
         """
+        rectangles_for_update = []
         for rect_i, image in images_by_rect_i.items() :
-            r = self.rectangles[rect_i]
-            newr = AlignmentRectangleForWarpingProvideImage(rectangle=r,
-                                                            mean_image=None,
-                                                            image=image,readingfromfile=False)
-            self.rectangles[rect_i] = newr
+            self.rectangles[rect_i].image = image
+            rectangles_for_update.append(self.rectangles[rect_i])
         overlaps_to_update = [o for o in self.overlaps if o.p1==p1_rect_n]
-        for o in overlaps_to_update :
-            o.updaterectangles([self.rectangles[ri] for ri in images_by_rect_i.keys()])
+        for io,o in enumerate(overlaps_to_update,start=1) :
+            o.myupdaterectangles(rectangles_for_update)
 
 
 #################### FILE-SCOPE FUNCTIONS ####################

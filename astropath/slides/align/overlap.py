@@ -249,7 +249,6 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
         kwargs1 = {k: getattr(self.result, k) for k in ("dxvec", "exit")}
       else:
         raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
-
     try:
       if mseonly: raise Exception("Not aligning this overlap because you specified mseonly")
       if alreadyalignedstrategy != "shift_only":

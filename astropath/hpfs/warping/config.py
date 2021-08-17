@@ -19,6 +19,6 @@ class Const :
         return ['cx','cy','fx','fy','k1','k2','k3','p1','p2'] #names of fit parameters, in order
     @property
     def PRINT_EVERY(self) :
-        return 10 #how often to print progress during fitting
+        return 25 #how often to print progress during fitting
 
 CONST = Const()

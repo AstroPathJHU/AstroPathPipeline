@@ -45,17 +45,7 @@ class WarpFit :
         for rect_n in [octet.p1_rect_n,*(p2_rect_ns)] :
             for ri,rect in enumerate(self.__warpsample.rectangles) :
                 if rect.n==rect_n :
-                    self.__unwarped_images_by_rect_i[ri] = rect.image
-
-    def __del__(self) :
-        """
-        Be very certain that the images are not held in memory once the fit is done
-        """
-        ris = self.__unwarped_images_by_rect_i.keys()
-        del self.__unwarped_images_by_rect_i
-        for ri in ris :
-            rect = self.__warpsample.rectangles[ri]
-            del rect.image
+                    self.__unwarped_images_by_rect_i[ri] = rect.image[:,:,0]
 
     def run(self,max_iters,fixed,init_pars,init_bounds,max_rad_warp,max_tan_warp) :
         """
@@ -93,10 +83,10 @@ class WarpFit :
         self.__warpsample.update_rectangle_images(self.__get_warped_images_by_rect_i(),self.__octet.p1_rect_n)
         best_cost = self.__get_fit_cost()
         wfr = WarpFitResult(self.__warpsample.SlideID,self.__octet.p1_rect_n,
-                            warp.n,warp.m,
+                            self.__warp.n,self.__warp.m,
                             *(self.__fitpars.best_fit_warp_parameters),
-                            warp.maxRadialDistortAmount(*(self.__fitpars.best_fit_warp_parameters)),
-                            warp.maxTangentialDistortAmount(*(self.__fitpars.best_fit_warp_parameters)),
+                            self.__warp.maxRadialDistortAmount(self.__fitpars.best_fit_warp_parameters),
+                            self.__warp.maxTangentialDistortAmount(self.__fitpars.best_fit_warp_parameters),
                             self.minfunc_calls,
                             minimization_done_time-minimization_start_time,
                             raw_cost,best_cost,(raw_cost-best_cost)/raw_cost
@@ -122,7 +112,8 @@ class WarpFit :
         #update the warp with the new parameters
         self.__warp.updateParams(warp_pars)
         #then warp the images and replace them in the rectangle/overlap objects
-        self.__warpsample.update_rectangle_images(self.__get_warped_images_by_rect_i(),self.__octet.p1_rect_n)
+        rectangle_images_for_update = self.__get_warped_images_by_rect_i()
+        self.__warpsample.update_rectangle_images(rectangle_images_for_update,self.__octet.p1_rect_n)
         #align the images and get the cost
         cost = self.__get_fit_cost()
         #print progress if applicable
@@ -195,11 +186,10 @@ class WarpFit :
         """
         weighted_sum_mse = 0.
         sum_weights = 0.
-        for overlap in self.__overlaps :
+        for io,overlap in enumerate(self.__overlaps,start=1) :
             result = self.__warpsample.align_overlap(overlap)
             if result is not None and result.exit == 0: 
-                cutimageshape = overlap.cutimages[0].shape
-                w = (cutimageshape[0]*cutimageshape[1])
+                w=overlap.overlap_npix
                 weighted_sum_mse+=w*result.mse[2]
                 sum_weights+=w
             else :

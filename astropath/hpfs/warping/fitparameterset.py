@@ -176,9 +176,12 @@ class FitParameterSet :
                     toadd[list_indices[1]]=par_variations[list_indices[1]][c[1]]
                     if len(list_indices)==3 :
                         toadd[list_indices[2]]=par_variations[list_indices[2]][c[2]]
-                    population_list.append(toadd)
+                    if toadd not in population_list :
+                        population_list.append(toadd)
         to_return = np.array(population_list)
         self.logger.debug(f'Initial fit parameter population has {len(population_list)} members')
+        for pg in population_list :
+            self.logger.debug(pg)
         return to_return
 
     def set_final_results(self,diff_ev_result) :

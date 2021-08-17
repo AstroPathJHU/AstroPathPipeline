@@ -1,7 +1,7 @@
 #imports
 import sys, traceback
-import multiprocessing as mp
-from random import choices
+import numpy as np
+from random import sample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import get_GPU_thread
 from ...utilities.tableio import writetable, readtable
@@ -10,7 +10,8 @@ from ...shared.argumentparser import GPUArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectLayersCohort, WorkflowCohort
 from .config import CONST
 from .utilities import OverlapOctet, WarpFitResult
-from .plotting import principal_point_plot, rad_warp_amt_plots, rad_warp_par_plots, warp_field_variation_plots
+from .plotting import principal_point_plot, rad_warp_amt_plots, rad_warp_par_plots
+from .plotting import warp_field_variation_plots, fit_iteration_plot
 from .latexsummary import FitGroupLatexSummary
 from .warpingsample import WarpingSample
 from .warpfit import WarpFit
@@ -37,8 +38,14 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         self.__fit_3_iters = fit_3_iters
         self.__fixed = fixed
         #next two parameters below are one-element lists because they are parsed as dictionaries
-        self.__init_pars = init_pars[0]
-        self.__init_bounds = bounds[0]
+        if init_pars is not None :
+            self.__init_pars = init_pars[0]
+        else :
+            self.__init_pars = {}
+        if bounds is not None :
+            self.__init_bounds = bounds[0]
+        else :
+            self.__init_bounds = {}
         self.__max_rad_warp = max_rad_warp
         self.__max_tan_warp = max_tan_warp
         #if the working directory wasn't given, set it to the "Warping" directory inside the root directory
@@ -181,9 +188,9 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             errmsg+= 'Please request fewer octets to use in fitting.'
             raise RuntimeError(errmsg)
         #randomly choose the three subsets of octets
-        selected_octets = choices(self.__octets,k=n_total_octets_needed)
+        selected_octets = sample(self.__octets,n_total_octets_needed)
         self.__fit_1_octets = selected_octets[:self.__n_fit_1_octets]
-        self.__fit_2_octets = selected_octets[self.__n_fit_1_octets:self.__n_fit_1_octets+self.__n_fit_2_octets]
+        self.__fit_2_octets = selected_octets[self.__n_fit_1_octets:(self.__n_fit_1_octets+self.__n_fit_2_octets)]
         self.__fit_3_octets = selected_octets[-self.__n_fit_3_octets:]
         #write out files listing the octets
         writetable(self.fit_1_octet_fp,self.__fit_1_octets)
@@ -256,7 +263,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             fit_iteration_plot(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
             warp_field_variation_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
         except Exception as e :
-            warp_logger.warning(f'WARNING: failed to create plots for group of results. Exception: {e}')
+            self.logger.warning(f'WARNING: failed to create plots for group of results. Exception: {e}')
         self.logger.info('Making the summary pdf....')
         latex_summary = FitGroupLatexSummary(savedir,plot_name_stem,'Initial Pattern Fit Group')
         latex_summary.build_tex_file()
