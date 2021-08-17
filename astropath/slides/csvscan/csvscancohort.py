@@ -24,7 +24,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   def inputfiles(self, *, checkcsvs=True):
     return []  #will be checked in run()
 
-  def runcsvscan(self, *, checkcsvs=True):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
     toload = []
     batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
@@ -82,6 +82,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
         try:
           optionalcsvs.remove(csv)
         except KeyError:
+          if any(regex.match(os.fspath(csv.relative_to(folder))) for regex in ignorecsvs): continue
           unknowncsvs.add(csv)
           continue
 
