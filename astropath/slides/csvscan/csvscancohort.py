@@ -82,7 +82,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
         try:
           optionalcsvs.remove(csv)
         except KeyError:
-          if any(regex.match(os.fspath(csv.relative_to(folder))) for regex in ignorecsvs): continue
+          if any(regex.match(os.fspath(csv.relative_to(self.root))) for regex in ignorecsvs): continue
           unknowncsvs.add(csv)
           continue
 
