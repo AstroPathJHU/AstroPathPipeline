@@ -1,4 +1,4 @@
-import abc, pathlib, re
+import abc, os, pathlib, re
 
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import RunFromArgumentParser
@@ -54,6 +54,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
+    p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex")
     return p
 
   @classmethod
@@ -61,6 +62,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
     kwargs = {
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "checkcsvs": parsed_args_dict.pop("checkcsvs"),
+      "ignorecsvs": parsed_args_dict.pop("ignore_csvs"),
     }
     return kwargs
 
@@ -80,7 +82,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
   def processcsv(self, *args, **kwargs):
     return super().processcsv(*args, SlideID=self.SlideID, **kwargs)
 
-  def runcsvscan(self, *, checkcsvs=True):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
     toload = []
     expectcsvs = {
       self.csv(_) for _ in (
@@ -151,6 +153,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
           optionalcsvs.remove(csv)
         except KeyError:
           if any(otherfolder/csv.relative_to(folder) in expectcsvs|optionalcsvs|goodcsvs for otherfolder in folders): continue
+          if any(regex.match(os.fspath(csv.relative_to(folder))) for regex in ignorecsvs): continue
           unknowncsvs.add(csv)
           continue
 
