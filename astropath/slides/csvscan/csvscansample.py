@@ -54,7 +54,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
-    p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex")
+    p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex", default=[])
     return p
 
   @classmethod
