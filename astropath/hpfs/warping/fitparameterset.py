@@ -180,8 +180,8 @@ class FitParameterSet :
                         population_list.append(toadd)
         to_return = np.array(population_list)
         self.logger.debug(f'Initial fit parameter population has {len(population_list)} members')
-        for pg in population_list :
-            self.logger.debug(pg)
+        #for pg in population_list :
+        #    self.logger.debug(pg)
         return to_return
 
     def set_final_results(self,diff_ev_result) :

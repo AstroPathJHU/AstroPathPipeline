@@ -170,13 +170,15 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             overlaps_by_tag = {}
             p1_pixel_fracs_by_tag = {}
             p2_pixel_fracs_by_tag = {}
+            rectangle_images_to_delete = set()
             for o in overlaps :
                 result = self.align_overlap(o)
+                rectangle_images_to_delete.add(o.images[0])
+                rectangle_images_to_delete.add(o.images[1])
                 if result is not None and result.exit==0 :
                     ip1,ip2 = o.cutimages
                     p1frac = (np.sum(np.where(ip1>bg_threshold.counts_threshold,1,0)))/(ip1.shape[0]*ip1.shape[1])
                     p2frac = (np.sum(np.where(ip2>bg_threshold.counts_threshold,1,0)))/(ip2.shape[0]*ip2.shape[1])
-                    del ip1; del ip2 #prevent the images getting kept in memory
                     if p1frac>CONST.REQ_OVERLAP_PIXEL_FRAC and p2frac>CONST.REQ_OVERLAP_PIXEL_FRAC :
                         overlaps_by_tag[o.tag] = o
                         p1_pixel_fracs_by_tag[o.tag] = p1frac
@@ -201,6 +203,8 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
                                          *([p2_pixel_fracs_by_tag[ot] for ot in range(1,10) if ot!=5]))
                 self.__octets.append(new_octet)
                 self.logger.debug(f'Octet found surrounding rectangle {r.n} ({ir}/{len(octet_candidate_rects)})')
+            for ri in rectangle_images_to_delete :
+                del ri
         #write out the octet file
         workingdir_octet_filepath = self.__workingdir / CONST.OCTET_SUBDIR_NAME
         workingdir_octet_filepath = workingdir_octet_filepath / f'{self.SlideID}-{CONST.OCTET_FILENAME_STEM}'

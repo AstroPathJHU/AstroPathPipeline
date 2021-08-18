@@ -9,7 +9,7 @@ from ...shared.argumentparser import WarpFitArgumentParser, WorkingDirArgumentPa
 from ...shared.argumentparser import GPUArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectLayersCohort, WorkflowCohort
 from .config import CONST
-from .utilities import OverlapOctet, WarpFitResult
+from .utilities import OverlapOctet, WarpFitResult, WarpingSummary
 from .plotting import principal_point_plot, rad_warp_amt_plots, rad_warp_par_plots
 from .plotting import warp_field_variation_plots, fit_iteration_plot
 from .latexsummary import FitGroupLatexSummary
@@ -75,7 +75,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             self.__split_octets()
         # Run the three fit groups
         with self.globallogger() as logger :
-            self.__run_initial_pattern_fits(logger)
+            self.__run_fits(logger)
 
     def runsample(self,sample,**kwargs) :
         #actually run the sample
@@ -197,82 +197,130 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         writetable(self.fit_2_octet_fp,self.__fit_2_octets)
         writetable(self.fit_3_octet_fp,self.__fit_3_octets)
 
-    def __run_initial_pattern_fits(self,logger) :
+    def __get_group_of_fit_results(self,fit_group_number) :
         """
-        Run fits for the first chosen group of octets and write out all of the individual results.
-        Set a variable to use to initialize the second group of principal point fits.
-        If the fit result file already exists, just read it and set the result needed.
+        Return a list of results for a particular set of fits
+        Also writes results to an output file
+        If the output file exists this function just reads the results.
+        fit_group_number = an integer (1, 2, or 3) indicating whether this is the first, second, or third group of fits
         """
-        #first check to see if the output file exists; if it does then just read the results from it
-        if self.fit_1_results_fp.is_file() :
-            fit_1_results = readtable(self.fit_1_results_fp,WarpFitResult)
+        if fit_group_number==1 :
+            results_fp = self.fit_1_results_fp
+            octets = self.__fit_1_octets
+            maxiters = self.__fit_1_iters
+            fixed = self.__fixed
+            init_pars = self.__init_pars
+            bounds = self.__init_bounds
+            fitID = 'initial_pattern'
+            summary_title = 'Initial Pattern Fit Group'
+        elif fit_group_number==2 :
+            results_fp = self.fit_2_results_fp
+            octets = self.__fit_2_octets
+            maxiters = self.__fit_2_iters
+            fixed = list(set(self.__fixed+[pname for pname in CONST.ORDERED_FIT_PAR_NAMES if pname not in ('cx','cy')]))
+            init_pars = self.__fit_2_init_pars
+            bounds = self.__init_bounds
+            fitID = 'principal_point'
+            summary_title = 'Principal Point Fit Group'
+        elif fit_group_number==3 :
+            results_fp = self.fit_3_results_fp
+            octets = self.__fit_3_octets
+            maxiters = self.__fit_3_iters
+            fixed = self.__fixed
+            init_pars = self.__fit_3_init_pars
+            bounds = self.__fit_3_bounds
+            fitID = 'final_pattern'
+            summary_title = 'Final Pattern Fit Group'
         else :
-            #if it doesn't exist yet though we need to run each of the fits and then write it out
-            fit_1_results = []; fit_1_field_logs = []; fit_1_metadata_summaries = []
-            for oi,o in enumerate(self.__fit_1_octets) :
-                msg = f'Running initial pattern fit for octet around {o.slide_ID} rectangle {o.p1_rect_n} '
-                msg+= f'({oi+1} of {len(self.__fit_1_octets)})....'
-                self.logger.debug(msg)
-                this_sample = None
-                for s in self.samples :
-                    if s.SlideID==o.slide_ID :
-                        this_sample = s
-                        break
-                if this_sample is None :
-                    errmsg = f'ERROR: unable to find the appropriate initialized sample for slide {o.slide_ID}'
-                    raise RuntimeError(errmsg)
-                warp_fit = WarpFit(this_sample,o,logger)
+            raise ValueError(f'ERROR: fit_group_number {fit_group_number} is not recognized! (should be 1, 2, or 3)')
+        #first check to see if the output file exists; if it does then just read the results from it
+        if results_fp.is_file() :
+            self.logger.info(f'Reading results for the {fitID.replace("_"," ")} fit group from {results_fp}')
+            return readtable(results_fp,WarpFitResult)
+        #if it doesn't exist yet though we need to run each of the fits and then write it out
+        results = []; field_logs = []; metadata_summaries = []
+        for oi,o in enumerate(octets) :
+            msg = f'Running {fitID.replace("_"," ")} fit for octet around {o.slide_ID} rectangle {o.p1_rect_n} '
+            msg+= f'({oi+1} of {len(octets)})....'
+            self.logger.debug(msg)
+            this_sample = None
+            for s in self.samples :
+                if s.SlideID==o.slide_ID :
+                    this_sample = s
+                    break
+            if this_sample is None :
+                errmsg = f'ERROR: unable to find the appropriate initialized sample for slide {o.slide_ID}'
+                raise RuntimeError(errmsg)
+            warp_fit = WarpFit(this_sample,o,logger)
+            try :
+                wfr,wffls,wfms = warp_fit.run(maxiters,fixed,
+                                              init_pars,bounds,
+                                              self.__max_rad_warp,
+                                              self.__max_tan_warp)
+                results.append(wfr)
+                field_logs+=wffls
+                metadata_summaries.append(wfms)
+            except Exception as e :
+                warnmsg = f'WARNING: {fitID.replace("_"," ")} fit for octet around {o.slide_ID} rectangle '
+                warnmsg+= f'{o.p1_rect_n} failed with the error "{e}" and this result will be ignored. '
+                warnmsg+= 'More info on the error below.'
+                self.logger.warning(warnmsg)
                 try :
-                    wfr,wffls,wfms = warp_fit.run(self.__fit_1_iters,self.__fixed,
-                                                  self.__init_pars,self.__init_bounds,
-                                                  self.__max_rad_warp,
-                                                  self.__max_tan_warp)
-                    fit_1_results.append(wfr)
-                    fit_1_field_logs+=wffls
-                    fit_1_metadata_summaries.append(wfms)
-                except Exception as e :
-                    warnmsg = f'WARNING: initial pattern fit for octet around {o.slide_ID} rectangle {o.p1_rect_n} '
-                    warnmsg+= f'failed with the error "{e}" and this result will be ignored moving forward. More info '
-                    warnmsg+= 'on the error below.'
-                    self.logger.warning(warnmsg)
-                    try :
-                        raise e
-                    except Exception :
-                        for l in traceback.format_exc().split('\n') :
-                            self.logger.info(l)  
-            if len(fit_1_field_logs)>0 :
-                writetable(self.__workingdir / 'initial_pattern_fit_field_logs.csv',fit_1_field_logs)
-            if len(fit_1_metadata_summaries)>0 :
-                writetable(self.__workingdir / 'initial_pattern_fit_metadata_summaries.csv',fit_1_metadata_summaries)
+                    raise e
+                except Exception :
+                    for l in traceback.format_exc().split('\n') :
+                        self.logger.info(l)  
+        if len(results)>0 :
+            writetable(results_fp,results)
+        if len(field_logs)>0 :
+            writetable(self.__workingdir / f'{fitID}_fits_field_logs.csv',field_logs)
+        if len(metadata_summaries)>0 :
+            writetable(self.__workingdir / f'{fitID}_fits_metadata_summaries.csv',metadata_summaries)
         #collect the results together
-        if len(fit_1_results)<1 :
-            raise RuntimeError(f'ERROR: {len(fit_1_results)} fit results were obtained for the initial pattern!')
-        good_results = [r for r in fit_1_results if r.cost_reduction>0]
+        if len(results)<1 :
+            raise RuntimeError(f'ERROR: {len(results)} fit results were obtained for the {fitID.replace("_"," ")}!')
+        good_results = [r for r in results if r.cost_reduction>0]
         if len(good_results)<1 :
-            raise RuntimeError(f'ERROR: {len(good_results)} fits for the initial pattern resulted in reduced cost!')
+            raise RuntimeError(f'ERROR: {len(good_results)} fits for the {fitID.replace("_"," ")} had reduced cost!')
         #write out some plots and collect them in a summary .pdf
         try :
-            plot_name_stem = f'initial_pattern_fits'
-            plotdirname = 'initial_pattern_fit_plots'
+            plot_name_stem = f'{fitID}_fits'
+            plotdirname = f'{fitID}_fit_plots'
             savedir = self.__workingdir / plotdirname
             if not savedir.is_dir() :
                 savedir.mkdir(parents=True)
-            principal_point_plot(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
-            rad_warp_amt_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
-            rad_warp_par_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
-            fit_iteration_plot(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
-            warp_field_variation_plots(fit_1_results,save_stem=plot_name_stem,save_dir=savedir)
+            principal_point_plot(results,save_stem=plot_name_stem,save_dir=savedir)
+            rad_warp_amt_plots(results,save_stem=plot_name_stem,save_dir=savedir)
+            rad_warp_par_plots(results,save_stem=plot_name_stem,save_dir=savedir)
+            fit_iteration_plot(results,save_stem=plot_name_stem,save_dir=savedir)
+            warp_field_variation_plots(results,save_stem=plot_name_stem,save_dir=savedir)
         except Exception as e :
             self.logger.warning(f'WARNING: failed to create plots for group of results. Exception: {e}')
+            try :
+                raise e
+            except Exception :
+                for l in traceback.format_exc().split('\n') :
+                    self.logger.info(l)  
         self.logger.info('Making the summary pdf....')
-        latex_summary = FitGroupLatexSummary(savedir,plot_name_stem,'Initial Pattern Fit Group')
+        latex_summary = FitGroupLatexSummary(savedir,plot_name_stem,summary_title)
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :
             warnmsg = 'WARNING: failed while compiling fit group summary LaTeX file into a PDF. '
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
             self.logger.warning(warnmsg)
-        #set variables to define and constrain the next group of fits
+        return results
+
+    def __run_fits(self,logger) :
+        """
+        Run fits for the first chosen group of octets and write out all of the individual results.
+        Set a variable to use to initialize the second group of principal point fits.
+        If the fit result file already exists, just read it and set the result needed.
+        """
+        #run the first set of fits to get the initial pattern
+        fit_1_results = self.__get_group_of_fit_results(1)
+        good_results = [r for r in fit_1_results if r.cost_reduction>0]
+        #set variables to define and constrain the next groups of fits
         self.__fit_2_init_pars = {}
         sum_weights = np.sum(np.array([r.cost_reduction for r in good_results]))
         for fpn in CONST.ORDERED_FIT_PAR_NAMES :
@@ -295,6 +343,54 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             elif fpn=='p2' :
                 weighted_sum = np.sum(np.array([r.p2*r.cost_reduction for r in good_results]))
             self.__fit_2_init_pars[fpn] = weighted_sum/sum_weights
+        #run the second set of fits to find constraints on the center principal point
+        fit_2_results = self.__get_group_of_fit_results(2)
+        good_results = [r for r in fit_2_results if r.cost_reduction>0]
+        w_cx = 0.; w_cy = 0.; sw = 0.; sw2 = 0.
+        for r in good_results :
+            w = r.cost_reduction
+            w_cx+=(w*r.cx); w_cy+=(w*r.cy); sw+=w; sw2+=w**2
+        w_cx/=sw; w_cy/=sw
+        w_cx_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))
+        w_cy_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))
+        self.__fit_3_init_pars = self.__fit_2_init_pars
+        self.__fit_3_init_pars['cx'] = w_cx
+        self.__fit_3_init_pars['cy'] = w_cy
+        self.__fit_3_bounds = self.__init_bounds
+        self.__fit_3_bounds['cx'] = (w_cx-2.*w_cx_e,w_cx+2.*w_cx_e)
+        self.__fit_3_bounds['cy'] = (w_cy-2.*w_cy_e,w_cy+2.*w_cy_e)
+        #run the third set of fits
+        fit_3_results = self.__get_group_of_fit_results(3)
+        good_results = [r for r in fit_3_results if r.cost_reduction>0]
+        #create the final warping summary to write out
+        final_pars = {}
+        sum_weights = np.sum(np.array([r.cost_reduction for r in good_results]))
+        for fpn in CONST.ORDERED_FIT_PAR_NAMES :
+            if fpn=='cx' :
+                weighted_sum = np.sum(np.array([r.cx*r.cost_reduction for r in good_results]))
+            elif fpn=='cy' :
+                weighted_sum = np.sum(np.array([r.cy*r.cost_reduction for r in good_results]))
+            elif fpn=='fx' :
+                weighted_sum = np.sum(np.array([r.fx*r.cost_reduction for r in good_results]))
+            elif fpn=='fy' :
+                weighted_sum = np.sum(np.array([r.fy*r.cost_reduction for r in good_results]))
+            elif fpn=='k1' :
+                weighted_sum = np.sum(np.array([r.k1*r.cost_reduction for r in good_results]))
+            elif fpn=='k2' :
+                weighted_sum = np.sum(np.array([r.k2*r.cost_reduction for r in good_results]))
+            elif fpn=='k3' :
+                weighted_sum = np.sum(np.array([r.k3*r.cost_reduction for r in good_results]))
+            elif fpn=='p1' :
+                weighted_sum = np.sum(np.array([r.p1*r.cost_reduction for r in good_results]))
+            elif fpn=='p2' :
+                weighted_sum = np.sum(np.array([r.p2*r.cost_reduction for r in good_results]))
+            final_pars[fpn] = weighted_sum/sum_weights
+        all_slide_ids = list(set([r.slide_ID for r in fit_1_results+fit_2_results+fit_3_results]))
+        warping_summary = WarpingSummary(str(all_slide_ids),self.samples[0].Project,self.samples[0].Cohort,
+                                         self.samples[0].microscopename,1,self.samples[0].nlayersim3,
+                                         fit_1_results[0].n,fit_1_results[0].m,
+                                         *([final_pars[pname] for pname in CONST.ORDERED_FIT_PAR_NAMES]))
+        writetable(self.__workingdir / 'weighted_average_warp.csv')
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

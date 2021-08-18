@@ -26,7 +26,7 @@ def principal_point_plot(all_results,save_stem=None,save_dir=None) :
     f,ax=plt.subplots()
     pos = ax.scatter([r.cx for r in all_results],[r.cy for r in all_results],c=[r.cost_reduction for r in all_results])
     meanlabel = f'mean=({mean_cx:.1f}'+r'$\pm$'+f'{cx_err:.1f} , {mean_cy:.1f}'+r'$\pm$'+f'{cy_err:.1f})'
-    wmeanlabel = f'mean=({weighted_mean_cx:.1f}'+r'$\pm$'+f'{w_mean_cx_err:.1f} , {weighted_mean_cy:.1f}'
+    wmeanlabel = f'weighted mean=({weighted_mean_cx:.1f}'+r'$\pm$'+f'{w_mean_cx_err:.1f} , {weighted_mean_cy:.1f}'
     wmeanlabel+= r'$\pm$'+f'{w_mean_cy_err:.1f})'
     ax.errorbar(mean_cx,mean_cy,yerr=cy_err,xerr=cx_err,marker='x',color='tab:red',label=meanlabel)
     ax.errorbar(weighted_mean_cx,weighted_mean_cy,yerr=w_mean_cy_err,xerr=w_mean_cx_err,

@@ -45,8 +45,6 @@ class WarpingSummary(MyDataClass) :
     project         : int
     cohort          : int
     microscope_name : str
-    mindate         : str
-    maxdate         : str
     first_layer_n   : int
     last_layer_n    : int
     n               : int

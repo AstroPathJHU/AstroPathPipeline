@@ -1,3 +1,6 @@
+#imports
+import numpy as np
+
 class Const :
     @property
     def OCTET_SUBDIR_NAME(self) :
@@ -20,5 +23,8 @@ class Const :
     @property
     def PRINT_EVERY(self) :
         return 25 #how often to print progress during fitting
+    @property
+    def OUTPUT_FIELD_DTYPE(self) :
+        return np.float64 #datatype for warping field arrays
 
 CONST = Const()
