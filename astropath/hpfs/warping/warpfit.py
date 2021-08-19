@@ -97,6 +97,9 @@ class WarpFit :
         mds = MetadataSummary(self.__warpsample.SlideID,self.__warpsample.Project,
                               self.__warpsample.Cohort,self.__warpsample.microscopename,
                               str(min([r.t for r in rects])),str(max([r.t for r in rects])))
+        #delete the stored images
+        for r in rects :
+            del r.image
         #Return everything
         return wfr,fls,mds
 
