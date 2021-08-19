@@ -65,9 +65,6 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
     def run(self,**kwargs) :
         # First check to see if the octet groups have already been defined
         self.__get_octets_if_existing()
-        #If we're only getting the octets for all the samples then we're done here
-        if self.__octets_only :
-            return
         # If the above didn't populate the dictionaries then we have to find the octets to use from the samples
         if ( self.__fit_1_octets==[] and self.__fit_2_octets==[] and 
              self.__fit_3_octets==[] ) :
@@ -75,11 +72,15 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             self.__octets = []
             # Run all of the individual samples first (runs octet finding, which is independent for every sample)
             super().run(**kwargs)
+            #If we're only getting the octets for all the samples then we're done here
+            if self.__octets_only :
+                return
             # Randomly separate the octets into the three fit groups of the requested size
             self.__split_octets()
         # Run the three fit groups
-        with self.globallogger() as logger :
-            self.__run_fits(logger)
+        if not self.__octets_only :
+            with self.globallogger() as logger :
+                self.__run_fits(logger)
 
     def runsample(self,sample,**kwargs) :
         #actually run the sample
