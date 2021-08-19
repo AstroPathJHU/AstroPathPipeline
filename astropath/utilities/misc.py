@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
+import collections, contextlib, csv, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
 if sys.platform != "cygwin": import psutil
 
 def covariance_matrix(*args, **kwargs):
@@ -443,3 +443,13 @@ def mountedpath(filename):
       return pathlib.PureWindowsPath(filename)
   else:
     return guesspathtype(filename)
+
+@contextlib.contextmanager
+def field_size_limit_context(limit):
+  if limit is None: yield; return
+  oldlimit = csv.field_size_limit()
+  try:
+    csv.field_size_limit(limit)
+    yield
+  finally:
+    csv.field_size_limit(oldlimit)

@@ -81,6 +81,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       raise InvalidPolygonError(poly)
 
   def makevalid(self, *, round=False, imagescale=None):
+    if len(self.outerpolygon.vertices) < 3:
+      return []
+    self = Polygon(outerpolygon=self.outerpolygon, subtractpolygons=[p for p in self.subtractpolygons if len(p.vertices) >= 3])
     try:
       self.checkvalidity()
     except InvalidPolygonError as e:
