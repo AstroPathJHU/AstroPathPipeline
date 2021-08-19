@@ -14,7 +14,7 @@ class WarpFit :
     #################### CLASS CONSTANTS ####################
 
     DE_TOLERANCE = 0.05     #tolerance for the differential evolution minimization
-    DE_MUTATION = (0.2,0.8) #mutation bounds for differential evolution minimization
+    DE_MUTATION = (0.25,0.75) #mutation bounds for differential evolution minimization
     DE_RECOMBINATION = 0.7  #recombination parameter for differential evolution minimization
 
     #################### PUBLIC FUNCTIONS ####################
