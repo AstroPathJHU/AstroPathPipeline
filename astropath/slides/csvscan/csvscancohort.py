@@ -1,4 +1,4 @@
-import contextlib, datetime, job_lock, re
+import contextlib, datetime, job_lock, os, re
 from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
 from ...shared.samplemetadata import SampleDef
@@ -21,10 +21,10 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   def samp(self):
     return SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
 
-  def inputfiles(self, *, checkcsvs=True):
+  def inputfiles(self, **kwargs):
     return []  #will be checked in run()
 
-  def runcsvscan(self, *, checkcsvs=True):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
     toload = []
     batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
@@ -82,6 +82,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
         try:
           optionalcsvs.remove(csv)
         except KeyError:
+          if any(regex.match(os.fspath(csv.relative_to(self.root))) for regex in ignorecsvs): continue
           unknowncsvs.add(csv)
           continue
 

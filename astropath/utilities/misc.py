@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
+import collections, contextlib, csv, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
 import reikna as rk
 if sys.platform != "cygwin": import psutil
 
@@ -453,3 +453,13 @@ def get_GPU_thread(interactive) :
   api = rk.cluda.ocl_api()
   #return a thread from the API
   return api.Thread.create(interactive=interactive)
+
+@contextlib.contextmanager
+def field_size_limit_context(limit):
+  if limit is None: yield; return
+  oldlimit = csv.field_size_limit()
+  try:
+    csv.field_size_limit(limit)
+    yield
+  finally:
+    csv.field_size_limit(oldlimit)
