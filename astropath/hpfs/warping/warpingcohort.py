@@ -25,8 +25,8 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,layer,fit_1_octets,fit_2_octets,fit_3_octets,fit_1_iters,fit_2_iters,fit_3_iters,
-                 fixed,init_pars,bounds,max_rad_warp,max_tan_warp,workingdir=None,useGPU=True,**kwargs) :
+    def __init__(self,*args,layer,fit_1_octets,fit_2_octets,fit_3_octets,fit_1_iters,fit_2_iters,fit_3_iters,fixed,
+                 init_pars,bounds,max_rad_warp,max_tan_warp,workingdir=None,useGPU=True,octets_only=False,**kwargs) :
         super().__init__(*args,**kwargs)
         #set variables for how the fits should run
         self.__layer = layer
@@ -58,12 +58,16 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         #if running with the GPU, create a GPU thread and start a dictionary of GPU FFTs to give to each sample
         self.gputhread = get_GPU_thread(sys.platform=='darwin') if useGPU else None
         self.gpufftdict = None if self.gputhread is None else {}
+        self.__octets_only = octets_only
         #placeholders for the groups of octets
         self.__fit_1_octets = []; self.__fit_2_octets = []; self.__fit_3_octets = []
 
     def run(self,**kwargs) :
         # First check to see if the octet groups have already been defined
         self.__get_octets_if_existing()
+        #If we're only getting the octets for all the samples then we're done here
+        if self.__octets_only :
+            return
         # If the above didn't populate the dictionaries then we have to find the octets to use from the samples
         if ( self.__fit_1_octets==[] and self.__fit_2_octets==[] and 
              self.__fit_3_octets==[] ) :
@@ -141,6 +145,8 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
                        help='Max # of iterations to run in the principal point location fits (default=500)')
         p.add_argument('--final_pattern_max_iters',   type=int, default=500,
                        help='Max # of iterations to run in the final pattern fits (default=500)')
+        p.add_argument('--octets_only',action='store_true',
+                       help='Add this flag to find the octets for every selected sample and quit')
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
