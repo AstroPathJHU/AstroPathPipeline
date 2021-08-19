@@ -55,7 +55,7 @@ class FitParameterSet :
                         errmsg = f'ERROR: {pname} (initial value={pval}) is not recognized as a fit parameter!'
                         raise ValueError(errmsg)
                     if warp.parValueFromName(pname)!=pval :
-                        msg = f'Replacing default {pname} value {warp.parValueFromName(pname)} with {pval}.....'
+                        msg = f'Replacing default {pname} value {warp.parValueFromName(pname)} with {pval}'
                         self.logger.debug(msg)
                         update_pars[CONST.ORDERED_FIT_PAR_NAMES.index(pname)] = pval
             warp.updateParams(update_pars)
@@ -71,7 +71,7 @@ class FitParameterSet :
                         errmsg = f'ERROR: {pname} (initial bounds={pbounds}) is not recognized as a fit parameter!'
                         raise ValueError(errmsg)
                     if pbounds[0]!=bounds_dict[pname][0] or pbounds[1]!=bounds_dict[pname][1] :
-                        self.logger.debug(f'Replacing default {pname} bounds {bounds_dict[pname]} with {pbounds}....')
+                        self.logger.debug(f'Replacing default {pname} bounds {bounds_dict[pname]} with {pbounds}')
                         if pname in fixed :
                             self.logger.warn(f'WARNING: Replaced bounds for FIXED PARAMETER {pname}!')
                         bounds_dict[pname] = pbounds
@@ -123,7 +123,7 @@ class FitParameterSet :
         """
         #make a list of each parameter's grid of possible values
         par_variations = []
-        nperpar=3
+        nperpar=4
         for p in self.floating_parameters :
             #principal points and focal lengths are evenly spaced between their bounds
             if p.name in ['cx','cy','fx','fy'] :

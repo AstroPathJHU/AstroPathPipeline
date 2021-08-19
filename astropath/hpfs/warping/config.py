@@ -22,7 +22,7 @@ class Const :
         return ['cx','cy','fx','fy','k1','k2','k3','p1','p2'] #names of fit parameters, in order
     @property
     def PRINT_EVERY(self) :
-        return 25 #how often to print progress during fitting
+        return 50 #how often to print progress during fitting
     @property
     def OUTPUT_FIELD_DTYPE(self) :
         return np.float64 #datatype for warping field arrays

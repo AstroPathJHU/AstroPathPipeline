@@ -45,7 +45,7 @@ class WarpFit :
         for rect_n in [octet.p1_rect_n,*(p2_rect_ns)] :
             for ri,rect in enumerate(self.__warpsample.rectangles) :
                 if rect.n==rect_n :
-                    self.__unwarped_images_by_rect_i[ri] = rect.image[:,:,0]
+                    self.__unwarped_images_by_rect_i[ri] = rect.image
 
     def run(self,max_iters,fixed,init_pars,init_bounds,max_rad_warp,max_tan_warp) :
         """
@@ -99,7 +99,7 @@ class WarpFit :
                               str(min([r.t for r in rects])),str(max([r.t for r in rects])))
         #delete the stored images
         for r in rects :
-            del r.image
+            r.image=None
         #Return everything
         return wfr,fls,mds
 

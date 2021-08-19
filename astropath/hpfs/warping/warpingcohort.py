@@ -134,17 +134,17 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         p = super().makeargumentparser()
         p.add_argument('--layer', type=int, default=1,
                        help='The layer number (starting from one) of the images that should be used (default=1)')
-        p.add_argument('--initial_pattern_octets', type=int, default=50,
+        p.add_argument('--initial_pattern_octets', type=int, default=100,
                        help='Number of octets to use in the initial pattern fits (default=50)')
         p.add_argument('--principal_point_octets', type=int, default=50,
                        help='Number of octets to use in the principal point location fits (default=50)')
         p.add_argument('--final_pattern_octets',   type=int, default=100,
                        help='Number of octets to use in the final pattern fits (default=100)')
-        p.add_argument('--initial_pattern_max_iters', type=int, default=200,
+        p.add_argument('--initial_pattern_max_iters', type=int, default=300,
                        help='Max # of iterations to run in the initial pattern fits (default=200)')
         p.add_argument('--principal_point_max_iters', type=int, default=500,
                        help='Max # of iterations to run in the principal point location fits (default=500)')
-        p.add_argument('--final_pattern_max_iters',   type=int, default=500,
+        p.add_argument('--final_pattern_max_iters',   type=int, default=600,
                        help='Max # of iterations to run in the final pattern fits (default=500)')
         p.add_argument('--octets_only',action='store_true',
                        help='Add this flag to find the octets for every selected sample and quit')
@@ -205,12 +205,13 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         writetable(self.fit_2_octet_fp,self.__fit_2_octets)
         writetable(self.fit_3_octet_fp,self.__fit_3_octets)
 
-    def __get_group_of_fit_results(self,fit_group_number) :
+    def __get_group_of_fit_results(self,fit_group_number,logger) :
         """
         Return a list of results for a particular set of fits
         Also writes results to an output file
         If the output file exists this function just reads the results.
         fit_group_number = an integer (1, 2, or 3) indicating whether this is the first, second, or third group of fits
+        logger = the logger object to use
         """
         if fit_group_number==1 :
             results_fp = self.fit_1_results_fp
@@ -326,7 +327,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         If the fit result file already exists, just read it and set the result needed.
         """
         #run the first set of fits to get the initial pattern
-        fit_1_results = self.__get_group_of_fit_results(1)
+        fit_1_results = self.__get_group_of_fit_results(1,logger)
         good_results = [r for r in fit_1_results if r.cost_reduction>0]
         #set variables to define and constrain the next groups of fits
         self.__fit_2_init_pars = {}
@@ -352,15 +353,15 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
                 weighted_sum = np.sum(np.array([r.p2*r.cost_reduction for r in good_results]))
             self.__fit_2_init_pars[fpn] = weighted_sum/sum_weights
         #run the second set of fits to find constraints on the center principal point
-        fit_2_results = self.__get_group_of_fit_results(2)
+        fit_2_results = self.__get_group_of_fit_results(2,logger)
         good_results = [r for r in fit_2_results if r.cost_reduction>0]
         w_cx = 0.; w_cy = 0.; sw = 0.; sw2 = 0.
         for r in good_results :
             w = r.cost_reduction
             w_cx+=(w*r.cx); w_cy+=(w*r.cy); sw+=w; sw2+=w**2
         w_cx/=sw; w_cy/=sw
-        w_cx_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))
-        w_cy_e = np.sqrt(((np.std([r.cx for r in all_results_2 if r.cost_reduction>0])**2)*sw2)/(sw**2))
+        w_cx_e = np.sqrt(((np.std([r.cx for r in good_results])**2)*sw2)/(sw**2))
+        w_cy_e = np.sqrt(((np.std([r.cx for r in good_results])**2)*sw2)/(sw**2))
         self.__fit_3_init_pars = self.__fit_2_init_pars
         self.__fit_3_init_pars['cx'] = w_cx
         self.__fit_3_init_pars['cy'] = w_cy
@@ -368,7 +369,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         self.__fit_3_bounds['cx'] = (w_cx-2.*w_cx_e,w_cx+2.*w_cx_e)
         self.__fit_3_bounds['cy'] = (w_cy-2.*w_cy_e,w_cy+2.*w_cy_e)
         #run the third set of fits
-        fit_3_results = self.__get_group_of_fit_results(3)
+        fit_3_results = self.__get_group_of_fit_results(3,logger)
         good_results = [r for r in fit_3_results if r.cost_reduction>0]
         #create the final warping summary to write out
         final_pars = {}
@@ -394,11 +395,15 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
                 weighted_sum = np.sum(np.array([r.p2*r.cost_reduction for r in good_results]))
             final_pars[fpn] = weighted_sum/sum_weights
         all_slide_ids = list(set([r.slide_ID for r in fit_1_results+fit_2_results+fit_3_results]))
-        warping_summary = WarpingSummary(str(all_slide_ids),self.samples[0].Project,self.samples[0].Cohort,
-                                         self.samples[0].microscopename,1,self.samples[0].nlayersim3,
-                                         fit_1_results[0].n,fit_1_results[0].m,
-                                         *([final_pars[pname] for pname in CONST.ORDERED_FIT_PAR_NAMES]))
-        writetable(self.__workingdir / 'weighted_average_warp.csv')
+        ex_samp = None
+        for s in self.samples :
+            ex_samp = s 
+            break
+        warping_summary = [WarpingSummary(str(all_slide_ids),ex_samp.Project,ex_samp.Cohort,
+                                          ex_samp.microscopename,1,ex_samp.nlayersim3,
+                                          fit_1_results[0].n,fit_1_results[0].m,
+                                          *([final_pars[pname] for pname in CONST.ORDERED_FIT_PAR_NAMES]))]
+        writetable(self.__workingdir / 'weighted_average_warp.csv',warping_summary)
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
