@@ -170,11 +170,11 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             overlaps_by_tag = {}
             p1_pixel_fracs_by_tag = {}
             p2_pixel_fracs_by_tag = {}
-            rectangle_images_to_delete = set()
+            rectangle_images_to_delete = []
             for o in overlaps :
                 result = self.align_overlap(o)
-                rectangle_images_to_delete.add(o.images[0])
-                rectangle_images_to_delete.add(o.images[1])
+                rectangle_images_to_delete.append(o.images[0])
+                rectangle_images_to_delete.append(o.images[1])
                 if result is not None and result.exit==0 :
                     ip1,ip2 = o.cutimages
                     p1frac = (np.sum(np.where(ip1>bg_threshold.counts_threshold,1,0)))/(ip1.shape[0]*ip1.shape[1])

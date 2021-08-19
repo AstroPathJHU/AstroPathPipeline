@@ -10,21 +10,36 @@ class AlignmentOverlapForWarping(AlignmentOverlap) :
     A streamlined version of an AlignmentOverlap to use in fitting for warping patterns
     """
 
+    def __post_init__(self,*args,**kwargs) :
+        super().__post_init__(*args,**kwargs)
+        self.__images = None
+        self.__cutimages = None
+        self.__overlap_shape = None
+        self.__overlap_npix = None
+
     def myupdaterectangles(self, rectangles):
         super().updaterectangles(rectangles)
         self.__calculate_image_variables()
 
     @property
     def images(self) :
+        if self.__images is None :
+            self.__calculate_image_variables()
         return self.__images
     @property
     def cutimages(self) :
+        if self.__cutimages is None :
+            self.__calculate_image_variables()
         return self.__cutimages
     @property
     def overlap_shape(self) :
+        if self.__overlap_shape is None :
+            self.__calculate_image_variables()
         return self.__overlap_shape
     @property
     def overlap_npix(self) :
+        if self.__overlap_npix is None :
+            self.__calculate_image_variables()
         return self.__overlap_npix
 
     def __calculate_image_variables(self) :
