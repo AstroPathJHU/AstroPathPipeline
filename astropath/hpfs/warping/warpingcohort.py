@@ -160,6 +160,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             'fit_1_iters': parsed_args_dict.pop('initial_pattern_max_iters'),
             'fit_2_iters': parsed_args_dict.pop('principal_point_max_iters'),
             'fit_3_iters': parsed_args_dict.pop('final_pattern_max_iters'),
+            'octets_only': parsed_args_dict.pop('octets_only'),
         }
 
     #################### PRIVATE HELPER METHODS ####################
