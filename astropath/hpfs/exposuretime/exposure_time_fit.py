@@ -58,7 +58,7 @@ class SingleLayerExposureTimeFit :
         et_fit_logger.info(f'Making an AlignSample for just the overlaps with different exposure times in layer {self.layer}....')
         use_GPU = platform.system()!='Darwin'
         a = AlignSampleForExposureTime(self.root_dir,self.rawfile_top_dir,self.slideID,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
-                                nclip=UNIV_CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=self.layer,filetype='raw',
+                                nclip=UNIV_CONST.N_CLIP,useGPU=False,readlayerfile=False,layer=self.layer,filetype='raw',
                                 smoothsigma=smoothsigma,flatfield=self.flatfield)
         #get all the raw file layers and align the overlaps
         a.getDAPI()
