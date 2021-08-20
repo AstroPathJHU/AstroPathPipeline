@@ -51,7 +51,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         if not self.__use_precomputed_masks :
             self.__create_sample_image_masks()
         else :
-            self.logger.info(f'Will use already-created image masks in {self.__image_masking_dirpath}')
+            self.logger.debug(f'Will use already-created image masks in {self.__image_masking_dirpath}')
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -75,14 +75,6 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             return UNIV_CONST.LAYER_GROUPS_43
         else :
             raise ValueError(f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!')
-    @methodtools.lru_cache()
-    @property
-    def tissue_edge_rects(self) :
-        return [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))<8]
-    @methodtools.lru_cache()
-    @property
-    def tissue_bulk_rects(self) :
-        return [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))==8]
     @methodtools.lru_cache()
     @property
     def exposure_time_histograms_and_bins_by_layer_group(self) :
@@ -139,7 +131,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         """
         Find the optimal background thresholds for the sample and use them to create masks for every image
         """
-        self.logger.info(f'Will create masks for all images in {self.SlideID}')
+        self.logger.debug(f'Will create masks for all images in {self.SlideID}')
         #start by finding the background thresholds
         background_thresholds = self.__get_background_thresholds()
         #and then create masks for every rectangle's image
@@ -148,7 +140,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             proc_results = {}
             with self.pool() as pool :
                 for ri,r in enumerate(self.rectangles) :
-                    self.logger.info(f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....')
+                    self.logger.debug(f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....')
                     with r.using_image() as im :
                         proc_results[(r.n,r.file)] = pool.apply_async(return_new_mask_labelled_regions,
                                                            (im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
@@ -167,7 +159,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         #do the same as above except serially
         else :
             for ri,r in enumerate(self.rectangles) :
-                self.logger.info(f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....')
+                self.logger.debug(f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....')
                 try :
                     with r.using_image() as im :
                         new_lmrs=return_new_mask_labelled_regions(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
@@ -181,7 +173,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         #if anything in the sample was masked
         if len(labelled_mask_regions)>0 :
             #write out the table of labelled mask regions
-            self.logger.info('Writing out labelled mask regions')
+            self.logger.debug('Writing out labelled mask regions')
             with cd(self.__image_masking_dirpath) :
                 writetable(f'{CONST.LABELLED_MASK_REGIONS_CSV_FILENAME}',labelled_mask_regions)
             #save some masking plots for images with the largest numbers of masked pixels
@@ -238,11 +230,11 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         Find, write out, and return the list of optimal background thresholds found from the set of images located on the edges of the tissue
         Also makes some plots and datatables in the process
         """
-        self.logger.info(f'Finding background thresholds for {self.SlideID} using images on the edges of the tissue')
+        self.logger.debug(f'Finding background thresholds for {self.SlideID} using images on the edges of the tissue')
         thresholding_plot_dir_path = self.__workingdirpath / CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
         #get the list of rectangles that are on the edge of the tissue, plot their locations, and save a summary of their metadata
-        self.logger.info(f'Found {len(self.tissue_edge_rects)} images on the edge of the tissue from a set of {len(self.rectangles)} total images')
-        self.logger.info('Plotting rectangle locations and saving tissue edge HPF MetadataSummary')
+        self.logger.debug(f'Found {len(self.tissue_edge_rects)} images on the edge of the tissue from a set of {len(self.rectangles)} total images')
+        self.logger.debug('Plotting rectangle locations and saving tissue edge HPF MetadataSummary')
         plot_tissue_edge_rectangle_locations(self.rectangles,self.tissue_edge_rects,self.root,self.SlideID,thresholding_plot_dir_path)
         edge_rect_ts = [r.t for r in self.tissue_edge_rects]
         with cd(self.__workingdirpath) :
@@ -251,7 +243,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         #find the optimal thresholds for each tissue edge image, write them out, and make plots of the thresholds found in each layer
         image_background_thresholds_by_layer, image_hists_by_layer = self.__get_background_thresholds_and_pixel_hists_for_edge_rectangles()
         #choose the best thresholds based on those results and make some plots of the distributions
-        self.logger.info('Finding best thresholds based on those found for individual images')
+        self.logger.debug('Finding best thresholds based on those found for individual images')
         chosen_thresholds = []
         for li in range(self.nlayers) :
             valid_layer_thresholds = image_background_thresholds_by_layer[:,li][image_background_thresholds_by_layer[:,li]!=0]
@@ -263,7 +255,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                 chosen_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),-1.))
         with cd(self.__workingdirpath) :
             writetable(self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',chosen_thresholds)
-        self.logger.info('Saving final thresholding plots')
+        self.logger.debug('Saving final thresholding plots')
         thresholding_datatable_filepath = self.__workingdirpath / f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}'
         if thresholding_datatable_filepath.is_file() :
             plot_background_thresholds_by_layer(thresholding_datatable_filepath,chosen_thresholds,thresholding_plot_dir_path)
@@ -293,7 +285,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             proc_results = {}; current_image_i = 0
             with self.pool() as pool :
                 for ri,r in enumerate(self.tissue_edge_rects) :
-                    self.logger.info(f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.tissue_edge_rects)})....')
+                    self.logger.debug(f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.tissue_edge_rects)})....')
                     with r.using_image() as im :
                         proc_results[(r.n,r.file)] = pool.apply_async(get_background_thresholds_and_pixel_hists_for_rectangle_image,(im,))
                 for (rn,rfile),res in proc_results.items() :
@@ -316,7 +308,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         else :
             current_image_i=0
             for ri,r in enumerate(self.tissue_edge_rects) :
-                self.logger.info(f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.tissue_edge_rects)})....')
+                self.logger.debug(f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.tissue_edge_rects)})....')
                 try :
                     with r.using_image() as im :
                         thresholds, hists = get_background_thresholds_and_pixel_hists_for_rectangle_image(im)
@@ -335,7 +327,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                     self.logger.warning(warnmsg)
         #write out the data table of all the individual rectangle layer thresholds
         if len(rectangle_data_table_entries)>0 :
-            self.logger.info('Writing out individual image threshold datatable')
+            self.logger.debug('Writing out individual image threshold datatable')
             with cd(self.__workingdirpath) :
                 writetable(f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}',rectangle_data_table_entries)
         return image_background_thresholds_by_layer, tissue_edge_layer_hists
@@ -348,7 +340,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         background_thresholds = the list of background thresholds in counts by image layer
         """
         #find the images that had the most pixels masked out (up to 10 each for blur and saturation)
-        self.logger.info('Finding images that had the largest numbers of pixels masked due to blur or saturation')
+        self.logger.debug('Finding images that had the largest numbers of pixels masked due to blur or saturation')
         regions_by_n_blurred_pixels = sorted([lmr for lmr in labelled_mask_regions if lmr.reason_flagged==MASK_CONST.BLUR_FLAG_STRING],
                                            key=lambda x: x.n_pixels,reverse=True)
         regions_by_n_saturated_pixels = sorted([lmr for lmr in labelled_mask_regions if lmr.reason_flagged==MASK_CONST.SATURATION_FLAG_STRING],
@@ -373,7 +365,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             proc_results = {}
             with self.pool() as pool :
                 for ri,r in enumerate(rects_to_plot) :
-                    self.logger.info(f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots ({ri+1} of {len(rects_to_plot)})....')
+                    self.logger.debug(f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots ({ri+1} of {len(rects_to_plot)})....')
                     with r.using_image() as im :
                         proc_results[(r.n,r.file)] = pool.apply_async(save_plots_for_image,
                                                            (im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,

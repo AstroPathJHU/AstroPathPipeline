@@ -1,17 +1,17 @@
 #imports
-from .meanimagesample import MeanImageSampleBase
-from .imagestack import CorrectedMeanImage, Flatfield
-from .config import CONST
-from ...shared.argumentparser import FileTypeArgumentParser
-from ...shared.cohort import CorrectedImageCohort, WorkflowCohort
-from ...shared.sample import WorkflowSample
+import random, pathlib
+from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.misc import cd
+from ...utilities.tableio import writetable
 from ...shared.samplemetadata import MetadataSummary
+from ...shared.argumentparser import FileTypeArgumentParser
 from ...shared.rectangle import RectangleCorrectedIm3MultiLayer
 from ...shared.overlap import Overlap
-from ...utilities.tableio import writetable
-from ...utilities.misc import cd
-from ...utilities.config import CONST as UNIV_CONST
-import random, pathlib
+from ...shared.sample import WorkflowSample
+from ...shared.cohort import CorrectedImageCohort, WorkflowCohort
+from .config import CONST
+from .meanimagesample import MeanImageSampleBase
+from .imagestack import CorrectedMeanImage, Flatfield
 
 class AppliedFlatfieldSample(MeanImageSampleBase,WorkflowSample) :
     """

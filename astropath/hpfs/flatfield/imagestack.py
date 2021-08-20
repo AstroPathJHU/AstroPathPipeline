@@ -118,7 +118,7 @@ class ImageStack :
         n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
         field_logs = []
         for ri,r in enumerate(rectangles) :
-            self.__logger.info(f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....')
+            self.__logger.debug(f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....')
             with r.using_image() as im :
                 normalized_image = im / med_ets if med_ets is not None else im / r.allexposuretimes[np.newaxis,np.newaxis,:]
                 self.__image_stack+=normalized_image
@@ -154,7 +154,7 @@ class ImageStack :
         n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
         field_logs = []
         for ri,r in enumerate(rectangles_to_stack) :
-            self.__logger.info(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles_to_stack)})....')
+            self.__logger.debug(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles_to_stack)})....')
             imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
             with r.using_image() as im :
                 normalized_im = im / med_ets if med_ets is not None else im / r.allexposuretimes[np.newaxis,np.newaxis,:]

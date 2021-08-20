@@ -1,4 +1,5 @@
 import collections, contextlib, csv, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
+import reikna as rk
 if sys.platform != "cygwin": import psutil
 
 def covariance_matrix(*args, **kwargs):
@@ -151,26 +152,26 @@ def split_csv_to_list_of_floats(value) :
   except ValueError :
       raise ValueError(f'Option value {value} is expected to be a comma-separated list of floats!')
 
-def split_csv_to_dict_of_floats(value) :
+def dict_of_init_par_values_callback(value) :
   """
-  parser callback function to split a string of comma-separated name=value pairs into a dictionary
+  argument parser callback to return a dictionary of fit parameter initial values
   """
   try :
-    pairs = value.split(',')
+    pairs = value.split()
     return_dict = {}
     for pair in pairs :
       name,value = pair.split('=')
       return_dict[name] = float(value)
     return return_dict
   except Exception :
-      raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=float pairs!')
+      raise ValueError(f'Option value {value} is expected to be a space-separated string of name=float pairs!')
 
-def split_csv_to_dict_of_bounds(value) :
+def dict_of_par_bounds_callback(value) :
   """
-  helper function to split a string of comma-separated name=(low bound:high bound) pairs into a dictionary
+  argument parser callback to return a dictionary of fit parameter bounds
   """
   try :
-    pairs = value.split(',')
+    pairs = value.split()
     return_dict = {}
     for pair in pairs :
       name,bounds = pair.split('=')
@@ -443,6 +444,15 @@ def mountedpath(filename):
       return pathlib.PureWindowsPath(filename)
   else:
     return guesspathtype(filename)
+
+def get_GPU_thread(interactive) :
+  """
+  Create and return a Reikna Thread object to use for running some computations on the GPU
+  interactive : if True (and some GPU is available), user will be given the option to choose a device 
+  """
+  api = rk.cluda.ocl_api()
+  #return a thread from the API
+  return api.Thread.create(interactive=interactive)
 
 @contextlib.contextmanager
 def field_size_limit_context(limit):

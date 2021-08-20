@@ -1,14 +1,14 @@
 #imports
-from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohort
-from astropath.shared.sample import ReadRectanglesIm3FromXML
-from astropath.hpfs.flatfield.utilities import FieldLog
-from astropath.hpfs.flatfield.config import CONST
-from astropath.shared.samplemetadata import MetadataSummary
-from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
-from astropath.utilities.config import CONST as UNIV_CONST
-from .testbase import compare_two_csv_files, TestBaseSaveOutput
-import numpy as np
 import os, pathlib, shutil
+import numpy as np
+from astropath.utilities.config import CONST as UNIV_CONST
+from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
+from astropath.shared.samplemetadata import MetadataSummary
+from astropath.shared.sample import ReadRectanglesIm3FromXML
+from astropath.hpfs.flatfield.config import CONST
+from astropath.hpfs.flatfield.utilities import FieldLog
+from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohort
+from .testbase import compare_two_csv_files, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)

@@ -1,10 +1,11 @@
 import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
 from ..utilities.misc import floattoint, memmapcontext
-from ..utilities.tableio import timestampfield
+from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from ..utilities.config import CONST as UNIV_CONST
 from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
+from .rectangletransformation import RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationSinglelayer
 
 class Rectangle(DataClassWithPscale):
   """
@@ -49,7 +50,7 @@ class Rectangle(DataClassWithPscale):
       rectanglekwargs = {
         **{
           field: getattr(rectangle, field)
-          for field in dataclassy.fields(type(rectangle))
+          for field in set(dataclassy.fields(type(rectangle))) & set(dataclassy.fields(cls))
         }
       }
     return super().transforminitargs(
@@ -312,22 +313,43 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   nlayers: the number of layers in the *input* file
   layers: which layers you actually want to access
   """
-
-  def __post_init__(self, *args, imagefolder, filetype, width, height, nlayers, layers, **kwargs):
-    super().__post_init__(*args, **kwargs)
-    self.__imagefolder = pathlib.Path(imagefolder)
-    self.__filetype = filetype
-    self.__width = width
-    self.__height = height
-    self.__nlayers = nlayers
-    self.__layers = layers
+  @property
+  def imagefolder(self): return self.__imagefolder
+  @imagefolder.setter
+  def imagefolder(self, imagefolder): self.__imagefolder = imagefolder
+  imagefolder: pathlib.Path = pathfield(imagefolder, includeintable=False)
+  @property
+  def filetype(self): return self.__filetype
+  @filetype.setter
+  def filetype(self, filetype): self.__filetype = filetype
+  filetype: str = MetaDataAnnotation(filetype, includeintable=False)
+  @property
+  def width(self): return self.__width
+  @width.setter
+  def width(self, width): self.__width = width
+  width: units.Distance = distancefield(width, includeintable=False, pixelsormicrons="pixels")
+  @property
+  def height(self): return self.__height
+  @height.setter
+  def height(self, height): self.__height = height
+  height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels")
+  @property
+  def nlayers(self): return self.__nlayers
+  @nlayers.setter
+  def nlayers(self, nlayers): self.__nlayers = nlayers
+  nlayers: int = MetaDataAnnotation(nlayers, includeintable=False)
+  @property
+  def layers(self): return self.__layers
+  @layers.setter
+  def layers(self, layers): self.__layers = layers
+  layers: list = MetaDataAnnotation(layers, includeintable=False)
 
   @property
   def imageshape(self):
     return [
-      floattoint(float(self.__height / self.onepixel)),
-      floattoint(float(self.__width / self.onepixel)),
-      self.__nlayers if -1 in self.__layers else len(self.__layers),
+      floattoint(float(self.height / self.onepixel)),
+      floattoint(float(self.width / self.onepixel)),
+      self.nlayers if -1 in self.layers else len(self.layers),
     ]
 
   @property
@@ -377,10 +399,6 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     return image
 
   @property
-  def layers(self) :
-    return self.__layers
-
-  @property
   def exposuretimes(self):
     """
     The exposure times for the HPF layers you access
@@ -405,18 +423,26 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   Also, in this class you can read a layer file (e.g. fw01).
   """
 
-  def __post_init__(self, *args, layer, readlayerfile=True, **kwargs):
+  @property
+  def readlayerfile(self): return self.__readlayerfile
+  @readlayerfile.setter
+  def readlayerfile(self, readlayerfile): self.__readlayerfile = readlayerfile
+  readlayerfile: bool = MetaDataAnnotation(True, includeintable=False)
+
+  @classmethod
+  def transforminitargs(cls, *args, layer, readlayerfile=True, **kwargs):
     morekwargs = {
       "layers": (layer,),
+      "readlayerfile": readlayerfile,
     }
-    if readlayerfile:
-      if kwargs.pop("nlayers", 1) != 1:
-        raise ValueError("Provided nlayers!=1, readlayerfile=True")
-      morekwargs.update({
-        "nlayers": 1,
-      })
-    self.__readlayerfile = readlayerfile
-    super().__post_init__(*args, **kwargs, **morekwargs)
+    if readlayerfile and "nlayers" not in kwargs:
+      morekwargs["nlayers"] = 1
+    return super().transforminitargs(*args, **kwargs, **morekwargs)
+
+  def __post_init__(self, *args, **kwargs):
+    if self.nlayers != 1 and self.readlayerfile:
+      raise ValueError("Provided nlayers!=1, readlayerfile=True")
+    super().__post_init__(*args, **kwargs)
 
   @property
   def layer(self):
@@ -430,7 +456,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   @property
   def imagefile(self):
     result = super().imagefile
-    if self.__readlayerfile:
+    if self.readlayerfile:
       folder = result.parent
       basename = result.name
       if basename.endswith(".camWarp") or basename.endswith(".dat"):
@@ -446,13 +472,13 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   @property
   def imageshapeininput(self):
     result = super().imageshapeininput
-    if self.__readlayerfile:
+    if self.readlayerfile:
       assert result[0] == 1
       return result[0], result[2], result[1]
     return result
   @property
   def imagetransposefrominput(self):
-    if self.__readlayerfile:
+    if self.readlayerfile:
       #it's saved as (height, width), which is what we want
       return (0, 1, 2)
     else:
@@ -460,7 +486,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       return (2, 1, 0)
   @property
   def imageslicefrominput(self):
-    if self.__readlayerfile:
+    if self.readlayerfile:
       return 0, slice(None), slice(None)
     else:
       return slice(None), slice(None), self.layer-1
@@ -480,10 +506,47 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
     _, = self.broadbandfilters
     return _
 
+class RectangleCorrectedIm3SingleLayer(RectangleReadIm3MultiLayer) :
+  """
+  Class for Rectangles whose multilayer im3 data should have one layer extracted and corrected
+  for differences in exposure time, flatfielding effects, and warping effects (and or all can be omitted)
+  """
+  _DEBUG = False #tend to load these more than once
+
+  def __post_init__(self,*args,transformations=None,**kwargs) :
+    if transformations is None :
+      transformations = []
+    super().__post_init__(*args, transformations=transformations, **kwargs)
+
+  def add_exposure_time_correction_transformation(self,med_et,offset) :
+    """
+    Add a transformation to a rectangle to correct it for differences in exposure time given:
+
+    med_et = the median exposure time of the image layer in question across the whole sample
+    offset = the dark current offset to use for correcting the image layer of interest
+    """
+    if med_et is not None and offset is not None :
+      self.add_transformation(RectangleExposureTimeTransformationSingleLayer(self.allexposuretimes[self.layers[0]-1],
+                                                                             med_et,offset))
+
+  def add_flatfield_correction_transformation(self,flatfield_layer) :
+    """
+    Add a transformation to a rectangle to correct it with a given flatfield layer
+    """
+    if flatfield_layer is not None :
+      self.add_transformation(RectangleFlatfieldTransformationSinglelayer(flatfield_layer))
+
+  def add_warping_correction_transformation(self,warp) :
+    """
+    Add a transformation to a rectangle to correct its image layer with a given warping pattern
+    """
+    if warp is not None :
+      self.add_transformation(RectangleWarpingTransformationSinglelayer(warp))
+
 class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
   """
-  Class for Rectangles whose multilayer im3 data should be corrected for differences in exposure time 
-  and/or flatfielding (either or both can be omitted)
+  Class for Rectangles whose multilayer im3 data should be corrected for differences in exposure time,
+  flatfielding effects, and/or warping effects (any or all can be omitted)
   """
   _DEBUG = False #Tend to use these images more than once per run
   
