@@ -42,7 +42,7 @@ class AlignSampleBase(SampleBase):
   def inverseoverlapsdictkey(self, overlap):
     return overlap.p2, overlap.p1
 
-  def align(self, *, **kwargs):
+  def align(self, **kwargs):
     """
     Do the alignment over all HPF overlaps in the sample.
     The individual alignment results can be accessed from the overlaps as
