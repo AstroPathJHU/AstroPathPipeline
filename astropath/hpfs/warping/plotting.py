@@ -101,7 +101,7 @@ def rad_warp_par_plots(all_results,save_stem=None,save_dir=None) :
     f.colorbar(pos,ax=ax)
     if save_stem is not None :
         fn = f'{save_stem}_all_radial_warp_parameters_plot.png'
-        save_figure_in_dir(plt,fn)
+        save_figure_in_dir(plt,fn,save_dir)
     else :
         plt.show()
     f,ax=plt.subplots(1,3,figsize=(3*6.4,4.6))
