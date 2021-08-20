@@ -34,22 +34,25 @@ class FitGroupLatexSummary(LatexSummaryWithPlotdir) :
         caption = 'Upper left: maximum amounts of radial warping found in each fit, with mean and weighted mean. '
         caption+= 'Upper center: fractional reduction in fit cost vs. maximum amount of radial warping. '
         caption+= 'Upper right: principal point locations found, color-coded by the maximum amount of radial warping. '
-        caption+= 'Lower row: from left to right, fractional reductions in fit cost vs. $k1$, $k2$, and $k3$ '
-        caption+= 'radial warping parameters, respectively.'
+        caption+= 'Center row: from left to right, fractional reductions in fit cost vs. $k1$, $k2$, and $k3$ '
+        caption+= 'radial warping parameters, respectively. '
+        caption+= 'Lower plot: dependence of $k1$, $k2$, and $k3$ on one another.'
         l = f'Figure~\\ref{{{rw_figlabel}}} shows several plots with details about the radial warping patterns found '
         l+= f'for the {self.__fit_group_name.lower()}. The leftmost plot in the upper row shows the maximum amounts '
         l+= '(in pixels) of radial warping found in each individual fit; the mean and weighted mean are '
         l+= 'also indicated. The center plot in the upper row shows a scatterplot of the fractional reduction in fit '
         l+= 'cost vs the maximum amount of radial warping. The right plot in the upper row shows the principal point '
         l+= f'locations found, like in Fig.~\\ref{{{pp_figlabel}}}, but this time colored by the maxmimum amount of '
-        l+= 'radial warping rather than reduction in fit cost. The lower row of plots show scatterplots of the '
+        l+= 'radial warping rather than reduction in fit cost. The center row of plots show scatterplots of the '
         l+= 'fractional reduction in fit cost vs values found for the $k1$, $k2$, and $k3$ parameters from left '
-        l+= 'to right, respectively.'
+        l+= 'to right, respectively. The lower plot shows a scatterplot of how the $k1$, $k2$, and $k3$ parameters '
+        l+= 'depend on one another.'
         lines.append(l)
         lines+=self.image_figure_lines(
                 [f'{self.plot_dirpath_tex}/{self.__plot_name_stem}_radial_warp_amount_plots',
-                 f'{self.plot_dirpath_tex}/{self.__plot_name_stem}_cost_redux_vs_radial_warp_parameters_plots'],
-                caption,rw_figlabel,widths=0.95
+                 f'{self.plot_dirpath_tex}/{self.__plot_name_stem}_cost_redux_vs_radial_warp_parameters_plots',
+                 f'{self.plot_dirpath_tex}/{self.__plot_name_stem}_all_radial_warp_parameters_plot'],
+                caption,rw_figlabel,widths=[0.95,0.95,0.6]
                 )
         fi_figlabel = 'fig:fit_iterations_plot'
         caption = 'Fractional reduction in fit cost vs. number of fit iterations'
