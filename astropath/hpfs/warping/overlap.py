@@ -1,9 +1,5 @@
 #imports
-import time
-import numpy as np, uncertainties as unc
-from ...utilities import units
 from ...slides.align.overlap import AlignmentOverlap
-from ...slides.align.computeshift import computeshift, mse, shiftimg
 
 class AlignmentOverlapForWarping(AlignmentOverlap) :
     """

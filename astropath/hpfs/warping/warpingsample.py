@@ -78,7 +78,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
                     return
                 except TypeError :
                     msg = f'Found an empty octet file for {self.SlideID} at {octet_filepath} and so it will be assumed '
-                    msg+= f'this sample has no octets to use in fitting for warping'
+                    msg+= 'this sample has no octets to use in fitting for warping'
                     self.logger.info(msg)
                     self.__octets = []
                     return
@@ -150,7 +150,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             self.__octets = []
             return
         msg = f'Finding octets to use for warp fitting in {self.SlideID} from a set of {len(octet_candidate_rects)} '
-        msg+= f'possible central HPFs'
+        msg+= 'possible central HPFs'
         self.logger.debug(msg)
         #get the background threshold for this layer of this sample
         bg_thresholds = readtable(self.bg_threshold_filepath,ThresholdTableEntry)

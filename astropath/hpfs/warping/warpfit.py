@@ -1,5 +1,6 @@
 #imports
 import time, scipy, logging
+import numpy as np
 from ...shared.samplemetadata import MetadataSummary
 from .config import CONST
 from .utilities import WarpFitResult, FieldLog

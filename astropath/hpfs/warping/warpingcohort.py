@@ -5,7 +5,7 @@ from random import sample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import get_GPU_thread
 from ...utilities.tableio import writetable, readtable
-from ...shared.argumentparser import WarpFitArgumentParser, WorkingDirArgumentParser, FileTypeArgumentParser
+from ...shared.argumentparser import WarpFitArgumentParser, WorkingDirArgumentParser
 from ...shared.argumentparser import GPUArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectLayersCohort, WorkflowCohort
 from .config import CONST

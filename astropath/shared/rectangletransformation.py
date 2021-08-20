@@ -166,6 +166,6 @@ class RectangleWarpingTransformationSinglelayer(RectangleTransformationBase) :
       raise ValueError(errmsg)
     layer_in_umat = cv2.UMat(originalimage)
     layer_out_umat = cv2.UMat(corr_img)
-    self._warp[li].warpLayerInPlace(layer_in_umat,layer_out_umat)
+    self._warp.warpLayerInPlace(layer_in_umat,layer_out_umat)
     corr_img = layer_out_umat.get()
     return corr_img
