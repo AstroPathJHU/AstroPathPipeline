@@ -8,7 +8,7 @@ from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
-from .rectangle import AlignmentRectangle, AlignmentRectangleBase, AlignmentRectangleComponentTiff, AlignmentRectangleProvideImage
+from .rectangle import AlignmentRectangle, AlignmentRectangleBase, AlignmentRectangleComponentTiff
 from .stitch import ReadStitchResult, stitch
 
 class AlignSampleBase(SampleBase):
