@@ -178,7 +178,8 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
                 len(fit_3_octets)==self.__n_fit_3_octets ) :
                 msg = f'Will use previously chosen octets listed in {self.fit_1_octet_fp}, {self.fit_2_octet_fp}, '
                 msg+= f'and {self.fit_3_octet_fp}'
-                self.logger.info(msg)
+                with self.globallogger() as logger :
+                    logger.info(msg)
                 self.__fit_1_octets = fit_1_octets
                 self.__fit_2_octets = fit_2_octets
                 self.__fit_3_octets = fit_3_octets
