@@ -42,7 +42,7 @@ class AlignSampleBase(SampleBase):
   def inverseoverlapsdictkey(self, overlap):
     return overlap.p2, overlap.p1
 
-  def align(self, *, skip_corners=False, return_on_invalid_result=False, warpwarnings=False, **kwargs):
+  def align(self, *, **kwargs):
     """
     Do the alignment over all HPF overlaps in the sample.
     The individual alignment results can be accessed from the overlaps as
@@ -52,17 +52,11 @@ class AlignSampleBase(SampleBase):
     mean squared difference in pixel fluxes.  This can be used as a quality
     check on previous stages of image processing (such as warping and flatfielding)
 
-    skip_corners: only align edge overlaps (default: False)
-
-    These keyword arguments are used in the warping calibration.  For just alignment,
-    you should not touch them.  Note that a failed alignment is not necessarily bad,
+    Note that a failed alignment is not necessarily bad,
     it just means that there were not enough cells in the overlap area to obtain
     a result.  But you don't want to use that result to calibrate the warping model.
 
-    return_on_invalid_result: end the alignment loop early if an overlap alignment fails
-    warpwarnings: print warnings for failed alignments
-
-    Other keyword arguments are passed to overlap.align()
+    Keyword arguments are passed to overlap.align()
     """
     #load the images for all HPFs and keep them in memory as long as
     #the AlignSample is active
@@ -74,8 +68,6 @@ class AlignSampleBase(SampleBase):
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
-      if skip_corners and overlap.tag in [1,3,7,9] :
-        continue
       self.logger.debug(f"aligning overlap {overlap.n} ({i}/{len(self.overlaps)})")
       result = None
       #check if the inverse overlap has already been aligned
@@ -96,19 +88,6 @@ class AlignSampleBase(SampleBase):
         w = (overlap.cutimages[0].shape[0]*overlap.cutimages[0].shape[1])
         weighted_sum_mse+=w*result.mse[2]
         sum_weights+=w
-      else :
-        if result is None:
-          reason = "is None"
-        else:
-          reason = f"has exit status {result.exit}"
-        if return_on_invalid_result :
-          if warpwarnings: self.logger.warningglobal(f'Overlap number {i} alignment result {reason}: returning 1e10!!')
-          return 1e10
-        else :
-          if warpwarnings: self.logger.warningglobal(f'Overlap number {i} alignment result {reason}: adding 1e10 to sum_mse!!')
-          w = (overlap.cutimages[0].shape[0]*overlap.cutimages[0].shape[1])
-          weighted_sum_mse+=w*1e10
-          sum_weights+=w
 
     self.logger.info("finished align loop for "+self.SlideID)
     return weighted_sum_mse/sum_weights
@@ -144,53 +123,6 @@ class AlignSampleBase(SampleBase):
           new_fft = FFT(gpu_im)
           new_fftc = new_fft.compile(self.gputhread)
           self.gpufftdict[cutimages_shapes[0]] = new_fftc
-
-  def updateRectangleImages(self,imgs,usewarpedimages=True,correct_with_meanimage=False,recalculate_meanimage=False) :
-    """
-    Updates the "image" variable in each rectangle based on a dictionary of image layers
-    imgs            = list of WarpImages to use for update
-    usewarpedimages = if True, warped rather than raw images will be read
-    """
-    #close the images context manager to free memory
-    if self.__images is not None:
-      self.__images.close()
-      self.__images = None
-
-    for img in imgs:
-      if usewarpedimages :
-        thisupdateimg=img.warped_image
-      else :
-        thisupdateimg=img.raw_image
-
-      if img.rectangle_list_index!=-1 : #if the image comes with its index in the list of rectangles it can be directly updated
-        i = img.rectangle_list_index
-      else : #otherwise all the rectangles have to be searched
-        i = [i for (i, r) in enumerate(self.rectangles) if img.rawfile_key==r.file.rstrip('.im3')]
-        assert len(i)==1
-        i = i[0]
-
-      r = self.rectangles[i]
-      mean_image = None
-      if not recalculate_meanimage:
-        mean_image = r.meanimage
-      newr = AlignmentRectangleProvideImage(rectangle=r, layer=r.layer, mean_image=mean_image, use_mean_image=correct_with_meanimage, image=thisupdateimg, readingfromfile=False)
-      self.rectangles[i] = newr
-
-    if correct_with_meanimage :
-      for r in self.rectangles:
-        r.setrectanglelist(self.rectangles)
-
-    for o in self.overlaps:
-      o.updaterectangles(self.rectangles)
-
-  def getOverlapComparisonImagesDict(self) :
-    """
-    Write out a figure for each overlap showing comparisons between the original and shifted images
-    """
-    overlap_shift_comparisons = {}
-    for o in self.overlaps :
-      overlap_shift_comparisons[o.getShiftComparisonDetailTuple()]=o.getShiftComparisonImages()
-    return overlap_shift_comparisons
 
   rectangletype = AlignmentRectangleBase
   overlaptype = AlignmentOverlap
