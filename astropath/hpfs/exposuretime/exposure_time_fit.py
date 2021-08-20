@@ -8,7 +8,7 @@ from ...utilities.misc import cd, save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt
 from matplotlib import colors
-import pathlib, random, scipy, platform
+import pathlib, random, scipy#, platform
 
 #helper class to do the fit in one image layer only
 class SingleLayerExposureTimeFit :
@@ -56,7 +56,7 @@ class SingleLayerExposureTimeFit :
         self.plotdirpath = pathlib.Path(f'{top_plot_dir}/{plotdirname}')
         #make an alignsample from the raw files, smoothed and corrected with the flatfield
         et_fit_logger.info(f'Making an AlignSample for just the overlaps with different exposure times in layer {self.layer}....')
-        use_GPU = platform.system()!='Darwin'
+        #use_GPU = platform.system()!='Darwin'
         a = AlignSampleForExposureTime(self.root_dir,self.rawfile_top_dir,self.slideID,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
                                 nclip=UNIV_CONST.N_CLIP,useGPU=False,readlayerfile=False,layer=self.layer,filetype='raw',
                                 smoothsigma=smoothsigma,flatfield=self.flatfield)
