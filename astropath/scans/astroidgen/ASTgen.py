@@ -22,6 +22,26 @@ from ...shared import shared_tools as st
 
 
 #
+# Process all input files
+#
+def ast_gen(mpath, csv_file, mastro_csv, debug):
+    dname, dpath, spath, proj = update_source_csv(csv_file, debug)
+    if not dname:
+        return
+    for pos in range(0, len(dname)):
+        if not os.path.exists(spath[pos] + '/' + dname[pos]):
+            continue
+        if not os.path.exists(dpath[pos] + '/' + dname[pos]):
+            continue
+        batch_check(spath, dname, dpath)
+        uppath = create_folders(dname[pos], dpath[pos])
+        patient, batch_id, cohort = extract_data(dname[pos], spath[pos], mpath)
+        if not patient:
+            continue
+        slide_id_csv(patient, batch_id, mastro_csv, uppath, proj[pos], cohort)
+
+
+#
 # Reads source csv and takes directories
 #
 def update_source_csv(csv_file, debug):
@@ -53,6 +73,29 @@ def update_source_csv(csv_file, debug):
 
 
 #
+# Ensure the destination directory contains all Batch files
+#
+def batch_check(spath, dname, dpath):
+    des_batch = os.path.join(dpath, dname, "Batch")
+    des_list, sor_list = [], []
+    if os.path.exists(des_batch):
+        des_list = os.listdir(des_batch)
+    else:
+        pathlib.Path(des_batch).mkdir(parents=True, exist_ok=True)
+    sor_batch = os.path.join(spath, dname, "Batch")
+    if os.path.exists(sor_batch):
+        sor_list = os.listdir(sor_batch)
+    else:
+        pathlib.Path(sor_batch).mkdir(parents=True, exist_ok=True)
+    diff_batch = list(set(sor_list) - set(des_list))
+    for i in reversed(diff_batch):
+        if '~' in i:
+            diff_batch.pop(diff_batch.index(i))
+    for item in diff_batch:
+        shutil.copy(os.path.join(sor_batch, item), os.path.join(des_batch, item))
+
+
+#
 # Create record keeping folders if they do not already exist
 #
 def create_folders(dname, dpath):
@@ -62,25 +105,6 @@ def create_folders(dname, dpath):
         if not os.path.exists(dpath + '/' + dname + '/' + folders[f]):
             os.mkdir(dpath + '/' + dname + '/' + folders[f])
     return dpath + '/' + dname + '/' + folders[0]
-
-
-#
-# Process all input files
-#
-def ast_gen(mpath, csv_file, mastro_csv, debug):
-    dname, dpath, spath, proj = update_source_csv(csv_file, debug)
-    if not dname:
-        return
-    for pos in range(0, len(dname)):
-        if not os.path.exists(spath[pos] + '/' + dname[pos]):
-            continue
-        if not os.path.exists(dpath[pos] + '/' + dname[pos]):
-            continue
-        uppath = create_folders(dname[pos], dpath[pos])
-        patient, batch_id, cohort = extract_data(dname[pos], spath[pos], mpath)
-        if not patient:
-            continue
-        slide_id_csv(patient, batch_id, mastro_csv, uppath, proj[pos], cohort)
 
 
 #
