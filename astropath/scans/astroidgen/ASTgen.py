@@ -17,6 +17,7 @@ import numpy
 import time
 import traceback
 import argparse
+import shutil
 from operator import itemgetter
 from ...shared import shared_tools as st
 
@@ -33,7 +34,8 @@ def ast_gen(mpath, csv_file, mastro_csv, debug):
             continue
         if not os.path.exists(dpath[pos] + '/' + dname[pos]):
             continue
-        batch_check(spath, dname, dpath)
+        print(dname[pos])
+        batch_check(spath[pos], dname[pos], dpath[pos])
         uppath = create_folders(dname[pos], dpath[pos])
         patient, batch_id, cohort = extract_data(dname[pos], spath[pos], mpath)
         if not patient:
@@ -92,7 +94,7 @@ def batch_check(spath, dname, dpath):
         if '~' in i:
             diff_batch.pop(diff_batch.index(i))
     for item in diff_batch:
-        shutil.copy(os.path.join(sor_batch, item), os.path.join(des_batch, item))
+        shutil.copy(str(os.path.join(sor_batch, item)), str(os.path.join(des_batch, item)))
 
 
 #
@@ -149,7 +151,6 @@ def extract_data(dname, spath, mpath):
 # Generate SlideIDs for all slides starting from highest SlideID in master Astrodef.csv
 #
 def next_slide_id(mastro_csv, local_string, st_patient, st_batch_id, proj):
-    print(local_string)
     tags = ['SlideID', 'SampleName', 'Project', 'Cohort', 'BatchID', 'isGood']
     if not os.path.exists(local_string):
         with open(local_string, 'w', newline='') as f:
@@ -178,7 +179,6 @@ def next_slide_id(mastro_csv, local_string, st_patient, st_batch_id, proj):
         slide_id = 1
         new_patient = st_patient
     if len(new_patient) == 0:
-        print("nothing")
         return [], [], []
     new_batch_id = [st_batch_id[st_patient.index(new_patient[b])] for b in range(len(new_patient))]
     new_slide_id = ["AP" + proj + str(n + slide_id).zfill(4) for n in range(len(new_patient))]
@@ -217,7 +217,7 @@ def slide_id_csv(st_patient, st_batch_id, mastro_csv, uppath, proj, cohort):
             #
             # get Specimen Table indeces for new patients as long as the values have a digit
             #
-            id_index = [i for i, val in enumerate(new_patient) if val in set(st_patient) 
+            id_index = [i for i, val in enumerate(new_patient) if val in set(st_patient)
                         and any(map(str.isdigit, val))]
             new_data = list(zip(new_slide_id, list(itemgetter(*id_index)(new_patient)),
                                 proj_list, cohort_list,
@@ -315,11 +315,10 @@ def start_gen():
         if not os.path.exists(csv_file):
             print("No AstropathPaths.csv found in " + str(mpath))
             return
-        contents = os.listdir(mpath)
         #
         # Perform the SlideID generation
         #
-        for t in range(2):
+        while True:
             ast_gen(mpath, csv_file, mastro_csv, arg.d)
             minutes = 30
             print("ALL AVAILABLE IDS GENERATED. SLEEP FOR " + str(minutes) + " MINUTES...")
