@@ -375,9 +375,9 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
           else:
             dct[segstatus] = segid
     if "NA" in dct.values():
-      raise ValueError("No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
+      raise ValueError(f"No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
     if sorted(dct.keys()) != list(range(1, len(dct)+1)):
-      raise ValueError("Non-sequential SegmentationStatuses {sorted(dct.keys()}} ({self.mergeconfigcsv})")
+      raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
     return [dct[k] for k in range(1, len(dct)+1)]
 
   @property
