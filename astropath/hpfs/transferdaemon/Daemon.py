@@ -64,7 +64,7 @@ def check_ready_files(paths_data, config_data, cohort_data, arg):
             missing_key = traceback.format_exc().splitlines()[-1].split(':')[1]
             log_string = "WARNING: {0}:{1} missing in {2}." \
                          "\nMake sure 'Patient #' and 'Batch ID' are " \
-                         "correctly labeled.".format(error_msg, missing_key, specimen_path)
+                         "correctly labeled in Specimen Table.".format(error_msg, missing_key, specimen_path)
             print(log_string)
             continue
         #
@@ -401,7 +401,7 @@ def delete_destination(current_des_string, current_compress_string,
 def error_check(action, main_des_string, arg, logger, current_sor_string="", current_des_string="",
                 comp="", astro="", zip_path=""):
     slide_id = str(current_sor_string.split('/')[-2])
-    attempts = 1
+    attempts = 5
     err = 0
     warning = ""
     mins = 5
@@ -554,11 +554,8 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
         st.M_file_handler(current_sor_string, all_files, M_files)
         logger.info("Duplicate files handled")
     #
-    names = [""] * 2
-    names[1] = astro_id
+    names = [slide_id, astro_id]
     for root, dirs, files in os.walk(current_sor_string):
-        if not names[0]:
-            names[0] = str(root.split('/')[-2])
         for f in files:
             f = os.path.join(root, f)
             n_sor_bytes += os.path.getsize(f)
@@ -569,8 +566,8 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
     #
     pathlib.Path(current_des_string).mkdir(parents=True, exist_ok=True)
     #
-    for item in os.listdir(current_sor_string):
-        transfer_item(item, current_sor_string, current_des_string, names)
+    subprocess.call(["robocopy", current_sor_string, current_des_string, "/e", "/ns", "/nc", 
+                     "/nfl", "/ndl", "/np", "/njh", "/njs"])
     #
     # get files and bytes from destination directory
     #
