@@ -1,4 +1,4 @@
-import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, skimage
+import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, shutil, skimage
 
 from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
@@ -49,7 +49,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
   def zoom_wsi_fast(self, fmax=50, usememmap=False):
     """
-    Assemble the big and wsi images either in memory (usememmap=False)
+    Assemble the wsi images either in memory (usememmap=False)
     or in a memmap in a temp directory (usememmap=True)
 
     fmax (default: 50) is a scaling factor for the image.
@@ -136,24 +136,6 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
               floattoint(float(newlocalx1/onepixel), **kw):floattoint(float(newlocalx2/onepixel), **kw),
             ]
 
-      self.zoomfolder.mkdir(parents=True, exist_ok=True)
-      ntiles = np.product(self.ntiles)
-      #save the tiles
-      for tilen, (tilex, tiley) in enumerate(itertools.product(range(self.ntiles[0]), range(self.ntiles[1])), start=1):
-        xmin = tilex * self.zoomtilesize
-        xmax = (tilex+1) * self.zoomtilesize
-        ymin = tiley * self.zoomtilesize
-        ymax = (tiley+1) * self.zoomtilesize
-        slc = bigimage[ymin:ymax, xmin:xmax, :]
-        if not np.any(slc):
-          self.logger.info(f"       tile {tilen} / {ntiles} is empty")
-          continue
-        for i, layer in enumerate(self.layers):
-          filename = self.zoomfilename(layer, tilex, tiley)
-          self.logger.info(f"saving tile {tilen} / {ntiles} {filename.name}")
-          image = PIL.Image.fromarray(slc[:, :, i])
-          image.save(filename, "PNG")
-
       #save the wsi
       self.wsifolder.mkdir(parents=True, exist_ok=True)
       for i, layer in enumerate(self.layers):
@@ -171,7 +153,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     buffer = -(-self.rectangles[0].shape // onepixel).astype(int) * onepixel
     nrectangles = len(self.rectangles)
     ntiles = np.product(self.ntiles)
-    self.zoomfolder.mkdir(parents=True, exist_ok=True)
+    self.bigfolder.mkdir(parents=True, exist_ok=True)
 
     class Tile(contextlib.ExitStack):
       """
@@ -233,13 +215,13 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       for tilen, tile in enumerate(tiles, start=1):
         with tile:
           for layer in self.layers:
-            filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
+            filename = self.bigfilename(layer, tile.tilex, tile.tiley)
             with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
               assert lock
               if not filename.exists():
                 break
           else:
-            self.logger.info(f"  {self.zoomfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
+            self.logger.info(f"  {self.bigfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
             continue
 
           #tileimage is initialized to None so that we don't have
@@ -339,7 +321,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         if not np.any(slc): continue
         #save the tile images
         for layer in self.layers:
-          filename = self.zoomfilename(layer, tile.tilex, tile.tiley)
+          filename = self.bigfilename(layer, tile.tilex, tile.tiley)
           with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
             assert lock
             if filename.exists():
@@ -361,11 +343,13 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     self.wsifolder.mkdir(parents=True, exist_ok=True)
     for layer in self.layers:
       images = []
+      removefilenames = []
       blank = None
       for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
-        filename = self.zoomfilename(layer, tilex, tiley)
+        filename = self.bigfilename(layer, tilex, tiley)
         if filename.exists():
           images.append(pyvips.Image.new_from_file(os.fspath(filename)))
+          removefilenames.append(filename)
         else:
           if blank is None:
             blank = pyvips.Image.new_from_memory(np.zeros(shape=(self.zoomtilesize*self.zoomtilesize,), dtype=np.uint8), width=self.zoomtilesize, height=self.zoomtilesize, bands=1, format="uchar")
@@ -375,6 +359,11 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       self.logger.info(f"saving {filename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
       output.pngsave(os.fspath(filename))
+
+      for big in removefilenames:
+        big.unlink()
+
+    shutil.rmtree(self.bigfolder)
 
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)

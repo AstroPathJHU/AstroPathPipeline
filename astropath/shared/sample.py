@@ -721,17 +721,17 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   @property
   def zoomroot(self): return self.__zoomroot
   @property
-  def zoomfolder(self): return self.zoomroot/self.SlideID/"big"
+  def bigfolder(self): return self.zoomroot/self.SlideID/"big"
   @property
   def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
 
   zmax = 9
 
-  def zoomfilename(self, layer, tilex, tiley):
+  def bigfilename(self, layer, tilex, tiley):
     """
     Zoom filename for a given layer and tile.
     """
-    return self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+    return self.bigfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
   def wsifilename(self, layer):
     """
     Wsi filename for a given layer.

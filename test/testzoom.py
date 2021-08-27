@@ -36,11 +36,6 @@ class TestZoom(TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"/f"{SlideID}-Z9-L{i}-X{x}-Y{y}-big.png"
-      for SlideID in ("L1_1", "M206")
-      for i in self.layers(SlideID)
-      for x, y in self.xys(SlideID)
-    ] + [
       thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z9-L{i}-wsi.png"
       for SlideID in ("L1_1", "M206")
       for i in self.layers(SlideID)
@@ -64,14 +59,8 @@ class TestZoom(TestBaseSaveOutput):
     sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=self.selectrectangles(SlideID), layers=self.layers(SlideID))
 
     try:
+      assert not sample.bigfolder.exists()
       for i in self.layers(SlideID):
-        for x, y in self.xys(SlideID):
-          filename = f"{SlideID}-Z9-L{i}-X{x}-Y{y}-big.png"
-          sample.logger.info("comparing "+filename)
-          with sample.PILmaximagepixels(), \
-               PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"/filename) as img, \
-               PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"big"/filename) as targetimg:
-            np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
         filename = f"{SlideID}-Z9-L{i}-wsi.png"
         sample.logger.info("comparing "+filename)
         with sample.PILmaximagepixels(), \
