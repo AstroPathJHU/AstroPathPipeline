@@ -1,9 +1,9 @@
 #imports
 from .exposure_time_fit import SingleLayerExposureTimeFit
 from .utilities import et_fit_logger, getFirstLayerInGroup, getOverlapsWithExposureTimeDifferences
-from ...utilities.img_file_io import getRawAsHWL, getImageHWLFromXMLFile, getExposureTimesByLayer, LayerOffset
+from ...utilities.img_file_io import get_raw_as_hwl, get_image_hwl_from_xml_file, getExposureTimesByLayer, LayerOffset
 from ...utilities.tableio import writetable
-from ...utilities.misc import cd, cropAndOverwriteImage
+from ...utilities.misc import cd, save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt, multiprocessing as mp
 import pathlib, glob
@@ -22,20 +22,20 @@ class ExposureTimeOffsetFitGroup :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,slide_ID,rawfile_top_dir,root_dir,workingdir_name,layers,n_threads) :
+    def __init__(self,slide_ID,rawfile_top_dir,root_dir,workingdir_path,layers,n_threads) :
         """
         slide_ID         = name of the microscope slide to use ("M21_1" or equivalent)
         rawfile_top_dir  = path to directory containing [slideID] directory with multilayered ".Data.dat" files in it
         root_dir         = path to Clinical_Specimen directory for this slide
-        working_dir_name = path to some local directory to store files produced by the WarpFitter
+        workingdir_path  = path to some local directory to store files produced by the WarpFitter
         layers           = list of layer numbers to find offsets for
         n_threads        = max number of processes to open at once for stuff that's parallelized
         """
         self.slideID = slide_ID
-        self.rawfile_top_dir = rawfile_top_dir
-        self.root_dir = root_dir
-        self.workingdir_name = workingdir_name
-        self.img_dims = getImageHWLFromXMLFile(self.rawfile_top_dir,self.slideID)
+        self.rawfile_top_dir = pathlib.Path(rawfile_top_dir)
+        self.root_dir = pathlib.Path(root_dir)
+        self.workingdir_path = pathlib.Path(workingdir_path)
+        self.img_dims = get_image_hwl_from_xml_file(self.rawfile_top_dir,self.slideID)
         self.layers = self.__getLayers(layers)
         self.n_threads = n_threads
 
@@ -100,7 +100,7 @@ class ExposureTimeOffsetFitGroup :
                     this_layer_all_exposure_times[rfs] = all_exposure_times[rfs][li]
                 this_layer_overlaps = overlaps_to_use_by_layer_group[getFirstLayerInGroup(ln,self.img_dims[-1])]
                 fit = getExposureTimeFitWorker(ln,this_layer_all_exposure_times,med_ets_by_layer[li],
-                                               self.workingdir_name,self.slideID,self.rawfile_top_dir,self.root_dir,self.flatfield[:,:,ln-1],
+                                               self.workingdir_path,self.slideID,self.rawfile_top_dir,self.root_dir,self.flatfield[:,:,ln-1],
                                                min_frac,this_layer_overlaps,smoothsigma,cutimages)
                 et_fit_logger.info(f'Running fit for layer {ln} ({li+1} of {len(self.layers)})....')
                 fit.doFit(initial_offset,max_iter,gtol,eps,print_every)
@@ -109,19 +109,16 @@ class ExposureTimeOffsetFitGroup :
                 if fit.best_fit_offset is not None :
                     offsets.append(LayerOffset(fit.layer,len(fit.exposure_time_overlaps),fit.best_fit_offset,fit.best_fit_cost))
         #write out all the results
-        with cd(self.workingdir_name) :
+        with cd(self.workingdir_path) :
             all_results_fn = f'{self.slideID}_layers_{self.layers[0]}-{self.layers[-1]}_'
-            all_results_fn+= f'{UNIV_CONST.LAYER_ET_OFFSET_FILE_NAME_STEM}_{(pathlib.Path.resolve(pathlib.Path(self.workingdir_name))).name}.csv'
+            all_results_fn+= f'best_fit_offsets_{self.workingdir_path.name}.csv'
             writetable(all_results_fn,offsets)
         #save the plot of the offsets by layer
         plt.plot([o.layer_n for o in offsets],[o.offset for o in offsets],marker='*')
         plt.xlabel('image layer')
         plt.ylabel('best-fit offset')
-        with cd(self.workingdir_name) :
-            fn = f'{self.slideID}_best_fit_offsets_by_layer.png'
-            plt.savefig(fn)
-            plt.close()
-            cropAndOverwriteImage(fn)
+        fn = f'{self.slideID}_best_fit_offsets_by_layer.png'
+        save_figure_in_dir(plt,fn,self.workingdir_path)
         et_fit_logger.info('All fits finished.')
 
     #################### PRIVATE HELPER FUNCTIONS ####################
@@ -167,9 +164,9 @@ class ExposureTimeOffsetFitGroup :
     def __getFlatfield(self,flatfield_filepath) :
         if flatfield_filepath is None :
             et_fit_logger.warn('WARNING: No flatfield file path specified; corrections will not be applied!')
-            return np.ones(self.img_dims,dtype=UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+            return np.ones(self.img_dims,dtype=np.float64)
         else :
-            return getRawAsHWL(flatfield_filepath,*(self.img_dims),UNIV_CONST.FLATFIELD_IMAGE_DTYPE)
+            return get_raw_as_hwl(flatfield_filepath,*(self.img_dims),np.float64)
 
     #helper function to return the list of layer numbers to run from the given arguments
     def __getLayers(self,layers) :
@@ -184,12 +181,12 @@ class ExposureTimeOffsetFitGroup :
     #helper function to get the dictionary of all the image exposure times keyed by the stem of the file name and the list of median times by layer
     def __getExposureTimes(self) :
         et_fit_logger.info('Getting all image exposure times....')
-        with cd(pathlib.Path(f'{self.rawfile_top_dir}/{self.slideID}')) :
-            all_rfps = [pathlib.Path(f'{self.rawfile_top_dir}/{self.slideID}/{fn}') for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
+        with cd(self.rawfile_top_dir/self.slideID) :
+            all_rfps = [self.rawfile_top_dir/self.slideID/fn for fn in glob.glob(f'*{UNIV_CONST.RAW_EXT}')]
         #get the dictionary of exposure times keyed by raw file stem
         exp_times = {}
         for rfp in all_rfps :
-            rfs = ((pathlib.Path(rfp)).name).rstrip(UNIV_CONST.RAW_EXT)
+            rfs = (rfp.name).rstrip(UNIV_CONST.RAW_EXT)
             exp_times[rfs] = []
             all_layer_exposure_times = getExposureTimesByLayer(rfp,self.rawfile_top_dir)
             for li,ln in enumerate(self.layers) :
@@ -208,11 +205,8 @@ class ExposureTimeOffsetFitGroup :
             ax.set_xlabel('exposure time (ms)')
             ax.set_ylabel('HPF count')
             ax.legend(loc='best')
-            with cd(self.workingdir_name) :
-                fn = f'exposure_times_{self.slideID}_layer_{ln}.png'
-                plt.savefig(fn)
-                plt.close()
-                cropAndOverwriteImage(fn)
+            fn = f'exposure_times_{self.slideID}_layer_{ln}.png'
+            save_figure_in_dir(plt,fn,self.workingdir_path)
         return exp_times, med_exp_times
 
     #helper function to set up and return a list of single-layer fit objects
@@ -229,7 +223,7 @@ class ExposureTimeOffsetFitGroup :
             this_layer_overlaps = overlaps_by_layer_group[getFirstLayerInGroup(ln,self.img_dims[-1])]
             p = mp.Process(target=getExposureTimeFitWorker, 
                            args=(ln,this_layer_all_exposure_times,med_ets_by_layer[li],
-                                 self.workingdir_name,self.slideID,self.rawfile_top_dir,self.root_dir,self.flatfield[:,:,ln-1],
+                                 self.workingdir_path,self.slideID,self.rawfile_top_dir,self.root_dir,self.flatfield[:,:,ln-1],
                                  min_frac,this_layer_overlaps,smoothsigma,cutimages,return_dict)
                           )
             procs.append(p)

@@ -7,10 +7,14 @@ from ..slides.deepzoom.deepzoomcohort import DeepZoomCohort
 from ..slides.geom.geomcohort import GeomCohort
 from ..slides.geomcell.geomcellcohort import GeomCellCohort
 from ..slides.prepdb.prepdbcohort import PrepDbCohort
-from ..slides.zoom.stitchmaskcohort import StitchAstroPathTissueMaskCohort
+from ..slides.stitchmask.stitchmaskcohort import StitchAstroPathTissueMaskCohort
 from ..slides.zoom.zoomcohort import ZoomCohort
 
 class Workflow(RunFromArgumentParserBase):
+  """
+  Run the full AstroPath slide processing workflow.
+  """
+
   cohorts = PrepDbCohort, AlignCohort, ZoomCohort, DeepZoomCohort, StitchAstroPathTissueMaskCohort, AnnoWarpCohortAstroPathTissueMask, GeomCohort, GeomCellCohort, CsvScanCohort
 
   _istmpclass = False
@@ -21,6 +25,10 @@ class Workflow(RunFromArgumentParserBase):
 
     class tmpclass(cls, *cls.cohorts):
       _istmpclass = True
+      @classmethod
+      def argumentparserhelpmessage(cls):
+        return Workflow.__doc__
+
     p = tmpclass.makeargumentparser(_forworkflow=True, **kwargs)
     return p
 

@@ -1,10 +1,10 @@
-import abc, job_lock, pathlib, re
+import abc, datetime, job_lock, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
-from .sample import SampleDef
+from .samplemetadata import SampleDef
 from .workflowdependency import ThingWithRoots, WorkflowDependency
 
 class CohortBase(ThingWithRoots):
@@ -34,7 +34,7 @@ class CohortBase(ThingWithRoots):
     return Cohort
 
   def globallogger(self):
-    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
+    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
     return self.getlogger(samp, isglobal=True)
 
   @property
@@ -42,10 +42,10 @@ class CohortBase(ThingWithRoots):
   @property
   def mainlog(self): return self.logger.mainlog
 
-  def globaljoblock(self, **kwargs):
+  def globaljoblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     lockfile = self.globallogger().mainlog.with_suffix(".lock")
     lockfile.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(lockfile, **kwargs)
+    return job_lock.JobLock(lockfile, corruptfiletimeout=corruptfiletimeout, **kwargs)
 
   def getlogger(self, samp, *, isglobal=False, **kwargs):
     if isinstance(samp, WorkflowDependency):
@@ -103,6 +103,19 @@ class Cohort(CohortBase, RunFromArgumentParser):
           raise
       yield samp
 
+  @property
+  def allsamples(self) :
+    for samp in self.sampledefs:
+      try:
+        sample = self.initiatesample(samp)
+        if sample.logmodule() != self.logmodule():
+          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+        yield sample
+      except Exception:
+        #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
+        with self.getlogger(samp):
+          raise
 
   @property
   def samples(self):
@@ -111,12 +124,12 @@ class Cohort(CohortBase, RunFromArgumentParser):
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
           raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+        yield sample
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
         with self.getlogger(samp):
           raise
-      yield sample
 
   @property
   def filteredsamples(self):
@@ -204,6 +217,8 @@ class Cohort(CohortBase, RunFromArgumentParser):
       "slideidfilters": [],
       "samplefilters": [],
     }
+    if dct["dry_run"]:
+      kwargs["uselogfiles"] = False
     regex = dct.pop("sampleregex")
     if regex is not None:
       kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
@@ -450,6 +465,17 @@ class PhenotypeFolderCohort(Cohort):
   @property
   def rootnames(self): return {"phenotyperoot", *super().rootnames}
 
+class ParallelCohort(Cohort, ParallelArgumentParser):
+  def __init__(self, *args, njobs, **kwargs):
+    self.__njobs = njobs
+    super().__init__(*args, **kwargs)
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "njobs": self.__njobs,
+    }
+
 class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
   def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
     self.__annotationsynonyms = annotationsynonyms
@@ -461,6 +487,24 @@ class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
       **super().initiatesamplekwargs,
       "annotationsynonyms": self.__annotationsynonyms,
       "reorderannotations": self.__reorderannotations,
+    }
+
+class CorrectedImageCohort(Im3Cohort,ImageCorrectionArgumentParser) :
+  """
+  Class for a cohort that uses corrected im3 images as its sample rectangles
+  """
+  def __init__(self,*args,et_offset_file,flatfield_file,warping_file,**kwargs) :
+    super().__init__(*args,**kwargs)
+    self.__et_offset_file = et_offset_file
+    self.__flatfield_file = flatfield_file
+    self.__warping_file = warping_file
+  @property
+  def initiatesamplekwargs(self) :
+    return {
+      **super().initiatesamplekwargs,
+      'et_offset_file': self.__et_offset_file,
+      'flatfield_file': self.__flatfield_file,
+      'warping_file': self.__warping_file
     }
 
 class WorkflowCohort(Cohort):
@@ -476,7 +520,9 @@ class WorkflowCohort(Cohort):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--rerun-error", type=re.compile, action="append", dest="rerun_errors", help="rerun only samples with an error that matches this regex")
+    g.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
     p.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
@@ -490,23 +536,55 @@ class WorkflowCohort(Cohort):
     if parsed_args_dict["print_errors"]:
       kwargs["uselogfiles"] = False
       parsed_args_dict["skip_finished"] = parsed_args_dict["dependencies"] = False
-    if parsed_args_dict.pop("skip_finished"):
-      kwargs["slideidfilters"].append(lambda self, sample: not self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs))
-    if parsed_args_dict.pop("dependencies"):
-      kwargs["slideidfilters"].append(
-        lambda self, sample:
-          all(
-            dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
-            for dependency in self.sampleclass.workflowdependencyclasses()
-          )
+
+    dependencies = parsed_args_dict.pop("dependencies")
+    skip_finished = parsed_args_dict.pop("skip_finished")
+    rerun_errors = parsed_args_dict.pop("rerun_errors")
+
+    def filter(runstatus, dependencyrunstatuses):
+      if rerun_errors and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
+        runstatus = True
+
+      if not skip_finished and not dependencies:
+        return True
+
+      elif skip_finished and not dependencies:
+        return not runstatus
+
+      elif dependencies and not skip_finished:
+        for dependencyrunstatus in dependencyrunstatuses:
+          if not dependencyrunstatus: return False
+        return True
+
+      elif dependencies and skip_finished:
+        for dependencyrunstatus in dependencyrunstatuses:
+          if not dependencyrunstatus: return False
+          if runstatus and runstatus.started < dependencyrunstatus.ended:
+            runstatus = False #it's as if this step hasn't run
+        return not runstatus
+      else:
+        assert False
+
+    def slideidfilter(self, sample):
+      return filter(
+        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs),
+        dependencyrunstatuses=[
+          dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
+          for dependency in self.sampleclass.workflowdependencyclasses()
+        ],
       )
-      kwargs["samplefilters"].append(
-        lambda self, sample:
-          all(
-            dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
-            for dependency, SlideID in sample.workflowdependencies()
-          )
+    kwargs["slideidfilters"].append(slideidfilter)
+
+    def samplefilter(self, sample):
+      return filter(
+        runstatus=sample.runstatus,
+        dependencyrunstatuses=[
+          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
+          for dependency, SlideID in sample.workflowdependencies()
+        ],
       )
+    kwargs["samplefilters"].append(samplefilter)
+
     return kwargs
 
   @classmethod

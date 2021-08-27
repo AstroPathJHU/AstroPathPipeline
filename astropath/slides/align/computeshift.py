@@ -29,7 +29,6 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   #apply a window to the images
   if window is not None:
     images = tuple(window(image) for image in images)
-
   #calculate the cross correlation between the images
   use_gpu = gputhread is not None and gpufftdict is not None
   if use_gpu :

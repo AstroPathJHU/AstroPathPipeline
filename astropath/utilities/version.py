@@ -1,3 +1,15 @@
+"""
+Determines the version number automatically from git.
+If installing with pip, the version will come from the git tag used when building
+If installing with pip install --editable, it will determine the version
+from the most recent git tag, the current commit, and the edits to the working
+tree, if any.
+
+Setting the _ASTROPATH_VERSION_NO_GIT environment variable to 1 will disable
+running git commands.  The only reason to do this is if git is slow, which
+happens when editing the repo on cygwin and running on cmd or powershell.
+"""
+
 import datetime, os, pkg_resources, re, setuptools_scm
 from .. import __name__ as package_name
 

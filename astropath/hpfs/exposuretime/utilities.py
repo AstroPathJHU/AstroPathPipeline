@@ -1,7 +1,6 @@
 #imports
 from .alignsample import AlignSampleForExposureTime
 from ...utilities.dataclasses import MyDataClass
-from ...utilities.misc import getAlignSampleTissueEdgeRectNs
 from ...utilities.config import CONST as UNIV_CONST
 from typing import List
 import pathlib, logging
@@ -31,8 +30,7 @@ def checkArgs(args) :
         if not pathlib.Path.is_file(pathlib.Path(args.flatfield_file)) :
             raise ValueError(f'ERROR: flatfield_file ({args.flatfield_file}) does not exist!')
     #create the working directory if it doesn't already exist
-    if not pathlib.Path.is_dir(pathlib.Path(args.workingdir)) :
-        pathlib.Path.mkdir(pathlib.Path(args.workingdir))
+    pathlib.Path(args.workingdir).mkdir(exist_ok=True, parents=True)
     #make sure the layers argument makes sense
     if len(args.layers)<1 :
     	raise ValueError(f'ERROR: layers argument {args.layers} must have at least one layer number (or -1)!')
@@ -50,7 +48,7 @@ def getOverlapsWithExposureTimeDifferences(rtd,rootdir,sn,exp_times,layer,overla
     else :
         a = AlignSampleForExposureTime(rootdir,rtd,sn,nclip=UNIV_CONST.N_CLIP,readlayerfile=False,layer=layer,
                                         selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,smoothsigma=None,flatfield=None)
-    tissue_edge_rect_ns = [] if include_tissue_edges else getAlignSampleTissueEdgeRectNs(a) 
+    tissue_edge_rect_ns = set() if include_tissue_edges else set([r.n for r in a.tissue_edge_rects])
     rect_rfkey_by_n = {}
     for r in a.rectangles :
         #skip tissue edge rectangles

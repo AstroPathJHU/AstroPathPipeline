@@ -1,7 +1,7 @@
-import contextlib, job_lock, re
+import contextlib, datetime, job_lock, os, re
 from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
-from ...shared.sample import SampleDef
+from ...shared.samplemetadata import SampleDef
 from ...shared.workflowdependency import WorkflowDependency
 from .csvscansample import CsvScanBase, CsvScanSample, RunCsvScanBase
 
@@ -19,12 +19,12 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
 
   @property
   def samp(self):
-    return SampleDef(Project=self.Project, Cohort=self.Cohort, SampleID=0, SlideID=f"project{self.Project}")
+    return SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
 
-  def inputfiles(self, *, checkcsvs=True):
+  def inputfiles(self, **kwargs):
     return []  #will be checked in run()
 
-  def runcsvscan(self, *, checkcsvs=True):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
     toload = []
     batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
@@ -82,6 +82,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
         try:
           optionalcsvs.remove(csv)
         except KeyError:
+          if any(regex.match(os.fspath(csv.relative_to(self.root))) for regex in ignorecsvs): continue
           unknowncsvs.add(csv)
           continue
 
@@ -146,9 +147,9 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   @classmethod
   def getlogfile(cls, *, logroot, **workflowkwargs):
     return logroot/"logfiles"/f"{cls.logmodule()}.log"
-  def joblock(self, **kwargs):
+  def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     self.mainlog.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(self.mainlog.with_suffix(".lock"), **kwargs)
+    return job_lock.JobLock(self.mainlog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, **kwargs)
 
   @classmethod
   def usegloballogger(cls): return True

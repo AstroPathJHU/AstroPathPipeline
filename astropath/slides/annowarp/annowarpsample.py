@@ -13,7 +13,7 @@ from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import Field
 from ..align.overlap import AlignmentComparison
-from ..zoom.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
+from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
@@ -217,19 +217,19 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     """
     The tile size as a Distance
     """
-    return units.Distance(pixels=self.__tilepixels, pscale=self.imscale)
+    return units.convertpscale(self.__tilepixels*self.oneappixel, self.apscale, self.imscale)
   @property
   def bigtilesize(self):
     """
     The big tile size (1400, 2100) as a distance
     """
-    return units.distances(pixels=self.__bigtilepixels, pscale=self.imscale)
+    return units.convertpscale(self.__bigtilepixels*self.oneappixel, self.apscale, self.imscale)
   @property
   def bigtileoffset(self):
     """
     The big tile size (0, 1000) as a distance
     """
-    return units.distances(pixels=self.__bigtileoffsetpixels, pscale=self.imscale)
+    return units.convertpscale(self.__bigtileoffsetpixels*self.oneappixel, self.apscale, self.imscale)
 
   def getimages(self, *, keep=False):
     """
@@ -296,8 +296,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//zoomfactor))
     firstresult = computeshift((qptiffzoom, wsizoom), usemaxmovementcut=False)
 
-    initialdx = floattoint(np.rint(firstresult.dx.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
-    initialdy = floattoint(np.rint(firstresult.dy.n * zoomfactor / self.__tilepixels) * self.__tilepixels)
+    initialdx = floattoint(np.rint(firstresult.dx.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel))
+    initialdy = floattoint(np.rint(firstresult.dy.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel))
 
     if initialdx or initialdy:
       self.logger.warningglobal(f"found a relative shift of {firstresult.dx*zoomfactor, firstresult.dy*zoomfactor} pixels between the qptiff and wsi")
@@ -360,8 +360,10 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     self.printcuts()
     for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
       if n%100==0 or n==ntiles: self.logger.debug("aligning tile %d/%d", n, ntiles)
-      x = tilesize * (ix-1)
-      y = tilesize * (iy-1)
+      x = floattoint(float(tilesize * (ix-1) // self.oneimpixel)) * self.oneimpixel
+      xmax = floattoint(float(tilesize * ix // self.oneimpixel)) * self.oneimpixel
+      y = floattoint(float(tilesize * (iy-1) // self.oneimpixel)) * self.oneimpixel
+      ymax = floattoint(float(tilesize * iy // self.oneimpixel)) * self.oneimpixel
       if y+onepixel-qshifty <= 0: continue
 
       #find the slice of the wsi and qptiff to use
@@ -369,11 +371,11 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
       #because we already took care of that by slicing the
       #wsi and qptiff
       slc = slice(
-        floattoint(units.pixels(y, pscale=imscale)),
-        floattoint(units.pixels(y+tilesize, pscale=imscale))
+        floattoint(y / self.oneimpixel),
+        floattoint(ymax / self.oneimpixel),
       ), slice(
-        floattoint(units.pixels(x, pscale=imscale)),
-        floattoint(units.pixels(x+tilesize, pscale=imscale)),
+        floattoint(x / self.oneimpixel),
+        floattoint(xmax / self.oneimpixel),
       )
       wsitile = wsi[slc]
       #if this ends up with no pixels inside the wsi, continue
@@ -386,7 +388,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
         n=n,
         x=x+qptiffx1,
         y=y+qptiffy1,
-        imscale=imscale,
+        pscale=self.pscale,
+        apscale=self.apscale,
         tilesize=tilesize,
         bigtilesize=bigtilesize,
         bigtileoffset=bigtileoffset,
@@ -581,7 +584,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
     #initialize the stitch result object
-    stitchresult = stitchresultcls(result, A=A, b=b, c=c, imscale=self.imscale)
+    stitchresult = stitchresultcls(result, A=A, b=b, c=c, pscale=self.pscale, apscale=self.apscale)
 
     #check if there are any outliers
     #if there are, log them, remove them, and recursively rerun
@@ -653,7 +656,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     #create the stitch result object
     self.__stitchresult = stitchresultcls(
       problem=prob,
-      imscale=self.imscale,
+      pscale=self.pscale,
+      apscale=self.apscale,
       **variables,
     )
 
@@ -687,7 +691,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
   @methodtools.lru_cache()
   def __getvertices(self, **kwargs):
     """
-    read in the original vertices from vertices.csv
+    read in the original vertices from the xml file
     """
     vertices = self.getXMLpolygonannotations(**kwargs)[2]
     return [
@@ -1160,7 +1164,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     the index of the tile in [x, y]
     """
-    return floattoint((self.xvec / self.tilesize).astype(float))
+    return floattoint((self.xvec / self.tilesize).astype(float), rtol=abs(self.iqscale-1)*1.01)
 
   @property
   def unshifted(self):
@@ -1198,8 +1202,13 @@ class AnnoWarpAlignmentResults(list, units.ThingWithImscale):
     return result
   @methodtools.lru_cache()
   @property
-  def imscale(self):
-    result, = {_.imscale for _ in self}
+  def pscale(self):
+    result, = {_.pscale for _ in self}
+    return result
+  @methodtools.lru_cache()
+  @property
+  def apscale(self):
+    result, = {_.apscale for _ in self}
     return result
   @methodtools.lru_cache()
   @property

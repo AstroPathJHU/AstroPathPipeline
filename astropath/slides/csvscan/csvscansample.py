@@ -1,5 +1,6 @@
-import abc, pathlib, re
+import abc, os, pathlib, re
 
+from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import RunFromArgumentParser
 from ...shared.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
@@ -7,6 +8,7 @@ from ...shared.overlap import Overlap
 from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield
+from ...utilities.config import CONST as UNIV_CONST
 from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
@@ -29,7 +31,7 @@ class CsvScanBase(TableReader):
     self.logger.debug(f"Processing {csv}")
     #read the csv, to check that it's valid
     if checkcsv:
-      rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs, fieldsizelimit=fieldsizelimit)
+      rows = self.readtable(csv, csvclass, extrakwargs=extrakwargs, fieldsizelimit=fieldsizelimit, checknewlines=True, checkorder=True)
       nrows = len(rows)
     else:
       with open(csv) as f:
@@ -52,6 +54,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
+    p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex", default=[])
     return p
 
   @classmethod
@@ -59,6 +62,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
     kwargs = {
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "checkcsvs": parsed_args_dict.pop("checkcsvs"),
+      "ignorecsvs": parsed_args_dict.pop("ignore_csvs"),
     }
     return kwargs
 
@@ -78,7 +82,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
   def processcsv(self, *args, **kwargs):
     return super().processcsv(*args, SlideID=self.SlideID, **kwargs)
 
-  def runcsvscan(self, *, checkcsvs=True):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
     toload = []
     expectcsvs = {
       self.csv(_) for _ in (
@@ -121,10 +125,12 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
 
     meanimagecsvs = {
       self.im3folder/f"{self.SlideID}-mean.csv",
-      self.im3folder/"meanimage"/"fields_used_meanimage.csv",
-      self.im3folder/"meanimage"/"metadata_summary_stacked_images_meanimage.csv",
-      self.im3folder/"meanimage"/"thresholding_info"/f"{self.SlideID}_thresholding_plots"/f"metadata_summary_tissue_edges_{self.SlideID}.csv",
-      self.im3folder/"meanimage"/"image_masking"/"labelled_mask_regions.csv",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.FIELDS_USED_CSV_FILENAME,
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME/FF_CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,
     }
     optionalcsvs = {
       self.csv(_) for _ in (
@@ -147,6 +153,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
           optionalcsvs.remove(csv)
         except KeyError:
           if any(otherfolder/csv.relative_to(folder) in expectcsvs|optionalcsvs|goodcsvs for otherfolder in folders): continue
+          if any(regex.match(os.fspath(csv.relative_to(folder))) for regex in ignorecsvs): continue
           unknowncsvs.add(csv)
           continue
 
@@ -177,7 +184,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
         }[match.group(1)]
         allrectangles = self.readcsv("rect", Rectangle)
         extrakwargs = {
-          "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0, "imscale": 1},
+          "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0},
           "fieldoverlaps": {"nclip": 8, "rectangles": allrectangles},
           "overlap": {"nclip": 8, "rectangles": allrectangles},
           "vertices": {"bigtilesize": 0, "bigtileoffset": 0}

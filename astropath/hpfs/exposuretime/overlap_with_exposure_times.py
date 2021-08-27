@@ -3,7 +3,7 @@ import numpy as np, matplotlib.pyplot as plt
 from .utilities import ExposureTimeOverlapFitResult
 from .config import CONST
 from ...utilities.img_correction import correctImageLayerForExposureTime
-from ...utilities.misc import cropAndOverwriteImage
+from ...utilities.misc import save_figure_in_dir
 import functools
 
 #################### FILE-SCOPE HELPER FUNCTIONS ####################
@@ -132,9 +132,7 @@ class OverlapWithExposureTimes :
         ax[2].set_ylabel('avg. cost per pixel')
         ax[2].legend(loc='best')
         fn = f'{filename_stem}_offset={best_fit_offset:.3f}.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

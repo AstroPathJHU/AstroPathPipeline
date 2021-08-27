@@ -1,21 +1,40 @@
-import more_itertools, numpy as np, os, pathlib, PIL.Image, unittest
+import more_itertools, numpy as np, os, pathlib, PIL.Image, sys
 from astropath.shared.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
 from astropath.shared.overlap import Overlap
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
-from .testbase import assertAlmostEqual, temporarilyreplace
+from astropath.utilities.misc import checkwindowsnewlines
+from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-class TestPrepDb(unittest.TestCase):
-  def setUp(self):
-    self.maxDiff = None
+class TestPrepDb(TestBaseSaveOutput):
+  @property
+  def outputfilenames(self):
+    SlideIDs = "M21_1", "YZ71", "M206"
+    return [
+      thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"dbload"/filename.name
+      for SlideID in SlideIDs
+      for ext in ("csv", "jpg")
+      for filename in (thisfolder/"data"/"reference"/"prepdb"/SlideID).glob(f"*.{ext}")
+    ] + [
+      thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"logfiles"/f"{SlideID}-prepdb.log"
+      for SlideID in SlideIDs
+    ] + [
+      thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"dbload"/f"{SlideID}_qptiff.jpg"
+      for SlideID in SlideIDs
+    ] + [
+      thisfolder/"test_for_jenkins"/"prepdb"/"logfiles"/"prepdb.log",
+    ]
+
 
   def testPrepDb(self, SlideID="M21_1", units="safe", skipannotations=False):
+    dbloadroot = thisfolder/"test_for_jenkins"/"prepdb"
+
     logs = (
-      thisfolder/"data"/"logfiles"/"prepdb.log",
-      thisfolder/"data"/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
+      dbloadroot/"logfiles"/"prepdb.log",
+      dbloadroot/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
     )
     for log in logs:
       try:
@@ -23,39 +42,49 @@ class TestPrepDb(unittest.TestCase):
       except FileNotFoundError:
         pass
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rename-annotation", "Good tisue", "Good tissue"]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rename-annotation", "Good tisue", "Good tissue", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)]
     if skipannotations:
       args.append("--skip-annotations")
-    PrepDbCohort.runfromargumentparser(args)
-    sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID])
 
-    for filename, cls, extrakwargs in (
-      (f"{SlideID}_annotations.csv", Annotation, {}),
-      (f"{SlideID}_batch.csv", Batch, {}),
-      (f"{SlideID}_constants.csv", Constant, {}),
-      (f"{SlideID}_exposures.csv", ExposureTime, {}),
-      (f"{SlideID}_globals.csv", ROIGlobals, {}),
-      (f"{SlideID}_overlap.csv", Overlap, {"nclip": sample.nclip, "rectangles": sample.rectangles}),
-      (f"{SlideID}_qptiff.csv", QPTiffCsv, {}),
-      (f"{SlideID}_rect.csv", Rectangle, {}),
-      (f"{SlideID}_vertices.csv", Vertex, {}),
-      (f"{SlideID}_regions.csv", Region, {}),
-    ):
-      if filename == "M21_1_globals.csv": continue
-      if skipannotations and cls in (Annotation, Vertex, Region):
-        self.assertFalse((thisfolder/"data"/SlideID/"dbload"/filename).exists())
-        continue
-      try:
-        rows = sample.readtable(thisfolder/"data"/SlideID/"dbload"/filename, cls, checkorder=True, extrakwargs=extrakwargs)
-        targetrows = sample.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, extrakwargs=extrakwargs)
-        for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
-          assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
-      except:
-        raise ValueError("Error in "+filename)
+    try:
+      PrepDbCohort.runfromargumentparser(args)
+      sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID], dbloadroot=dbloadroot, logroot=dbloadroot)
 
-    with PIL.Image.open(thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
-         PIL.Image.open(thisfolder/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff.jpg") as targetimg:
-      np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+      for filename, cls, extrakwargs in (
+        (f"{SlideID}_annotations.csv", Annotation, {}),
+        (f"{SlideID}_batch.csv", Batch, {}),
+        (f"{SlideID}_constants.csv", Constant, {}),
+        (f"{SlideID}_exposures.csv", ExposureTime, {}),
+        (f"{SlideID}_globals.csv", ROIGlobals, {}),
+        (f"{SlideID}_overlap.csv", Overlap, {"nclip": sample.nclip, "rectangles": sample.rectangles}),
+        (f"{SlideID}_qptiff.csv", QPTiffCsv, {}),
+        (f"{SlideID}_rect.csv", Rectangle, {}),
+        (f"{SlideID}_vertices.csv", Vertex, {}),
+        (f"{SlideID}_regions.csv", Region, {}),
+      ):
+        if filename == "M21_1_globals.csv": continue
+        if skipannotations and cls in (Annotation, Vertex, Region):
+          self.assertFalse((dbloadroot/SlideID/"dbload"/filename).exists())
+          continue
+        try:
+          rows = sample.readtable(dbloadroot/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          targetrows = sample.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
+            assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+        except:
+          raise ValueError("Error in "+filename)
+
+      with PIL.Image.open(dbloadroot/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
+           PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff_{sys.platform}.jpg") as targetimg:
+        np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+
+      for log in logs:
+        checkwindowsnewlines(log)
+    except:
+      self.saveoutput()
+      raise
+    finally:
+      self.removeoutput()
 
   def testPrepDbFastUnits(self, SlideID="M21_1"):
     self.testPrepDb(SlideID, units="fast")

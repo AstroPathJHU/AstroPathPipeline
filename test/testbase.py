@@ -1,6 +1,7 @@
-import abc, contextlib, dataclassy, numbers, numpy as np, pathlib, shutil, tempfile, unittest
+import abc, contextlib, dataclassy, numbers, numpy as np, pathlib, shutil, tempfile, unittest, more_itertools
 
 from astropath.utilities import units
+from astropath.utilities.tableio import readtable
 
 def assertAlmostEqual(a, b, **kwargs):
   if isinstance(a, np.ndarray) and not a.shape: a = a[()]
@@ -20,6 +21,13 @@ def assertAlmostEqual(a, b, **kwargs):
     units.np.testing.assert_allclose(a, b, **kwargs)
   else:
     return np.testing.assert_equal(a, b)
+
+#compare two .csv files with the given paths and holding lines of the given datatype 
+def compare_two_csv_files(filedir,reffiledir,filename,dataclass,checkorder=True,checknewlines=True,rtol=1e-5) :
+  rows = readtable(filedir/filename, dataclass, checkorder=checkorder, checknewlines=checknewlines)
+  targetrows = readtable(reffiledir/filename, dataclass, checkorder=checkorder, checknewlines=checknewlines)
+  for row, target in more_itertools.zip_equal(rows, targetrows):
+    assertAlmostEqual(row, target, rtol=rtol)
 
 def expectedFailureIf(condition):
   if condition:

@@ -1,75 +1,22 @@
-import abc, contextlib, cv2, dataclassy, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile
 
+from ..hpfs.flatfield.config import CONST as FF_CONST
+from ..hpfs.warping.warp import CameraWarp
+from ..hpfs.warping.utilities import WarpingSummary
 from ..utilities import units
-from ..utilities.dataclasses import MyDataClass
 from ..utilities.misc import floattoint
+from ..utilities.img_file_io import get_raw_as_hwl, LayerOffset
 from ..utilities.tableio import readtable, writetable
+from ..utilities.config import CONST as UNIV_CONST
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
-from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
+from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
+from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
-
-class SampleDef(MyDataClass):
-  """
-  The sample definition from sampledef.csv in the cohort folder.
-  To construct it, you can give all the arguments, or you can give
-  SlideID and leave out some of the others.  If you give a root,
-  it will try to figure out the other arguments from there.
-  """
-  SampleID: int
-  SlideID: str
-  Project: int = None
-  Cohort: int = None
-  Scan: int = None
-  BatchID: int = None
-  isGood: int = True
-
-  @classmethod
-  def transforminitargs(cls, *args, root=None, samp=None, **kwargs):
-    if samp is not None:
-      if isinstance(samp, str):
-        if "SlideID" in kwargs:
-          raise TypeError("Provided both samp and SlideID")
-        else:
-          kwargs["SlideID"] = samp
-      else:
-        if args or kwargs:
-          raise TypeError("Have to give either a sample or other arguments, not both.")
-        return super().transforminitargs(*args, **kwargs, **{field: getattr(samp, field) for field in dataclassy.fields(SampleDef)})
-
-    if "SlideID" in kwargs and root is not None:
-      root = pathlib.Path(root)
-      try:
-        cohorttable = readtable(root/"sampledef.csv", SampleDef)
-      except IOError:
-        pass
-      else:
-        for row in cohorttable:
-          if row.SlideID == kwargs["SlideID"]:
-            return cls.transforminitargs(root=root, samp=row)
-
-      if "Scan" not in kwargs:
-        try:
-          kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/"im3").glob("Scan*/"))
-        except ValueError:
-          pass
-      if "BatchID" not in kwargs and kwargs.get("Scan", None) is not None:
-        try:
-          with open(root/kwargs["SlideID"]/"im3"/f"Scan{kwargs['Scan']}"/"BatchID.txt") as f:
-            kwargs["BatchID"] = int(f.read())
-        except FileNotFoundError:
-          pass
-
-    if "SampleID" not in kwargs: kwargs["SampleID"] = 0
-
-    return super().transforminitargs(*args, **kwargs)
-
-  def __bool__(self):
-    return bool(self.isGood)
 
 class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentParser):
   """
@@ -524,9 +471,9 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     "name of the log files for this class (e.g. align)"
 
   @classmethod
-  def logstartregex(cls): return rf"{cls.logmodule()} v[0-9a-f.devgd+]+$"
+  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} v[0-9a-f.devgd+]+$"
   @classmethod
-  def logendregex(cls): return rf"end {cls.logmodule()}"
+  def logendregex(cls): return rf"end {cls.logmodule()}$|FINISH: {cls.logmodule()} v[0-9a-f.devgd+]+$"
 
   @classmethod
   def makeargumentparser(cls, **kwargs):
@@ -587,9 +534,9 @@ class WorkflowSample(SampleBase, WorkflowDependencySlideID):
   def workflowdependencies(self):
     return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses()]
 
-  def joblock(self, **kwargs):
+  def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     self.samplelog.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), **kwargs)
+    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, **kwargs)
 
 class DbloadSampleBase(SampleBase, DbloadArgumentParser):
   """
@@ -727,7 +674,7 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
 
   @property
   def maskfolder(self):
-    result = self.im3folder/"meanimage"/"image_masking"
+    result = self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME
     if self.maskroot != self.im3root:
       result = self.maskroot/result.relative_to(self.im3root)
     return result
@@ -851,7 +798,7 @@ class CellPhenotypeSampleBase(SampleBase):
   def phenotypeQAQCtablesfolder(self):
     return self.phenotypefolder/"Results"/"QA_QC"/"Tables_QA_QC"
 
-class SelectLayersSample(SampleBase, SelectLayersArgumentParser):
+class SelectLayersSample(SampleBase):
   """
   Base class for any sample that needs a layer selection.
   """
@@ -916,6 +863,7 @@ class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgume
     self.__initedrectangles = False
 
   def initrectangles(self):
+    self.enter_context(self.logger)
     self.__initedrectangles = True
     self.__rectangles  = self.readallrectangles()
     self.__rectangles = [r for r in self.rectangles if self.__rectanglefilter(r)]
@@ -1365,6 +1313,224 @@ class ReadRectanglesIm3FromXML(ReadRectanglesIm3Base, ReadRectanglesFromXML):
   and loads the rectangle images from im3 files.
   """
 
+class ImageCorrectionSample(ImageCorrectionArgumentParser) :
+  """
+  Base class for any sample that will use corrections defined from input files
+  """
+
+  def __init__(self,*args,et_offset_file,flatfield_file,warping_file,**kwargs) :
+    super().__init__(*args,**kwargs)
+    self.__et_offset_file = et_offset_file
+    self.__flatfield_file = flatfield_file
+    #if the flatfield file argument was given isn't a file, search the root/Flatfield directory for a file of the same name
+    if (self.__flatfield_file is not None) and (not self.__flatfield_file.is_file()) :
+      other_filepath = self.root / UNIV_CONST.FLATFIELD_DIRNAME / self.__flatfield_file.name
+      if other_filepath.is_file() :
+        self.__flatfield_file = other_filepath
+      else :
+        raise ValueError(f'ERROR: flatfield file {self.__flatfield_file} does not exist!')
+    self.__warping_file = warping_file
+
+  @property
+  def et_offset_file(self) :
+    return self.__et_offset_file
+  @property
+  def flatfield_file(self) :
+    return self.__flatfield_file
+  @property
+  def warping_file(self) :
+    return self.__warping_file
+  @property
+  def applied_corrections_string(self) :
+    corrs = []
+    if self.__et_offset_file is not None :
+      corrs.append('exposure time differences')
+    if self.__flatfield_file is not None :
+      corrs.append('flatfielding')
+    if self.__warping_file is not None :
+      corrs.append('warping')
+    if len(corrs)==0 :
+      return 'not corrected'
+    if len(corrs)==1 :
+      return f'corrected for {corrs[0]}'
+    elif len(corrs)==2 :
+      return f'corrected for {corrs[0]} and {corrs[1]}'
+    elif len(corrs)==3 :
+      return f'corrected for {corrs[0]}, {corrs[1]}, and {corrs[2]}'
+
+class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML) :
+  """
+  Base class for any sample that reads single layers of rectangles from the XML metadata,
+  loads the rectangle images from im3 files, and corrects the rectangle images for differences in exposure time,
+  flatfielding effects, and/or warping effects
+  """
+
+  multilayer = True #The original files are multilayer, we're just going to be working with one of them
+  rectangletype = RectangleCorrectedIm3SingleLayer
+
+  def __init__(self,*args,layer=1,**kwargs) :
+    self.__layer = layer
+    kwargs['layers']=[self.__layer]
+    super().__init__(*args,**kwargs)
+    self.__med_et = None
+
+  def initrectangles(self) :
+    """
+    Init Rectangles with additional transformations for corrections that will be applied
+    """
+    self.enter_context(self.logger)
+    super().initrectangles()
+    #find the median exposure time
+    slide_exp_times = np.zeros(shape=(len(self.rectangles)))
+    for ir,r in enumerate(self.rectangles) :
+        slide_exp_times[ir] = r.allexposuretimes[self.__layer-1]
+    self.__med_et = np.median(slide_exp_times)
+    if self.et_offset_file is not None :
+      #read the exposure time offsets
+      offset = self.__get_exposure_time_offset()
+      #add the exposure time correction to every rectangle's transformations
+      for r in self.rectangles :
+        r.add_exposure_time_correction_transformation(self.__med_et,offset)
+    if self.flatfield_file is not None :
+      #read the flatfield correction factors from the file
+      flatfield = get_raw_as_hwl(self.flatfield_file,
+                                 self.rectangles[0].imageshapeinoutput[0],self.rectangles[0].imageshapeinoutput[1],self.nlayers,
+                                 np.float64)
+      self.logger.info(f'Flatfield corrections will be applied from {self.flatfield_file}')
+      for r in self.rectangles :
+        r.add_flatfield_correction_transformation(flatfield[:,:,self.__layer-1])
+    if self.warping_file is not None :
+      warp = self.__get_warping_object()
+      for r in self.rectangles :
+        r.add_warping_correction_transformation(warp)
+
+  def __get_exposure_time_offset(self) :
+    self.logger.info(f'Copying exposure time offset for {self.SlideID} layer {self.__layer} from file {self.et_offset_file}')
+    layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
+    offsets_to_return = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==self.__layer]
+    if len(offsets_to_return)!=1 :
+      raise ValueError(f'ERROR: found {len(offsets_to_return)} entries for layer {self.__layer} in file {self.et_offset_file}')
+    return offsets_to_return[0]
+
+  def __get_warping_object(self) :
+    """
+    Read a WarpingSummary .csv file and return the CameraWarp object to use for correcting image layers
+    """
+    warpsummaries = readtable(self.warping_file,WarpingSummary)
+    relevant_warps = [ws for ws in warpsummaries if self.__layer in range(ws.first_layer_n,ws.last_layer_n+1)]
+    if len(relevant_warps)!=1 :
+      raise ValueError(f'ERROR: found {len(relevant_warps)} warps for layer {self.__layer} in {self.warping_file}')
+    ws = relevant_warps[0]
+    warp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
+    self.logger.info(f'Warping corrections will be applied from {self.__warping_file}')
+    return warp
+
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument('--layer', type=int, default=1,
+                   help='The layer number (starting from one) of the images that should be used (default=1)')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+        **super().initkwargsfromargumentparser(parsed_args_dict),
+        'layer': parsed_args_dict.pop('layer'),
+    }
+
+class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML) :
+  """
+  Base class for any sample that reads multilayer rectangles from the XML metadata, 
+  loads the rectangle images from im3 files, and corrects the rectangle images for differences in exposure time, flatfielding effects, and/or warping
+  """
+
+  multilayer = True
+  rectangletype = RectangleCorrectedIm3MultiLayer
+
+  def __init__(self,*args,**kwargs) :
+    super().__init__(*args,**kwargs)
+    self.__med_ets = None
+
+  def initrectangles(self) :
+    """
+    Init Rectangles with additional transformations for corrections that will be applied
+    """
+    self.enter_context(self.logger)
+    super().initrectangles()
+    #find the median exposure times
+    slide_exp_times = np.zeros(shape=(len(self.rectangles),self.nlayers)) 
+    for ir,r in enumerate(self.rectangles) :
+        slide_exp_times[ir,:] = r.allexposuretimes
+    self.__med_ets = np.median(slide_exp_times,axis=0)
+    if self.et_offset_file is not None :
+      #read the exposure time offsets
+      offsets = self.__read_exposure_time_offsets()
+      #add the exposure time correction to every rectangle's transformations
+      for r in self.rectangles :
+        r.add_exposure_time_correction_transformation(self.__med_ets,offsets)
+    if self.flatfield_file is not None :
+      #read the flatfield correction factors from the file
+      flatfield = get_raw_as_hwl(self.flatfield_file,*(self.rectangles[0].imageshapeinoutput),np.float64)
+      self.logger.info(f'Flatfield corrections will be applied from {self.flatfield_file}')
+      for r in self.rectangles :
+        r.add_flatfield_correction_transformation(flatfield)
+    if self.warping_file is not None :
+      warps_by_layer = self.__get_warping_objects_by_layer()
+      for r in self.rectangles :
+        r.add_warping_correction_transformation(warps_by_layer)
+
+  def __read_exposure_time_offsets(self) :
+    """
+    Read in the offset factors for exposure time corrections from the file defined by command line args
+    """
+    self.logger.info(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
+    layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
+    offsets_to_return = []
+    for ln in range(1,self.nlayers+1) :
+        this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
+        if len(this_layer_offset)==1 :
+            offsets_to_return.append(this_layer_offset[0])
+        elif len(this_layer_offset)==0 :
+            warnmsg = f'WARNING: LayerOffset file {self.et_offset_file} does not have an entry for layer {ln}'
+            warnmsg+=  ', so that offset will be set to zero!'
+            self.logger.warning(warnmsg)
+            offsets_to_return.append(0)
+        else :
+            raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.et_offset_file} for layer {ln}!')
+    return offsets_to_return
+
+  def __get_warping_objects_by_layer(self) :
+    """
+    Read a WarpingSummary .csv file and return a list of CameraWarp objects to use for correcting images, one per layer
+    """
+    warpsummaries = readtable(self.warping_file,WarpingSummary)
+    warps_by_layer = []
+    for li in range(self.nlayers) :
+      warps_by_layer.append(None)
+    for ws in warpsummaries :
+      if ws.n!=self.rectangles[0].imageshapeinoutput[1] or ws.m!=self.rectangles[0].imageshapeinoutput[0] :
+        errmsg = f'ERROR: a warp with dimensions ({ws.m},{ws.n}) cannot be applied to images with '
+        errmsg+= f'dimensions ({",".join(self.rectangles[0].imageshapeinoutput[:2])})!'
+        raise ValueError(errmsg)
+      thiswarp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
+      for ln in range(ws.first_layer_n,ws.last_layer_n+1) :
+        if warps_by_layer[ln-1] is not None :
+          raise ValueError(f'ERROR: warping summary {self.warping_file} has conflicting entries for image layer {ln}!')
+        warps_by_layer[ln-1] = thiswarp
+    self.logger.info(f'Warping corrections will be applied from {self.warping_file}')
+    for li in range(self.nlayers) :
+      if warps_by_layer[li] is None :
+        warnmsg = f'WARNING: warping summary file {self.warping_file} does not contain any definitions for image layer '
+        warnmsg+= f'{li+1} and so warping corrections for this image layer WILL BE SKIPPED!'
+        self.logger.warning(warnmsg)
+    return warps_by_layer
+
+  @property
+  def med_ets(self) :
+    if self.et_offset_file is not None and self.__med_ets is None :
+      self.initrectangles()
+    return self.__med_ets
+
 class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRectanglesFromXML):
   """
   Base class for any sample that reads rectangles from the XML metadata
@@ -1382,6 +1548,16 @@ class ReadRectanglesOverlapsIm3FromXML(ReadRectanglesOverlapsIm3Base, ReadRectan
   """
   Base class for any sample that reads rectangles and overlaps from the XML metadata
   and loads the rectangle images from im3 files.
+  """
+
+class ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsFromXML, ReadCorrectedRectanglesIm3SingleLayerFromXML) :
+  """
+  Base class for any sample that reads a single layer of corrected multilayer rectangles and also reads overlaps from XML metadata 
+  """
+
+class ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML(ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsFromXML, ReadCorrectedRectanglesIm3MultiLayerFromXML) :
+  """
+  Base class for any sample that reads corrected multilayer rectangles and also reads overlaps from XML metadata 
   """
 
 class ReadRectanglesOverlapsComponentTiffFromXML(ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsFromXML, ReadRectanglesComponentTiffFromXML):
@@ -1407,3 +1583,20 @@ class TempDirSample(SampleBase, TempDirArgumentParser):
 
   def tempfile(self, *args, **kwargs):
     return self.enter_context(tempfile.NamedTemporaryFile(*args, dir=self.tempfolder, **kwargs))
+
+class ParallelSample(SampleBase, ParallelArgumentParser):
+  """
+  Base class for any sample that runs jobs in parallel
+  njobs: maximum number of jobs to use (default is no maximum)
+  """
+  def __init__(self, *args, njobs=None, **kwargs):
+    self.__njobs = njobs
+    super().__init__(*args, **kwargs)
+
+  @property
+  def njobs(self):
+    return self.__njobs
+  def pool(self):
+    nworkers = mp.cpu_count()
+    if self.njobs is not None: nworkers = min(nworkers, self.njobs)
+    return mp.get_context().Pool(nworkers)

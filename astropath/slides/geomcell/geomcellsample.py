@@ -1,11 +1,12 @@
-import cv2, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
-from ...shared.polygon import DataClassWithPolygon, Polygon, polygonfield
+from ...shared.logging import dummylogger
+from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
-from ...shared.sample import DbloadSample, GeomSampleBase, ReadRectanglesDbloadComponentTiff, WorkflowSample
+from ...shared.sample import DbloadSample, GeomSampleBase, ParallelSample, ReadRectanglesDbloadComponentTiff, WorkflowSample
 from ...utilities import units
-from ...utilities.misc import dict_product, dummylogger
+from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
 from ...utilities.units import ThingWithApscale, ThingWithPscale
 from ...utilities.units.dataclasses import distancefield
@@ -18,7 +19,7 @@ class GeomLoadField(Field, GeomLoadRectangle):
 class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, WorkflowSample):
+class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample):
   segmentationorder = ["Tumor", "Immune"]
   ignoresegmentations = []
   def celltype(self, layer):
@@ -71,50 +72,75 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   def defaultunits(cls):
     return "fast_microns"
 
-  def rungeomcell(self, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True):
+  def rungeomcell(self, *, minarea=None, **kwargs):
     self.geomfolder.mkdir(exist_ok=True, parents=True)
-    if not _debugdraw: _onlydebug = False
-    nfields = len(self.rectangles)
-    for i, field in enumerate(self.rectangles, start=1):
-      with job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), outputfiles=[field.geomloadcsv]) as lock:
-        if not lock: continue
-        if field.geomloadcsv.exists(): continue
-        if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): continue
-        self.logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
-        geomload = []
-        pxvec = units.nominal_values(field.pxvec)
-        with field.using_image() as im:
-          im = im.astype(np.uint32)
-          for imlayernumber, imlayer in more_itertools.zip_equal(self.layers, im.transpose(2, 0, 1)):
-            celltype = self.celltype(imlayernumber)
-            properties = skimage.measure.regionprops(imlayer)
-            for cellproperties in properties:
-              if not np.any(cellproperties.image):
-                assert False
-                continue
-              celllabel = cellproperties.label
-              if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-              polygon = PolygonFinder(imlayer, celllabel, ismembrane=self.ismembranelayer(imlayernumber), bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=self.pscale, apscale=self.apscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
-
-              box = np.array(cellproperties.bbox).reshape(2, 2) * self.onepixel * 1.0
-              box += pxvec
-              box = box // self.onepixel * self.onepixel
-
-              geomload.append(
-                CellGeomLoad(
-                  field=field.n,
-                  ctype=celltype,
-                  n=celllabel,
-                  box=box,
-                  poly=polygon,
-                  pscale=self.pscale,
-                  apscale=self.apscale,
-                )
-              )
-
-        writetable(field.geomloadcsv, geomload, rowclass=CellGeomLoad)
+    if minarea is None: minarea = (3 * self.onemicron)**2
+    kwargs.update({
+      "nfields": len(self.rectangles),
+      "minarea": minarea,
+      "logger": self.logger,
+      "layers": self.layers,
+      "celltypes": [self.celltype(imlayernumber) for imlayernumber in self.layers],
+      "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layers],
+      "pscale": self.pscale,
+      "apscale": self.apscale,
+      "unitsargs": units.currentargs(),
+    })
+    if self.njobs is None or self.njobs > 1:
+      with self.pool() as pool:
+        results = [
+          pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
+          for i, field in enumerate(self.rectangles, start=1)
+        ]
+        for r in results:
+          r.get()
+    else:
+      for i, field in enumerate(self.rectangles, start=1):
+        self.rungeomcellfield(i, field, **kwargs)
 
   run = rungeomcell
+
+  @staticmethod
+  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsargs):
+    with units.setup_context(*unitsargs), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
+      if not lock: return
+      if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): return
+      onepixel = units.onepixel(pscale)
+      if not _debugdraw: _onlydebug = False
+      logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
+      geomload = []
+      pxvec = units.nominal_values(field.pxvec)
+      with field.using_image() as im:
+        im = im.astype(np.uint32)
+        for imlayernumber, imlayer, celltype, ismembranelayer in more_itertools.zip_equal(layers, im.transpose(2, 0, 1), celltypes, arelayersmembrane):
+          properties = skimage.measure.regionprops(imlayer)
+          for cellproperties in properties:
+            if not np.any(cellproperties.image):
+              assert False
+              continue
+            celllabel = cellproperties.label
+            if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
+            polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=pscale, apscale=apscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+            if polygon is None: continue
+            if polygon.area < minarea: continue
+
+            box = np.array(cellproperties.bbox).reshape(2, 2)[:,::-1] * onepixel * 1.0
+            box += pxvec
+            box = box // onepixel * onepixel
+
+            geomload.append(
+              CellGeomLoad(
+                field=field.n,
+                ctype=celltype,
+                n=celllabel,
+                box=box,
+                poly=polygon,
+                pscale=pscale,
+                apscale=apscale,
+              )
+            )
+
+      writetable(field.geomloadcsv, geomload, rowclass=CellGeomLoad)
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
@@ -147,10 +173,10 @@ class CellGeomLoad(DataClassWithPolygon):
   field: int
   ctype: int
   n: int
-  x: units.Distance = distancefield(pixelsormicrons="pixels")
-  y: units.Distance = distancefield(pixelsormicrons="pixels")
-  w: units.Distance = distancefield(pixelsormicrons="pixels")
-  h: units.Distance = distancefield(pixelsormicrons="pixels")
+  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  w: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  h: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   poly: Polygon = polygonfield()
 
   @classmethod
@@ -194,14 +220,34 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       if self.isprimary and self.repair:
         if self.ismembrane:
           self.joinbrokenmembrane()
-        self.connectdisjointregions()
+        #self.connectdisjointregions()
+        self.pickbiggestregion()
+        self.cleanup()
       else:
         self.pickbiggestregion()
+        self.cleanup()
+      if not np.any(self.slicedmask):
+        if self.isprimary:
+          self.logger.warningglobal(f"Cleaned up cell is empty {self.loginfo}")
+        return None
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
-      if self.isprimary and self.ismembrane:
-        if self.istoothin(polygon):
-          self.logger.warningglobal(f"Long, thin polygon (perimeter = {polygon.perimeter / self.onepixel} pixels, area = {polygon.area / self.onepixel**2} pixels^2) - possibly a broken membrane that couldn't be fixed? {self.loginfo}")
+      try:
+        polygons = polygon.makevalid(round=True)
+      except InvalidPolygonError as e:
+        if self.isprimary:
+          estring = str(e).replace("\n", " ")
+          self.logger.warningglobal(f"{estring} {self.loginfo}")
+        return None
+      else:
+        if not polygons:
+          return None
+        if len(polygons) > 1:
+          if self.isprimary:
+            biggestarea = polygons[0].area
+            discardedarea = sum(p.area for p in polygons[1:])
+            self.logger.warningglobal(f"Multiple polygons connected by 1-dimensional lines - keeping the biggest ({biggestarea} pixels) and discarding the rest (total {discardedarea} pixels)")
+        polygon = polygons[0]
     except:
       if self._debugdrawonerror: self._debugdraw = True
       raise
@@ -211,6 +257,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
     return polygon
 
   def __findpolygons(self, cellmask):
+    if not np.any(cellmask): return []
     top, left, bottom, right = self.adjustedbbox
     shiftby = self.pxvec + np.array([left, top]) * self.onepixel
     polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, shiftby=shiftby, fill=True)
@@ -450,7 +497,20 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
       return slicedmask
     nlabeled = {label: np.sum(labeled == label) for label in labels}
     biggest = max(nlabeled.items(), key=lambda kv: kv[1])[0]
+    self.logger.warning(f"Broken cell: picking the biggest region ({nlabeled[biggest]} pixels) and discarding the others (total {sum(nlabeled.values()) - nlabeled[biggest]} pixels)")
     slicedmask[labeled != biggest] = 0
+
+  def cleanup(self):
+    slicedmask = self.slicedmask.astype(np.uint8)
+    size = np.sum(slicedmask)
+    lastsize = float("inf")
+    while lastsize != size:
+      lastsize = size
+      nneighbors = scipy.ndimage.convolve(slicedmask, [[1, 1, 1], [1, 0, 1], [1, 1, 1]], mode="constant")
+      oneneighbor = nneighbors == 1
+      slicedmask[oneneighbor] = 0
+      size = np.sum(slicedmask)
+    self.slicedmask = slicedmask.astype(bool)
 
   def debugdraw(self, polygon):
     if not self._debugdraw: return
