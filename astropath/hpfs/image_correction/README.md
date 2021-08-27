@@ -12,7 +12,7 @@ There are multiple parts of this module provided which can be run collectively a
   - [5.8.3.1. Image Correction Expected Directory Structure](docs/ImportantDefinitions.md#5831-image-correction-expected-directory-structure)
   - [5.8.3.2. Output Formatting](docs/ImportantDefinitions.md#5832-output-formatting)
 - [5.8.4. Workflow Instructions](docs/WorkflowInstructions.md#584-workflow-instructions)
-- [5.8.5. Additional Tools]((docs/AdditionalTools.md#585-additional-tools)
+- [5.8.5. Additional Tools](docs/AdditionalTools.md#585-additional-tools)
   - [5.8.5.1. Directions for Applying the Image Corrections]()
   - [5.8.5.2. Directions for Running Version *0.0.1*]()
 - [5.8.6. Overview Workflow of Image Correction Module](docs/OverviewWorkflowofIm3Tools.md#586-overview-workflow-of-im3tools)
