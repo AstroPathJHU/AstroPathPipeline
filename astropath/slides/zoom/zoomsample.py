@@ -374,7 +374,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
     shutil.rmtree(self.bigfolder)
 
-    tiffoutput.tiffsave(self.wsitifffilename, page_height=output.height)
+    tiffoutput.tiffsave(os.fspath(self.wsitifffilename), page_height=output.height)
 
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)
