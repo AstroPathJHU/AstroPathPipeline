@@ -13,8 +13,8 @@ function[] = pop_main_queue(wd, main)
     %
     str = 'Path,Specimen,Antibody,Algorithm,Processing \r\n';
     %
-    if ~exist([main,'\across_project_queues\inform-queue.csv'], 'file')
-        f = fopen([main,'\across_project_queues\inform-queue.csv'], 'w' );  
+    if ~exist([main,'\across_project_queues\vminform-queue.csv'], 'file')
+        f = fopen([main,'\across_project_queues\vminform-queue.csv'], 'w' );  
            fprintf(f,str);
         fclose(f);
     end
@@ -31,7 +31,7 @@ function[] = pop_main_queue(wd, main)
     %
     % open the main inForm queue
     %
-    fileID = fopen([main,'\across_project_queues\inform-queue.csv']);
+    fileID = fopen([main,'\across_project_queues\vminform-queue.csv']);
     queuef = textscan(fileID,'%s','HeaderLines',...
         1,'EndofLine','\r', 'whitespace','\t\n');
     fclose(fileID);
@@ -178,7 +178,7 @@ function[] = pop_main_queue(wd, main)
     try
         %
         qf = [wd,'\upkeep_and_progress\Main_inForm_queue.csv'];
-        mf = [main,'\across_project_queues\inform-queue.csv'];
+        mf = [main,'\across_project_queues\vminform-queue.csv'];
         f = fopen(mf, 'w' );
         cellfun(@(x) fprintf(f,[x,' \r\n']),queuef_main);
         fclose(f);
