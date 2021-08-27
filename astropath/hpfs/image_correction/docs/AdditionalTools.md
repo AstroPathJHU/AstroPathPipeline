@@ -1,52 +1,29 @@
 # 5.8.5. Additional Tools
-## 5.8.5.1. Im3tools
-This is the standalone processing tool for the flatfield and image warping applications on a directory of im3 slides. These commands can be used outside of the *AstroPath Pipeline* as long as the slides are still in the aforementioned [directory structure](ImportantDefinitions.md#5831-flatw-expected-directory-structure). All output described [here](ImportantDefinitions.md#5832-output-formatting) result from this tool the rest of the code included in *flatfield* simply allows bulk processing of slides.
+# Applying the Image Correction
 
-The Im3Tools are located in the [here](../flatw_matlab/Im3Tools* folder). A single slide can be launched as follows from a command prompt:
-```
-*AstroPathPipline\astropath\hpfs\flatw\flatw_matlab\Im3Tools\doOneSample <base> <FWpath> <SlideID>
-```
-- ```<base>```: *\\\\bki04\\Clinical_Specimen* (also refered to as the ```<Dpath>\<Dname>```
-- ```<FWpath>```: This is the full path for the single column flat field and warping image (.fw) as well as the exposure time data for each image (.SpectralBasisInfo.xml). 
-  - This path should preferably located on a different drive from the main path to improve pipeline performance. 
-  - E.g. “bki03\flatw_7”
-- ```<SlideID>```: *AST123456*
+The "image correction" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents as ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
 
-## 5.8.5.2. ConvertIm3
-The ConvertIM3 application reads and writes AKOYA IM3 ("image cube") files.
+`imagecorrectionsample <Dpath>\<Dname> <Rpath> <SlideID> --flatfield_file [path_to_flatfield_bin_file] --warping_file [path_to_warping_summary_csv_file] --njobs [njobs]`
 
-ConvertIM3 uses a simple set of C# classes to represent the contents of an IM3 file. Unfortunately, the IM3 format is undocumented. There are no software tools available that manage IM3 files directly.  It is more practical to transform IM3 into a well-known format that can be handled by generally-available software.  Since the IM3 format is essentially a hierarchy of self-described groups of data, a straightforward way to work with IM3 is to convert it to and from XML.
+where:
+- `[path_to_flatfield_bin_file]` is the path to the ".bin" file specifying the flatfield corrections to apply, or the name of a file located in the `<Dpath>\<Dname>\Flatfield` directory
+- `[path_to_warping_summary_csv_file]` is the path to a .csv file detailing the warping model parameters as a [`WarpingSummary` object](../warping/utilities.py#L43-L60). This file can have several `WarpingSummary` entries specifying different warping patterns to apply in differen raw image layers.
+- `[njobs]` is the maximum number of parallel processes allowed to run at once (many parallel processes can be used; each process corrects and writes out one file at a time)
 
-ConvertIM3 can carry out the following operations:
-- convert IM3 to XML
-- convert XML to IM3
-- extract one IM3 data field (that is, one XML element) from IM3-formatted data
-- replace the contents of one IM3 data field (that is, one XML element) in IM3-formatted data
+See [here](../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
 
-Command-line syntax:
+Running the above command will produce:
+1. **corrected ".fw" files** in `<Dpath>\flatw\<SlideID>`
+1. **a main log file** called "`imagecorrection.log`" in `<Dpath>\<Dname>\logfiles` with just a single line showing that `imagecorrectionsample` was run 
+1. **a more detailed sample log file** called "`<SlideID>-imagecorrection.log`" in `<Dpath>\<Dname>\<SlideID>\logfiles`
 
- ```
- ConvertIM3 <input_file_specification> IM3|XML|DAT
-            [/o <output_directory_path>]
-            [/t <max_XML_data_length>] 
-            [/x <XPath_expression>]
-            [/i <injected_data_file_specification>]
-``` 
+Other options for how the correction should be done include:
+1. Putting the output in a different location: add the `--workingdir [workingdir_path]` argument where `[workingdir_path]` is the path to the directory where the output should go
+1. Writing out corrected files for single image layers as well as multilayer images: add the `--layers [layers]` argument where `[layers]` is any number of arguments specifying which layer numbers to use (starting from 1). In the single image layer case, the corresponding output files are named ".fwxx" where "xx" is the two-digit layer number (i.e. ".fw01"). The special number -1 can also be given as an argument in `[layers]`, in which case the multilayer files will be written out in addition to any single layer files requested. Using this argument one could, for example, simultaneously write out the corrected multilayer .fw files and the corrected single layer .fw01 files.
+1. Skipping the flatfield and/or warping corrections: run without specifying the `--flatfield_file` and/or `--warping_file` arguments
 
-Extended directions can be found [here](../flatw_matlab/Im3Tools/ConvertIM3Usage.txt).
+The image correction routine can be run for an entire cohort of samples at once using the following command:
 
-## 5.8.5.3. ConvertIm3Path & ConvertIm3Cohort
-ConvertIm3Path & ConvertIm3Cohort are soft wrappers written in powershell for the executable to run *ConvertIm3* on the ```<SlideID>``` level for specific output desired by the *AstroPathPipeline*, with optional inputs and exports. Both codes are dependent on the images being in the aforementioned [directory structure](ImportantDefinitions.md#5831-flatw-expected-directory-structure). ConvertIm3Cohort.ps1 is actually just a wrapper for ConvertIm3Path.ps1 which runs through all specimens in a directory, the cohort location is hard coded at present and should be modified in the code. 
- 
-Usage: 
-- To "shred" a directory of im3s use:
-  - ```ConvertIm3Path -<base> -<FWpath> -<SlideID> -s [-a -d -xml]```
-  - Optional arguements:
-	  - ```-d```: only extract the binary bitmap for each image into the output directory
-	  - ```-xml```: extract the xml information only for each image, xml information includes:
-		  - one <sample>.Parameters.xml: sample location, shape, and scale
-		  - one <sample>.Full.xml: the full xml of an im3 without the bitmap
-		  - a .SpectralBasisInfo.Exposure.xml for each image containing the exposure times of the image
-- To "inject" a directory of .dat binary blobs for each image back into the directory of im3s use:
-  - ```ConvertIm3Path -<base> -<FWpath> -<SlideID> -i```
-  - Exports the new '.im3s' into the ```<flatw_im3_path>``` directory
+`imagecorrectioncohort <Dpath>\<Dname> <Rpath>`
+
+To see more command line arguments available for both routines, run `imagecorrectionsample --help` or `imagecorrectioncohort --help`.
