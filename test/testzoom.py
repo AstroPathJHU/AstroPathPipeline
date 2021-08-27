@@ -1,4 +1,4 @@
-import gzip, numpy as np, pathlib, PIL.Image
+import gzip, more_itertools, numpy as np, pathlib, PIL.Image, tifffile
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
 from .testbase import TestBaseSaveOutput
@@ -60,13 +60,21 @@ class TestZoom(TestBaseSaveOutput):
 
     try:
       assert not sample.bigfolder.exists()
-      for i in self.layers(SlideID):
-        filename = f"{SlideID}-Z9-L{i}-wsi.png"
-        sample.logger.info("comparing "+filename)
-        with sample.PILmaximagepixels(), \
-             PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/filename) as img, \
-             PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
-          np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+      tifffilename = f"{SlideID}-Z9-wsi.tiff"
+      with tifffile.TiffFile(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/tifffilename) as tiff:
+        for tiffpage, layer in more_itertools.zip_equal(tiff.pages, self.layers(SlideID)):
+          filename = f"{SlideID}-Z9-L{layer}-wsi.png"
+          sample.logger.info("comparing "+filename)
+          with sample.PILmaximagepixels(), \
+               PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/filename) as img, \
+               PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
+            imgarray = np.asarray(img)
+            targetarray = np.asarray(targetimg)
+            np.testing.assert_array_equal(imgarray, targetarray)
+
+          sample.logger.info("comparing tiff")
+          np.testing.assert_array_equal(tiffpage.asarray(), targetarray)
+
     except:
       self.saveoutput()
       raise

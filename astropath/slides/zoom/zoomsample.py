@@ -1,4 +1,4 @@
-import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, shutil, skimage
+import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, shutil, skimage, tifffile
 
 from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
@@ -143,6 +143,10 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         self.logger.info(f"saving {filename.name}")
         image = PIL.Image.fromarray(bigimage[:, :, i])
         image.save(filename, "PNG")
+
+      with tifffile.TiffWriter(self.wsitifffilename) as f:
+        for layer in bigimage.transpose(2, 0, 1):
+          f.write(layer)
 
   def zoom_memory(self, fmax=50):
     """
@@ -341,6 +345,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       raise ImportError("Please pip install pyvips to use this functionality")
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
+    tiffoutput = None
     for layer in self.layers:
       images = []
       removefilenames = []
@@ -359,11 +364,17 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       self.logger.info(f"saving {filename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
       output.pngsave(os.fspath(filename))
+      if tiffoutput is None:
+        tiffoutput = output
+      else:
+        tiffoutput = tiffoutput.join(output, "vertical")
 
       for big in removefilenames:
         big.unlink()
 
     shutil.rmtree(self.bigfolder)
+
+    tiffoutput.tiffsave(self.wsitifffilename, page_height=output.height)
 
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)

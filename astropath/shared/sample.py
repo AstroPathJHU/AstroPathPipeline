@@ -737,6 +737,9 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
     Wsi filename for a given layer.
     """
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+  @property
+  def wsitifffilename(self):
+    return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-wsi.tiff"
 
 class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """
