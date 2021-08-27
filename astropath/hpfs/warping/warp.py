@@ -1,12 +1,12 @@
 #imports
-from .utilities import WarpingError
-from .config import CONST
-from ...utilities.img_file_io import getRawAsHWL, getRawAsHW, writeImageToFile
-from ...utilities.img_correction import correctImageLayerWithWarpFields
-from ...utilities.misc import cropAndOverwriteImage
-from ...utilities.config import CONST as UNIV_CONST
-import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 import pathlib, math, cv2, functools, methodtools
+import numpy as np, seaborn as sns
+import matplotlib.pyplot as plt
+from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.misc import save_figure_in_dir
+from ...utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, write_image_to_file
+from ...utilities.img_correction import correctImageLayerWithWarpFields
+from .config import CONST
 
 #################### SOME CACHED FILE-SCOPE HELPER FUNCTIONS ####################
 
@@ -77,19 +77,19 @@ class Warp :
         """
         Function to return a '.Data.dat' binary file as an array of dimensions (height,width,nlayers) or (m,n,nlayers)
         """
-        return getRawAsHWL(fname,self.m,self.n,nlayers)
+        return get_raw_as_hwl(fname,self.m,self.n,nlayers)
 
     def getSingleLayerImage(self,fname) :
         """
         Function to read a file that contains one layer of an image into an array with the Warp's dimensions 
         """
-        return getRawAsHW(fname,self.m,self.n)
+        return get_raw_as_hw(fname,self.m,self.n)
 
     def writeSingleLayerImage(self,im,outfname) :
         """
         Function to write out an image as a properly transformed and flattened vector of uints 
         """
-        writeImageToFile(im,outfname)
+        write_image_to_file(im,outfname)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
@@ -186,8 +186,8 @@ class PolyFieldWarp(Warp) :
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
         file_stem = the unique identifier to add to the .bin filenames
         """
-        writeImageToFile(self.x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
-        writeImageToFile(self.y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        write_image_to_file(self.x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        write_image_to_file(self.y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(self.r_warps)
         ax[0].scatter(self.xc,self.yc,marker='*',color='yellow')
@@ -202,9 +202,7 @@ class PolyFieldWarp(Warp) :
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
         fn = f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
 
     def showCheckerboard(self) :
         """
@@ -360,7 +358,7 @@ class CameraWarp(Warp) :
         elif pname=='k6' :
             return self.k6
         else :
-            raise WarpingError(f'ERROR: parameter name {pname} not recognized!')
+            raise ValueError(f'ERROR: parameter name {pname} not recognized!')
 
     def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """
@@ -538,8 +536,8 @@ class CameraWarp(Warp) :
         """
         r_warps, x_warps, y_warps = self.getWarpFields()
         if save_fields :
-            writeImageToFile(x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
-            writeImageToFile(y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+            write_image_to_file(x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+            write_image_to_file(y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(r_warps)
         ax[0].scatter(self.cx,self.cy,marker='*',color='yellow')
@@ -554,9 +552,7 @@ class CameraWarp(Warp) :
         ax[2].set_title('dy warp')
         f.colorbar(pos,ax=ax[2])
         fn = f'{CONST.WARP_FIELD_FIGURE_NAME}_{file_stem}.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
 
     def showCheckerboard(self) :
         """
@@ -596,9 +592,7 @@ class CameraWarp(Warp) :
         ax3.scatter(self.cx,self.cy,marker='*',color='yellow')
         thm.set_title('tangential warp components',fontsize=14)
         fn = 'warp_amounts.png'
-        plt.savefig(fn)
-        plt.close()
-        cropAndOverwriteImage(fn)
+        save_figure_in_dir(plt,fn)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

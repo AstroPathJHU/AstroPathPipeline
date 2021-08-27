@@ -1,5 +1,7 @@
 import abc, argparse, pathlib, re
 from ..utilities.tableio import TableReader
+from ..utilities.config import CONST as UNIV_CONST
+from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
 from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .workflowdependency import ThingWithRoots
 
@@ -184,6 +186,99 @@ class Im3ArgumentParser(RunFromArgumentParser):
       "root2": parsed_args_dict.pop("root2"),
     }
 
+class WorkingDirArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument('--workingdir', type=pathlib.Path,help='Path to the working directory where output should be stored')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    wd = parsed_args_dict.pop('workingdir')
+    if wd is None :
+      return super().initkwargsfromargumentparser(parsed_args_dict)
+    else :
+      return {
+        **super().initkwargsfromargumentparser(parsed_args_dict),
+        'workingdir': wd,
+      }
+
+class FileTypeArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument('--filetype',choices=['raw','flatWarp'],default='raw',
+                   help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatWarp" files (extension {UNIV_CONST.FLATW_EXT})')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'filetype': parsed_args_dict.pop('filetype'), 
+    }
+
+class GPUArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument('--noGPU', action='store_true',
+                   help='Add this flag to disable any major GPU computations')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'useGPU': (not parsed_args_dict.pop('noGPU')), 
+    }
+
+class ImageCorrectionArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument('--exposure_time_offset_file', type=pathlib.Path,
+                    help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
+                    [default=None skips corrections for differences in image exposure time]''')
+    p.add_argument('--flatfield_file', type=pathlib.Path,
+                    help='''Path to the flatfield .bin file, or name of the file in root/Flatfield, containing the correction factors to apply 
+                    [default=None skips flatfield corrections]''')
+    p.add_argument('--warping_file', type=pathlib.Path,
+                    help='Path to the warping summary .csv file defining the parameters of the warping pattern to apply [default=None skips warping corrections]')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'et_offset_file': parsed_args_dict.pop('exposure_time_offset_file'),
+      'flatfield_file': parsed_args_dict.pop('flatfield_file'),
+      'warping_file': parsed_args_dict.pop('warping_file')
+    }
+
+class WarpFitArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls) :
+    p = super().makeargumentparser()
+    p.add_argument('--fixed', default=['fx','fy','p1','p2'], nargs='*',
+                   help='Names of parameters to keep fixed during fitting (default = fx, fy, p1, p2)')
+    p.add_argument('--init_pars', type=dict_of_init_par_values_callback, nargs='*',
+                   help='Initial values for fit parameters ("parameter=value" pairs)')
+    p.add_argument('--bounds', type=dict_of_par_bounds_callback, nargs='*',
+                   help='Initial bounds for fit parameters ("parameter=(low_bound:high_bound)" pairs)')
+    p.add_argument('--max_rad_warp', type=float, default=8.,
+                   help='Maximum amount of radial warp to use for constraint')
+    p.add_argument('--max_tan_warp', type=float, default=4.,
+                   help='Maximum amount of tangential warp to use for constraint')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict) :
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'fixed': parsed_args_dict.pop('fixed'),
+      'init_pars': parsed_args_dict.pop('init_pars'),
+      'bounds': parsed_args_dict.pop('bounds'),
+      'max_rad_warp': parsed_args_dict.pop('max_rad_warp'),
+      'max_tan_warp': parsed_args_dict.pop('max_tan_warp'),
+    }
+
 class DbloadArgumentParser(RunFromArgumentParser):
   @classmethod
   def makeargumentparser(cls, **kwargs):
@@ -313,4 +408,18 @@ class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "annotationsynonyms": parsed_args_dict.pop("annotationsynonyms"),
       "reorderannotations": parsed_args_dict.pop("reorderannotations"),
+    }
+
+class ParallelArgumentParser(RunFromArgumentParser):
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--njobs", type=int, help="maximum number of parallel jobs to run")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "njobs": parsed_args_dict.pop("njobs"),
     }

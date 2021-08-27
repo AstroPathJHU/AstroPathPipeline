@@ -1,9 +1,10 @@
 import abc, collections, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
+from ...shared.logging import dummylogger
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.rectangle import Rectangle, rectangledict, RectangleList
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation, MyDataClass
-from ...utilities.misc import dummylogger, floattoint, weightedstd
+from ...utilities.misc import covariance_matrix, floattoint, weightedstd
 from ...utilities.tableio import writetable
 from .field import Field, FieldOverlap
 
@@ -397,8 +398,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           primaryregions[gc].append(m*len(average)+b_right)
         else:
           #can't fit a line because there are only at most 2 rows/columns, so do an approximation
-          allcs = sorted({r.cxvec[i] for r in self.rectangles})
-          mindiff = min(np.diff(allcs))
+          allcs = {gc: sorted({self.rectangles[self.rectangledict[n]].cxvec[i] for n in island}) for gc, island in enumerate(islands, start=1)}
+          mindiff = min(itertools.chain(*(np.diff(islandcs) for islandcs in allcs.values())))
           divideby = 1
           while mindiff / divideby > shape[i]:
             divideby += 1
@@ -769,7 +770,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
     units.np.testing.assert_allclose(units.nominal_values(x1), units.nominal_values(newx1))
     units.np.testing.assert_allclose(units.covariance_matrix(x1), units.covariance_matrix(newx1))
     units.np.testing.assert_allclose(units.nominal_values(x2), units.nominal_values(newx2))
-    units.np.testing.assert_allclose(unc.covariance_matrix(x2), units.covariance_matrix(newx2))
+    units.np.testing.assert_allclose(units.covariance_matrix(x2), units.covariance_matrix(newx2))
 
     return newx1 - newx2 - (overlap.x1vec - overlap.x2vec)
 
@@ -896,5 +897,5 @@ class AffineCovarianceEntry(AffineEntry):
     if entry1 is entry2:
       value = entry1.matrixentry.s**2
     else:
-      value = unc.covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0][1]
+      value = covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0,1]
     return super().transforminitargs(value=value, description = "cov_"+entry1.description+"_"+entry2.description, entry1=entry1, entry2=entry2, **kwargs)

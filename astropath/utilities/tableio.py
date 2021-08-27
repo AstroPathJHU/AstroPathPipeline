@@ -1,9 +1,10 @@
-import abc, contextlib, csv, dataclasses, dataclassy, datetime, pathlib
+import abc, csv, dataclasses, dataclassy, datetime
 
+from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
-from .misc import dummylogger
+from .misc import checkwindowsnewlines, field_size_limit_context, guesspathtype, mountedpathtopath, pathtomountedpath
 
-def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, maxrows=float("inf"), header=True, **columntypes):
+def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """
   Read a csv table into a list of named tuples
 
@@ -11,29 +12,54 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
   rowclass:       class that will represent each row, to be called
                   with **kwargs with the keywords based on the column
                   headers.
-  extrakwargs:    will be passed to the the class that creates each row
+  extrakwargs:    will be passed to the the class that creates each row (default: {})
+  fieldsizelimit: maximum length of a field in the csv (default: keep the default from python)
+  filter:         only include rows that match this filter.
+                  should be a function that takes the row dict
+                  (default: use all rows)
+  maxrows:        only use this many rows of the csv file (default: use all rows)
   columntypes:    type (or function) to be called on each element in
                   that column.  Default is it's just left as a string.
+  header:         does the csv file have a header (default: True)
+  checkorder:     check that the order of columns is as expected from the dataclass
+                  and raise an error if it's not (default: False)
+  checknewlines:  check that the newlines in the csv file are windows format
+                  and raise an error if they're not (default: False)
 
   Example:
-    table.csv contains
-      ID,x,y
-      A,1,3
-      B,2,4.5
+    >>> import pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   with open(filename, "w") as f:
+    ...     f.write('''
+    ...       ID,x,y
+    ...       A,1,3
+    ...       B,2,4.5
+    ...     '''.replace(" ", "").strip()) and None #avoid printing return value of f.write
+    ...   class Point(MyDataClass):
+    ...     ID: str
+    ...     x: float
+    ...     y: float
+    ...   table = readtable(filename, Point)
+    ...   print(table)
+    [Point(ID='A', x=1.0, y=3.0), Point(ID='B', x=2.0, y=4.5)]
 
-    If you call
-      table = readtable("table.csv", "Point", x=float, y=float)
-    you will get
-      [
-        Point(ID="A", x=1.0, y=3.0),
-        Point(ID="B", x=2.0, y=4.5),
-      ]
-    where Point is a class created specially for this table.
+  You can access the column values through table[0].ID (= "A")
 
-    You can access the column values through table[0].ID (= "A")
+  The row class inherits from MyDataClass and therefore can have
+  fields with metadata.  readtable uses the following metadata:
+    readfunction:   called on the string read from the file to give the
+                    actual value of the field.  Default is the type
+                    of the annotation, which works for simple cases like
+                    int and float
+    includeintable: if this is False, the field is not read from the file.
+                    (it has to have a default value or the dataclass __init__
+                    will fail)
   """
 
   result = []
+  if checknewlines:
+    checkwindowsnewlines(filename)
   with field_size_limit_context(fieldsizelimit), open(filename) as f:
     if header:
       fieldnames = None
@@ -41,7 +67,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
       fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
     reader = csv.DictReader(f, fieldnames=fieldnames)
     Row = rowclass
-    if not issubclass(Row, MyDataClass):
+    if not issubclass(Row, (MyDataClass)):
       raise TypeError(f"{Row} should inherit from {MyDataClass}")
     if checkorder:
       columnnames = list(reader.fieldnames)
@@ -64,6 +90,8 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
     if "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
+    if "extrakwargs" not in extrakwargs:
+      extrakwargs["extrakwargs"] = extrakwargs
 
     for i, row in enumerate(reader):
       if i >= maxrows: break
@@ -80,6 +108,41 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   """
   Write a csv table into filename based on the rows.
   The rows should all be the same dataclass type.
+
+  filename:   file to write to
+  rows:       list of dataclass objects, one for each row
+  rowclass:   class of the rows (optional unless the rows are not
+              all the same type, but are subclasses of the same class.
+              in that case you can provide the common base as rowclass)
+  retry:      interactively ask to try again if there's a permission error
+              (usually on windows if you have the file open in excel)
+  printevery: print after writing multiples of this many rows
+  logger:     logger object for printevery
+  header:     write the header row (default: True)
+
+  Example:
+    >>> import pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   class Point(MyDataClass):
+    ...     ID: str
+    ...     x: float
+    ...     y: float
+    ...   input = [Point("A", 1, 3), Point("B", 2, 4.5)]
+    ...   writetable(filename, input)
+    ...   output = readtable(filename, Point)
+    ...   input == output
+    True
+
+  The row class inherits from MyDataClass and therefore can have
+  fields with metadata.  readtable uses the following metadata:
+    writefunction:       called on the object in the dataclass field
+                         to return a string that gets written to the file
+                         (default: str)
+    writefunctionkwargs: a function that takes in the dataclass object
+                         and returns extra kwargs to be passed to writefunction
+                         (default: lambda obj: {})
+    includeintable:      if this is False, the field is not written in the table
   """
   size = len(rows)
   if printevery > size:
@@ -108,8 +171,8 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
 
   try:
-    with open(filename, "w") as f:
-      writer = csv.DictWriter(f, fieldnames, lineterminator='\n')
+    with open(filename, "w", newline='') as f:
+      writer = csv.DictWriter(f, fieldnames, lineterminator='\r\n')
       if header: writer.writeheader()
       for i, row in enumerate(rows, start=1):
         if printevery is not None and not i % printevery:
@@ -156,50 +219,51 @@ def asrow(obj, *, dict_factory=dict):
 
   return dict_factory(result)
 
-@contextlib.contextmanager
-def field_size_limit_context(limit):
-  if limit is None: yield; return
-  oldlimit = csv.field_size_limit()
-  try:
-    csv.field_size_limit(limit)
-    yield
-  finally:
-    csv.field_size_limit(oldlimit)
-
 def pathfield(*args, **metadata):
-  def guesspathtype(path):
-    if isinstance(path, pathlib.PurePath):
-      return path
-    if pathlib.Path(path).exists(): return pathlib.Path(path)
-    if "/" in path and "\\" not in path:
-      try:
-        return pathlib.PosixPath(path)
-      except NotImplementedError:
-        return pathlib.PurePosixPath(path)
-    elif "\\" in path and "/" not in path:
-      try:
-        return pathlib.WindowsPath(path)
-      except NotImplementedError:
-        return pathlib.PureWindowsPath(path)
-    else:
-      assert False, path
-
+  """
+  returns a MetaDataAnnotation for writing a path.
+  if the path location is on a mount, it tries to find the actual
+  path location through the mount.
+  """
   metadata = {
-    "readfunction": guesspathtype,
+    "readfunction": lambda x: mountedpathtopath(guesspathtype(x)),
+    "writefunction": pathtomountedpath,
     **metadata,
   }
 
   return MetaDataAnnotation(*args, **metadata)
 
-def datefield(dateformat, *, optional=False, **metadata):
+def datefield(dateformat, *defaultvalue, optional=False, **metadata):
+  """
+  returns a MetaDataAnnotation for writing a date
+
+    >>> import pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   with open(filename, "w") as f:
+    ...     f.write('''
+    ...       x,date
+    ...       1,1/1/2021 1:00:00
+    ...       2,1/2/2021 2:00:00
+    ...     '''.replace("      ", "").strip()) and None #avoid printing return value of f.write
+    ...   class DateDataClass(MyDataClass):
+    ...     x: int
+    ...     date: datetime.datetime = datefield("%d/%m/%Y %H:%M:%S")
+    ...   table = readtable(filename, DateDataClass)
+    ...   print(table)
+    [DateDataClass(x=1, date=datetime.datetime(2021, 1, 1, 1, 0)), DateDataClass(x=2, date=datetime.datetime(2021, 2, 1, 2, 0))]
+  """
   metadata = {
     "readfunction": lambda x: datetime.datetime.strptime(x, dateformat),
     "writefunction": lambda x: x.strftime(format=dateformat),
     **metadata,
   }
-  return (optionalfield if optional else MetaDataAnnotation)(**metadata)
+  return (optionalfield if optional else MetaDataAnnotation)(*defaultvalue, **metadata)
 
 def timestampfield(*, optional=False, **metadata):
+  """
+  returns a MetaDataAnnotation for writing a as a unix timestamp
+  """
   metadata = {
     "readfunction": lambda x: None if optional and not x else datetime.datetime.fromtimestamp(int(x)),
     "writefunction": lambda x: "" if optional and x is None else int(datetime.datetime.timestamp(x)),
@@ -208,6 +272,26 @@ def timestampfield(*, optional=False, **metadata):
   return (optionalfield if optional else MetaDataAnnotation)(**metadata)
 
 def optionalfield(readfunction, *, writefunction=str, **metadata):
+  """
+  returns a MetaDataAnnotation for a field that is optional
+  (None <--> blank in the csv)
+
+    >>> import pathlib, tempfile
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   with open(filename, "w") as f:
+    ...     f.write('''
+    ...       x,y
+    ...       1,2
+    ...       2,
+    ...     '''.replace("      ", "").strip()) and None #avoid printing return value of f.write
+    ...   class OptionalYDataClass(MyDataClass):
+    ...     x: int
+    ...     y: int = optionalfield(int)
+    ...   table = readtable(filename, OptionalYDataClass)
+    ...   print(table)
+    [OptionalYDataClass(x=1, y=2), OptionalYDataClass(x=2, y=None)]
+  """
   metadata = {
     "readfunction": lambda x: None if not x else readfunction(x),
     "writefunction": lambda x: "" if x is None else writefunction(x),

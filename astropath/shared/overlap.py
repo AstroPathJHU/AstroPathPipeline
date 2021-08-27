@@ -128,6 +128,15 @@ class OverlapCollection(abc.ABC):
     """
     return list(nx.strongly_connected_components(self.overlapgraph(*args, **kwargs)))
 
+  def overlapsforrectangle(self,rectangle_n,*args,**kwargs):
+    """
+    Return the overlaps for a given rectangle as graph edges
+
+    rectangle_n: the identifier of the rectangle whose overlaps should be returned
+    other arguments can be anything passed to overlapgraph or DiGraph.edges()
+    """
+    return list(self.overlapgraph(*args,**kwargs).edges(rectangle_n))
+
   def overlapsdictkey(self, overlap):
     """
     Key to be used for computing overlaps dict (can be overridden in subclasses)
@@ -181,6 +190,13 @@ class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
     for r in self.rectangles:
       g.add_node(r.n, rectangle=r)
     return g
+
+  @property
+  def tissue_edge_rects(self) :
+    return [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))<8]
+  @property
+  def tissue_bulk_rects(self) :
+    return [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))==8]
 
 class RectangleOverlapList(RectangleOverlapCollection):
   """

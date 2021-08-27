@@ -1,6 +1,3 @@
-#imports 
-import numpy as np
-
 #class for shared constant variables
 class Const :
     #file extensions
@@ -13,6 +10,28 @@ class Const :
     @property
     def IM3_EXT(self) :
         return '.im3' # extension of .im3 image files
+    @property
+    def QPTIFF_SUFFIX(self) :
+        return '_qptiff.jpg' # suffix for the qptiff files
+    @property
+    def EXPOSURE_XML_EXTS(self) :
+        return ['.SpectralBasisInfo.Exposure.xml','.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml'] #extensions for exposure time xml files
+    #subdirectory names
+    @property
+    def IM3_DIR_NAME(self) :
+        return 'im3' #name of the im3 subdirectory
+    @property
+    def DBLOAD_DIR_NAME(self) :
+        return 'dbload' #name of the dbload directory
+    @property
+    def MEANIMAGE_DIRNAME(self) :
+        return 'meanimage' #name of the output directory for slidemeanimage results
+    @property
+    def FLATFIELD_DIRNAME(self) :
+        return 'Flatfield' #name of the directory holding flatfield model results for an entire cohort (directory with this name gets created in root)
+    @property
+    def WARPING_DIRNAME(self) :
+        return 'Warping' #name of the directory holding warping model results for an entire cohort (directory with this name gets created in root)
     #image information
     @property
     def N_CLIP(self) :
@@ -48,15 +67,6 @@ class Const :
     def COMP_TIFF_AF_LAYER(self) :
         return 8 #number of the autofluorescence (AF) layer in component tiff images
     #information for corrections
-    @property
-    def LAYER_ET_OFFSET_FILE_NAME_STEM(self) :
-        return 'best_fit_offsets' #stem for the name of the .csv file holding a slide's LayerOffset result objects
-    @property
-    def BACKGROUND_THRESHOLD_TEXT_FILE_NAME_STEM(self) :
-        return 'background_thresholds.txt' #name of the text file holding each layer's background threshold flux
-    @property
-    def FLATFIELD_IMAGE_DTYPE(self) :
-        return np.float64 #datatype for the main output flatfield images
     @property
     def X_WARP_BIN_FILENAME(self) :
         return 'dx_warp_field' #name of the dx warping field binary file

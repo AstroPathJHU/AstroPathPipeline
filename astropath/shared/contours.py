@@ -15,7 +15,9 @@ def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, forgda
   forgdal: if this is True, the returned polygons will be compatible
            with gdal, meaning they won't have islands nested in holes.
            If there are any islands, those will be returned as separate
-           polygons in the list.
+           polygons in the list.  Will also check that the polygons are
+           "valid": they can't be 1-dimensional or have 1-dimensional tails,
+           and they can't have two components joined at a corner.
 
   positional arguments and other keyword arguments are passed
   directly to cv2.findContours
@@ -50,6 +52,6 @@ def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, forgda
         innerpolygons[parent].insert(0, polygon)
 
   if forgdal:
-    toplevelpolygons = [p2 for p in toplevelpolygons for p2 in p.polygonsforgdal]
+    toplevelpolygons = [p3 for p in toplevelpolygons for p2 in p.polygonsforgdal for p3 in p2.makevalid()]
 
   return toplevelpolygons

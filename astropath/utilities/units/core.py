@@ -1,11 +1,29 @@
-import abc, collections, methodtools
+"""
+"""
+
+import abc, collections, methodtools, numpy as np
+from ..misc import floattoint
 from ..tableio import TableReader
 
 currentmodule = None
 
-class UnitsError(Exception): pass
+class UnitsError(Exception):
+  """
+  Exception raised when dimensional analysis gives an error
+  """
 
 class Distance:
+  """
+  When running in safe mode, this gives a Distance object.
+  When running in fast mode, this just returns a number.
+
+  Exactly one of these arguments is required:
+    pixels: number of pixels
+    microns: number of microns
+    centimeters: number of centimeters
+  pscale: pixels/micron scale
+  power: powers of distance in the dimension (1 for a length, 2 for length^2, etc.)
+  """
   def __new__(self, *args, **kwargs):
     return currentmodule.Distance(*args, **kwargs)
 
@@ -71,11 +89,24 @@ class ThingWithScale(TableReader):
     if extrakwargs is None: extrakwargs = {}
     if issubclass(rowclass, ThingWithScale):
       for scale in self.__scales & rowclass.__scales:
-        if scale.scalename not in extrakwargs:
+        if scale.scalename in rowclass.__annotations__ and scale.scalename not in extrakwargs:
           extrakwargs[scale.scalename] = getattr(self, scale.scalename)
     return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
 
 class ThingWithPscale(ThingWithScale, scale="pscale"): pass
 class ThingWithQpscale(ThingWithScale, scale="qpscale"): pass
 class ThingWithApscale(ThingWithScale, scale="apscale"): pass
-class ThingWithImscale(ThingWithScale, scale="imscale"): pass
+class ThingWithImscale(ThingWithPscale, ThingWithApscale, scale="imscale"):
+  @property
+  def ipscale(self): return self.pscale / self.apscale
+  @property
+  def ppscale(self): return floattoint(np.round(float(self.ipscale)))
+  @property
+  def iqscale(self): return self.ipscale / self.ppscale
+  @property
+  def imscale(self):
+    result, = {self.apscale * self.iqscale, self.pscale / self.ppscale}
+    return result
+  @imscale.setter
+  def imscale(self, value):
+    raise AttributeError("Can't set imscale")

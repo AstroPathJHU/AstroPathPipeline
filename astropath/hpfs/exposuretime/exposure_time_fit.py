@@ -2,12 +2,13 @@
 from .overlap_with_exposure_times import OverlapWithExposureTimes
 from .utilities import et_fit_logger, FieldLog
 from .alignsample import AlignSampleForExposureTime
+from ...shared.samplemetadata import MetadataSummary
 from ...utilities.tableio import writetable
-from ...utilities.misc import cd, MetadataSummary, cropAndOverwriteImage
+from ...utilities.misc import cd, save_figure_in_dir
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np, matplotlib.pyplot as plt
 from matplotlib import colors
-import pathlib, random, scipy, platform
+import pathlib, random, scipy#, platform
 
 #helper class to do the fit in one image layer only
 class SingleLayerExposureTimeFit :
@@ -55,9 +56,9 @@ class SingleLayerExposureTimeFit :
         self.plotdirpath = pathlib.Path(f'{top_plot_dir}/{plotdirname}')
         #make an alignsample from the raw files, smoothed and corrected with the flatfield
         et_fit_logger.info(f'Making an AlignSample for just the overlaps with different exposure times in layer {self.layer}....')
-        use_GPU = platform.system()!='Darwin'
+        #use_GPU = platform.system()!='Darwin'
         a = AlignSampleForExposureTime(self.root_dir,self.rawfile_top_dir,self.slideID,selectoverlaps=overlaps,onlyrectanglesinoverlaps=True,
-                                nclip=UNIV_CONST.N_CLIP,useGPU=use_GPU,readlayerfile=False,layer=self.layer,filetype='raw',
+                                nclip=UNIV_CONST.N_CLIP,useGPU=False,readlayerfile=False,layer=self.layer,filetype='raw',
                                 smoothsigma=smoothsigma,flatfield=self.flatfield)
         #get all the raw file layers and align the overlaps
         a.getDAPI()
@@ -197,11 +198,8 @@ class SingleLayerExposureTimeFit :
         ax[1].plot(list(range(1,len(self.costs)+1)),self.offsets,marker='*')
         ax[1].set_xlabel('fit iteration')
         ax[1].set_ylabel('offset')
-        with cd(self.plotdirpath) :
-            fn = f'costs_and_offsets_{self.slideID}_layer_{self.layer}.png'
-            plt.savefig(fn)
-            plt.close()
-            cropAndOverwriteImage(fn)
+        fn = f'costs_and_offsets_{self.slideID}_layer_{self.layer}.png'
+        save_figure_in_dir(plt,fn,self.plotdirpath)
 
     #helper function to make a plot of each overlap's cost reduction and write out the table of overlap fit results
     def __writeResultsAndPlotCostReductions(self) :
@@ -225,11 +223,8 @@ class SingleLayerExposureTimeFit :
         ax[2].hist([(r.prefit_cost-r.postfit_cost)/r.prefit_cost for r in fitresults],bins=60)
         ax[2].set_xlabel('(original cost - post-fit cost)/(original cost)')
         ax[2].set_ylabel('number of overlaps')
-        with cd(self.plotdirpath) :
-            fn = f'cost_reduction_plots_1d_{self.slideID}_layer_{self.layer}.png'
-            plt.savefig(fn)
-            plt.close()
-            cropAndOverwriteImage(fn)
+        fn = f'cost_reduction_plots_1d_{self.slideID}_layer_{self.layer}.png'
+        save_figure_in_dir(plt,fn,self.plotdirpath)
         #make 2D pre/postfit cost and cost reduction plots
         f,ax = plt.subplots(2,2,figsize=(2*6.4,2*4.6))
         etdiffs = [r.et_diff for r in fitresults]
@@ -247,11 +242,8 @@ class SingleLayerExposureTimeFit :
         ax[1][1].set_title('frac. cost redux vs. diff. in exposure time')
         f.colorbar(pos[3],ax=ax[1][1])
         ax[1][1].plot([0.98*x for x in ax[1][1].get_xlim()],[0.,0.],linewidth=2)
-        with cd(self.plotdirpath) :
-            fn = f'cost_reduction_plots_2d_{self.slideID}_layer_{self.layer}.png'
-            plt.savefig(fn)
-            plt.close()
-            cropAndOverwriteImage(fn)
+        fn = f'cost_reduction_plots_2d_{self.slideID}_layer_{self.layer}.png'
+        save_figure_in_dir(plt,fn,self.plotdirpath)
 
     #helper function to write out a set of overlap overlay comparisons
     def __saveComparisonImages(self,n_comparisons_to_save) :

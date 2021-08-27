@@ -1,4 +1,6 @@
-import abc, contextlib, csv, more_itertools, re
+import abc, contextlib, csv, datetime, more_itertools, re
+from ..utilities.misc import field_size_limit_context
+from .logging import MyLogger
 
 class ThingWithRoots(abc.ABC):
   @property
@@ -162,7 +164,7 @@ class SampleRunStatus:
     """
     True if the sample started and ended with no error and all output files are present
     """
-    return self.started and self.ended and self.error is None and not self.missingfiles
+    return bool(self.started and self.ended and self.error is None and not self.missingfiles)
   @property
   def nruns(self):
     """
@@ -181,15 +183,16 @@ class SampleRunStatus:
     module: the module being run
     """
     result = None
-    started = False
-    ended = False
+    started = None
+    ended = None
     previousrun = None
     error = None
     with contextlib.ExitStack() as stack:
+      stack.enter_context(field_size_limit_context(1000000))
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:
-        return cls(started=False, ended=False, missingfiles=missingfiles)
+        return cls(started=None, ended=None, missingfiles=missingfiles)
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
@@ -198,9 +201,9 @@ class SampleRunStatus:
           elif not row["message"]:
             continue
           elif re.match(startregex, row["message"]):
-            started = True
+            started = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
             error = None
-            ended = False
+            ended = None
             previousrun = result
             result = None
           elif row["message"].startswith("ERROR:"):
@@ -210,7 +213,7 @@ class SampleRunStatus:
             else:
               error = row["message"]
           elif re.match(endregex, row["message"]):
-            ended = True
+            ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
             result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
     if result is None:
       result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)

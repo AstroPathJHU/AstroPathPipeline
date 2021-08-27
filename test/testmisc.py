@@ -1,16 +1,28 @@
-import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage, unittest
+import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
-from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
+from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
+from astropath.shared.samplemetadata import APIDDef, SampleDef
 from astropath.utilities import units
-from .testbase import assertAlmostEqual
+from astropath.utilities.tableio import readtable
+from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-class TestMisc(unittest.TestCase):
+class TestMisc(TestBaseSaveOutput):
+  @property
+  def outputfilenames(self):
+    return [
+      thisfolder/"test_for_jenkins"/"misc"/"M206_annotations.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M206_regions.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M206_vertices.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M21_1_annotations.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M21_1_regions.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M21_1_vertices.csv",
+    ]
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
     islands = l.islands()
@@ -63,8 +75,12 @@ class TestMisc(unittest.TestCase):
       print(xysx2)
       raise
 
-  def testPolygonAreasFastUnits(self):
-    with units.setup_context("fast"):
+  def testPolygonAreasFastUnitsPixels(self):
+    with units.setup_context("fast_pixels"):
+      self.testPolygonAreas()
+
+  def testPolygonAreasFastUnitsMicrons(self):
+    with units.setup_context("fast_microns"):
       self.testPolygonAreas()
 
   def testPolygonNumpyArray(self):
@@ -95,21 +111,27 @@ class TestMisc(unittest.TestCase):
       self.testPolygonNumpyArray()
 
   def testStandaloneAnnotations(self, SlideID="M21_1"):
-    folder = thisfolder/"misc_test_for_jenkins"
-    s = PrepDbSample(thisfolder/"data", SlideID)
-    writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
-    for filename, cls in (
-      (f"{SlideID}_annotations.csv", Annotation),
-      (f"{SlideID}_vertices.csv", Vertex),
-      (f"{SlideID}_regions.csv", Region),
-    ):
-      try:
-        rows = s.readtable(folder/filename, cls, checkorder=True)
-        targetrows = s.readtable(thisfolder/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True)
-        for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
-          assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
-      except:
-        raise ValueError("Error in "+filename)
+    try:
+      folder = thisfolder/"test_for_jenkins"/"misc"
+      s = PrepDbSample(thisfolder/"data", SlideID)
+      writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
+      for filename, cls in (
+        (f"{SlideID}_annotations.csv", Annotation),
+        (f"{SlideID}_vertices.csv", Vertex),
+        (f"{SlideID}_regions.csv", Region),
+      ):
+        try:
+          rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True)
+          targetrows = s.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True)
+          for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
+            assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+        except:
+          raise ValueError("Error in "+filename)
+    except:
+      self.saveoutput()
+      raise
+    finally:
+      self.removeoutput()
 
   def testStandaloneAnnotationsFastUnits(self, SlideID="M206"):
     with units.setup_context("fast"):
@@ -127,3 +149,16 @@ class TestMisc(unittest.TestCase):
   def testPolygonVerticesFastUnits(self):
     with units.setup_context("fast_microns"):
       self.testPolygonVertices()
+
+  def testSampleDef(self):
+    self.maxDiff = None
+    s1 = SampleDef(samp="M21_1", root=thisfolder/"data")
+    s2 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv", Scan=s1.Scan, SampleID=s1.SampleID)
+    s3 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv", root=thisfolder/"data")
+    APID, = {APID for APID in readtable(thisfolder/"data"/"AstropathAPIDdef.csv", APIDDef) if APID.SlideID == "M21_1"}
+    s4 = SampleDef(samp=APID, Scan=s1.Scan, SampleID=s1.SampleID)
+    s5 = SampleDef(samp=APID, root=thisfolder/"data")
+    self.assertEqual(s1, s2)
+    self.assertEqual(s1, s3)
+    self.assertEqual(s1, s4)
+    self.assertEqual(s1, s5)

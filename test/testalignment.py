@@ -1,5 +1,5 @@
 import logging, more_itertools, numpy as np, os, pathlib, re, unittest
-from astropath.shared.sample import SampleDef
+from astropath.shared.samplemetadata import SampleDef
 from astropath.slides.align.aligncohort import AlignCohort
 from astropath.slides.align.alignsample import AlignSample, AlignSampleComponentTiff, AlignSampleFromXML, ImageStats
 from astropath.slides.align.overlap import AlignmentResult
@@ -16,8 +16,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   def filestocopy(cls):
     for SlideID in "M21_1", "YZ71", "M206":
       olddbload = thisfolder/"data"/SlideID/"dbload"
-      newdbload = thisfolder/"alignment_test_for_jenkins"/SlideID/"dbload"
-      newdbload2 = thisfolder/"alignment_test_for_jenkins"/"component_tiff"/SlideID/"dbload"
+      newdbload = thisfolder/"test_for_jenkins"/"alignment"/SlideID/"dbload"
+      newdbload2 = thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/SlideID/"dbload"
       for csv in (
         "constants",
         "overlap",
@@ -29,25 +29,25 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"alignment_test_for_jenkins"/"M21_1"/"dbload"/filename.name
-      for filename in (thisfolder/"reference"/"alignment"/"M21_1"/"dbload").glob("M21_1_*")
+      thisfolder/"test_for_jenkins"/"alignment"/"M21_1"/"dbload"/filename.name
+      for filename in (thisfolder/"data"/"reference"/"alignment"/"M21_1"/"dbload").glob("M21_1_*")
     ] + [
-      thisfolder/"alignment_test_for_jenkins"/"YZ71"/"dbload"/filename.name
-      for filename in (thisfolder/"reference"/"alignment"/"YZ71"/"dbload").glob("YZ71_*")
+      thisfolder/"test_for_jenkins"/"alignment"/"YZ71"/"dbload"/filename.name
+      for filename in (thisfolder/"data"/"reference"/"alignment"/"YZ71"/"dbload").glob("YZ71_*")
     ] + [
-      thisfolder/"alignment_test_for_jenkins"/"component_tiff"/"M206"/"dbload"/filename.name
-      for filename in (thisfolder/"reference"/"alignment"/"component_tiff"/"M206"/"dbload").glob("M206_*")
+      thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/"M206"/"dbload"/filename.name
+      for filename in (thisfolder/"data"/"reference"/"alignment"/"component_tiff"/"M206"/"dbload").glob("M206_*")
     ] + [
-      thisfolder/"alignment_test_for_jenkins"/"logfiles"/"align.log",
-      thisfolder/"alignment_test_for_jenkins"/"component_tiff"/"logfiles"/"align.log",
-      thisfolder/"alignment_test_for_jenkins"/"M21_1"/"logfiles"/"M21_1-align.log",
-      thisfolder/"alignment_test_for_jenkins"/"YZ71"/"logfiles"/"YZ71-align.log",
-      thisfolder/"alignment_test_for_jenkins"/"component_tiff"/"M206"/"logfiles"/"M206-align.log",
+      thisfolder/"test_for_jenkins"/"alignment"/"logfiles"/"align.log",
+      thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/"logfiles"/"align.log",
+      thisfolder/"test_for_jenkins"/"alignment"/"M21_1"/"logfiles"/"M21_1-align.log",
+      thisfolder/"test_for_jenkins"/"alignment"/"YZ71"/"logfiles"/"YZ71-align.log",
+      thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/"M206"/"logfiles"/"M206-align.log",
     ]
 
   def testAlignment(self, SlideID="M21_1", componenttiff=False, **kwargs):
-    samp = SampleDef(SlideID=SlideID, SampleID=0, Project=0, Cohort=0)
-    dbloadroot = thisfolder/"alignment_test_for_jenkins"/("" if not componenttiff else "component_tiff")
+    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0)
+    dbloadroot = thisfolder/"test_for_jenkins"/"alignment"/("" if not componenttiff else "component_tiff")
     alignsampletype = AlignSample if not componenttiff else AlignSampleComponentTiff
     alignsampleargs = (
       thisfolder/"data",
@@ -75,6 +75,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     except:
       self.saveoutput()
       raise
+    finally:
+      self.removeoutput()
 
   def compareoutput(self, alignsample, SlideID="M21_1", componenttiff=False):
     a = alignsample
@@ -85,11 +87,11 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       (f"{SlideID}_affine.csv", AffineEntry, {}),
       (f"{SlideID}_fieldoverlaps.csv", FieldOverlap, {"rectangles": a.rectangles, "nclip": a.nclip}),
     ):
-      testfolder = thisfolder/"alignment_test_for_jenkins"/("" if not componenttiff else "component_tiff")
-      reffolder = thisfolder/"reference"/"alignment"/("" if not componenttiff else "component_tiff")
+      testfolder = thisfolder/"test_for_jenkins"/"alignment"/("" if not componenttiff else "component_tiff")
+      reffolder = thisfolder/"data"/"reference"/"alignment"/("" if not componenttiff else "component_tiff")
       try:
-        rows = a.readtable(testfolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
-        targetrows = a.readtable(reffolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True)
+        rows = a.readtable(testfolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
+        targetrows = a.readtable(reffolder/SlideID/"dbload"/filename, cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
         for row, target in more_itertools.zip_equal(rows, targetrows):
           if cls == AlignmentResult and row.exit != 0 and target.exit != 0: continue
           assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
@@ -116,10 +118,10 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   @expectedFailureIf(int(os.environ.get("JENKINS_NO_GPU", 0)))
   def testGPU(self, SlideID="M21_1"):
-    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-    agpu = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, useGPU=True, forceGPU=True, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
+    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+    agpu = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, useGPU=True, forceGPU=True, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
 
-    readfilename = thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
+    readfilename = thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
     a.readalignments(filename=readfilename)
 
     agpu.getDAPI(writeimstat=False)
@@ -129,77 +131,94 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       assertAlmostEqual(o.result, ogpu.result, rtol=1e-5, atol=1e-5)
 
   def testReadAlignment(self, SlideID="M21_1"):
-    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-    readfilename = thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
-    writefilename = thisfolder/"testreadalignments.csv"
+    try:
+      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+      readfilename = thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
+      writefilename = a.csv("align")
 
-    a.readalignments(filename=readfilename)
-    a.writealignments(filename=writefilename)
-    rows = a.readtable(writefilename, AlignmentResult)
-    targetrows = a.readtable(readfilename, AlignmentResult)
-    for row, target in more_itertools.zip_equal(rows, targetrows):
-      assertAlmostEqual(row, target, rtol=1e-5)
+      a.readalignments(filename=readfilename)
+      a.writealignments(filename=writefilename)
+      rows = a.readtable(writefilename, AlignmentResult, checkorder=True, checknewlines=True)
+      targetrows = a.readtable(readfilename, AlignmentResult, checkorder=True, checknewlines=True)
+      for row, target in more_itertools.zip_equal(rows, targetrows):
+        assertAlmostEqual(row, target, rtol=1e-5)
+    except:
+      self.saveoutput()
+      raise
+    finally:
+      self.removeoutput()
 
   def testReadAlignmentFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast", "microns"):
       self.testReadAlignment(SlideID=SlideID)
 
   def testStitchReadingWriting(self, SlideID="M21_1"):
-    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-    a.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
-    stitchfilenames = [thisfolder/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a.stitchfilenames]
-    result = a.readstitchresult(filenames=stitchfilenames)
+    try:
+      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+      a.readalignments(filename=thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
+      stitchfilenames = [thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a.stitchfilenames]
+      result = a.readstitchresult(filenames=stitchfilenames)
 
-    def newfilename(filename): return thisfolder/("test_"+filename.name)
-    def referencefilename(filename): return thisfolder/"reference"/"alignment"/SlideID/"dbload"/filename.name
+      def referencefilename(filename): return thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/filename.name
 
-    a.writestitchresult(result, filenames=[newfilename(f) for f in a.stitchfilenames])
+      a.writestitchresult(result, filenames=a.stitchfilenames)
 
-    for filename, cls, extrakwargs in more_itertools.zip_equal(
-      a.stitchfilenames,
-      (AffineEntry, Field, FieldOverlap),
-      ({}, {}, {"nclip": a.nclip, "rectangles": a.rectangles}),
-    ):
-      rows = a.readtable(newfilename(filename), cls, extrakwargs=extrakwargs)
-      targetrows = a.readtable(referencefilename(filename), cls, extrakwargs=extrakwargs)
-      for row, target in more_itertools.zip_equal(rows, targetrows):
-        assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
+      for filename, cls, extrakwargs in more_itertools.zip_equal(
+        a.stitchfilenames,
+        (AffineEntry, Field, FieldOverlap),
+        ({}, {}, {"nclip": a.nclip, "rectangles": a.rectangles}),
+      ):
+        rows = a.readtable(filename, cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
+        targetrows = a.readtable(referencefilename(filename), cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
+        for row, target in more_itertools.zip_equal(rows, targetrows):
+          assertAlmostEqual(row, target, rtol=1e-5, atol=4e-7)
+    except:
+      self.saveoutput()
+      raise
+    finally:
+      self.removeoutput()
 
   def testStitchReadingWritingFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast"):
       self.testStitchReadingWriting(SlideID=SlideID)
 
   def testStitchWritingReading(self, SlideID="M21_1"):
-    a1 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-    a1.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
-    a1.stitch()
+    try:
+      a1 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+      a1.readalignments(filename=thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
+      a1.stitch()
 
-    a2 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-    a2.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
-    stitchfilenames = [thisfolder/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a1.stitchfilenames]
-    a2.readstitchresult(filenames=stitchfilenames)
+      a2 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+      a2.readalignments(filename=thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
+      stitchfilenames = [thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a1.stitchfilenames]
+      a2.readstitchresult(filenames=stitchfilenames)
 
-    pscale = a1.pscale
-    assert pscale == a2.pscale
+      pscale = a1.pscale
+      assert pscale == a2.pscale
 
-    rtol = 1e-6
-    atol = 1e-6
-    for o1, o2 in zip(a1.overlaps, a2.overlaps):
-      x1, y1 = units.pixels(units.nominal_values(o1.stitchresult), pscale=pscale)
-      x2, y2 = units.pixels(units.nominal_values(o2.stitchresult), pscale=pscale)
-      assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
-      assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
+      rtol = 1e-6
+      atol = 1e-6
+      for o1, o2 in zip(a1.overlaps, a2.overlaps):
+        x1, y1 = units.pixels(units.nominal_values(o1.stitchresult), pscale=pscale)
+        x2, y2 = units.pixels(units.nominal_values(o2.stitchresult), pscale=pscale)
+        assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
+        assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
 
-    for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
-      assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
+      for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
+        assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
+    except:
+      self.saveoutput()
+      raise
+    finally:
+      self.removeoutput()
 
   def testStitchWritingReadingFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast"):
       self.testStitchWritingReading(SlideID=SlideID)
 
   def testStitchCvxpy(self, SlideID="M21_1"):
-    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-    a.readalignments(filename=thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
+    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+    a.readalignments(filename=thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv")
 
     defaultresult = a.stitch(saveresult=False)
     cvxpyresult = a.stitch(saveresult=False, usecvxpy=True)
@@ -240,7 +259,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       self.testStitchCvxpy(SlideID=SlideID)
 
   def testSymmetry(self, SlideID="M21_1"):
-    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=(10, 11), dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
+    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=(10, 11), dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
     a.getDAPI(writeimstat=False)
     o1, o2 = a.overlaps
     o1.align()
@@ -253,9 +272,9 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
   def testPscale(self, SlideID="M21_1"):
-    a1 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-    readfilename = thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
-    stitchfilenames = [thisfolder/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a1.stitchfilenames]
+    a1 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+    readfilename = thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
+    stitchfilenames = [thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a1.stitchfilenames]
     a1.readalignments(filename=readfilename)
     a1.readstitchresult(filenames=stitchfilenames)
 
@@ -266,7 +285,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     assert newconstantscontents != constantscontents
 
     with temporarilyremove(thisfolder/"data"/SlideID/"inform_data"/"Component_Tiffs"), temporarilyreplace(constantsfile, newconstantscontents), temporarilyremove(thisfolder/"data"/SlideID/"im3"/"xml"):
-      a2 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
+      a2 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
       assert a1.pscale != a2.pscale
       a2.getDAPI(writeimstat=False)
       a2.align(debug=True)
@@ -293,10 +312,10 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testCohort(self, units="safe"):
     SlideID = "M21_1"
-    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", os.fspath(thisfolder/"alignment_test_for_jenkins"), "--logroot", os.fspath(thisfolder/"alignment_test_for_jenkins"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
+    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--logroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     AlignCohort.runfromargumentparser(args)
 
-    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
+    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
     self.compareoutput(a)
 
   def testCohortFastUnits(self):
@@ -305,31 +324,31 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
   def testMissingFolders(self, SlideID="M21_1"):
     with temporarilyremove(thisfolder/"data"/SlideID/"im3"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"), units.setup_context("fast"):
-      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=range(10), dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
+      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=range(10), dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
       a.getDAPI()
       a.align()
       a.stitch()
 
   def testNoLog(self, SlideID="M21_1"):
-    samp = SampleDef(SlideID=SlideID, SampleID=0, Project=0, Cohort=0)
-    with AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", samp, selectrectangles=range(10), uselogfiles=True, logthreshold=logging.CRITICAL, dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins") as a:
+    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0)
+    with AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", samp, selectrectangles=range(10), uselogfiles=True, logthreshold=logging.CRITICAL, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment") as a:
       a.getDAPI()
       a.align()
       a.stitch()
 
     for log in (
-      thisfolder/"alignment_test_for_jenkins"/"logfiles"/"align.log",
-      thisfolder/"alignment_test_for_jenkins"/SlideID/"logfiles"/f"{SlideID}-align.log",
+      thisfolder/"test_for_jenkins"/"alignment"/"logfiles"/"align.log",
+      thisfolder/"test_for_jenkins"/"alignment"/SlideID/"logfiles"/f"{SlideID}-align.log",
     ):
       with open(log) as f:
         contents = f.read().splitlines()
-      if len(contents) != 1:
-        raise AssertionError(f"Expected only one line of log\n\n{contents}")
+      if len(contents) != 2:
+        raise AssertionError(f"Expected only two lines of log\n\n{contents}")
 
   def testFromXML(self, SlideID="M21_1", **kwargs):
     args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID
-    kwargs = {**kwargs, "selectrectangles": range(10), "xmlfolders": [thisfolder/"data"/"raw"], "logroot": thisfolder/"alignment_test_for_jenkins"}
-    a1 = AlignSample(*args, dbloadroot=thisfolder/"alignment_test_for_jenkins", **kwargs)
+    kwargs = {**kwargs, "selectrectangles": range(10), "xmlfolders": [thisfolder/"data"/"raw"], "logroot": thisfolder/"test_for_jenkins"/"alignment"}
+    a1 = AlignSample(*args, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", **kwargs)
     a1.getDAPI()
     a1.align()
     result1 = a1.stitch()
@@ -355,7 +374,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testReadingLayer(self, SlideID="M21_1"):
     args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID
-    kwargs = {"selectrectangles": [17], "dbloadroot": thisfolder/"alignment_test_for_jenkins", "logroot": thisfolder/"alignment_test_for_jenkins"}
+    kwargs = {"selectrectangles": [17], "dbloadroot": thisfolder/"test_for_jenkins"/"alignment", "logroot": thisfolder/"test_for_jenkins"/"alignment"}
     a1 = AlignSample(*args, **kwargs)
     a2 = AlignSample(*args, **kwargs, readlayerfile=False, layer=1)
     i1 = a1.rectangles[0].image
@@ -379,8 +398,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       (5, 6),
       (1, 2, 3, 5, 6, 7),
     ):
-      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectoverlaps=lambda o: not ((o.p1 in island) ^ (o.p2 in island)), dbloadroot=thisfolder/"alignment_test_for_jenkins", logroot=thisfolder/"alignment_test_for_jenkins")
-      readfilename = thisfolder/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
+      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectoverlaps=lambda o: not ((o.p1 in island) ^ (o.p2 in island)), dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+      readfilename = thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
       a.readalignments(filename=readfilename)
       a.stitch()
 
