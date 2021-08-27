@@ -265,8 +265,8 @@ def timestampfield(*, optional=False, **metadata):
   returns a MetaDataAnnotation for writing a as a unix timestamp
   """
   metadata = {
-    "readfunction": lambda x: None if optional and not x else datetime.datetime.fromtimestamp(int(x)),
-    "writefunction": lambda x: "" if optional and x is None else int(datetime.datetime.timestamp(x)),
+    "readfunction": lambda x: datetime.datetime.fromtimestamp(int(x)),
+    "writefunction": lambda x: int(datetime.datetime.timestamp(x)),
     **metadata,
   }
   return (optionalfield if optional else MetaDataAnnotation)(**metadata)
