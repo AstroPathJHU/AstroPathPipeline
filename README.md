@@ -82,7 +82,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
   - [5.5. AstroIDGen](astropath/hpfs/astroidgen#55-astroid-generation-v0000001 "Title")
   - [5.6. Transfer Daemon](astropath/hpfs/transferdaemon#56-transfer-daemon "Title")
   - [5.7. Meanimages](astropath/hpfs/meanimages#57-meanimages "Title")
-  - [5.8. Flatw](astropath/hpfs/flatw#58-flatw "Title")
+  - [5.8. Image Correction](astropath/hpfs/image_correction#58-image-correction "Title")
   - [5.9. Mergeloop](astropath/hpfs/mergeloop#59-mergeloop "Title")
   - [5.10. Inform Processing](astropath/hpfs/inform_processing#510-inform-processing "Title")
   - [5.11. Segmaps](astropath/hpfs/segmaps#511-seg-maps "Title")
