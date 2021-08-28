@@ -24,10 +24,10 @@ This portion of the code corrects raw ".Data.dat" files based on a given flatfie
 
 where:
 - `[path_to_flatfield_bin_file]` is the path to the ".bin" file specifying the flatfield corrections to apply, or the name of a file located in the `<Dpath>\<Dname>\Flatfield` directory
-- `[path_to_warping_summary_csv_file]` is the path to a .csv file detailing the warping model parameters as a [`WarpingSummary` object](../warping/utilities.py#L43-L60). This file can have several `WarpingSummary` entries specifying different warping patterns to apply in differen raw image layers.
+- `[path_to_warping_summary_csv_file]` is the path to a .csv file detailing the warping model parameters as a [`WarpingSummary` object](../../warping/utilities.py#L43-L60). This file can have several `WarpingSummary` entries specifying different warping patterns to apply in differen raw image layers.
 - `[njobs]` is the maximum number of parallel processes allowed to run at once (many parallel processes can be used; each process corrects and writes out one file at a time)
 
-See [here](../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
+See [here](../../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
 
 Running the above command will produce:
 1. **corrected ".fw" files** in `<Dpath>\flatw\<SlideID>`
