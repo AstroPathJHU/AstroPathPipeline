@@ -1,12 +1,14 @@
 # 5.8.6.OverviewWorkflowofImageCorrectionModule
 The following is the overview workflow for the flatfield processing itself. This does not include the wrappers that go along with the code for the *AstroPath
-Pipeline*
+Pipeline*. 
+
 Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
-- Make sure that the *_M2.im3* files are properly resolved. Remove the original, and rename the *_M2* 
+
+- fixM2: Make sure that the *_M2.im3* files are properly resolved. Remove the original, and rename the *_M2* 
   - Input
     - ```<base>```
     -  ```<SlideID>```
-- Extract parameters from the Im3s
+- ShredDat: Extract parameters from the Im3s
   - Input
     - ```<base>```
     - ```<FW_path>```
@@ -23,7 +25,7 @@ Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
     - Loop through all the *.im3* images and extract the binary data (*.DATA.dat*)
       - into a ```<FW_path>\<SlideID>``` 
       - *```<filename>```.Data.dat* for each *.im3* image
-- Apply the flat field and warping (*.fw*)
+- ApplyCorr: Apply the flat field and warping (*.fw*)
   - Input
     - ```<FW_path>```
     - ```<SlideID>```
@@ -31,7 +33,7 @@ Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
     - in the ```<FW_path>\<SlideID>```
     - *```<filename>```.fw* for each *.im3* image
       - the bitmap image in single column format 
-- Re-insert binary data into the *.im3* files
+- InjectDat: Re-insert binary data into the *.im3* files
   - Input
     - ```<base>```
     - ```<FW_path>```
@@ -39,7 +41,7 @@ Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
   - Output: 
     - into ```<base>\<SlideID>\<flatw_im3_path>```
     - corrected *```<filename>```.im3* for each *.im3* image
-- Extract the DAPI layer from *.fw* files. We extract the first layer with an *.fw01* extension
+- ExtractLayer: Extract the DAPI layer from *.fw* files. We extract the first layer with an *.fw01* extension
   - Input
     - ```<FW_path>```
     - ```<SlideID>```
@@ -47,7 +49,7 @@ Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
     - in the ```<FW_path>\<SlideID>```
     - *```<filename>```.fw01* for each *.im3* image
       -  the bitmap image in single column format for the first layer (DAPI)
-- Clean up the path
+- cleanup: Clean up the path
   - Input 
     - ```<FW_path>```
     - ```<SlideID>``` 
