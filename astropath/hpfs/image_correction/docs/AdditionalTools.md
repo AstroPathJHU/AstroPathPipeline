@@ -1,7 +1,24 @@
 # 5.8.5. Additional Tools
-# Applying the Image Correction
 
-The "image correction" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents as ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
+Different coding tools that can be run outside of the *AstroPath Pipeline* are described here. Note that, the code still workers under the assumption that the ```<Mpath>``` exists with all its configuration files and the samples to be process are in the *AstroPath* format.
+
+
+# 5.8.5.1. Processing One Sample
+The entire workflow can be run for a single slide outside of the *AstroPath Pipeline* by running the following commands in Powershell:
+
+```
+Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrection' @(<Project>, <slideid>, <ProcessingLocation>)
+```
+- ```<SlideID>```: the names for the specimens in the astropath processing pipeline
+- ```<mpath>```: the main path for all the astropath processing .csv configuration files; the current location of this path is *\\bki04\astropath_processing*
+- ```<Project>```: Project Number
+- ```<ProcessingLocation>```: The fully qualified path to a location where slides should be processed, use `'*'` if the slide should be processed in place
+
+This workflow is described in more detail [here](OverviewWorkflowofImageCorrectionModule).
+
+# 5.8.5.2. Directions for Applying the Image Corrections
+
+This portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents as ".fw" files. Use the *ConvertIm3* utility located [here](../../../utilities/Im3Tools) to extract the *Data.dat* files from the *im3* files. After the correction is run, that utility can also be used to re-insert the Data.dat back into the im3s. To run the image correction for a single sample in the most common use case, enter the following command and arguments:
 
 `imagecorrectionsample <Dpath>\<Dname> <Rpath> <SlideID> --flatfield_file [path_to_flatfield_bin_file] --warping_file [path_to_warping_summary_csv_file] --njobs [njobs]`
 
@@ -27,3 +44,6 @@ The image correction routine can be run for an entire cohort of samples at once 
 `imagecorrectioncohort <Dpath>\<Dname> <Rpath>`
 
 To see more command line arguments available for both routines, run `imagecorrectionsample --help` or `imagecorrectioncohort --help`.
+
+# 5.8.5.3. Directions for Applying the Image Corrections *version 0.0.1*
+
