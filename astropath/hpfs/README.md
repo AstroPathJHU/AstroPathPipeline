@@ -48,7 +48,7 @@ A final checklist of things to verify and complete before loading into the datab
      - [5.8.5.1. Processing One Sample](image_correction/docs/AdditionalTools.md#5851-processing-one-sample)
      - [5.8.5.2. Directions for Applying the Image Corrections](image_correction/docs/AdditionalTools.md#5852-directions-for-applying-the-image-corrections)
      - [5.8.5.3. Directions for Running Version *0.0.1*](image_correction/docs/AdditionalTools.md#5853-directions-for-applying-the-image-corrections-version-001)
-   - [5.8.6. Overview Workflow of Image Correction Module](image_correction/docs/OverviewWorkflowofImageCorrectionModule.md#586-overview-workflow-of-image-correction-module)
+   - [5.8.6. Overview Workflow of Image Correction Module](image_correction/docs/OverviewWorkflowofImageCorrectionModule.md#586overview-workflow-of-image-correction-module)
 - [5.9. Mergeloop](mergeloop#59-mergeloop "Title")
   - [5.9.1. Description](mergeloop#591-description)
   - [5.9.2. Important Definitions](mergeloop#592-important-definitions)
