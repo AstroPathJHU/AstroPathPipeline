@@ -1,4 +1,4 @@
-# 5.10. inForm Processing
+# 5.10. VMinForm
 ## 5.10.1. Description
 After the images are corrected by the ```flatfield``` module and the ```flatw_path```s are created([5.8.](../flatw#58-flatw "Title")), the inForm® (Akoya Biosciences®) classification algorithms can be developed. The *AstroPathPipeline* uses the so-called 'multipass' method for cell classification. This is a novel method of using inForm Cell Analysis®, developed to improve sensitivity and specificty of classication algorithms (described in detail here [5.10.3](docs/inFormMultipassPhenotype.md#5103-inform-multipass-phenotype "Title")). 
 
