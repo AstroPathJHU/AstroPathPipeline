@@ -84,7 +84,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
   - [5.7. Meanimages](astropath/hpfs/meanimages#57-meanimages "Title")
   - [5.8. Image Correction](astropath/hpfs/image_correction#58-image-correction "Title")
   - [5.9. Mergeloop](astropath/hpfs/mergeloop#59-mergeloop "Title")
-  - [5.10. VMinForm](astropath/hpfs/vminform#510-vminform "Title")
+  - [5.10. Inform Processing (VMinForm)](astropath/hpfs/vminform#510-vminform "Title")
   - [5.11. Segmaps](astropath/hpfs/segmaps#511-seg-maps "Title")
   - [5.12. Create & Transfer Annotations](astropath/hpfs/transferanno#512-transfer-annotations "Title")
   - [5.13. ValidateData](astropath/hpfs/validatedata#513-validate-data)
