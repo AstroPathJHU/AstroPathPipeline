@@ -1,17 +1,17 @@
-# 5.11. Seg Maps
-## 5.11.1. Description
+# 5.9. Seg Maps
+## 5.9.1. Description
 As part of the multipass segmentation and classification system, described in the *MaSS* documentation and elsewhere in the *AstroPathPipeline* documentation, multiple segmentation algorithms can be used on a single panel for cells of different sizes. The cell tables are merged as part of the *MaSS* protocol here we use the information from the *cleaned_phenotype_tables* to select the resultant cell geometries from the *binary_seg_maps*. The geometeries are then saved in separate layers with the *component_data* into a *component_data_w_seg* file in the *Component_Tiffs* folder of the *AstroPathPipeline* directory structure. This module should be run after the classification and segmentation of slides have been verified complete according to the protocols laid out in the QA QC step of the *inform_processing* module. The module is set to run once across all cohorts after being launched, it checks the following conidtions before running on a set of slides:
 - That the *cleaned_phenotype_table* files exist
 - That the *component_data_w_seg* files exist 
 - If they do exist, that they were created after the last *cleaned_phenotype_table* file was created
 
-## 5.11.2. Instructions
+## 5.9.2. Instructions
 The code should be launched through matlab. To start download the repository to a working location. Next, open a new session of matlab and add the ```AstroPathPipline``` to the matlab path. Then use the following to launch:   
 ``` segmaps(<Mpath>) ```
 - ```<Mpath>[string]```: the full path to the directory containing the ***AstropathCohortsProgress.csv*** file
    - description of this file can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory "Title")
 
-## 5.11.3. Segmenation Map Structure Definition
+## 5.9.3. Segmenation Map Structure Definition
 The segmentation maps, *component_data_w_seg*, start with the component tiff layers from the *component_data* files, the number of layers correspond to the layers added for unmixing in inForm. For a standard 7-color slide unmixed by inForm this would be:
 - DAPI
 - Opal 520
