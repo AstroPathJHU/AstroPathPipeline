@@ -27,7 +27,7 @@ The code should be launched through matlab. To start download the repository to 
 The code starts by checking each slide in the first project for the ```<meanimage-output-csv>``` file located in the ```<Dpath>\<Dname>\<SlideID>\<im3>``` folder. A full description of the folder structure can be found [here](../../scans/docs/DirectoryOrganization.md#46-directory-organization). If there is a ```<meanimage-output-csv>``` or no *.qtiff* the code moves on. The code uses this file because this is the last file transferred by the ```TransferDeamon``` ([described here](../../scans/transferdaemon#48-transfer-daemon)). 
 
 ### 5.5.4.2. Shred Im3s
-If a slide does not have a mean image the code immediately begins processing that slide. The first step in this processing is to extract the image data from each im3 into a new *```<drive>```\Processing_Specimens\raw* directory. The code uses the ```ConvertIm3Path.ps1``` utility to extract this data into *Data.dat* files. The documentation for this code can be found [here](../../utlities/Im3tools).
+If a slide does not have a mean image the code immediately begins processing that slide. The first step in this processing is to extract the image data from each im3 into a new *```<drive>```\Processing_Specimens\raw* directory. The code uses the ```ConvertIm3Path.ps1``` utility to extract this data into *Data.dat* files. The documentation for this code can be found [here](../../utilities/Im3tools).
 
 ### 5.5.4.3. raw2mean
 After the im3s are extracted by the ```ConvertIm3Path.ps1``` utility, the code checks the image sizing from the *.xml* files the utility creates. After this each image is read in and added together. Finally, the ```<meanimage-output-flt>``` and ```<meanimage-output-csv>``` files are produced. 
