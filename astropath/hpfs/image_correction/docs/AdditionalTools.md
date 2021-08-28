@@ -14,7 +14,7 @@ Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrec
 - ```<Project>```: Project Number
 - ```<ProcessingLocation>```: The fully qualified path to a location where slides should be processed, use `'*'` if the slide should be processed in place
 
-This workflow is described in more detail [here](OverviewWorkflowofImageCorrectionModule).
+This workflow is described in more detail [here](OverviewWorkflowofImageCorrectionModule.md).
 
 # 5.8.5.2. Directions for Applying the Image Corrections
 
