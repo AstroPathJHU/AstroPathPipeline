@@ -1,4 +1,4 @@
-# 5.8.6.Overview Workflow of Image Correction Module
+# 5.6.6.Overview Workflow of Image Correction Module
 The following is the overview workflow for the flatfield processing itself. This does not include the wrappers that go along with the code for the *AstroPath
 Pipeline*. 
 
