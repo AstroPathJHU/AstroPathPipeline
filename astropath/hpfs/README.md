@@ -4,7 +4,7 @@ This section of the documentation and code picks up after the slides have been a
 
 In this section the ```<Dpath>\<Dname>``` processing folders are intialized, a slide list is created, and slides are assigned new ```SlideID```s [5.5.](astroidgen#55-astroid-generation-v0000001 "Title"). Next images are renamed, transferred and backed up ([5.6.](transferdaemon#56-transfer-daemon "Title")). Images are then corrected for imaging warping and flatfield effects ([5.8.](flatw#58-flatw "Title")). After this, cells are segmented and classified in each image using the multipass phenotype method in inForm. Each of these steps are run by custom code that process on perpetual loops with limited user interaction. An important step of this process is to create and check the quality control images generated on the cell classification output (that process is described in [5.10.6.](inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)) . After, images from all slides in a cohort pass the cell classification quality control, cell segmentation maps are rebuilt to remove cells not defined by the final merged cell segmentation ([described here](segmaps#511-seg-maps "Title")). Finally, slide macro regional annotations are applied to the images using the HALO software and distributed to the slides using a batch script [5.12.4.](transferanno/README.md#5124-transfer-annotations-to-the-bki-server). 
 
-A final checklist of things to verify and complete before loading into the database is added [here](cleanup#513-clean-up). This section is a ```cleanup``` module which checks for any missing files, does the remaining file conversions, and provides final upkeep\ processing instructions.
+A final checklist of things to verify and complete before loading into the database is added [here](validatedata#513-validate-data). This section is a ```validatedata``` module which checks for any missing files, does the remaining file conversions, and provides final upkeep\ processing instructions.
 
 ## 5.2. Contents
 - [5.1. Description](#51-description "Title")
@@ -95,7 +95,7 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.12.4. Transfer Annotations to the BKI Server](transferanno/README.md#5124-transfer-annotations-to-the-bki-server)
     - [5.12.4.1. Description](transferanno/README.md#51241-description)
     - [5.12.4.2. Instructions](transferanno/README.md#51242-instructions)
-- [5.13. Cleanup](cleanup#513-clean-up)
+- [5.13. Validate Data](validatedata#513-validate-data)
   - [5.13.1. Description](cleanup#5131-description)
   - [5.13.2. Instructions](cleanup#5132-instructions)
   - [5.13.3. Next Steps](cleanup#5133-next-steps)
