@@ -92,11 +92,11 @@ class Dispatcher : queue{
     #
     [void]GetRunningJobs(){
         #
-        $this.running = @(Get-Job | Where-Object { $_.State -eq 'Running'  -and $_.Name -match $this.module})
+        $this.running = @(Get-Job | Where-Object { $_.State -eq 'Running' -and $_.Name -match $this.module})
         if ($this.running){
             $this.running.Name | FOREACH {
                $CC = $_
-               $this.workers = $this.workers | where-object {$this.defjobname($_) -ne  $CC}
+               $this.workers = $this.workers | where-object {(($_.server, $_.location, $_.module) -join('-')) -ne  $CC}
             }
         }
         #

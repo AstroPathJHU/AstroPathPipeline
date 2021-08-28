@@ -83,7 +83,7 @@ Class imagecorrection {
         $this.DownloadIm3()
         $this.ShredDat()
         $this.ApplyCorr()
-        $this.InjectFw()
+        $this.InjectDat()
         $this.ExtractLayer(1)
         $this.CleanUp()
     }
