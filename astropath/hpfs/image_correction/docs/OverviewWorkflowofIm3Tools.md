@@ -1,5 +1,5 @@
-# 5.8.6. Overview Workflow of Im3Tools
-The following is the overview workflow for the flatfield processing itself (Im3Tools). This does not include the wrappers that go along with the code for the *AstroPath
+# 5.8.6.OverviewWorkflowofImageCorrectionModule
+The following is the overview workflow for the flatfield processing itself. This does not include the wrappers that go along with the code for the *AstroPath
 Pipeline*
 Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```
 - Make sure that the *_M2.im3* files are properly resolved. Remove the original, and rename the *_M2* 
