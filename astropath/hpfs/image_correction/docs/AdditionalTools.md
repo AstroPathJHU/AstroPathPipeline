@@ -18,7 +18,7 @@ This workflow is described in more detail [here](OverviewWorkflowofImageCorrecti
 
 # 5.6.5.2. Directions for Applying the Image Corrections
 
-This portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents as ".fw" files. Use the *ConvertIm3* utility located [here](../../../utilities/Im3Tools) to extract the *Data.dat* files from the *im3* files. After the correction is run, that utility can also be used to re-insert the Data.dat back into the im3s. To run the image correction for a single sample in the most common use case, enter the following command and arguments:
+This portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents as ".fw" files. Use the *ConvertIm3* utility located [here](../../../utilities#Im3Tools-im3tools) to extract the *Data.dat* files from the *im3* files. After the correction is run, that utility can also be used to re-insert the Data.dat back into the im3s. To run the image correction for a single sample in the most common use case, enter the following command and arguments:
 
 `imagecorrectionsample <Dpath>\<Dname> <Rpath> <SlideID> --flatfield_file [path_to_flatfield_bin_file] --warping_file [path_to_warping_summary_csv_file] --njobs [njobs]`
 
