@@ -87,7 +87,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
   - [5.10. Inform Processing (VMinForm)](astropath/hpfs/vminform#510-vminform "Title")
   - [5.11. Segmaps](astropath/hpfs/segmaps#511-seg-maps "Title")
   - [5.12. Create & Transfer Annotations](astropath/hpfs/transferanno#512-transfer-annotations "Title")
-  - [5.13. ValidateData](astropath/hpfs/validatedata#513-validate-data)
+  - [5.13. Validate Data](astropath/hpfs/validatedata#513-validate-data)
  - [6. Slide Processing (slides)](astropath/slides/#6-slide-processing)
    - [6.1 Description](astropath/slides/#61-description)
    - [6.2 Prepdb](astropath/slides/prepdb/#62-prepdb)
