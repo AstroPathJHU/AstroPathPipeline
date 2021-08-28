@@ -1,4 +1,4 @@
-# 5.10.6. Evaluating inForm® Phenotype QC Output for the *AstroPath Pipeline*
+# 5.8.6. Evaluating inForm® Phenotype QC Output for the *AstroPath Pipeline*
 
 1. Go to the Clinical_Specimen_Y folder (Y is number associated with your cohort)
 2. Open the ‘Upkeep and Progress’ folder
