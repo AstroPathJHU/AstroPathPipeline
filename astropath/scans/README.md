@@ -1,6 +1,8 @@
 # 4. Scans
 ## 4.1. Description
-The *AstroPath Pipeline* requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, reagent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the *AstroPath Pipeline* documentations. Additionally, there is a main directory, referred to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information that drives processing such as directory locations, machine names, slide names, and project identifiers. The csv files and methods for adding projects to the pipeline are defined here [4.5](docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath_processing-directory-and-initializing-projects "Title"). To reduce the length of this page, documentation was written into different pages and linked here by a table of contents.
+The *AstroPath Pipeline* requires that a number of experimental protocols are understood and followed for the code to work. These protocols include methods for slide scanning, slide naming, reagent tracking, and directory organization. This section of the documentation describes these protocols and provides important definitions for terms used throughout the *AstroPath Pipeline* documentations. Additionally, there is a main directory, referred to as the ```<Mpath>```, which contains a set of csv files. These files contain pertinent information that drives processing such as directory locations, machine names, slide names, and project identifiers. The csv files and methods for adding projects to the pipeline are defined here [4.5](docs/AstroPathProcessingDirectoryandInitializingProjects.md#45-astropath_processing-directory-and-initializing-projects "Title"). 
+
+This section also includes the code for the modules that carry out the transfer and astro id generation. In these codes, the processing folders (what we refer to as the```<Dpath>\<Dname>``` later on) are intialized, a slide list is created, and slides are assigned new ```SlideID```s [4.7.](astroidgen#47-astroid-generation-v0000001 "Title"). Next images are renamed, transferred and backed up ([4.8.](transferdaemon#48-transfer-daemon "Title")). Directions for running each module can be found in the respective folders.
 
 ## 4.2. Contents
  - [4.3. Definitions](docs/Definitions.md#43-definitions)
@@ -27,5 +29,18 @@ The *AstroPath Pipeline* requires that a number of experimental protocols are un
 - [4.6. Directory Organization](docs/DirectoryOrganization.md#46-directory-organization)
   - [4.6.1. Directory Subfolders](docs/DirectoryOrganization.md#461-directory-subfolders)
   - [4.6.2. SlideID Subfolders](docs/DirectoryOrganization.md#462-slideid-subfolders)
-
-
+- [4.7. AstroIDGen](astroidgen#47-astroid-generation-v0000001 "Title")
+  - [4.7.1. Description](astroidgen#471-description "Title")
+  - [4.7.2. Important Definitions](astroidgen#472-important-definitions "Title")
+  - [4.7.3. Instructions](astroidgen#473-instructions "Title")
+  - [4.7.4. Workflow](astroidgen#474-workflow "Title")
+- [4.8. Transfer Daemon](transferdaemon#48-transfer-daemon "Title")
+  - [4.8.1. Description](transferdaemon#481-description "Title")
+  - [4.8.2. Important Definitions](transferdaemon#482-important-definitions "Title")
+  - [4.8.3. Instructions](transferdaemon#483-instructions "Title")
+  - [4.8.4. Workflow](transferdaemon#484-workflow "Title")
+    - [4.8.4.1. Initial Transfer](transferdaemon#4841-initial-transfer "Title")
+    - [4.8.4.2. MD5 Check](transferdaemon#4842-md5-check "Title")
+    - [4.8.4.3. Compression Into Backup](transferdaemon#4843-compression-into-backup "Title")
+    - [4.8.4.4. Source File Handling](transferdaemon#4844-source-file-handling "Title")
+  - [4.8.5. Notes](transferdaemon#485-notes "Title") 
