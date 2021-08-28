@@ -47,7 +47,13 @@ class Dispatcher : queue{
         #
     }
     [void]defCodeRoot(){
-        $root = ('\\' + $env:computername+'\'+$PSScriptRoot) -replace ":", "$"
+        #
+        if ($PSScriptRoot[0] -ne '\'){
+            $root = ('\\' + $env:computername+'\'+$PSScriptRoot) -replace ":", "$"
+        } else{
+            $root = $PSScriptRoot -replace ":", "$"
+        }
+        #
         $folder = $root -Split('\\astropath\\')
         $this.coderoot = $folder[0]     
     }
@@ -180,7 +186,7 @@ class Dispatcher : queue{
         }
         $currenttasktowrite = ("&{Import-Module ", $this.coderoot, ";LaunchModule -mpath:", `
                              $this.mpath, " -module:", $this.module, " -stringin:", `
-                             $currenttaskinput, " } *> '", $workerlogfile, "'") -join ''
+                             $currenttaskinput, " } *>> '", $workerlogfile, "'") -join ''
         #
         $this.SetFile($workertaskfile, $currenttasktowrite)
         return $workertaskfile
