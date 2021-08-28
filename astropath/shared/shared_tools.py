@@ -94,53 +94,6 @@ def send_email(person_to_email, error_msg, name='Daemon', err=1, error_check_dec
 
 
 #
-# Create and edit local transfer.log at des_string location
-# create a log folder
-# quiet determines if outgoing log entries are displayed in console
-# vers is version of running code
-# name is the name of the log file
-# astro_id and loc are for transfer daemon script
-#
-def print_to_log(log_string, des_string, vers="", quiet=True, astro_id="", loc="", name="transfer"):
-    #
-    # creates a logfiles folder in des_string as log location
-    #
-    if astro_id:
-        pathlib.Path(des_string + '/' + astro_id + '/logfiles').mkdir(parents=True, exist_ok=True)
-    else:
-        pathlib.Path(des_string + '/logfiles').mkdir(parents=True, exist_ok=True)
-    #
-    # Daemon specific creation of master lever transfer log
-    #
-    if loc == "master":
-        if not os.path.exists(des_string + '/logfiles'):
-            os.mkdir(des_string + '/logfiles')
-        mlogfile = open(des_string + '/logfiles/' + name + ".log", 'ab')
-        now = datetime.now()
-        if vers:
-            str1 = "{0}-{1};{2}\r\n".format(log_string, vers, now.strftime("%Y-%m-%d %H:%M:%S"))
-        else:
-            str1 = "{0};{1}\r\n".format(log_string, now.strftime("%Y-%m-%d %H:%M:%S"))
-        strb = bytes(str1, 'utf-8')
-        mlogfile.write(strb)
-        mlogfile.close()
-    if astro_id:
-        logfile = open(des_string + '/' + astro_id + '/logfiles/' + name + ".log", 'ab')
-    else:
-        logfile = open(des_string + '/logfiles/' + name + ".log", 'ab')
-    now = datetime.now()
-    if vers:
-        str1 = "{0}-{1};{2}\r\n".format(log_string, vers, now.strftime("%Y-%m-%d %H:%M:%S"))
-    else:
-        str1 = "{0};{1}\r\n".format(log_string, now.strftime("%Y-%m-%d %H:%M:%S"))
-    strb = bytes(str1, 'utf-8')
-    logfile.write(strb)
-    logfile.close()
-    if not quiet:
-        print(log_string)
-
-
-#
 # Extract the patient#s and BatchIDs for each specimen
 #
 def extract_specimens(specimen_path, data_headers):
@@ -164,4 +117,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
