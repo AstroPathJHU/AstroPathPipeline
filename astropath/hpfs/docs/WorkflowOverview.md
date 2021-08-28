@@ -1,4 +1,4 @@
-# 5.4 Workflow Overview
+# 5.4. Workflow Overview
 As noted above, modules outside of ```segmaps``` and ```transferanno``` can be launched and allowed to run continuously. These steps outline how a slide might process through the workflow. 
 
 1. Update the AstroPath files in the ```<mpath>```
