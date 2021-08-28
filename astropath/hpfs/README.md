@@ -56,7 +56,7 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.9.4. Workflow](mergeloop#594-workflow)
   - [5.9.5. Merge a Single Sample (MaSS)](mergeloop/MaSS#merge-a-single-sample-mass)
   - [5.9.6. Create Image QA QC utility](mergeloop/MaSS#section-8-create-image-qa-qc-utility)
-- [5.10. vminform](vminform#510-vminform"Title")
+- [5.10. VMinForm](vminform#510-vminform"Title")
   - [5.10.1. Description](vminform/README.md#5101-description)
   - [5.10.2. Contents](vminform/README.md#5102-contents)
   - [5.10.3. inForm® Multipass Phenotyping](vminform/docs/inFormMultipassPhenotype.md#5103-inform-multipass-phenotype "Title")
