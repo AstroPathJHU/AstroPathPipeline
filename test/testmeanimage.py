@@ -1,15 +1,14 @@
 #imports
-#from astropath.hpfs.flatfield.meanimagesample import MeanImageSample
-from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
-from astropath.hpfs.flatfield.utilities import FieldLog, RectangleThresholdTableEntry, ThresholdTableEntry
-from astropath.hpfs.flatfield.config import CONST
-from astropath.hpfs.image_masking.utilities import LabelledMaskRegion
-from astropath.shared.samplemetadata import MetadataSummary
-from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
-from astropath.utilities.config import CONST as UNIV_CONST
-from .testbase import compare_two_csv_files, TestBaseSaveOutput
-import numpy as np
 import os, pathlib, shutil
+import numpy as np
+from astropath.utilities.config import CONST as UNIV_CONST
+from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
+from astropath.shared.samplemetadata import MetadataSummary
+from astropath.shared.image_masking.utilities import LabelledMaskRegion
+from astropath.hpfs.flatfield.config import CONST
+from astropath.hpfs.flatfield.utilities import FieldLog, RectangleThresholdTableEntry, ThresholdTableEntry
+from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
+from .testbase import compare_two_csv_files, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)

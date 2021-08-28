@@ -1,7 +1,7 @@
 import abc, datetime, job_lock, pathlib, re
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
 from .samplemetadata import SampleDef
@@ -103,6 +103,19 @@ class Cohort(CohortBase, RunFromArgumentParser):
           raise
       yield samp
 
+  @property
+  def allsamples(self) :
+    for samp in self.sampledefs:
+      try:
+        sample = self.initiatesample(samp)
+        if sample.logmodule() != self.logmodule():
+          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+        yield sample
+      except Exception:
+        #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
+        with self.getlogger(samp):
+          raise
 
   @property
   def samples(self):
@@ -111,12 +124,12 @@ class Cohort(CohortBase, RunFromArgumentParser):
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
           raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+        yield sample
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
         with self.getlogger(samp):
           raise
-      yield sample
 
   @property
   def filteredsamples(self):
@@ -474,6 +487,24 @@ class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
       **super().initiatesamplekwargs,
       "annotationsynonyms": self.__annotationsynonyms,
       "reorderannotations": self.__reorderannotations,
+    }
+
+class CorrectedImageCohort(Im3Cohort,ImageCorrectionArgumentParser) :
+  """
+  Class for a cohort that uses corrected im3 images as its sample rectangles
+  """
+  def __init__(self,*args,et_offset_file,flatfield_file,warping_file,**kwargs) :
+    super().__init__(*args,**kwargs)
+    self.__et_offset_file = et_offset_file
+    self.__flatfield_file = flatfield_file
+    self.__warping_file = warping_file
+  @property
+  def initiatesamplekwargs(self) :
+    return {
+      **super().initiatesamplekwargs,
+      'et_offset_file': self.__et_offset_file,
+      'flatfield_file': self.__flatfield_file,
+      'warping_file': self.__warping_file
     }
 
 class WorkflowCohort(Cohort):

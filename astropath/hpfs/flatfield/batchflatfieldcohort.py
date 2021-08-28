@@ -58,8 +58,12 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         super().__init__(*args,**kwargs)
         self.__batchID = batchID
         self.__samples_added = 0
-        #start up the flatfield
-        self.__flatfield = Flatfield(self.logger)
+        #start up the flatfield after figuring out its dimensions
+        for sample in self.samples :
+            if len(sample.rectangles)>0 :
+                image_dimensions = sample.rectangles[0].imageshapeinoutput
+                break
+        self.__flatfield = Flatfield(image_dimensions,self.logger)
 
     def run(self,**kwargs) :
         #run all of the samples individually first like any other cohort (just checks that files exist)
@@ -91,7 +95,7 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
 
     @property
     def workingdir(self) :
-        return self.root / CONST.TOP_FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
+        return self.root / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
 
     #################### CLASS METHODS ####################
 

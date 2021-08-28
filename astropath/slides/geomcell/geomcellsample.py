@@ -84,21 +84,25 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layers],
       "pscale": self.pscale,
       "apscale": self.apscale,
-      "unitsmode": units.currentmode,
+      "unitsargs": units.currentargs(),
     })
-    with self.pool() as pool:
-      results = [
-        pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
-        for i, field in enumerate(self.rectangles, start=1)
-      ]
-      for r in results:
-        r.get()
+    if self.njobs is None or self.njobs > 1:
+      with self.pool() as pool:
+        results = [
+          pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
+          for i, field in enumerate(self.rectangles, start=1)
+        ]
+        for r in results:
+          r.get()
+    else:
+      for i, field in enumerate(self.rectangles, start=1):
+        self.rungeomcellfield(i, field, **kwargs)
 
   run = rungeomcell
 
   @staticmethod
-  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsmode):
-    with units.setup_context(unitsmode), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
+  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsargs):
+    with units.setup_context(*unitsargs), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
       if not lock: return
       if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): return
       onepixel = units.onepixel(pscale)
@@ -120,7 +124,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
             if polygon is None: continue
             if polygon.area < minarea: continue
 
-            box = np.array(cellproperties.bbox).reshape(2, 2) * onepixel * 1.0
+            box = np.array(cellproperties.bbox).reshape(2, 2)[:,::-1] * onepixel * 1.0
             box += pxvec
             box = box // onepixel * onepixel
 
@@ -236,6 +240,8 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           self.logger.warningglobal(f"{estring} {self.loginfo}")
         return None
       else:
+        if not polygons:
+          return None
         if len(polygons) > 1:
           if self.isprimary:
             biggestarea = polygons[0].area

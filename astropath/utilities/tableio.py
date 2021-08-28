@@ -1,8 +1,8 @@
-import abc, contextlib, csv, dataclasses, dataclassy, datetime
+import abc, csv, dataclasses, dataclassy, datetime
 
 from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
-from .misc import checkwindowsnewlines, guesspathtype, mountedpathtopath, pathtomountedpath
+from .misc import checkwindowsnewlines, field_size_limit_context, guesspathtype, mountedpathtopath, pathtomountedpath
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """
@@ -90,6 +90,8 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
     if "readingfromfile" not in extrakwargs:
       extrakwargs["readingfromfile"] = True
+    if "extrakwargs" not in extrakwargs:
+      extrakwargs["extrakwargs"] = extrakwargs
 
     for i, row in enumerate(reader):
       if i >= maxrows: break
@@ -216,16 +218,6 @@ def asrow(obj, *, dict_factory=dict):
     result.append((f, value))
 
   return dict_factory(result)
-
-@contextlib.contextmanager
-def field_size_limit_context(limit):
-  if limit is None: yield; return
-  oldlimit = csv.field_size_limit()
-  try:
-    csv.field_size_limit(limit)
-    yield
-  finally:
-    csv.field_size_limit(oldlimit)
 
 def pathfield(*args, **metadata):
   """

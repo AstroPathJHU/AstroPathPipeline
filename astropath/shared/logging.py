@@ -142,24 +142,28 @@ class MyLogger:
           imagehandler.setLevel(logging.INFO-1)
           self.logger.addHandler(imagehandler)
 
-        from ..utilities.version import astropathversion
-        self.logger.critical(f"{self.module} {astropathversion}")
+        self.logger.critical(f"START: {self.module} {self.astropathversion}")
 
     self.nentered += 1
     return self
 
+  @property
+  def astropathversion(self):
+    from ..utilities.version import astropathversion
+    return astropathversion
+
   def filter(self, record):
-    try:
-      levelname = {
-        logging.WARNING: "WARNING",
-        logging.WARNING+1: "WARNING",
-        logging.ERROR: "ERROR",
-      }[record.levelno]
-    except KeyError:
-      pass
-    else:
-      if not record.msg.startswith(levelname+": "):
-        record.msg = f"{levelname}: {record.msg}"
+    levelname = {
+      logging.DEBUG: None,
+      logging.INFO-1: "INFO",
+      logging.INFO: "INFO",
+      logging.WARNING: "WARNING",
+      logging.WARNING+1: "WARNING",
+      logging.ERROR: "ERROR",
+      logging.CRITICAL: None,
+    }[record.levelno]
+    if levelname is not None and not record.msg.startswith(levelname+": "):
+      record.msg = f"{levelname}: {record.msg}"
     if ";" in record.msg or "\n" in record.msg:
       raise ValueError("log messages aren't supposed to have semicolons or newlines:\n\n"+record.msg)
     return True
@@ -172,7 +176,7 @@ class MyLogger:
         if "\n" in errormessage: errormessage = repr(errormessage)
         self.error(errormessage)
         self.info(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)).replace(";", ""))
-      self.logger.info(f"end {self.module}")
+      self.logger.critical(f"FINISH: {self.module} {self.astropathversion}")
       for handler in self.handlers[:]:
         handler.close()
         self.removeHandler(handler)

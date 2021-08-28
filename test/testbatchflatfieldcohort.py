@@ -4,6 +4,7 @@ from astropath.hpfs.flatfield.utilities import FieldLog
 from astropath.hpfs.flatfield.config import CONST
 from astropath.shared.samplemetadata import MetadataSummary
 from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files, write_image_to_file
+from astropath.utilities.config import CONST as UNIV_CONST
 from .testbase import compare_two_csv_files, TestBaseSaveOutput
 import numpy as np
 import os, pathlib, shutil
@@ -20,7 +21,7 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
 
     @property
     def batchflatfield_dir(self) :
-        return folder/'data'/CONST.TOP_FLATFIELD_DIRNAME/f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}'
+        return folder/'data'/UNIV_CONST.FLATFIELD_DIRNAME/f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}'
 
     @property
     def outputfilenames(self) :
@@ -78,9 +79,9 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
         args = [os.fspath(root),os.fspath(root2),
                 '--sampleregex','('+'|'.join(slide_IDs)+')',
                 '--batchID',str(batchID),
+                '--allow-local-edits',
+                '--ignore-dependencies',
                ]
-        args.append('--allow-local-edits')
-        args.append('--ignore-dependencies')
         BatchFlatfieldCohort.runfromargumentparser(args=args)
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'batchflatfieldcohort'

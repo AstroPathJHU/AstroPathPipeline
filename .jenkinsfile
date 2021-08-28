@@ -31,12 +31,6 @@ pipeline {
       }
     }
 
-    stage('setup dbload folder') {
-      steps {
-        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
-      }
-    }
-
     stage('run tests') {
       parallel {
         stage('console scripts and documents') {
@@ -61,20 +55,17 @@ pipeline {
           }
         }
 
+        stage('prepdb') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
+          }
+        }
+
         stage('alignment') {
           stages {
             stage('test alignment') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
-              }
-            }
-          }
-        }
-        stage('alignment documents') {
-          stages {
-            stage('align') {
-              steps {
-                sh 'aligncohort test/data test/data/flatw --sampleregex M21_1 --debug'
               }
             }
             stage('alignment documents') {
@@ -161,9 +152,9 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
               }
             }
-            stage('test warpfitter') {
+            stage('test warpingcohort') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpingcohort'
               }
             }
           }

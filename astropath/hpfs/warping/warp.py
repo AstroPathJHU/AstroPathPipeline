@@ -1,12 +1,12 @@
 #imports
-from .utilities import WarpingError
-from .config import CONST
+import pathlib, math, cv2, functools, methodtools
+import numpy as np, seaborn as sns
+import matplotlib.pyplot as plt
+from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.misc import save_figure_in_dir
 from ...utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, write_image_to_file
 from ...utilities.img_correction import correctImageLayerWithWarpFields
-from ...utilities.misc import save_figure_in_dir
-from ...utilities.config import CONST as UNIV_CONST
-import numpy as np, matplotlib.pyplot as plt, seaborn as sns
-import pathlib, math, cv2, functools, methodtools
+from .config import CONST
 
 #################### SOME CACHED FILE-SCOPE HELPER FUNCTIONS ####################
 
@@ -358,7 +358,7 @@ class CameraWarp(Warp) :
         elif pname=='k6' :
             return self.k6
         else :
-            raise WarpingError(f'ERROR: parameter name {pname} not recognized!')
+            raise ValueError(f'ERROR: parameter name {pname} not recognized!')
 
     def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """

@@ -1,4 +1,5 @@
 import abc, contextlib, csv, datetime, more_itertools, re
+from ..utilities.misc import field_size_limit_context
 from .logging import MyLogger
 
 class ThingWithRoots(abc.ABC):
@@ -187,6 +188,7 @@ class SampleRunStatus:
     previousrun = None
     error = None
     with contextlib.ExitStack() as stack:
+      stack.enter_context(field_size_limit_context(1000000))
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:

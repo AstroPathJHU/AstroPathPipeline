@@ -101,12 +101,15 @@ def setup(mode, baseunit=None):
 
 setup("safe")
 
+def currentargs():
+  return currentmode, currentbaseunit
+
 @contextlib.contextmanager
 def setup_context(mode, baseunit=None):
   """
   Call setup in a context manager, switching back to the old mode on exit.
   """
-  bkp = currentmode, currentbaseunit
+  bkp = currentargs()
   try:
     yield setup(mode, baseunit)
   finally:

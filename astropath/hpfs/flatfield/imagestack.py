@@ -3,8 +3,8 @@ from .plotting import plot_image_layers, flatfield_image_pixel_intensity_plot, c
 from .latexsummary import MeanImageLatexSummary, FlatfieldLatexSummary, AppliedFlatfieldLatexSummary
 from .utilities import FieldLog
 from .config import CONST
-from ..image_masking.image_mask import ImageMask
-from ..image_masking.utilities import LabelledMaskRegion
+from ...shared.image_masking.image_mask import ImageMask
+from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.logging import dummylogger
 from ...shared.samplemetadata import MetadataSummary
 from ...utilities.img_file_io import get_raw_as_hwl, smooth_image_worker, smooth_image_with_uncertainty_worker, write_image_to_file
@@ -21,11 +21,11 @@ class ImageStack :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,logger=dummylogger) :
+    def __init__(self,img_dims,logger=dummylogger) :
         self.__logger = logger
-        self.__image_stack = None
-        self.__image_squared_stack = None
-        self.__mask_stack = None
+        self.__image_stack = np.zeros(img_dims,dtype=np.float64)
+        self.__image_squared_stack = np.zeros(img_dims,dtype=np.float64)
+        self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
 
     def stack_rectangle_images(self,rectangles,med_ets=None,maskingdirpath=None) :
         """
@@ -40,18 +40,10 @@ class ImageStack :
         maskingdirpath = the path to the directory holding all of the slide's image masking files (if None then masking will be skipped)
         """
         self.__logger.info(f'Stacking {len(rectangles)} images')
-        #initialize the image and mask stacks based on the image dimensions
         img_dims = rectangles[0].imageshapeinoutput
-        if self.__image_stack is None :
-            self.__image_stack = np.zeros(img_dims,dtype=np.float64)
-            self.__image_squared_stack = np.zeros(img_dims,dtype=np.float64)
-            if maskingdirpath is not None :
-                self.__mask_stack = np.zeros(img_dims,dtype=np.uint64)
         if img_dims!=self.__image_stack.shape :
             errmsg = f'ERROR: called stack_images with rectangles that have dimensions {img_dims} but an image stack with dimensions {self.__image_stack.shape}!'
             raise ValueError(errmsg)
-        if (maskingdirpath is None)!=(self.__mask_stack is None) :
-            raise ValueError('ERROR: cannot mix masked and unmasked images in an ImageStack!')
         #expand the median exposure times to apply them in multiple layers at once
         if med_ets is not None :
             med_ets = med_ets[np.newaxis,np.newaxis,:]
@@ -67,11 +59,6 @@ class ImageStack :
         """
         Add the already-created meanimage/mask stack for a single given sample to the model by reading its files
         """
-        #if it's the first sample we're adding, initialize all of the flatfield's various images based on the sample's dimensions
-        if self.__image_stack is None :
-            self.__image_stack = np.zeros(sample.rectangles[0].imageshapeinoutput,dtype=np.float64)
-            self.__image_squared_stack = np.zeros(sample.rectangles[0].imageshapeinoutput,dtype=np.float64)
-            self.__mask_stack = np.zeros(sample.rectangles[0].imageshapeinoutput,dtype=np.uint64)
         #make sure the dimensions match
         if sample.rectangles[0].imageshapeinoutput!=self.__image_stack.shape :
             errmsg = f'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have dimensions {sample.rectangles[0].imageshapeinoutput}'
@@ -91,7 +78,7 @@ class ImageStack :
         DOES NOT check that a sufficient number of images have been stacked; that must be done in some superclass that calls this method
         """
         #if the images haven't been masked then this is trivial
-        if self.__mask_stack is None :
+        if np.max(self.__mask_stack)==0 :
             self.__mean_image = self.__image_stack/self.__n_images_read
             self.__std_err_of_mean_image = np.sqrt(np.abs(self.__image_squared_stack/self.__n_images_read-(np.power(self.__mean_image,2)))/self.__n_images_read)
             return
@@ -131,7 +118,7 @@ class ImageStack :
         n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
         field_logs = []
         for ri,r in enumerate(rectangles) :
-            self.__logger.info(f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....')
+            self.__logger.debug(f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....')
             with r.using_image() as im :
                 normalized_image = im / med_ets if med_ets is not None else im / r.allexposuretimes[np.newaxis,np.newaxis,:]
                 self.__image_stack+=normalized_image
@@ -167,7 +154,7 @@ class ImageStack :
         n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
         field_logs = []
         for ri,r in enumerate(rectangles_to_stack) :
-            self.__logger.info(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles_to_stack)})....')
+            self.__logger.debug(f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles_to_stack)})....')
             imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
             with r.using_image() as im :
                 normalized_im = im / med_ets if med_ets is not None else im / r.allexposuretimes[np.newaxis,np.newaxis,:]
@@ -203,6 +190,8 @@ class MeanImage(ImageStack) :
         self.__std_err_of_mean_image=None
 
     def stack_rectangle_images(self,rectangles,*otherstackimagesargs) :
+        if len(rectangles)<1 :
+            return []
         if self.__n_images_stacked_by_layer is None :
             self.__n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
         new_n_images_read, new_n_images_stacked_by_layer, new_field_logs = super().stack_rectangle_images(rectangles,*otherstackimagesargs)
@@ -305,7 +294,7 @@ class Flatfield(ImageStack) :
 
     def stack_rectangle_images(self,rectangles,*otherstackimagesargs) :
         if self.__n_images_stacked_by_layer is None :
-            self.__n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
+            self.__n_images_stacked_by_layer = np.zeros((self.image_stack.shape[-1]),dtype=np.uint64)
         new_n_images_read, new_n_images_stacked_by_layer, new_field_logs = super().stack_rectangle_images(rectangles,*otherstackimagesargs)
         self.__n_images_read+=new_n_images_read
         self.__n_images_stacked_by_layer+=new_n_images_stacked_by_layer
@@ -328,7 +317,7 @@ class Flatfield(ImageStack) :
         #smooth the mean image with its uncertainty
         smoothed_mean_image,sm_mean_img_err = smooth_image_with_uncertainty_worker(mean_image,std_err_of_mean_image,CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA,gpu=True)
         #create the flatfield image layer-by-layer
-        for li in range(self.mask_stack.shape[-1]) :
+        for li in range(self.image_stack.shape[-1]) :
             #warn if the layer is missing a substantial number of images in the stack
             if (self.mask_stack is not None and np.max(self.mask_stack[:,:,li])<1) or (self.mask_stack is None and self.__n_images_stacked_by_layer[li]<1) :
                 self.logger.warningglobal(f'WARNING: not enough images were stacked in layer {li+1}, so this layer of the flatfield model will be all ones!')
@@ -398,7 +387,7 @@ class CorrectedMeanImage(MeanImage) :
     """
 
     def __init__(self,*args,**kwargs) :
-        super().__init__()
+        super().__init__(*args,**kwargs)
         self.__flatfield_image = None
         self.__flatfield_image_err = None
         self.__corrected_mean_image = None

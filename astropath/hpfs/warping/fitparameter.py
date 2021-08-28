@@ -1,8 +1,10 @@
 #imports
 import methodtools
 
-#class for a single warp fit parameter
 class FitParameter :
+    """
+    class for a single warp fit parameter
+    """
 
     #################### PROPERTIES ####################
 
@@ -31,37 +33,27 @@ class FitParameter :
     def initial_fit_value(self) : #the initial value in fit units
         return self._initial_fit_value
     @property
-    def first_minimization_fit_value(self) : #the first minimization best fit value in fit units
-        return self._first_minimization_fit_value
-    @first_minimization_fit_value.setter
-    def first_minimization_fit_value(self,v) :
-        self._first_minimization_fit_value = v
-        self._first_minimization_warp_value = self.warpValueFromFitValue(v)
-        self._current_fit_value = self._first_minimization_fit_value
-        self._current_warp_value = self._first_minimization_warp_value
-    @property
-    def second_minimization_fit_value(self) : #the second minimization best fit value in fit units
-        return self._second_minimization_fit_value
-    @second_minimization_fit_value.setter
-    def second_minimization_fit_value(self,v) :
-        self._second_minimization_fit_value = v
-        self._second_minimization_warp_value = self.warpValueFromFitValue(v)
-        self._current_fit_value = self._second_minimization_fit_value
-        self._current_warp_value = self._second_minimization_warp_value
+    def best_fit_value(self) : #the best fit value in fit units
+        return self._best_fit_value
+    @best_fit_value.setter
+    def best_fit_value(self,v) :
+        self._best_fit_value = v
+        self._best_warp_value = self.warp_value_from_fit_value(v)
+        self._current_fit_value = self._best_fit_value
+        self._current_warp_value = self._best_warp_value
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,name,fixed,normalize,bounds,initial_value) :
+    def __init__(self,name,fixed,bounds,initial_value) :
         """
         name          = parameter name string
         fixed         = True if parameter will not float in fitting
-        normalize     = True if parameter should be numerically rescaled between bounds for fitting
         bounds        = tuple of (lower, upper) absolute parameter bounds in warping units
         initial_value = the starting value of the parameter in warping units
         """
         self.name = name
         self._fixed=fixed
-        self._normalize=normalize
+        self._normalize=True
         #set the bounds in warping units
         self._min_warp_val = bounds[0]
         self._max_warp_val = bounds[1]
@@ -69,21 +61,19 @@ class FitParameter :
         self._offset  = 0.0 if self._min_warp_val==0. else 0.5*(bounds[1]+bounds[0])
         self._rescale = (bounds[1]-bounds[0]) if self._min_warp_val==0. else 0.5*(bounds[1]-bounds[0])
         #set the bounds in fit units
-        self._min_fit_val = self.fitValueFromWarpValue(self._min_warp_val)
-        self._max_fit_val = self.fitValueFromWarpValue(self._max_warp_val)
+        self._min_fit_val = self.fit_value_from_warp_value(self._min_warp_val)
+        self._max_fit_val = self.fit_value_from_warp_value(self._max_warp_val)
         #set the initial numerical values of the parameter
         self._initial_warp_value = initial_value
-        self._initial_fit_value  = self.fitValueFromWarpValue(initial_value)
+        self._initial_fit_value  = self.fit_value_from_warp_value(initial_value)
         self._current_warp_value = self._initial_warp_value
         self._current_fit_value  = self._initial_fit_value
-        #initialize the first and second minimization result values
-        self._first_minimization_warp_value = None
-        self._first_minimization_fit_value  = None
-        self._second_minimization_warp_value = None
-        self._second_minimization_fit_value  = None
+        #initialize the best fit result values
+        self._best_warp_value = None
+        self._best_fit_value  = None
 
     @methodtools.lru_cache()
-    def fitValueFromWarpValue(self,value) :
+    def fit_value_from_warp_value(self,value) :
         """
         convert a given value from warp units to fit units
         """
@@ -93,7 +83,7 @@ class FitParameter :
             return (value-self._offset)/self._rescale
 
     @methodtools.lru_cache()
-    def warpValueFromFitValue(self,value) :
+    def warp_value_from_fit_value(self,value) :
         """
         convert a given value from fit units to warp units
         """

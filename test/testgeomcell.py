@@ -47,5 +47,8 @@ class TestGeomCell(TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  def testGeomCellFastUnits(self, SlideID="M206", **kwargs):
-    self.testGeomCell(SlideID=SlideID, units="fast", **kwargs)
+  def testGeomCellFastUnitsPixels(self, SlideID="M206", **kwargs):
+    self.testGeomCell(SlideID=SlideID, units="fast_pixels", **kwargs)
+
+  def testGeomCellFastUnitsMicrons(self, SlideID="M206", **kwargs):
+    self.testGeomCell(SlideID=SlideID, units="fast_microns", **kwargs)
