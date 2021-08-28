@@ -1,5 +1,5 @@
 # 5.8.3. Important Definitions
-## 5.8.3.1. Flatw Expected Directory Structure
+## 5.8.3.1. Image Correction Expected Directory Structure
 Since this section of the pipeline can be used with standalone funcationality to apply corrections, we define the directory structure here. A more detailed directory structure for the whole AstroPath Pipeline can be found [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization): 
 ```
 <base>\<SlideID>\<im3_path>\<filename>
