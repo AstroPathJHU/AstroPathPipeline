@@ -16,5 +16,5 @@ There are multiple parts of this module provided which can be run collectively a
   - [5.8.5.1. Processing One Sample](docs/AdditionalTools.md#5851-processing-one-sample)
   - [5.8.5.2. Directions for Applying the Image Corrections](docs/AdditionalTools.md#5852-directions-for-applying-the-image-corrections)
   - [5.8.5.3. Directions for Running Version *0.0.1*](docs/AdditionalTools.md#5853-directions-for-applying-the-image-corrections-version-001)
-- [5.8.6. Overview Workflow of Image Correction Module](docs/OverviewWorkflowofIm3Tools.md#586-overview-workflow-of-im3tools)
+- [5.8.6. Overview Workflow of Image Correction Module](docs/OverviewWorkflowofImageCorrectionModule.md#586overview-workflow-of-image-correction-module)
 
