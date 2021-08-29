@@ -375,9 +375,9 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
           else:
             dct[segstatus] = segid
     if "NA" in dct.values():
-      raise ValueError("No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
+      raise ValueError(f"No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
     if sorted(dct.keys()) != list(range(1, len(dct)+1)):
-      raise ValueError("Non-sequential SegmentationStatuses {sorted(dct.keys()}} ({self.mergeconfigcsv})")
+      raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
     return [dct[k] for k in range(1, len(dct)+1)]
 
   @property
@@ -721,22 +721,25 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   @property
   def zoomroot(self): return self.__zoomroot
   @property
-  def zoomfolder(self): return self.zoomroot/self.SlideID/"big"
+  def bigfolder(self): return self.zoomroot/self.SlideID/"big"
   @property
   def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
 
   zmax = 9
 
-  def zoomfilename(self, layer, tilex, tiley):
+  def bigfilename(self, layer, tilex, tiley):
     """
     Zoom filename for a given layer and tile.
     """
-    return self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+    return self.bigfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
   def wsifilename(self, layer):
     """
     Wsi filename for a given layer.
     """
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+  @property
+  def wsitifffilename(self):
+    return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-wsi.tiff"
 
 class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """

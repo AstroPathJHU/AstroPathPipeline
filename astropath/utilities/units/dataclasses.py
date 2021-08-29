@@ -55,6 +55,7 @@ def pscalefield(*defaultvalue, **metadata):
   metadata = {
     "includeintable": False,
     "ispscalefield": True,
+    "use_default": False,
     **metadata,
   }
   return MetaDataAnnotation(*defaultvalue, **metadata)
@@ -153,8 +154,7 @@ def makedataclasswithpscale(classname, pscalename, thingwithpscalecls):
   def getter(self): return getattr(self, varname)
   def setter(self, pscale): setattr(self, varname, pscale)
   setattr(cls, pscalename, pscalefield(property(getter, setter)))
-  cls = dataclassy.dataclass(cls)
-  cls.__defaults__.pop(pscalename)
+  cls = dataclassy.dataclass(cls, meta=type(cls))
 
   finishedinitvarname = f"_{classname}Frozen__finishedinit"
   class frozen(cls, MyDataClassFrozen):

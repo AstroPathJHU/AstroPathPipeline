@@ -1,4 +1,4 @@
-import gzip, numpy as np, pathlib, PIL.Image
+import gzip, more_itertools, numpy as np, pathlib, PIL.Image, tifffile
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
 from .testbase import TestBaseSaveOutput
@@ -36,11 +36,6 @@ class TestZoom(TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"/f"{SlideID}-Z9-L{i}-X{x}-Y{y}-big.png"
-      for SlideID in ("L1_1", "M206")
-      for i in self.layers(SlideID)
-      for x, y in self.xys(SlideID)
-    ] + [
       thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z9-L{i}-wsi.png"
       for SlideID in ("L1_1", "M206")
       for i in self.layers(SlideID)
@@ -48,6 +43,9 @@ class TestZoom(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"zoom"/SlideID/"logfiles"/f"{SlideID}-zoom.log"
       for SlideID in ("L1_1", "M206")
       for i in self.layers(SlideID)
+    ] + [
+      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z9-wsi.tiff"
+      for SlideID in ("L1_1", "M206")
     ] + [
       thisfolder/"test_for_jenkins"/"zoom"/"logfiles"/"zoom.log"
     ]
@@ -64,20 +62,22 @@ class TestZoom(TestBaseSaveOutput):
     sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=self.selectrectangles(SlideID), layers=self.layers(SlideID))
 
     try:
-      for i in self.layers(SlideID):
-        for x, y in self.xys(SlideID):
-          filename = f"{SlideID}-Z9-L{i}-X{x}-Y{y}-big.png"
+      assert not sample.bigfolder.exists()
+      tifffilename = f"{SlideID}-Z9-wsi.tiff"
+      with tifffile.TiffFile(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/tifffilename) as tiff:
+        for tiffpage, layer in more_itertools.zip_equal(tiff.pages, self.layers(SlideID)):
+          filename = f"{SlideID}-Z9-L{layer}-wsi.png"
           sample.logger.info("comparing "+filename)
           with sample.PILmaximagepixels(), \
-               PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"/filename) as img, \
-               PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"big"/filename) as targetimg:
-            np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
-        filename = f"{SlideID}-Z9-L{i}-wsi.png"
-        sample.logger.info("comparing "+filename)
-        with sample.PILmaximagepixels(), \
-             PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/filename) as img, \
-             PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
-          np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+               PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/filename) as img, \
+               PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
+            imgarray = np.asarray(img)
+            targetarray = np.asarray(targetimg)
+            np.testing.assert_array_equal(imgarray, targetarray)
+
+          sample.logger.info("comparing tiff")
+          np.testing.assert_array_equal(tiffpage.asarray(), targetarray)
+
     except:
       self.saveoutput()
       raise

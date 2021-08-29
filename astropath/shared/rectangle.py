@@ -317,32 +317,32 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   def imagefolder(self): return self.__imagefolder
   @imagefolder.setter
   def imagefolder(self, imagefolder): self.__imagefolder = imagefolder
-  imagefolder: pathlib.Path = pathfield(imagefolder, includeintable=False)
+  imagefolder: pathlib.Path = pathfield(imagefolder, includeintable=False, use_default=False)
   @property
   def filetype(self): return self.__filetype
   @filetype.setter
   def filetype(self, filetype): self.__filetype = filetype
-  filetype: str = MetaDataAnnotation(filetype, includeintable=False)
+  filetype: str = MetaDataAnnotation(filetype, includeintable=False, use_default=False)
   @property
   def width(self): return self.__width
   @width.setter
   def width(self, width): self.__width = width
-  width: units.Distance = distancefield(width, includeintable=False, pixelsormicrons="pixels")
+  width: units.Distance = distancefield(width, includeintable=False, pixelsormicrons="pixels", use_default=False)
   @property
   def height(self): return self.__height
   @height.setter
   def height(self, height): self.__height = height
-  height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels")
+  height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels", use_default=False)
   @property
   def nlayers(self): return self.__nlayers
   @nlayers.setter
   def nlayers(self, nlayers): self.__nlayers = nlayers
-  nlayers: int = MetaDataAnnotation(nlayers, includeintable=False)
+  nlayers: int = MetaDataAnnotation(nlayers, includeintable=False, use_default=False)
   @property
   def layers(self): return self.__layers
   @layers.setter
   def layers(self, layers): self.__layers = layers
-  layers: list = MetaDataAnnotation(layers, includeintable=False)
+  layers: list = MetaDataAnnotation(layers, includeintable=False, use_default=False)
 
   @property
   def imageshape(self):
@@ -427,7 +427,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   def readlayerfile(self): return self.__readlayerfile
   @readlayerfile.setter
   def readlayerfile(self, readlayerfile): self.__readlayerfile = readlayerfile
-  readlayerfile: bool = MetaDataAnnotation(True, includeintable=False)
+  readlayerfile: bool = MetaDataAnnotation(True, includeintable=False, use_default=False)
 
   @classmethod
   def transforminitargs(cls, *args, layer, readlayerfile=True, **kwargs):
