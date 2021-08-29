@@ -410,8 +410,11 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         for path, _, node in jxmlease.parse(f, generator="AllComponents"):
           layers = range(1, int(node.xml_attrs["dim"])+1)
     return [
-      zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
-      for layer in layers
+      *(
+        zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
+        for layer in layers
+      ),
+      zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-wsi.tiff"
     ]
 
   @classmethod
