@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
 
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
