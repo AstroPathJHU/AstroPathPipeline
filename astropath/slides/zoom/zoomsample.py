@@ -1,4 +1,4 @@
-import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, shutil, skimage, tifffile
+import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, shutil, skimage.transform, tifffile
 
 from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
@@ -54,6 +54,11 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
     fmax (default: 50) is a scaling factor for the image.
     """
+    try:
+      import pyvips
+    except ImportError:
+      raise ImportError("Please pip install pyvips to use this functionality")
+
     onepixel = self.onepixel
     self.logger.info("allocating memory for the global array")
     bigimageshape = tuple((self.ntiles * self.zoomtilesize)[::-1]) + (len(self.layers),)
@@ -137,18 +142,29 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
             ]
 
       #save the wsi
+      tiffoutput = None
       self.wsifolder.mkdir(parents=True, exist_ok=True)
       for i, layer in enumerate(self.layers):
         filename = self.wsifilename(layer)
         self.logger.info(f"saving {filename.name}")
-        image = PIL.Image.fromarray(bigimage[:, :, i])
+        slc = bigimage[:, :, i]
+        image = PIL.Image.fromarray(slc)
         image.save(filename, "PNG")
+
+        vipsimage = pyvips.Image.new_from_memory(np.ascontiguousarray(slc), width=bigimage.shape[1], height=bigimage.shape[0], bands=1, format="uchar")
+        if tiffoutput is None:
+          tiffoutput = vipsimage
+        else:
+          tiffoutput = tiffoutput.join(vipsimage, "vertical")
 
       filename = self.wsitifffilename
       self.logger.info(f"saving {filename.name}")
-      with tifffile.TiffWriter(filename) as f:
-        for layer in bigimage.transpose(2, 0, 1):
-          f.write(layer)
+      scale = 2**(self.ztiff-self.zmax)
+      if scale == 1:
+        tiffoutputzoomed = tiffoutput
+      else:
+        tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
+      tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=image.height*scale)
 
   def zoom_memory(self, fmax=50):
     """
@@ -378,7 +394,12 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
     filename = self.wsitifffilename
     self.logger.info(f"saving {filename.name}")
-    tiffoutput.tiffsave(os.fspath(filename), page_height=output.height)
+    scale = 2**(self.ztiff-self.zmax)
+    if scale == 1:
+      tiffoutputzoomed = tiffoutput
+    else:
+      tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
+    tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=output.height*scale)
 
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)
@@ -418,7 +439,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
         for layer in layers
       ),
-      zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-wsi.tiff"
+      zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.ztiff}-wsi.tiff"
     ]
 
   @classmethod
