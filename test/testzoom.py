@@ -44,7 +44,7 @@ class TestZoom(TestBaseSaveOutput):
       for SlideID in ("L1_1", "M206")
       for i in self.layers(SlideID)
     ] + [
-      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z9-wsi.tiff"
+      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z8-wsi.tiff"
       for SlideID in ("L1_1", "M206")
     ] + [
       thisfolder/"test_for_jenkins"/"zoom"/"logfiles"/"zoom.log"
@@ -63,9 +63,10 @@ class TestZoom(TestBaseSaveOutput):
 
     try:
       assert not sample.bigfolder.exists()
-      tifffilename = f"{SlideID}-Z9-wsi.tiff"
-      with tifffile.TiffFile(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/tifffilename) as tiff:
-        for tiffpage, layer in more_itertools.zip_equal(tiff.pages, self.layers(SlideID)):
+      tifffilename = f"{SlideID}-Z8-wsi.tiff"
+      with tifffile.TiffFile(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/tifffilename) as tiff, \
+           tifffile.TiffFile(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/tifffilename) as targettiff:
+        for tiffpage, targettiffpage, layer in more_itertools.zip_equal(tiff.pages, targettiff.pages, self.layers(SlideID)):
           filename = f"{SlideID}-Z9-L{layer}-wsi.png"
           sample.logger.info("comparing "+filename)
           with sample.PILmaximagepixels(), \
@@ -76,7 +77,7 @@ class TestZoom(TestBaseSaveOutput):
             np.testing.assert_array_equal(imgarray, targetarray)
 
           sample.logger.info("comparing tiff")
-          np.testing.assert_array_equal(tiffpage.asarray(), targetarray)
+          np.testing.assert_array_equal(tiffpage.asarray(), targettiffpage.asarray())
 
     except:
       self.saveoutput()

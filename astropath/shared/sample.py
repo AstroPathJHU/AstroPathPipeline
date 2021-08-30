@@ -726,6 +726,7 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
 
   zmax = 9
+  ztiff = 8
 
   def bigfilename(self, layer, tilex, tiley):
     """
@@ -739,7 +740,7 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
   @property
   def wsitifffilename(self):
-    return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-wsi.tiff"
+    return self.wsifolder/f"{self.SlideID}-Z{self.ztiff}-wsi.tiff"
 
 class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """
