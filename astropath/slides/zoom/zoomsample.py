@@ -144,7 +144,9 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         image = PIL.Image.fromarray(bigimage[:, :, i])
         image.save(filename, "PNG")
 
-      with tifffile.TiffWriter(self.wsitifffilename) as f:
+      filename = self.wsitifffilename
+      self.logger.info(f"saving {filename.name}")
+      with tifffile.TiffWriter(filename) as f:
         for layer in bigimage.transpose(2, 0, 1):
           f.write(layer)
 
@@ -374,7 +376,9 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
     shutil.rmtree(self.bigfolder)
 
-    tiffoutput.tiffsave(os.fspath(self.wsitifffilename), page_height=output.height)
+    filename = self.wsitifffilename
+    self.logger.info(f"saving {filename.name}")
+    tiffoutput.tiffsave(os.fspath(filename), page_height=output.height)
 
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)
