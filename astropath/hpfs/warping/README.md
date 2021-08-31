@@ -19,9 +19,9 @@ Running the above command will produce:
 1. **more detailed sample log files** called "`<SlideID>-warping.log`" in `<Dpath>\<Dname>\<SlideID>\logfiles` for each slide used in fitting for the warping patterns.
 
 Other options for how the correction should be done include:
+1. Running only the octet finding portion of the code for all samples in the cohort: add the `--octets_only` flag. When running with this flag the octets for each sample will be found and written out and nothing else will happen. This is useful for running octet finding for subsets of the cohort samples in multiple processes instead of waiting for them all to happen sequentially.
+1. Putting the output in a different location: add the `--workingdir [workingdir_path]` argument where `[workingdir_path]` is the path to the directory where the output should go
 1. Skipping corrections for differences in exposure time: add the `--skip_exposure_time_corrections` argument
 1. Using exposure time dark current offsets that are different from what's stored in each sample's Full.xml file: add the `--exposure_time_offset_file [path_to_exposure_time_offset_file]` argument where `[path_to_exposure_time_offset_file]` is the path to a .csv file holding a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L30-L35)
-1. Putting the output in a different location: add the `--workingdir [workingdir_path]` argument where `[workingdir_path]` is the path to the directory where the output should go
-1. Running only the octet finding portion of the code for all sample in the cohort: add the `--octets_only` flag. When running with this flag the octets for each sample will be found and written out and nothing else will happen. This is useful for running octet finding for subsets of the cohort samples in multiple processes instead of waiting for them all to happen sequentially.
 
 To see more command line arguments available, run `warpingcohort --help`.

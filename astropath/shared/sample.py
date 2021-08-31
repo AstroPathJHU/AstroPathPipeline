@@ -1491,7 +1491,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir,:] = r.allexposuretimes
     self.__med_ets = np.median(slide_exp_times,axis=0)
-    if (not self.skip_et_corrections) and (self.self.et_offset_file is not None) :
+    if (not self.skip_et_corrections) and (self.et_offset_file is not None) :
       #read the exposure time offsets
       offsets = self.__read_exposure_time_offsets()
       #add the exposure time correction to every rectangle's transformations
