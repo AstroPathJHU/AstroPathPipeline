@@ -1348,6 +1348,9 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
   def et_offset_file(self) :
     return self.__et_offset_file
   @property
+  def skip_et_corrections(self) :
+    return self.__skip_et_corrections
+  @property
   def flatfield_file(self) :
     return self.__flatfield_file
   @property
@@ -1398,7 +1401,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir] = r.allexposuretimes[self.__layer-1]
     self.__med_et = np.median(slide_exp_times)
-    if self.et_offset_file is not None :
+    if (not self.skip_et_corrections) and (self.self.et_offset_file is not None) :
       #read the exposure time offsets
       offset = self.__get_exposure_time_offset()
       #add the exposure time correction to every rectangle's transformations
@@ -1488,7 +1491,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir,:] = r.allexposuretimes
     self.__med_ets = np.median(slide_exp_times,axis=0)
-    if self.et_offset_file is not None :
+    if (not self.skip_et_corrections) and (self.self.et_offset_file is not None) :
       #read the exposure time offsets
       offsets = self.__read_exposure_time_offsets()
       #add the exposure time correction to every rectangle's transformations
