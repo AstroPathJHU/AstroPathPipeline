@@ -74,7 +74,21 @@ class DataClassWithMetaDataMeta(DataClassMeta):
           del dict_[annoname]
         __annotationmetadata__[annoname] = annovalue.metadata
 
-    return super().__new__(mcs, name, bases, dict_, **kwargs)
+    non_default_class_variables = {}
+
+    for annoname, metadata in __annotationmetadata__.items():
+      if not metadata.get("use_default", True):
+        try:
+          non_default_class_variables[annoname] = dict_.pop(annoname)
+        except KeyError:
+          pass
+
+    cls = super().__new__(mcs, name, bases, dict_, **kwargs)
+
+    for k, v in non_default_class_variables.items():
+      setattr(cls, k, v)
+
+    return cls
 
 class DataClassWithMetaData(metaclass=DataClassWithMetaDataMeta):
   """

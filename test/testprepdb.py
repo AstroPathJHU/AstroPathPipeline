@@ -74,8 +74,10 @@ class TestPrepDb(TestBaseSaveOutput):
         except:
           raise ValueError("Error in "+filename)
 
+      platform = sys.platform
+      if platform == "darwin": platform = "linux"
       with PIL.Image.open(dbloadroot/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
-           PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff_{sys.platform}.jpg") as targetimg:
+           PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff_{platform}.jpg") as targetimg:
         np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
       for log in logs:

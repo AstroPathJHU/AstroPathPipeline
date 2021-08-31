@@ -235,9 +235,12 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
   @classmethod
   def makeargumentparser(cls):
     p = super().makeargumentparser()
-    p.add_argument('--exposure_time_offset_file', type=pathlib.Path,
+    g = p.add_mutually_exclusive_group()
+    g.add_argument('--exposure_time_offset_file', type=pathlib.Path,
                     help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
-                    [default=None skips corrections for differences in image exposure time]''')
+                    [default=None will search for a .xml file specifying dark current values]''')
+    g.add_argument('--skip_exposure_time_corrections', action='store_true',
+                    help='''Add this flag to skip exposure time corrections entirely''')
     p.add_argument('--flatfield_file', type=pathlib.Path,
                     help='''Path to the flatfield .bin file, or name of the file in root/Flatfield, containing the correction factors to apply 
                     [default=None skips flatfield corrections]''')
@@ -249,6 +252,7 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       'et_offset_file': parsed_args_dict.pop('exposure_time_offset_file'),
+      'skip_et_corrections':parsed_args_dict.pop('skip_exposure_time_corrections'),
       'flatfield_file': parsed_args_dict.pop('flatfield_file'),
       'warping_file': parsed_args_dict.pop('warping_file')
     }

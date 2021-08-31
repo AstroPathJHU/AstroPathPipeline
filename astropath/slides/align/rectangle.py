@@ -106,7 +106,7 @@ class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideIma
   def layer(self): return self.__layer
   @layer.setter
   def layer(self, layer): self.__layer = layer
-  layer: int = MetaDataAnnotation(includeintable=False)
+  layer: int = MetaDataAnnotation(layer, includeintable=False, use_default=False)
 
 class ConsolidateBroadbandFilters(RectangleTransformationBase):
   """
