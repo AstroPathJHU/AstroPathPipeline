@@ -176,32 +176,16 @@ pipeline {
           }
         }
 
-	stage('flatfield cohorts') {
-	  stages {
-	    stage('batch flatfield cohort') {
-	      steps {
-	        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbatchflatfieldcohort'
-	      }
-	    }
-	    stage('applied flatfield cohort') {
-	      steps {
-	        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testappliedflatfieldcohort'
-	      }
-	    }
-	  }
-	}
-
-        stage('exposure time correction') {
+        stage('flatfield cohorts') {
           stages {
-            stage('test exposuretime') {
+            stage('batch flatfield cohort') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testexposuretimefit'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbatchflatfieldcohort'
               }
             }
-            stage('exposuretime documents') {
+            stage('applied flatfield cohort') {
               steps {
-                sh 'cd documents/exposuretime; pdflatex exposuretime_documentation.tex; bibtex exposuretime_documentation; pdflatex exposuretime_documentation.tex; pdflatex exposuretime_documentation.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/exposuretime/exposuretime_documentation.log'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testappliedflatfieldcohort'
               }
             }
           }
