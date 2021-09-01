@@ -1,5 +1,5 @@
 import cv2, methodtools, more_itertools, numpy as np
-from ...utilieis.config import CONST as UNIV_CONST
+from ...utilities.config import CONST as UNIV_CONST
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import Vertex
 from ...shared.polygon import DataClassWithPolygon, SimplePolygon, Polygon, polygonfield
