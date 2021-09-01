@@ -1,4 +1,5 @@
 import cv2, methodtools, more_itertools, numpy as np
+from ...utilieis.config import CONST as UNIV_CONST
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import Vertex
 from ...shared.polygon import DataClassWithPolygon, SimplePolygon, Polygon, polygonfield
@@ -99,7 +100,7 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherworkflowkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [
       dbload/f"{SlideID}_fieldGeometry.csv",
       dbload/f"{SlideID}_tumorGeometry.csv",

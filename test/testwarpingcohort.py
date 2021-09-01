@@ -43,7 +43,7 @@ class TestWarpingCohort(TestBaseSaveOutput) :
         write_image_to_file(ff_img,root/UNIV_CONST.FLATFIELD_DIRNAME/ff_file.name)
         #move the example background thresholds file to the expected location
         existing_path = folder/'data'/'reference'/'meanimage'/f'{slideID}-background_thresholds.csv'
-        new_path = folder/'data'/slideID/'im3'/'meanimage'/existing_path.name
+        new_path = folder/'data'/slideID/UNIV_CONST.IM3_DIR_NAME/'meanimage'/existing_path.name
         shutil.copy(existing_path,new_path)
         super().setUpClass()
 
@@ -164,5 +164,5 @@ class TestWarpingCohort(TestBaseSaveOutput) :
         #Remove the flatfield file that was created and the directory it's in
         shutil.rmtree(root/UNIV_CONST.FLATFIELD_DIRNAME)
         #Remove the copied background threshold file
-        (folder/'data'/slideID/'im3'/'meanimage'/f'{slideID}-background_thresholds.csv').unlink()
+        (folder/'data'/slideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/f'{slideID}-background_thresholds.csv').unlink()
         super().tearDownClass()

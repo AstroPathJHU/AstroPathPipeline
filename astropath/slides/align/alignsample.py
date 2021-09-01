@@ -3,6 +3,7 @@
 import contextlib, numpy as np, traceback
 
 from ...shared.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
+from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import get_GPU_thread
 from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
@@ -342,7 +343,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [
       dbload/f"{SlideID}_align.csv",
       dbload/f"{SlideID}_affine.csv",

@@ -1,6 +1,7 @@
 import abc, argparse, collections, methodtools, numpy as np, pathlib, subprocess, tempfile
 from ...shared.sample import Im3SampleBase
 from ...utilities.misc import floattoint, memmapcontext
+from ...utilities.config import CONST as UNIV_CONST
 
 here = pathlib.Path(__file__).parent
 
@@ -30,7 +31,7 @@ class LayerExtractorBase(Im3SampleBase, collections.abc.Sized):
       self.logger.debug(f"{i:5d}/{nfiles} {filename.name}")
       with memmapcontext(filename, dtype=np.uint16, order="F", shape=self.shape, mode="r") as memmap:
         for layer in layers:
-          outfilename = self.root2/self.SlideID/f"{filename.stem}.fw{layer:02d}"
+          outfilename = self.root2/self.SlideID/f"{filename.stem}{UNIV_CONST.FLATW_EXT}{layer:02d}"
           if outfilename.exists():
             if alreadyexistsstrategy == "error":
               raise OSError(f"{outfilename} already exists")
@@ -47,7 +48,7 @@ class LayerExtractorBase(Im3SampleBase, collections.abc.Sized):
 class LayerExtractor(LayerExtractorBase):
   @property
   def fwfiles(self):
-    return (self.root2/self.SlideID).glob("*.fw")
+    return (self.root2/self.SlideID).glob(f"*{UNIV_CONST.FLATW_EXT}")
   def __len__(self):
     return len(list(self.fwfiles))
 
@@ -69,7 +70,7 @@ class ShredderAndLayerExtractor(LayerExtractorBase):
 
   @property
   def im3files(self):
-    return (self.root1/self.SlideID/"im3"/"flatw").glob("*.im3")
+    return (self.root1/self.SlideID/UNIV_CONST.IM3_DIR_NAME/"flatw").glob(f"*{UNIV_CONST.IM3_EXT}")
 
   @property
   def fwfiles(self):
@@ -83,7 +84,7 @@ class ShredderAndLayerExtractor(LayerExtractorBase):
 
   def shred(self, im3):
     rawfile = self.tmpdir/(im3.stem+".raw")
-    fwfile = self.tmpdir/(im3.stem+".fw")
+    fwfile = self.tmpdir/(im3.stem+UNIV_CONST.FLATW_EXT)
     if fwfile.exists(): return fwfile
     try:
       out = subprocess.check_output([str(here/"ShredIm3.exe"), str(im3), "-o", str(fwfile.parent)], stderr=subprocess.STDOUT)

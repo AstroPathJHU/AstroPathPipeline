@@ -130,7 +130,7 @@ class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
   def getoutputfiles(cls, SlideID, *, maskroot, maskfilesuffix=None, **otherrootkwargs):
     if maskfilesuffix is None: maskfilesuffix = cls.defaultmaskfilesuffix
     return [
-      maskroot/SlideID/"im3"/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME/pathlib.Path(f"{SlideID}_{cls.maskfilestem()}").with_suffix(maskfilesuffix)
+      maskroot/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME/pathlib.Path(f"{SlideID}_{cls.maskfilestem()}").with_suffix(maskfilesuffix)
     ]
 
 class InformMaskSample(TissueMaskSample):

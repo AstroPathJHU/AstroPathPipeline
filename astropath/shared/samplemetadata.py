@@ -1,4 +1,5 @@
 import dataclassy, pathlib
+from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.dataclasses import MyDataClassFrozen
 from ..utilities.tableio import readtable
 
@@ -70,12 +71,12 @@ class SampleDef(MyDataClassFrozen):
     if "SlideID" in kwargs and root is not None:
       if "Scan" not in kwargs:
         try:
-          kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/"im3").glob("Scan*/"))
+          kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/UNIV_CONST.IM3_DIR_NAME).glob("Scan*/"))
         except ValueError:
           pass
       if "BatchID" not in kwargs and kwargs.get("Scan", None) is not None:
         try:
-          with open(root/kwargs["SlideID"]/"im3"/f"Scan{kwargs['Scan']}"/"BatchID.txt") as f:
+          with open(root/kwargs["SlideID"]/UNIV_CONST.IM3_DIR_NAME/f"Scan{kwargs['Scan']}"/"BatchID.txt") as f:
             kwargs["BatchID"] = int(f.read())
         except FileNotFoundError:
           pass

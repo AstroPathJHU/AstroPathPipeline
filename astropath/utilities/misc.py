@@ -42,6 +42,25 @@ def cd(dir):
   finally:
     os.chdir(cdminus)
 
+def crop_and_overwrite_image(im_path,border=0.03) :
+  """
+  small helper function to crop white border out of an image
+  """
+  im = cv2.imread(im_path)
+  y_border = int(im.shape[0]*(border/2))
+  x_border = int(im.shape[1]*(border/2))
+  min_y = 0; max_y = im.shape[0]
+  min_x = 0; max_x = im.shape[1]
+  while np.min(im[min_y:min_y+y_border,:,:])==255 :
+      min_y+=1
+  while np.min(im[max_y-y_border:max_y,:,:])==255 :
+      max_y-=1
+  while np.min(im[:,min_x:min_x+x_border,:])==255 :
+      min_x+=1
+  while np.min(im[:,max_x-x_border:max_x,:])==255 :
+      max_x-=1
+  cv2.imwrite(im_path,im[min_y:max_y+1,min_x:max_x+1,:])
+
 def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
   """
   Save the current figure in the given pyplot instance with a given name and crop it. 
@@ -49,7 +68,7 @@ def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
   """
   if save_dirpath is not None :
     if not save_dirpath.is_dir() :
-      save_dirpath.mkdir()
+      save_dirpath.mkdir(parents=True)
     with cd(save_dirpath) :
       pyplot_inst.savefig(figname)
       pyplot_inst.close()
@@ -109,39 +128,11 @@ def weightedstd(*args, **kwargs):
   """
   return weightedvariance(*args, **kwargs) ** 0.5
 
-def crop_and_overwrite_image(im_path,border=0.03) :
-  """
-  small helper function to crop white border out of an image
-  """
-  im = cv2.imread(im_path)
-  y_border = int(im.shape[0]*(border/2))
-  x_border = int(im.shape[1]*(border/2))
-  min_y = 0; max_y = im.shape[0]
-  min_x = 0; max_x = im.shape[1]
-  while np.min(im[min_y:min_y+y_border,:,:])==255 :
-      min_y+=1
-  while np.min(im[max_y-y_border:max_y,:,:])==255 :
-      max_y-=1
-  while np.min(im[:,min_x:min_x+x_border,:])==255 :
-      min_x+=1
-  while np.min(im[:,max_x-x_border:max_x,:])==255 :
-      max_x-=1
-  cv2.imwrite(im_path,im[min_y:max_y+1,min_x:max_x+1,:])
-
 def split_csv_to_list(value) :
   """
   parser callback function to split a string of comma-separated values into a list
   """
   return value.split(',')
-
-def split_csv_to_list_of_ints(value) :
-  """
-  parser callback function to split a string of comma-separated values into a list of integers
-  """
-  try :
-      return [int(v) for v in value.split(',')]
-  except ValueError :
-      raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
 
 def split_csv_to_list_of_floats(value) :
   """
