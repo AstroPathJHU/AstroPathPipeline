@@ -29,10 +29,10 @@ class Const :
         return 'meanimage' #name of the output directory for slidemeanimage results
     @property
     def FLATFIELD_DIRNAME(self) :
-        return 'Flatfield' #name of the directory holding flatfield model results for an entire cohort (directory with this name gets created in root)
+        return 'flatfield' #name of the directory holding flatfield model results for an entire cohort (directory with this name gets created in root)
     @property
     def WARPING_DIRNAME(self) :
-        return 'Warping' #name of the directory holding warping model results for an entire cohort (directory with this name gets created in root)
+        return 'warping' #name of the directory holding warping model results for an entire cohort (directory with this name gets created in root)
     #image information
     @property
     def N_CLIP(self) :
