@@ -1,4 +1,5 @@
 import abc, datetime, job_lock, pathlib, re
+from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
@@ -295,7 +296,7 @@ class DbloadCohort(Cohort, DbloadCohortBase, DbloadArgumentParser):
 class GlobalDbloadCohortBase(DbloadCohortBase, TableReader):
   @property
   def dbload(self):
-    return self.dbloadroot/"dbload"
+    return self.dbloadroot/UNIV_CONST.DBLOAD_DIR_NAME
   def csv(self, csv):
     return self.dbload/f"project{self.Project}_{csv}.csv"
   def readcsv(self, csv, *args, **kwargs):

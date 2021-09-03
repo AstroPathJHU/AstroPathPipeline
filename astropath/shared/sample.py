@@ -98,7 +98,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     """
     The sample's im3 folder
     """
-    return self.im3root/self.SlideID/"im3"
+    return self.im3root/self.SlideID/UNIV_CONST.IM3_DIR_NAME
 
   @property
   def scanfolder(self):
@@ -558,7 +558,7 @@ class DbloadSampleBase(SampleBase, DbloadArgumentParser):
     """
     The folder where the csv files live.
     """
-    return self.__dbloadroot/self.SlideID/"dbload"
+    return self.__dbloadroot/self.SlideID/UNIV_CONST.DBLOAD_DIR_NAME
   @property
   def dbloadroot(self): return self.__dbloadroot
 
@@ -587,7 +587,7 @@ class DbloadSampleBase(SampleBase, DbloadArgumentParser):
     """
     Read the qptiff jpg thumbnail as an image.
     """
-    return cv2.imread(os.fspath(self.dbload/(self.SlideID+"_qptiff.jpg")))
+    return cv2.imread(os.fspath(self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)))
 
 class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale):
   """
@@ -1198,7 +1198,7 @@ class XMLLayoutReader(SampleBase):
     Fix rectangle filenames if the coordinates are messed up
     """
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}].im3"
+      expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}]{UNIV_CONST.IM3_EXT}"
       actual = r.file
       if expected != actual:
         self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
@@ -1229,10 +1229,10 @@ class XMLLayoutReader(SampleBase):
     List all rectangles that have im3 files.
     """
     folder = self.scanfolder/"MSI"
-    im3s = folder.glob("*.im3")
+    im3s = folder.glob(f"*{UNIV_CONST.IM3_EXT}")
     result = []
     for im3 in im3s:
-      regex = self.SlideID+r"_\[([0-9]+),([0-9]+)\].im3"
+      regex = self.SlideID+r"_\[([0-9]+),([0-9]+)\]"+UNIV_CONST.IM3_EXT
       match = re.match(regex, im3.name)
       if not match:
         raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")

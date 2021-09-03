@@ -3,6 +3,7 @@ Aligning layers with respect to each other is not fully implemented yet.
 """
 
 import cv2, itertools, methodtools, numpy as np
+from ...utilities.config import CONST as UNIV_CONST
 from ...shared.sample import ReadRectanglesOverlapsBase, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base
 from .alignsample import AlignSample, AlignSampleBase
 from .rectangle import AlignmentRectangleMultiLayer, RectanglePCAByBroadbandFilter
@@ -157,7 +158,7 @@ class AlignLayers(AlignLayersBase, AlignSample):
     return super().getDAPI(*args, writeimstat=writeimstat, **kwargs)
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [
       dbload/f"{SlideID}_alignlayers.csv",
       dbload/f"{SlideID}_layerpositions.csv",

@@ -195,11 +195,11 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         or calculating them from the rectangles on the edges of the tissue
         """
         #first check the working directory for the background threshold file
-        threshold_file_path = self.__workingdirpath / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}'
+        threshold_file_path = self.__workingdirpath/f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}'
         #if it's not in the working directory, check in the slide's meanimage directory (if it exists)
         if not threshold_file_path.is_file() :
-            other_threshold_file_path = self.root / f'{self.SlideID}' / f'{UNIV_CONST.IM3_DIR_NAME}' / f'{UNIV_CONST.MEANIMAGE_DIRNAME}' 
-            other_threshold_file_path = other_threshold_file_path / f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}'
+            other_threshold_file_path = self.root/self.SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME 
+            other_threshold_file_path = other_threshold_file_path/f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}'
             if other_threshold_file_path.is_file() :
                 threshold_file_path = other_threshold_file_path
         #read the values from the files or find them from the tissue edge rectangles
@@ -452,14 +452,14 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
     @classmethod
     def getoutputfiles(cls,SlideID,root,skip_masking,**otherworkflowkwargs) :
         outputfiles = []
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
-        outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        outputfiles.append(root / SlideID / UNIV_CONST.IM3_DIR_NAME / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        outputfiles.append(root / SlideID / UNIV_CONST.IM3_DIR_NAME / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
+        outputfiles.append(root / SlideID / UNIV_CONST.IM3_DIR_NAME / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
         #the files below might not actually exist in the case that no images were stacked
-        #outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / CONST.FIELDS_USED_CSV_FILENAME)
-        #outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
+        #outputfiles.append(root / SlideID / UNIV_CONST.IM3_DIR_NAME / UNIV_CONST.MEANIMAGE_DIRNAME / CONST.FIELDS_USED_CSV_FILENAME)
+        #outputfiles.append(root / SlideID / UNIV_CONST.IM3_DIR_NAME / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
         if not skip_masking :
-            outputfiles.append(root / SlideID / 'im3' / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
+            outputfiles.append(root / SlideID / UNIV_CONST.IM3_DIR_NAME / UNIV_CONST.MEANIMAGE_DIRNAME / f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
         return outputfiles
     @classmethod
     def logmodule(cls) : 

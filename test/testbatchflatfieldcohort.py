@@ -58,7 +58,7 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
         ref_metadata_summary = folder/'data'/'reference'/'meanimage'/f'M21_1-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}'
         #write/copy the files into the samples' meanimage directories
         for sid,mia,msa,sisa in zip(slide_IDs,ref_mias,ref_msas,ref_sisas) :
-            slide_meanimage_folder = folder/'data'/sid/'im3'/'meanimage'
+            slide_meanimage_folder = folder/'data'/sid/UNIV_CONST.IM3_DIR_NAME/'meanimage'
             if not slide_meanimage_folder.is_dir() :
                 slide_meanimage_folder.mkdir(parents=True)
             write_image_to_file(mia,slide_meanimage_folder/f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
