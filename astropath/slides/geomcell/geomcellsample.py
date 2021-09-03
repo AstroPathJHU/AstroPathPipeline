@@ -21,8 +21,14 @@ class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer,
   pass
 
 class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample):
-  segmentationorder = ["Tumor", "Immune"]
-  ignoresegmentations = []
+  @property
+  def segmentationorder(self):
+    return sorted(
+      self.segmentationids,
+      key=lambda x: -2*(x=="Tumor")-(x=="Immune")
+    )
+    return result
+
   def celltype(self, layer):
     segid = self.segmentationidfromlayer(layer)
     membrane = self.ismembranelayer(layer)
@@ -32,6 +38,11 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     if membrane and segid == "Immune": return 1
     if nucleus and segid == "Tumor": return 2
     if nucleus and segid == "Immune": return 3
+    if isinstance(segid, int) and segid >= 3:
+      if membrane: nucleusmembranebit = 0
+      if nucleus: nucleusmembranebit = 2
+      #shift all bits besides the first to the left, and put in the nucleus/membrane bit
+      return (((segid-1) & ~0b1) << 1) | ((segid-1) & 0b1) | nucleusmembranebit
     assert False, (membrane, nucleus, segid)
 
   def __init__(self, *args, **kwargs):
@@ -41,15 +52,11 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       layers="setlater",
       **kwargs
     )
-    self.usesegmentations = [seg for seg in self.segmentationorder if seg in self.segmentationids]
-    unknownsegmentations = [seg for seg in self.segmentationids if seg not in self.segmentationorder and seg not in self.ignoresegmentations]
-    if unknownsegmentations:
-      raise ValueError("Unknown segmentations: {unknownsegmentations}")
     self.setlayers(
       layers=[
-        self.segmentationmembranelayer(seg) for seg in self.usesegmentations
+        self.segmentationmembranelayer(seg) for seg in self.segmentationorder
       ] + [
-        self.segmentationnucleuslayer(seg) for seg in self.usesegmentations
+        self.segmentationnucleuslayer(seg) for seg in self.segmentationorder
       ],
     )
 
