@@ -86,7 +86,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
     with open(self.xmlfile, "rb") as f:
       count = more_itertools.peekable(itertools.count(1))
-      nodes = [node for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+      nodes = [node for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation") if self.annotationname(node) != "empty"]
       def annotationorder(node):
         try:
           return self.allowedannotation(self.annotationname(node), logwarning=False).layer
@@ -109,9 +109,6 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           "false": False,
         }[node.get_xml_attr("Visible").lower().strip()]
         name = self.annotationname(node)
-        if name == "empty":
-          count.prepend(layer)
-          continue
         try:
           targetannotation = self.allowedannotation(name)
         except ValueError as e:
@@ -256,7 +253,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           m = next(regioncounter)
 
     if not any(a.name == "good tissue" for a in annotations):
-      errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations if _.name != 'empty')})")
+      errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations)})")
 
     if errors:
       raise ValueError("\n".join(errors))
