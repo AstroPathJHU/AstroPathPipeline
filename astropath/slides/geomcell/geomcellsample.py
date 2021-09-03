@@ -27,7 +27,6 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       self.segmentationids,
       key=lambda x: -2*(x=="Tumor")-(x=="Immune")
     )
-    return result
 
   def celltype(self, layer):
     segid = self.segmentationidfromlayer(layer)
