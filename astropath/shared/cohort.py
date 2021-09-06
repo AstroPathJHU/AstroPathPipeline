@@ -2,10 +2,9 @@ import abc, datetime, job_lock, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
-from .samplemetadata import SampleDef
 from .workflowdependency import ThingWithRoots, WorkflowDependency
 
 class CohortBase(ThingWithRoots):
@@ -22,7 +21,9 @@ class CohortBase(ThingWithRoots):
     self.reraiseexceptions = reraiseexceptions
 
   @property
-  def sampledefs(self): return readtable(self.root/"sampledef.csv", SampleDef)
+  def sampledefs(self):
+    from .samplemetadata import SampleDef
+    return readtable(self.root/"sampledef.csv", SampleDef)
   @property
   def SlideIDs(self): return [_.SlideID for _ in self.sampledefs]
   @property
@@ -35,6 +36,7 @@ class CohortBase(ThingWithRoots):
     return Cohort
 
   def globallogger(self):
+    from .samplemetadata import SampleDef
     samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
     return self.getlogger(samp, isglobal=True)
 
@@ -66,7 +68,56 @@ class CohortBase(ThingWithRoots):
   def rootnames(self):
     return {*super().rootnames, "root", "logroot"}
 
-class Cohort(CohortBase, RunFromArgumentParser):
+class RunCohortBase(CohortBase, RunFromArgumentParser):
+  """
+  Base class for a cohort that can be run from the command line
+  """
+
+  @abc.abstractmethod
+  def run(self): pass
+  def dryrun(self, **kwargs):
+    print("Command line is valid")
+
+  @classmethod
+  def defaultunits(cls):
+    return "fast_pixels"
+
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    """
+    Create an argument parser to run this cohort on the command line
+    """
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
+    return p
+
+  @classmethod
+  def misckwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().misckwargsfromargumentparser(parsed_args_dict),
+      "dry_run": parsed_args_dict.pop("dry_run"),
+    }
+    return kwargs
+
+  @classmethod
+  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
+    """
+    Run the cohort from command line arguments.
+    """
+    with units.setup_context(misckwargs.pop("units")):
+      dryrun = misckwargs.pop("dry_run")
+      if misckwargs:
+        raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
+      if dryrun:
+        initkwargs["uselogfiles"] = False
+      cohort = cls(**initkwargs)
+      if dryrun:
+        cohort.dryrun(**runkwargs)
+      else:
+        cohort.run(**runkwargs)
+      return cohort
+
+class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   """
   Base class for a cohort that can be run in a loop
 
@@ -201,7 +252,6 @@ class Cohort(CohortBase, RunFromArgumentParser):
     """
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
-    p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
     return p
 
@@ -224,32 +274,6 @@ class Cohort(CohortBase, RunFromArgumentParser):
     if regex is not None:
       kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
     return kwargs
-
-  @classmethod
-  def misckwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().misckwargsfromargumentparser(parsed_args_dict),
-      "dry_run": parsed_args_dict.pop("dry_run"),
-    }
-    return kwargs
-
-  @classmethod
-  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
-    """
-    Run the cohort from command line arguments.
-    """
-    with units.setup_context(misckwargs.pop("units")):
-      dryrun = misckwargs.pop("dry_run")
-      if misckwargs:
-        raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
-      if dryrun:
-        initkwargs["uselogfiles"] = False
-      cohort = cls(**initkwargs)
-      if dryrun:
-        cohort.dryrun(**runkwargs)
-      else:
-        cohort.run(**runkwargs)
-      return cohort
 
 class Im3Cohort(Cohort, Im3ArgumentParser):
   """

@@ -1,7 +1,7 @@
-import dataclassy, pathlib
+import dataclassy, methodtools, pathlib
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.dataclasses import MyDataClassFrozen
-from ..utilities.tableio import readtable
+from ..utilities.tableio import boolasintfield, readtable, writetable
 
 class SampleDef(MyDataClassFrozen):
   """
@@ -16,7 +16,7 @@ class SampleDef(MyDataClassFrozen):
   Cohort: int = None
   Scan: int = None
   BatchID: int = None
-  isGood: int = True
+  isGood: bool = boolasintfield(True)
 
   def __post_init__(self, *args, **kwargs):
     if self.SlideID is None:
@@ -67,6 +67,8 @@ class SampleDef(MyDataClassFrozen):
             kwargs["Project"] = row.Project
           if "BatchID" not in kwargs:
             kwargs["BatchID"] = row.BatchID
+          if "isGood" not in kwargs:
+            kwargs["isGood"] = row.isGood
 
     if "SlideID" in kwargs and root is not None:
       if "Scan" not in kwargs:
@@ -92,6 +94,7 @@ class APIDDef(MyDataClassFrozen):
   Project: int
   Cohort: int
   BatchID: int
+  isGood: bool
 
 class MetadataSummary(MyDataClassFrozen):
   """
@@ -103,3 +106,71 @@ class MetadataSummary(MyDataClassFrozen):
   microscope_name : str
   mindate         : str
   maxdate         : str
+
+from .cohort import RunCohortBase
+
+class MakeSampleDef(RunCohortBase):
+  def __init__(self, *args, sampledefoutput=None, inputfile, isapid=False, **kwargs):
+    super().__init__(*args, **kwargs)
+    if sampledefoutput is None:
+      sampledefoutput = self.root/"sampledef.csv"
+    self.sampledefoutput = pathlib.Path(sampledefoutput)
+    self.inputfile = pathlib.Path(inputfile)
+    self.isapid = isapid
+
+  def run(self, firstsampleid):
+    inputs = sorted([_ for _ in readtable(self.inputfile, APIDDef if self.isapid else SampleDef) if (self.root/_.SlideID).is_dir()], key=lambda x: x.SlideID)
+    if self.isapid:
+      sampledefs = [SampleDef(SlideID=apid.SlideID, SampleID=i, root=self.root, apidfile=self.inputfile) for i, apid in enumerate(inputs, start=firstsampleid)]
+    else:
+      sampledefs = inputs
+    writetable(self.sampledefoutput, sampledefs)
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    dct = parsed_args_dict
+    apidfile = dct.pop("apidfile")
+    sampledeffile = dct.pop("sampledeffile")
+    if apidfile is not None is sampledeffile:
+      inputfile = apidfile
+      isapid = True
+    elif apidfile is None is not sampledeffile:
+      inputfile = sampledeffile
+      isapid = False
+    else:
+      assert False
+
+    return {
+      **super().initkwargsfromargumentparser(dct),
+      "inputfile": inputfile,
+      "isapid": isapid,
+      "sampledefoutput": dct.pop("outfile"),
+      "uselogfiles": False,
+    }
+
+  @classmethod
+  def logmodule(cls): return "makesampledef"
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    dct = parsed_args_dict
+    return {
+      **super().runkwargsfromargumentparser(dct),
+      "firstsampleid": dct.pop("first_sample_id"),
+    }
+
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    """
+    Create an argument parser to run this cohort on the command line
+    """
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--first-sample-id", type=int, help="SampleID for the first SlideID (the others are counted sequentially)", required=True)
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--apidfile", type=pathlib.Path, help="path to AstropathAPIDdef.csv")
+    g.add_argument("--sampledeffile", type=pathlib.Path, help="path to AstroPathSampledef.csv")
+    p.add_argument("--outfile", type=pathlib.Path, help="output filename (default: root/sampledef.csv")
+    return p
+
+def makesampledef(args=None):
+  return MakeSampleDef.runfromargumentparser(args)

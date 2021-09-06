@@ -5,7 +5,7 @@ from astropath.shared.csvclasses import Annotation, Region, Vertex
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
-from astropath.shared.samplemetadata import APIDDef, SampleDef
+from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
@@ -22,6 +22,7 @@ class TestMisc(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"misc"/"M21_1_annotations.csv",
       thisfolder/"test_for_jenkins"/"misc"/"M21_1_regions.csv",
       thisfolder/"test_for_jenkins"/"misc"/"M21_1_vertices.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"sampledef.csv",
     ]
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
@@ -162,3 +163,22 @@ class TestMisc(TestBaseSaveOutput):
     self.assertEqual(s1, s3)
     self.assertEqual(s1, s4)
     self.assertEqual(s1, s5)
+
+  def testMakeSampleDef(self):
+    self.maxDiff = None
+    outfile = thisfolder/"test_for_jenkins"/"misc"/"sampledef.csv"
+    reference = thisfolder/"data"/"sampledef.csv"
+    args = [os.fspath(thisfolder/"data"), "--apidfile", os.fspath(thisfolder/"data"/"AstropathAPIDdef.csv"), "--first-sample-id", "1", "--outfile", os.fspath(outfile)]
+    MakeSampleDef.runfromargumentparser(args)
+
+    try:
+      rows = readtable(outfile, SampleDef, checkorder=True, checknewlines=True)
+      targetrows = readtable(reference, SampleDef, checkorder=True, checknewlines=True)
+
+      for row, target in more_itertools.zip_equal(rows, targetrows):
+        assertAlmostEqual(row, target)
+    except:
+      self.saveoutput()
+      raise
+    else:
+      self.removeoutput()
