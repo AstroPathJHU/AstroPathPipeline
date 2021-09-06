@@ -167,6 +167,7 @@ class TestMisc(TestBaseSaveOutput):
   def testMakeSampleDef(self):
     self.maxDiff = None
     outfile = thisfolder/"test_for_jenkins"/"misc"/"sampledef.csv"
+    outfile.parent.mkdir(parents=True, exist_ok=True)
     reference = thisfolder/"data"/"sampledef.csv"
     args = [os.fspath(thisfolder/"data"), "--apidfile", os.fspath(thisfolder/"data"/"AstropathAPIDdef.csv"), "--first-sample-id", "1", "--outfile", os.fspath(outfile)]
     MakeSampleDef.runfromargumentparser(args)

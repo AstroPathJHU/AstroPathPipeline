@@ -1,4 +1,4 @@
-import dataclassy, methodtools, pathlib
+import dataclassy, pathlib
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.dataclasses import MyDataClassFrozen
 from ..utilities.tableio import boolasintfield, readtable, writetable
