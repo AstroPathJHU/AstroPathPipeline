@@ -121,6 +121,7 @@ class MakeSampleDef(RunCohortBase):
   def run(self, firstsampleid):
     inputs = sorted([_ for _ in readtable(self.inputfile, APIDDef if self.isapid else SampleDef) if (self.root/_.SlideID).is_dir()], key=lambda x: x.SlideID)
     if self.isapid:
+      if firstsampleid is None: raise ValueError("Have to provide firstsampleid if using an APIDDef file")
       sampledefs = [SampleDef(SlideID=apid.SlideID, SampleID=i, root=self.root, apidfile=self.inputfile) for i, apid in enumerate(inputs, start=firstsampleid)]
     else:
       sampledefs = inputs
@@ -165,7 +166,7 @@ class MakeSampleDef(RunCohortBase):
     Create an argument parser to run this cohort on the command line
     """
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--first-sample-id", type=int, help="SampleID for the first SlideID (the others are counted sequentially)", required=True)
+    p.add_argument("--first-sample-id", type=int, help="SampleID for the first SlideID (the others are counted sequentially)")
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--apidfile", type=pathlib.Path, help="path to AstropathAPIDdef.csv")
     g.add_argument("--sampledeffile", type=pathlib.Path, help="path to AstroPathSampledef.csv")
