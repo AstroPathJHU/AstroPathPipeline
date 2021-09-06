@@ -20,7 +20,7 @@ Running the above command will produce a "`meanimage`" directory in `<Dpath>\<Dn
 1. **a `<SlideID>-sum_images_squared.bin` file** that is the sum of the square of all the selected HPFs' tissue regions, stored as 64-bit floats. (This file is used to combine multiple samples' mean images into a flatfield model.)
 1. **a `<SlideID>-mask_stack.bin` file** that is the stack of the binary image masks from every selected HPF, stored as 64-bit unsigned integers
 1. **a list of every field used** in finding the background thresholds and in making the mean image, called "`fields_used.csv`", stored as [`FieldLog` objects](./utilities.py#L28-L34)
-1. **an overview of the image files used to determine the background thresholds**, including the name of the miscroscope and date ranges, called "`<SlideID>-metadata_summary_thresholding_images.csv`", stored as [`MetadataSummary` objects](../../shared/samplemetadata.py#L96-L105)
+1. **an overview of the image files used to determine the background thresholds**, including the name of the miscroscope and date ranges, called "`<SlideID>-metadata_summary_thresholding_images.csv`", stored as [`MetadataSummary` objects](../../shared/samplemetadata.py#L99-L108)
 1. **an overview of the image files stacked to create the mean image** in the same format as the above, called "`<SlideID>-metadata_summary_stacked_images.csv`"
 1. **a "`<SlideID>_background_thresholds.txt`" file**, which lists the optimal background thresholds in each image layer, stored as [`ThresholdTableEntry` objects](utilities.py#L15-L19).
 1. **a "`<SlideID>-thresholding_data_table.csv`" file**, which lists the background thresholds found for each individual tissue edge HPF image, stored as [`RectangleThresholdTableEntry` objects](./utilities.py#L21-L26)
