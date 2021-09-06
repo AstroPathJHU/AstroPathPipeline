@@ -12,18 +12,20 @@ class CohortBase(ThingWithRoots):
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
+  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
     super().__init__(*args, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
     self.__logroot = pathlib.Path(logroot)
+    if sampledefroot is None: sampledefroot = self.__root
+    self.__sampledefroot = pathlib.Path(sampledefroot)
     self.uselogfiles = uselogfiles
     self.reraiseexceptions = reraiseexceptions
 
   @property
   def sampledefs(self):
     from .samplemetadata import SampleDef
-    return readtable(self.root/"sampledef.csv", SampleDef)
+    return readtable(self.sampledefroot/"sampledef.csv", SampleDef)
   @property
   def SlideIDs(self): return [_.SlideID for _ in self.sampledefs]
   @property
@@ -65,8 +67,10 @@ class CohortBase(ThingWithRoots):
   @property
   def logroot(self): return self.__logroot
   @property
+  def sampledefroot(self): return self.__sampledefroot
+  @property
   def rootnames(self):
-    return {*super().rootnames, "root", "logroot"}
+    return {*super().rootnames, "root", "logroot", "sampledefroot"}
 
 class RunCohortBase(CohortBase, RunFromArgumentParser):
   """
@@ -88,8 +92,22 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
     Create an argument parser to run this cohort on the command line
     """
     p = super().makeargumentparser(**kwargs)
+    p.add_argument("--sampledefroot", type=pathlib.Path, help="folder to look for sampledef.csv")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    """
+    Get the kwargs to be passed to the cohort constructor
+    from the parsed arguments
+    """
+    dct = parsed_args_dict
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "sampledefroot": dct.pop("sampledefroot"),
+    }
+    return kwargs
 
   @classmethod
   def misckwargsfromargumentparser(cls, parsed_args_dict):
