@@ -1,4 +1,5 @@
 import abc, datetime, job_lock, pathlib, re
+from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
@@ -295,7 +296,7 @@ class DbloadCohort(Cohort, DbloadCohortBase, DbloadArgumentParser):
 class GlobalDbloadCohortBase(DbloadCohortBase, TableReader):
   @property
   def dbload(self):
-    return self.dbloadroot/"dbload"
+    return self.dbloadroot/UNIV_CONST.DBLOAD_DIR_NAME
   def csv(self, csv):
     return self.dbload/f"project{self.Project}_{csv}.csv"
   def readcsv(self, csv, *args, **kwargs):
@@ -493,9 +494,10 @@ class CorrectedImageCohort(Im3Cohort,ImageCorrectionArgumentParser) :
   """
   Class for a cohort that uses corrected im3 images as its sample rectangles
   """
-  def __init__(self,*args,et_offset_file,flatfield_file,warping_file,**kwargs) :
+  def __init__(self,*args,et_offset_file,skip_et_corrections,flatfield_file,warping_file,**kwargs) :
     super().__init__(*args,**kwargs)
     self.__et_offset_file = et_offset_file
+    self.__skip_et_corrections = skip_et_corrections
     self.__flatfield_file = flatfield_file
     self.__warping_file = warping_file
   @property
@@ -503,6 +505,7 @@ class CorrectedImageCohort(Im3Cohort,ImageCorrectionArgumentParser) :
     return {
       **super().initiatesamplekwargs,
       'et_offset_file': self.__et_offset_file,
+      'skip_et_corrections':self.__skip_et_corrections,
       'flatfield_file': self.__flatfield_file,
       'warping_file': self.__warping_file
     }

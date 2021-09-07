@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import save_figure_in_dir
 from ...utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, write_image_to_file
-from ...utilities.img_correction import correctImageLayerWithWarpFields
+from .utilities import correct_image_layer_with_warp_fields
 from .config import CONST
 
 #################### SOME CACHED FILE-SCOPE HELPER FUNCTIONS ####################
@@ -165,13 +165,13 @@ class PolyFieldWarp(Warp) :
         """
         Warps and returns a single inputted image layer array
         """
-        return correctImageLayerWithWarpFields(layer,self.x_warps,self.y_warps,self.interp)
+        return correct_image_layer_with_warp_fields(layer,self.x_warps,self.y_warps,self.interp)
 
     def warpLayerInPlace(self,layer,dest) :
         """
         Warps a single inputted image layer into the provided destination
         """
-        return correctImageLayerWithWarpFields(layer,self.x_warps,self.y_warps,self.interp,dest)
+        return correct_image_layer_with_warp_fields(layer,self.x_warps,self.y_warps,self.interp,dest)
 
     def writeImageLayer(self,im,rawfilename,layernumber) :
         """
@@ -186,8 +186,8 @@ class PolyFieldWarp(Warp) :
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
         file_stem = the unique identifier to add to the .bin filenames
         """
-        write_image_to_file(self.x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
-        write_image_to_file(self.y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        write_image_to_file(self.x_warps,f'dx_warp_field_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        write_image_to_file(self.y_warps,f'dy_warp_field_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(self.r_warps)
         ax[0].scatter(self.xc,self.yc,marker='*',color='yellow')

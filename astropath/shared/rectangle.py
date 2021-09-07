@@ -85,7 +85,7 @@ class Rectangle(DataClassWithPscale):
     if self.__xmlfolder is None:
       raise ValueError("Can't get xml info if you don't provide the rectangle with an xml folder")
     for xml_file_ext in UNIV_CONST.EXPOSURE_XML_EXTS :
-      xml_filepath = self.__xmlfolder/self.file.replace(".im3",xml_file_ext)
+      xml_filepath = self.__xmlfolder/self.file.replace(UNIV_CONST.IM3_EXT,xml_file_ext)
       if xml_filepath.is_file() :
         return xml_filepath
     raise FileNotFoundError(f'ERROR: Could not find an xml file with any of the expected file extensions in {self.__xmlfolder}')
@@ -317,32 +317,32 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   def imagefolder(self): return self.__imagefolder
   @imagefolder.setter
   def imagefolder(self, imagefolder): self.__imagefolder = imagefolder
-  imagefolder: pathlib.Path = pathfield(imagefolder, includeintable=False)
+  imagefolder: pathlib.Path = pathfield(imagefolder, includeintable=False, use_default=False)
   @property
   def filetype(self): return self.__filetype
   @filetype.setter
   def filetype(self, filetype): self.__filetype = filetype
-  filetype: str = MetaDataAnnotation(filetype, includeintable=False)
+  filetype: str = MetaDataAnnotation(filetype, includeintable=False, use_default=False)
   @property
   def width(self): return self.__width
   @width.setter
   def width(self, width): self.__width = width
-  width: units.Distance = distancefield(width, includeintable=False, pixelsormicrons="pixels")
+  width: units.Distance = distancefield(width, includeintable=False, pixelsormicrons="pixels", use_default=False)
   @property
   def height(self): return self.__height
   @height.setter
   def height(self, height): self.__height = height
-  height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels")
+  height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels", use_default=False)
   @property
   def nlayers(self): return self.__nlayers
   @nlayers.setter
   def nlayers(self, nlayers): self.__nlayers = nlayers
-  nlayers: int = MetaDataAnnotation(nlayers, includeintable=False)
+  nlayers: int = MetaDataAnnotation(nlayers, includeintable=False, use_default=False)
   @property
   def layers(self): return self.__layers
   @layers.setter
   def layers(self, layers): self.__layers = layers
-  layers: list = MetaDataAnnotation(layers, includeintable=False)
+  layers: list = MetaDataAnnotation(layers, includeintable=False, use_default=False)
 
   @property
   def imageshape(self):
@@ -366,7 +366,7 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
     else :
       raise ValueError(f"requested file type {self.__filetype} not recognized")
 
-    return self.__imagefolder/self.file.replace(".im3", ext)
+    return self.__imagefolder/self.file.replace(UNIV_CONST.IM3_EXT, ext)
 
   @property
   def imageshapeininput(self):
@@ -427,7 +427,7 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   def readlayerfile(self): return self.__readlayerfile
   @readlayerfile.setter
   def readlayerfile(self, readlayerfile): self.__readlayerfile = readlayerfile
-  readlayerfile: bool = MetaDataAnnotation(True, includeintable=False)
+  readlayerfile: bool = MetaDataAnnotation(True, includeintable=False, use_default=False)
 
   @classmethod
   def transforminitargs(cls, *args, layer, readlayerfile=True, **kwargs):
@@ -605,7 +605,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
 
   @property
   def imagefile(self):
-    return self.__imagefolder/self.file.replace(".im3", f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
+    return self.__imagefolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
 
   @property
   def layers(self):
@@ -771,7 +771,7 @@ class GeomLoadRectangle(Rectangle):
     super().__post_init__(*args, **kwargs)
   @property
   def geomloadcsv(self):
-    return self.__geomfolder/self.file.replace(".im3", "_cellGeomLoad.csv")
+    return self.__geomfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_cellGeomLoad.csv")
 
 class MaskRectangle(Rectangle):
   """
@@ -783,10 +783,10 @@ class MaskRectangle(Rectangle):
     super().__post_init__(*args, **kwargs)
   @property
   def tissuemaskfile(self):
-    return self.__maskfolder/self.file.replace(".im3", "_tissue_mask.bin")
+    return self.__maskfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_tissue_mask.bin")
   @property
   def fullmaskfile(self):
-    return self.__maskfolder/self.file.replace(".im3", "_full_mask.bin")
+    return self.__maskfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_full_mask.bin")
 
 class PhenotypedRectangle(Rectangle):
   """
@@ -801,12 +801,12 @@ class PhenotypedRectangle(Rectangle):
     return self.__phenotypefolder/"Results"/"Tables"
   @property
   def phenotypecsv(self):
-    return self.__phenotypetablesfolder/self.file.replace(".im3", "_cleaned_phenotype_table.csv")
+    return self.__phenotypetablesfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_cleaned_phenotype_table.csv")
   @property
   def __phenotypeQAQCtablesfolder(self):
     return self.__phenotypefolder/"Results"/"QA_QC"/"Tables_QA_QC"
   @property
   def phenotypeQAQCcsv(self):
-    return self.__phenotypeQAQCtablesfolder/self.file.replace(".im3", "_cleaned_phenotype_table.csv")
+    return self.__phenotypeQAQCtablesfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_cleaned_phenotype_table.csv")
 
 rectanglefilter = rectangleoroverlapfilter

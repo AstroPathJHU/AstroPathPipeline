@@ -42,6 +42,25 @@ def cd(dir):
   finally:
     os.chdir(cdminus)
 
+def crop_and_overwrite_image(im_path,border=0.03) :
+  """
+  small helper function to crop white border out of an image
+  """
+  im = cv2.imread(im_path)
+  y_border = int(im.shape[0]*(border/2))
+  x_border = int(im.shape[1]*(border/2))
+  min_y = 0; max_y = im.shape[0]
+  min_x = 0; max_x = im.shape[1]
+  while np.min(im[min_y:min_y+y_border,:,:])==255 :
+      min_y+=1
+  while np.min(im[max_y-y_border:max_y,:,:])==255 :
+      max_y-=1
+  while np.min(im[:,min_x:min_x+x_border,:])==255 :
+      min_x+=1
+  while np.min(im[:,max_x-x_border:max_x,:])==255 :
+      max_x-=1
+  cv2.imwrite(im_path,im[min_y:max_y+1,min_x:max_x+1,:])
+
 def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
   """
   Save the current figure in the given pyplot instance with a given name and crop it. 
@@ -49,7 +68,7 @@ def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
   """
   if save_dirpath is not None :
     if not save_dirpath.is_dir() :
-      save_dirpath.mkdir()
+      save_dirpath.mkdir(parents=True)
     with cd(save_dirpath) :
       pyplot_inst.savefig(figname)
       pyplot_inst.close()
@@ -109,39 +128,11 @@ def weightedstd(*args, **kwargs):
   """
   return weightedvariance(*args, **kwargs) ** 0.5
 
-def crop_and_overwrite_image(im_path,border=0.03) :
-  """
-  small helper function to crop white border out of an image
-  """
-  im = cv2.imread(im_path)
-  y_border = int(im.shape[0]*(border/2))
-  x_border = int(im.shape[1]*(border/2))
-  min_y = 0; max_y = im.shape[0]
-  min_x = 0; max_x = im.shape[1]
-  while np.min(im[min_y:min_y+y_border,:,:])==255 :
-      min_y+=1
-  while np.min(im[max_y-y_border:max_y,:,:])==255 :
-      max_y-=1
-  while np.min(im[:,min_x:min_x+x_border,:])==255 :
-      min_x+=1
-  while np.min(im[:,max_x-x_border:max_x,:])==255 :
-      max_x-=1
-  cv2.imwrite(im_path,im[min_y:max_y+1,min_x:max_x+1,:])
-
 def split_csv_to_list(value) :
   """
   parser callback function to split a string of comma-separated values into a list
   """
   return value.split(',')
-
-def split_csv_to_list_of_ints(value) :
-  """
-  parser callback function to split a string of comma-separated values into a list of integers
-  """
-  try :
-      return [int(v) for v in value.split(',')]
-  except ValueError :
-      raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
 
 def split_csv_to_list_of_floats(value) :
   """
@@ -180,39 +171,6 @@ def dict_of_par_bounds_callback(value) :
     return return_dict
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
-
-def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,flatfielding=True,warping=True) :
-  """
-  helper function to mutate an argument parser for some very generic options
-  """
-  #positional arguments
-  if positional_args :
-    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[slideID]/*.Data.dat" files')
-    parser.add_argument('root_dir',         help='Path to the Clinical_Specimen directory with info for the given slide')
-    parser.add_argument('workingdir',       help='Path to the working directory (will be created if necessary)')
-  #mutually exclusive group for how to handle the exposure time correction
-  if et_correction :
-    et_correction_group = parser.add_mutually_exclusive_group(required=True)
-    et_correction_group.add_argument('--exposure_time_offset_file',
-                                     help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
-                                    [use this argument to apply corrections for differences in image exposure time]""")
-    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
-                                     help='Add this flag to entirely skip correcting image flux for exposure time differences')
-  #mutually exclusive group for how to handle the flatfielding
-  if flatfielding :
-    flatfield_group = parser.add_mutually_exclusive_group(required=True)
-    flatfield_group.add_argument('--flatfield_file',
-                                 help='Path to the flatfield.bin file that should be applied to the files in this slide')
-    flatfield_group.add_argument('--skip_flatfielding', action='store_true',
-                                 help='Add this flag to entirely skip flatfield corrections')
-  #mutually exclusive group for how to handle the warping corrections
-  if warping :
-    warping_group = parser.add_mutually_exclusive_group(required=True)
-    warping_group.add_argument('--warp_def',   
-                               help="""Path to the weighted average fit result file of the warp to apply, 
-                                    or to the directory with the warp's dx and dy shift fields""")
-    warping_group.add_argument('--skip_warping', action='store_true',
-                               help='Add this flag to entirely skip warping corrections')
 
 class PILmaximagepixels(contextlib.AbstractContextManager):
   """

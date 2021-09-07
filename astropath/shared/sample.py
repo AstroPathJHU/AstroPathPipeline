@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile
+import abc, contextlib, cv2, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
 
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
@@ -98,7 +98,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     """
     The sample's im3 folder
     """
-    return self.im3root/self.SlideID/"im3"
+    return self.im3root/self.SlideID/UNIV_CONST.IM3_DIR_NAME
 
   @property
   def scanfolder(self):
@@ -375,9 +375,9 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
           else:
             dct[segstatus] = segid
     if "NA" in dct.values():
-      raise ValueError("No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
+      raise ValueError(f"No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
     if sorted(dct.keys()) != list(range(1, len(dct)+1)):
-      raise ValueError("Non-sequential SegmentationStatuses {sorted(dct.keys()}} ({self.mergeconfigcsv})")
+      raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
     return [dct[k] for k in range(1, len(dct)+1)]
 
   @property
@@ -558,7 +558,7 @@ class DbloadSampleBase(SampleBase, DbloadArgumentParser):
     """
     The folder where the csv files live.
     """
-    return self.__dbloadroot/self.SlideID/"dbload"
+    return self.__dbloadroot/self.SlideID/UNIV_CONST.DBLOAD_DIR_NAME
   @property
   def dbloadroot(self): return self.__dbloadroot
 
@@ -587,7 +587,7 @@ class DbloadSampleBase(SampleBase, DbloadArgumentParser):
     """
     Read the qptiff jpg thumbnail as an image.
     """
-    return cv2.imread(os.fspath(self.dbload/(self.SlideID+"_qptiff.jpg")))
+    return cv2.imread(os.fspath(self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)))
 
 class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale):
   """
@@ -721,22 +721,26 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   @property
   def zoomroot(self): return self.__zoomroot
   @property
-  def zoomfolder(self): return self.zoomroot/self.SlideID/"big"
+  def bigfolder(self): return self.zoomroot/self.SlideID/"big"
   @property
   def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
 
   zmax = 9
+  ztiff = 8
 
-  def zoomfilename(self, layer, tilex, tiley):
+  def bigfilename(self, layer, tilex, tiley):
     """
     Zoom filename for a given layer and tile.
     """
-    return self.zoomfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+    return self.bigfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
   def wsifilename(self, layer):
     """
     Wsi filename for a given layer.
     """
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
+  @property
+  def wsitifffilename(self):
+    return self.wsifolder/f"{self.SlideID}-Z{self.ztiff}-wsi.tiff"
 
 class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """
@@ -1194,7 +1198,7 @@ class XMLLayoutReader(SampleBase):
     Fix rectangle filenames if the coordinates are messed up
     """
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}].im3"
+      expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}]{UNIV_CONST.IM3_EXT}"
       actual = r.file
       if expected != actual:
         self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
@@ -1225,10 +1229,10 @@ class XMLLayoutReader(SampleBase):
     List all rectangles that have im3 files.
     """
     folder = self.scanfolder/"MSI"
-    im3s = folder.glob("*.im3")
+    im3s = folder.glob(f"*{UNIV_CONST.IM3_EXT}")
     result = []
     for im3 in im3s:
-      regex = self.SlideID+r"_\[([0-9]+),([0-9]+)\].im3"
+      regex = self.SlideID+r"_\[([0-9]+),([0-9]+)\]"+UNIV_CONST.IM3_EXT
       match = re.match(regex, im3.name)
       if not match:
         raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
@@ -1318,9 +1322,18 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
   Base class for any sample that will use corrections defined from input files
   """
 
-  def __init__(self,*args,et_offset_file,flatfield_file,warping_file,**kwargs) :
+  def __init__(self,*args,et_offset_file,skip_et_corrections,flatfield_file,warping_file,**kwargs) :
     super().__init__(*args,**kwargs)
     self.__et_offset_file = et_offset_file
+    self.__skip_et_corrections = skip_et_corrections
+    #if the exposure time offset file wasn't given but exposure time corrections aren't supposed to be skipped, then
+    #try to get the dark current offset values from a relevant .Full.xml file
+    if (not self.__skip_et_corrections) and (self.__et_offset_file is None) :
+      if not self.fullxmlfile.is_file() :
+        errmsg = f'ERROR: full xml file {self.fullxmlfile} does not exist, please provide a LayerOffset file '
+        errmsg+= 'for exposure time dark current offsets or rerun with --skip_exposure_time_corrections'
+        raise ValueError(errmsg)
+      self.__et_offset_file = self.fullxmlfile
     self.__flatfield_file = flatfield_file
     #if the flatfield file argument was given isn't a file, search the root/Flatfield directory for a file of the same name
     if (self.__flatfield_file is not None) and (not self.__flatfield_file.is_file()) :
@@ -1335,6 +1348,9 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
   def et_offset_file(self) :
     return self.__et_offset_file
   @property
+  def skip_et_corrections(self) :
+    return self.__skip_et_corrections
+  @property
   def flatfield_file(self) :
     return self.__flatfield_file
   @property
@@ -1343,7 +1359,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
   @property
   def applied_corrections_string(self) :
     corrs = []
-    if self.__et_offset_file is not None :
+    if (not self.__skip_et_corrections) and (self.__et_offset_file is not None) :
       corrs.append('exposure time differences')
     if self.__flatfield_file is not None :
       corrs.append('flatfielding')
@@ -1385,7 +1401,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir] = r.allexposuretimes[self.__layer-1]
     self.__med_et = np.median(slide_exp_times)
-    if self.et_offset_file is not None :
+    if (not self.skip_et_corrections) and (self.self.et_offset_file is not None) :
       #read the exposure time offsets
       offset = self.__get_exposure_time_offset()
       #add the exposure time correction to every rectangle's transformations
@@ -1406,11 +1422,24 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
 
   def __get_exposure_time_offset(self) :
     self.logger.info(f'Copying exposure time offset for {self.SlideID} layer {self.__layer} from file {self.et_offset_file}')
-    layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
-    offsets_to_return = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==self.__layer]
-    if len(offsets_to_return)!=1 :
-      raise ValueError(f'ERROR: found {len(offsets_to_return)} entries for layer {self.__layer} in file {self.et_offset_file}')
-    return offsets_to_return[0]
+    #read the offset from the Full.xml file
+    if self.et_offset_file==self.fullxmlfile :
+      tree = ET.parse(self.et_offset_file)
+      root = tree.getroot()
+      for child in root :
+        if child.tag=='G' :
+          for child2 in child.iter() :
+            if 'name' in child2.attrib and child2.attrib['name']=='DarkCurrentSettings' :
+              for child3 in child2.iter() :
+                if 'name' in child3.attrib and child3.attrib['name']=='Mean' :
+                  return float(child3.text)
+    #read the offset from the LayerOffset file
+    else :
+      layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
+      offsets_to_return = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==self.__layer]
+      if len(offsets_to_return)!=1 :
+        raise ValueError(f'ERROR: found {len(offsets_to_return)} entries for layer {self.__layer} in file {self.et_offset_file}')
+      return offsets_to_return[0]
 
   def __get_warping_object(self) :
     """
@@ -1462,7 +1491,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir,:] = r.allexposuretimes
     self.__med_ets = np.median(slide_exp_times,axis=0)
-    if self.et_offset_file is not None :
+    if (not self.skip_et_corrections) and (self.et_offset_file is not None) :
       #read the exposure time offsets
       offsets = self.__read_exposure_time_offsets()
       #add the exposure time correction to every rectangle's transformations
@@ -1484,20 +1513,36 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     Read in the offset factors for exposure time corrections from the file defined by command line args
     """
     self.logger.info(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
-    layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
-    offsets_to_return = []
-    for ln in range(1,self.nlayers+1) :
-        this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
-        if len(this_layer_offset)==1 :
-            offsets_to_return.append(this_layer_offset[0])
-        elif len(this_layer_offset)==0 :
-            warnmsg = f'WARNING: LayerOffset file {self.et_offset_file} does not have an entry for layer {ln}'
-            warnmsg+=  ', so that offset will be set to zero!'
-            self.logger.warning(warnmsg)
-            offsets_to_return.append(0)
-        else :
-            raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.et_offset_file} for layer {ln}!')
-    return offsets_to_return
+    #read the offset from the Full.xml file
+    if self.et_offset_file==self.fullxmlfile :
+      tree = ET.parse(self.et_offset_file)
+      root = tree.getroot()
+      for child in root :
+        if child.tag=='G' :
+          for child2 in child.iter() :
+            if 'name' in child2.attrib and child2.attrib['name']=='DarkCurrentSettings' :
+              for child3 in child2.iter() :
+                if 'name' in child3.attrib and child3.attrib['name']=='Mean' :
+                  to_return = []
+                  for li in range(self.nlayers) :
+                    to_return.append(float(child3.text))            
+                  return to_return
+    #read the offsets from the given LayerOffset file
+    else :
+      layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
+      offsets_to_return = []
+      for ln in range(1,self.nlayers+1) :
+          this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
+          if len(this_layer_offset)==1 :
+              offsets_to_return.append(this_layer_offset[0])
+          elif len(this_layer_offset)==0 :
+              warnmsg = f'WARNING: LayerOffset file {self.et_offset_file} does not have an entry for layer {ln}'
+              warnmsg+=  ', so that offset will be set to zero!'
+              self.logger.warning(warnmsg)
+              offsets_to_return.append(0)
+          else :
+              raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.et_offset_file} for layer {ln}!')
+      return offsets_to_return
 
   def __get_warping_objects_by_layer(self) :
     """

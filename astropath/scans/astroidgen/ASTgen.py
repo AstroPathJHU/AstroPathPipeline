@@ -34,9 +34,8 @@ def ast_gen(mpath, csv_file, mastro_csv, debug):
             continue
         if not os.path.exists(dpath[pos] + '/' + dname[pos]):
             continue
-        print(dname[pos])
-        batch_check(spath[pos], dname[pos], dpath[pos])
         uppath = create_folders(dname[pos], dpath[pos])
+        batch_check(spath[pos], dname[pos], dpath[pos])
         patient, batch_id, cohort = extract_data(dname[pos], spath[pos], mpath)
         if not patient:
             continue

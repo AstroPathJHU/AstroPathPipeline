@@ -1,4 +1,5 @@
 import contextlib, datetime, job_lock, os, re
+from ...utilities.config import CONST as UNIV_CONST
 from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
 from ...shared.samplemetadata import SampleDef
@@ -60,7 +61,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     ctrlsamplescsv = self.root/"Ctrl"/f"project{self.Project}_ctrlsamples.csv"
     try:
       controlcsvs = {
-        self.root/sample.SlideID/"dbload"/f"{sample.SlideID}_control.csv"
+        self.root/sample.SlideID/UNIV_CONST.DBLOAD_DIR_NAME/f"{sample.SlideID}_control.csv"
         for sample in self.readtable(ctrlsamplescsv, ControlSample)
       }
     except IOError:
@@ -160,7 +161,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
 
   @classmethod
   def getoutputfiles(cls, *, dbloadroot, Project, **workflowkwargs):
-    return [dbloadroot/"dbload"/f"project{Project}_loadfiles.csv"]
+    return [dbloadroot/UNIV_CONST.DBLOAD_DIR_NAME/f"project{Project}_loadfiles.csv"]
 
   @property
   def workflowkwargs(self):

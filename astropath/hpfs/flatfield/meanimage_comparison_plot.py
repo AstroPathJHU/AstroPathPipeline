@@ -102,12 +102,12 @@ def checkArgs(args) :
         #meanimages and standard errors must exist for all slides
         for root_dir,slide_ids in slide_ids_by_rootdir.items() :
             for sid in slide_ids :
-                mifp = root_dir / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                mifp = root_dir / sid / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
                 if not mifp.is_file() :
                     logger.warning(f'WARNING: Mean image file does not exist for slide {sid}, will skip this slide!')
                     args.skip_slides.append(sid)
                     continue
-                semifp = root_dir / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                semifp = root_dir / sid / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
                 if not semifp.is_file() :
                     logger.warning(f'WARNING: Standard error of mean image file does not exist for slide {sid}, will skip this slide!')
                     args.skip_slides.append(sid)
@@ -257,8 +257,8 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
             while si in range(len(sids)) :
                 sid=sids[si]
                 logger.info(f'\tChecking {sid}...')
-                mi   = get_raw_as_hwl((root_dir / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'),*(dims),np.float64)
-                semi = get_raw_as_hwl((pathlib.Path(root_dir) / sid / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'),*(dims),np.float64)
+                mi   = get_raw_as_hwl((root_dir / sid / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'),*(dims),np.float64)
+                semi = get_raw_as_hwl((pathlib.Path(root_dir) / sid / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'),*(dims),np.float64)
                 if np.min(mi)==np.max(mi) or np.max(semi)==0. : #or sum([np.min(semi[:,:,li])==0. for li in range(dims[-1])])==dims[-1] :
                     logger.warning(f'WARNING: slide {sid} will be skipped because not enough images were stacked!')
                     slide_ids_by_rootdir[root_dir].remove(sid)
@@ -292,9 +292,9 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
         pairs_done = set()
         for is1,sid1 in enumerate(slide_ids) :
             s1rd = ([rd for rd,sids in slide_ids_by_rootdir.items() if sid1 in sids])[0]
-            mi1   = get_raw_as_hwl((s1rd / sid1 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
+            mi1   = get_raw_as_hwl((s1rd / sid1 / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
                                 *(dims),np.float64)
-            semi1 = get_raw_as_hwl((s1rd / sid1 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
+            semi1 = get_raw_as_hwl((s1rd / sid1 / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
                                 *(dims),np.float64)
             for is2,sid2 in enumerate(slide_ids) :
                 if sid2==sid1 :
@@ -306,9 +306,9 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
                     continue
                 logger.info(f'Finding std. devs. of delta/sigma for {sid1} vs. {sid2}...')
                 s2rd = ([rd for rd,sids in slide_ids_by_rootdir.items() if sid2 in sids])[0]
-                mi2   = get_raw_as_hwl((s2rd / sid2 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
+                mi2   = get_raw_as_hwl((s2rd / sid2 / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
                                     *(dims),np.float64)
-                semi2 = get_raw_as_hwl((s2rd / sid2 / 'im3' / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
+                semi2 = get_raw_as_hwl((s2rd / sid2 / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
                                     *(dims),np.float64)
                 dossd_list = get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2)
                 dos_std_dev_plot_values[is1,is2,:] = dossd_list
