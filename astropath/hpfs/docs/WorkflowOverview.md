@@ -1,4 +1,4 @@
-# 5.4 Workflow Overview
+# 5.4. Workflow Overview
 As noted above, modules outside of ```segmaps``` and ```transferanno``` can be launched and allowed to run continuously. These steps outline how a slide might process through the workflow. 
 
 1. Update the AstroPath files in the ```<mpath>```
@@ -11,11 +11,11 @@ As noted above, modules outside of ```segmaps``` and ```transferanno``` can be l
 8. Launch the ```flatw_worker``` module on the assigned worker machine to process the flatfielding and image warping corrections on a particular slide's hpf image set
 9. Create the BatchID and MergeConfig files for the project according to documentation in scans
 10. Launch the ```mergeloop``` module to initialize necessary antibody processing folders, create the local inform_queue for a project, recieve inform results, merge the data and create qa qc images to evaluate the inform classification algorithms.
-11. Create phenotype algorithms in inForm according to the protocol established in [5.10.3.](../inform_processing/docs/inFormMultipassPhenotype.md#5103-inform-multipass-phenotype)
+11. Create phenotype algorithms in inForm according to the protocol established in [5.10.3.](../vminform/docs/inFormMultipassPhenotype.md#5103-inform-multipass-phenotype)
 12. Launch the ```inform_queue``` module to send jobs from the main inform queue to the queues on the inform worker machines.
 13. Launch the ```inform_worker``` module to process algorithms in inForm
 14. wait for QC images to process by the ```mergeloop``` module
-    - evaluate the qc by the protocols established in [5.10.6.](../inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)
+    - evaluate the qc by the protocols established in [5.10.6.](../vminform/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)
     -repeat 11-13 as needed
 15. Launch ```segmaps``` module after qc has been completed for the cell classification of slides in a project to build the final segmenation maps.
 16. Launch ```transferanno``` module after the slides have been successfully annotated in HALO and annotations have been exported to a desired location.

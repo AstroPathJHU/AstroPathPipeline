@@ -16,6 +16,8 @@
 function [] = meanimages(main, dd)
 % wd = '\\bki04\k$\Clinical_Specimen_4';
 % flatw = '\\bki04\m$\flatwtest_4\raw';
+i10 = 1;
+while i10 == 1
 tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
     'ReadVariableNames', true);
 %
@@ -45,6 +47,7 @@ for i1 = 1:height(tbl)
     end
 end
 end
+end
 %
 function [] = sample_loop(wd, dd, sn1, flatwcode)
         %
@@ -65,17 +68,17 @@ function [] = sample_loop(wd, dd, sn1, flatwcode)
         %
         ShredIm3(wd, flatw, sn1, flatwcode);
         %
-        try
+        %try
             fn = raw2mean(flatw,sn1);
             copyfile(fn,[wd,'\',sn1,'\im3']);
             fn = replace(fn, '.csv','.flt');
             copyfile(fn,[wd,'\',sn1,'\im3']);
-        catch
-            fprintf(['Error in ',sn1,'\r'])
-        end
+        %catch
+        %    fprintf(['Error in ',sn1,'\r'])
+        %end
         fclose('all');
         try
-           % rmdir(flatw, 's')
+            rmdir(flatw, 's')
         catch
         end
 end
@@ -167,7 +170,7 @@ ii = (contains(sn, 'Batch')|...
 sn(ii) = [];
 end
 
-function [ll, ww, hh] = get_shape(path, sample)
+function [ll, ww, hh] = get_shape(mpath, sample)
 %%------------------------------------------------------
 %% get the shape parameters from the parameters.xml file found at
 %% [path/sample.Parameters.xml]
@@ -175,7 +178,7 @@ function [ll, ww, hh] = get_shape(path, sample)
 %%
 %% Usage: get_shape('F:\new3\M27_1\im3\xml', 'M27_1');
 %%------------------------------------------------------
-    p1 = fullfile(path, [sample,'.Parameters.xml']);
+    p1 = fullfile(mpath, [sample,'.Parameters.xml']);
     mlStruct = parseXML(p1);
     params = strsplit(mlStruct(5).Children(2).Children.Data);
     ww = str2double(params{1});

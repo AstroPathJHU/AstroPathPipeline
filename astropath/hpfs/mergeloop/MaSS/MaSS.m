@@ -787,7 +787,9 @@ if err_val ~= 0
             %
             nm = [Markers,'_cleaned_phenotype_table.csv'];
             ftd = fullfile([wd,'\Phenotyped\Results\Tables'],nm);
-            delete(ftd)
+            if exist(ftd, 'file')
+                delete(ftd)
+            end
             %
             e_code = 0;
         case 15
@@ -799,7 +801,9 @@ if err_val ~= 0
             %
             nm = [Markers,'_cleaned_phenotype_table.csv'];
             ftd = fullfile([wd,'\Phenotyped\Results\Tables'],nm);
-            delete(ftd)
+            if exist(ftd, 'file')
+                delete(ftd)
+            end
             %
             e_code = 0;
         case 17

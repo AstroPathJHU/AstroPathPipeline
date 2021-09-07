@@ -1,15 +1,15 @@
-# 5.9. Mergeloop
+# 5.7. Mergeloop
 
-## 5.9.1. Description
+## 5.7.1. Description
 This module servers to track processing, interact with the inForm® processing queues and subsequently merge\ generate quality control images for each slide using the code MaSS (description found [here](MaSS#merge-a-single-sample-mass)). The module loops through each project in the *AstroPathCohortsProgresss.csv* file, tracking or updating all slides then continuing to the next project. Importantly, the code uses the *MergeConfig_NN.xlsx* files (defined in [4.4.8.](../../scans/docs/scanning/MergeConfigTables.md#448-mergeconfig-tables)) to intialize a project level inForm queue as well as antibody specific processing folders in the tmp_inform_data folder. The code will not process a cohort without these files as its main function is serve as an interaction between the user and the inform processing tasks. Additional details on what the code tracks, location of different files and processing steps can be found in this documentation. A typical user instruction is included [here](../docs/TypicalUserInstructions.md#532-typical-user-instructions) for people who will not be monitoring the code but will be using the pipeline to process slides.
 
-## 5.9.2. Important Definitions
+## 5.7.2. Important Definitions
 
 - ```<upkeep_and_progress>```: This folder contains all the necessary project related documents for the inForm® or practical user of the pipeline. 
    - add all additional files outside of those maintained by the code to this folder. Adding files or new folders to the main ```<Dname>``` directory may crash the processing or cause unexpected results
 - *inform_queue.csv*: This file is the project level inform queue. 
    - The code transfers new tasks to the main inform queue and completed task infomation back to this queue.
-   - adding tasks to this file is described in further documentation in [5.10.5.](../inform_processing/docs/AddingSlidestotheinFormQueue.md)
+   - adding tasks to this file is described in further documentation in [5.8.5.](../vminform/docs/AddingSlidestotheinFormQueue.md)
 - *Main_inform_queue.csv*: The main queue is held in the ```<Mpath>``` location. Additional copies of this queue are created in the ```<upkeep_and_progress>``` folder of each project for reference
    - opening and modifying the main queue in the ```<Mpath>``` directory can cause the file to become corrupt resulting in loss of archived processes.
    - it is recommended that only the project level queues are modified.
@@ -34,7 +34,7 @@ This module servers to track processing, interact with the inForm® processing q
 
 *Note*: Additional directory information can be found [here](../../scans/docs/DirectoryOrganization.md#46-directory-organization)
 
-## 5.9.3. Instructions
+## 5.7.3. Instructions
 The code should be launched through MATLAB. To start download the repository to a working location. Next, open a new session of matlab and add the ```AstroPathPipline``` to the matlab path. Then use the following to launch:   
 ``` 
 mergeloop(<Mpath>)
@@ -44,7 +44,7 @@ mergeloop(<Mpath>)
 
 *Note:* For the code to process successfully be sure to create the merge configuration files (see [4.4.8.](../../scans/docs/scanning/MergeConfigTables.md#448-mergeconfig-tables)).
 
-## 5.9.4. Workflow
+## 5.7.4. Workflow
 This code starts by extracting the cohorts from the *AstropathCohortProgress.xlsx* spreadsheet. Each cohort is then looped over with the following steps:
 - We check the space available on the ```<Dpath>\<Dname>``` processing drive and write this into the *AstropathConfig.csv* file (description found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory))
 - Check the ```<Process_Merge>``` variable in the *AstropathConfig.csv* file, if *Yes* continue processing otherwise skip to the next cohort
