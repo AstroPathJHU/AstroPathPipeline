@@ -13,12 +13,12 @@ class ImageCorrectionCohort(CorrectedImageCohort, SelectRectanglesCohort, Parall
 
     @property
     def initiatesamplekwargs(self) :
-        return {
-            **super().initiatesamplekwargs,
-            'workingdir':self.workingdir,
-            'layers':self.layers,
-            "filetype": 'raw', # only ever run image correction on raw files
-            }
+        to_return = super().initiatesamplekwargs
+        to_return['workingdir']=self.workingdir
+        to_return['layers']=self.layers
+        to_return['filetype']='raw' # only ever run image correction on raw files
+        to_return['skip_et_corrections']=True # Never apply corrections for exposure time
+        return to_return
 
     @property
     def workflowkwargs(self) :

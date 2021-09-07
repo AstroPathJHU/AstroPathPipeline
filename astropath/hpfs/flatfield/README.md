@@ -8,11 +8,9 @@ The "meanimage" routine runs on raw (".Data.dat") image files. It finds the opti
 
 To run the routine for a single sample in the most common use case, enter the following command and arguments:
 
-`meanimagesample <Dpath>\<Dname> <Rpath> <SlideID> --exposure_time_offset_file [path_to_exposure_time_offset_file] --njobs [njobs]`
+`meanimagesample <Dpath>\<Dname> <Rpath> <SlideID> --njobs [njobs]`
 
-where:
-- `[path_to_exposure_time_offset_file]` is the path to a .csv file holding the exposure time correction "dark current" offsets as a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L30-L35), which is output by the code that does the exposure time correction fits.
-- `[njobs]` is the maximum number of parallel processes allowed to run at once during the parallelized portions of the code running
+where `[njobs]` is the maximum number of parallel processes allowed to run at once during the parallelized portions of the code running
 
 See [here](../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
 
@@ -22,7 +20,7 @@ Running the above command will produce a "`meanimage`" directory in `<Dpath>\<Dn
 1. **a `<SlideID>-sum_images_squared.bin` file** that is the sum of the square of all the selected HPFs' tissue regions, stored as 64-bit floats. (This file is used to combine multiple samples' mean images into a flatfield model.)
 1. **a `<SlideID>-mask_stack.bin` file** that is the stack of the binary image masks from every selected HPF, stored as 64-bit unsigned integers
 1. **a list of every field used** in finding the background thresholds and in making the mean image, called "`fields_used.csv`", stored as [`FieldLog` objects](./utilities.py#L28-L34)
-1. **an overview of the image files used to determine the background thresholds**, including the name of the miscroscope and date ranges, called "`<SlideID>-metadata_summary_thresholding_images.csv`", stored as [`MetadataSummary` objects](../../shared/samplemetadata.py#L95-L104)
+1. **an overview of the image files used to determine the background thresholds**, including the name of the miscroscope and date ranges, called "`<SlideID>-metadata_summary_thresholding_images.csv`", stored as [`MetadataSummary` objects](../../shared/samplemetadata.py#L96-L105)
 1. **an overview of the image files stacked to create the mean image** in the same format as the above, called "`<SlideID>-metadata_summary_stacked_images.csv`"
 1. **a "`<SlideID>_background_thresholds.txt`" file**, which lists the optimal background thresholds in each image layer, stored as [`ThresholdTableEntry` objects](utilities.py#L15-L19).
 1. **a "`<SlideID>-thresholding_data_table.csv`" file**, which lists the background thresholds found for each individual tissue edge HPF image, stored as [`RectangleThresholdTableEntry` objects](./utilities.py#L21-L26)
@@ -38,7 +36,8 @@ Running the above command will produce a "`meanimage`" directory in `<Dpath>\<Dn
 1. **a more detailed sample log file** called "`<SlideID>-meanimage.log`" in `<Dpath>\<Dname>\<SlideID>\logfiles`
 
 Other options for running the code include:
-- skipping corrections for differences in exposure time: remove the `--exposure_time_offset_file` argument
+- skipping corrections for differences in exposure time: add the `--skip_exposure_time_corrections` argument
+- using exposure time dark current offsets that are different from what's stored in the sample's Full.xml file: add the `--exposure_time_offset_file [path_to_exposure_time_offset_file]` argument where `[path_to_exposure_time_offset_file]` is the path to a .csv file holding a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L21-L26)
 - skipping determining background thresholds and creating masks: add the `--skip_masking` flag 
 - changing the output location: add the `--workingdir [workingdir_path]` argument where `[workingdir_path]` is the path to the directory where the output should go (the default is `<Dpath>\<Dname>\SlideID\im3\meanimage` as detailed above)
 - using pre-created mask/threshold files: If the routine has already been run and background thresholds and/or masking files have already been created in the expected location, those portions of the code will not be run again unless the existing files are deleted. If you would like to force recreation of the files, add the `--maskroot [mask_root_path]` argument, where `[mask_root_path]` is a path to a directory other than `<Dpath>\<Dname>`. This same argument can be used to reference pre-created threshold/masking files in any other location as well, and the sample log file will list details of which subroutines have been skipped or run and where the data they're using are coming from. 
@@ -94,11 +93,9 @@ To see more command line arguments available, run `batchflatfieldcohort --help`.
 
 One last routine in this portion of the code can be used to test the effect of applying a set of flatfield corrections. The "[appliedflatfieldcohort.py](./appliedflatfieldcohort.py)" code splits the images in each slide in a given set randomly into two equally-sized subsamples. It creates a mean image from each subsample using the same methods as in `meanimagesample`, and uses one subsample to calculate a set of flatfield correction factors to apply to the mean image created using the other subsample. It outputs the test flatfield model and the corrected mean image. To run the code in the most common use case, enter the following command and arguments:
 
-`appliedflatfieldcohort <Dpath>\<Dname> <Rpath> [workingdir_path] --exposure_time_offset_file [path_to_exposure_time_offset_file]`
+`appliedflatfieldcohort <Dpath>\<Dname> <Rpath> [workingdir_path]`
 
-where:
-- `[workingdir_path]` is the path to the directory where the output should be located
-- `[path_to_exposure_time_offset_file]` is the path to a .csv file holding the exposure time correction "dark current" offsets as a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L30-L35), like above.
+where `[workingdir_path]` is the path to the directory where the output should be located
 
 Running the above command will create a new directory at `[workingdir_path]` that contains the following:
 1. **a `flatfield.bin` file** containing the test flatfield correction model

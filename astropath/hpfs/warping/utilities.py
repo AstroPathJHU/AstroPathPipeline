@@ -1,5 +1,6 @@
 #imports
-import copy
+import copy, cv2
+import numpy as np
 from ...utilities.dataclasses import MyDataClass
 from .config import CONST
 
@@ -119,3 +120,14 @@ def build_default_parameter_bounds_dict(warp,max_rad_warp,max_tan_warp) :
     maxp2 = find_default_parameter_limit(8,0.01,max_tan_warp,warp.maxTangentialDistortAmount,copy.deepcopy(testpars))
     bounds['p2']=(-2.0*maxp2,2.0*maxp2)
     return bounds
+
+#helper function to correct an image layer with given warp dx and dy fields
+def correct_image_layer_with_warp_fields(raw_img_layer,dx_warps,dy_warps,interp_method=cv2.INTER_LINEAR,dest=None) :
+    grid = np.mgrid[0:raw_img_layer.shape[0],0:raw_img_layer.shape[1]]
+    xpos, ypos = grid[1], grid[0]
+    map_x = (xpos-dx_warps).astype(np.float32) 
+    map_y = (ypos-dy_warps).astype(np.float32)
+    if dest is not None :
+        return cv2.remap(raw_img_layer,map_x,map_y,interp_method,dest)
+    else :
+        return cv2.remap(raw_img_layer,map_x,map_y,interp_method)

@@ -1,4 +1,5 @@
 import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+from ...utilities.config import CONST as UNIV_CONST
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
@@ -155,7 +156,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, geomroot, selectrectangles=lambda r: True, **otherworkflowkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     fieldscsv = dbload/f"{SlideID}_fields.csv"
     constantscsv = dbload/f"{SlideID}_constants.csv"
     if not fieldscsv.exists(): return [fieldscsv]

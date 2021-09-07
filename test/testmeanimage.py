@@ -28,11 +28,11 @@ class TestMeanImage(TestBaseSaveOutput) :
 
     @property
     def meanimage_dir(self) :
-        return folder/'data'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME
+        return folder/'data'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
 
     @property
     def masking_dir(self) :
-        return folder/'test_for_jenkins'/'mean_image'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME
+        return folder/'test_for_jenkins'/'mean_image'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME
 
     @property
     def outputfilenames(self) :
@@ -61,7 +61,7 @@ class TestMeanImage(TestBaseSaveOutput) :
         root = folder/'data'
         root2 = folder/'data'/'raw'
         et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
-        (folder/'test_for_jenkins'/'mean_image'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME).mkdir(parents=True,exist_ok=True)
+        (folder/'test_for_jenkins'/'mean_image'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME).mkdir(parents=True,exist_ok=True)
         args = [os.fspath(root),os.fspath(root2),
                 '--exposure_time_offset_file',os.fspath(et_offset_file),
                 '--njobs',str(n_threads),

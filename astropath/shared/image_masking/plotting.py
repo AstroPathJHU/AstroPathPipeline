@@ -1,5 +1,5 @@
 #imports
-from ...utilities.misc import cd, crop_and_overwrite_image
+from ...utilities.misc import save_figure_in_dir
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -87,11 +87,4 @@ def do_masking_plots_for_image(image_key,tissue_mask,plot_dict_lists,compressed_
         ax[n_rows-1][ci].axis('off')
     #save the plot
     fn = f'{image_key}_masking_plots.png'
-    if savedir is None :
-        plt.savefig(fn); plt.close(); crop_and_overwrite_image(fn)
-    else :
-        if not savedir.is_dir() :
-            savedir.mkdir()
-        with cd(savedir) :
-            plt.savefig(fn); plt.close(); crop_and_overwrite_image(fn)
-
+    save_figure_in_dir(plt,fn,savedir)

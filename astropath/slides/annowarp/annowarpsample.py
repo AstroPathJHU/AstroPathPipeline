@@ -5,6 +5,7 @@ from ...shared.csvclasses import Region, Vertex
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
 from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample, XMLPolygonReader, ZoomFolderSampleBase
+from ...utilities.config import CONST as UNIV_CONST
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.misc import covariance_matrix, floattoint
@@ -864,7 +865,7 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [
       dbload/f"{SlideID}_annowarp.csv",
       dbload/f"{SlideID}_annowarp-stitch.csv",

@@ -109,10 +109,10 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
         return super().workflowdependencyclasses()
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
-        return {
-            **super().initkwargsfromargumentparser(parsed_args_dict),
-            "filetype": 'raw', # only ever run image correction on raw files
-        }
+        to_return = super().initkwargsfromargumentparser(parsed_args_dict)
+        to_return['filetype']='raw' # only ever run image correction on raw files
+        to_return['skip_et_corrections']=True # never apply corrections for exposure time
+        return to_return
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

@@ -1,6 +1,7 @@
 import abc, os, pathlib, re
 
 from ...hpfs.flatfield.config import CONST as FF_CONST
+from ...utilities.config import CONST as UNIV_CONST
 from ...shared.argumentparser import RunFromArgumentParser
 from ...shared.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
@@ -8,7 +9,6 @@ from ...shared.overlap import Overlap
 from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield
-from ...utilities.config import CONST as UNIV_CONST
 from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
@@ -228,7 +228,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherworkflowkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [dbload/f"{SlideID}_loadfiles.csv"]
 
   def inputfiles(self, **kwargs):

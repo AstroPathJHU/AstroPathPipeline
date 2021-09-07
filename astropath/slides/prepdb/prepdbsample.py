@@ -5,6 +5,7 @@ from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
 from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader, XMLPolygonReader
 from ...utilities import units
+from ...utilities.config import CONST as UNIV_CONST
 
 class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser):
   @classmethod
@@ -74,7 +75,7 @@ class PrepDbSampleBase(XMLLayoutReader, XMLPolygonReader, RectangleOverlapCollec
   def vertices(self): return self.getXMLpolygonannotations()[2]
 
   @property
-  def jpgfilename(self): return self.dbload/(self.SlideID+"_qptiff.jpg")
+  def jpgfilename(self): return self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)
 
   @methodtools.lru_cache()
   def getqptiffcsvandimage(self):
@@ -350,14 +351,14 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, skipannotations=False, **otherkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [
       dbload/f"{SlideID}_batch.csv",
       dbload/f"{SlideID}_constants.csv",
       dbload/f"{SlideID}_exposures.csv",
       dbload/f"{SlideID}_overlap.csv",
       dbload/f"{SlideID}_qptiff.csv",
-      dbload/f"{SlideID}_qptiff.jpg",
+      dbload/f"{SlideID}{UNIV_CONST.QPTIFF_SUFFIX}",
       dbload/f"{SlideID}_rect.csv",
     ]
     #do not include annotations, regions, and vertices
