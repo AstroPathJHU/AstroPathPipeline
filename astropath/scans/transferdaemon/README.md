@@ -17,7 +17,7 @@ This code is used to transfer and reorganize the whole slide clinical specimen s
 ## 5.6.3. Instructions
 For python download the repository and install the transferdeamon. Then launch using:
 
-```TransferDaemon.py <Mpath> <email_on_error> [<source_file_handling>] [<logical_compression>] [<quiet>]```
+```TransferDaemon.py <Mpath> <email_on_error> [<source_file_handling>] [<logical_compression>] [<quiet>] [<version>] [<debug>]```
 
 - ```<Mpath>```: should contain the ***AstropathCohortsProgress.csv***, ***AstropathPaths.csv***, and the ***AstropathCohorts.csv*** files
   - description of these files can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md/#451-astropath_processing-directory)
@@ -28,6 +28,8 @@ For python download the repository and install the transferdeamon. Then launch u
   - ```MANUAL```: Delete any folders without the DoNotDelete.txt file
 - ```[<logical_compression>]```: Optional argument; enter "-no_compress" if files are not to be compressed
 - ```[<quiet>]```: Optional argument; enter "-q" if no output is to be sent to command window
+- ```[<version>]```: Optional argument; enter "-v" to get the version number of the code
+- ```[<debug>]```: Optional argument; enter -d to run in debug mode. Here the code outputs more descriptive information and requires addition of "\\" when attempting to access server locations
   
 ## 5.6.4. Workflow
 ### 5.6.4.1. Initial Transfer
