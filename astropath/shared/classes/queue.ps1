@@ -55,9 +55,14 @@ class queue : sharedtools{
         #
         $slidesnotcomplete = $this.defNotCompletedSlides($cleanedslides)
         $array = @()
-        for($i=0; $i -lt $slidesnotcomplete.count;$i++){
-            $array += $slidesnotcomplete.Project[$i] + ',' + $slidesnotcomplete.Slideid[$i]
+        if ($slidesnotcomplete.count -eq 1){
+            $array += $slidesnotcomplete.Project + ',' + $slidesnotcomplete.Slideid
+        } else {
+            for($i=0; $i -lt $slidesnotcomplete.count;$i++){
+                $array += $slidesnotcomplete.Project[$i] + ',' + $slidesnotcomplete.Slideid[$i]
+            }
         }
+        #
         $this.cleanedtasks = $array
         #
     }

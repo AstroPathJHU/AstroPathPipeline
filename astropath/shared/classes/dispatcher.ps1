@@ -43,6 +43,7 @@ class Dispatcher : queue{
             $this.GetRunningJobs()
             $this.DistributeTasks()
             $this.WaitTask()
+            $this.checknew()
         }
         #
     }
@@ -138,7 +139,7 @@ class Dispatcher : queue{
             $myscriptblock = {
                 param($username, $password, $currentworkerip, $workertaskfile)
                 psexec -i -nobanner -accepteula -u $username -p $password \\$currentworkerip `
-                    powershell -noprofile -executionpolicy bypass -noexit -command "$workertaskfile" 
+                    powershell -noprofile -executionpolicy bypass -command "$workertaskfile" 
             }
         } else {
             $myscriptblock = {
