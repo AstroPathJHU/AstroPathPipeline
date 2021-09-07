@@ -52,7 +52,7 @@ Class imagecorrection {
         #
         # If processloc is not '*' a processing destination was added as input, correct the paths to analyze from there
         #
-        if ($this.processloc -ne '*'){
+        if ($task[2]){
              $this.processloc = ($task[2]+'\processing_imagecorrection\'+$task[1])
              #
              $this.convertim3pathlogshred = $this.processloc + '\convertIM3pathshred.log'
@@ -181,7 +181,7 @@ Class imagecorrection {
         $this.sample.info("Shred data started")
         ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -verbose 4>&1 >> $this.convertim3pathlogshred
         $log = $this.sample.GetContent($this.convertim3pathlogshred) |
-             where-object {$_ -notlike '.*' -and $_ -notlike '*PM*'} | 
+             where-object {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 
              foreach {$_.trim()}
         $this.sample.info($log)
         remove-item $this.convertim3pathlogshred -force -ea Continue
@@ -214,7 +214,7 @@ Class imagecorrection {
         $this.sample.info("Inject data started")
         ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -i -verbose 4>&1 >> $this.convertim3pathloginject
         $log = $this.sample.GetContent($this.convertim3pathloginject) |
-             where-object {$_ -notlike '.*' -and $_ -notlike '*PM*'} | 
+             where-object  {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 
              foreach {$_.trim()}
         $this.sample.info($log)
         remove-item $this.convertim3pathloginject -force -ea Continue

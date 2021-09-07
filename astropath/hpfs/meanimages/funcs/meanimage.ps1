@@ -22,7 +22,7 @@ Function meanimage {
      # used for testing; when launched manually without launchmodule
      #
      if (!($PSBoundParameters.ContainsKey('log'))){ 
-        $log = [launchmodule]::new($task[1], '\\bki04\astropath_processing', 'meanimage', $task, 1) 
+        $log = [launchmodule]::new($task[1], '\\bki08\e$\testing\astropath_processing', 'meanimage', $task, 1) 
         $e = 1
      } else {$e = 0}
      #

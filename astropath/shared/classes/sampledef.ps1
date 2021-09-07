@@ -20,7 +20,7 @@
         #
     }
     #
-     sampledef($mpath, $module, $slideid,[PSCustomObject]$slides):base($mpath, $module, $slideid){
+     sampledef($mpath, $module, $slideid,[PSCustomObject]$slides){
         $this.mpath = $mpath
         $this.module = $module 
         $this.Sample($slideid, $mpath, $slides)

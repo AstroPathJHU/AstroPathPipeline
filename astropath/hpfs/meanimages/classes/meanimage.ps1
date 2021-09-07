@@ -49,7 +49,7 @@ Class meanimage {
         #
         # If processloc is not '*' a processing destination was added as input, correct the paths to analyze from there
         #
-        if ($this.processloc -ne '*'){
+        if ($task[2]){
              $this.processloc = ($task[2]+'\processing_meanimage\'+$task[1])
              #
              $this.convertim3pathlogshred = $this.processloc + '\convertIM3pathshred.log'
@@ -59,6 +59,7 @@ Class meanimage {
              $this.processvars = $this.processvars -replace [regex]::escape('\\'+$this.sample.project_data.fwpath), ($this.processloc+'\flatw')
              $this.downloadim3ii = 1
         } else {
+             $this.processloc
              $this.convertim3pathlogshred = $this.sample.im3folder() + '\convertIM3pathshred.log'
              $this.meanimagelog = $this.sample.im3folder() + '\meanimage.log'
         }
