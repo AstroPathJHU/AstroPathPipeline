@@ -88,7 +88,7 @@ class Rectangle(DataClassWithPscale):
       xml_filepath = self.__xmlfolder/self.file.replace(UNIV_CONST.IM3_EXT,xml_file_ext)
       if xml_filepath.is_file() :
         return xml_filepath
-    raise FileNotFoundError(f'ERROR: Could not find an xml file with any of the expected file extensions in {self.__xmlfolder}')
+    raise FileNotFoundError(f'ERROR: Could not find an xml file for {self.file} with any of the expected file extensions in {self.__xmlfolder}')
 
   @methodtools.lru_cache()
   @property
