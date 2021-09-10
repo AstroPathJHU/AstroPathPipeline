@@ -5,10 +5,14 @@ from ...utilities.img_file_io import write_image_to_file
 from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 
-class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, WorkingDirArgumentParser, SelectLayersArgumentParser) :
+class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, 
+                            WorkingDirArgumentParser, SelectLayersArgumentParser) :
     """
     Read raw image files, correct them for flatfielding and/or warping effects 
-    (not exposure time), and write them out as .fw files or .fw[layer] files
+    (not exposure time), and write them out.
+    If no workingdirectory is given and all layers are used, the corrected files 
+    are written out to overwrite the original .Data.dat files, otherwise the corrected
+    files are written out to the workingdirectory as .fw files or .fw[layer] files
     """
 
     #################### PUBLIC FUNCTIONS ####################
@@ -17,6 +21,9 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
         super().__init__(*args,**kwargs)
         self.__workingdir = workingdir
         if self.__workingdir is None :
+            if self.layers==range(1,self.nlayers+1) :
+                #then the files should overwrite the raw .Data.dat files
+                self.__workingdir = self.root/self.SlideID
             self.__workingdir = self.__class__.automatic_output_dir(self.SlideID,self.root)
         self.__workingdir.mkdir(parents=True,exist_ok=True)
 
@@ -42,7 +49,8 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
                 proc_results = {}
                 with self.pool() as pool :
                     for ri,r in enumerate(self.rectangles,start=1) :
-                        self.logger.debug(f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....')
+                        msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
+                        self.logger.debug(msg)
                         with r.using_image() as im :
                             proc_results[(r.n,r.file)] = pool.apply_async(write_out_corrected_image_files,
                                                                           (im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers)
@@ -51,18 +59,19 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
                         try :
                             res.get()
                         except Exception as e :
-                            warnmsg = f'WARNING: writing out corrected images for rectangle {rn} ({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed '
-                            warnmsg+= f'with the error "{e}"'
+                            warnmsg = f'WARNING: writing out corrected images for rectangle {rn} '
+                            warnmsg+= f'({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed with the error "{e}"'
                             self.logger.warning(warnmsg)
             else :
                 for ri,r in enumerate(self.rectangles,start=1) :
-                    self.logger.debug(f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....')
+                    msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
+                    self.logger.debug(msg)
                     try :
                         with r.using_image() as im :
                             write_out_corrected_image_files(im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers)
                     except Exception as e :
-                        warnmsg = f'WARNING: writing out corrected images for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed '
-                        warnmsg+= f'with the error "{e}"'
+                        warnmsg = f'WARNING: writing out corrected images for rectangle {r.n} '
+                        warnmsg+= f'({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed with the error "{e}"'
                         self.logger.warning(warnmsg) 
 
     #################### PROPERTIES ####################
@@ -85,9 +94,9 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
 
     @classmethod
     def getoutputfiles(cls,SlideID,root,root2,layers,**otherworkflowkwargs) :
-        all_rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (root2/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
+        rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (root2/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
         outputfiles = []
-        for rfs in all_rawfile_stems :
+        for rfs in rawfile_stems :
             if type(layers)==range : #if it's a range then it's just the multilayer images
                 outputfilename = f'{rfs}{UNIV_CONST.FLATW_EXT}'
                 outputfiles.append(cls.automatic_output_dir(SlideID,root) / outputfilename)
