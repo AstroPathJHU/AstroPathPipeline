@@ -5,7 +5,7 @@
  --------------------------------------------
  Description
  general functions which may be needed by
- multiple modules
+ throughout the pipeline
  -------------------------------------------#>
  Class sharedtools{
     [string]$module
@@ -432,5 +432,4 @@
         return $vers
         #
     }
-    #
 }
