@@ -137,60 +137,44 @@ Class meanimage {
         if (test-path $this.meanimagelog){
             remove-item $this.meanimagelog -force -ea Continue
         }
-
-        #meanimages(main, dd) main = directory with paths document, dd = drive
         $this.sample.info("finished getting mean image")
     }
     <# -----------------------------------------
      returndata
+     returns data to source path
      ------------------------------------------
      Usage: $this.returndata()
     ----------------------------------------- #>
     [void]returndata(){
         #
         $this.sample.info("Return data started")
-        
-        <#
-        copies the image masks and final average image back to the data
-        source location
-
-        copies the saved total image and .csv file with metadata(number
-        of images and image shape) to the data source
-        
-        #>
+        #
         if ($this.downloadim3ii -eq 1){
-            # im3s
-            $sor = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\flatw'
-            $des = $this.sample.flatwim3folder()
-            robocopy $sor $des *im3 -r:3 -w:3 -np -mt:30 |out-null
-            if(!(((gci ($sor+'\*') -Include '*im3').Count) -eq ((gci ($des+'\*') -Include '*.im3').Count))){
-                Throw 'im3s did not upload correctly'
-            }
-            robocopy $sor $des *log -r:3 -w:3 -np -mt:1 |out-null
+            # flt and csv
+            $sor = $this.processvars[1] +'\flat'
+            $des = $this.sample.flatwfolder()
+            robocopy $sor $des *.flt -r:3 -w:3 -np -mt:30 |out-null
+            robocopy $sor $des *.csv -r:3 -w:3 -np -mt:30 |out-null
+            #
         }
-
-
+        #
         $this.sample.info("Return data finished")
         #
     }
     <# -----------------------------------------
      cleanup
-     cleanup the data directory and return the 
-     data to the dpath locations
+     cleanup the data directory
      ------------------------------------------
      Usage: $this.cleanup()
     ----------------------------------------- #>
     [void]cleanup(){
         #
         $this.sample.info("cleanup started")
-        #$this.processvars[1]\flat\*.flt
-        #$this.processvars[1]\flat\*.csv
-        if ($this.downloadim3ii -eq 1) {
-            #delete $this.processvars[0]
-        }
-        #delete $this.processvars[1]
-
-        #Delete data in working directory---- processvars[1]
+        #
+        #if ($this.downloadim3ii -eq 1) {
+        Get-ChildItem -Path $this.processloc -Recurse | Remove-Item -force -recurse
+        #}
+        #
         $this.sample.info("cleanup finished")
         #
     }
