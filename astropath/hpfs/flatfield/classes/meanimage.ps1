@@ -152,7 +152,7 @@ Class meanimage {
         if ($this.downloadim3ii -eq 1){
             # flt and csv
             $sor = $this.processvars[1] +'\flat'
-            $des = $this.sample.flatwfolder()
+            $des = $this.sample.im3folder()
             robocopy $sor $des *.flt -r:3 -w:3 -np -mt:30 |out-null
             robocopy $sor $des *.csv -r:3 -w:3 -np -mt:30 |out-null
             #
