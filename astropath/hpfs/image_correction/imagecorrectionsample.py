@@ -25,7 +25,7 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
             #and all of the layers are being done
             if self.layers==range(1,self.nlayers+1) :
                 #then the files should overwrite the raw files
-                self.__workingdir = self.root2/self.SlideID
+                self.__workingdir = self.__class__.automatic_output_dir(self.SlideID,self.root2)
         if self.__workingdir is None :
             errmsg = f'ERROR: failed to figure out where to put output from workingdir={workingdir} and '
             errmsg+= f'layers={self.layers}'
@@ -49,6 +49,9 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
                 msg_append+=' and'
             msg_append+=f' layer {",".join([str(ln) for ln in layers if ln!=-1])}'
         msg_append+=' files written out'
+        outextstem=UNIV_CONST.FLATW_EXT
+        if (self.__workingdir==self.__class__.automatic_output_dir(self.SlideID,self.root2)) and layers==[-1] :
+            outextstem=UNIV_CONST.RAW_EXT
         with cd(self.__workingdir) :
             if self.njobs>1 :
                 proc_results = {}
@@ -57,7 +60,7 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
                         msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
                         with r.using_image() as im :
                             proc_results[(r.n,r.file)] = pool.apply_async(write_out_corrected_image_files,
-                                                                          (im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers)
+                                                                          (im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers,outextstem)
                                                                         )
                             self.logger.debug(msg)
                     for (rn,rfile),res in proc_results.items() :
@@ -72,7 +75,7 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
                     msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
                     try :
                         with r.using_image() as im :
-                            write_out_corrected_image_files(im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers)
+                            write_out_corrected_image_files(im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers,outextstem)
                             self.logger.debug(msg)
                     except Exception as e :
                         warnmsg = f'WARNING: writing out corrected images for rectangle {r.n} '
@@ -140,12 +143,12 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
-def write_out_corrected_image_files(im,filenamestem,layers) :
+def write_out_corrected_image_files(im,filenamestem,layers,outextstem) :
     for ln in layers :
         if ln==-1 :
-            write_image_to_file(im,filenamestem+UNIV_CONST.FLATW_EXT)
+            write_image_to_file(im,filenamestem+outextstem)
         else :
-            write_image_to_file(im[:,:,ln-1],f'{filenamestem}{UNIV_CONST.FLATW_EXT}{ln:02d}')
+            write_image_to_file(im[:,:,ln-1],f'{filenamestem}{outextstem}{ln:02d}')
 
 def main(args=None) :
     ImageCorrectionSample.runfromargumentparser(args)
