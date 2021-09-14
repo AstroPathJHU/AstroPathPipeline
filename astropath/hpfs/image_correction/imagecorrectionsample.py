@@ -106,8 +106,8 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
             outdir = cls.automatic_output_dir(SlideID,root2)
         #figure out what the file extension of the output files should be
         outextstem = UNIV_CONST.FLATW_EXT #'flatw' by default
-        if (outdir==cls.automatic_output_dir(SlideID,root2)) 
-            and ((layers is None) or type(layers)==range or layers==[-1]) :
+        if ( (outdir==cls.automatic_output_dir(SlideID,root2)) 
+            and ((layers is None) or type(layers)==range or layers==[-1]) ) :
             outextstem = UNIV_CONST.RAW_EXT #same as raw if we're overwriting the raw multilayer files
         rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (root2/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
         outputfiles = []
