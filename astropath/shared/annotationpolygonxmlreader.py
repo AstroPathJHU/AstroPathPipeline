@@ -14,6 +14,26 @@ class AllowedAnnotation(MyDataClassFrozen):
   color: str
   synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
 
+class AnnotationNode:
+  def __init__(self, node):
+    self.__xmlnode = node
+  @property
+  def annotationname(self):
+    return self.__xmlnode.get_xml_attr("Name").lower().strip()
+  @property
+  def color(self):
+    return int(self.__xmlnode.get_xml_attr('LineColor'))
+  @property
+  def visible(self):
+    return {"true": True, "false": False}[self.__xmlnode.get_xml_attr("Visible").lower().strip()]
+
+  @property
+  def regions(self):
+    if not self.__xmlnode["Regions"]: return []
+    regions = self.__xmlnode["Regions"]["Region"]
+    if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
+    return regions
+
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
@@ -73,10 +93,6 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
       self.__logger.warningglobal(f"renaming annotation {nameornumber} to {result.name}")
     return result
 
-  @staticmethod
-  def annotationname(xmlnode):
-    return xmlnode.get_xml_attr("Name").lower().strip()
-
   def getXMLpolygonannotations(self):
     annotations = []
     allregions = []
@@ -86,15 +102,16 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
     with open(self.xmlfile, "rb") as f:
       count = more_itertools.peekable(itertools.count(1))
-      nodes = [node for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation") if self.annotationname(node) != "empty"]
+      nodes = [AnnotationNode(node) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+      nodes = [node for node in nodes if node.annotationname != "empty"]
       def annotationorder(node):
         try:
-          return self.allowedannotation(self.annotationname(node), logwarning=False).layer
+          return self.allowedannotation(node.annotationname, logwarning=False).layer
         except ValueError:
           return float("inf")
       sortednodes = sorted(nodes, key=annotationorder)
       if sortednodes != nodes:
-        message = f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in self.allowedannotations)}, but your order is {', '.join(self.annotationname(node) for node in nodes)}."
+        message = f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in self.allowedannotations)}, but your order is {', '.join(node.annotationname for node in nodes)}."
         if self.__reorderannotations:
           self.__logger.warning(message+"  Reordering them.")
         else:
@@ -102,13 +119,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
       nodes = sortednodes
 
       for layer, node in zip(count, nodes):
-        color = f"{int(node.get_xml_attr('LineColor')):06X}"
+        color = f"{node.color:06X}"
         color = color[4:6] + color[2:4] + color[0:2]
-        visible = {
-          "true": True,
-          "false": False,
-        }[node.get_xml_attr("Visible").lower().strip()]
-        name = self.annotationname(node)
+        visible = node.visible
+        name = node.annotationname
         try:
           targetannotation = self.allowedannotation(name)
         except ValueError as e:
@@ -151,9 +165,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           )
         )
 
-        if not node["Regions"]: continue
-        regions = node["Regions"]["Region"]
-        if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
+        regions = node.regions
+        if not regions: continue
         m = 1
         for region in regions:
           regioncounter = itertools.count(m)
