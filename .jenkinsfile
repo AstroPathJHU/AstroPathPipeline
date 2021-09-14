@@ -191,9 +191,9 @@ pipeline {
           }
         }
 
-        stage('test image correction') {
+        stage('test applyflatw') {
           steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testimagecorrection'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testapplyflatw'
           }
         }
 
