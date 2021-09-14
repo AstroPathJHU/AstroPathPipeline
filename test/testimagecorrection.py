@@ -52,6 +52,7 @@ class TestImageCorrectionCohort(TestBaseCopyInput, TestBaseSaveOutput) :
         args = [os.fspath(folder/'test_for_jenkins'/'imagecorrection'/'root'),os.fspath(root2),
                 '--im3root',os.fspath(folder/'data'),
                 '--sampleregex',slide_ID,
+                '--workingdir',os.fspath(folder/'test_for_jenkins'/'imagecorrection'/'flatw'),
                 '--flatfield_file',os.fspath(folder/'data'/'corrections'/f'{FF_CONST.FLATFIELD_DIRNAME_STEM}{ff_batchID:02d}.bin'),
                 '--warping_file',os.fspath(warping_correction_filepath),
                 '--layers','-1','1',
