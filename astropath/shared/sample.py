@@ -1229,6 +1229,8 @@ class XMLLayoutReader(SampleBase):
     List all rectangles that have im3 files.
     """
     folder = self.scanfolder/"MSI"
+    if not folder.exists():
+      folder = self.scanfolder/"flatw"
     im3s = folder.glob(f"*{UNIV_CONST.IM3_EXT}")
     result = []
     for im3 in im3s:

@@ -58,8 +58,8 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
     AnnoWarpSampleInformTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--allow-local-edits"])
 
-    if not s.runstatus:
-      raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus}")
+    if not s.runstatus():
+      raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus()}")
 
     rows = s.readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
     targetrows = s.readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)

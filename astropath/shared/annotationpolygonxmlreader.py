@@ -146,14 +146,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           return self.allowedannotation(node.annotationtype, logwarning=False).layer, node.annotationsubindex
         except ValueError:
           return float("inf"), 0
-      sortednodes = sorted(nodes, key=annotationorder)
-      if sortednodes != nodes:
-        message = f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in self.allowedannotations)}, but your order is {', '.join(node.annotationname for node in nodes)}."
-        if self.__reorderannotations:
-          self.__logger.warning(message+"  Reordering them.")
-        else:
-          errors.append(message)
-      nodes = sortednodes
+      nodes.sort(key=annotationorder)
 
       nodesbytype = collections.defaultdict(lambda: [])
       for node in nodes:
@@ -165,14 +158,14 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           node.usesubindex = False
 
       for layeridx, (annotationtype, annotationnodes) in zip(count, nodesbytype.items()):
-        subindices = [node.annotationsubindex for node in annotationnodes]
-        if subindices != list(range(1, len(subindices)+1)):
-          errors.append(f"Annotation subindices are not sequential: {', '.join(str(subindex) for subindex in subindices)}")
-          continue
         try:
           targetannotation = self.allowedannotation(annotationtype)
         except ValueError as e:
           errors.append(str(e))
+          continue
+        subindices = [node.annotationsubindex for node in annotationnodes]
+        if subindices != list(range(1, len(subindices)+1)):
+          errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in subindices)}")
           continue
         annotationtype = targetannotation.name
         targetlayer = targetannotation.layer
@@ -322,7 +315,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
             m = next(regioncounter)
 
-    if not any(a.name == "good tissue" for a in annotations):
+    if "good tissue" not in nodesbytype:
       errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations)})")
 
     if errors:

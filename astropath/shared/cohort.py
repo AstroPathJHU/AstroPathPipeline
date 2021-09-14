@@ -622,7 +622,7 @@ class WorkflowCohort(Cohort):
 
     def samplefilter(self, sample):
       return filter(
-        runstatus=sample.runstatus,
+        runstatus=sample.runstatus(),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
           for dependency, SlideID in sample.workflowdependencies()
@@ -644,7 +644,7 @@ class WorkflowCohort(Cohort):
   def processsample(self, sample, *, print_errors, ignore_errors, **kwargs):
     if print_errors:
       if ignore_errors is None: ignore_errors = []
-      status = sample.runstatus
+      status = sample.runstatus(**kwargs)
       if status: return
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       print(f"{sample.SlideID} {status}")
@@ -663,7 +663,7 @@ class WorkflowCohort(Cohort):
         with self.getlogger(sample):
           super().processsample(sample, **kwargs)
 
-          status = sample.runstatus
+          status = sample.runstatus(**kwargs)
           #we don't want to do anything if there's an error, because that
           #was already logged so no need to log it again and confuse the issue.
           if status.missingfiles and status.error is None:
