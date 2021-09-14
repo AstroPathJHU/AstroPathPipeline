@@ -12,12 +12,10 @@
     # sampledef($mpath, $module):base($mpath, $module){}
     #
     sampledef($mpath, $module, $slideid){
-        #
         $this.mpath = $mpath
         $this.module = $module 
         $slides = $this.importslideids($mpath)
         $this.Sample($slideid, $mpath, $slides)
-        #
     }
     #
      sampledef($mpath, $module, $slideid,[PSCustomObject]$slides){
@@ -36,12 +34,11 @@
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
-        #
         $slide = $slides | `
                 Where-Object -FilterScript {$_.SlideID -eq $slideid.trim()}
         #
         if (!$slideid){
-            Throw 'Not a value slideid'
+            Throw 'Not a valid slideid'
         }
         $this.slideid = $slide.SlideID.trim()
         $this.project = $slide.Project
@@ -52,7 +49,6 @@
         } else {
             $this.BatchID = $slide.BatchID 
         }
-        #
     }
     #
     [void]DefRoot([string]$mpath){
@@ -149,6 +145,18 @@
     [string]flatwfolder(){
         $path = '\\'+$this.project_data.fwpath + '\' + $this.slideid
         return $path
+    }
+    #
+    [void]testim3folder(){
+        if (!(test-path $this.im3folder())){
+            Throw "im3 folder not found for:" + $this.im3folder()
+        }
+    }
+    #
+    [void]testbatchflatfield(){
+        if (!(test-path $this.batchflatfield())){
+            Throw "batch flatfield not found for:" + $this.batchflatfield()
+        }
     }
 
 }

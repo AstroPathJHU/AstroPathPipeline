@@ -1,0 +1,237 @@
+﻿<# -------------------------------------------
+ moduletools
+ created by: Benjamin Green - JHU
+ Last Edit: 10.13.2020
+ --------------------------------------------
+ Description
+ general functions which may be needed by
+ multiple modules
+ -------------------------------------------#>
+  [Flags()] Enum FileDownloads {
+    IM3 = 1
+    FLATFIELD = 2
+    BATCHID = 4
+    XML = 8
+ }
+ #
+ Class moduletools{
+    #
+    [array]$externaltasks
+    [launchmodule]$sample
+    [array]$processvars
+    [string]$processloc
+    [string]$vers
+    [string]$funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
+    [int]$flevel
+    #
+    moduletools([array]$task,[launchmodule]$sample){
+        $this.sample = $sample
+        $this.BuildProcessLocPaths($task)
+        $this.vers = $this.sample.GetVersion($this.sample.mpath, $this.sample.module, $task[0])   
+    }
+    <# -----------------------------------------
+    BuildProcessLocPath
+    build the processing specimens directory paths
+    if it does not exist. If input is '*' then
+    work 'in place'
+    ------------------------------------------
+    Usage: $this.BuildProcessLoc()
+    ----------------------------------------- #>
+    #
+    [void]BuildProcessLocPaths($task){
+        $fwpath = '\\'+$this.sample.project_data.fwpath
+        $this.processvars = @($this.sample.basepath, $fwpath, $this.sample.flatwim3folder(), $this.sample.batchflatfield())
+        #
+        # If processloc is not '*' a processing destination was added as input, correct the paths to analyze from there
+        #
+        if ($task[2]){
+            $this.processloc = ($task[2]+'\processing_'+$this.sample.module+'\'+$task[1])
+            #
+            $processvarsa = $this.processvars[0,2,3] -replace [regex]::escape($this.sample.basepath), $this.processloc 
+            $processvarsb = $this.processvars[1] -replace [regex]::escape('\\'+$this.sample.project_data.fwpath), ($this.processloc+'\flatw')
+            $this.processvars = @($processvarsa[0], $processvarsb, $processvarsa[1], $processvarsa[2], 1)
+        } else {
+            $this.processloc = $this.sample.flatwfolder()
+        }
+    }
+    <# -----------------------------------------
+     ProcessLog
+     build log location strings for different
+     external processes
+     ------------------------------------------
+     Usage: $this.processlog($processloc, $task)
+    ----------------------------------------- #>
+    [string]ProcessLog($externaltask){
+        $out = $this.processloc + '\' + $externaltask + '.log'
+        return ($out)
+    }
+    <# -----------------------------------------
+     DownloadIm3
+     Download the im3s to process; reduces network
+     strain and frequent network errors while 
+     processing
+     ------------------------------------------
+     Usage: $this.DownloadIm3($im3, $flatfield, $batchid)
+    ----------------------------------------- #>
+    [void]DownloadFiles(){
+        if ($this.processvars[4]){
+            $this.sample.info("Download Files started")
+            $this.BuildDir()
+            $this.Dowloadflatfield()
+            $this.DowloadIm3s()
+            $this.DowloadBatchID()
+            $this.sample.info("Download Files finished")
+        }
+    }
+    <# -----------------------------------------
+     BuildDir
+     Build the processing directory
+     ------------------------------------------
+     Usage: $this.BuildDir()
+    ----------------------------------------- #>
+    [void]BuildDir(){
+        #
+        foreach($ii in @(0,1,2)){
+            if (test-path $this.processvars[$ii]){
+                    remove-item $this.processvars[$ii] -force -Recurse -EA STOP
+                }
+            New-Item $this.processvars[$ii] -itemtype "directory" -EA STOP | Out-NULL
+        }
+        #
+    }
+    <# -----------------------------------------
+     Dowloadflatfield
+     download the flatfield file to the processing
+     dir
+     ------------------------------------------
+     Usage: $this.Dowloadflatfield()
+    ----------------------------------------- #>
+    [void]Dowloadflatfield(){
+        if (($this.flevel -band [FileDownloads]::FLATFIELD) -eq [FileDownloads]::FLATFIELD){
+            $flatfieldfolder = $this.processvars[0]+'\flatfield'
+            if (test-path $flatfieldfolder){
+                    remove-item $flatfieldfolder -force -Recurse -EA STOP
+                }
+            New-Item $flatfieldfolder -itemtype "directory" -EA STOP | Out-NULL
+            xcopy $this.sample.batchflatfield(), $flatfieldfolder /q /y /z /j /v | Out-Null
+        }
+    }
+    <# -----------------------------------------
+     DowloadIm3s
+     download the flatfield file to the processing
+     dir
+     ------------------------------------------
+     Usage: $this.Dowloadflatfield()
+    ----------------------------------------- #>
+    [void]DowloadIm3s(){
+        if (($this.flevel -band [FileDownloads]::IM3) -eq [FileDownloads]::IM3){
+            $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
+            $sor = $this.sample.MSIfolder()
+            robocopy $sor $des *im3 -r:3 -w:3 -np -mt:30 |out-null
+            if(!(((gci ($sor+'\*') -Include '*im3').Count) -eq (gci $des).count)){
+                Throw 'im3s did not download correctly'
+            }
+        }
+    }
+    <# -----------------------------------------
+     DowloadIm3s
+     download the flatfield file to the processing
+     dir
+     ------------------------------------------
+     Usage: $this.Dowloadflatfield()
+    ----------------------------------------- #>
+    [void]DowloadBatchID(){
+        if (($this.flevel -band [FileDownloads]::BATCHID) -eq [FileDownloads]::BATCHID){
+            $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\'+$this.sample.Scan()
+            xcopy $this.sample.batchIDfile(), $des /q /y /z /j /v | Out-Null
+        }
+    }
+    <# -----------------------------------------
+     ShredDat
+        Extract data.dat and xml files
+     ------------------------------------------
+     Usage: $this.ShredDat()
+    ----------------------------------------- #>
+    [void]ShredDat(){
+        $this.ConvertPath('shred')
+    }
+    <# -----------------------------------------
+     ShredXML
+        Extract data.dat and xml files
+     ------------------------------------------
+     Usage: $this.ShredDat()
+    ----------------------------------------- #>
+    [void]ShredXML(){
+        $this.ConvertPath('shredxml')
+    }
+    <# -----------------------------------------
+     InjectDat
+        inject the data from the Data.dat files
+        back into the im3s and put im3s into
+        flatwim3 location 
+     ------------------------------------------
+     Usage: $this.InjectDat()
+    ----------------------------------------- #>
+    [void]InjectDat(){
+        $this.ConvertPath('inject')
+    }
+    <# -----------------------------------------
+     ConvertPath
+        run convert path with inject or shred
+        as input above
+     ------------------------------------------
+     Usage: $this.ConvertPath()
+    ----------------------------------------- #>
+    [void]ConvertPath($type){
+        $this.sample.info(($type + " data started"))
+        $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
+        if ($type -match 'inject'){
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -i -verbose 4>&1 >> $externallog
+        } elseif($type -match 'shred') {
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -verbose 4>&1 >> $externallog
+        } elseif($type -match 'shredxml') {
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -xml -verbose 4>&1 >> $externallog
+        } 
+        $log = $this.sample.GetContent($externallog) |
+             where-object  {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 
+             foreach {$_.trim()}
+        $this.sample.info($log)
+        remove-item $externallog -force -ea Continue
+        $this.sample.info(($type + " data finished"))
+    }
+    <# -----------------------------------------
+     fixM2
+     Fix all filenames that were created due to an error.
+     In these cases the original .im3 file has been truncated,
+     it exists but cannot be used. The Vectra system then
+     re-wrote the file, but padded the filename with _M2.
+     Here we do two things: if there is an _M2 file, we first
+     delete the file with the short length, then rename the file.
+     ------------------------------------------
+     Usage: $this.fixM2()
+    ----------------------------------------- #>
+    [void]fixM2(){
+        #
+        $this.sample.info("Fix M# files")
+        $msi = $this.sample.MSIfolder() +'\*'
+        $m2s = gci $msi -include '*_M*.im3' -Exclude '*].im3'
+        $errors = $m2s | ForEach-Object {($_.Name -split ']')[0] + ']'}
+        #
+        $errors | Select-Object -Unique | ForEach-Object {
+            $ms = (gci $msi -filter ($_ + '*')).Name
+            $mnums = $ms | ForEach-Object {[regex]::match($_,']_M(.*?).im3').groups[1].value}
+            $keep = $_+'_M'+($mnums | Measure -maximum).Maximum+'.im3'
+            $ms | ForEach-Object{if($_ -ne $keep){remove-item -literalpath ($wd+'\'+$_) -force}}
+            rename-item -literalpath ($wd+'\'+$keep) ($_+'.im3')
+        }
+        #
+    }
+    #
+    [void]runmatlabtask($taskname, $matlabtask, $source){
+        $externallog = $this.ProcessLog($taskname)
+        matlab -nosplash -nodesktop -minimize -sd $source -r $matlabtask -wait >> $externallog
+        if (test-path $externallog){
+            remove-item $externallog -force -ea Continue
+        }
+    }
+ }
