@@ -1,12 +1,12 @@
 #imports 
-from .imagecorrectionsample import ImageCorrectionSample
+from .applyflatwsample import ApplyFlatWSample
 from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort
 from ...shared.cohort import WorkflowCohort, SelectLayersCohort
 
-class ImageCorrectionCohort(CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort, WorkflowCohort, 
+class ApplyFlatWCohort(CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort, WorkflowCohort, 
                             SelectLayersCohort, WorkingDirArgumentParser) :
-    sampleclass = ImageCorrectionSample
+    sampleclass = ApplyFlatWSample
     __doc__ = sampleclass.__doc__
 
     def __init__(self,*args,workingdir=None,**kwargs) :
@@ -31,7 +31,7 @@ class ImageCorrectionCohort(CorrectedImageCohort, SelectRectanglesCohort, Parall
         }
 
 def main(args=None) :
-    ImageCorrectionCohort.runfromargumentparser(args)
+    ApplyFlatWCohort.runfromargumentparser(args)
 
 if __name__ == '__main__' :
     main()

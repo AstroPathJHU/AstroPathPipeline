@@ -5,7 +5,7 @@ from ...utilities.img_file_io import write_image_to_file
 from ...utilities.misc import cd
 from ...utilities.config import CONST as UNIV_CONST
 
-class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, 
+class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, 
                             WorkingDirArgumentParser, SelectLayersArgumentParser) :
     """
     Read raw image files, correct them for flatfielding and/or warping effects 
@@ -130,7 +130,7 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
 
     @classmethod
     def logmodule(cls) : 
-        return "imagecorrection"
+        return "applyflatw"
     @classmethod
     def workflowdependencyclasses(cls):
         return super().workflowdependencyclasses()
@@ -151,7 +151,7 @@ def write_out_corrected_image_files(im,filenamestem,layers,outextstem) :
             write_image_to_file(im[:,:,ln-1],f'{filenamestem}{outextstem}{ln:02d}')
 
 def main(args=None) :
-    ImageCorrectionSample.runfromargumentparser(args)
+    ApplyFlatWSample.runfromargumentparser(args)
 
 if __name__=='__main__' :
     main()
