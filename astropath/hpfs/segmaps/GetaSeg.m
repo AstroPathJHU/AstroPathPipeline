@@ -11,7 +11,7 @@
 %%% Layer 12-13: Membrane -- immune; then alternative segmentations
 %% --------------------------------------------------------------
 %%
-function [] = GetaSeg(wd, sname, MergeConfig)
+function [] = GetaSeg(basepath, slideid, MergeConfig)
 
 %
 tim = cell(4,1);
@@ -27,7 +27,7 @@ errors = cell(1,1);
 try
     [Markers,~] = createmarks(MergeConfig);
 catch
-    errors2 = ['Error in ',sname, ': check Merge Config files.'];
+    errors2 = ['Error in ',slideid, ': check Merge Config files.'];
     disp(errors2);
     return
 end
@@ -51,7 +51,7 @@ if isempty(gcp('nocreate'))
     end
 end
 %
-wd1 = [wd,'\Results\Tables\*_table.csv'];
+wd1 = [basepath,'\',slideid,'\inform_data\Phenotyped\Results\Tables\*_table.csv'];
 %
 fnames = dir(wd1);
 %
@@ -87,10 +87,10 @@ delete(poolobj);
 %
 tim{3} = toc;
 %
-filenms = dir([wd,'\Results\Tables\*_cleaned_phenotype_table.csv']);
+filenms = dir([basepath,'\',slideid,'\inform_data\Phenotyped\Tables\*_cleaned_phenotype_table.csv']);
 tim{4} = length(filenms);
 %
-createlog(errors, errors2, wd, tim);
+createlog(errors, errors2, [basepath,'\',slideid], tim);
 %
 end
 
@@ -295,7 +295,7 @@ end
 %%% fields that were not mentioned in the inform_error logs
 %% --------------------------------------------------------------
 %%
-function createlog(errors, errors2, wd, tim)
+function createlog(errors, errors2, basepath, tim)
 %
 % get non-empty cells, ie the names of images that had errors
 %
@@ -303,8 +303,7 @@ errors = errors(~cellfun('isempty',errors));
 %
 % create file
 %
-logf1 = extractBefore(wd, 'Phenotyped');
-logf = [logf1,'\Component_Tiffs\SegLog.txt'];
+logf = [basepath,'\inform_data\Component_Tiffs\SegLog.txt'];
 %
 % create first line of file
 %

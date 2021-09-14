@@ -58,16 +58,12 @@ Class meanimage : moduletools {
         #
         $this.sample.info("Return data started")
         #
-		$sor = $this.processvars[1] +'\flat'
+		$sor = $this.processvars[1] +'\flat' # change both here and in matlab for data output: future: $this.processvars[1] + '\slideid\flat'; current: $this.proceessvars[1] + '\flat'
 		$des = $this.sample.im3folder()
-		robocopy $sor $des *.flt -r:3 -w:3 -np -mt:30 |out-null
+		robocopy $sor $des *.flt -r:3 -w:3 -np -mt:30 |out-null # implement xcopy 
 		robocopy $sor $des *.csv -r:3 -w:3 -np -mt:30 |out-null
         # explcitly delete the flat folder after copy so that the 
 		# function can be run "in place"
-		# by leaving $taskinput[2] blank
-		# also robocopy is a parallel copy tool for large files
-		# for single files like this, specify their names and 
-		# copy using xcopy
         $this.sample.info("Return data finished")
         #
     }

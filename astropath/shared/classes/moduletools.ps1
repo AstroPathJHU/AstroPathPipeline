@@ -11,7 +11,9 @@
     IM3 = 1
     FLATFIELD = 2
     BATCHID = 4
+    XML = 8
  }
+ #
  Class moduletools{
     #
     [array]$externaltasks
@@ -154,6 +156,15 @@
         $this.ConvertPath('shred')
     }
     <# -----------------------------------------
+     ShredXML
+        Extract data.dat and xml files
+     ------------------------------------------
+     Usage: $this.ShredDat()
+    ----------------------------------------- #>
+    [void]ShredXML(){
+        $this.ConvertPath('shredxml')
+    }
+    <# -----------------------------------------
      InjectDat
         inject the data from the Data.dat files
         back into the im3s and put im3s into
@@ -178,7 +189,9 @@
             ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -i -verbose 4>&1 >> $externallog
         } elseif($type -match 'shred') {
             ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -verbose 4>&1 >> $externallog
-        }
+        } elseif($type -match 'shredxml') {
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -xml -verbose 4>&1 >> $externallog
+        } 
         $log = $this.sample.GetContent($externallog) |
              where-object  {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 
              foreach {$_.trim()}

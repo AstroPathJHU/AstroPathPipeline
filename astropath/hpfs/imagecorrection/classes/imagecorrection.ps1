@@ -19,7 +19,7 @@ Usage: $a = [imagecorrection]::new($task, $sample)
 Class imagecorrection : moduletools {
     #
     imagecorrection([array]$task,[launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
-        $this.flevel = [FileDownloads]::BATCHID + [FileDownloads]::IM3 + [FileDownloads]::FLATFIELD
+        $this.flevel = [FileDownloads]::BATCHID + [FileDownloads]::IM3 + [FileDownloads]::FLATFIELD # + [FileDownloads]::XML
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
     <# -----------------------------------------

@@ -11,12 +11,12 @@
 %%% Layer 12-13: Membrane -- immune; then alternative segmentations
 %% --------------------------------------------------------------
 %%
-function [] = GetnoSeg(wd, sname, MergeConfig)
+function [] = GetnoSeg(basepath, slideid, MergeConfig)
 
 [Markers,~] = createmarks(MergeConfig);
 %
-fnd = dir([wd,'\Component_Tiffs\*component_data.tif']);
-fnd1 = dir([wd,'\Component_Tiffs\*component_data_w_seg.tif']);
+fnd = dir([basepath,'\',slideid,'\inform_data\Component_Tiffs\*component_data.tif']);
+fnd1 = dir([basepath,'\',slideid,'\inform_data\Component_Tiffs\*component_data_w_seg.tif']);
 nm1 = {fnd(:).name};
 nm2 = {fnd1(:).name};
 %
