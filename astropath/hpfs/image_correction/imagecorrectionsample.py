@@ -20,11 +20,16 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
     def __init__(self,*args,workingdir=None,**kwargs) :
         super().__init__(*args,**kwargs)
         self.__workingdir = workingdir
+        #if no directory is given for the output
         if self.__workingdir is None :
+            #and all of the layers are being done
             if self.layers==range(1,self.nlayers+1) :
-                #then the files should overwrite the raw .Data.dat files
-                self.__workingdir = self.root/self.SlideID
-            self.__workingdir = self.__class__.automatic_output_dir(self.SlideID,self.root)
+                #then the files should overwrite the raw files
+                self.__workingdir = self.root2/self.SlideID
+        if self.__workingdir is None :
+            errmsg = f'ERROR: failed to figure out where to put output from workingdir={workingdir} and '
+            errmsg+= f'layers={self.layers}'
+            raise ValueError(errmsg)
         self.__workingdir.mkdir(parents=True,exist_ok=True)
 
     def inputfiles(self,**kwargs) :
@@ -50,11 +55,11 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
                 with self.pool() as pool :
                     for ri,r in enumerate(self.rectangles,start=1) :
                         msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
-                        self.logger.debug(msg)
                         with r.using_image() as im :
                             proc_results[(r.n,r.file)] = pool.apply_async(write_out_corrected_image_files,
                                                                           (im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers)
                                                                         )
+                            self.logger.debug(msg)
                     for (rn,rfile),res in proc_results.items() :
                         try :
                             res.get()
@@ -65,10 +70,10 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
             else :
                 for ri,r in enumerate(self.rectangles,start=1) :
                     msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
-                    self.logger.debug(msg)
                     try :
                         with r.using_image() as im :
                             write_out_corrected_image_files(im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers)
+                            self.logger.debug(msg)
                     except Exception as e :
                         warnmsg = f'WARNING: writing out corrected images for rectangle {r.n} '
                         warnmsg+= f'({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed with the error "{e}"'
@@ -81,33 +86,43 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
         return {
             **super().workflowkwargs,
             'layers':self.layers,
+            'workingdir':self.__workingdir
         }
 
     #################### CLASS METHODS ####################
 
     @classmethod
-    def automatic_output_dir(cls,SlideID,root) :
-        flatw_dir_name = 'flatw'
-        if len(root.name.split('_'))>2 :
-            flatw_dir_name+=f'_{"_".join([s for s in root.split("_")[2:]])}'
-        return root.parent / flatw_dir_name / SlideID
+    def automatic_output_dir(cls,SlideID,root2) :
+        """
+        Only for the case where the raw files are overwritten
+        """
+        return root2 / SlideID
 
     @classmethod
-    def getoutputfiles(cls,SlideID,root,root2,layers,**otherworkflowkwargs) :
+    def getoutputfiles(cls,SlideID,root,root2,layers,workingdir,**otherworkflowkwargs) :
+        #figure out where the output is supposed to be
+        outdir = workingdir
+        if (outdir is None) and ((layers is None) or type(layers)==range) :
+            outdir = cls.automatic_output_dir(SlideID,root2)
+        #figure out what the file extension of the output files should be
+        outextstem = UNIV_CONST.FLATW_EXT #'flatw' by default
+        if (outdir==cls.automatic_output_dir(SlideID,root2)) 
+            and ((layers is None) or type(layers)==range or layers==[-1]) :
+            outextstem = UNIV_CONST.RAW_EXT #same as raw if we're overwriting the raw multilayer files
         rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (root2/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
         outputfiles = []
         for rfs in rawfile_stems :
-            if type(layers)==range : #if it's a range then it's just the multilayer images
-                outputfilename = f'{rfs}{UNIV_CONST.FLATW_EXT}'
-                outputfiles.append(cls.automatic_output_dir(SlideID,root) / outputfilename)
+            if (layers is None) or type(layers)==range : #if it's None or a range then it's just the multilayer images
+                outputfilename = f'{rfs}{outextstem}'
+                outputfiles.append(outdir / outputfilename)
             else :
                 for ln in layers :
                     if ln==-1 : #then the multilayer files should be saved
-                        outputfilename = f'{rfs}{UNIV_CONST.FLATW_EXT}'
-                        outputfiles.append(cls.automatic_output_dir(SlideID,root) / outputfilename)
+                        outputfilename = f'{rfs}{outextstem}'
+                        outputfiles.append(outdir / outputfilename)
                     else :
-                        outputfilename = f'{rfs}{UNIV_CONST.FLATW_EXT}{ln:02d}'
-                        outputfiles.append(cls.automatic_output_dir(SlideID,root) / outputfilename)
+                        outputfilename = f'{rfs}{outextstem}{ln:02d}'
+                        outputfiles.append(outdir / outputfilename)
         return outputfiles
 
     @classmethod

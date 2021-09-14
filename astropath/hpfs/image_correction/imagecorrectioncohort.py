@@ -1,13 +1,15 @@
 #imports 
 from .imagecorrectionsample import ImageCorrectionSample
 from ...shared.argumentparser import WorkingDirArgumentParser
-from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort, WorkflowCohort, SelectLayersCohort
+from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort
+from ...shared.cohort import WorkflowCohort, SelectLayersCohort
 
-class ImageCorrectionCohort(CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort, WorkflowCohort, SelectLayersCohort, WorkingDirArgumentParser) :
+class ImageCorrectionCohort(CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort, WorkflowCohort, 
+                            SelectLayersCohort, WorkingDirArgumentParser) :
     sampleclass = ImageCorrectionSample
     __doc__ = sampleclass.__doc__
 
-    def __init__(self,*args,workingdir,**kwargs) :
+    def __init__(self,*args,workingdir=None,**kwargs) :
         super().__init__(*args,**kwargs)
         self.workingdir = workingdir
 
@@ -25,6 +27,7 @@ class ImageCorrectionCohort(CorrectedImageCohort, SelectRectanglesCohort, Parall
         return {
             **super().workflowkwargs,
             'layers':self.layers,
+            'workingdir':self.workingdir,
         }
 
 def main(args=None) :
