@@ -12,7 +12,7 @@ thisfolder = pathlib.Path(__file__).parent
 class TestPrepDb(TestBaseSaveOutput):
   @property
   def outputfilenames(self):
-    SlideIDs = "M21_1", "YZ71", "M206"
+    SlideIDs = "M21_1", "YZ71", "M206", "ZW2"
     return [
       thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"dbload"/filename.name
       for SlideID in SlideIDs
