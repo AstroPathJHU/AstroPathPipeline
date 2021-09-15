@@ -15,9 +15,10 @@ class AllowedAnnotation(MyDataClassFrozen):
   synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
 
 class AnnotationNode:
-  def __init__(self, node, usesubindex=None):
+  def __init__(self, node):
     self.__xmlnode = node
-    self.usesubindex = usesubindex
+    self.usesubindex = None
+    self.__newannotationtype = None
   @property
   def usesubindex(self): return self.__usesubindex
   @usesubindex.setter
@@ -29,6 +30,8 @@ class AnnotationNode:
   @property
   def annotationname(self):
     result = self.__xmlnode.get_xml_attr("Name").lower().strip()
+    if self.__newannotationtype is not None:
+      result = result.replace(self.__oldannotationtype, self.__newannotationtype)
     if self.usesubindex is None: return result
 
     regex = " ([0-9]+)$"
@@ -46,6 +49,10 @@ class AnnotationNode:
   @property
   def annotationtype(self):
     return re.sub(r" [0-9]+$", "", self.annotationname)
+  @annotationtype.setter
+  def annotationtype(self, value):
+    self.__oldannotationtype = self.annotationtype
+    self.__newannotationtype = value
   @property
   def annotationsubindex(self):
     result = self.annotationname.replace(self.annotationtype, "")
@@ -140,6 +147,11 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
       count = more_itertools.peekable(itertools.count(1))
       nodes = [AnnotationNode(node) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
       nodes = [node for node in nodes if node.annotationname != "empty"]
+      for node in nodes:
+        try:
+          node.annotationtype = self.allowedannotation(node.annotationtype).name
+        except ValueError:
+          pass
 
       def annotationorder(node):
         try:
@@ -182,13 +194,13 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                 visible=False,
                 name="empty",
                 sampleid=0,
-                layer=layer,
+                layer=layeridx,
                 poly="poly",
                 pscale=self.pscale,
                 apscale=self.apscale,
               )
             )
-            layer = next(count)
+            layeridx = next(count)
 
         for node in annotationnodes:
           color = node.color
@@ -316,7 +328,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             m = next(regioncounter)
 
     if "good tissue" not in nodesbytype:
-      errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations)})")
+      errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(nodesbytype)})")
 
     if errors:
       raise ValueError("\n".join(errors))
