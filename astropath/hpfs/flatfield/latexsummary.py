@@ -390,7 +390,7 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         ms_pattern = 'corrected_mean_image_mask_stack_layer_*.png'
         ms_caption = 'The stack of all masks for images used to compute the mean image'
         has_mask_stack = False
-        for fn in self.plot_dirpath.glob(mask_stack_pattern) :
+        for fn in self.plot_dirpath.glob(ms_pattern) :
             has_mask_stack = True
         l = f'Figure~\\ref{{{mi_figlabel}}} shows each layer of the mean image before application of the '
         l+= f'calculated flatfield correction factors. Figure~\\ref{{{mi_unc_figlabel}}} shows the '
@@ -480,8 +480,8 @@ class AppliedFlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         cmi_unc_layers_caption = 'The uncertainties on the flatfield-corrected mean image'
         cmi_unc_layers_figlabel = 'fig:corrected_mean_image_uncertainty_layers'
         l = f'Figure~\\ref{{{cmi_layers_figlabel}}} shows each layer of the mean image from '
-        l+= f'Fig.~\\ref{{fig:mean_image_layers}} after application of the flatfield correction factors shown in '
-        l+= 'Fig.~\\ref{{fig:flatfield_layers}}. Figure ~\\ref{{{cmi_unc_layers_figlabel}}} shows the uncertainties '
+        l+= 'Fig.~\\ref{fig:mean_image_layers} after application of the flatfield correction factors shown in '
+        l+= f'Fig.~\\ref{{fig:flatfield_layers}}. Figure ~\\ref{{{cmi_unc_layers_figlabel}}} shows the uncertainties '
         l+= 'on this corrected mean image.'
         lines.append(l+'\n')
         lines+=self.image_layer_grid_plot_tex_lines(cmi_layers_pattern,cmi_layers_caption,cmi_layers_figlabel)

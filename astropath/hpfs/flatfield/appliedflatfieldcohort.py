@@ -154,7 +154,7 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
         #make sure the sample has enough rectangles in the bulk of the tissue to be used
         if len(sample.flatfield_rectangles)<1 or len(sample.meanimage_rectangles)<1 :
             msg = f'{sample.SlideID} only has {len(sample.tissue_bulk_rects)} images in the bulk of the tissue '
-            msg+= f'and so it will be ignored in the AppliedFlatfieldCohort.'
+            msg+= 'and so it will be ignored in the AppliedFlatfieldCohort.'
             sample.logger.info(msg)
             return
         #run the sample to find or create its masking files if necessary

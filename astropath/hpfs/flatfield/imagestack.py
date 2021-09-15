@@ -64,7 +64,7 @@ class ImageStack :
         """
         #make sure the dimensions match
         if sample.rectangles[0].imageshapeinoutput!=self.__image_stack.shape :
-            errmsg = f'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have '
+            errmsg = 'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have '
             errmsg+= f'dimensions {sample.rectangles[0].imageshapeinoutput} but an image stack with '
             errmsg+= f'dimensions {self.__image_stack.shape}'
             raise ValueError(errmsg)
