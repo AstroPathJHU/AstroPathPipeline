@@ -231,7 +231,8 @@ class WarpFit :
                 )
             )
             names_to_print.append(f'max radial warp={self.__fitpars.max_rad_warp} pixels')
-        #if the tangential warping is being fit, and the max_tangential_warp is defined, add the max_tangential_warp constraint
+        #if the tangential warping is being fit, and the max_tangential_warp is defined, 
+        #add the max_tangential_warp constraint
         if self.__fitpars.tangential_warp_floating and self.__fitpars.max_tan_warp>0 :
             constraints.append(scipy.optimize.NonlinearConstraint(
                 self._maxTangentialDistortAmountForConstraint,
