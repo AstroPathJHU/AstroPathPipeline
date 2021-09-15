@@ -113,13 +113,16 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       rtol=0.01,
     )
 
-  def testCohort(self, SlideID="M206", units="fast"):
+  def testCohort(self, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     logroot = thisfolder/"test_for_jenkins"/"annowarp"
     maskroot = thisfolder/"data"/"reference"/"stitchmask"
     args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot), "--ignore-dependencies", "--rerun-finished"]
     AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
+
+  def testCohortFastUnits(self, SlideID="M206"):
+    testCohort(SlideID=SlideID, units="fast")
 
   def testConstraint(self, SlideID="M206"):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp")
