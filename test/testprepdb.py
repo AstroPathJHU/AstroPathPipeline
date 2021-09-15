@@ -18,6 +18,8 @@ class TestPrepDb(TestBaseSaveOutput):
       for SlideID in SlideIDs
       for ext in ("csv", "jpg")
       for filename in (thisfolder/"data"/"reference"/"prepdb"/SlideID).glob(f"*.{ext}")
+    ] + [ #this file is not compared to reference because it's huge
+      thisfolder/"test_for_jenkins"/"prepdb"/"ZW2"/"dbload"/"ZW2_exposures.csv",
     ] + [
       thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"logfiles"/f"{SlideID}-prepdb.log"
       for SlideID in SlideIDs
