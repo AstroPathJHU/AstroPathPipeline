@@ -253,12 +253,13 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
     return p
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
+    print(f'parsed_args_dict = {parsed_args_dict}')
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-      'et_offset_file': parsed_args_dict.pop('exposure-time-offset-file'),
-      'skip_et_corrections':parsed_args_dict.pop('skip-exposure-time-corrections'),
-      'flatfield_file': parsed_args_dict.pop('flatfield-file'),
-      'warping_file': parsed_args_dict.pop('warping-file')
+      'et_offset_file': parsed_args_dict.pop('exposure_time_offset_file'),
+      'skip_et_corrections':parsed_args_dict.pop('skip_exposure_time_corrections'),
+      'flatfield_file': parsed_args_dict.pop('flatfield_file'),
+      'warping_file': parsed_args_dict.pop('warping_file')
     }
 
 class WarpFitArgumentParser(RunFromArgumentParser) :
@@ -281,10 +282,10 @@ class WarpFitArgumentParser(RunFromArgumentParser) :
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       'fixed': parsed_args_dict.pop('fixed'),
-      'init_pars': parsed_args_dict.pop('init-pars'),
+      'init_pars': parsed_args_dict.pop('init_pars'),
       'bounds': parsed_args_dict.pop('bounds'),
-      'max_rad_warp': parsed_args_dict.pop('max-rad-warp'),
-      'max_tan_warp': parsed_args_dict.pop('max-tan-warp'),
+      'max_rad_warp': parsed_args_dict.pop('max_rad_warp'),
+      'max_tan_warp': parsed_args_dict.pop('max_tan_warp'),
     }
 
 class DbloadArgumentParser(RunFromArgumentParser):

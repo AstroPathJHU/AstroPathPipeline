@@ -108,7 +108,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
-            'skip_masking': parsed_args_dict.pop('skip-masking'),
+            'skip_masking': parsed_args_dict.pop('skip_masking'),
         }
     @classmethod
     def defaultunits(cls) :

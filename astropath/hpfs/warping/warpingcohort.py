@@ -155,13 +155,13 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'layer': parsed_args_dict.pop('layer'),
-            'fit_1_octets': parsed_args_dict.pop('initial-pattern-octets'),
-            'fit_2_octets': parsed_args_dict.pop('principal-point-octets'),
-            'fit_3_octets': parsed_args_dict.pop('final-pattern-octets'),
-            'fit_1_iters': parsed_args_dict.pop('initial-pattern-max-iters'),
-            'fit_2_iters': parsed_args_dict.pop('principal-point-max-iters'),
-            'fit_3_iters': parsed_args_dict.pop('final-pattern-max-iters'),
-            'octets_only': parsed_args_dict.pop('octets-only'),
+            'fit_1_octets': parsed_args_dict.pop('initial_pattern_octets'),
+            'fit_2_octets': parsed_args_dict.pop('principal_point_octets'),
+            'fit_3_octets': parsed_args_dict.pop('final_pattern_octets'),
+            'fit_1_iters': parsed_args_dict.pop('initial_pattern_max_iters'),
+            'fit_2_iters': parsed_args_dict.pop('principal_point_max_iters'),
+            'fit_3_iters': parsed_args_dict.pop('final_pattern_max_iters'),
+            'octets_only': parsed_args_dict.pop('octets_only'),
         }
 
     #################### PRIVATE HELPER METHODS ####################

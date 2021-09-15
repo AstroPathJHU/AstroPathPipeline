@@ -210,8 +210,8 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
         parsed_args_dict['skip_finished']=False #always rerun the samples, they don't produce any output
         return {**super().initkwargsfromargumentparser(parsed_args_dict),
                 'workingdir': parsed_args_dict.pop('workingdir'),
-                'skip_masking': parsed_args_dict.pop('skip-masking'),
-                'image_set_split': parsed_args_dict.pop('image-set-split'),
+                'skip_masking': parsed_args_dict.pop('skip_masking'),
+                'image_set_split': parsed_args_dict.pop('image_set_split'),
                }
 
 #################### FILE-SCOPE FUNCTIONS ####################
