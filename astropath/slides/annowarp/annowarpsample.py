@@ -297,8 +297,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//zoomfactor))
     firstresult = computeshift((qptiffzoom, wsizoom), usemaxmovementcut=False)
 
-    initialdx = floattoint(np.rint(firstresult.dx.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel))
-    initialdy = floattoint(np.rint(firstresult.dy.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel))
+    initialdx = floattoint(float(np.rint(firstresult.dx.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel)))
+    initialdy = floattoint(float(np.rint(firstresult.dy.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel)))
 
     if initialdx or initialdy:
       self.logger.warningglobal(f"found a relative shift of {firstresult.dx*zoomfactor, firstresult.dy*zoomfactor} pixels between the qptiff and wsi")
@@ -372,11 +372,11 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
       #because we already took care of that by slicing the
       #wsi and qptiff
       slc = slice(
-        floattoint(y / self.oneimpixel),
-        floattoint(ymax / self.oneimpixel),
+        floattoint(float(y / self.oneimpixel)),
+        floattoint(float(ymax / self.oneimpixel)),
       ), slice(
-        floattoint(x / self.oneimpixel),
-        floattoint(xmax / self.oneimpixel),
+        floattoint(float(x / self.oneimpixel)),
+        floattoint(float(xmax / self.oneimpixel)),
       )
       wsitile = wsi[slc]
       #if this ends up with no pixels inside the wsi, continue
@@ -1165,7 +1165,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     the index of the tile in [x, y]
     """
-    return floattoint((self.xvec / self.tilesize).astype(float), rtol=abs(self.iqscale-1)*1.01)
+    return floattoint((self.xvec / self.tilesize).astype(float), rtol=.1)
 
   @property
   def unshifted(self):
