@@ -251,15 +251,19 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
     p = super().makeargumentparser()
     g = p.add_mutually_exclusive_group()
     g.add_argument('--exposure_time_offset_file', type=pathlib.Path,
-                    help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
-                    [default=None will search for a .xml file specifying dark current values]''')
+                    help='''Path to the .csv file specifying layer-dependent exposure time correction offsets for the 
+                            slides in question
+                            [default=None will search for a .xml file specifying dark current values]''')
     g.add_argument('--skip_exposure_time_corrections', action='store_true',
                     help='''Add this flag to skip exposure time corrections entirely''')
     p.add_argument('--flatfield_file', type=pathlib.Path,
-                    help='''Path to the flatfield .bin file, or name of the file in root/Flatfield, containing the correction factors to apply 
-                    [default=None skips flatfield corrections]''')
+                    help='''Path to the flatfield .bin file, or name of the file in root/flatfield, containing the 
+                            correction factors to apply 
+                            [default=None skips flatfield corrections]''')
     p.add_argument('--warping_file', type=pathlib.Path,
-                    help='Path to the warping summary .csv file defining the parameters of the warping pattern to apply [default=None skips warping corrections]')
+                    help='''Path to the warping summary .csv file, or name of the file in root/warping, defining the 
+                            parameters of the warping pattern to apply 
+                            [default=None skips warping corrections]''')
     return p
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
@@ -432,7 +436,7 @@ class ParallelArgumentParser(RunFromArgumentParser):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--njobs", type=int, help="maximum number of parallel jobs to run")
+    p.add_argument("--njobs", default=1, type=int, help="maximum number of parallel jobs to run (default=1)")
     return p
 
   @classmethod
