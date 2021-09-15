@@ -10,7 +10,7 @@ def do_masking_plots_for_image(image_key,tissue_mask,plot_dict_lists,compressed_
     image_key = the stem of the image file name 
     tissue_mask = the binary mask of where the tissue vs. background is in the image
     plot_dict_lists = the list of lists of plot dictionaries by layer group
-    compressed_full_mask = the full, compressed image mask object to make comparisons with the individual layer group masks
+    compressed_full_mask = the compressed image mask object to make comparisons with the individual layer group masks
     savedir = path to the directory in which the plot should be saved. If None, the current directory will be used
     """
     #figure out how many rows/columns will be in the sheet and set up the plots

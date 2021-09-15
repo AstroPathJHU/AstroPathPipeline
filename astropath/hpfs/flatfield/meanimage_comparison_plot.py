@@ -24,8 +24,10 @@ logging_formatter = logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]
 stream_handler.setFormatter(logging_formatter)
 logger.addHandler(stream_handler)
 
-#helper dataclass to organize numerical entries in the outputted table
 class TableEntry(MyDataClass) :
+    """
+    dataclass to organize numerical entries in the outputted table
+    """
     root_dir_1               : str
     slide_ID_1               : str
     root_dir_2               : str
@@ -33,16 +35,22 @@ class TableEntry(MyDataClass) :
     layer_n                  : int
     delta_over_sigma_std_dev : float
 
-#helper function to get a dictionary with keys=root directory paths, values = lists of slide IDs in that root directory
 def get_slide_ids_by_root_dir(root_dirs,skip_slides) :
+    """
+    get a dictionary with keys=root directory paths, values = lists of slide IDs in that root directory
+    """
     slide_ids_by_rootdir = {}
     for root_dir in root_dirs :
         samps = readtable(pathlib.Path(root_dir)/'sampledef.csv',SampleDef)
-        slide_ids_by_rootdir[pathlib.Path(root_dir)] = [s.SlideID for s in samps if ((s.isGood==1) and (s.SlideID not in skip_slides))]
+        sids = [s.SlideID for s in samps if ((s.isGood==1) and (s.SlideID not in skip_slides))]
+        slide_ids_by_rootdir[pathlib.Path(root_dir)] = sids
     return slide_ids_by_rootdir
 
-#helper function to return the list of slide IDs ordered according to some convention, and a list of slides to put lines after in the plot
 def sort_slide_ids(slide_ids,slide_ids_by_rootdir,sort_by) :
+    """
+    return the list of slide IDs ordered according to some convention, 
+    and a list of slides to put lines after in the plot
+    """
     sampledefs = []
     for rd,sids in slide_ids_by_rootdir.items() :
         for sid in sids :
@@ -71,8 +79,10 @@ def sort_slide_ids(slide_ids,slide_ids_by_rootdir,sort_by) :
         return ordered_sids, lines_after[:-1]
     raise RuntimeError(f'ERROR: sort option {sort_by} is not recognized!')
 
-#helper function to check the arguments
 def checkArgs(args) :
+    """
+    check the arguments
+    """
     #if the 'flatw' flag was added, change the name of the meanimage subdirectory
     global MEANIMAGE_SUBDIR_NAME
     if args.flatw :
@@ -86,7 +96,8 @@ def checkArgs(args) :
             table_entries = readtable(ifp,TableEntry)
             table_entries = table_entries #pyflakes doesn't like me just making sure the table can be read
         except Exception as e :
-            raise ValueError(f'ERROR: input file {args.input_file} could not be read as a list of table entries. Exception: {e}')
+            errmsg=f'ERROR: input file {args.input_file} could not be read as a list of table entries. Exception: {e}'
+            raise ValueError(errmsg)
     else :
         for i in range(len(args.root_dirs)) :
             args.root_dirs[i] = pathlib.Path(args.root_dirs[i])
@@ -102,14 +113,18 @@ def checkArgs(args) :
         #meanimages and standard errors must exist for all slides
         for root_dir,slide_ids in slide_ids_by_rootdir.items() :
             for sid in slide_ids :
-                mifp = root_dir / sid / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                mifp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/f'{MEANIMAGE_SUBDIR_NAME}'
+                mifp = mifp/f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
                 if not mifp.is_file() :
                     logger.warning(f'WARNING: Mean image file does not exist for slide {sid}, will skip this slide!')
                     args.skip_slides.append(sid)
                     continue
-                semifp = root_dir / sid / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                semifp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/f'{MEANIMAGE_SUBDIR_NAME}'
+                semifp = semifp/f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
                 if not semifp.is_file() :
-                    logger.warning(f'WARNING: Standard error of mean image file does not exist for slide {sid}, will skip this slide!')
+                    warnmsg=f'WARNING: Standard error of mean image file does not exist for slide {sid}, '
+                    warnmsg+='will skip this slide!'
+                    logger.warning(warnmsg)
                     args.skip_slides.append(sid)
                     continue
         for root_dir in slide_ids_by_rootdir.keys() :
@@ -133,8 +148,10 @@ def checkArgs(args) :
     file_handler.setFormatter(logging_formatter)
     logger.addHandler(file_handler)
 
-#helper function to normalize an image layer by its weighted mean 
 def normalize_image_layer(mil,semil) :
+    """
+    normalize an image layer by its weighted mean 
+    """
     weights = np.zeros_like(semil)
     weights[semil!=0] = 1./(semil[semil!=0]**2)
     weighted_mil = weights*mil
@@ -144,8 +161,10 @@ def normalize_image_layer(mil,semil) :
     #mil_mean = np.average(mil,weights=weights)
     return mil/mil_mean, semil/mil_mean
 
-#helper function to get the standard deviation of the delta/sigma distribution for every layer of two meanimages compared to one another
 def get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2) :
+    """
+    get the standard deviation of the delta/sigma distribution for every layer of two meanimages compared to one another
+    """
     delta_over_sigma_std_devs = []
     for ln in range(1,dims[-1]+1) :
         if ln not in layers :
@@ -169,8 +188,10 @@ def get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2) :
         delta_over_sigma_std_devs.append(std_dev)
     return delta_over_sigma_std_devs
 
-#helper function to make a single comparison plot of some type
 def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workingdir,lines_after,bounds) :
+    """
+    make a single comparison plot of some type
+    """
     #make the figure
     fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
     #figure out the scaled font sizes
@@ -189,7 +210,8 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
     if lines_after!=[''] and len(lines_after)>0 :
         for sid in lines_after :
             if sid not in slide_ids :
-                raise RuntimeError(f'ERROR: requested to add a separator after slide {sid} but this slide will not be on the plot!')
+                errmsg=f'ERROR: requested to add a separator after slide {sid} but this slide will not be on the plot!'
+                raise RuntimeError(errmsg)
             sindex = slide_ids.index(sid)
             patches.append(Rectangle((sindex+0.375,-0.5),0.25,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
             patches.append(Rectangle((-0.5,sindex+0.375),len(slide_ids)+1,0.25,edgecolor='r',facecolor='r',fill=True))
@@ -216,8 +238,11 @@ def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workin
     #save the plot
     save_figure_in_dir(plt,figname,workingdir)
 
-#helper function to make the consistency check grid plot
-def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,sort_by,lines_after,bounds,all_or_brightest,save_all_layers,flatw) :
+def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,sort_by,lines_after,bounds,
+                                all_or_brightest,save_all_layers,flatw) :
+    """
+    make the consistency check grid plot
+    """
     #set the meanimage subdirectory name
     global MEANIMAGE_SUBDIR_NAME
     if flatw :
@@ -257,9 +282,13 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
             while si in range(len(sids)) :
                 sid=sids[si]
                 logger.info(f'\tChecking {sid}...')
-                mi   = get_raw_as_hwl((root_dir / sid / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'),*(dims),np.float64)
-                semi = get_raw_as_hwl((pathlib.Path(root_dir) / sid / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'),*(dims),np.float64)
-                if np.min(mi)==np.max(mi) or np.max(semi)==0. : #or sum([np.min(semi[:,:,li])==0. for li in range(dims[-1])])==dims[-1] :
+                mifp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/f'{MEANIMAGE_SUBDIR_NAME}'
+                mifp = mifp/f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                mi   = get_raw_as_hwl(mifp,*(dims),np.float64)
+                semifp = pathlib.Path(root_dir)/sid/UNIV_CONST.IM3_DIR_NAME/f'{MEANIMAGE_SUBDIR_NAME}'
+                semifp = semifp/f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                semi = get_raw_as_hwl(semifp,*(dims),np.float64)
+                if np.min(mi)==np.max(mi) or np.max(semi)==0. :
                     logger.warning(f'WARNING: slide {sid} will be skipped because not enough images were stacked!')
                     slide_ids_by_rootdir[root_dir].remove(sid)
                 else :
@@ -292,10 +321,12 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
         pairs_done = set()
         for is1,sid1 in enumerate(slide_ids) :
             s1rd = ([rd for rd,sids in slide_ids_by_rootdir.items() if sid1 in sids])[0]
-            mi1   = get_raw_as_hwl((s1rd / sid1 / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
-                                *(dims),np.float64)
-            semi1 = get_raw_as_hwl((s1rd / sid1 / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid1}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
-                                *(dims),np.float64)
+            mi1fp = s1rd/sid1/UNIV_CONST.IM3_DIR_NAME/f'{MEANIMAGE_SUBDIR_NAME}'
+            mi1fp = mi1fp/f'{sid1}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+            mi1   = get_raw_as_hwl(mi1fp,*(dims),np.float64)
+            semi1fp = s1rd/sid1/UNIV_CONST.IM3_DIR_NAME/f'{MEANIMAGE_SUBDIR_NAME}'
+            semi1fp = semi1fp/f'{sid1}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+            semi1 = get_raw_as_hwl(semi1fp,*(dims),np.float64)
             for is2,sid2 in enumerate(slide_ids) :
                 if sid2==sid1 :
                     dos_std_dev_plot_values[is1,is2,:] = 0.
@@ -306,14 +337,17 @@ def consistency_check_grid_plot(input_file,root_dirs,skip_slide_ids,workingdir,s
                     continue
                 logger.info(f'Finding std. devs. of delta/sigma for {sid1} vs. {sid2}...')
                 s2rd = ([rd for rd,sids in slide_ids_by_rootdir.items() if sid2 in sids])[0]
-                mi2   = get_raw_as_hwl((s2rd / sid2 / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
-                                    *(dims),np.float64)
-                semi2 = get_raw_as_hwl((s2rd / sid2 / UNIV_CONST.IM3_DIR_NAME / f'{MEANIMAGE_SUBDIR_NAME}' / f'{sid2}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'),
-                                    *(dims),np.float64)
+                mi2fp = s2rd/sid2/UNIV_CONST.IM3_DIR_NAME/f'{MEANIMAGE_SUBDIR_NAME}'
+                mi2fp = mi2fp/f'{sid2}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                mi2   = get_raw_as_hwl(mi2fp,*(dims),np.float64)
+                semi2fp = s2rd/sid2/UNIV_CONST.IM3_DIR_NAME/f'{MEANIMAGE_SUBDIR_NAME}'
+                semi2fp = semi2fp/f'{sid2}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                semi2 = get_raw_as_hwl(semi2fp,*(dims),np.float64)
                 dossd_list = get_delta_over_sigma_std_devs_by_layer(dims,layers,mi1,semi1,mi2,semi2)
                 dos_std_dev_plot_values[is1,is2,:] = dossd_list
                 for ln in layers :
-                    output_table_entries.append(TableEntry(s1rd,sid1,s2rd,sid2,ln,dos_std_dev_plot_values[is1,is2,ln-1]))
+                    output_table_entries.append(TableEntry(s1rd,sid1,s2rd,sid2,ln,
+                                                           dos_std_dev_plot_values[is1,is2,ln-1]))
                 pairs_done.add((sid1,sid2))
         with cd(workingdir) :
             writetable('meanimage_comparison_table.csv',output_table_entries)
@@ -356,34 +390,40 @@ def main(args=None) :
     parser = ArgumentParser()
     # a group for defining the slides to use either from a prior run or from a sampledef.csv file
     slide_def_group = parser.add_mutually_exclusive_group(required=True)
-    slide_def_group.add_argument('--input_file', 
-                        help='Path to a .csv file previously generated by this code that contains TableEntry objects (use to quickly remake plots of prior runs)')
-    slide_def_group.add_argument('--root_dirs', type=split_csv_to_list, default='',
-                        help='Comma-separated list of paths to directories with [slideID]/im3/meanimage subdirectories and sampledef.csv files in them')
+    slide_def_group.add_argument('--input-file', 
+                        help='''Path to a .csv file previously generated by this code that contains TableEntry objects 
+                                (use to quickly remake plots of prior runs)''')
+    slide_def_group.add_argument('--root-dirs', type=split_csv_to_list, default='',
+                        help='''Comma-separated list of paths to directories with [slideID]/im3/meanimage 
+                                subdirectories and sampledef.csv files in them''')
     #other optional arguments
-    parser.add_argument('--skip_slides', type=split_csv_to_list, default='',
+    parser.add_argument('--skip-slides', type=split_csv_to_list, default='',
                         help='Comma-separated list of slides to skip')
     parser.add_argument('--workingdir', type=pathlib.Path,
                         help='Path to the working directory where results will be saved')
-    parser.add_argument('--sort_by', choices=['order','project_cohort_batch'], default='project_cohort_batch',
+    parser.add_argument('--sort-by', choices=['order','project_cohort_batch'], default='project_cohort_batch',
                         help='how to sort the order of the slide IDs')
-    parser.add_argument('--lines_after', type=split_csv_to_list, default='',
+    parser.add_argument('--lines-after', type=split_csv_to_list, default='',
                         help="""Comma-separated list of slides to put separating lines after on the plot 
-                                (default is project/cohort/batch transitions, adding this argument will overwrite those automatic options)""")
+                                (default is project/cohort/batch transitions, adding this argument will overwrite 
+                                those automatic options)""")
     parser.add_argument('--bounds', type=split_csv_to_list_of_floats, default='0.85,1.15',
                         help='Hard limits to the imshow scale for the plot (given as lower_bound,upper_bound')
-    parser.add_argument('--all_or_brightest', choices=['all','brightest'], default='all',
+    parser.add_argument('--all-or-brightest', choices=['all','brightest'], default='all',
                         help='Whether to make plots and sum values over all image layers or just the brightest')
-    parser.add_argument('--save_all_layers', action='store_true',
-                        help='Add this flag to save the plots of the individual layers, not just the average over all of them')
+    parser.add_argument('--save-all-layers', action='store_true',
+                        help='''Add this flag to save the plots of the individual layers, not just the 
+                                average over all of them''')
     parser.add_argument('--flatw', action='store_true',
-                        help='Add this flag to use meanimages from "meanimage_from_fw_files" instead of "meanimage" subdirectories')
+                        help='''Add this flag to use meanimages from "meanimage_from_fw_files" instead of 
+                                "meanimage" subdirectories''')
     args = parser.parse_args(args=args)
     #check the arguments
     checkArgs(args)
     #run the main workhorse function
     consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,
-                                args.sort_by,args.lines_after,args.bounds,args.all_or_brightest,args.save_all_layers,args.flatw)
+                                args.sort_by,args.lines_after,args.bounds,args.all_or_brightest,
+                                args.save_all_layers,args.flatw)
     logger.info('Done : )')
 
 if __name__=='__main__' :

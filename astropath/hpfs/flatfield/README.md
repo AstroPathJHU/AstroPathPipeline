@@ -29,22 +29,22 @@ Running the above command will produce a "`meanimage`" directory in `<Dpath>\<Dn
     - **`<SlideID>-masking_summary.pdf`** containing a plot describing the locations of HPFs that had blur and/or saturation artifacts masked out, and several sheets of example masking plots for the individual images that had the largest numbers of pixels masked out due to blur and/or saturation.
     - **`<SlideID>-meanimage_summary.pdf`** containing plots of each layer of the final mean image, the standard error on the mean image, and the mask stack, as quick reference for the contents of the .bin files listed above.
 1. An `image_masking` subdirectory that contains the following:
-    - "`[image_key]_tissue_mask.bin`" mask files for every HPF in the slide. These image masks are compressed to save space, and must be unpacked using [the "`ImageMask.unpack_tissue_mask`" function](../../shared/image_masking/image_mask.py#L150-L156) to work with them. That function takes as inputs the path to the mask file and the dimensions of the output mask (same as the original HPF layers, i.e. (1004,1344)), and returns a numpy array of zeroes and ones where 0 = background and 1 = tissue. There is only one tissue mask per HPF; it is the same for all image layers.
+    - "`[image_key]_tissue_mask.bin`" mask files for every HPF in the slide. These image masks are compressed to save space, and must be unpacked using [the "`ImageMask.unpack_tissue_mask`" function](../../shared/image_masking/image_mask.py#L162-L168) to work with them. That function takes as inputs the path to the mask file and the dimensions of the output mask (same as the original HPF layers, i.e. (1004,1344)), and returns a numpy array of zeroes and ones where 0 = background and 1 = tissue. There is only one tissue mask per HPF; it is the same for all image layers.
     - multilayer "`[image_key]_full_mask.bin`" mask files for any images that had blur or saturation flagged in them, stored as single column arrays of unsigned 64-bit integers. The first layer of these files contains a mask where 0=background, 1=good tissue, and anything >1 is flagged due to blur. The other layers contain the same mask as in the first layer, except potentially with additional regions with values >1 showing where saturation is flagged in each layer group. The blur masks are the same for every image layer, but saturation is flagged independently for each layer group.
     - a "`labelled_mask_regions.csv`" file listing every region masked due to blur or saturation as [`LabelledMaskRegion` objects](../../shared/image_masking/utilities.py#L7-L13). This file can be used to understand the contents of the `*_full_mask.bin` files: any region with any index >1 in a `*_full_mask.bin` file has a corresponding line in the `labelled_mask_regions.csv` file stating which layers it should be flagged in, the size of the region, and why it was flagged.
 1. **a main log file** called "`meanimage.log`" in `<Dpath>\<Dname>\logfiles` with just a single line showing that meanimage was run
 1. **a more detailed sample log file** called "`<SlideID>-meanimage.log`" in `<Dpath>\<Dname>\<SlideID>\logfiles`
 
 Other options for running the code include:
-- skipping corrections for differences in exposure time: add the `--skip_exposure_time_corrections` argument
-- using exposure time dark current offsets that are different from what's stored in the sample's Full.xml file: add the `--exposure_time_offset_file [path_to_exposure_time_offset_file]` argument where `[path_to_exposure_time_offset_file]` is the path to a .csv file holding a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L21-L26)
+- skipping corrections for differences in exposure time: add the `--skip-exposure-time-corrections` argument
+- using exposure time dark current offsets that are different from what's stored in the sample's Full.xml file: add the `--exposure-time-offset-file [path_to_exposure_time_offset_file]` argument where `[path_to_exposure_time_offset_file]` is the path to a .csv file holding a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L21-L26)
 - skipping determining background thresholds and creating masks: add the `--skip_masking` flag 
 - changing the output location: add the `--workingdir [workingdir_path]` argument where `[workingdir_path]` is the path to the directory where the output should go (the default is `<Dpath>\<Dname>\SlideID\im3\meanimage` as detailed above)
 - using pre-created mask/threshold files: If the routine has already been run and background thresholds and/or masking files have already been created in the expected location, those portions of the code will not be run again unless the existing files are deleted. If you would like to force recreation of the files, add the `--maskroot [mask_root_path]` argument, where `[mask_root_path]` is a path to a directory other than `<Dpath>\<Dname>`. This same argument can be used to reference pre-created threshold/masking files in any other location as well, and the sample log file will list details of which subroutines have been skipped or run and where the data they're using are coming from. 
 
 The meanimage routine can be run for an entire cohort of samples at once using the command:
 
-`meanimagecohort <Dpath>\<Dname> <Rpath> --exposure_time_offset_file [path_to_exposure_time_offset_file] --njobs [njobs]`
+`meanimagecohort <Dpath>\<Dname> <Rpath> --njobs [njobs]`
 
 where the arguments are the same as those listed above for `meanimagesample`. To see more command line arguments available for both routines, run `meanimagesample --help` or `meanimagecohort --help`.
 
@@ -52,24 +52,24 @@ where the arguments are the same as those listed above for `meanimagesample`. To
 
 After running the meanimage routine for a whole cohort, the set of samples whose mean images should be used to determine a single flatfield correction model can be found using the plot(s)/datatable(s) created by the "[meanimage_comparison_plot.py](./meanimage_comparison_plot.py)" script. The comparison between any two samples' mean images is determined using the standard deviation of the distribution of the pixel-wise differences between the two mean images divided by their uncertainties. This comparison statistic is calculated for every image layer and every pair of samples, and the average over all image layers is plotted for each pair in a grid. The resulting plot shows values near one for samples whose mean images are comparable, and values far from one for samples whose mean images are very different. The plot can be run several times (more quickly, after the initial data table is produced) to find the best grouping of slides to use for a single flatfield model. It can also be used to check a new cohort of samples' mean images against previously-run cohorts. To run the script in the most common use case, enter the following command and arguments:
 
-`meanimagecomparison --root_dirs [Dpaths] --workingdir [workingdir_path]`
+`meanimagecomparison --root-dirs [Dpaths] --workingdir [workingdir_path]`
 
 where:
 - `[Dpaths]` is a comma-separated list of `<Dpath>\<Dname>` directory paths whose cohorts' mean images should be compared
 - `[workingdir_path]` is the path to the directory where the output should be located
 
 Running the above command will create a new directory at `[workingdir_path]` that contains the following:
-1. **a `meanimage_comparison_table.csv` file** whose entries list the comparisons between each layer of every pair of slide mean images, stored as [`TableEntry` objects](./meanimage_comparison_plot.py#L27-L34). This datatable can be used to recreate the plot with different specifications by giving the path to it as `[input_file_path]` in the argument `--input_file [input_file_path]`.
+1. **a `meanimage_comparison_table.csv` file** whose entries list the comparisons between each layer of every pair of slide mean images, stored as [`TableEntry` objects](./meanimage_comparison_plot.py#L27-L36). This datatable can be used to recreate the plot with different specifications by giving the path to it as `[input_file_path]` in the argument `--input_file [input_file_path]`.
 1. **a `meanimage_comparison_average_over_all_layers.png` plot** showing a grid of comparison statistic values for each combination of slides in the inputted cohort(s)
 1. **a log file** called `meanimage_comparison.log`
 
 Other options for running the code include:
-- Running from a previously-created input file: use the `--input_file [input_file_path]` argument as described above; this allows remaking the plot with a subset of slides without needing to recalculate all of the comparison statistic values
-- Skipping plotting certain slides: add the `--skip_slides [slides_to_skip]` argument where `[slides_to_skip]` is a comma-separated list of `<SlideID>`s that should be excluded
-- Reordering the slides within the grid plot: use the `--sort_by` argument to sort slides either by the order in which they are listed in the cohort(s)'s sampledef.csv file(s) (`--sort_by order`) or by the project number, then by cohort, and then by batch number (`--sort_by project_cohort_batch`). (The latter is the default.)
-- Changing where the lines are on the plot: By default, there are dividing lines on the plot between every batch of slides. You can put these dividing lines in different locations by adding the `--lines_after [slide_ids]` argument, where `[slide_ids]` is a comma-separated list of `<SlideID>`s below which the dividing lines should appear.
+- Running from a previously-created input file: use the `--input-file [input_file_path]` argument as described above; this allows remaking the plot with a subset of slides without needing to recalculate all of the comparison statistic values
+- Skipping plotting certain slides: add the `--skip-slides [slides_to_skip]` argument where `[slides_to_skip]` is a comma-separated list of `<SlideID>`s that should be excluded
+- Reordering the slides within the grid plot: use the `--sort-by` argument to sort slides either by the order in which they are listed in the cohort(s)'s sampledef.csv file(s) (`--sort-by order`) or by the project number, then by cohort, and then by batch number (`--sort-by project_cohort_batch`). (The latter is the default.)
+- Changing where the lines are on the plot: By default, there are dividing lines on the plot between every batch of slides. You can put these dividing lines in different locations by adding the `--lines-after [slide_ids]` argument, where `[slide_ids]` is a comma-separated list of `<SlideID>`s below which the dividing lines should appear.
 - Changing the limits on the z-axis of the plot: Add the `--bounds [bounds]` argument where `[bounds]` is two values for the lower and upper bound of the z-axis. The default value for this argument is `0.85,1.15`.
-- Save plots for every layer individually instead of the average over all layers: add the `--save_all_layers` flag
+- Save plots for every layer individually instead of the average over all layers: add the `--save-all-layers` flag
 
 ## Creating a flatfield model from a group of slides' mean image files
 

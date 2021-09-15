@@ -60,8 +60,8 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
                         msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
                         with r.using_image() as im :
                             proc_results[(r.n,r.file)] = pool.apply_async(write_out_corrected_image_files,
-                                                                          (im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers,outextstem)
-                                                                        )
+                                                                          (im,r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                                           layers,outextstem))
                             self.logger.debug(msg)
                     for (rn,rfile),res in proc_results.items() :
                         try :
