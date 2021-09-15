@@ -188,9 +188,9 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
     def makeargumentparser(cls):
         p = super().makeargumentparser()
         p.add_argument('workingdir', type=pathlib.Path, help='Path to the directory that should hold the results')
-        p.add_argument('--skip_masking', action='store_true',
+        p.add_argument('--skip-masking', action='store_true',
                        help='Add this flag to entirely skip masking out the background regions of the images as they get added')
-        p.add_argument('--image_set_split',choices=['random','sequential'],default='random',
+        p.add_argument('--image-set-split',choices=['random','sequential'],default='random',
                        help='Whether to split the set of all images into subgroups randomly or sequentially (default is random)')
         return p
 
@@ -199,8 +199,8 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
         parsed_args_dict['skip_finished']=False #always rerun the samples, they don't produce any output
         return {**super().initkwargsfromargumentparser(parsed_args_dict),
                 'workingdir': parsed_args_dict.pop('workingdir'),
-                'skip_masking': parsed_args_dict.pop('skip_masking'),
-                'image_set_split': parsed_args_dict.pop('image_set_split'),
+                'skip_masking': parsed_args_dict.pop('skip-masking'),
+                'image_set_split': parsed_args_dict.pop('image-set-split'),
                }
 
 #################### FILE-SCOPE FUNCTIONS ####################

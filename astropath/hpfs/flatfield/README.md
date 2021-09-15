@@ -36,15 +36,15 @@ Running the above command will produce a "`meanimage`" directory in `<Dpath>\<Dn
 1. **a more detailed sample log file** called "`<SlideID>-meanimage.log`" in `<Dpath>\<Dname>\<SlideID>\logfiles`
 
 Other options for running the code include:
-- skipping corrections for differences in exposure time: add the `--skip_exposure_time_corrections` argument
-- using exposure time dark current offsets that are different from what's stored in the sample's Full.xml file: add the `--exposure_time_offset_file [path_to_exposure_time_offset_file]` argument where `[path_to_exposure_time_offset_file]` is the path to a .csv file holding a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L21-L26)
+- skipping corrections for differences in exposure time: add the `--skip-exposure-time-corrections` argument
+- using exposure time dark current offsets that are different from what's stored in the sample's Full.xml file: add the `--exposure-time-offset-file [path_to_exposure_time_offset_file]` argument where `[path_to_exposure_time_offset_file]` is the path to a .csv file holding a list of [`LayerOffset` objects](../../utilities/img_file_io.py#L21-L26)
 - skipping determining background thresholds and creating masks: add the `--skip_masking` flag 
 - changing the output location: add the `--workingdir [workingdir_path]` argument where `[workingdir_path]` is the path to the directory where the output should go (the default is `<Dpath>\<Dname>\SlideID\im3\meanimage` as detailed above)
 - using pre-created mask/threshold files: If the routine has already been run and background thresholds and/or masking files have already been created in the expected location, those portions of the code will not be run again unless the existing files are deleted. If you would like to force recreation of the files, add the `--maskroot [mask_root_path]` argument, where `[mask_root_path]` is a path to a directory other than `<Dpath>\<Dname>`. This same argument can be used to reference pre-created threshold/masking files in any other location as well, and the sample log file will list details of which subroutines have been skipped or run and where the data they're using are coming from. 
 
 The meanimage routine can be run for an entire cohort of samples at once using the command:
 
-`meanimagecohort <Dpath>\<Dname> <Rpath> --exposure_time_offset_file [path_to_exposure_time_offset_file] --njobs [njobs]`
+`meanimagecohort <Dpath>\<Dname> <Rpath> --njobs [njobs]`
 
 where the arguments are the same as those listed above for `meanimagesample`. To see more command line arguments available for both routines, run `meanimagesample --help` or `meanimagecohort --help`.
 
@@ -52,7 +52,7 @@ where the arguments are the same as those listed above for `meanimagesample`. To
 
 After running the meanimage routine for a whole cohort, the set of samples whose mean images should be used to determine a single flatfield correction model can be found using the plot(s)/datatable(s) created by the "[meanimage_comparison_plot.py](./meanimage_comparison_plot.py)" script. The comparison between any two samples' mean images is determined using the standard deviation of the distribution of the pixel-wise differences between the two mean images divided by their uncertainties. This comparison statistic is calculated for every image layer and every pair of samples, and the average over all image layers is plotted for each pair in a grid. The resulting plot shows values near one for samples whose mean images are comparable, and values far from one for samples whose mean images are very different. The plot can be run several times (more quickly, after the initial data table is produced) to find the best grouping of slides to use for a single flatfield model. It can also be used to check a new cohort of samples' mean images against previously-run cohorts. To run the script in the most common use case, enter the following command and arguments:
 
-`meanimagecomparison --root_dirs [Dpaths] --workingdir [workingdir_path]`
+`meanimagecomparison --root-dirs [Dpaths] --workingdir [workingdir_path]`
 
 where:
 - `[Dpaths]` is a comma-separated list of `<Dpath>\<Dname>` directory paths whose cohorts' mean images should be compared
@@ -64,12 +64,12 @@ Running the above command will create a new directory at `[workingdir_path]` tha
 1. **a log file** called `meanimage_comparison.log`
 
 Other options for running the code include:
-- Running from a previously-created input file: use the `--input_file [input_file_path]` argument as described above; this allows remaking the plot with a subset of slides without needing to recalculate all of the comparison statistic values
-- Skipping plotting certain slides: add the `--skip_slides [slides_to_skip]` argument where `[slides_to_skip]` is a comma-separated list of `<SlideID>`s that should be excluded
-- Reordering the slides within the grid plot: use the `--sort_by` argument to sort slides either by the order in which they are listed in the cohort(s)'s sampledef.csv file(s) (`--sort_by order`) or by the project number, then by cohort, and then by batch number (`--sort_by project_cohort_batch`). (The latter is the default.)
-- Changing where the lines are on the plot: By default, there are dividing lines on the plot between every batch of slides. You can put these dividing lines in different locations by adding the `--lines_after [slide_ids]` argument, where `[slide_ids]` is a comma-separated list of `<SlideID>`s below which the dividing lines should appear.
+- Running from a previously-created input file: use the `--input-file [input_file_path]` argument as described above; this allows remaking the plot with a subset of slides without needing to recalculate all of the comparison statistic values
+- Skipping plotting certain slides: add the `--skip-slides [slides_to_skip]` argument where `[slides_to_skip]` is a comma-separated list of `<SlideID>`s that should be excluded
+- Reordering the slides within the grid plot: use the `--sort-by` argument to sort slides either by the order in which they are listed in the cohort(s)'s sampledef.csv file(s) (`--sort-by order`) or by the project number, then by cohort, and then by batch number (`--sort-by project_cohort_batch`). (The latter is the default.)
+- Changing where the lines are on the plot: By default, there are dividing lines on the plot between every batch of slides. You can put these dividing lines in different locations by adding the `--lines-after [slide_ids]` argument, where `[slide_ids]` is a comma-separated list of `<SlideID>`s below which the dividing lines should appear.
 - Changing the limits on the z-axis of the plot: Add the `--bounds [bounds]` argument where `[bounds]` is two values for the lower and upper bound of the z-axis. The default value for this argument is `0.85,1.15`.
-- Save plots for every layer individually instead of the average over all layers: add the `--save_all_layers` flag
+- Save plots for every layer individually instead of the average over all layers: add the `--save-all-layers` flag
 
 ## Creating a flatfield model from a group of slides' mean image files
 
