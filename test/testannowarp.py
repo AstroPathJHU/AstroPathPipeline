@@ -122,7 +122,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
 
   def testCohortFastUnits(self, SlideID="M206"):
-    testCohort(SlideID=SlideID, units="fast")
+    self.testCohort(SlideID=SlideID, units="fast")
 
   def testConstraint(self, SlideID="M206"):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp")
