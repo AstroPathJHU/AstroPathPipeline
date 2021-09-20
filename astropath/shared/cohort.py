@@ -656,7 +656,7 @@ class WorkflowCohort(Cohort):
           if missinginputs:
             raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
         except Exception: #don't log KeyboardInterrupt here
-          with self.getlogger(sample):
+          with sample:
             raise
           return
 
