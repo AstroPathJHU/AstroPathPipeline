@@ -1,6 +1,6 @@
 ﻿<#
 --------------------------------------------------------
-meanimage
+shredxml
 Created By: Andrew Jorquera
 Last Edit: 09/20/2021
 --------------------------------------------------------
@@ -12,41 +12,26 @@ $task[array]: the 3 part array of project, slideid, process loc
     E.g. @('7','M18_1','\\bki08\e$')
 $sample[launchmodule]: A launchmodule object 
 --------------------------------------------------------
-Usage: $a = [meanimage]::new($task, $sample)
-       $a.runmeanimage()
+Usage: $a = [shredxml]::new($task, $sample)
+       $a.runshredxml()
 --------------------------------------------------------
 #>
-Class meanimage : moduletools {
+Class shredxml : moduletools {
     #
-    meanimage([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
-        $this.flevel = [FileDownloads]::IM3
+    shredxml([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+        #$this.flevel = [FileDownloads]::IM3 #needed for testing
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
     <# -----------------------------------------
-     RunMeanImage
-     Run mean image
+     RunShredXML
+     Run shred xml
      ------------------------------------------
-     Usage: $this.RunMeanImage()
+     Usage: $this.RunShredXML()
     ----------------------------------------- #>
-    [void]RunMeanImage(){
-        $this.DownloadFiles()
-        $this.ShredDat()
-        $this.GetMeanImage()
+    [void]RunShredXML(){
+        $this.ShredXML()
         $this.returndata()
         $this.cleanup()
-    }
-   <# -----------------------------------------
-     GetMeanImage
-        Get the mean image
-     ------------------------------------------
-     Usage: $this.GetMeanImage()
-    ----------------------------------------- #>
-    [void]GetMeanImage(){
-        $this.sample.info("started getting mean image")
-        $taskname = 'raw2mean'
-        $matlabtask = ";raw2mean('"+$this.processvars[1]+"', '"+$this.sample.slideid+"');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
-        $this.sample.info("finished getting mean image")
     }
     <# -----------------------------------------
      returndata
@@ -58,17 +43,9 @@ Class meanimage : moduletools {
         #
         $this.sample.info("Return data started")
         #
-		#$sor = $this.processvars[1] +'\flat' # change both here and in matlab for data output: future: $this.processvars[1] + '\slideid\flat'; current: $this.proceessvars[1] + '\flat'
-		$des = $this.sample.im3folder()
-        
-        $sor = $this.processvars[1] +'\flat\*.flt'
-        xcopy $sor, $des /q /y /z /j /v | Out-Null
-
-        $sor = $this.processvars[1] + '\flat\*.csv'
-        xcopy $sor, $des /q /y /z /j /v | Out-Null
-        
-        $sor = $this.processvars[1] + '\flat'
-        Remove-Item $sor -force -recurse
+		$sor = $this.processvars[1] + '\' + $this.sample.slideid + '\*.xml'
+		$des = $this.sample.xmlfolder()
+		xcopy $sor, $des /q /y /z /j /v | Out-Null
         $this.sample.info("Return data finished")
         #
     }
