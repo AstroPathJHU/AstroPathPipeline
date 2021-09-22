@@ -77,9 +77,10 @@
         if ($this.processvars[4]){
             $this.sample.info("Download Files started")
             $this.BuildDir()
-            $this.Dowloadflatfield()
-            $this.DowloadIm3s()
-            $this.DowloadBatchID()
+            $this.Downloadflatfield()
+            $this.DownloadIm3s()
+            $this.DownloadBatchID()
+            $this.DownloadXML()
             $this.sample.info("Download Files finished")
         }
     }
@@ -100,13 +101,13 @@
         #
     }
     <# -----------------------------------------
-     Dowloadflatfield
+     Downloadflatfield
      download the flatfield file to the processing
      dir
      ------------------------------------------
-     Usage: $this.Dowloadflatfield()
+     Usage: $this.Downloadflatfield()
     ----------------------------------------- #>
-    [void]Dowloadflatfield(){
+    [void]Downloadflatfield(){
         if (($this.flevel -band [FileDownloads]::FLATFIELD) -eq [FileDownloads]::FLATFIELD){
             $flatfieldfolder = $this.processvars[0]+'\flatfield'
             if (test-path $flatfieldfolder){
@@ -117,13 +118,13 @@
         }
     }
     <# -----------------------------------------
-     DowloadIm3s
-     download the flatfield file to the processing
+     DownloadIm3s
+     download the IM3 files to the processing
      dir
      ------------------------------------------
-     Usage: $this.Dowloadflatfield()
+     Usage: $this.DownloadIm3s()
     ----------------------------------------- #>
-    [void]DowloadIm3s(){
+    [void]DownloadIm3s(){
         if (($this.flevel -band [FileDownloads]::IM3) -eq [FileDownloads]::IM3){
             $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
             $sor = $this.sample.MSIfolder()
@@ -134,30 +135,47 @@
         }
     }
     <# -----------------------------------------
-     DowloadIm3s
-     download the flatfield file to the processing
+     DowloadBatchID
+     download the batch id file to the processing
      dir
      ------------------------------------------
-     Usage: $this.Dowloadflatfield()
+     Usage: $this.DowloadBatchID()
     ----------------------------------------- #>
-    [void]DowloadBatchID(){
+    [void]DownloadBatchID(){
         if (($this.flevel -band [FileDownloads]::BATCHID) -eq [FileDownloads]::BATCHID){
             $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\'+$this.sample.Scan()
             xcopy $this.sample.batchIDfile(), $des /q /y /z /j /v | Out-Null
         }
     }
     <# -----------------------------------------
+     DowloadXML
+     download the xml files to the processing
+     dir
+     ------------------------------------------
+     Usage: $this.DowloadXML()
+    ----------------------------------------- #>
+    [void]DownloadXML(){
+        if (($this.flevel -band [FileDownloads]::XML) -eq [FileDownloads]::XML){
+            $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
+            $sor = $this.sample.xmlfolder()
+            robocopy $sor $des *xml -r:3 -w:3 -np -mt:30 |out-null
+            if(!(((gci ($sor+'\*') -Include '*xml').Count) -eq (gci $des).count)){
+                Throw 'xmls did not download correctly'
+            }
+        }
+    }
+    <# -----------------------------------------
      ShredDat
-        Extract data.dat and xml files
+        Extract data.dat files
      ------------------------------------------
      Usage: $this.ShredDat()
     ----------------------------------------- #>
     [void]ShredDat(){
-        $this.ConvertPath('shred')
+        $this.ConvertPath('shreddat')
     }
     <# -----------------------------------------
      ShredXML
-        Extract data.dat and xml files
+        Extract xml files
      ------------------------------------------
      Usage: $this.ShredDat()
     ----------------------------------------- #>
@@ -187,8 +205,8 @@
         $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
         if ($type -match 'inject'){
             ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -i -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shred') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -verbose 4>&1 >> $externallog
+        } elseif($type -match 'shreddat') {
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -d -verbose 4>&1 >> $externallog
         } elseif($type -match 'shredxml') {
             ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -xml -verbose 4>&1 >> $externallog
         } 

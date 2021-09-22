@@ -19,7 +19,7 @@ Usage: $a = [meanimage]::new($task, $sample)
 Class meanimage : moduletools {
     #
     meanimage([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
-        $this.flevel = [FileDownloads]::IM3
+        $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
     <# -----------------------------------------
@@ -31,6 +31,7 @@ Class meanimage : moduletools {
     [void]RunMeanImage(){
         $this.DownloadFiles()
         $this.ShredDat()
+        #$this.ShredXML()
         $this.GetMeanImage()
         $this.returndata()
         $this.cleanup()
