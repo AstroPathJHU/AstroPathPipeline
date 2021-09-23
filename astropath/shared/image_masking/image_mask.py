@@ -137,7 +137,10 @@ class ImageMask() :
                                                                                    fold_nlv_max_mean,fold_flag_cut)
             plot_img_layer = self.__im_array[:,:,self.__brightest_layers[lgi]]
             sorted_pil = np.sort(plot_img_layer[group_blur_mask==1].flatten())
-            pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
+            if len(sorted_pil)>0 :
+                pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
+            else :
+                pil_max = np.max(plot_img_layer); pil_min = np.min(plot_img_layer)
             norm = 255./(pil_max-pil_min)
             im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
             overlay_c = np.array([im_c,im_c*group_blur_mask,im_c*group_blur_mask]).transpose(1,2,0)
