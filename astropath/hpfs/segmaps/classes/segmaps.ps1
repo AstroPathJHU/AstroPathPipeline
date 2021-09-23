@@ -19,7 +19,7 @@ Usage: $a = [segmaps]::new($task, $sample)
 Class segmaps : moduletools {
     #
     segmaps([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
-        $this.flevel = [FileDownloads]::IM3
+        #$this.flevel = [FileDownloads]::IM3 #needed for testing
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
     <# -----------------------------------------
@@ -59,7 +59,7 @@ Class segmaps : moduletools {
     [void]GetaSeg(){
         $this.sample.info("started getting seg maps")
         $taskname = 'GetaSeg'
-        $matlabtask = ";GetaSeg('"+$this.processvars[0]+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfig+"');exit(0);"
+        $matlabtask = ";GetaSeg('"+$this.processvars[0]+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
         $this.sample.info("finished getting seg maps")
     }
@@ -72,7 +72,7 @@ Class segmaps : moduletools {
     [void]GetnoSeg(){
         $this.sample.info("started getting component data")
         $taskname = 'GetnoSeg'
-        $matlabtask = ";GetnoSeg('"+$this.processvars[0]+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfig+"');exit(0);"
+        $matlabtask = ";GetnoSeg('"+$this.processvars[0]+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
         $this.sample.info("finished getting component data")
     }
