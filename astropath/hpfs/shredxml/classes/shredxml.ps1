@@ -19,7 +19,6 @@ Usage: $a = [shredxml]::new($task, $sample)
 Class shredxml : moduletools {
     #
     shredxml([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
-        #$this.flevel = [FileDownloads]::IM3 #needed for testing
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
     <# -----------------------------------------

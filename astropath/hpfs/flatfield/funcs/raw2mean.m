@@ -34,8 +34,8 @@ if (N==0)
     return
 end
 %
-if ~exist([fwpath,'\flat'], 'dir')
-    mkdir([fwpath,'\flat']);
+if ~exist([fwpath,'\flat\', samp], 'dir')
+    mkdir([fwpath,'\flat\', samp]);
 end
 %--------------------------------
 % read and stack the raw images
@@ -57,13 +57,13 @@ aa = aa/N;
 N = [N,ll,ww,hh];
 %
 %size(aa)
-fn = [fwpath,'\flat\',samp,'-mean.flt'];
+fn = [fwpath,'\flat\',samp,'\',samp,'-mean.flt'];
 %
 fd = fopen(fn,'w');
 fwrite(fd,aa,'double');
 fclose(fd);
 %
-fn = [fwpath '\flat\',samp,'-mean.csv'];
+fn = [fwpath '\flat\',samp,'\',samp,'-mean.csv'];
 csvwrite(fn,N);
 %
 end

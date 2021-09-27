@@ -31,7 +31,6 @@ Class meanimage : moduletools {
     [void]RunMeanImage(){
         $this.DownloadFiles()
         $this.ShredDat()
-        #$this.ShredXML()
         $this.GetMeanImage()
         $this.returndata()
         $this.cleanup()
@@ -59,16 +58,15 @@ Class meanimage : moduletools {
         #
         $this.sample.info("Return data started")
         #
-		#$sor = $this.processvars[1] +'\flat' # change both here and in matlab for data output: future: $this.processvars[1] + '\slideid\flat'; current: $this.proceessvars[1] + '\flat'
 		$des = $this.sample.im3folder()
-        
-        $sor = $this.processvars[1] +'\flat\*.flt'
+        #
+        $sor = $this.processvars[1] +'\flat\'+$this.sample.slideid+'\*.flt'
         xcopy $sor, $des /q /y /z /j /v | Out-Null
-
-        $sor = $this.processvars[1] + '\flat\*.csv'
+        #
+        $sor = $this.processvars[1] + '\flat\'+$this.sample.slideid+'\*.csv'
         xcopy $sor, $des /q /y /z /j /v | Out-Null
-        
-        $sor = $this.processvars[1] + '\flat'
+        #
+        $sor = $this.processvars[1] + '\flat\'+$this.sample.slideid
         Remove-Item $sor -force -recurse
         $this.sample.info("Return data finished")
         #
