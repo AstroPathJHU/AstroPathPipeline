@@ -232,7 +232,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             new_fft = FFT(gpu_im)
             new_fftc = new_fft.compile(self.gputhread)
             self.gpufftdict[fft_shape] = new_fftc
-        return overlap.align(debug=True,gputhread=self.gputhread,gpufftdict=self.gpufftdict,
+        return overlap.align(gputhread=self.gputhread,gpufftdict=self.gpufftdict,
                              alreadyalignedstrategy='overwrite')
 
     def update_rectangle_images(self,images_by_rect_i,p1_rect_n) :
