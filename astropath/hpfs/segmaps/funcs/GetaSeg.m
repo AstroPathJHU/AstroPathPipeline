@@ -87,7 +87,7 @@ delete(poolobj);
 %
 tim{3} = toc;
 %
-filenms = dir([basepath,'\',slideid,'\inform_data\Phenotyped\Tables\*_cleaned_phenotype_table.csv']);
+filenms = dir([basepath,'\',slideid,'\inform_data\Phenotyped\Results\Tables\*_cleaned_phenotype_table.csv']);
 tim{4} = length(filenms);
 %
 createlog(errors, errors2, [basepath,'\',slideid], tim);
