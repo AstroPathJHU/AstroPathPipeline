@@ -32,10 +32,10 @@ class ImageMask() :
         return (np.where(self.uncompressed_full_mask==1,1,0)).astype(np.uint8)
     @property
     def uncompressed_full_mask(self): #the uncompressed mask with the real number of image layers
-        if self.__compressed_mask is None or self._layer_groups==[] :
+        if self.__compressed_mask is None or self.__layer_groups==[] :
             raise RuntimeError('ERROR: uncompressed_full_mask called without first creating a mask!')
-        uncompressed_mask = np.ones((*self.__compressed_mask.shape[:-1],self._layer_groups[-1][1]),dtype=np.uint8)
-        for lgi,lgb in enumerate(self._layer_groups) :
+        uncompressed_mask = np.ones((*self.__compressed_mask.shape[:-1],self.__layer_groups[-1][1]),dtype=np.uint8)
+        for lgi,lgb in enumerate(self.__layer_groups) :
             for ln in range(lgb[0],lgb[1]+1) :
                 uncompressed_mask[:,:,ln-1] = self.__compressed_mask[:,:,lgi+1]
         return uncompressed_mask
