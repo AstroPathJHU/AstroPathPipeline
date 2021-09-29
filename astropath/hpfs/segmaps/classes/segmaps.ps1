@@ -2,7 +2,7 @@
 --------------------------------------------------------
 segmaps
 Created By: Andrew Jorquera
-Last Edit: 09/21/2021
+Last Edit: 09/29/2021
 --------------------------------------------------------
 Description
 Task to be launched remotely to ANY computer from ANYWHERE
@@ -19,7 +19,8 @@ Usage: $a = [segmaps]::new($task, $sample)
 Class segmaps : moduletools {
     #
     segmaps([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
-        $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
+        $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'
+        $this.processloc = $this.sample.componentfolder()  
     }
     <# -----------------------------------------
      RunSegMaps
@@ -56,11 +57,11 @@ Class segmaps : moduletools {
      Usage: $this.GetaSeg()
     ----------------------------------------- #>
     [void]GetaSeg(){
-        $this.sample.info("started getting seg maps")
+        $this.sample.info("started processing segmentation maps")
         $taskname = 'GetaSeg'
         $matlabtask = ";GetaSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
-        $this.sample.info("finished getting seg maps")
+        $this.sample.info("finished processing segmentation maps")
     }
    <# -----------------------------------------
      GetnoSeg
@@ -69,10 +70,10 @@ Class segmaps : moduletools {
      Usage: $this.GetnoSeg()
     ----------------------------------------- #>
     [void]GetnoSeg(){
-        $this.sample.info("started getting component data")
+        $this.sample.info("started processing fields without segmentation data")
         $taskname = 'GetnoSeg'
         $matlabtask = ";GetnoSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
-        $this.sample.info("finished getting component data")
+        $this.sample.info("finished processing fields without segmentation data")
     }
 }

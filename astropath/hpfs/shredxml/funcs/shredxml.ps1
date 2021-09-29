@@ -23,7 +23,7 @@ Function shredxml {
      # used for testing; when launched manually without launchmodule
      #
      if (!($PSBoundParameters.ContainsKey('log'))){ 
-        $log = [launchmodule]::new($task[1], '\\bki08\e$\testing\astropath_processing', 'shredxml', $task, 1) 
+        $log = [launchmodule]::new('\\bki08\e$\testing\astropath_processing', 'shredxml', $task) 
         $e = 1
      } else {$e = 0}
      #

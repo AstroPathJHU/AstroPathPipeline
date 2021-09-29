@@ -22,7 +22,7 @@ Function imagecorrection {
      # used for testing; when launched manually without launchmodule
      #
      if (!($PSBoundParameters.ContainsKey('log'))){ 
-        $log = [launchmodule]::new($task[1], '\\bki04\astropath_processing', 'imagecorrection', $task, 1) 
+        $log = [launchmodule]::new('\\bki04\astropath_processing', 'imagecorrection', $task) 
         $e = 1
      } else {$e = 0}
      #

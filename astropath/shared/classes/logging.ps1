@@ -45,7 +45,18 @@ class mylogger : sampledef {
     #
     mylogger() : base(){}
     #
+    mylogger($mpath, $module) : base($mpath, $module){}
+    #
     mylogger($mpath, $module, $slideid) : base($mpath, $module, $slideid){
+        $this.getlogger()
+    }
+    #
+    mylogger($mpath, $module, $slideid, $project) : base($mpath, $module, $slideid, $project){
+        $this.level = 4
+        $this.getlogger()
+    }
+    #
+    getlogger(){
         $this.vers = $this.GetVersion($this.mpath, $this.module, $this.project)
         $this.defpaths()
     }

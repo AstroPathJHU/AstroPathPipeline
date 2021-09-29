@@ -51,7 +51,7 @@ for i=1:numel(slideids)
     if nn(1) >= 300
         %fprintf('%s : %d\n', d(i).name, nn);
         A = A + (readflat(f1, m, n, k) .* nn(1));
-        N = N + nn;
+        N = N + nn(1);
     end
     %
 end

@@ -54,16 +54,23 @@ class queue : sharedtools{
         $cleanedslides = $slides | Where-Object {$projects -contains $_.Project}
         #
         $slidesnotcomplete = $this.defNotCompletedSlides($cleanedslides)
-        $array = @()
+        $slidearray = @()
+        $batcharray = @()
         if ($slidesnotcomplete.count -eq 1){
-            $array += $slidesnotcomplete.Project + ',' + $slidesnotcomplete.Slideid
+            $slidearray += $slidesnotcomplete.Project + ',' + $slidesnotcomplete.Slideid
+            $batcharray += $slidesnotcomplete.Project + ',' + $slidesnotcomplete.Slideid
         } else {
             for($i=0; $i -lt $slidesnotcomplete.count;$i++){
-                $array += $slidesnotcomplete.Project[$i] + ',' + $slidesnotcomplete.Slideid[$i]
+                $slidearray += $slidesnotcomplete.Project[$i] + ',' + $slidesnotcomplete.Slideid[$i]
+                $batcharray += $slidesnotcomplete.Project[$i] + ',' + $slidesnotcomplete.BatchID[$i]
             }
         }
         #
-        $this.cleanedtasks = $array
+        if ($this.module -match 'batch'){
+            $slidearray = $this.AggregateBatches($batcharray)
+        }
+        #
+        $this.cleanedtasks = $slidearray
         #
     }
     #
@@ -83,10 +90,6 @@ class queue : sharedtools{
                 #
             }
             #
-        }
-        #
-        if ($this.module -eq 'batchflatfield'){
-            $slidesnotcomplete = $this.AggregateBatches($slidesnotcomplete)
         }
         #
         return $slidesnotcomplete
@@ -147,10 +150,41 @@ class queue : sharedtools{
         #
     }
     #
-    [switch]checkmeanimage([mylogger]$log, $dependency){
+    [switch]checkshredxml([mylogger]$log, $dependency){
         #
         if ($dependency){
             if ($this.checktransfer($log)){
+                return $false
+            }
+        }
+        #
+        # check for xmls
+        # 
+        $xml = $log.xmlfolder()
+        $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count
+        if (!$im3s){
+            return $false
+        }
+        #
+        if (!(test-path $xml)){
+            return $true
+        }
+        #
+        # check files = im3s
+        #
+        $files = (gci ($xml + '\*') '*xml').Count
+        if (!($im3s -eq $files)){
+            return $true
+        }
+        #
+        return $false
+        #
+    }
+    #
+    [switch]checkmeanimage([mylogger]$log, $dependency){
+        #
+        if ($dependency){
+            if ($this.checkshredxml($log)){
                 return $false
             }
         }
@@ -254,8 +288,9 @@ class queue : sharedtools{
     # check that all slides from each unqiue batch are on the list
     # return one sample
     #
-    [array]Aggregatebatches($slidesnotcomplete){
-        return $slidesnotcomplete
+    [array]Aggregatebatches($batcharray){
+        $batcharray = $batcharray | Sort-Object | Get-Unique
+        return $batcharray
     }
     #
     [void]UpdateQueue($currenttask, $currentworker, $tasktomatch){

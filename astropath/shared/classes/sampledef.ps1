@@ -1,27 +1,42 @@
-﻿class sampledef : sharedtools{
+﻿
+class sampledef : sharedtools{
     [string]$cohort
     [string]$project
     [string]$BatchID
     [string]$basepath
     [PSCustomObject]$project_data
+    [PSCustomObject]$batchslides
     #
     sampledef(){}
     #
     # sampledef([string]$mpath) : base($mpath){}
     #
-    # sampledef($mpath, $module):base($mpath, $module){}
+    sampledef($mpath, $module){
+        $this.mpath = $mpath
+        $this.module = $module 
+    }
     #
     sampledef($mpath, $module, $slideid){
         $this.mpath = $mpath
         $this.module = $module 
-        $slides = $this.importslideids($mpath)
-        $this.Sample($slideid, $mpath, $slides)
+        $this.sampledefslide($slideid)
     }
     #
-     sampledef($mpath, $module, $slideid,[PSCustomObject]$slides){
+    sampledef($mpath, $module, $slideid, $project){
         $this.mpath = $mpath
         $this.module = $module 
-        $this.Sample($slideid, $mpath, $slides)
+        $this.sampledefbatch($slideid, $project)
+    }
+    #
+    sampledefslide($slideid){
+        $slides = $this.importslideids($this.mpath)
+        $this.Sample($slideid, $this.mpath, $slides)
+    }
+    #
+    sampledefbatch($batchid, $project){
+        $this.project = $project
+        $slides = $this.importslideids($this.mpath)
+        $this.Batch($batchid, $this.mpath, $slides)
     }
     #
     Sample(
@@ -33,11 +48,20 @@
         $this.DefRoot($mpath)
     }
     #
+    Batch(
+        [string]$batchid="",
+        [string]$mpath,
+        [PSCustomObject]$slides
+    ){
+        $this.ParseAPIDdefbatch($batchid, $slides)
+        $this.DefRoot($mpath)
+    }
+    #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
         $slide = $slides | `
                 Where-Object -FilterScript {$_.SlideID -eq $slideid.trim()}
         #
-        if (!$slideid){
+        if (!$slide){
             Throw 'Not a valid slideid'
         }
         $this.slideid = $slide.SlideID.trim()
@@ -49,6 +73,32 @@
         } else {
             $this.BatchID = $slide.BatchID 
         }
+    }
+    #
+    [void]ParseAPIDdefbatch([string]$mbatchid, [PSCustomObject]$slides){
+        #
+        if ($mbatchid[0] -match '0'){
+            $mbatchid = $mbatchid[1]
+        }
+        #
+        $batch = $slides | `
+                Where-Object -FilterScript {$_.BatchID -eq $mbatchid.trim() -and $_.Project -eq $this.project.trim()}
+        #
+        if (!$batch){
+            Throw 'Not a valid batchid'
+        }
+        $this.project = $batch.Project[1]
+        $this.cohort = $batch.Cohort[1]
+        #
+        if ($batch.BatchID[1].Length -eq 1){
+            $this.BatchID = '0' + $batch.BatchID[1]
+        } else {
+            $this.BatchID = $batch.BatchID[1] 
+        }
+        $this.slideid = $this.BatchID
+        #
+        $this.batchslides = $batch
+        #
     }
     #
     [void]DefRoot([string]$mpath){
