@@ -264,7 +264,7 @@ class ImageMask() :
         for lgi,layer_group_fold_mask in enumerate(fold_masks_by_layer_group) :
             to_add = 10 if lgi in (self.__dapi_layer_group_index,self.__rbc_layer_group_index) else 1
             stacked_fold_masks[layer_group_fold_mask==0]+=to_add
-        overall_fold_mask = (np.where(stacked_fold_masks>11,0,1)).astype(np.uint8)
+        overall_fold_mask = (np.where(stacked_fold_masks>12,0,1)).astype(np.uint8)
         #morph and filter the mask using the common operations
         tissue_fold_mask = get_morphed_and_filtered_mask(overall_fold_mask,self.__tissue_mask,
                                                          CONST.FOLD_MIN_PIXELS,CONST.FOLD_MIN_SIZE)
@@ -276,12 +276,12 @@ class ImageMask() :
                                                                   self.__dust_max_mean,
                                                                   n_layers_dust_flag_cut)
         #same morphology transformations as for the multilayer blur masks
-        dapi_dust_mask = get_morphed_and_filtered_mask(dapi_dust_mask,self.__tissue_mask,
-                                                       CONST.DUST_MIN_PIXELS,CONST.DUST_MIN_SIZE)
+        morphed_dapi_dust_mask = get_morphed_and_filtered_mask(dapi_dust_mask,self.__tissue_mask,
+                                                               CONST.DUST_MIN_PIXELS,CONST.DUST_MIN_SIZE)
         #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged as blurry
-        dapi_dust_mask = get_exclusive_mask(dapi_dust_mask,tissue_fold_mask,0.25)
+        exclusive_dapi_dust_mask = get_exclusive_mask(morphed_dapi_dust_mask,tissue_fold_mask,0.25)
         #combine the multilayer and single layer blur masks into one by multiplying them together
-        final_blur_mask = tissue_fold_mask*dapi_dust_mask
+        final_blur_mask = tissue_fold_mask*exclusive_dapi_dust_mask
         #return the blur mask
         return final_blur_mask
 
@@ -325,15 +325,7 @@ class ImageMask() :
             #add it to the stack 
             stacked_masks+=layer_mask
         #determine the final mask for this group by thresholding on how many individual layers contribute
-        group_blur_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)    
-        if np.min(group_blur_mask) != np.max(group_blur_mask) :
-            #medium sized open/close to refine it
-            group_blur_mask = cv2.UMat(group_blur_mask)
-            cv2.morphologyEx(group_blur_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,group_blur_mask,
-                             borderType=cv2.BORDER_REPLICATE)
-            cv2.morphologyEx(group_blur_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,group_blur_mask,
-                             borderType=cv2.BORDER_REPLICATE)
-            group_blur_mask = group_blur_mask.get()
+        group_blur_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)
         #return the blur mask and the stack of masks for the layer group
         return group_blur_mask, stacked_masks
 

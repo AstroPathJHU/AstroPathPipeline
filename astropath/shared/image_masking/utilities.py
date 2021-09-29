@@ -71,20 +71,21 @@ def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size) :
         twice_eroded_fold_mask = cv2.UMat(np.empty_like(mask))
         cv2.morphologyEx(mask,cv2.MORPH_ERODE,CONST.WINDOW_EL,twice_eroded_fold_mask,iterations=2,
                          borderType=cv2.BORDER_REPLICATE)
-        cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,mask_to_transform,
+        cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.SMALLER_WINDOW_EL,mask_to_transform,
                          borderType=cv2.BORDER_REPLICATE)
         cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.WINDOW_EL,mask_to_transform,
                          borderType=cv2.BORDER_REPLICATE)
-        cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.MEDIUM_CO_EL,mask_to_transform,
+        cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.SMALLER_WINDOW_EL,mask_to_transform,
                          borderType=cv2.BORDER_REPLICATE)
         mask_to_transform = mask_to_transform.get()
         twice_eroded_fold_mask = twice_eroded_fold_mask.get()
         mask[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)]
         #remove any remaining small spots after the tissue mask incorporation
-        mask = get_size_filtered_mask(mask,min_size)
+        filtered_mask = get_size_filtered_mask(mask,min_size)
         #make sure there are at least the minimum number of pixels selected
-        if np.sum(mask==0)<min_pixels :
-            return np.ones_like(mask)
+        if np.sum(filtered_mask==0)<min_pixels :
+            return np.ones_like(filtered_mask)
+        return filtered_mask
     return mask
 
 #compute and return the variance of the normalized laplacian for a given image layer
