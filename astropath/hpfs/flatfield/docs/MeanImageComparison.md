@@ -1,6 +1,8 @@
 ## 5.5.3. Mean Image Comparison
 
-## 5.5.3.1. Instructions to Run Standalone
+## 5.5.3.1. Instructions to Run via *AstroPath Pipeline* Workflow
+
+## 5.5.3.2. Instructions to Run Standalone
 
 After running the meanimage routine for a whole cohort, the set of samples whose mean images should be used to determine a single flatfield correction model can be found using the plot(s)/datatable(s) created by the "[meanimage_comparison_plot.py](./meanimage_comparison_plot.py)" script. The comparison between any two samples' mean images is determined using the standard deviation of the distribution of the pixel-wise differences between the two mean images divided by their uncertainties. This comparison statistic is calculated for every image layer and every pair of samples, and the average over all image layers is plotted for each pair in a grid. The resulting plot shows values near one for samples whose mean images are comparable, and values far from one for samples whose mean images are very different. The plot can be run several times (more quickly, after the initial data table is produced) to find the best grouping of slides to use for a single flatfield model. It can also be used to check a new cohort of samples' mean images against previously-run cohorts. To run the script in the most common use case, enter the following command and arguments:
 
@@ -22,5 +24,3 @@ Other options for running the code include:
 - Changing where the lines are on the plot: By default, there are dividing lines on the plot between every batch of slides. You can put these dividing lines in different locations by adding the `--lines_after [slide_ids]` argument, where `[slide_ids]` is a comma-separated list of `<SlideID>`s below which the dividing lines should appear.
 - Changing the limits on the z-axis of the plot: Add the `--bounds [bounds]` argument where `[bounds]` is two values for the lower and upper bound of the z-axis. The default value for this argument is `0.85,1.15`.
 - Save plots for every layer individually instead of the average over all layers: add the `--save_all_layers` flag
-
-## 5.5.3.1. Instructions to Run via *AstroPath Pipeline* Workflow
