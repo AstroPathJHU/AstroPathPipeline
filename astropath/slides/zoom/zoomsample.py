@@ -44,6 +44,13 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
   """
   rectangletype = FieldReadComponentTiffMultiLayer
 
+  def __init__(self, *args, tifflayers=(1,), **kwargs):
+    self.__tifflayers = tifflayers
+    super().__init__(*args, **kwargs)
+
+  @property
+  def tifflayers(self): return self.__tifflayers
+
   @classmethod
   def logmodule(self): return "zoom"
 
@@ -151,20 +158,22 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         image = PIL.Image.fromarray(slc)
         image.save(filename, "PNG")
 
-        vipsimage = pyvips.Image.new_from_memory(np.ascontiguousarray(slc), width=bigimage.shape[1], height=bigimage.shape[0], bands=1, format="uchar")
-        if tiffoutput is None:
-          tiffoutput = vipsimage
-        else:
-          tiffoutput = tiffoutput.join(vipsimage, "vertical")
+        if layer in self.tifflayers:
+          vipsimage = pyvips.Image.new_from_memory(np.ascontiguousarray(slc), width=bigimage.shape[1], height=bigimage.shape[0], bands=1, format="uchar")
+          if tiffoutput is None:
+            tiffoutput = vipsimage
+          else:
+            tiffoutput = tiffoutput.join(vipsimage, "vertical")
 
-      filename = self.wsitifffilename
-      self.logger.info(f"saving {filename.name}")
-      scale = 2**(self.ztiff-self.zmax)
-      if scale == 1:
-        tiffoutputzoomed = tiffoutput
-      else:
-        tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
-      tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=image.height*scale)
+      if self.tifflayers:
+        filename = self.wsitifffilename(self.tifflayers)
+        self.logger.info(f"saving {filename.name}")
+        scale = 2**(self.ztiff-self.zmax)
+        if scale == 1:
+          tiffoutputzoomed = tiffoutput
+        else:
+          tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
+        tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=image.height*scale)
 
   def zoom_memory(self, fmax=50):
     """
@@ -382,24 +391,26 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       self.logger.info(f"saving {filename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
       output.pngsave(os.fspath(filename))
-      if tiffoutput is None:
-        tiffoutput = output
-      else:
-        tiffoutput = tiffoutput.join(output, "vertical")
+      if layer in self.tifflayers:
+        if tiffoutput is None:
+          tiffoutput = output
+        else:
+          tiffoutput = tiffoutput.join(output, "vertical")
 
       for big in removefilenames:
         big.unlink()
 
     shutil.rmtree(self.bigfolder)
 
-    filename = self.wsitifffilename
-    self.logger.info(f"saving {filename.name}")
-    scale = 2**(self.ztiff-self.zmax)
-    if scale == 1:
-      tiffoutputzoomed = tiffoutput
-    else:
-      tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
-    tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=output.height*scale)
+    if self.tifflayers:
+      filename = self.wsitifffilename(self.tifflayers)
+      self.logger.info(f"saving {filename.name}")
+      scale = 2**(self.ztiff-self.zmax)
+      if scale == 1:
+        tiffoutputzoomed = tiffoutput
+      else:
+        tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
+      tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=output.height*scale)
 
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)
@@ -426,20 +437,27 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layers, **super().workflowkwargs}
+    return {"layers": self.layers, "tifflayers": self.tifflayers, **super().workflowkwargs}
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, **otherrootkwargs):
+  def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, **otherrootkwargs):
+    with open(informdataroot/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+        nlayers = int(node.xml_attrs["dim"])
     if layers is None:
-      with open(informdataroot/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
-        for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-          layers = range(1, int(node.xml_attrs["dim"])+1)
+      layers = range(1, nlayers+1)
+    if tifflayers is None:
+      tifflayers = [1]
+    tiffname = f"{SlideID}-Z{cls.ztiff}"
+    if tuple(tifflayers) != tuple(range(1, nlayers+1)):
+      tiffname += "-L" + "".join(str(l) for l in tifflayers)
+    tiffname += "-wsi.tiff"
     return [
       *(
         zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
         for layer in layers
       ),
-      zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.ztiff}-wsi.tiff"
+      zoomroot/SlideID/"wsi"/tiffname
     ]
 
   @classmethod

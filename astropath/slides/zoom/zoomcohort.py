@@ -6,11 +6,34 @@ class ZoomCohort(DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempD
 
   sampleclass = ZoomSample
 
+  def __init__(self, *args, tifflayers, **kwargs):
+    self.__tifflayers = tifflayers
+    super().__init__(*args, **kwargs)
+
+  @property
+  def tifflayers(self): return self.__tifflayers
+
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "tifflayers": self.tifflayers
+    }
+
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips", help="mode to run zoom: fast is fastest, vips uses the least memory.")
+    p.add_argument("--tiff-layers", type=int, nargs="*", default=[1], help="layers that go into the output wsi.tiff file (default: [1])")
     return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "tifflayers": parsed_args_dict.pop("tiff_layers"),
+    }
+    return kwargs
 
   @classmethod
   def runkwargsfromargumentparser(cls, parsed_args_dict):
@@ -22,7 +45,7 @@ class ZoomCohort(DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempD
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layers, **super().workflowkwargs}
+    return {"layers": self.layers, "tifflayers": self.tifflayers, **super().workflowkwargs}
 
 def main(args=None):
   ZoomCohort.runfromargumentparser(args)
