@@ -16,7 +16,7 @@ A final checklist of things to verify and complete before loading into the datab
 - [5.4. Workflow Overview](docs/WorkflowOverview.md#54-workflow-overview)
 - [5.5. Flatfield](flatfield#55-flatfield "Title")
   - [5.5.1. Description](flatfield#551-description "Title")
-  - [5.5.2. Contents](flatfield#552-contents "Title"
+  - [5.5.2. Contents](flatfield#552-contents "Title")
   - [5.5.3. Mean Image](flatfield/docs/MeanImage.md#553-mean-image)
     - [5.5.3.1. Instructions to Run via *AstroPath Pipeline* Workflow](flatfield/docs/MeanImage.md#5531-instructions-to-run-via-astropath-pipeline-workflow "Title")
     - [5.5.3.2. Instructions to Run Standalone via Python Package](flatfield/docs/MeanImage.md#5532-instructions-to-run-standalone-via-python-package "Title")
