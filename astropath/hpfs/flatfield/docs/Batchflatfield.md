@@ -21,7 +21,7 @@ Running the above command will create a `flatfield_BatchID_[batch_ID].bin` file,
 
 To see more command line arguments available, run `batchflatfieldcohort --help`.
 
-## 5.5.5.2. Instructions to Run Standalone *Version 0.0.1*
+## 5.5.5.3. Instructions to Run Standalone *Version 0.0.1*
 
 ## 5.5.6. Batch Flatfield Tests
 
