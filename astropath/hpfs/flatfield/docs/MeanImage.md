@@ -1,9 +1,9 @@
-## 5.5.2. Mean Image
+## 5.5.3. Mean Image
 The `meanimage` submodule runs on raw (".Data.dat") image files. It finds the optimal background thresholds for a given sample, produces masks to remove empty background and blur/saturation artifacts from raw images, and stacks the masked images together to find an overall mean image for the sample with units of average counts/ms. This routine can be run for a single sample with the "[meanimagesample.py](./meanimagesample.py)" code, or for an entire cohort of samples using the "[meanimagecohort.py](./meanimagecohort.py)" code. 
 
-## 5.5.2.1. Instructions to Run via AstroPath Pipeline Workflow
+## 5.5.3.1. Instructions to Run via AstroPath Pipeline Workflow
 
-## 5.5.2.2. Instructions to Run Standalone
+## 5.5.3.2. Instructions to Run Standalone
 
 To run the routine for a single sample in the most common use case, enter the following command and arguments:
 
@@ -45,7 +45,7 @@ The meanimage routine can be run for an entire cohort of samples at once using t
 
 where the arguments are the same as those listed above for `meanimagesample`. To see more command line arguments available for both routines, run `meanimagesample --help` or `meanimagecohort --help`.
 
-## 5.5.2.3. Instructions to Run Standalone Version *0.0.1*
+## 5.5.3.3. Instructions to Run Standalone Version *0.0.1*
 After the intial AstroPath publication, significant changes to the mean image processing took place. To keep the code backward compatible both the older version of the code and newer version to apply the mean image are housed here. The older version of the code is run via the pipeline in matlab by specifying a version number of *0.0.1* in the [*AstroPathConfig.csv*](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory). The older version of the code has significant drawbacks and should only be used for backwards compatibility. We also include the matlab version as a standalone tool that can be run as follows. 
 
 Download the repository to a working location. Open a new session of matlab and add the ```AstroPathPipline``` to the matlab path. Then use the following to launch:
