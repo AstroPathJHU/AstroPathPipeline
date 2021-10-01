@@ -3,7 +3,7 @@
 Different coding tools that can be run outside of the *AstroPath Pipeline* are described here. Note that, the code still workers under the assumption that the ```<Mpath>``` exists with all its configuration files and the samples to be process are in the *AstroPath* format.
 
 
-# 5.7.5.1. Processing One Sample
+# 5.7.5.1. Instructions to Run Standalone via *AstroPath Pipeline* Workflow
 The entire workflow can be run for a single slide outside of the *AstroPath Pipeline* by running the following commands in Powershell:
 
 ```
@@ -16,7 +16,7 @@ Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrec
 
 This workflow is described in more detail [here](OverviewWorkflowofImageCorrectionModule.md#576overview-workflow-of-image-correction-module).
 
-# 5.7.5.2. Directions for Applying the Image Corrections
+# 5.7.5.2. Instructions to Apply Image Correction Standalone
 
 This portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents as ".fw" files. Use the *ConvertIm3* utility located [here](../../../utilities/Im3Tools#im3tools) to extract the *Data.dat* files from the *im3* files. After the correction is run, that utility can also be used to re-insert the Data.dat back into the im3s. To run the image correction for a single sample in the most common use case, enter the following command and arguments:
 
@@ -45,5 +45,5 @@ The image correction routine can be run for an entire cohort of samples at once 
 
 To see more command line arguments available for both routines, run `imagecorrectionsample --help` or `imagecorrectioncohort --help`.
 
-# 5.7.5.3. Directions for Applying the Image Corrections *version 0.0.1*
+# 5.7.5.3. Instructions Apply Image Correction Standalone *version 0.0.1*
 
