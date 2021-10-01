@@ -1,5 +1,5 @@
-# 5.6.3. Important Definitions
-## 5.6.3.1. Image Correction Expected Directory Structure
+# 5.7.3. Important Definitions
+## 5.7.3.1. Image Correction Expected Directory Structure
 Since this section of the pipeline can be used with standalone funcationality to apply corrections, we define the directory structure here. A more detailed directory structure for the whole AstroPath Pipeline can be found [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization): 
 ```
 <base>\<SlideID>\<im3_path>\<filename>
@@ -18,7 +18,7 @@ Example:  *\\\\bki04\\Clinical_Specimen\\AST123456\\im3\\Scan1\\MSI\\M41\_1\_\[3
   - The code will use the specifier *NN* from the *BatchID.txt* to find the appropriate flatfield file to use. 
   - This file should be kept in a *```<base>```\\flatfield* directory (A directory adjacent to the ```<SlideID>``` directory) for proper coding processing
 
-## 5.6.3.2. Output Formatting
+## 5.7.3.2. Output Formatting
 - For the output images we replace the ```<im3_path>``` with the ```<flatw_im3_path>``` (*im3\\flatw*), in the above directory structure but nothing from the file name changes.
   - ```<base>\<SlideID>\<flatw_im3_path>\<filename>```
 - For the *.fw* and *.fw01* output data of each image (a single column bitmap for the whole image and just the first image plane) we change the base path to an adjacent directory we call the “FWpath” directory. The data for each given ```<SlideID>``` will be contained in the respective ```<FWpath>\<SlideID>``` directory.
