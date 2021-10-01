@@ -50,15 +50,17 @@ def calculate_statistics_for_image(image) :
     for li in range(image.shape[-1]) :
         sorted_u_layer = np.sort((image[:,:,li]).flatten())/np.mean(image[:,:,li])
         sorted_c_layer = np.sort((flatfield_image_clipped[:,:,li]).flatten())/np.mean(image[:,:,li])
-        overall_spreads_by_layer.append(sorted_u_layer[int(0.95*len(sorted_u_layer))]-sorted_u_layer[int(0.05*len(sorted_u_layer))])
+        overall_spread = sorted_u_layer[int(0.95*len(sorted_u_layer))]-sorted_u_layer[int(0.05*len(sorted_u_layer))]
+        overall_spreads_by_layer.append(overall_spread)
         overall_stddevs_by_layer.append(np.std(sorted_u_layer))
-        central_spreads_by_layer.append(sorted_c_layer[int(0.95*len(sorted_c_layer))]-sorted_c_layer[int(0.05*len(sorted_c_layer))])
+        central_spread = sorted_c_layer[int(0.95*len(sorted_c_layer))]-sorted_c_layer[int(0.05*len(sorted_c_layer))]
+        central_spreads_by_layer.append(central_spread)
         central_stddevs_by_layer.append(np.std(sorted_c_layer))
     overall_spread = np.mean(np.array(overall_spreads_by_layer))
     overall_stddev = np.mean(np.array(overall_stddevs_by_layer))
     central_spread = np.mean(np.array(central_spreads_by_layer))
     central_stddev = np.mean(np.array(central_stddevs_by_layer))
-    return overall_max, overall_min, overall_spread, overall_stddev, central_max, central_min, central_spread, central_stddev
+    return overall_max,overall_min,overall_spread,overall_stddev,central_max,central_min,central_spread,central_stddev
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 

@@ -1335,7 +1335,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
         raise ValueError(errmsg)
       self.__et_offset_file = self.fullxmlfile
     self.__flatfield_file = flatfield_file
-    #if the flatfield file argument was given isn't a file, search the root/Flatfield directory for a file of the same name
+    #if the flatfield file argument was given isn't a file, search the root/flatfield directory for a file of the same name
     if (self.__flatfield_file is not None) and (not self.__flatfield_file.is_file()) :
       other_filepath = self.root / UNIV_CONST.FLATFIELD_DIRNAME / self.__flatfield_file.name
       if other_filepath.is_file() :
@@ -1343,6 +1343,13 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
       else :
         raise ValueError(f'ERROR: flatfield file {self.__flatfield_file} does not exist!')
     self.__warping_file = warping_file
+    #if the warping file argument as given isn't a file, search the foot/warping directory for a file of the same name
+    if (self.__warping_file is not None) and (not self.__warping_file.is_file()) :
+      other_filepath = self.root / UNIV_CONST.WARPING_DIRNAME / self.__warping_file.name
+      if other_filepath.is_file() :
+        self.__warping_file = other_filepath
+      else :
+        raise ValueError(f'ERROR: warping file {self.__flatfield_file} does not exist!')
 
   @property
   def et_offset_file(self) :

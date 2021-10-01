@@ -27,7 +27,8 @@ def get_enumerated_mask(layer_mask,start_i) :
 #return a binary mask with all of the areas smaller than min_size removed
 def get_size_filtered_mask(mask,min_size,both=True,invert=False) :
     """
-    both   = True if regions of ones and zeros should both be filtered (just recursively calls the function with !invert)
+    both   = True if regions of ones and zeros should both be filtered 
+             (just recursively calls the function with !invert)
     invert = True if regions of zeros instead of ones should be filtered
     """
     if invert :
@@ -68,10 +69,14 @@ def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size) :
         #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
         mask_to_transform = cv2.UMat(np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype))
         twice_eroded_fold_mask = cv2.UMat(np.empty_like(mask))
-        cv2.morphologyEx(mask,cv2.MORPH_ERODE,CONST.WINDOW_EL,twice_eroded_fold_mask,iterations=2,borderType=cv2.BORDER_REPLICATE)
-        cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,mask_to_transform,borderType=cv2.BORDER_REPLICATE)
-        cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.WINDOW_EL,mask_to_transform,borderType=cv2.BORDER_REPLICATE)
-        cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.MEDIUM_CO_EL,mask_to_transform,borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(mask,cv2.MORPH_ERODE,CONST.WINDOW_EL,twice_eroded_fold_mask,iterations=2,
+                         borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.MEDIUM_CO_EL,mask_to_transform,
+                         borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(mask_to_transform,cv2.MORPH_OPEN,CONST.WINDOW_EL,mask_to_transform,
+                         borderType=cv2.BORDER_REPLICATE)
+        cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.MEDIUM_CO_EL,mask_to_transform,
+                         borderType=cv2.BORDER_REPLICATE)
         mask_to_transform = mask_to_transform.get()
         twice_eroded_fold_mask = twice_eroded_fold_mask.get()
         mask[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)]
