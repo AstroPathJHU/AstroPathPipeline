@@ -377,13 +377,14 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     for layer in self.layers:
       wsifilename = self.wsifilename(layer)
       if wsifilename.exists():
-        self.logger.info("{wsifilename.name} already exists")
+        self.logger.info(f"{wsifilename.name} already exists")
         if layer in self.tifflayers:
           output = pyvips.Image.new_from_file(os.fspath(wsifilename))
           if tiffoutput is None:
             tiffoutput = output
           else:
             tiffoutput = tiffoutput.join(output, "vertical")
+        continue
 
       images = []
       removefilenames = []
