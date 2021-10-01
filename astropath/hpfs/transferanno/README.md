@@ -1,9 +1,9 @@
-# 5.10. Transfer Annotations
-## 5.10.1. Description
+# 5.11. Transfer Annotations
+## 5.11.1. Description
 To improve analysis capability in the database slides should be hand annotated by a pathologist using the HALO software. In this section directions for creating the annotations, exporting them, and transferring them to the proper locations for database upload are included. Importantly the database upload includes using a specific set of layers, layer order, and names provided in a data dictionary below. Adding additional layers is possible but layer names must be consistent and submitted for approval prior to database upload. These requirements are in place to so that data checks and verfication can be performed allowing seemless database injestion and subsequent analyses.
 
-## 5.10.2. Creating HALO Annotations for the *AstroPath Pipeline*
-### 5.10.2.1. Prepare the HALO Project
+## 5.11.2. Creating HALO Annotations for the *AstroPath Pipeline*
+### 5.11.2.1. Prepare the HALO Project
 1. Open the HALO application
 2. Create a new HALO project folder. 
    - Open the *Studies* tab
@@ -19,7 +19,7 @@ To improve analysis capability in the database slides should be hand annotated b
      - under ```<Dpath>\<Dname>\<SlideID>\<im3>```
    - select the *.qptiff* Akoya whole slide scan
    - select the desired halo project folder to input the images
-### 5.10.2.2. Create and Edit Annotation Layers
+### 5.11.2.2. Create and Edit Annotation Layers
 1. Create a layer
    - Double click on the *.qptiff* to be annotated in HALO
    - Open the HALO *Annotations* tab
@@ -42,12 +42,12 @@ To improve analysis capability in the database slides should be hand annotated b
 4. Save the annotations (*crtl + s*)
 5. View settings can be adjusted to highlight specific fluorescence channels to assist in the annotation process
 
-### 5.10.2.3. Annotation Layer Data Dictionary
+### 5.11.2.3. Annotation Layer Data Dictionary
 
 
 *NOTE*: Not all layers listed needed to be created but if you need to make additional layers for your project, start with Layer 6. Record your layer number and names below and send those back to the TME.
 
-### 5.10.3. Exporting Annotations
+### 5.11.3. Exporting Annotations
 Once all cases have been annotated the annotations need to be exported.
 1. Open the *Studies* tab
 2. Select all specimens with annotations to be exported
@@ -58,13 +58,13 @@ Once all cases have been annotated the annotations need to be exported.
 7. Select the desired destination folder
 8. Click *Generate*
 
-### 5.10.4. Transfer Annotations to the BKI Server
-### 5.10.4.1. Description
+### 5.11.4. Transfer Annotations to the BKI Server
+### 5.11.4.1. Description
 A simple set of batch files have been written to assist in dissemination of the annotations from the *Export* folder to the respective ```<Dpath>\<Dname>\<SlideID>\<im3>\<Scan>``` folders of each slide for data base upload. The script also renames the annotation files, adding *.xml* to the file extension and removing the unique annotation ID added to the file names by HALO. Running the batch file is very simple and directions follows.
 
-### 5.10.4.2. Instructions
+### 5.11.4.2. Instructions
 1. Locate the location of the exported annotations.
-   - The folder will be inside the *desired destination folder* selected in [5.10.3. Step 7](#5123-exporting-annotations "Title")
+   - The folder will be inside the *desired destination folder* selected in [5.11.3. Step 7](#5123-exporting-annotations "Title")
    - Usually this folder will be labeled as *HALO archive YYYY-MM-DD <HALO version>* 
      - Where the exported date replaces *YYYY-MM-DD* and the current HALO version number replaces*<HALO version>*
    - The annotations themselves are located in an *Images* subfolder, this is the folder we are looking for but we just need the *archive* folder. Record the fully qualified path up to and including to this folder.
