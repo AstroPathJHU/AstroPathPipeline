@@ -42,7 +42,7 @@ A final checklist of things to verify and complete before loading into the datab
     - [5.7.5.2. Instruction to Apply Image Correction Standalone via Python Package](imagecorrection/docs/AdditionalTools.md#5752-instructions-to-apply-image-correction-standalone-via-python-package)
     - [5.7.5.3. Instruction to Apply Image Correction Standalone Version *0.0.1*](imagecorrection/docs/AdditionalTools.md#5753-instructions-apply-image-correction-standalone-version-001)
   - [5.7.6. Overview Workflow of Image Correction Module](imagecorrection/docs/OverviewWorkflowofImageCorrectionModule.md#576overview-workflow-of-image-correction-module)
-- [5.8. VMinForm](vminform#558-vminform "Title")
+- [5.8. VMinForm](vminform#58-vminform "Title")
   - [5.8.1. Description](vminform/README.md#5851-description)
   - [5.8.2. Contents](vminform/README.md#5852-contents)
   - [5.8.3. inForm® Multipass Phenotyping](vminform/docs/inFormMultipassPhenotype.md#583-inform-multipass-phenotype "Title")
