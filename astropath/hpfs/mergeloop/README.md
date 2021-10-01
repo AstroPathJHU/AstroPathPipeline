@@ -1,9 +1,9 @@
-# 5.7. Mergeloop
+# 5.8. Mergeloop
 
-## 5.7.1. Description
+## 5.8.1. Description
 This module servers to track processing, interact with the inForm® processing queues and subsequently merge\ generate quality control images for each slide using the code MaSS (description found [here](MaSS#merge-a-single-sample-mass)). The module loops through each project in the *AstroPathCohortsProgresss.csv* file, tracking or updating all slides then continuing to the next project. Importantly, the code uses the *MergeConfig_NN.xlsx* files (defined in [4.4.8.](../../scans/docs/scanning/MergeConfigTables.md#448-mergeconfig-tables)) to intialize a project level inForm queue as well as antibody specific processing folders in the tmp_inform_data folder. The code will not process a cohort without these files as its main function is serve as an interaction between the user and the inform processing tasks. Additional details on what the code tracks, location of different files and processing steps can be found in this documentation. A typical user instruction is included [here](../docs/TypicalUserInstructions.md#532-typical-user-instructions) for people who will not be monitoring the code but will be using the pipeline to process slides.
 
-## 5.7.2. Important Definitions
+## 5.8.2. Important Definitions
 
 - ```<upkeep_and_progress>```: This folder contains all the necessary project related documents for the inForm® or practical user of the pipeline. 
    - add all additional files outside of those maintained by the code to this folder. Adding files or new folders to the main ```<Dname>``` directory may crash the processing or cause unexpected results
