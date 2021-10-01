@@ -13,8 +13,8 @@ There are multiple parts of this module provided which can be run collectively a
   - [5.7.3.2. Output Formatting](docs/ImportantDefinitions.md#5732-output-formatting)
 - [5.7.4. Workflow Instructions](docs/WorkflowInstructions.md#574-workflow-instructions)
 - [5.7.5. Additional Tools](docs/AdditionalTools.md#575-additional-tools)
-  - [5.7.5.1. Processing One Sample](docs/AdditionalTools.md#5751-processing-one-sample)
-  - [5.7.5.2. Directions for Applying the Image Corrections](docs/AdditionalTools.md#5752-directions-for-applying-the-image-corrections)
-  - [5.7.5.3. Directions for Running Version *0.0.1*](docs/AdditionalTools.md#5753-directions-for-applying-the-image-corrections-version-001)
+  - [5.7.5.1. Instructions to Run via *AstroPath Pipeline* Workflow](docs/AdditionalTools.md#5751-processing-one-sample)
+  - [5.7.5.2. Instruction to Run Standalone](docs/AdditionalTools.md#5752-directions-for-applying-the-image-corrections)
+  - [5.7.5.3. Instruction to Run Standalone Version *0.0.1*](docs/AdditionalTools.md#5753-directions-for-applying-the-image-corrections-version-001)
 - [5.7.6. Overview Workflow of Image Correction Module](docs/OverviewWorkflowofImageCorrectionModule.md#576overview-workflow-of-image-correction-module)
 
