@@ -34,7 +34,7 @@ This module servers to track processing, interact with the inForm® processing q
 
 *Note*: Additional directory information can be found [here](../../scans/docs/DirectoryOrganization.md#46-directory-organization)
 
-## 5.7.3. Instructions
+## 5.8.3. Instructions
 The code should be launched through MATLAB. To start download the repository to a working location. Next, open a new session of matlab and add the ```AstroPathPipline``` to the matlab path. Then use the following to launch:   
 ``` 
 mergeloop(<Mpath>)
@@ -44,7 +44,7 @@ mergeloop(<Mpath>)
 
 *Note:* For the code to process successfully be sure to create the merge configuration files (see [4.4.8.](../../scans/docs/scanning/MergeConfigTables.md#448-mergeconfig-tables)).
 
-## 5.7.4. Workflow
+## 5.8.4. Workflow
 This code starts by extracting the cohorts from the *AstropathCohortProgress.xlsx* spreadsheet. Each cohort is then looped over with the following steps:
 - We check the space available on the ```<Dpath>\<Dname>``` processing drive and write this into the *AstropathConfig.csv* file (description found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory))
 - Check the ```<Process_Merge>``` variable in the *AstropathConfig.csv* file, if *Yes* continue processing otherwise skip to the next cohort
