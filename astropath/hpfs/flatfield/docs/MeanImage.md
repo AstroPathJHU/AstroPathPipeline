@@ -3,7 +3,7 @@ The `meanimage` submodule runs on raw (".Data.dat") image files. It finds the op
 
 ## 5.5.3.1. Instructions to Run via AstroPath Pipeline Workflow
 
-## 5.5.3.2. Instructions to Run Standalone
+## 5.5.3.2. Instructions to Run Standalone via Python Package
 
 To run the routine for a single sample in the most common use case, enter the following command and arguments:
 
