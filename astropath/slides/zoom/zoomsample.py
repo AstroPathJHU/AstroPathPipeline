@@ -374,23 +374,32 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     self.wsifolder.mkdir(parents=True, exist_ok=True)
     tiffoutput = None
     for layer in self.layers:
+      wsifilename = self.wsifilename(layer)
+      if wsifilename.exists():
+        self.logger.info("{wsifilename.name} already exists")
+        if layer in self.tifflayers:
+          output = pyvips.Image.new_from_file(os.fspath(wsifilename))
+          if tiffoutput is None:
+            tiffoutput = output
+          else:
+            tiffoutput = tiffoutput.join(output, "vertical")
+
       images = []
       removefilenames = []
       blank = None
       for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
-        filename = self.bigfilename(layer, tilex, tiley)
-        if filename.exists():
-          images.append(pyvips.Image.new_from_file(os.fspath(filename)))
-          removefilenames.append(filename)
+        bigfilename = self.bigfilename(layer, tilex, tiley)
+        if bigfilename.exists():
+          images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)))
+          removefilenames.append(bigfilename)
         else:
           if blank is None:
             blank = pyvips.Image.new_from_memory(np.zeros(shape=(self.zoomtilesize*self.zoomtilesize,), dtype=np.uint8), width=self.zoomtilesize, height=self.zoomtilesize, bands=1, format="uchar")
           images.append(blank)
 
-      filename = self.wsifilename(layer)
-      self.logger.info(f"saving {filename.name}")
+      self.logger.info(f"saving {wsifilename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
-      output.pngsave(os.fspath(filename))
+      output.pngsave(os.fspath(wsifilename))
       if layer in self.tifflayers:
         if tiffoutput is None:
           tiffoutput = output
@@ -403,14 +412,14 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     shutil.rmtree(self.bigfolder)
 
     if self.tifflayers:
-      filename = self.wsitifffilename(self.tifflayers)
-      self.logger.info(f"saving {filename.name}")
+      wsitifffilename = self.wsitifffilename(self.tifflayers)
+      self.logger.info(f"saving {wsitifffilename.name}")
       scale = 2**(self.ztiff-self.zmax)
       if scale == 1:
         tiffoutputzoomed = tiffoutput
       else:
         tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
-      tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=output.height*scale)
+      tiffoutputzoomed.tiffsave(os.fspath(wsitifffilename), page_height=output.height*scale)
 
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)
