@@ -16,7 +16,7 @@ Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrec
 
 This workflow is described in more detail [here](OverviewWorkflowofImageCorrectionModule.md#576overview-workflow-of-image-correction-module).
 
-# 5.7.5.2. Instructions to Apply Image Correction Standalone
+# 5.7.5.2. Instructions to Apply Image Correction Standalone Via Python Package
 
 This portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents as ".fw" files. Use the *ConvertIm3* utility located [here](../../../utilities/Im3Tools#im3tools) to extract the *Data.dat* files from the *im3* files. After the correction is run, that utility can also be used to re-insert the Data.dat back into the im3s. To run the image correction for a single sample in the most common use case, enter the following command and arguments:
 
