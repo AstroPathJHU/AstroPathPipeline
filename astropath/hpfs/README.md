@@ -30,7 +30,7 @@ A final checklist of things to verify and complete before loading into the datab
     - [5.5.5.3. Instructions to Run Standalone Version *0.0.1*](flatfield/docs/Batchflatfield.md#5553-instructions-to-run-standalone-version-001 "Title")
   - [5.5.6. Batch Flatfield Tests](flatfield/docs/Batchflatfield.md#556-batch-flatfield-tests "Title")
 - [5.6. Warping](warping#56-warping "Title")
-- [5.7. Image Correction](imagecorrection#57-image-correction"Title")
+- [5.7. Image Correction](imagecorrection#57-image-correction "Title")
   - [5.7.1. Description](imagecorrection#571-description "Title")
   - [5.7.2. Contents](imagecorrection#572-contents "Title")
   - [5.7.3. Important Definitions](imagecorrection/docs/ImportantDefinitions.md#573-important-definitions)
