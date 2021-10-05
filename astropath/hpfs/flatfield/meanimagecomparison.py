@@ -17,9 +17,9 @@ class ModelTableEntry(MyDataClass) :
     dataclass to organize entries in the flatfield model .csv file
     """
     version : str
-    Project : int
-    Cohort  : int
-    BatchID : int
+    Project : str
+    Cohort  : str
+    BatchID : str
     SlideID : str
 
 class ComparisonTableEntry(MyDataClass) :
@@ -119,7 +119,7 @@ class MeanImageComparison :
         #set the name of the meanimage subdirectory to search
         self.meanimage_subdir_name = self.FLATW_MEANIMAGE_SUBDIR_NAME if use_flatw else self.MEANIMAGE_SUBDIR_NAME
         #create a dictionary keyed by root directory paths, with values that are lists of slide IDs at those paths
-        self.slides_by_rootdir = self.__get_slides_by_rootdir(root_dirs,sampleregex)
+        self.slide_ids_by_rootdir = self.__get_slides_by_rootdir(root_dirs,sampleregex)
         #get a list of all the slide IDs and their mean image filepaths, sorted in the order they'll be plotted
         #(also returns the list of slide IDs after which lines would go if sorted by project/cohort/batch)
         self.ordered_slide_tuples,self.lines_after = self.__get_sorted_slide_tuples(sort_by)
@@ -132,11 +132,14 @@ class MeanImageComparison :
         #start up an array to hold all of the necessary values and a list of table entries
         n_slides = len(self.ordered_slide_tuples)
         layers = list(range(1,self.dims[-1]+1))
-        self.dos_std_dev_values = np.zeros((n_slides,n_slides,dims[-1]))
+        self.dos_std_dev_values = np.zeros((n_slides,n_slides,self.dims[-1]))
         #read any values that have already been calculated from the datatable they're stored in
         if self.datatable_path.is_file() :
             existing_entries = readtable(self.datatable_path,ComparisonTableEntry)
+        else :
+            existing_entries = []
         #populate the array with all of the values needed
+        n_pairs_to_do = int(((len(self.ordered_slide_tuples)**2)-len(self.ordered_slide_tuples))/2)
         pairs_done = set()
         for is1,(sid1,mid1) in enumerate(self.ordered_slide_tuples) :
             mi1fp = mid1/f'{sid1}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
@@ -157,7 +160,7 @@ class MeanImageComparison :
                     n_existing_entries = len([e for e in existing_entries 
                                               if ((e.slide_ID_1==sid1 and e.slide_ID_2==sid2) or 
                                                   (e.slide_ID_1==sid2 and e.slide_ID_2==sid1))])
-                    if len(n_existing_entries)==self.dims[-1] :
+                    if n_existing_entries==self.dims[-1] :
                         added=set()
                         for entry in existing_entries :
                             if ( (entry.slide_ID_1==sid1 and entry.slide_ID_2==sid2) or 
@@ -169,7 +172,9 @@ class MeanImageComparison :
                             self.logger.debug(msg)
                     else :
                         #otherwise calculate them
-                        self.logger.info(f'Finding std. devs. of delta/sigma for {sid1} vs. {sid2}...')
+                        msg = f'Finding std. devs. of delta/sigma for {sid1} vs. {sid2} '
+                        msg+= f'({len(pairs_done)+1}/{n_pairs_to_do})...'
+                        self.logger.info(msg)
                         mi1   = get_raw_as_hwl(mi1fp,*(self.dims),np.float64)
                         semi1 = get_raw_as_hwl(semi1fp,*(self.dims),np.float64)
                         mi2   = get_raw_as_hwl(mi2fp,*(self.dims),np.float64)
@@ -178,9 +183,13 @@ class MeanImageComparison :
                         self.dos_std_dev_values[is1,is2,:] = dossd_list
                         #append the values to the table
                         for ln in layers :
-                            new_entry = ComparisonTableEntry(s1rd,sid1,s2rd,sid2,ln,
-                                                             self.dos_std_dev_values[is1,is2,ln-1])
-                            all_entries = readtable(self.datatable_path,ComparisonTableEntry)
+                            new_entry = ComparisonTableEntry(mid1.parent.parent.parent,sid1,
+                                                             mid2.parent.parent.parent,sid2,
+                                                             ln,self.dos_std_dev_values[is1,is2,ln-1])
+                            if self.datatable_path.is_file() :
+                                all_entries = readtable(self.datatable_path,ComparisonTableEntry)
+                            else :
+                                all_entries = []
                             all_entries.append(new_entry)
                             writetable(self.datatable_path,all_entries)
                     pairs_done.add((sid1,sid2))
@@ -197,7 +206,7 @@ class MeanImageComparison :
         #make the list of ordered slide IDs to send to the plotting function
         slide_ids = [st[0] for st in self.ordered_slide_tuples]
         #reset the lines_after variable if it was externally supplied
-        if len(lines_after)>0 :
+        if lines_after!=[''] :
             self.lines_after = lines_after
         #for each image layer requested, plot a grid of the delta/sigma comparisons
         if to_plot=='all' :
@@ -248,8 +257,11 @@ class MeanImageComparison :
         if self.MODEL_TABLE_PATH.is_file() :
             all_lines = readtable(self.MODEL_TABLE_PATH,ModelTableEntry)
         #add a line for every slide used
-        for sid,rd in self.ordered_slide_tuples :
-            sd = SampleDef(SlideID=sid,root=rd)
+        for sid,mid in self.ordered_slide_tuples :
+            sd = SampleDef(SlideID=sid,root=mid.parent.parent.parent)
+            print(f'project: {sd.Project} (type = {type(sd.Project)})')
+            print(f'cohort: {sd.Cohort} (type = {type(sd.Cohort)})')
+            print(f'batchID: {sd.BatchID} (type = {type(sd.BatchID)})')
             all_lines.append(ModelTableEntry(version_tag,sd.Project,sd.Cohort,sd.BatchID,sd.SlideID))
         #write out the table
         writetable(self.MODEL_TABLE_PATH,all_lines)
@@ -271,7 +283,7 @@ class MeanImageComparison :
                             help='''Comma-separated list of paths to directories with [slideID]/im3/meanimage 
                                     subdirectories and sampledef.csv files in them''')
         # sampleregex: a regular expression matching all of the slide IDs that should be used
-        p.add_argument('--sampleregex', type=re.compile, help='only run on SlideIDs that match this regex')
+        parser.add_argument('--sampleregex', type=re.compile, help='only run on SlideIDs that match this regex')
         # workingdir: the directory the output should go in (with a default location)
         if platform.system()=='Darwin' :
             def_workingdir = '/Volumes/astropath_processing/meanimagecomparison'
@@ -298,8 +310,12 @@ class MeanImageComparison :
                             help='''Flatfield model version tag to store the group of slides as. Including this argument 
                                     writes out all of the slides in the plot as part of a flatfield model in the
                                     flatfield models .csv file''')
-        args = parser.parse_args(args=args)
+        args = parser.parse_args()
         #make sure some arguments make sense
+        args.root_dirs = [pathlib.Path(rd) for rd in args.root_dirs]
+        for root_dir in args.root_dirs :
+            if not root_dir.is_dir() :
+                raise ValueError(f'ERROR: root directory {root_dir} not found!')
         if len(args.bounds)!=2 or args.bounds[0]>=args.bounds[1] :
             raise ValueError(f'ERROR: invalid bounds argument {args.bounds}')
         #return the parsed arguments
@@ -346,37 +362,44 @@ class MeanImageComparison :
         Return a dictionary whose keys are root directory paths and whose values are lists of slide IDs in them to use
         Also sets the dimensions of the images that will be used
         """
+        self.logger.debug('Finding slides to use...')
         self.dims = None
         slide_ids_by_rootdir = {}
-        #start by adding any matched slide IDs from the file in the working directory, if it exists
+        #start by adding any slide IDs from the file in the working directory, if it exists
         self.datatable_path = self.workingdir/self.DATATABLE_NAME
         if self.datatable_path.is_file() :
             all_entries = readtable(self.datatable_path,ComparisonTableEntry)
             for entry in all_entries :
-                if (sampleregex is None) or (sampleregex.match(entry.slide_ID_1)) :
-                    if entry.root_dir_1 not in slide_ids_by_rootdir.keys() :
-                        slide_ids_by_rootdir[entry.root_dir_1] = []
-                    if entry.slide_ID_1 not in slide_ids_by_rootdir[entry.root_dir_1] :
-                        this_slide_dims = get_image_hwl_from_xml_file(entry.root_dir_1,entry.slide_ID_1)
-                        if self.dims is None :
-                            self.dims = this_slide_dims
-                        elif this_slide_dims!=self.dims :
-                            errmsg = f'ERROR: slide {entry.slide_ID_1} has dimensions {this_slide_dims},'
-                            errmsg+= f' mismatched to {self.dims}'
-                            raise RuntimeError(errmsg)
-                        slide_ids_by_rootdir[entry.root_dir_1].append(entry.slide_ID_1)
-                if (sampleregex is None) or (sampleregex.match(entry.slide_ID_2)) :
-                    if entry.root_dir_2 not in slide_ids_by_rootdir.keys() :
-                        slide_ids_by_rootdir[entry.root_dir_2] = []
-                    if entry.slide_ID_2 not in slide_ids_by_rootdir[entry.root_dir_2] :
-                        this_slide_dims = get_image_hwl_from_xml_file(entry.root_dir_2,entry.slide_ID_2)
-                        if self.dims is None :
-                            self.dims = this_slide_dims
-                        elif this_slide_dims!=self.dims :
-                            errmsg = f'ERROR: slide {entry.slide_ID_2} has dimensions {this_slide_dims},'
-                            errmsg+= f' mismatched to {self.dims}'
-                            raise RuntimeError(errmsg)
-                        slide_ids_by_rootdir[entry.root_dir_2].append(entry.slide_ID_2)
+                rd1  = pathlib.Path(entry.root_dir_1)
+                sid1 = entry.slide_ID_1
+                rd2  = pathlib.Path(entry.root_dir_2)
+                sid2 = entry.slide_ID_2
+                #if (sampleregex is None) or (sampleregex.match(sid1)) :
+                if rd1 not in slide_ids_by_rootdir.keys() :
+                    slide_ids_by_rootdir[rd1] = []
+                if sid1 not in slide_ids_by_rootdir[rd1] :
+                    this_slide_dims = get_image_hwl_from_xml_file(rd1,sid1)
+                    if self.dims is None :
+                        self.dims = this_slide_dims
+                    elif this_slide_dims!=self.dims :
+                        errmsg = f'ERROR: slide {sid1} has dimensions {this_slide_dims},'
+                        errmsg+= f' mismatched to {self.dims}'
+                        raise RuntimeError(errmsg)
+                    self.logger.debug(f'{sid1} found in existing datatable at {self.datatable_path}')
+                    slide_ids_by_rootdir[rd1].append(sid1)
+                #if (sampleregex is None) or (sampleregex.match(sid2)) :
+                if rd2 not in slide_ids_by_rootdir.keys() :
+                    slide_ids_by_rootdir[rd2] = []
+                if sid2 not in slide_ids_by_rootdir[rd2] :
+                    this_slide_dims = get_image_hwl_from_xml_file(rd2,sid2)
+                    if self.dims is None :
+                        self.dims = this_slide_dims
+                    elif this_slide_dims!=self.dims :
+                        errmsg = f'ERROR: slide {sid2} has dimensions {this_slide_dims},'
+                        errmsg+= f' mismatched to {self.dims}'
+                        raise RuntimeError(errmsg)
+                    self.logger.debug(f'{sid2} found in existing datatable at {self.datatable_path}')
+                    slide_ids_by_rootdir[rd2].append(sid2)
         else :
             if len(root_dirs)<1 :
                 errmsg = 'ERROR: no root directories given and no existing data table defining them found at '
@@ -384,9 +407,11 @@ class MeanImageComparison :
                 raise ValueError(errmsg)
         for root_dir in root_dirs :
             samps = readtable(pathlib.Path(root_dir)/'sampledef.csv',SampleDef)
-            sids = []
+            sids = slide_ids_by_rootdir[root_dir] if root_dir in slide_ids_by_rootdir.keys() else []
             for s in samps :
                 sid = s.SlideID
+                if root_dir in slide_ids_by_rootdir.keys() and sid in slide_ids_by_rootdir[root_dir] :
+                    continue
                 if s.isGood==1 :
                     if (sampleregex is None) or (sampleregex.match(sid)) :
                         this_slide_dims = get_image_hwl_from_xml_file(root_dir,sid)
@@ -401,21 +426,30 @@ class MeanImageComparison :
                         semifp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
                         semifp = semifp/f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
                         if not mifp.is_file() :
-                            logger.warning(f'WARNING: expected mean image {mifp} not found! ({sid} will be skipped!)')
+                            self.logger.warning(f'WARNING: expected mean image {mifp} not found! ({sid} will be skipped!)')
                             continue
                         if not semifp.is_file() :
-                            warnmsg = f'WARNING: expected std. err. of mean image {mifp} not found!'
+                            warnmsg = f'WARNING: expected std. err. of mean image {semifp} not found!'
                             warnmsg+= f' ({sid} will be skipped!)'
-                            logger.warning(warnmsg)
+                            self.logger.warning(warnmsg)
                             continue
                         mi   = get_raw_as_hwl(mifp,*(self.dims),np.float64)
                         semi = get_raw_as_hwl(semifp,*(self.dims),np.float64)
                         if np.min(mi)==np.max(mi) or np.max(semi)==0. :
-                            warmsg = f'WARNING: slide {sid} will be skipped because not enough images were stacked!'
-                            logger.warning(warnmsg)
+                            warnmsg = f'WARNING: slide {sid} will be skipped because not enough images were stacked!'
+                            self.logger.warning(warnmsg)
                         else :
+                            self.logger.debug(f'{sid} is valid and will be used')
                             sids.append(sid)
             slide_ids_by_rootdir[root_dir] = sids
+        n_total_slides = sum([len(sids) for sids in slide_ids_by_rootdir.values()])
+        if n_total_slides<2 :
+            raise RuntimeError(f'ERROR: only {n_total_slides} valid slides were selected!')
+        msg = f"The following {n_total_slides} slides' meanimages will be compared: "
+        for sids in slide_ids_by_rootdir.values() :
+            for sid in sids :
+                msg+=f'{sid}, '
+        self.logger.info(msg[:-2])
         return slide_ids_by_rootdir
 
     def __get_sorted_slide_tuples(self,sort_by) :
@@ -446,7 +480,8 @@ class MeanImageComparison :
                             lines_after.append(ordered_tuples[-1][0])
                         for sd in sampledefs :
                             if sd.Project==p and sd.Cohort==c and sd.BatchID==b :
-                                mid = sd.root/sd.SlideID/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
+                                root = ([rd for rd,sids in self.slide_ids_by_rootdir.items() if sd.SlideID in sids])[0]
+                                mid = root/sd.SlideID/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
                                 ordered_tuples.append((sd.SlideID,mid))
             return ordered_tuples, lines_after[:-1]
         elif sort_by=='order' :
@@ -466,23 +501,16 @@ class MeanImageComparison :
         mi1,semi1 = normalize_image(mi1,semi1)
         mi2,semi2 = normalize_image(mi2,semi2)
         #make the delta/sigma image
-        delta_over_sigma = np.zeros_like(mi1)
-        subset = np.where((mi1!=0) & (mi2!=0))
-        delta_over_sigma[subset] = (mi1[subset]-mi2[subset])/(np.sqrt(semi1[subset]**2+semi2[subset]**2))
-        std_devs = np.std(delta_over_sigma[delta_over_sigma!=0],axis=(0,1))        
+        delta_over_sigma = (mi1-mi2)/(np.sqrt(semi1**2+semi2**2))
+        std_devs = []
+        for li in range(self.dims[-1]) :
+            std_devs.append(np.std(delta_over_sigma[:,:,li][delta_over_sigma[:,:,li]!=0]))        
         return std_devs
 
 #################### MAIN SCRIPT ####################
 
-def main(args=None) :
-    
-    #check the arguments
-    checkArgs(args)
-    #run the main workhorse function
-    consistency_check_grid_plot(args.input_file,args.root_dirs,args.skip_slides,args.workingdir,
-                                args.sort_by,args.lines_after,args.bounds,args.all_or_brightest,
-                                args.save_all_layers,args.flatw)
-    logger.info('Done : )')
+def main() :
+    MeanImageComparison.run()
 
 if __name__=='__main__' :
-    MeanImageComparison.run()
+    main()
