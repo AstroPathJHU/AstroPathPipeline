@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import cd, split_csv_to_list, split_csv_to_list_of_floats, save_figure_in_dir
+from ...utilities.misc import split_csv_to_list, split_csv_to_list_of_floats, save_figure_in_dir
 from ...utilities.tableio import readtable,writetable
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.img_file_io import get_image_hwl_from_xml_file, get_raw_as_hwl
@@ -226,7 +226,7 @@ class MeanImageComparison :
                                       bounds)
         if to_plot=='average' :
             #save a plot of the average over all considered layers
-            self.logger.debug(f'Saving plot of values averaged over all layers...')
+            self.logger.debug('Saving plot of values averaged over all layers...')
             average_values = np.zeros_like(self.dos_std_dev_values[:,:,0])
             for i in range(len(slide_ids)) :
                 for j in range(len(slide_ids)) :
@@ -241,8 +241,8 @@ class MeanImageComparison :
                         average_values[i,j]=num/den
             make_and_save_single_plot(slide_ids,
                                       average_values,
-                                      f'mean image delta/sigma std. devs. (averaged over all layers)',
-                                      f'meanimage_comparison_average_over_all_layers.png',
+                                      'mean image delta/sigma std. devs. (averaged over all layers)',
+                                      'meanimage_comparison_average_over_all_layers.png',
                                       self.workingdir,
                                       self.lines_after,
                                       bounds)
