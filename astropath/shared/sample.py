@@ -740,7 +740,9 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
   def wsitifffilename(self, layers):
     name = f"{self.SlideID}-Z{self.ztiff}"
-    if frozenset(layers) != frozenset(range(1, self.nlayersunmixed+1)):
+    if layers == "color":
+      name += "-color"
+    elif frozenset(layers) != frozenset(range(1, self.nlayersunmixed+1)):
       name += "-L" + "".join(str(l) for l in sorted(layers))
     name += "-wsi.tiff"
     return self.wsifolder/name

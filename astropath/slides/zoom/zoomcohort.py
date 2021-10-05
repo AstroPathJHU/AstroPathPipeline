@@ -24,7 +24,9 @@ class ZoomCohort(DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempD
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips", help="mode to run zoom: fast is fastest, vips uses the least memory.")
-    p.add_argument("--tiff-layers", type=int, nargs="*", default=[1], help="layers that go into the output wsi.tiff file (default: [1])")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--tiff-color", action="store_const", default="color", const="color", dest="tiff_layers", help="save false color wsi.tiff (this is the default)")
+    g.add_argument("--tiff-layers", type=int, nargs="*", help="layers that go into the output wsi.tiff file")
     return p
 
   @classmethod

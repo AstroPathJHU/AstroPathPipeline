@@ -3,7 +3,7 @@ import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, nu
 from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
-from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels, vips_image_to_array
+from ...utilities.misc import array_to_vips_image, floattoint, memmapcontext, PILmaximagepixels, vips_image_to_array
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiffMultiLayer
 
@@ -44,7 +44,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
   """
   rectangletype = FieldReadComponentTiffMultiLayer
 
-  def __init__(self, *args, tifflayers=(1,), **kwargs):
+  def __init__(self, *args, tifflayers="color", **kwargs):
     self.__tifflayers = tifflayers
     super().__init__(*args, **kwargs)
 
@@ -170,14 +170,15 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
   def _colormatrix():
     here = pathlib.Path(__file__).parent
     with open(here/"color_matrix.txt") as f:
-      matrix = re.search(r"(?<=\[).*(?=\])", f.read(), re.DOTALL)
+      matrix = re.search(r"(?<=\[).*(?=\])", f.read(), re.DOTALL).group(0)
     return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")])
 
   @property
-  def colormatrix(self): return self._colormatrix()
+  def colormatrix(self): return self._colormatrix()[tuple(np.array(self.layers)-1), :]
 
   @property
   def needtifflayers(self):
+    if self.tifflayers is None: return ()
     if self.tifflayers == "color": return range(1, 9)
     return self.tifflayers
 
@@ -206,15 +207,18 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       width = layers[0].width
       height = layers[0].height
       layerarrays = np.array([vips_image_to_array(layer) for layer in layers])
-      img = np.tensordot(self.colormatrix, layerarrays, [[1], [0]])
-      tiffoutput = pyvips.Image.new_from_memory(img, format=fmt, width=width, height=height, bands=3)
+      layerarrays = layerarrays / np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
+      layerarrays = 1/np.sinh(1.5) * np.sinh(1.5 * layerarrays)
+      img = np.tensordot(layerarrays, self.colormatrix, [[0], [0]])
+      img = img.clip(0, 1)
+      pilimage = PIL.Image.fromarray((img*255).astype(np.uint8))
+      pilimage.save(filename)
     else:
       assert len(layers) == len(self.tifflayers)
       tiffoutput = layers[0]
       for layer in layers[1:]:
         tiffoutput = tiffoutput.join(layer, "vertical")
-
-    tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
+      tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
 
   def zoom_memory(self, fmax=50):
     """
@@ -488,8 +492,10 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     if tifflayers is None:
       tifflayers = [1]
     tiffname = f"{SlideID}-Z{cls.ztiff}"
-    if tuple(tifflayers) != tuple(range(1, nlayers+1)):
-      tiffname += "-L" + "".join(str(l) for l in tifflayers)
+    if tifflayers == "color":
+      tiffname += "-color"
+    elif frozenset(tifflayers) != frozenset(range(1, nlayers+1)):
+      tiffname += "-L" + "".join(str(l) for l in sorted(tifflayers))
     tiffname += "-wsi.tiff"
     return [
       *(

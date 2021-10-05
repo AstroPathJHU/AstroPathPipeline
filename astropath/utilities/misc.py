@@ -422,11 +422,11 @@ def field_size_limit_context(limit):
   finally:
     csv.field_size_limit(oldlimit)
 
-def vips_format_to_dtype(format):
+def vips_format_dtype(format_or_dtype):
   """
   https://libvips.github.io/pyvips/intro.html#numpy-and-pil
   """
-  return {
+  result = {
     'uchar': np.uint8,
     'char': np.int8,
     'ushort': np.uint16,
@@ -437,7 +437,11 @@ def vips_format_to_dtype(format):
     'double': np.float64,
     'complex': np.complex64,
     'dpcomplex': np.complex128,
-  }[format]
+  }
+  for k, v in list(result.items()):
+    result[v] = k
+    result[np.dtype(v)] = k
+  return result[format_or_dtype]
 
 def vips_image_to_array(img, *, singlelayer=True):
   """
@@ -449,6 +453,29 @@ def vips_image_to_array(img, *, singlelayer=True):
     del shape[-1]
   return np.ndarray(
     buffer=img.write_to_memory(),
-    dtype=vips_format_to_dtype(img.format),
+    dtype=vips_format_dtype(img.format),
     shape=shape,
+  )
+
+def array_to_vips_image(array):
+  """
+  https://libvips.github.io/pyvips/intro.html#numpy-and-pil
+  """
+  try:
+    import pyvips
+  except ImportError:
+    raise ImportError("Please pip install pyvips to use this functionality")
+
+  if len(array.shape) == 2:
+    height, width = array.shape
+    bands = 1
+  else:
+    height, width, bands = array.shape
+
+  return pyvips.Image.new_from_memory(
+    array,
+    format=vips_format_dtype(array.dtype),
+    width=width,
+    height=height,
+    bands=bands,
   )

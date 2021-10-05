@@ -47,10 +47,13 @@ class TestZoom(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z8-L1-wsi.tiff"
       for SlideID in ("L1_1", "M206")
     ] + [
+      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z8-color-wsi.tiff"
+      for SlideID in ("L1_1", "M206")
+    ] + [
       thisfolder/"test_for_jenkins"/"zoom"/"logfiles"/"zoom.log"
     ]
 
-  def testZoomWsi(self, SlideID="L1_1", units="safe", mode="vips"):
+  def testZoomWsi(self, SlideID="L1_1", units="safe", mode="vips", tifflayers="color"):
     root = thisfolder/"data"
     zoomroot = thisfolder/"test_for_jenkins"/"zoom"
     args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
@@ -58,12 +61,14 @@ class TestZoom(TestBaseSaveOutput):
       args += ["--selectrectangles", *(str(_) for _ in self.selectrectangles(SlideID))]
     if self.layers(SlideID) is not None:
       args += ["--layers", *(str(_) for _ in self.layers(SlideID))]
+    if tifflayers != "color":
+      args += ["--tiff-layers", *(str(_) for _ in tifflayers)]
     ZoomCohort.runfromargumentparser(args)
-    sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=self.selectrectangles(SlideID), layers=self.layers(SlideID))
+    sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=self.selectrectangles(SlideID), layers=self.layers(SlideID), tifflayers=tifflayers)
 
     try:
       assert not sample.bigfolder.exists()
-      tifffilename = f"{SlideID}-Z8-L1-wsi.tiff"
+      tifffilename = sample.wsitifffilename(tifflayers)
       with tifffile.TiffFile(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/tifffilename) as tiff, \
            tifffile.TiffFile(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/tifffilename) as targettiff:
         for layer in self.layers(SlideID):
@@ -90,7 +95,7 @@ class TestZoom(TestBaseSaveOutput):
     self.testZoomWsi(SlideID, mode="fast", **kwargs)
 
   def testzoomM206(self, **kwargs):
-    self.testZoomWsi("M206", mode="memmap", **kwargs)
+    self.testZoomWsi("M206", mode="memmap", tifflayers=[1], **kwargs)
 
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID
