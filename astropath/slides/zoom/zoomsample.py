@@ -206,7 +206,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       fmt = layers[0].format
       width = layers[0].width
       height = layers[0].height
-      layerarrays = np.array([vips_image_to_array(layer) for layer in layers])
+      layerarrays = np.array([vips_image_to_array(layer) for layer in layers], dtype=np.float16)
       layerarrays = layerarrays / np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
       layerarrays = 1/np.sinh(1.5) * np.sinh(1.5 * layerarrays)
       img = np.tensordot(layerarrays, self.colormatrix, [[0], [0]])
