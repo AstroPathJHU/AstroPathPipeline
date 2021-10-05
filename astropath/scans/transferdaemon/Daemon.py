@@ -17,6 +17,8 @@ from ...shared import shared_tools as st
 import lxml.etree as et
 from pathlib import Path
 from joblib import Parallel, delayed
+from urllib.request import urlretrieve
+import getpass
 
 
 #
@@ -87,11 +89,10 @@ def check_ready_files(paths_data, config_data, cohort_data, arg):
                 #
                 # Check for valid SlideIDs and set new AstroID moving forward
                 #
-                logger_keys = [None, None]
+                logger_keys = [i1, cohort_i]
                 if slide_id in astro_ids[1]:
                     astro_id = astro_ids[0][astro_ids[1].index(slide_id)]
                 elif "Control" in slide_id:
-                    logger_keys = [i1, cohort_i]
                     astro_id = slide_id
                 else:
                     continue
@@ -152,7 +153,7 @@ def transfer_loop(directory_waiting, arg, zip_path):
         Project, Cohort = direct[6][0], direct[6][1]
         #
         apidfile = pathlib.Path(des_dir)
-        apidfile = apidfile / "upkeep_and_progress" / "AstropathAPIDdef_15.csv"
+        apidfile = apidfile / "upkeep_and_progress" / "AstropathAPIDdef_{0}.csv".format(Project)
         #
         # set whether log entries print to console
         #
@@ -168,6 +169,8 @@ def transfer_loop(directory_waiting, arg, zip_path):
             if skip[1]:
                 logger.error("Insufficient space")
             if skip == ["", ""]:
+                print("here")
+                time.sleep(30)
                 transfer_one_sample(direct, arg, zip_path, logger)
 
 
@@ -566,7 +569,7 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
     #
     pathlib.Path(current_des_string).mkdir(parents=True, exist_ok=True)
     #
-    subprocess.call(["robocopy", current_sor_string, current_des_string, "/e", "/ns", "/nc", 
+    subprocess.call(["robocopy", current_sor_string, current_des_string, "/e", "/ns", "/nc",
                      "/nfl", "/ndl", "/np", "/njh", "/njs"])
     #
     # get files and bytes from destination directory
@@ -576,7 +579,9 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
     for root, dirs, files in os.walk(current_des_string):
         for f in files:
             f = os.path.join(root, f)
-            n_des_bytes += os.path.getsize(f)
+            new_name = f.replace(slide_id, astro_id)
+            os.rename(f, new_name)
+            n_des_bytes += os.path.getsize(new_name)
         n_des_files += len(files)
     #
     # Once transfer process is finished, duplicate and edit annotations
@@ -608,36 +613,6 @@ def annotation_handler(xmlfile, slide_id, astro_id):
         f.write(et.tostring(tree, encoding='UTF-8', xml_declaration=True))
         f.truncate()
     return ""
-
-
-#
-# Transfers an individual file from source to directory
-#
-def transfer_item(item, src, dst, names):
-    s = os.path.join(src, item)
-    d = os.path.join(dst, item)
-    if os.path.isdir(s):
-        if not os.path.exists(d):
-            pathlib.Path(d).mkdir(parents=True, exist_ok=True)
-        Parallel(n_jobs=4, backend="loky")(
-            delayed(transfer_one)(item, s, d, names)
-            for item in os.listdir(s))
-    else:
-        transfer_one(item, src, dst, names)
-
-
-#
-# transfers items and changes SlideID in filenames to AstroID
-#
-def transfer_one(item, src, dst, names):
-    s = os.path.join(src, item)
-    d = os.path.join(dst, item)
-    if names[0] in d:
-        d = d.replace(names[0], names[1])
-    with open(s, 'rb') as f_src:
-        with open(d, 'wb') as f_dst:
-            shutil.copyfileobj(f_src, f_dst, length=16 * 1024 * 1024)
-    shutil.copystat(s, d)
 
 
 #
@@ -702,20 +677,22 @@ def compress_item(item, sor, des, names, zip_path, ann=False):
     if os.path.isdir(s):
         if not os.path.exists(d):
             pathlib.Path(d).mkdir(parents=True, exist_ok=True)
-        Parallel(n_jobs=4, backend="loky")(
-            delayed(compress_item)(item, s, d, names, zip_path)
-            for item in os.listdir(s))
+        for item in os.listdir(s):
+            compress_item(item, s, d, names, zip_path, ann=False)
+        # Parallel(n_jobs=4, backend="loky")(
+        #     delayed(compress_item)(item, s, d, names, zip_path)
+        #     for item in os.listdir(s))
     if (not ann or names[0] not in item) and not os.path.isdir(s):
-        subprocess.check_output([zip_path + '/7z.exe', 'a', d + ".7z", '-mx1', s])
+        subprocess.check_output([zip_path, 'a', d + ".7z", '-mx1', s])
     elif names[0] == names[1] and not os.path.isdir(s):
-        subprocess.check_output([zip_path + '/7z.exe', 'a', d + ".7z", '-mx1', s])
+        subprocess.check_output([zip_path, 'a', d + ".7z", '-mx1', s])
     elif "annotations.xml.lock" in item.lower() or "annotations.xml" not in item \
             and not os.path.isdir(s):
         pre_string = str(s.split('/')[-2]) + '/' + names[0]
         post_string = str(s.split('/')[-2]) + '/' + names[1]
         temp_s = s.replace(pre_string, post_string)
         shutil.copy(s, temp_s)
-        subprocess.check_output([zip_path + '/7z.exe', 'a', d + ".7z", '-mx1', temp_s])
+        subprocess.check_output([zip_path, 'a', d + ".7z", '-mx1', temp_s])
         os.remove(temp_s)
 
 
@@ -802,6 +779,40 @@ def apid_argparser():
     return args
 
 
+def zip_pull():
+    default_path = r'C:\Program Files\7-Zip\7z.exe'
+    utilities = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                              os.pardir, os.pardir, r'utilities'))
+    astro_path = utilities + r'\7-Zip\7z.exe'
+    if not os.path.exists(default_path):
+        if not os.path.exists(astro_path):
+            try:
+                url = 'https://www.7-zip.org/a/7z1900-x64.exe'
+                print('7-Zip Downloading')
+                destination = utilities + r'\7z1900-x64.exe'
+                download = urlretrieve(url, destination)
+                print('7-Zip downloaded')
+                print("Installing 7-Zip")
+                tag = r'/D={0}'.format(utilities+"\\7-Zip\\")
+                cmd = "{0} {1} 7z1900-x64.exe".format(destination, tag)
+                returned_value = subprocess.call(cmd, shell=True)  # returns the exit code in unix
+            except PermissionError:
+                traceback.print_exc()
+                return ""
+            if os.path.exists(astro_path):
+                print('Installed successfully')
+                return astro_path
+            else:
+                print('A problem occurred with 7-Zip installation.\n'
+                      'Please make sure the following file exists:\n'
+                      '{0}'.format(astro_path))
+                return ""
+        else:
+            return astro_path
+    else:
+        return default_path
+
+
 #
 # main function, reads in input arguments, opens source file, and begins the checking function
 #
@@ -811,10 +822,10 @@ def launch_transfer():
     arg = apid_argparser()
     if not arg.mpath:
         print("No mpath")
-        sys.exit()
+        arg.mpath = r"C:\Users\ssotodi1\Documents\TestDestination\astropath_processing"
     if not arg.email:
         print("No email")
-        sys.exit()
+        arg.email = "ssotodi1@jhmi.edu"
     #
     checker = []
     print("Starting Server Demon for Clinical Specimen...")
@@ -824,16 +835,9 @@ def launch_transfer():
             if not paths_data:
                 checker = config_data
                 sys.exit()
-            cwd = '/'.join(os.getcwd().replace('\\', '/').split('/')[:-1])
-            print(cwd)
-            zip_path = ""
-            for root, dirs, files in os.walk(cwd, topdown=False):
-                if "7-Zip" in dirs:
-                    zip_path = os.path.join(root, "7-Zip")
-                    break
-            if not zip_path and not arg.no_compress:
-                checker = ["7zip"]
-                sys.exit()
+            zip_path = zip_pull()
+            if not zip_path:
+                checker = ['7-Zip']
             directory_waiting = check_ready_files(paths_data, config_data, cohort_data, arg)
             print("DIRECTORIES CHECKED. FOUND " + str(len(directory_waiting)) +
                   " POTENTIAL SAMPLES TO TRANSFER...")
