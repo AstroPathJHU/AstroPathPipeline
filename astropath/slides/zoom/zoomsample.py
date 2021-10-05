@@ -200,24 +200,29 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     if scale == 1:
       pass
     else:
+      self.logger.info(f"  rescaling by {scale}")
       layers = [layer.resize(scale, vscale=scale) for layer in layers]
 
     if self.tifflayers == "color":
       fmt = layers[0].format
       width = layers[0].width
       height = layers[0].height
+      self.logger.info("  normalizing")
       layerarrays = np.array([vips_image_to_array(layer) for layer in layers], dtype=np.float16)
       layerarrays = layerarrays / np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
       layerarrays = 1/np.sinh(1.5) * np.sinh(1.5 * layerarrays)
+      self.logger.info("  multiplying by color matrix")
       img = np.tensordot(layerarrays, self.colormatrix, [[0], [0]])
       img = img.clip(0, 1)
       pilimage = PIL.Image.fromarray((img*255).astype(np.uint8))
+      self.logger.info("  saving")
       pilimage.save(filename)
     else:
       assert len(layers) == len(self.tifflayers)
       tiffoutput = layers[0]
       for layer in layers[1:]:
         tiffoutput = tiffoutput.join(layer, "vertical")
+      self.logger.info("  saving")
       tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
 
   def zoom_memory(self, fmax=50):
