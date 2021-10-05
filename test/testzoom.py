@@ -44,7 +44,7 @@ class TestZoom(TestBaseSaveOutput):
       for SlideID in ("L1_1", "M206")
       for i in self.layers(SlideID)
     ] + [
-      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z8-wsi.tiff"
+      thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/f"{SlideID}-Z8-L1-wsi.tiff"
       for SlideID in ("L1_1", "M206")
     ] + [
       thisfolder/"test_for_jenkins"/"zoom"/"logfiles"/"zoom.log"

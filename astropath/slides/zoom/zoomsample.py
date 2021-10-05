@@ -1,9 +1,9 @@
-import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, shutil, skimage.transform
+import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
 
 from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
-from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels
+from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels, vips_image_to_array
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiffMultiLayer
 
@@ -69,6 +69,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     onepixel = self.onepixel
     self.logger.info("allocating memory for the global array")
     bigimageshape = tuple((self.ntiles * self.zoomtilesize)[::-1]) + (len(self.layers),)
+    fortiff = []
     with contextlib.ExitStack() as stack:
       if usememmap:
         tempfile = stack.enter_context(self.tempfile())
@@ -149,7 +150,6 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
             ]
 
       #save the wsi
-      tiffoutput = None
       self.wsifolder.mkdir(parents=True, exist_ok=True)
       for i, layer in enumerate(self.layers):
         filename = self.wsifilename(layer)
@@ -158,22 +158,63 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         image = PIL.Image.fromarray(slc)
         image.save(filename, "PNG")
 
-        if layer in self.tifflayers:
-          vipsimage = pyvips.Image.new_from_memory(np.ascontiguousarray(slc), width=bigimage.shape[1], height=bigimage.shape[0], bands=1, format="uchar")
-          if tiffoutput is None:
-            tiffoutput = vipsimage
-          else:
-            tiffoutput = tiffoutput.join(vipsimage, "vertical")
+        if layer in self.needtifflayers:
+          contiguousslc = np.ascontiguousarray(slc)
+          vipsimage = pyvips.Image.new_from_memory(contiguousslc, width=bigimage.shape[1], height=bigimage.shape[0], bands=1, format="uchar")
+          fortiff.append(vipsimage)
 
-      if self.tifflayers:
-        filename = self.wsitifffilename(self.tifflayers)
-        self.logger.info(f"saving {filename.name}")
-        scale = 2**(self.ztiff-self.zmax)
-        if scale == 1:
-          tiffoutputzoomed = tiffoutput
-        else:
-          tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
-        tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=image.height*scale)
+      self.makewsitiff(fortiff)
+
+  @methodtools.lru_cache()
+  @staticmethod
+  def _colormatrix():
+    here = pathlib.Path(__file__).parent
+    with open(here/"color_matrix.txt") as f:
+      matrix = re.search(r"(?<=\[).*(?=\])", f.read(), re.DOTALL)
+    return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")])
+
+  @property
+  def colormatrix(self): return self._colormatrix()
+
+  @property
+  def needtifflayers(self):
+    if self.tifflayers == "color": return range(1, 9)
+    return self.tifflayers
+
+  def makewsitiff(self, layers):
+    if not self.tifflayers:
+      return
+    filename = self.wsitifffilename(self.tifflayers)
+    if filename.exists():
+      self.logger.info(f"{filename.name} already exists")
+      return
+
+    try:
+      import pyvips
+    except ImportError:
+      raise ImportError("Please pip install pyvips to use this functionality")
+
+    self.logger.info(f"saving {filename.name}")
+    scale = 2**(self.ztiff-self.zmax)
+    if scale == 1:
+      pass
+    else:
+      layers = [layer.resize(scale, vscale=scale) for layer in layers]
+
+    if self.tifflayers == "color":
+      fmt = layers[0].format
+      width = layers[0].width
+      height = layers[0].height
+      layerarrays = np.array([vips_image_to_array(layer) for layer in layers])
+      img = np.tensordot(self.colormatrix, layerarrays, [[1], [0]])
+      tiffoutput = pyvips.Image.new_from_memory(img, format=fmt, width=width, height=height, bands=3)
+    else:
+      assert len(layers) == len(self.tifflayers)
+      tiffoutput = layers[0]
+      for layer in layers[1:]:
+        tiffoutput = tiffoutput.join(layer, "vertical")
+
+    tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
 
   def zoom_memory(self, fmax=50):
     """
@@ -372,18 +413,16 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     except ImportError:
       raise ImportError("Please pip install pyvips to use this functionality")
 
+    fortiff = []
+
     self.wsifolder.mkdir(parents=True, exist_ok=True)
-    tiffoutput = None
     for layer in self.layers:
       wsifilename = self.wsifilename(layer)
       if wsifilename.exists():
         self.logger.info(f"{wsifilename.name} already exists")
-        if layer in self.tifflayers:
+        if layer in self.needtifflayers:
           output = pyvips.Image.new_from_file(os.fspath(wsifilename))
-          if tiffoutput is None:
-            tiffoutput = output
-          else:
-            tiffoutput = tiffoutput.join(output, "vertical")
+          fortiff.append(output)
         continue
 
       images = []
@@ -402,26 +441,15 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       self.logger.info(f"saving {wsifilename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
       output.pngsave(os.fspath(wsifilename))
-      if layer in self.tifflayers:
-        if tiffoutput is None:
-          tiffoutput = output
-        else:
-          tiffoutput = tiffoutput.join(output, "vertical")
+      if layer in self.needtifflayers:
+        fortiff.append(output)
 
       for big in removefilenames:
         big.unlink()
 
     shutil.rmtree(self.bigfolder)
 
-    if self.tifflayers:
-      wsitifffilename = self.wsitifffilename(self.tifflayers)
-      self.logger.info(f"saving {wsitifffilename.name}")
-      scale = 2**(self.ztiff-self.zmax)
-      if scale == 1:
-        tiffoutputzoomed = tiffoutput
-      else:
-        tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
-      tiffoutputzoomed.tiffsave(os.fspath(wsitifffilename), page_height=output.height*scale)
+    self.makewsitiff(fortiff)
 
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)
