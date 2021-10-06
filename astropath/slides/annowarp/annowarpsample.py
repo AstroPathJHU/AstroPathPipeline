@@ -877,6 +877,10 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
   def workflowdependencyclasses(cls):
     return [ZoomSample] + super().workflowdependencyclasses()
 
+  @property
+  def workflowkwargs(self):
+    return {"layers": [1], "tifflayers": None, **super().workflowkwargs}
+
 class AnnoWarpArgumentParserTissueMask(AnnoWarpArgumentParserBase, DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser):
   defaultmintissuefraction = 0.2
 
