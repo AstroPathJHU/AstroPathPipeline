@@ -3,7 +3,7 @@ import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, nu
 from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
-from ...utilities.misc import array_to_vips_image, floattoint, memmapcontext, PILmaximagepixels, vips_image_to_array
+from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels, vips_image_to_array
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiffMultiLayer
 
@@ -190,11 +190,6 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       self.logger.info(f"{filename.name} already exists")
       return
 
-    try:
-      import pyvips
-    except ImportError:
-      raise ImportError("Please pip install pyvips to use this functionality")
-
     self.logger.info(f"saving {filename.name}")
     scale = 2**(self.ztiff-self.zmax)
     if scale == 1:
@@ -204,9 +199,6 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       layers = [layer.resize(scale, vscale=scale) for layer in layers]
 
     if self.tifflayers == "color":
-      fmt = layers[0].format
-      width = layers[0].width
-      height = layers[0].height
       self.logger.info("  normalizing")
       layerarrays = np.array([vips_image_to_array(layer) for layer in layers], dtype=np.float16)
       layerarrays = layerarrays / np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
