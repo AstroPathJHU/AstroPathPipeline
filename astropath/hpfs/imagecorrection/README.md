@@ -1,28 +1,21 @@
-# Apply FlatW
 
-The "applyflatw" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents, either overwriting the original raw image files, or as new ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
 
-`applyflatwsample <Dpath>\<Dname> <Rpath> <SlideID> --flatfield-file [path_to_flatfield_bin_file] --warping-file [path_to_warping_summary_csv_file] --njobs [njobs]`
+# 5.7. Image Correction
+## 5.7.1. Description
+This workflow serves to create a directory of flat field and warping corrected *.im3* images files for each slide. In addition, this workflow saves the full metadata for the first *.im3* (*.full.im3*) for a slide, the single column bitmap of each corrected *.im3* (*.fw* files), some shape parameters for the first *.im3* (*.Parameters.xml*), as well as relevant image metadata (*.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml*) of each im3 image. We assume that the directory format of the input image files is in the ```AstroPathPipeline``` processing file stucture described [here](../../scans/docs/DirectoryOrganization.md#46-directory-organization) and in [5.7.3.1.](docs/ImportantDefinitions.md#5631-flatw-expected-directory-structure). 
 
-where:
-- `[path_to_flatfield_bin_file]` is the path to the ".bin" file specifying the flatfield corrections to apply, or the name of a file located in the `<Dpath>\<Dname>\Flatfield` directory
-- `[path_to_warping_summary_csv_file]` is the path to a .csv file detailing the warping model parameters as a [`WarpingSummary` object](../warping/utilities.py#L43-L61). This file can have several `WarpingSummary` entries specifying different warping patterns to apply in differen raw image layers.
-- `[njobs]` is the maximum number of parallel processes allowed to run at once (many parallel processes can be used; each process corrects and writes out one file at a time)
+There are multiple parts of this module provided which can be run collectively as a workflow through powershell ([5.7.4.](docs/WorkflowInstructions.md#574-workflow-instructions)) or as separate tools ([5.7.5.](docs/AdditionalTools.md#575-additional-tools)). The code is maintained and updated to be used through the workflow and uses outside of this workflow will not be supported by the *AstroPath* group at this time. The workflow loops through all ```Project```s in the [*AstropathCohortsProgress.csv*](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory) and processes slides, if a *flatfield_BatchID_NN.bin* file has been created for that batch (see [5.7.3.1.](docs/ImportantDefinitions.md#5731-flatw-expected-directory-structure)).
 
-See [here](../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
+*NOTE*: After the intial AstroPath publication, significant changes to the image corrections took place. To keep the code backward compatible both the older version of the code and newer version to apply the image correction are housed here. A desciption of both version is located in [5.7.5](docs/AdditionalTools.md#575-additional-tools). The older version of the code is run via the pipeline, in matlab, by specifying a version number of *0.0.1* in the [*AstroPathConfig.csv*](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory). The older version of the code has significant drawbacks and should only be used for backwards compatibility. 
 
-Running the above command will produce:
-1. **corrected image files** that **overwrite** those in `<Dpath>\<Dname>\<SlideID>`
-1. **a main log file** called "`applyflatw.log`" in `<Dpath>\<Dname>\logfiles` with just a single line showing that `applyflatwsample` was run 
-1. **a more detailed sample log file** called "`<SlideID>-applyflatw.log`" in `<Dpath>\<Dname>\<SlideID>\logfiles`
+## 5.7.2. Contents
+- [5.7.3. Important Definitions](docs/ImportantDefinitions.md#573-important-definitions)
+  - [5.7.3.1. Image Correction Expected Directory Structure](docs/ImportantDefinitions.md#5731-image-correction-expected-directory-structure)
+  - [5.7.3.2. Output Formatting](docs/ImportantDefinitions.md#5732-output-formatting)
+- [5.7.4. Workflow Instructions](docs/WorkflowInstructions.md#574-workflow-instructions)
+- [5.7.5. Additional Tools](docs/AdditionalTools.md#575-additional-tools)
+  - [5.7.5.1. Instructions to Run via *AstroPath Pipeline* Workflow](docs/AdditionalTools.md#5751-instructions-to-run-standalone-via-astropath-pipeline-workflow)
+  - [5.7.5.2. Instruction to Apply Image Correction Standalone via Python Package](docs/AdditionalTools.md#5752-instructions-to-apply-image-correction-standalone-via-python-package)
+  - [5.7.5.3. Instruction to Apply Image Correction Standalone Version *0.0.1*](docs/AdditionalTools.md#5753-instructions-apply-image-correction-standalone-version-001)
+- [5.7.6. Overview Workflow of Image Correction Module](docs/OverviewWorkflowofImageCorrectionModule.md#576overview-workflow-of-image-correction-module)
 
-Other options for how the correction should be done include:
-1. Putting the output in a different location: add the `--workingdir [workingdir_path]` argument where `[workingdir_path]` is the path to the directory where the output should go. In this case the file extension is ".fw" and not the original raw image file extension.
-1. Writing out corrected files for single image layers as well as multilayer images: add the `--layers [layers]` argument where `[layers]` is any number of arguments specifying which layer numbers to use (starting from 1). In the single image layer case, the corresponding output files are named ".fwxx" where "xx" is the two-digit layer number (i.e. ".fw01"). The special number -1 can also be given as an argument in `[layers]`, in which case the multilayer files will be written out in addition to any single layer files requested. Using this argument one could, for example, simultaneously write out the corrected multilayer .fw files and the corrected single layer .fw01 files. When using this argument, a `[workingdir_path]` must be specified.
-1. Skipping the flatfield and/or warping corrections: run without specifying the `--flatfield-file` and/or `--warping-file` arguments
-
-The routine can be run for an entire cohort of samples at once using the following command:
-
-`applyflatwcohort <Dpath>\<Dname> <Rpath>`
-
-To see more command line arguments available for both routines, run `applyflatwsample --help` or `applyflatwcohort --help`.

@@ -9,7 +9,7 @@ This module servers to track processing, interact with the inForm® processing q
    - add all additional files outside of those maintained by the code to this folder. Adding files or new folders to the main ```<Dname>``` directory may crash the processing or cause unexpected results
 - *inform_queue.csv*: This file is the project level inform queue. 
    - The code transfers new tasks to the main inform queue and completed task infomation back to this queue.
-   - adding tasks to this file is described in further documentation in [5.10.5.](../inform_processing/docs/AddingSlidestotheinFormQueue.md)
+   - adding tasks to this file is described in further documentation in [5.9.5.](../vminform/docs/AddingSlidestotheinFormQueue.md)
 - *Main_inform_queue.csv*: The main queue is held in the ```<Mpath>``` location. Additional copies of this queue are created in the ```<upkeep_and_progress>``` folder of each project for reference
    - opening and modifying the main queue in the ```<Mpath>``` directory can cause the file to become corrupt resulting in loss of archived processes.
    - it is recommended that only the project level queues are modified.
