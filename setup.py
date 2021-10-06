@@ -77,7 +77,10 @@ setupkwargs = dict(
     "vips": ["pyvips"],
   },
   package_data = {
-    "astropath": ["shared/master_annotation_list.csv"],
+    "astropath": [
+      "shared/master_annotation_list.csv",
+      "slides/zoom/color_matrix.txt",
+    ],
   },
 )
 
