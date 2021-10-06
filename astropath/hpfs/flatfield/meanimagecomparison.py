@@ -374,32 +374,32 @@ class MeanImageComparison :
                 sid1 = entry.slide_ID_1
                 rd2  = pathlib.Path(entry.root_dir_2)
                 sid2 = entry.slide_ID_2
-                #if (sampleregex is None) or (sampleregex.match(sid1)) :
-                if rd1 not in slide_ids_by_rootdir.keys() :
-                    slide_ids_by_rootdir[rd1] = []
-                if sid1 not in slide_ids_by_rootdir[rd1] :
-                    this_slide_dims = get_image_hwl_from_xml_file(rd1,sid1)
-                    if self.dims is None :
-                        self.dims = this_slide_dims
-                    elif this_slide_dims!=self.dims :
-                        errmsg = f'ERROR: slide {sid1} has dimensions {this_slide_dims},'
-                        errmsg+= f' mismatched to {self.dims}'
-                        raise RuntimeError(errmsg)
-                    self.logger.debug(f'{sid1} found in existing datatable at {self.datatable_path}')
-                    slide_ids_by_rootdir[rd1].append(sid1)
-                #if (sampleregex is None) or (sampleregex.match(sid2)) :
-                if rd2 not in slide_ids_by_rootdir.keys() :
-                    slide_ids_by_rootdir[rd2] = []
-                if sid2 not in slide_ids_by_rootdir[rd2] :
-                    this_slide_dims = get_image_hwl_from_xml_file(rd2,sid2)
-                    if self.dims is None :
-                        self.dims = this_slide_dims
-                    elif this_slide_dims!=self.dims :
-                        errmsg = f'ERROR: slide {sid2} has dimensions {this_slide_dims},'
-                        errmsg+= f' mismatched to {self.dims}'
-                        raise RuntimeError(errmsg)
-                    self.logger.debug(f'{sid2} found in existing datatable at {self.datatable_path}')
-                    slide_ids_by_rootdir[rd2].append(sid2)
+                if (sampleregex is None) or (sampleregex.match(sid1)) :
+                    if rd1 not in slide_ids_by_rootdir.keys() :
+                        slide_ids_by_rootdir[rd1] = []
+                    if sid1 not in slide_ids_by_rootdir[rd1] :
+                        this_slide_dims = get_image_hwl_from_xml_file(rd1,sid1)
+                        if self.dims is None :
+                            self.dims = this_slide_dims
+                        elif this_slide_dims!=self.dims :
+                            errmsg = f'ERROR: slide {sid1} has dimensions {this_slide_dims},'
+                            errmsg+= f' mismatched to {self.dims}'
+                            raise RuntimeError(errmsg)
+                        self.logger.debug(f'{sid1} found in existing datatable at {self.datatable_path}')
+                        slide_ids_by_rootdir[rd1].append(sid1)
+                if (sampleregex is None) or (sampleregex.match(sid2)) :
+                    if rd2 not in slide_ids_by_rootdir.keys() :
+                        slide_ids_by_rootdir[rd2] = []
+                    if sid2 not in slide_ids_by_rootdir[rd2] :
+                        this_slide_dims = get_image_hwl_from_xml_file(rd2,sid2)
+                        if self.dims is None :
+                            self.dims = this_slide_dims
+                        elif this_slide_dims!=self.dims :
+                            errmsg = f'ERROR: slide {sid2} has dimensions {this_slide_dims},'
+                            errmsg+= f' mismatched to {self.dims}'
+                            raise RuntimeError(errmsg)
+                        self.logger.debug(f'{sid2} found in existing datatable at {self.datatable_path}')
+                        slide_ids_by_rootdir[rd2].append(sid2)
         else :
             if len(root_dirs)<1 :
                 errmsg = 'ERROR: no root directories given and no existing data table defining them found at '
