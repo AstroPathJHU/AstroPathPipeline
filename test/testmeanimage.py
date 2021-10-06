@@ -63,7 +63,7 @@ class TestMeanImage(TestBaseSaveOutput) :
         et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
         (folder/'test_for_jenkins'/'mean_image'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME).mkdir(parents=True,exist_ok=True)
         args = [os.fspath(root),os.fspath(root2),
-                '--exposure_time_offset_file',os.fspath(et_offset_file),
+                '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--njobs',str(n_threads),
                 '--sampleregex',SlideID,
                 '--maskroot',os.fspath(folder/'test_for_jenkins'/'mean_image'),

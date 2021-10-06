@@ -85,11 +85,11 @@ class TestWarpingCohort(TestBaseSaveOutput) :
     def test_warping_cohort_octets_only(self) :
         #run the cohort
         args = [os.fspath(root),os.fspath(root2),
-                '--exposure_time_offset_file',os.fspath(et_offset_file),
-                '--flatfield_file',ff_file.name,
+                '--exposure-time-offset-file',os.fspath(et_offset_file),
+                '--flatfield-file',ff_file.name,
                 '--sampleregex',slideID,
                 '--workingdir',os.fspath(self.output_dir),
-                '--octets_only',
+                '--octets-only',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
@@ -118,13 +118,13 @@ class TestWarpingCohort(TestBaseSaveOutput) :
             shutil.copy(existing_path,new_path)
         #run the cohort
         args = [os.fspath(root),os.fspath(root2),
-                '--exposure_time_offset_file',os.fspath(et_offset_file),
-                '--flatfield_file',ff_file.name,
+                '--exposure-time-offset-file',os.fspath(et_offset_file),
+                '--flatfield-file',ff_file.name,
                 '--sampleregex',slideID,
                 '--workingdir',os.fspath(self.output_dir),
-                '--initial_pattern_octets','2',
-                '--principal_point_octets','2',
-                '--final_pattern_octets','2',
+                '--initial-pattern-octets','2',
+                '--principal-point-octets','2',
+                '--final-pattern-octets','2',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')

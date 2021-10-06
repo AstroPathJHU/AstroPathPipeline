@@ -70,9 +70,9 @@ class TestAppliedFlatfieldCohort(TestBaseSaveOutput) :
     def test_applied_flatfield_cohort(self) :
         #run the cohort
         args = [os.fspath(root),os.fspath(root2),os.fspath(folder/'test_for_jenkins'/'applied_flatfield_cohort'),
-                '--exposure_time_offset_file',os.fspath(et_offset_file),
+                '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--sampleregex',slideID,
-                '--image_set_split','sequential',
+                '--image-set-split','sequential',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')

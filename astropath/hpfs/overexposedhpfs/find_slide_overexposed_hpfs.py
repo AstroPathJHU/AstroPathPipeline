@@ -20,16 +20,20 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s  [%(funcName)s]","%Y-%m-%d %H:%M:%S"))
 logger.addHandler(handler)
 
-#dataclass to hold a rectangle's mse comparison information
 class OverexposedHPFInfo(MyDataClass) :
+    """
+    dataclass to hold a rectangle's mse comparison information
+    """
     file : str
     rect_n : int
     x : float
     y : float
     dapi_af_sep : float
 
-#dataclass to hold an overlap's mse comparison information
 class OverlapMSEComparisonInfo(MyDataClass) :
+    """
+    dataclass to hold an overlap's mse comparison information
+    """
     olap_n : int
     olap_tag : int
     p1_rect_n : int 
@@ -43,19 +47,23 @@ class OverlapMSEComparisonInfo(MyDataClass) :
     af_mse1 : float = -1.
     af_mse2 : float = -1.
 
-#helper function to make sure all the necessary information is available from the command line arguments
 def checkArgs(args) :
+    """
+    make sure all the necessary information is available from the command line arguments
+    """
     #root dir must exist
     if not os.path.isdir(args.root_dir) :
-        raise ValueError(f'ERROR: root_dir argument ({args.root_dir}) does not point to a valid directory!')
+        raise ValueError(f'ERROR: root-dir argument ({args.root_dir}) does not point to a valid directory!')
     if not os.path.isdir(os.path.join(args.root_dir,args.slideID)) :
-        raise ValueError(f'ERROR: root_dir {args.root_dir} does not have a subdirectory for slide {args.slideID}!')
+        raise ValueError(f'ERROR: root-dir {args.root_dir} does not have a subdirectory for slide {args.slideID}!')
     #create the working directory if it doesn't already exist
     if not os.path.isdir(args.workingdir) :
         os.mkdir(args.workingdir)
 
-#helper function to make plots of the separation values and which rectangles were flagged
 def plotRectangleInfo(sid,rects) :
+    """
+    make plots of the separation values and which rectangles were flagged
+    """
     xs = np.array([r['x'] for r in rects.values()])
     ys = np.array([r['y'] for r in rects.values()])
     w = np.max(xs)-np.min(xs); h = np.max(ys)-np.min(ys)
@@ -92,8 +100,10 @@ def plotRectangleInfo(sid,rects) :
     fn = f'{sid}_hpf_plots.png'
     save_figure_in_dir(plt,fn)
 
-#helper function to return the mean separation between the overlap mse relative differences in the DAPI and AF layers
 def getRectangleRelativeDifferenceSeparation(rn,this_rect_olaps) :
+    """
+    return the mean separation between the overlap mse relative differences in the DAPI and AF layers
+    """
     sum_rel_diff_seps = 0.; sum_weights = 0.
     for olap in this_rect_olaps :
         mse1=olap.dapi_mse1; mse2=olap.dapi_mse2
@@ -111,8 +121,10 @@ def getRectangleRelativeDifferenceSeparation(rn,this_rect_olaps) :
         sum_weights+=w
     return sum_rel_diff_seps/sum_weights
 
-#helper function to get the list of overlap MSE comparison info objects
 def getOverlapMSEComparisons(rd,sid) :
+    """
+    get the list of overlap MSE comparison info objects
+    """
     #start the dictionary of all the overlap MSE comparison info objects keyed by overlap n
     all_olap_mse_infos = {}
     #get overlap mse information from the slide's component .tiff images in the DAPI and autofluorescence layers
@@ -149,8 +161,10 @@ def getOverlapMSEComparisons(rd,sid) :
                         all_olap_mse_infos[olap_n].p1_y = rect.cy
     return all_olap_mse_infos.values()
 
-#helper function to write out a bunch of overlaps' mse values in several different layers using raw and component tiff files
 def findOverexposedHPFs(rd,sid,workingdir) :
+    """
+    write out a bunch of overlaps' mse values in several different layers using raw and component tiff files
+    """
     #get the overlap MSE comparison info objects
     overlaps = getOverlapMSEComparisons(rd,sid)
     #find the mean relative difference separation for every rectangle 
@@ -158,7 +172,11 @@ def findOverexposedHPFs(rd,sid,workingdir) :
     for rn in set([olap.p1_rect_n for olap in overlaps]) :
         this_rect_olaps = [olap for olap in overlaps if olap.p1_rect_n==rn]
         rel_diff_dev = getRectangleRelativeDifferenceSeparation(rn,this_rect_olaps)
-        rects[rn] = {'file':this_rect_olaps[0].p1_file,'n':rn,'x':this_rect_olaps[0].p1_x,'y':this_rect_olaps[0].p1_y,'rel_diff_dev':rel_diff_dev}
+        rects[rn] = {'file':this_rect_olaps[0].p1_file,
+                     'n':rn,
+                     'x':this_rect_olaps[0].p1_x,
+                     'y':this_rect_olaps[0].p1_y,
+                     'rel_diff_dev':rel_diff_dev}
     #iterate, removing flagged HPFs, until no new ones get added
     ii = 1
     previously_flagged_rect_ns = []
@@ -171,7 +189,7 @@ def findOverexposedHPFs(rd,sid,workingdir) :
                                rn in set([o.p2_rect_n for o in flagged_rect_olaps])
                                and rn not in flagged_rect_ns]
             for rn in rects_to_adjust :
-                this_rect_olaps = [olap for olap in overlaps if olap.p1_rect_n==rn and olap.p2_rect_n not in flagged_rect_ns]
+                this_rect_olaps = [o for o in overlaps if o.p1_rect_n==rn and o.p2_rect_n not in flagged_rect_ns]
                 if len(this_rect_olaps)!=0 :
                     rel_diff_dev = getRectangleRelativeDifferenceSeparation(rn,this_rect_olaps)
                     rects[rn]['rel_diff_dev'] = rel_diff_dev
@@ -179,7 +197,10 @@ def findOverexposedHPFs(rd,sid,workingdir) :
         flagged_rect_ns = [rn for rn,r in rects.items() if r['rel_diff_dev']>=SEP_CUT]
         ii+=1
     #make and write out the list of flagged rectangle info objects
-    overexposed_hpf_infos = [OverexposedHPFInfo(rects[n]['file'],rects[n]['n'],rects[n]['x'],rects[n]['y'],rects[n]['rel_diff_dev']) for n in flagged_rect_ns]
+    overexposed_hpf_infos = []
+    for n in flagged_rect_ns :
+        overexposed_hpf_infos.append(OverexposedHPFInfo(rects[n]['file'],rects[n]['n'],rects[n]['x'],rects[n]['y'],
+                                                        rects[n]['rel_diff_dev']))
     logger.info(f'Found {len(overexposed_hpf_infos)} total overexposed HPFs in {sid}')
     if len(overexposed_hpf_infos)>0 :
 	    with cd(workingdir) :
@@ -192,9 +213,9 @@ def findOverexposedHPFs(rd,sid,workingdir) :
 
 def main(args=None) :
     parser = ArgumentParser()
-    parser.add_argument('slideID',          help='Name of the slide to use')
-    parser.add_argument('root_dir',         help='Path to the Clinical_Specimen directory with info for the given slide')
-    parser.add_argument('workingdir',       help='Path to the working directory (will be created if necessary)')
+    parser.add_argument('slideID',    help='Name of the slide to use')
+    parser.add_argument('root-dir',   help='Path to the Clinical_Specimen directory with info for the given slide')
+    parser.add_argument('workingdir', help='Path to the working directory (will be created if necessary)')
     args = parser.parse_args(args=args)
     #check the arguments
     checkArgs(args)
