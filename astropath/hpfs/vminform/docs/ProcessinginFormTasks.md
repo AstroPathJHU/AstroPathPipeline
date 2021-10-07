@@ -53,24 +53,9 @@ The *AstroPath* group uses Hyper-V with Windows to set up virtual machines. We u
 Once virtual machines are set up install and launch the processing code according to the documentation found in [5.8.7.3.3.](#58733-running-the-inform-worker-module).
 
 ### 5.8.7.3.2. Running the ```inform queue``` Module
-1. Download the repository to a processing computer or location where inForm is installed
-2. Edit the username and password in line 78. 
-   - JHU has created a local user account for each virtual machine. The workers run under that local account for processing. This script is designed to use the specified username and password dedicated to each virtual machine for processing on that machine.
-3. Navigate to *\*\\astropath\\hpfs\\launch* and double click on the ```inform_queue-Shortcut``` to launch processing
 
 ### 5.8.7.3.3. Running the ```inform worker``` Module
-1. Download the repository to a processing computer or location where inForm is installed *under the "Program Files* folder*
-2. Edit the username and password in ```RunFullBatch.au3```
-   - Download and install [AutoIt](https://www.autoitscript.com/site/)
-   - open the ```RunFullBatch.au3``` found in the *BatchProcessing* folder
-   - Edit [line 121](../BatchProcessing/RunFullBatch.au3#L121) for a username and password that have access to the data drives
-   - Go to 'tools' at the top of the page and compile (make sure the .exe is saved under the *BatchProcessing* folder)
-3. Make sure the the username used in [5.8.7.3.2](#58732-running-the-inform-queue-module) has full access to the *AstroPathPipeline* folder
-4. Copy the 'inform_worker-Shortcut' from *\*\\astropath\\hpfs\\launch* to the desktop of the virtual machine
-5. Double click on the shortcut to launch processing
-6. Add a jobs to the queue as described [above](#5872-important-definitions)
 
-*NOTE*: Because some of the workflow uses automatic scripts windows defender flags these files as Trojans. Usually we just turn off windows defender since our virtual machines cannot be accessed outside of the JHU network. 
 
 ## 5.8.7.4. Workflow
 The first step in processing is to test for the input version of inForm that will be used to run the software. The inForm version can be found at the bottom of **BatchProcessing.ps1**. Next the code attempts to injest the VM_inForm_queue.txt, described above in [Important Definitions](#5872-important-definitions). This file should be located in the *\*\\astropath\\hpfs\\inform_processing\\BatchProcssing* folder. The code searches along the path location where the script was launched for the queue file. 
