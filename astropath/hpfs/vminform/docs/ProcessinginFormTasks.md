@@ -58,6 +58,3 @@ Once virtual machines are set up install and launch the processing code accordin
 
 
 ## 5.8.7.4. Workflow
-The first step in processing is to test for the input version of inForm that will be used to run the software. The inForm version can be found at the bottom of **BatchProcessing.ps1**. Next the code attempts to injest the VM_inForm_queue.txt, described above in [Important Definitions](#5872-important-definitions). This file should be located in the *\*\\astropath\\hpfs\\inform_processing\\BatchProcssing* folder. The code searches along the path location where the script was launched for the queue file. 
-
-After all jobs are marked complete, the code waits and rechecks the queue after a set period of time for new jobs. Jobs can be added to the queue either manually or by the code. The queue file should be located in 'BatchProcessing' folder. The queue string is simple and consists of a five part comma separated list. To add a new job to the queue The code requires that the image data is reformatted into the AstroPath directory structure and that the algorithms are located in a set location adjacent to the images. Algorithm export settings should be set up before saving.
