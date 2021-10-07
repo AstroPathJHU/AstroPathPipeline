@@ -15,7 +15,7 @@ Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrec
 - ```<Project>```: Project Number
 - ```<ProcessingLocation>```: The fully qualified path to a location where slides should be processed, use `'*'` if the slide should be processed in place
 
-This workflow is described in more detail [here](OverviewWorkflowofImageCorrectionModule.md#576overview-workflow-of-image-correction-module "Title").
+This workflow is described in more detail [here](OverviewWorkflow.md#576-overview-workflow "Title").
 
 he "applyflatw" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents, either overwriting the original raw image files, or as new ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
 
