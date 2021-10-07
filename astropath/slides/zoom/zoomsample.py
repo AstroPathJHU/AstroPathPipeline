@@ -486,21 +486,21 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         nlayers = int(node.xml_attrs["dim"])
     if layers is None:
       layers = range(1, nlayers+1)
-    if tifflayers is None:
-      tifflayers = [1]
-    tiffname = f"{SlideID}-Z{cls.ztiff}"
-    if tifflayers == "color":
-      tiffname += "-color"
-    elif frozenset(tifflayers) != frozenset(range(1, nlayers+1)):
-      tiffname += "-L" + "".join(str(l) for l in sorted(tifflayers))
-    tiffname += "-wsi.tiff"
-    return [
+    result = [
       *(
         zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
         for layer in layers
       ),
-      zoomroot/SlideID/"wsi"/tiffname
     ]
+    if tifflayers:
+      tiffname = f"{SlideID}-Z{cls.ztiff}"
+      if tifflayers == "color":
+        tiffname += "-color"
+      elif frozenset(tifflayers) != frozenset(range(1, nlayers+1)):
+        tiffname += "-L" + "".join(str(l) for l in sorted(tifflayers))
+      tiffname += "-wsi.tiff"
+      result.append(zoomroot/SlideID/"wsi"/tiffname)
+    return result
 
   @classmethod
   def workflowdependencyclasses(cls):
