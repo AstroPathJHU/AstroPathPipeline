@@ -83,7 +83,7 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
   - [5.4. Workflow Overview](astropath/hpfs/docs/WorkflowOverview.md)
   - [5.5. Flatfield](astropath/hpfs/flatfield#55-flatfield "Title")
   - [5.6 Warping](astropath/hpfs/warping#56-warping "Title")
-  - [5.7. Image Correction](astropath/hpfs/image_correction#57-image-correction "Title")
+  - [5.7. Image Correction](astropath/hpfs/imagecorrection#57-image-correction "Title")
   - [5.8. VMinForm](astropath/hpfs/vminform#58-vminform "Title")
   - [5.9. Mergeloop](astropath/hpfs/mergeloop#59-mergeloop "Title")
   - [5.10. Segmaps](astropath/hpfs/segmaps#510-seg-maps "Title")
