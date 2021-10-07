@@ -36,7 +36,7 @@ Command-line syntax:
 Extended directions can be found [here](./ConvertIM3Usage.txt).
 
 ## 5.8.5.3. ConvertIm3Path & ConvertIm3Cohort
-ConvertIm3Path & ConvertIm3Cohort are soft wrappers written in powershell for the executable to run *ConvertIm3* on the ```<SlideID>``` level for specific output desired by the *AstroPathPipeline*, with optional inputs and exports. Both codes are dependent on the images being in the aforementioned [directory structure]../../hpfs/imagecorrection/docs/ImportantDefinitions.md#5731-image-correction-expected-directory-structure "Title"). ConvertIm3Cohort.ps1 is actually just a wrapper for ConvertIm3Path.ps1 which runs through all specimens in a directory, the cohort location is hard coded at present and should be modified in the code. 
+ConvertIm3Path & ConvertIm3Cohort are soft wrappers written in powershell for the executable to run *ConvertIm3* on the ```<SlideID>``` level for specific output desired by the *AstroPathPipeline*, with optional inputs and exports. Both codes are dependent on the images being in the aforementioned [directory structure](../../hpfs/imagecorrection/docs/ImportantDefinitions.md#5731-image-correction-expected-directory-structure "Title"). ConvertIm3Cohort.ps1 is actually just a wrapper for ConvertIm3Path.ps1 which runs through all specimens in a directory, the cohort location is hard coded at present and should be modified in the code. 
  
 Usage: 
 - To "shred" a directory of im3s use:
