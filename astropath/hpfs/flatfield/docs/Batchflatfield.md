@@ -5,7 +5,7 @@
 
 ## 5.5.5.2. Instructions to Run Standalone Via Python Package
 
-After the mean images for each slide have been run and a suitable set of slides has been determined, the mean images from all of those slides are combined together to produce a single flatfield correction model using the "[batchflatfieldcohort.py](./batchflatfieldcohort.py)" code. To run this code in the most common use case, enter the following command and arguments:
+After the mean images for each slide have been run and a suitable set of slides has been determined, the mean images from all of those slides are combined together to produce a single flatfield correction model using the "[batchflatfieldcohort.py](../batchflatfieldcohort.py)" code. To run this code in the most common use case, enter the following command and arguments:
 
 `batchflatfieldcohort <Dpath>\<Dname> <Rpath> --sampleregex [sample_regex] --batchID [batch_ID]`
 
