@@ -398,11 +398,11 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     """
     return self.logger.samplelog
   @property
-  def mainlog(self):
+  def mainlogs(self):
     """
     The cohort log file, which contains basic logging info
     """
-    return self.logger.mainlog
+    return self.logger.mainlogs
 
   @property
   def pscale(self):

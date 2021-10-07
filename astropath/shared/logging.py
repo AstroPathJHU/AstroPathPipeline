@@ -50,7 +50,7 @@ class MyLogger:
     4) if sampledef.csv does not exist yet, you can provide an apidfile argument
        to getlogger and it will read the information from there
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], moreimagelogs=[], reraiseexceptions=True):
     self.module = module
     self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
@@ -58,11 +58,14 @@ class MyLogger:
     self.nentered = 0
     self.threshold = threshold
     self.printthreshold = printthreshold
+    moremainlogs = []
     if root is None and uselogfiles:
       raise ValueError("Have to provide non-None root if using log files")
     if root is not None:
       if mainlog is None:
         mainlog = self.root/"logfiles"/f"{self.module}.log"
+        if moremainlogroots is not None:
+          moremainlogs = [root/"logfiles"/f"{self.module}.log" for root in moremainlogroots]
       if samplelog is None:
         samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
     if mainlog is not None:
@@ -70,7 +73,7 @@ class MyLogger:
     if samplelog is not None:
       samplelog = pathlib.Path(samplelog)
 
-    self.mainlog = mainlog
+    self.mainlogs = [mainlog] + moremainlogs
     self.samplelog = samplelog
     self.imagelog = None if imagelog is None else pathlib.Path(imagelog)
     self.isglobal = isglobal
@@ -119,12 +122,13 @@ class MyLogger:
       self.logger.addHandler(printhandler)
 
       if self.uselogfiles:
-        self.mainlog.parent.mkdir(exist_ok=True, parents=True)
-        mainhandler = MyFileHandler(self.mainlog)
-        mainhandler.setFormatter(self.formatter)
-        mainhandler.addFilter(self.filter)
-        mainhandler.setLevel(logging.INFO if self.isglobal else logging.WARNING+1)
-        self.logger.addHandler(mainhandler)
+        for mainlog in self.mainlogs:
+          mainlog.parent.mkdir(exist_ok=True, parents=True)
+          mainhandler = MyFileHandler(mainlog)
+          mainhandler.setFormatter(self.formatter)
+          mainhandler.addFilter(self.filter)
+          mainhandler.setLevel(logging.INFO if self.isglobal else logging.WARNING+1)
+          self.logger.addHandler(mainhandler)
 
         if not self.isglobal:
           self.samplelog.parent.mkdir(exist_ok=True, parents=True)
