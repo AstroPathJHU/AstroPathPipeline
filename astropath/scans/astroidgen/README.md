@@ -55,7 +55,7 @@ We begin by opening the *AstropathCohortsProgress.csv* file from the ```<Mpath>`
     - Project level log files for the astropath pipeline 
 4.	```Batch```
     - The batch and merge tables
-    - These tables are described in further documentation located [here](../../docs/scanning/BatchTables.md/#447-batch-tables "Title")
+    - These tables are described in further documentation located [here](../../docs/scanning/BatchTables.md/#446-batch-tables "Title")
 5.	```Clinical```
     - Location of the clinical table
     - These tables should be labeled as *Clinical_Table_Specimen_CSID_MMDDYYYY.csv*, where the ```CSID``` indicates the number on the ```<Dname>``` folder. 
