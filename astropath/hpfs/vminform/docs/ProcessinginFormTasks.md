@@ -6,7 +6,7 @@ The code is designed to run continously. There are two module scripts. The first
 
 Note that the worker module that runs inForm requires that the image data is reformatted into the *AstroPath* directory structure and that the algorithms are located in a set location adjacent to the images. Both locations are described below in [Important Definitions](#5872-important-definitions) and in more detail [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization "Title"). Algorithm or project export settings should be set up before saving the file according to the protocol defined [here](SavingProjectsfortheinFormJHUProcessingFarm.md#584-saving-projects-for-the-inform-jhu-processing-farm). Since the code simulates mouse clicks and changes in the active window, it is best not to use the computer when running the worker module.
 
-*NOTE*: For use in the AstroPath pipeline or with the MaSS utility, export settings should be appied according to the documentation located [here](SavingProjectsfortheinFormJHUProcessingFarm.md#584-saving-projects-for-the-inform-jhu-processing-farm). Once batch processing is finished for an antibody, data files can be transferred to the proper MaSS-slide organization defined in the MaSS documentation [here](../../mergeloop/MaSS#merge-a-single-sample-mass) or in more depth with relation to the rest of the pipeline [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization). Data can either be transferred manually or with the ```mergeloop``` module located [here](../../mergeloop#57-mergeloop). 
+*NOTE*: For use in the AstroPath pipeline or with the MaSS utility, export settings should be appied according to the documentation located [here](SavingProjectsfortheinFormJHUProcessingFarm.md#584-saving-projects-for-the-inform-jhu-processing-farm). Once batch processing is finished for an antibody, data files can be transferred to the proper MaSS-slide organization defined in the MaSS documentation [here](../../mergeloop/MaSS#merge-a-single-sample-mass) or in more depth with relation to the rest of the pipeline [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization). Data can either be transferred manually or with the ```mergeloop``` module located [here](../../mergeloop#59-mergeloop). 
 
 ## 5.8.7.2. Important Definitions
 - The code requires that an active version of inForm is installed on the computer and that the version installed matches the version number coded in at the bottom of **BatchProcessing.ps1**.
@@ -50,7 +50,7 @@ We have set up a server with multiple virtual machines each running it's own ins
 
 The *AstroPath* group uses Hyper-V with Windows to set up virtual machines. We use Hyper-V becuase of it's support in PowerShell where much of the code for processing was piloted and is maintained. An introduction to Hyper-V can be found [here](https://docs.microsoft.com/en-us/virtualization/hyper-v-on-windows/about/). Once virtual machines are created, a windows OS should be installed and network capabilities should be added. InForm can then be installed and activated as on a normal computer. Be sure that you only log into the virtual machine using the Hyper-V Manager or through a screen mirroring server like TightVNC or RealVNC (using the Hyper-V Manager method will yield the best results). **Never use a windows remote desktop session, this will corrupt the InForm license.** Logging in using these screen mirroring techniques allows us to use the virtual machines as normal computers and still only allows one InForm session to be active at a time. 
 
-Once virtual machines are set up install and launch the processing code according to the documentation found in [5.8.7.3.3.](#510733-running-the-inform-worker-module).
+Once virtual machines are set up install and launch the processing code according to the documentation found in [5.8.7.3.3.](#58733-running-the-inform-worker-module).
 
 ### 5.8.7.3.2. Running the ```inform queue``` Module
 1. Download the repository to a processing computer or location where inForm is installed
@@ -65,10 +65,10 @@ Once virtual machines are set up install and launch the processing code accordin
    - open the ```RunFullBatch.au3``` found in the *BatchProcessing* folder
    - Edit [line 121](../BatchProcessing/RunFullBatch.au3#L121) for a username and password that have access to the data drives
    - Go to 'tools' at the top of the page and compile (make sure the .exe is saved under the *BatchProcessing* folder)
-3. Make sure the the username used in [5.8.7.3.2](#510732-running-the-inform-queue-module) has full access to the *AstroPathPipeline* folder
+3. Make sure the the username used in [5.8.7.3.2](#58732-running-the-inform-queue-module) has full access to the *AstroPathPipeline* folder
 4. Copy the 'inform_worker-Shortcut' from *\*\\astropath\\hpfs\\launch* to the desktop of the virtual machine
 5. Double click on the shortcut to launch processing
-6. Add a jobs to the queue as described [above](#51072-important-definitions)
+6. Add a jobs to the queue as described [above](#5872-important-definitions)
 
 *NOTE*: Because some of the workflow uses automatic scripts windows defender flags these files as Trojans. Usually we just turn off windows defender since our virtual machines cannot be accessed outside of the JHU network. 
 
