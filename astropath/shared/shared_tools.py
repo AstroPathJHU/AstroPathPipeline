@@ -1,11 +1,9 @@
 import openpyxl
 assert openpyxl #make pyflakes happy
 import os
-import pathlib
 import pandas
 import smtplib
 import numpy as np
-from datetime import datetime
 
 
 #

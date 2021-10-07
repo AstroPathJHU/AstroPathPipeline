@@ -18,7 +18,6 @@ import lxml.etree as et
 from pathlib import Path
 from joblib import Parallel, delayed
 from urllib.request import urlretrieve
-import getpass
 
 
 #
@@ -557,7 +556,6 @@ def transfer_directory(current_sor_string, main_des_string, current_des_string,
         st.M_file_handler(current_sor_string, all_files, M_files)
         logger.info("Duplicate files handled")
     #
-    names = [slide_id, astro_id]
     for root, dirs, files in os.walk(current_sor_string):
         for f in files:
             f = os.path.join(root, f)
@@ -790,12 +788,13 @@ def zip_pull():
                 url = 'https://www.7-zip.org/a/7z1900-x64.exe'
                 print('7-Zip Downloading')
                 destination = utilities + r'\7z1900-x64.exe'
-                download = urlretrieve(url, destination)
+                urlretrieve(url, destination)
                 print('7-Zip downloaded')
                 print("Installing 7-Zip")
                 tag = r'/D={0}'.format(utilities+"\\7-Zip\\")
                 cmd = "{0} {1} 7z1900-x64.exe".format(destination, tag)
                 returned_value = subprocess.call(cmd, shell=True)  # returns the exit code in unix
+                print(returned_value)
             except PermissionError:
                 traceback.print_exc()
                 return ""
