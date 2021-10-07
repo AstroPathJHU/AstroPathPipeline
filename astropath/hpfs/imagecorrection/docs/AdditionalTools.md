@@ -15,7 +15,7 @@ Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrec
 - ```<Project>```: Project Number
 - ```<ProcessingLocation>```: The fully qualified path to a location where slides should be processed, use `'*'` if the slide should be processed in place
 
-This workflow is described in more detail [here](OverviewWorkflowofImageCorrectionModule.md#576overview-workflow-of-image-correction-module).
+This workflow is described in more detail [here](OverviewWorkflowofImageCorrectionModule.md#576overview-workflow-of-image-correction-module "Title").
 
 he "applyflatw" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents, either overwriting the original raw image files, or as new ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
 
@@ -23,10 +23,10 @@ he "applyflatw" portion of the code corrects raw ".Data.dat" files based on a gi
 
 where:
 - `[path_to_flatfield_bin_file]` is the path to the ".bin" file specifying the flatfield corrections to apply, or the name of a file located in the `<Dpath>\<Dname>\Flatfield` directory
-- `[path_to_warping_summary_csv_file]` is the path to a .csv file detailing the warping model parameters as a [`WarpingSummary` object](../warping/utilities.py#L43-L61). This file can have several `WarpingSummary` entries specifying different warping patterns to apply in differen raw image layers.
+- `[path_to_warping_summary_csv_file]` is the path to a .csv file detailing the warping model parameters as a [`WarpingSummary` object](../../warping/utilities.py#L43-L61). This file can have several `WarpingSummary` entries specifying different warping patterns to apply in differen raw image layers.
 - `[njobs]` is the maximum number of parallel processes allowed to run at once (many parallel processes can be used; each process corrects and writes out one file at a time)
 
-See [here](../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
+See [here](../../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
 
 Running the above command will produce:
 1. **corrected image files** that **overwrite** those in `<Dpath>\<Dname>\<SlideID>`
