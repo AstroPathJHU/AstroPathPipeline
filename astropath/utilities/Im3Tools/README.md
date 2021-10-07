@@ -1,5 +1,5 @@
 ## Im3tools
-This is the standalone processing tool for the flatfield and image warping applications on a directory of im3 slides. These commands can be used outside of the *AstroPath Pipeline* as long as the slides are still in the aforementioned [directory structure](ImportantDefinitions.md#5831-flatw-expected-directory-structure). All output described [here](ImportantDefinitions.md#5832-output-formatting) result from this tool the rest of the code included in *flatfield* simply allows bulk processing of slides.
+This is the standalone processing tool for the flatfield and image warping applications on a directory of im3 slides. These commands can be used outside of the *AstroPath Pipeline* as long as the slides are still in the aforementioned [directory structure](../../hpfs/imagecorrection/docs/ImportantDefinitions.md#5731-image-correction-expected-directory-structure "Title"). All output described [here](../../hpfs/imagecorrection/docs/ImportantDefinitions.md#5732-output-formatting "Title") result from this tool the rest of the code included in *flatfield* simply allows bulk processing of slides.
 
 A single slide can be launched as follows from a command prompt:
 
@@ -33,10 +33,10 @@ Command-line syntax:
             [/i <injected_data_file_specification>]
 ``` 
 
-Extended directions can be found [here](../flatw_matlab/Im3Tools/ConvertIM3Usage.txt).
+Extended directions can be found [here](./ConvertIM3Usage.txt).
 
 ## 5.8.5.3. ConvertIm3Path & ConvertIm3Cohort
-ConvertIm3Path & ConvertIm3Cohort are soft wrappers written in powershell for the executable to run *ConvertIm3* on the ```<SlideID>``` level for specific output desired by the *AstroPathPipeline*, with optional inputs and exports. Both codes are dependent on the images being in the aforementioned [directory structure](ImportantDefinitions.md#5831-flatw-expected-directory-structure). ConvertIm3Cohort.ps1 is actually just a wrapper for ConvertIm3Path.ps1 which runs through all specimens in a directory, the cohort location is hard coded at present and should be modified in the code. 
+ConvertIm3Path & ConvertIm3Cohort are soft wrappers written in powershell for the executable to run *ConvertIm3* on the ```<SlideID>``` level for specific output desired by the *AstroPathPipeline*, with optional inputs and exports. Both codes are dependent on the images being in the aforementioned [directory structure]../../hpfs/imagecorrection/docs/ImportantDefinitions.md#5731-image-correction-expected-directory-structure "Title"). ConvertIm3Cohort.ps1 is actually just a wrapper for ConvertIm3Path.ps1 which runs through all specimens in a directory, the cohort location is hard coded at present and should be modified in the code. 
  
 Usage: 
 - To "shred" a directory of im3s use:
