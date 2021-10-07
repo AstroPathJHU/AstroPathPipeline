@@ -315,7 +315,6 @@ def start_gen():
         if not os.path.exists(csv_file):
             print("No AstropathPaths.csv found in " + str(mpath))
             return
-        contents = os.listdir(mpath)
         #
         # Perform the SlideID generation
         #
