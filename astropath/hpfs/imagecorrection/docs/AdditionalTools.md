@@ -16,8 +16,7 @@ Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrec
 
 This workflow is described in more detail [here](OverviewWorkflowofImageCorrectionModule.md#576overview-workflow-of-image-correction-module).
 
-# 5.7.5.2. Instructions to Apply Image Correction Standalone Via Python Package
-The "applyflatw" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents, either overwriting the original raw image files, or as new ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
+he "applyflatw" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents, either overwriting the original raw image files, or as new ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
 
 `applyflatwsample <Dpath>\<Dname> <Rpath> <SlideID> --flatfield-file [path_to_flatfield_bin_file] --warping-file [path_to_warping_summary_csv_file] --njobs [njobs]`
 
