@@ -20,6 +20,7 @@ Running the above command will create a `flatfield_BatchID_[batch_ID].bin` file,
 1. **a summary .pdf file** called `flatfield_summary_BatchID_[batch_ID].pdf` containing a plot of the flatfield correction factor distributions as a function of image layer, a datatable with some statistics about the same, and plots of the correction factors, their uncertainties, and the combined stack of image masks in every layer to serve as a quick reference for the contents of the outputted `.bin` files.
 
 To see more command line arguments available, run `batchflatfieldcohort --help`.
+## 5.5.5.3. Instructions to Run Standalone Version *0.0.1*
 
 # 5.5.6. Batch Flatfield Tests
 
