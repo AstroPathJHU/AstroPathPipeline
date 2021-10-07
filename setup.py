@@ -20,7 +20,6 @@ setupkwargs = dict(
       "csvscansample=astropath.slides.csvscan.csvscansample:main",
       "deepzoomcohort=astropath.slides.deepzoom.deepzoomcohort:main",
       "deepzoomsample=astropath.slides.deepzoom.deepzoomsample:main",
-      "extractlayer=astropath.hpfs.extractlayer.extractlayer:main",
       "find_slide_overexposed_hpfs=astropath.hpfs.overexposedhpfs.find_slide_overexposed_hpfs:main",
       "geomcohort=astropath.slides.geom.geomcohort:main",
       "geomsample=astropath.slides.geom.geomsample:main",
