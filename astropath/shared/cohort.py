@@ -8,13 +8,23 @@ from .rectangle import rectanglefilter
 from .samplemetadata import SampleDef
 from .workflowdependency import ThingWithRoots, WorkflowDependency
 
-class CohortBase(ThingWithRoots):
+class MetaCohortBase:
+  def __init__(self, *args, mainlogroots=[], **kwargs):
+    super().__init__(*args, **kwargs)
+    self.mainlogroots = [pathlib.Path(_) for _ in mainlogroots if _ is not None]
+  def getlogger(self, *, moremainlogroots, **kwargs):
+    return getlogger(moremainlogroots=list(moremainlogroots)+self.mainlogroots, **kwargs)
+  @property
+  @abc.abstractmethod
+  def ProjectsAndCohorts(self): pass
+
+class CohortBase(MetaCohortBase, ThingWithRoots):
   """
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
   def __init__(self, *args, root, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
-    super().__init__(*args, **kwargs)
+    super().__init__(*args, mainlogroots=[logroot]+moremainlogroots, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
     self.__logroot = pathlib.Path(logroot)
@@ -53,7 +63,7 @@ class CohortBase(ThingWithRoots):
     if isinstance(samp, WorkflowDependency):
       isglobal = isglobal or samp.usegloballogger()
       samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, **kwargs)
+    return super().getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, **kwargs)
 
   @classmethod
   @abc.abstractmethod

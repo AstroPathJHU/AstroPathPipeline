@@ -50,7 +50,7 @@ class MyLogger:
     4) if sampledef.csv does not exist yet, you can provide an apidfile argument
        to getlogger and it will read the information from there
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], moreimagelogs=[], reraiseexceptions=True):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True):
     self.module = module
     self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
@@ -65,6 +65,8 @@ class MyLogger:
       if mainlog is None:
         mainlog = self.root/"logfiles"/f"{self.module}.log"
         if moremainlogroots is not None:
+          moremainlogroots = {pathlib.Path(root) for root in moremainlogroots if root is not None}
+          moremainlogroots.discard(self.root)
           moremainlogs = [root/"logfiles"/f"{self.module}.log" for root in moremainlogroots]
       if samplelog is None:
         samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
