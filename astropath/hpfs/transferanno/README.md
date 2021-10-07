@@ -64,7 +64,7 @@ A simple set of batch files have been written to assist in dissemination of the 
 
 ### 5.11.4.2. Instructions
 1. Locate the location of the exported annotations.
-   - The folder will be inside the *desired destination folder* selected in [5.11.3. Step 7](#5123-exporting-annotations "Title")
+   - The folder will be inside the *desired destination folder* selected in [5.11.3. Step 7](#5113-exporting-annotations "Title")
    - Usually this folder will be labeled as *HALO archive YYYY-MM-DD <HALO version>* 
      - Where the exported date replaces *YYYY-MM-DD* and the current HALO version number replaces*<HALO version>*
    - The annotations themselves are located in an *Images* subfolder, this is the folder we are looking for but we just need the *archive* folder. Record the fully qualified path up to and including to this folder.
