@@ -69,7 +69,7 @@ We begin by opening the *AstropathCohortsProgress.csv* file from the ```<Mpath>`
 9.	```reject```
     - Location of the rejected slides
 
-Information on these folders is also located in documentation located [here](../../docs/DirectoryOrganization.md#461-directory-subfolders) repository.
+Information on these folders is also located in documentation located [here](../docs/DirectoryOrganization.md#461-directory-subfolders) repository.
 
 Next, we update the available Batch folder ```<Dpath>\<Dname>\Batch``` with any possible missing Batch files in ```<Spath>\<Dname>\Batch```.
 
