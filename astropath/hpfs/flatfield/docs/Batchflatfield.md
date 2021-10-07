@@ -21,7 +21,7 @@ Running the above command will create a `flatfield_BatchID_[batch_ID].bin` file,
 
 To see more command line arguments available, run `batchflatfieldcohort --help`.
 
-## Testing the effect of applying a set of flatfield corrections
+# 5.5.6. Batch Flatfield Tests
 
 One last routine in this portion of the code can be used to test the effect of applying a set of flatfield corrections. The "[appliedflatfieldcohort.py](./appliedflatfieldcohort.py)" code splits the images in each slide in a given set randomly into two equally-sized subsamples. It creates a mean image from each subsample using the same methods as in `meanimagesample`, and uses one subsample to calculate a set of flatfield correction factors to apply to the mean image created using the other subsample. It outputs the test flatfield model and the corrected mean image. To run the code in the most common use case, enter the following command and arguments:
 
