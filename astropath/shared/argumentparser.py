@@ -253,7 +253,6 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
     return p
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    print(f'parsed_args_dict = {parsed_args_dict}')
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       'et_offset_file': parsed_args_dict.pop('exposure_time_offset_file'),
