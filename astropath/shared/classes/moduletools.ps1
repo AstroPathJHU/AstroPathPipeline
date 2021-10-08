@@ -23,6 +23,7 @@
     [string]$vers
     [string]$funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     [int]$flevel
+    [string]$condalocation = '"'+$PSScriptRoot + '\..\..\utilities\Miniconda3"'
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
@@ -248,6 +249,20 @@
     [void]runmatlabtask($taskname, $matlabtask, $source){
         $externallog = $this.ProcessLog($taskname)
         matlab -nosplash -nodesktop -minimize -sd $source -r $matlabtask -wait >> $externallog
+        if (test-path $externallog){
+            remove-item $externallog -force -ea Continue
+        }
+    }
+    #
+    [void]runpythontask($taskname, $pythontask){
+        $externallog = $this.ProcessLog($taskname)
+        #TODO: check if version > 0.0.1
+        #TODO: check if conda is installed
+        #
+        #python [-c cmd] [file] [arg]
+        #
+        #start /wait "" Miniconda3-latest-Windows-x86_64.exe /InstallationType=JustMe /RegisterPython=0 /S /D=%$condalocation%
+        python $pythontask >> $externallog
         if (test-path $externallog){
             remove-item $externallog -force -ea Continue
         }

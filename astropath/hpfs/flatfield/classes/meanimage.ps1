@@ -49,6 +49,21 @@ Class meanimage : moduletools {
         $this.sample.info("finished getting mean image")
     }
     <# -----------------------------------------
+     RunMeanImagePy
+        Run mean image python code
+     ------------------------------------------
+     Usage: $this.RunMeanImagePy()
+    ----------------------------------------- #>
+    [void]RunMeanImagePy(){
+        $this.sample.info("started mean image sample python script")
+        $taskname = 'meanimagesample'
+        #meanimagesample <Dpath>\<Dname> <Rpath> <SlideID> --njobs [njobs]
+        $pythontask = 'meanimagesample ' + $this.sample.basepath + ' ' + $this.sample.im3folder() + ' ' + $this.sample.SlideID
+        $this.runmatlabtask($taskname, $pythontask)
+        $this.sample.info("finished mean image sample python script")
+    }
+
+    <# -----------------------------------------
      returndata
      returns data to source path
      ------------------------------------------
