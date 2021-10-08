@@ -29,5 +29,5 @@ The outputs will be in `\\<Dpath>\<Dname>\<SlideID>\im3\meanimage\image_masking\
 By default, the mask will be saved in `.npz` format, which does a good job of
 compressing the data.  You can also save it in `.bin` format by specifying
 `--mask-file-suffix .bin` on the command line.  In that case, you can read
-the mask using the [`ImageMask.unpack_tissue_mask` function](../../shared/image_masking/image_mask.py#L162-L168)
+the mask using the [`ImageMask.unpack_tissue_mask` function](../../shared/image_masking/image_mask.py#L165-L171)
 or an equivalent routine in another language.

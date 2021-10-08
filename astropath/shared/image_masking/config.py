@@ -46,7 +46,7 @@ class Const :
         return 30000 #minimum number of pixels required to flag multilayer blur in images
     @property
     def FOLD_MIN_SIZE(self) :
-        return 5000 #minimum size in pixels of individual structure elements allowed in multilayer blur masks
+        return 3000 #minimum size in pixels of individual structure elements allowed in multilayer blur masks
     @property
     def FOLD_NLV_CUTS_BY_LAYER_GROUP_35(self) :
         """

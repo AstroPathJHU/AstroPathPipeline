@@ -1,4 +1,4 @@
-# Warping Corrections
+# 5.6. Warping
 
 The "warping" module contains code to measure the warping affecting raw data files in a cohort. To run it for an entire cohort in the most common use case, enter the following command and arguments:
 
