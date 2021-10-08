@@ -34,8 +34,9 @@ def ast_gen(mpath, csv_file, mastro_csv, debug):
             continue
         if not os.path.exists(dpath[pos] + '/' + dname[pos]):
             continue
-        uppath = create_folders(dname[pos], dpath[pos])
+        print(dname[pos])
         batch_check(spath[pos], dname[pos], dpath[pos])
+        uppath = create_folders(dname[pos], dpath[pos])
         patient, batch_id, cohort = extract_data(dname[pos], spath[pos], mpath)
         if not patient:
             continue
@@ -93,7 +94,7 @@ def batch_check(spath, dname, dpath):
         if '~' in i:
             diff_batch.pop(diff_batch.index(i))
     for item in diff_batch:
-        shutil.copy(str(os.path.join(sor_batch, item)), str(os.path.join(des_batch, item)))
+        shutil.copy(os.path.join(sor_batch, item), os.path.join(des_batch, item))
 
 
 #

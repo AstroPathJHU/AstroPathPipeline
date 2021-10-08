@@ -31,7 +31,8 @@ class BatchFlatfieldSample(ReadRectanglesIm3FromXML,WorkflowSample) :
     def metadatasummary(self) :
         return self.meanimagefolder/f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}'
     def inputfiles(self,**kwargs) :
-        return [*super().inputfiles(**kwargs),self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
+        return [*super().inputfiles(**kwargs),
+                self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
     def run(self,**kwargs) :
         pass
     @classmethod
@@ -83,8 +84,8 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         #running the sample just makes sure that its file exist
         super().runsample(sample,**kwargs)
         #add the sample's information to the flatfield model that's being created
-        msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch {self.__batchID:02d} '
-        msg+= f'({self.__samples_added+1} of {len(list(self.filteredsamples))})....'
+        msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch '
+        msg+= f'{self.__batchID:02d} ({self.__samples_added+1} of {len(list(self.filteredsamples))})....'
         sample.logger.info(msg)
         self.__flatfield.add_batchflatfieldsample(sample)
         self.__samples_added+=1
@@ -102,7 +103,8 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
-        p.add_argument('--batchID',type=int,default=-1,help='BatchID for the flatfield model created from the given list of slideIDs')
+        p.add_argument('--batchID',type=int,default=-1,
+                       help='BatchID for the flatfield model created from the given list of slideIDs')
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):

@@ -189,7 +189,7 @@ def get_warp_field_weighted_std_err(all_results) :
     dy_w_stderr = np.sqrt(((dy_stddev**2)*sw2)/(sw**2))
     return dr_w_stderr, dx_w_stderr, dy_w_stderr
 
-###################################################################################################################################
+#######################################################################################################################
 
 #plots the mean, weighted mean, and standard deviation dr, dx, and dy warp fields from a list of WarpFitResults
 def warp_field_variation_plots(all_results,save_stem=None,save_dir=None) :

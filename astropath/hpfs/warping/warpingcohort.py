@@ -134,19 +134,19 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         p = super().makeargumentparser()
         p.add_argument('--layer', type=int, default=1,
                        help='The layer number (starting from one) of the images that should be used (default=1)')
-        p.add_argument('--initial_pattern_octets', type=int, default=100,
+        p.add_argument('--initial-pattern-octets', type=int, default=100,
                        help='Number of octets to use in the initial pattern fits (default=50)')
-        p.add_argument('--principal_point_octets', type=int, default=50,
+        p.add_argument('--principal-point-octets', type=int, default=50,
                        help='Number of octets to use in the principal point location fits (default=50)')
-        p.add_argument('--final_pattern_octets',   type=int, default=100,
+        p.add_argument('--final-pattern-octets',   type=int, default=100,
                        help='Number of octets to use in the final pattern fits (default=100)')
-        p.add_argument('--initial_pattern_max_iters', type=int, default=300,
+        p.add_argument('--initial-pattern-max-iters', type=int, default=300,
                        help='Max # of iterations to run in the initial pattern fits (default=200)')
-        p.add_argument('--principal_point_max_iters', type=int, default=500,
+        p.add_argument('--principal-point-max-iters', type=int, default=500,
                        help='Max # of iterations to run in the principal point location fits (default=500)')
-        p.add_argument('--final_pattern_max_iters',   type=int, default=600,
+        p.add_argument('--final-pattern-max-iters',   type=int, default=600,
                        help='Max # of iterations to run in the final pattern fits (default=500)')
-        p.add_argument('--octets_only',action='store_true',
+        p.add_argument('--octets-only',action='store_true',
                        help='Add this flag to find the octets for every selected sample and quit')
         return p
     @classmethod
