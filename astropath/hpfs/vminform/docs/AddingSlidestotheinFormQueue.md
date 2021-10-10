@@ -19,13 +19,13 @@ The inForm Queue was designed to send processing tasks to the virtual machines f
     - ```Antibody```: The antibody name that will be processed.
       - All data will be exported into a *```<Path>```\\tmp_inform_data\\```<Antibody>```* subfolder
       - E.g. *CD8*
-    - ```Algorithm```: The name for the algorithm to do the processing **include the file extension**
-      - The algorithm should be location in a *```<Path>```\\tmp_inform_data\\Project_Development* folder for the code to be able to find it
+    - ```Algorithm```: The name for the **project** to do the processing **include the file extension**
+      - The **project** should be location in a *```<Path>```\\tmp_inform_data\\Project_Development* folder for the code to be able to find it
       - Only the *Project_Development* folder will be search, the search is not recursive. Subfolders will not be searched for the algorithm
       - E.g. *CD8.ifp*
     - ```Processing Location```: Where the slide is being processed
     - ```Start```: The time that the processing started, this is updated by the code and should be left blank
 3. Save and close the file
 
-*NOTE*: you only need to fill out the ```Algorithm``` column for the first time a slide - antibody pair is run. To rerun a slide - antibody pair add it to a new row with the new algorithm (be sure to fill out the ```Path``` column as well).
+*NOTE*: you only need to fill out the ```Algorithm``` column for the first time a slide - antibody pair is run. To rerun a slide - antibody pair add it to a new row with the new **project** (be sure to fill out the ```Path``` column as well).
 
