@@ -2,11 +2,11 @@
 
 Different coding tools that can be run outside of the *AstroPath Pipeline* are described here. Note that, the code still workers under the assumption that the ```<Mpath>``` exists with all its configuration files and the samples to be process are in the *AstroPath* format.
 
-# 5.7.5.1. Instructions to Run Standalone via *AstroPath Pipeline* Workflow
+# 5.7.5.1. Instructions to Run Standalone via *AstroPath Pipeline* PowerShell Workflow
 The entire workflow can be run for a single slide outside of the *AstroPath Pipeline* by running the following commands in Powershell:
 
 ```
-Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrection' @(<Project>, <slideid>, <ProcessingLocation>)
+Import-Module '*.\astropath'; launchmodule -slideid:<slideid> -mpath:<mpath> -module:'imagecorrection' -stringin:<Project>-<slideid>-<ProcessingLocation>
 ```
 - ```<SlideID>```: the names for the specimens in the astropath processing pipeline
 - ```<mpath>```: the main path for all the astropath processing .csv configuration files; the current location of this path is *\\bki04\astropath_processing*
