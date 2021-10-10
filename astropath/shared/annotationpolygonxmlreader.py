@@ -146,7 +146,11 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     with open(self.xmlfile, "rb") as f:
       count = more_itertools.peekable(itertools.count(1))
       nodes = [AnnotationNode(node) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
-      nodes = [node for node in nodes if node.annotationname != "empty"]
+      for node in nodes[:]:
+        if not node.regions:
+          if node.annotationtype != "empty":
+            self.__logger.warningglobal(f"Annotation {node.annotationname} is empty, skipping it")
+          nodes.remove(node)
       for node in nodes:
         try:
           node.annotationtype = self.allowedannotation(node.annotationtype).name
