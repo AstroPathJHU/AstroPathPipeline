@@ -55,12 +55,16 @@ from any directory.
 #### 2.2.2.1. Launch using batch files
 Most of the code written into powershell was designed to run automated as a background process launched by double clicking a batch file. 
 The code monitors all projects defined in the astropath processing files and starts new tasks for slides when appropriate triggers take place.
-The set of batch files for modules launched this way can be found in the *\astropath\launch* directory. Assuming slides are set up in the astropath format
+The set of batch files for modules launched this way can be found in the *\*\astropath\launch* directory. Assuming slides are set up in the astropath format
 and the AstroPath processing directory is set up correctly, double clicking the file with the appropriate module name will initiate it. 
 
 #### 2.2.2.2. Starting in Powershell
 To run a module on particular slide, check out the repository and in a powershell console enter:
-``` import-module *\astropath ``` replacing the '*' with the path to the repository. 
+``` 
+import-module *\astropath 
+``` 
+replacing the '`*' with the path to the repository. 
+
 Next use the launchmodule function to start a module as follows: ```LaunchModule -mpath:<mpath> -module:<module name> -stringin:<module input> ```
 - <mapth>: the astropath processing directory
 - <module name>: module name to be launched, most modules launched in powershell are located in the hpfs or scans directories
