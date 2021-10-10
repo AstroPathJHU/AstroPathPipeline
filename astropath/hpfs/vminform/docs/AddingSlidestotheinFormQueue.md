@@ -11,17 +11,20 @@ The inForm Queue was designed to send processing tasks to the virtual machines f
 1. Navigate to the *\*\Clinical_Specimen_XX\upkeep_and_progress* folder.
 2. Open the *InForm_Queue.csv* file and fill out the columns
    - this file has the following columns: ```Path, Specimen, Antibody, Algorithm, Processing```
-   - ```Path```: the full path up to and including the *Clinical_Specimen_XX* folder or the ```<Dname>\<Dpath>``` folder
-     - E.g. *\\bki04\Clinical_Specimen*
-   - ```Specimen```: The slide name
-     - E.g. *M1_1*
-   - ```Antibody```: The antibody to run
-     - E.g. *CD8*
-   - ```Algorithm```: The complete name of the algorithm or project to use for processing (**include the file extension**)
-     - E.g. *Tumor.ifp*
-     - Be sure that this algorithm is in the *\Clinical_Specimen_XX\tmp_inform_data\Project_Development* folder, the code will not search subfolders
-   - ```Processing```: whether or not the slide has been sent for prcoessing
-     - **leave this column blank the code will fill it in**
+    - ```Path```: The path up to but not including the specimen folder or ```\\<Dname>\<Dpath>``` ([described here](../../../scans/docs/Definitions.md/#432-path-definitions))
+      - E.g. *\\\\bki04\Clinical_Specimen_2* 
+    - ```Specimen```: The name of the specimen to be analyzed
+      - The image data to be processed should be located in an *```<Path>```\\```<Specimen>```\\im3\\flatw* folder 
+      - E.g. *M1_1*
+    - ```Antibody```: The antibody name that will be processed.
+      - All data will be exported into a *```<Path>```\\tmp_inform_data\\```<Antibody>```* subfolder
+      - E.g. *CD8*
+    - ```Algorithm```: The name for the algorithm to do the processing **include the file extension**
+      - The algorithm should be location in a *```<Path>```\\tmp_inform_data\\Project_Development* folder for the code to be able to find it
+      - Only the *Project_Development* folder will be search, the search is not recursive. Subfolders will not be searched for the algorithm
+      - E.g. *CD8.ifp*
+    - ```Processing Location```: Where the slide is being processed
+    - ```Start```: The time that the processing started, this is updated by the code and should be left blank
 3. Save and close the file
 
 *NOTE*: you only need to fill out the ```Algorithm``` column for the first time a slide - antibody pair is run. To rerun a slide - antibody pair add it to a new row with the new algorithm (be sure to fill out the ```Path``` column as well).
