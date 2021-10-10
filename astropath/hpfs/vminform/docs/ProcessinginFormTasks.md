@@ -8,7 +8,7 @@ The code is designed to run continously. The code starts by opening the *inForm_
 
 ## 5.8.7.2. Important Definitions
 - The code requires that an active version of inForm is installed on the computer and that the version installed matches the version number coded in at the bottom of **BatchProcessing.ps1**.
-- The main *inForm_queue.csv* (also [described here](AddingSlidestotheinFormQueue.md#5853-instructions))
+- The main *vminform-queue.csv* (also [described here](AddingSlidestotheinFormQueue.md#5853-instructions))
   - This file should be located in a ```<mpath>```\across_project_queues directory. 
   - This file consists of a five columns ```Path,Specimen,Antibody,Algorithm,Processing Location,Start```
     - ```Path```: The path up to but not including the specimen folder or ```\\<Dname>\<Dpath>``` ([described here](../../../scans/docs/Definitions.md/#432-path-definitions))
