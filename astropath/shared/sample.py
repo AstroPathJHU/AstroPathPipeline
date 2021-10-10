@@ -10,7 +10,7 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.config import CONST as UNIV_CONST
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer
@@ -18,7 +18,7 @@ from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentParser):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMoreRoots):
   """
   Base class for all sample classes.
 
@@ -367,18 +367,18 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
       segstatus = layer.SegmentationStatus
       if segstatus != 0:
         segid = layer.ImageQA
+        if segid == "NA":
+          segid = segstatus
         if segstatus not in dct:
           dct[segstatus] = segid
-        elif segid != "NA":
-          if segid != dct[segstatus] != "NA":
+        elif segid != segstatus:
+          if segid != dct[segstatus] != segstatus:
             raise ValueError(f"Multiple different non-NA ImageQAs for SegmentationStatus {segstatus} ({self.mergeconfigcsv})")
           else:
             dct[segstatus] = segid
-    if "NA" in dct.values():
-      raise ValueError(f"No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
     if sorted(dct.keys()) != list(range(1, len(dct)+1)):
       raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
-    return [dct[k] for k in range(1, len(dct)+1)]
+    return tuple(dct[k] for k in range(1, len(dct)+1))
 
   @property
   def nsegmentations(self):
@@ -738,9 +738,14 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
     Wsi filename for a given layer.
     """
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
-  @property
-  def wsitifffilename(self):
-    return self.wsifolder/f"{self.SlideID}-Z{self.ztiff}-wsi.tiff"
+  def wsitifffilename(self, layers):
+    name = f"{self.SlideID}-Z{self.ztiff}"
+    if layers == "color":
+      name += "-color"
+    elif frozenset(layers) != frozenset(range(1, self.nlayersunmixed+1)):
+      name += "-L" + "".join(str(l) for l in sorted(layers))
+    name += "-wsi.tiff"
+    return self.wsifolder/name
 
 class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """
@@ -1229,6 +1234,8 @@ class XMLLayoutReader(SampleBase):
     List all rectangles that have im3 files.
     """
     folder = self.scanfolder/"MSI"
+    if not folder.exists():
+      folder = self.scanfolder/"flatw"
     im3s = folder.glob(f"*{UNIV_CONST.IM3_EXT}")
     result = []
     for im3 in im3s:

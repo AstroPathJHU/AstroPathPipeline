@@ -11,10 +11,12 @@ setupkwargs = dict(
       "alignsample=astropath.slides.align.alignsample:main",
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpsample=astropath.slides.annowarp.annowarpsample:main",
-      "ast-gen=astropath.scans.astroidgen.ASTgen:start_gen",
+      "appliedflatfieldcohort=astropath.hpfs.flatfield.appliedflatfieldcohort:main",
       "applyflatwsample=astropath.hpfs.imagecorrection.applyflatwsample:main",
       "applyflatwcohort=astropath.hpfs.imagecorrection.applyflatwcohort:main",
+      "ast-gen=astropath.scans.astroidgen.ASTgen:start_gen",
       "astropathworkflow=astropath.shared.workflow:main",
+      "batchflatfieldcohort=astropath.hpfs.flatfield.batchflatfieldcohort:main",
       "checkannotations=astropath.shared.annotationpolygonxmlreader:checkannotations",
       "csvscancohort=astropath.slides.csvscan.csvscancohort:main",
       "csvscansample=astropath.slides.csvscan.csvscansample:main",
@@ -28,11 +30,10 @@ setupkwargs = dict(
       "prepdbcohort=astropath.slides.prepdb.prepdbcohort:main",
       "prepdbsample=astropath.slides.prepdb.prepdbsample:main",
       "read_annotation_xml=astropath.shared.annotationpolygonxmlreader:main",
+      "makesampledef=astropath.shared.samplemetadata:makesampledef",
       "meanimagesample=astropath.hpfs.flatfield.meanimagesample:main",
       "meanimagecohort=astropath.hpfs.flatfield.meanimagecohort:main",
       "meanimagecomparison=astropath.hpfs.flatfield.meanimagecomparison:main",
-      "batchflatfieldcohort=astropath.hpfs.flatfield.batchflatfieldcohort:main",
-      "appliedflatfieldcohort=astropath.hpfs.flatfield.appliedflatfieldcohort:main",
       "stitchastropathtissuemasksample=astropath.slides.stitchmask.stitchmasksample:astropathtissuemain",
       "stitchinformmasksample=astropath.slides.stitchmask.stitchmasksample:informmain",
       "stitchastropathtissuemaskcohort=astropath.slides.stitchmask.stitchmaskcohort:astropathtissuemain",
@@ -75,7 +76,10 @@ setupkwargs = dict(
     "vips": ["pyvips"],
   },
   package_data = {
-    "astropath": ["shared/master_annotation_list.csv"],
+    "astropath": [
+      "shared/master_annotation_list.csv",
+      "slides/zoom/color_matrix.txt",
+    ],
   },
 )
 

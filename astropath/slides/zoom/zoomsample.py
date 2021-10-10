@@ -1,9 +1,9 @@
-import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, PIL, shutil, skimage.transform
+import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
 
 from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities import units
-from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels
+from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels, vips_image_to_array
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiffMultiLayer
 
@@ -44,6 +44,13 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
   """
   rectangletype = FieldReadComponentTiffMultiLayer
 
+  def __init__(self, *args, tifflayers="color", **kwargs):
+    self.__tifflayers = tifflayers
+    super().__init__(*args, **kwargs)
+
+  @property
+  def tifflayers(self): return self.__tifflayers
+
   @classmethod
   def logmodule(self): return "zoom"
 
@@ -62,6 +69,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     onepixel = self.onepixel
     self.logger.info("allocating memory for the global array")
     bigimageshape = tuple((self.ntiles * self.zoomtilesize)[::-1]) + (len(self.layers),)
+    fortiff = []
     with contextlib.ExitStack() as stack:
       if usememmap:
         tempfile = stack.enter_context(self.tempfile())
@@ -142,7 +150,6 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
             ]
 
       #save the wsi
-      tiffoutput = None
       self.wsifolder.mkdir(parents=True, exist_ok=True)
       for i, layer in enumerate(self.layers):
         filename = self.wsifilename(layer)
@@ -151,20 +158,64 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         image = PIL.Image.fromarray(slc)
         image.save(filename, "PNG")
 
-        vipsimage = pyvips.Image.new_from_memory(np.ascontiguousarray(slc), width=bigimage.shape[1], height=bigimage.shape[0], bands=1, format="uchar")
-        if tiffoutput is None:
-          tiffoutput = vipsimage
-        else:
-          tiffoutput = tiffoutput.join(vipsimage, "vertical")
+        if layer in self.needtifflayers:
+          contiguousslc = np.ascontiguousarray(slc)
+          vipsimage = pyvips.Image.new_from_memory(contiguousslc, width=bigimage.shape[1], height=bigimage.shape[0], bands=1, format="uchar")
+          fortiff.append(vipsimage)
 
-      filename = self.wsitifffilename
-      self.logger.info(f"saving {filename.name}")
-      scale = 2**(self.ztiff-self.zmax)
-      if scale == 1:
-        tiffoutputzoomed = tiffoutput
-      else:
-        tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
-      tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=image.height*scale)
+      self.makewsitiff(fortiff)
+
+  @methodtools.lru_cache()
+  @staticmethod
+  def _colormatrix():
+    here = pathlib.Path(__file__).parent
+    with open(here/"color_matrix.txt") as f:
+      matrix = re.search(r"(?<=\[).*(?=\])", f.read(), re.DOTALL).group(0)
+    return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")])
+
+  @property
+  def colormatrix(self): return self._colormatrix()[tuple(np.array(self.layers)-1), :]
+
+  @property
+  def needtifflayers(self):
+    if self.tifflayers is None: return ()
+    if self.tifflayers == "color": return range(1, 9)
+    return self.tifflayers
+
+  def makewsitiff(self, layers):
+    if not self.tifflayers:
+      return
+    filename = self.wsitifffilename(self.tifflayers)
+    if filename.exists():
+      self.logger.info(f"{filename.name} already exists")
+      return
+
+    self.logger.info(f"saving {filename.name}")
+    scale = 2**(self.ztiff-self.zmax)
+    if scale == 1:
+      pass
+    else:
+      self.logger.info(f"  rescaling by {scale}")
+      layers = [layer.resize(scale, vscale=scale) for layer in layers]
+
+    if self.tifflayers == "color":
+      self.logger.info("  normalizing")
+      layerarrays = np.array([vips_image_to_array(layer) for layer in layers], dtype=np.float16)
+      layerarrays = layerarrays / np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
+      layerarrays = 180 * np.sinh(1.5 * layerarrays)
+      self.logger.info("  multiplying by color matrix")
+      img = np.tensordot(layerarrays, self.colormatrix, [[0], [0]])
+      img = img.clip(0, 255)
+      pilimage = PIL.Image.fromarray(img.astype(np.uint8))
+      self.logger.info("  saving")
+      pilimage.save(filename)
+    else:
+      assert len(layers) == len(self.tifflayers)
+      tiffoutput = layers[0]
+      for layer in layers[1:]:
+        tiffoutput = tiffoutput.join(layer, "vertical")
+      self.logger.info("  saving")
+      tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
 
   def zoom_memory(self, fmax=50):
     """
@@ -237,6 +288,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       for tilen, tile in enumerate(tiles, start=1):
         with tile:
           for layer in self.layers:
+            if self.wsifilename(layer).exists(): continue
             filename = self.bigfilename(layer, tile.tilex, tile.tiley)
             with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
               assert lock
@@ -362,44 +414,43 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     except ImportError:
       raise ImportError("Please pip install pyvips to use this functionality")
 
+    fortiff = []
+
     self.wsifolder.mkdir(parents=True, exist_ok=True)
-    tiffoutput = None
     for layer in self.layers:
+      wsifilename = self.wsifilename(layer)
+      if wsifilename.exists():
+        self.logger.info(f"{wsifilename.name} already exists")
+        if layer in self.needtifflayers:
+          output = pyvips.Image.new_from_file(os.fspath(wsifilename))
+          fortiff.append(output)
+        continue
+
       images = []
       removefilenames = []
       blank = None
       for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
-        filename = self.bigfilename(layer, tilex, tiley)
-        if filename.exists():
-          images.append(pyvips.Image.new_from_file(os.fspath(filename)))
-          removefilenames.append(filename)
+        bigfilename = self.bigfilename(layer, tilex, tiley)
+        if bigfilename.exists():
+          images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)))
+          removefilenames.append(bigfilename)
         else:
           if blank is None:
             blank = pyvips.Image.new_from_memory(np.zeros(shape=(self.zoomtilesize*self.zoomtilesize,), dtype=np.uint8), width=self.zoomtilesize, height=self.zoomtilesize, bands=1, format="uchar")
           images.append(blank)
 
-      filename = self.wsifilename(layer)
-      self.logger.info(f"saving {filename.name}")
+      self.logger.info(f"saving {wsifilename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
-      output.pngsave(os.fspath(filename))
-      if tiffoutput is None:
-        tiffoutput = output
-      else:
-        tiffoutput = tiffoutput.join(output, "vertical")
+      output.pngsave(os.fspath(wsifilename))
+      if layer in self.needtifflayers:
+        fortiff.append(output)
 
       for big in removefilenames:
         big.unlink()
 
     shutil.rmtree(self.bigfolder)
 
-    filename = self.wsitifffilename
-    self.logger.info(f"saving {filename.name}")
-    scale = 2**(self.ztiff-self.zmax)
-    if scale == 1:
-      tiffoutputzoomed = tiffoutput
-    else:
-      tiffoutputzoomed = tiffoutput.resize(scale, vscale=scale)
-    tiffoutputzoomed.tiffsave(os.fspath(filename), page_height=output.height*scale)
+    self.makewsitiff(fortiff)
 
   def zoom_wsi_memory(self, fmax=50):
     self.zoom_memory(fmax=fmax)
@@ -426,21 +477,30 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layers, **super().workflowkwargs}
+    return {"layers": self.layers, "tifflayers": self.tifflayers, **super().workflowkwargs}
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, **otherrootkwargs):
+  def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, **otherrootkwargs):
+    with open(informdataroot/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+        nlayers = int(node.xml_attrs["dim"])
     if layers is None:
-      with open(informdataroot/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
-        for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-          layers = range(1, int(node.xml_attrs["dim"])+1)
-    return [
+      layers = range(1, nlayers+1)
+    result = [
       *(
         zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
         for layer in layers
       ),
-      zoomroot/SlideID/"wsi"/f"{SlideID}-Z{cls.ztiff}-wsi.tiff"
     ]
+    if tifflayers:
+      tiffname = f"{SlideID}-Z{cls.ztiff}"
+      if tifflayers == "color":
+        tiffname += "-color"
+      elif frozenset(tifflayers) != frozenset(range(1, nlayers+1)):
+        tiffname += "-L" + "".join(str(l) for l in sorted(tifflayers))
+      tiffname += "-wsi.tiff"
+      result.append(zoomroot/SlideID/"wsi"/tiffname)
+    return result
 
   @classmethod
   def workflowdependencyclasses(cls):
