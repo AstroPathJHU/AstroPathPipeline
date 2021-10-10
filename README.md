@@ -55,8 +55,7 @@ from any directory.
 #### 2.2.2.1. Launch using batch files
 Most of the code written into powershell was designed to run automated as a background process launched by double clicking a batch file. 
 The code monitors all projects defined in the astropath processing files and starts new tasks for slides when appropriate triggers take place.
-The set of batch files for modules launched this way can be found in the [*\*\astropath\launch*](astropath/launch) directory. Assuming slides are set up in the astropath format
-and the AstroPath processing directory is set up correctly, double clicking the file with the appropriate module name will initiate it. 
+The set of batch files for modules launched this way can be found in the [*\*\astropath\launch*](astropath/launch) directory. Assuming slides are set up in the [astropath format](astropath/scans/docs/DirectoryOrganization.md) and the [AstroPath processing directory](astropath/scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md) is set up correctly, double clicking the file with the appropriate module name will initiate it. 
 
 #### 2.2.2.2. Starting in Powershell
 To run a module on particular slide, check out the repository and in a powershell console enter:
@@ -65,13 +64,18 @@ import-module *\astropath
 ``` 
 replacing the '`*' with the path to the repository. 
 
-Next use the launchmodule function to start a module as follows: ```LaunchModule -mpath:<mpath> -module:<module name> -stringin:<module input> ```
+Next use the launchmodule function to start a module as follows: 
+```
+LaunchModule -mpath:<mpath> -module:<module name> -stringin:<module input>
+```
 - ```<mapth>```: the astropath processing directory
 - ```<module name>```: module name to be launched, most modules launched in powershell are located in the hpfs or scans directories
 - ```<stringin>```: dash separated list of arguements for a particular module
 For simplicity (understanding that most users will not have a great deal of comfort in powershell), 
 one could launch a module such as vminform by invoking the following from a command line:
-```powershell -noprofile -command import-module *\astropath; LaunchModule -mpath:*\astropath_processing -module:vminform -stringin:"<dpath>-<slideid>-<antibody>-<algorithm>-<inform version>"```
+```
+powershell -noprofile -command import-module *\astropath; LaunchModule -mpath:*\astropath_processing -module:vminform -stringin:"<dpath>-<slideid>-<antibody>-<algorithm>-<inform version>"
+```
 
 ### 2.2.3. MATLAB Instructions
 Check out\ download the github repository. In MATLAB, add the entire *AstroPath Pipeline* to the MATLAB path. The *AstroPath Pipeline* commands should then be available in MATLAB. 
