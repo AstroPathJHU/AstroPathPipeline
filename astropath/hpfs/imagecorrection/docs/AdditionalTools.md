@@ -8,7 +8,7 @@ The entire workflow can be run for a single slide outside of the *AstroPath Pipe
 ```
 Import-Module '*.\astropath'; launchmodule -slideid:<slideid> -mpath:<mpath> -module:'imagecorrection' -stringin:<Project>-<slideid>-<ProcessingLocation>
 ```
-- ```replace '*' with the location up to and including the *AstroPathPipeline* repository
+- replace '\*' with the location up to and including the *AstroPathPipeline* repository
 - ```<SlideID>```: the names for the specimens in the astropath processing pipeline
 - ```<mpath>```: the main path for all the astropath processing .csv configuration files; the current location of this path is *\\bki04\astropath_processing*
 - ```<Project>```: Project Number
