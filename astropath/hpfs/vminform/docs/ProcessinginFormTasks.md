@@ -8,8 +8,7 @@ The code is designed to run continously. The code starts by opening the *inForm_
 
 ## 5.8.7.2. Important Definitions
 - The code requires that an active version of inForm is installed on the computer and that the version installed matches the version number coded in at the bottom of **BatchProcessing.ps1**.
-- The main *inForm_queue.csv* ([described here](AddingSlidestotheinFormQueue.md#5853-instructions))
-- The virtual machine queue file: *vminform-queue.csv*
+- The main *inForm_queue.csv* (also [described here](AddingSlidestotheinFormQueue.md#5853-instructions))
   - This file should be located in a ```<mpath>```\across_project_queues directory. 
   - This file consists of a five columns ```Path,Specimen,Antibody,Algorithm,Processing Location,Start```
     - ```Path```: The path up to but not including the specimen folder or ```\\<Dname>\<Dpath>``` ([described here](../../../scans/docs/Definitions.md/#432-path-definitions))
@@ -20,14 +19,13 @@ The code is designed to run continously. The code starts by opening the *inForm_
     - ```Antibody```: The antibody name that will be processed.
       - All data will be exported into a *```<Path>```\\tmp_inform_data\\```<Antibody>```* subfolder
       - E.g. *CD8*
-    - ```Algorithm```: The name for the algorithm to do the processing **include the file extension**
-      - The algorithm should be location in a *```<Path>```\\tmp_inform_data\\Project_Development* folder for the code to be able to find it
+    - ```Algorithm```: The name for the project to do the processing **include the file extension**
+      - The project should be location in a *```<Path>```\\tmp_inform_data\\Project_Development* folder for the code to be able to find it
       - Only the *Project_Development* folder will be search, the search is not recursive. Subfolders will not be searched for the algorithm
       - E.g. *CD8.ifp*
     - ```Processing Location```: Where the slide is being processed
     - ```Start```: The time that the processing started, this is updated by the code and should be left blank
   - The column headers should always be the first line in the csv file.
-  - The file can be updated either manually or by the ```inform_queue``` code. 
     - To manually update, add the following variables ```<Path>,<Specimen>,<CD8>``` to the next line in the csv file
     - E.g. \\\\bki04\Clinical_Specimen_2,M1_1,CD8,CD8.ifp,
 - Directory Structure: The code requires that the files are set up in the following format additional information on formatting can be found [here](../../../scans/docs/DirectoryOrganization.md#46-directory-organization "Title"): <br>
