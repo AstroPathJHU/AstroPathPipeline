@@ -65,7 +65,6 @@ A final checklist of things to verify and complete before loading into the datab
     - [5.8.7.3. Instructions](vminform/docs/ProcessinginFormTasks.md#5873-instructions)
       - [5.8.7.3.1. Setting up the Virtual Machines for inForm®](vminform/docs/ProcessinginFormTasks.md#58731-setting-up-the-virtual-machines-for-inform)
       - [5.8.7.3.2. Running the VMinForm Module](vminform/docs/ProcessinginFormTasks.md#58732-running-the-vminform-module)
-    - [5.8.7.4. Workflow](vminform/docs/ProcessinginFormTasks.md#5874-workflow) 
 - [5.9. Mergeloop](mergeloop#59-mergeloop "Title")
   - [5.9.1. Description](mergeloop#591-description)
   - [5.9.2. Important Definitions](mergeloop#592-important-definitions)
