@@ -1,6 +1,6 @@
 ﻿##
 # launch a queue for a provide module with a provided mpath and credentials
-
+#
 class Dispatcher : queue{
     #
     [switch]$new
@@ -14,7 +14,7 @@ class Dispatcher : queue{
         #
         $this.cred = $cred
         $this.defCodeRoot()
-        $this.Run()
+        #$this.Run()
         #
     }
     #
@@ -22,7 +22,7 @@ class Dispatcher : queue{
         #
         $this.cred = $cred
         $this.defCodeRoot()
-        $this.Run()
+        #$this.Run()
         #
     }
     #
@@ -30,7 +30,7 @@ class Dispatcher : queue{
         #
         $this.cred = $cred
         $this.defCodeRoot()
-        $this.Run()
+        #$this.Run()
         #
     }
     #
@@ -56,7 +56,7 @@ class Dispatcher : queue{
         }
         #
         $folder = $root -Split('\\astropath\\')
-        $this.coderoot = $folder[0]     
+        $this.coderoot = $folder[0] + '\\astropath'
     }
 
     #
