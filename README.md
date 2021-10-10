@@ -74,7 +74,7 @@ LaunchModule -mpath:<mpath> -module:<module name> -stringin:<module input>
 For simplicity (understanding that most users will not have a great deal of comfort in powershell), 
 one could launch a module such as vminform by invoking the following from a command line:
 ```
-powershell -noprofile -command import-module *\astropath; LaunchModule -mpath:*\astropath_processing -module:vminform -stringin:"<dpath>-<slideid>-<antibody>-<algorithm>-<inform version>"
+powershell -noprofile -command import-module *\astropath; LaunchModule -mpath:*\astropath_processing -module:vminform -stringin:<dpath>-<slideid>-<antibody>-<algorithm>-<inform version>
 ```
 
 ### 2.2.3. MATLAB Instructions
