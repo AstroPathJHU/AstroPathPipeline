@@ -43,5 +43,4 @@ The routine can be run for an entire cohort of samples at once using the followi
 `applyflatwcohort <Dpath>\<Dname> <Rpath>`
 
 To see more command line arguments available for both routines, run `applyflatwsample --help` or `applyflatwcohort --help`.
-# 5.7.5.3. Instructions Apply Image Correction Standalone *version 0.0.1*
 
