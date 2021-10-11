@@ -10,7 +10,7 @@
 %%
 function [insnum, expectedinform, infm, infmd, trackinform,...
     iffdloc, iffd, expectedTablesnum] ...
-    = getinformfiles(sname, actualim3num, tmpfd, informpath)
+    = getinformfiles(sname, actualim3num_internal, tmpfd, informpath)
     %
     % some file tracking vectors
     % insum tracks number of actual inform files exist;
@@ -27,7 +27,6 @@ function [insnum, expectedinform, infm, infmd, trackinform,...
     iffdloc = zeros(length(tmpfd),1);
     dt = cell(length(tmpfd),1);
     trackinform = 0;
-    errs = [];
     for i2 = 1:length(tmpfd)
         tmpname = tmpfd(i2).name;
         %
@@ -47,7 +46,7 @@ function [insnum, expectedinform, infm, infmd, trackinform,...
         tmp2 = tmp2(ii);
         %
         % loop through each *\ABxx\'subfolder'
-        %
+        %{
         for i3 = 1:length(tmp2)
             %
             % numeric folder paths are strings relegating the subdir
@@ -134,7 +133,7 @@ function [insnum, expectedinform, infm, infmd, trackinform,...
                 end
             end
         end
-        %
+        %}
         % now check if that inform folder exists in current specimen and 
         % create trackers
         %
@@ -158,25 +157,7 @@ function [insnum, expectedinform, infm, infmd, trackinform,...
                 % expected number of files
                 %
                 Bf = dir([inspath,'\Batch.*']);
-                if ~isempty(Bf)
-                    fileID = fopen([Bf.folder,'\',Bf.name]);
-                    Batch = textscan(fileID,'%s','HeaderLines',...
-                        2,'EndofLine','\r', 'whitespace','\t\n');
-                    fclose(fileID);
-                    Batch = Batch{1};
-                    %
-                    ii = contains(Batch,sname);
-                    Batch = Batch (ii);
-                    Batch = extractBefore(Batch, ']');
-                    %
-                    ii = unique(extractAfter(Batch, '_['));
-                    InformErrors = length(ii);
-                    %
-                    errs = [errs;ii];
-                    expectedinform(i2) = actualim3num - InformErrors;
-                else
-                    expectedinform(i2) = actualim3num;
-                end
+                expectedinform(i2) = getInFormErrors(sname, Bf, actualim3num_internal);
                 %
                 % make the number of files string
                 %
@@ -188,16 +169,18 @@ function [insnum, expectedinform, infm, infmd, trackinform,...
                 infmd{i2} = insnames(idx).date(1:11);
                 dt{i2} = insnames(idx).date(1:11);
             end
+            %
+            transferComponents(inspath);
+            %
         end
     end
     if ~isempty(gcp('nocreate'))
         poolobj = gcp('nocreate');
         delete(poolobj);
     end
-    expectedTablesnum = actualim3num;
-    if ~isempty(errs)
-        errs = unique(errs);
-        expectedTablesnum = expectedTablesnum - length(errs);
+    expectedTablesnum = actualim3num_internal;
+    if ~isempty(expectedinform)
+        expectedTablesnum = min(expectedinform);
     end
     
 end

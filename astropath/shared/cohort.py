@@ -2,10 +2,9 @@ import abc, datetime, job_lock, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
-from .samplemetadata import SampleDef
 from .workflowdependency import ThingWithRoots, WorkflowDependency
 
 class MetaCohortBase:
@@ -23,16 +22,20 @@ class CohortBase(MetaCohortBase, ThingWithRoots):
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
+  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
     super().__init__(*args, mainlogroots=[logroot]+moremainlogroots, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
     self.__logroot = pathlib.Path(logroot)
+    if sampledefroot is None: sampledefroot = self.__root
+    self.__sampledefroot = pathlib.Path(sampledefroot)
     self.uselogfiles = uselogfiles
     self.reraiseexceptions = reraiseexceptions
 
   @property
-  def sampledefs(self): return readtable(self.root/"sampledef.csv", SampleDef)
+  def sampledefs(self):
+    from .samplemetadata import SampleDef
+    return readtable(self.sampledefroot/"sampledef.csv", SampleDef)
   @property
   def SlideIDs(self): return [_.SlideID for _ in self.sampledefs]
   @property
@@ -45,6 +48,7 @@ class CohortBase(MetaCohortBase, ThingWithRoots):
     return Cohort
 
   def globallogger(self):
+    from .samplemetadata import SampleDef
     samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
     return self.getlogger(samp, isglobal=True)
 
@@ -74,10 +78,75 @@ class CohortBase(MetaCohortBase, ThingWithRoots):
   @property
   def logroot(self): return self.__logroot
   @property
+  def sampledefroot(self): return self.__sampledefroot
+  @property
   def rootnames(self):
-    return {*super().rootnames, "root", "logroot"}
+    return {*super().rootnames, "root", "logroot", "sampledefroot"}
 
-class Cohort(CohortBase, RunFromArgumentParser):
+class RunCohortBase(CohortBase, RunFromArgumentParser):
+  """
+  Base class for a cohort that can be run from the command line
+  """
+
+  @abc.abstractmethod
+  def run(self): pass
+  def dryrun(self, **kwargs):
+    print("Command line is valid")
+
+  @classmethod
+  def defaultunits(cls):
+    return "fast_pixels"
+
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    """
+    Create an argument parser to run this cohort on the command line
+    """
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--sampledefroot", type=pathlib.Path, help="folder to look for sampledef.csv")
+    p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    """
+    Get the kwargs to be passed to the cohort constructor
+    from the parsed arguments
+    """
+    dct = parsed_args_dict
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "sampledefroot": dct.pop("sampledefroot"),
+    }
+    return kwargs
+
+  @classmethod
+  def misckwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().misckwargsfromargumentparser(parsed_args_dict),
+      "dry_run": parsed_args_dict.pop("dry_run"),
+    }
+    return kwargs
+
+  @classmethod
+  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
+    """
+    Run the cohort from command line arguments.
+    """
+    with units.setup_context(misckwargs.pop("units")):
+      dryrun = misckwargs.pop("dry_run")
+      if misckwargs:
+        raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
+      if dryrun:
+        initkwargs["uselogfiles"] = False
+      cohort = cls(**initkwargs)
+      if dryrun:
+        cohort.dryrun(**runkwargs)
+      else:
+        cohort.run(**runkwargs)
+      return cohort
+
+class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   """
   Base class for a cohort that can be run in a loop
 
@@ -212,7 +281,6 @@ class Cohort(CohortBase, RunFromArgumentParser):
     """
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
-    p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
     return p
 
@@ -235,32 +303,6 @@ class Cohort(CohortBase, RunFromArgumentParser):
     if regex is not None:
       kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
     return kwargs
-
-  @classmethod
-  def misckwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().misckwargsfromargumentparser(parsed_args_dict),
-      "dry_run": parsed_args_dict.pop("dry_run"),
-    }
-    return kwargs
-
-  @classmethod
-  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
-    """
-    Run the cohort from command line arguments.
-    """
-    with units.setup_context(misckwargs.pop("units")):
-      dryrun = misckwargs.pop("dry_run")
-      if misckwargs:
-        raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
-      if dryrun:
-        initkwargs["uselogfiles"] = False
-      cohort = cls(**initkwargs)
-      if dryrun:
-        cohort.dryrun(**runkwargs)
-      else:
-        cohort.run(**runkwargs)
-      return cohort
 
 class Im3Cohort(Cohort, Im3ArgumentParser):
   """
@@ -591,7 +633,7 @@ class WorkflowCohort(Cohort):
 
     def samplefilter(self, sample):
       return filter(
-        runstatus=sample.runstatus,
+        runstatus=sample.runstatus(),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
           for dependency, SlideID in sample.workflowdependencies()
@@ -613,7 +655,7 @@ class WorkflowCohort(Cohort):
   def processsample(self, sample, *, print_errors, ignore_errors, **kwargs):
     if print_errors:
       if ignore_errors is None: ignore_errors = []
-      status = sample.runstatus
+      status = sample.runstatus(**kwargs)
       if status: return
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       print(f"{sample.SlideID} {status}")
@@ -625,14 +667,14 @@ class WorkflowCohort(Cohort):
           if missinginputs:
             raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
         except Exception: #don't log KeyboardInterrupt here
-          with self.getlogger(sample):
+          with sample:
             raise
           return
 
         with self.getlogger(sample):
           super().processsample(sample, **kwargs)
 
-          status = sample.runstatus
+          status = sample.runstatus(**kwargs)
           #we don't want to do anything if there's an error, because that
           #was already logged so no need to log it again and confuse the issue.
           if status.missingfiles and status.error is None:

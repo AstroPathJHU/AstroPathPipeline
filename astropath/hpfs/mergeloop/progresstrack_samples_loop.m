@@ -98,8 +98,8 @@ for i1 = 1:height(ss)
         exifall{i1} = sum(expectedinform);
         diff_ifall{i1} = [exifall{i1} - aifall{i1}];
         iffda = iffd(iffdloc);
-        [~,idx] = max([iffda.datenum]);
-        difallfd = iffda(idx).date;
+        [~,idx] =  max(datenum(infmda));
+        difallfd = infmda{idx};
         ifalldate{i1} = iffda(idx).date(1:11);
     end
     MergeConfig = [wd,'\Batch\MergeConfig_',BatchID{i1},'.xlsx'];

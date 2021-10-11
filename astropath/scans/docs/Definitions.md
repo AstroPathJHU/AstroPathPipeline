@@ -58,7 +58,7 @@ The file pathes have been standarized and are described below. Additional exampl
    - This path should preferably located on a different drive from the main path to improve pipeline performance. 
    - E.g. "\\bki03\flatw_7"
    - Usually the specifier used on the ```<Dname>``` folder is also found as an extension on this folder
-   - Additional details on these files can be found in the flatw workflow description [5.8.3.2.](../../hpfs/flatw/docs/ImportantDefinitions.md#5832-output-formatting)
+   - Additional details on these files can be found in the flatw workflow description [5.7.3.2.](../../hpfs/imagecorrection/docs/ImportantDefinitions.md#5732-output-formatting)
 - ```<Rpath>```: This is the same as ```<FWpath>``` above, except with the distinction that the image files in the directory are single column raw image files (.Data.dat) instead of flat field and warping images (.fw).
 - ```<Zpath>```: The path to the zoomed whole slide images
 - ```<DZpath>```: The path to the deepzoomed images

@@ -71,12 +71,9 @@ class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("root", type=pathlib.Path, help="The Clinical_Specimen folder where sample data is stored")
     p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default=cls.defaultunits(), help=f"unit implementation (default: {cls.defaultunits()}; safe is only needed for debugging code)")
-    p.add_argument("--im3root", type=pathlib.Path, help="root location where the sample im3 folders, containing im3 files from the microscope and some xml metadata, are stored (default: same as root)")
-    p.add_argument("--informdataroot", type=pathlib.Path, help="root location where the sample inform_data folders, which contain outputs from inform, are stored (default: same as root)")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root)")
     g.add_argument("--no-log", action="store_true", help="do not write to log files")
-    p.add_argument("--xmlfolder", type=pathlib.Path, action="append", help="additional folders to look for xml metadata", default=[], dest="xmlfolders")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--no-dev-version", help="refuse to run unless the package version is tagged", action="store_const", const="tag", dest="version_requirement")
     g.add_argument("--allow-dev-version", help="ok to run even if the package is at a dev version (default if using a log file)", action="store_const", const="commit", dest="version_requirement")
@@ -88,15 +85,10 @@ class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
     dct = parsed_args_dict
     initkwargs = {
       "root": dct.pop("root"),
-      "im3root": dct.pop("im3root"),
-      "informdataroot": dct.pop("informdataroot"),
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
-      "xmlfolders": dct.pop("xmlfolders"),
     }
     if initkwargs["logroot"] is None: initkwargs["logroot"] = initkwargs["root"]
-    if initkwargs["im3root"] is None: initkwargs["im3root"] = initkwargs["root"]
-    if initkwargs["informdataroot"] is None: initkwargs["informdataroot"] = initkwargs["root"]
     return initkwargs
 
   @classmethod
@@ -171,6 +163,28 @@ class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
     if argsdict:
       raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
     cls.runfromargsdicts(**argsdicts)
+
+class ArgumentParserMoreRoots(RunFromArgumentParser):
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--im3root", type=pathlib.Path, help="root location where the sample im3 folders, containing im3 files from the microscope and some xml metadata, are stored (default: same as root)")
+    p.add_argument("--informdataroot", type=pathlib.Path, help="root location where the sample inform_data folders, which contain outputs from inform, are stored (default: same as root)")
+    p.add_argument("--xmlfolder", type=pathlib.Path, action="append", help="additional folders to look for xml metadata", default=[], dest="xmlfolders")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    dct = parsed_args_dict
+    initkwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "im3root": dct.pop("im3root"),
+      "informdataroot": dct.pop("informdataroot"),
+      "xmlfolders": dct.pop("xmlfolders"),
+    }
+    if initkwargs["im3root"] is None: initkwargs["im3root"] = initkwargs["root"]
+    if initkwargs["informdataroot"] is None: initkwargs["informdataroot"] = initkwargs["root"]
+    return initkwargs
 
 class Im3ArgumentParser(RunFromArgumentParser):
   @classmethod
@@ -253,7 +267,6 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
     return p
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    print(f'parsed_args_dict = {parsed_args_dict}')
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       'et_offset_file': parsed_args_dict.pop('exposure_time_offset_file'),

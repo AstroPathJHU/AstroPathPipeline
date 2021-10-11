@@ -1,4 +1,4 @@
-# Warping Corrections
+# 5.6. Warping
 
 The "warping" module contains code to measure the warping affecting raw data files in a cohort. To run it for an entire cohort in the most common use case, enter the following command and arguments:
 
@@ -14,7 +14,7 @@ Running the above command will produce:
 1. **an "octets" subdirectory** inside the "Warping" directory, with files listing the overlap octets found for each sample in the cohort and files listing the overlap octets chosen to run each of three stages of fits
 1. three **fit result files**, one for each stage of the fit, listing all of the individual octet fit results found, stored as a datatable of [WarpFitResult objects](./utilities.py#L63-L84). The results in these files are used to define the initial parameter values and bounds for later stages of fits, or the final weighted average result.
 1. three **field log files**, one for each stage of the fit, listing which raw images were used, stored as [FieldLog objects](./utilities.py#L86-L89).
-1. three **metadata summary files**, one for each stage of the fit, summarizing the samples used in the fits including date ranges of image files, stored as [`MetadataSummary` objects](../../shared/samplemetadata.py#L96-L105)
+1. three **metadata summary files**, one for each stage of the fit, summarizing the samples used in the fits including date ranges of image files, stored as [`MetadataSummary` objects](../../shared/samplemetadata.py#L99-L108)
 1. **a main log file** called "`warping.log`" in `<Dpath>\<Dname>\logfiles` with just a single line showing that `warpingcohort` was run 
 1. **more detailed sample log files** called "`<SlideID>-warping.log`" in `<Dpath>\<Dname>\<SlideID>\logfiles` for each slide used in fitting for the warping patterns.
 
