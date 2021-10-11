@@ -150,9 +150,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     return logroot/"logfiles"/f"{cls.logmodule()}.log"
   def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     lockfiles = [mainlog.with_suffix(".lock") for mainlog in self.mainlogs]
-    for lockfile in lockfiles:
-      lockfile.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.MultiJobLock(*lockfiles, corruptfiletimeout=corruptfiletimeout, **kwargs)
+    return job_lock.MultiJobLock(*lockfiles, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
   @classmethod
   def usegloballogger(cls): return True

@@ -67,7 +67,7 @@ setupkwargs = dict(
     "scikit-learn>=0.17",
     "scipy>=0.12",
     "setuptools-scm",
-    "slurm-python-utils>=1.2.13",
+    "slurm-python-utils>=1.2.14",
     "uncertainties",
   ],
   extras_require = {
