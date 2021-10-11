@@ -49,8 +49,7 @@ class CohortBase(ThingWithRoots):
 
   def globaljoblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     lockfile = self.globallogger().mainlog.with_suffix(".lock")
-    lockfile.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(lockfile, corruptfiletimeout=corruptfiletimeout, **kwargs)
+    return job_lock.JobLock(lockfile, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
   def getlogger(self, samp, *, isglobal=False, **kwargs):
     if isinstance(samp, WorkflowDependency):
