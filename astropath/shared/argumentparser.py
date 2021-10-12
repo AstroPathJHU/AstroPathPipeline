@@ -194,7 +194,7 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
 
   @classmethod
   def defaultversionrequirement(cls, argsdicts):
-    return "commit" if dicts["initkwargs"]["uselogfiles"] else "any"
+    return "commit" if argsdicts["initkwargs"]["uselogfiles"] else "any"
 
 class ArgumentParserMoreRoots(RunFromArgumentParser):
   @classmethod

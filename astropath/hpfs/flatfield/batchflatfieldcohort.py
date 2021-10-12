@@ -101,7 +101,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             flatfield = Flatfield(image_dimensions,logger)
             samplesprocessed=[]
 
-            samplespercohort = super().run(flatfield=flatfield, samplesprocessed=samplesprocessed, batchID=self.__batchID, totalsamples=totalsamples, **kwargs)
+            super().run(flatfield=flatfield, samplesprocessed=samplesprocessed, batchID=self.__batchID, totalsamples=totalsamples, **kwargs)
 
             totalsamples = len(samplesprocessed)
 

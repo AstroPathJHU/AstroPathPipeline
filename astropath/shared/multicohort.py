@@ -1,4 +1,4 @@
-import abc, methodtools, pathlib
+import abc, methodtools
 from ..utilities import units
 from .argumentparser import ArgumentParserWithVersionRequirement
 from .logging import MultiLogger
