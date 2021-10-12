@@ -38,8 +38,8 @@ conda install -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git
 (`pyopencl`, `gdal`, and `cvxpy` have C++ dependencies.
 `numba` requires a specific numpy version, and installing it here
 avoids unpleasant interactions between conda and pip.
-`ecos!=2.0.8` is a workaround for a [bug](embotech/ecos#201) in the ecos
-distribution on conda.
+`ecos!=2.0.8` is a workaround for a [bug](https://github.com/embotech/ecos/issues/201)
+in the ecos distribution on conda.
 `git` may or may not be needed, depending if you
 have it installed separately on your computer.)
 
