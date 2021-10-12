@@ -1,4 +1,5 @@
 #imports
+import pathlib
 from .meanimagesample import MeanImageSample
 from .imagestack import Flatfield
 from .config import CONST
@@ -34,8 +35,12 @@ class BatchFlatfieldSample(ReadRectanglesIm3FromXML,WorkflowSample) :
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
                 self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
-    def run(self,**kwargs) :
-        return self
+    def run(self,batchID,flatfield,samplesprocessed,totalsamples) :
+        msg = f'Adding mean image and mask stack from {self.SlideID} to flatfield model for batch '
+        msg+= f'{batchID:02d} ({len(samplesprocessed)+1} of {totalsamples})....'
+        self.logger.info(msg)
+        flatfield.add_batchflatfieldsample(self)
+        samplesprocessed.append(self)
     @classmethod
     def getoutputfiles(cls,**kwargs) :
         return [*super().getoutputfiles(**kwargs)]
@@ -58,10 +63,6 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
 
     sampleclass = BatchFlatfieldSample
 
-    @property
-    def workingdir(self) :
-        return self.root / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
-
     #################### CLASS METHODS ####################
 
     @property
@@ -74,54 +75,50 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         return{**super().workflowkwargs,'skip_masking':False}
 
 class BatchFlatfieldMultiCohort(MultiCohortBase):
-    def __init__(self,*args,batchID=-1,**kwargs) :
+    def __init__(self,*args,outdir,batchID=-1,**kwargs) :
         super().__init__(*args,**kwargs)
         self.__batchID = batchID
+        self.__outdir = outdir
+
+    @property
+    def workingdir(self) :
+        return self.__outdir / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
 
     singlecohortclass = BatchFlatfieldCohort
     def run(self, **kwargs):
-        samplespercohort = super().run(**kwargs)
-
-        self.__samples_added = 0
-        #start up the flatfield after figuring out its dimensions
-        for cohortsamples in samplespercohort :
-            for sample in cohortsamples :
-                if len(sample.rectangles)>0 :
-                    image_dimensions = sample.rectangles[0].imageshapeinoutput
-                    break
-            else :
-                continue
-            break
-        else:
-            raise ValueError("No non-empty samples")
-
+        totalsamples = 0
+        image_dimensions = None
         with self.globallogger() as logger:
-            self.__flatfield = Flatfield(image_dimensions,logger)
-    
-            totalsamples = sum(len(cohortsamples) for cohortsamples in samplespercohort)
-    
-            for cohortsamples in samplespercohort:
-                for sample in cohortsamples:
-                  with sample.logger:
-                    #add the sample's information to the flatfield model that's being created
-                    msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch '
-                    msg+= f'{self.__batchID:02d} ({self.__samples_added+1} of {totalsamples})....'
-                    sample.logger.info(msg)
-                    self.__flatfield.add_batchflatfieldsample(sample)
-                    self.__samples_added+=1
-    
+            #start up the flatfield after figuring out its dimensions
+            for cohort in self.cohorts :
+                for sample in cohort.filteredsamples :
+                    if image_dimensions is None and len(sample.rectangles)>0 :
+                        image_dimensions = sample.rectangles[0].imageshapeinoutput
+                    totalsamples += 1
+            if image_dimensions is None :
+                raise ValueError("No non-empty samples")
+
+            flatfield = Flatfield(image_dimensions,logger)
+            samplesprocessed=[]
+
+            samplespercohort = super().run(flatfield=flatfield, samplesprocessed=samplesprocessed, batchID=self.__batchID, totalsamples=totalsamples, **kwargs)
+
+            totalsamples = len(samplesprocessed)
+
             #actually create the flatfield after all the samples have been added
             logger.info(f'Creating final flatfield model for batch {self.__batchID:02d}....')
-            self.__flatfield.create_flatfield_model()
+            flatfield.create_flatfield_model()
             #write out the flatfield model
             logger.info(f'Writing out flatfield model, plots, and summary pdf for batch {self.__batchID:02d}....')
-            self.__flatfield.write_output(self.__batchID,self.workingdir)
+            flatfield.write_output(self.__batchID,self.workingdir)
 
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
         p.add_argument('--batchID',type=int,default=-1,
                        help='BatchID for the flatfield model created from the given list of slideIDs')
+        p.add_argument('--outdir',type=pathlib.Path,required=True,
+                       help='directory where the output will be placed')
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
@@ -129,6 +126,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'batchID': parsed_args_dict.pop('batchID'), 
+            'outdir': parsed_args_dict.pop('outdir'), 
         }
 
 #################### FILE-SCOPE FUNCTIONS ####################

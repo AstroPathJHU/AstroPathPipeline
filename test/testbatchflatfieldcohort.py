@@ -82,6 +82,7 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
                 '--batchID',str(batchID),
                 '--allow-local-edits',
                 '--ignore-dependencies',
+                '--outdir',os.fspath(root),
                ]
         BatchFlatfieldMultiCohort.runfromargumentparser(args=args)
         #compare the output files with the references
