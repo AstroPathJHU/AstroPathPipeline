@@ -58,8 +58,8 @@ Class meanimage : moduletools {
         $this.sample.info("started mean image sample python script")
         $taskname = 'meanimagesample'
         #meanimagesample <Dpath>\<Dname> <Rpath> <SlideID> --njobs [njobs]
-        $pythontask = 'meanimagesample ' + $this.sample.basepath + ' ' + $this.sample.im3folder() + ' ' + $this.sample.SlideID
-        $this.runmatlabtask($taskname, $pythontask)
+        $pythontask = 'meanimagesample.py ' + $this.sample.basepath + ' ' + $this.sample.im3folder() + ' ' + $this.sample.SlideID
+        $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished mean image sample python script")
     }
 
