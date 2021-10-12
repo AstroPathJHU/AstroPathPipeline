@@ -46,7 +46,7 @@ setupkwargs = dict(
     ],
   },
   install_requires = [
-    "contextlib2>=0.6.0; python_version < 3.7",
+    "contextlib2>=0.6.0; python_version < '3.7'",
     "cvxpy",
     "dataclassy>=0.10.0",
     "imagecodecs",
