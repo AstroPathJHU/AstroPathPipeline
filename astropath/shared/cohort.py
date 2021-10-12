@@ -147,7 +147,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, xmlfolders=[], version_requirement=None, **kwargs):
+  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, xmlfolders=[], **kwargs):
     super().__init__(*args, reraiseexceptions=debug, **kwargs)
     if im3root is None: im3root = self.root
     self.im3root = pathlib.Path(im3root)
@@ -210,7 +210,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
 
   def runsample(self, sample, **kwargs):
     "actually run whatever is supposed to be run on the sample"
-    sample.run(**kwargs)
+    return sample.run(**kwargs)
 
   @property
   @abc.abstractmethod
@@ -242,12 +242,12 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
-    for sample in self.filteredsamples:
-      self.processsample(sample, **kwargs)
+    return [self.processsample(sample, **kwargs) for sample in self.filteredsamples]
+      
 
   def processsample(self, sample, **kwargs):
     with sample:
-      self.runsample(sample, **kwargs)
+      return self.runsample(sample, **kwargs)
 
   @property
   def dryrunheader(self):
@@ -661,7 +661,7 @@ class WorkflowCohort(Cohort):
           return
 
         with self.getlogger(sample):
-          super().processsample(sample, **kwargs)
+          result = super().processsample(sample, **kwargs)
 
           status = sample.runstatus(**kwargs)
           #we don't want to do anything if there's an error, because that
@@ -669,3 +669,5 @@ class WorkflowCohort(Cohort):
           if status.missingfiles and status.error is None:
             status.ended = True #to get the missing files in the __str__
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
+
+          return result

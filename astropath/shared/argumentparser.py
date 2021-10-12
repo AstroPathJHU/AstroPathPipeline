@@ -104,7 +104,50 @@ class InitAndRunFromArgumentParserBase(RunFromArgumentParserBase):
       raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
     return cls.runfromargsdicts(**argsdicts)
 
-class RunFromArgumentParser(InitAndRunFromArgumentParserBase, ThingWithRoots):
+class ArgumentParserWithVersionRequirement(InitAndRunFromArgumentParserBase):
+  @classmethod
+  def defaultversionrequirement(cls, argsdicts):
+    return "commit"
+
+  @classmethod
+  def argsdictsfromargumentparser(cls, parsed_args_dict):
+    """
+    Get the kwargs dicts needed to run from the argparse dict
+    from the parsed arguments
+    """
+    dicts = super().argsdictsfromargumentparser(parsed_args_dict)
+
+    version_requirement = dicts["misckwargs"].pop("version_requirement")
+    if version_requirement is None:
+      version_requirement = cls.defaultversionrequirement(dicts)
+    cls.checkversion(version_requirement)
+
+    return dicts
+
+  @staticmethod
+  def checkversion(version_requirement):
+    if version_requirement == "any":
+      checkdate = checktag = False
+    elif version_requirement == "commit":
+      checkdate = True
+      checktag = False
+    elif version_requirement == "tag":
+      checkdate = checktag = True
+    else:
+      assert False, version_requirement
+
+    from ..utilities.version import env_var_no_git, astropathversionmatch
+
+    if checkdate:
+      if env_var_no_git:
+        raise RuntimeError("Cannot run if environment variable _ASTROPATH_VERSION_NO_GIT is set unless you set --allow-local-edits")
+      if astropathversionmatch.group("date"):
+        raise ValueError("Cannot run with local edits to git unless you set --allow-local-edits")
+    if checktag:
+      if astropathversionmatch.group("dev"):
+        raise ValueError("Specified --no-dev-version, but the current version is a dev version")
+
+class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots):
   @classmethod
   @abc.abstractmethod
   def defaultunits(cls):
@@ -150,42 +193,8 @@ class RunFromArgumentParser(InitAndRunFromArgumentParserBase, ThingWithRoots):
     return misckwargs
 
   @classmethod
-  def argsdictsfromargumentparser(cls, parsed_args_dict):
-    """
-    Get the kwargs dicts needed to run from the argparse dict
-    from the parsed arguments
-    """
-    dicts = super().argsdictsfromargumentparser(parsed_args_dict)
-
-    version_requirement = dicts["misckwargs"].pop("version_requirement")
-    if version_requirement is None:
-      version_requirement = "commit" if dicts["initkwargs"]["uselogfiles"] else "any"
-    cls.checkversion(version_requirement)
-
-    return dicts
-
-  @staticmethod
-  def checkversion(version_requirement):
-    if version_requirement == "any":
-      checkdate = checktag = False
-    elif version_requirement == "commit":
-      checkdate = True
-      checktag = False
-    elif version_requirement == "tag":
-      checkdate = checktag = True
-    else:
-      assert False, version_requirement
-
-    from ..utilities.version import env_var_no_git, astropathversionmatch
-
-    if checkdate:
-      if env_var_no_git:
-        raise RuntimeError("Cannot run if environment variable _ASTROPATH_VERSION_NO_GIT is set unless you set --allow-local-edits")
-      if astropathversionmatch.group("date"):
-        raise ValueError("Cannot run with local edits to git unless you set --allow-local-edits")
-    if checktag:
-      if astropathversionmatch.group("dev"):
-        raise ValueError("Specified --no-dev-version, but the current version is a dev version")
+  def defaultversionrequirement(cls, argsdicts):
+    return "commit" if dicts["initkwargs"]["uselogfiles"] else "any"
 
 class ArgumentParserMoreRoots(RunFromArgumentParser):
   @classmethod

@@ -35,7 +35,7 @@ class BatchFlatfieldSample(ReadRectanglesIm3FromXML,WorkflowSample) :
         return [*super().inputfiles(**kwargs),
                 self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
     def run(self,**kwargs) :
-        pass
+        return self
     @classmethod
     def getoutputfiles(cls,**kwargs) :
         return [*super().getoutputfiles(**kwargs)]
@@ -53,19 +53,6 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
     """
     Class to handle combining several samples' meanimages into a single flatfield model for a batch
     """
-
-    #################### PUBLIC FUNCTIONS ####################
-
-    def run(self,**kwargs) :
-        #run all of the samples individually first like any other cohort (just checks that files exist)
-        super().run(**kwargs)
-
-    def runsample(self,sample,**kwargs) :
-        """
-        Add the sample's meanimage and mask stack to the batch flatfield meanimage and collect its metadata
-        """
-        #running the sample just makes sure that its file exists
-        super().runsample(sample,**kwargs)
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -93,25 +80,36 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
 
     singlecohortclass = BatchFlatfieldCohort
     def run(self, **kwargs):
+        samplespercohort = super().run(**kwargs)
+
         self.__samples_added = 0
         #start up the flatfield after figuring out its dimensions
-        for sample in self.samples :
-            if len(sample.rectangles)>0 :
-                image_dimensions = sample.rectangles[0].imageshapeinoutput
-                break
-        self.__flatfield = Flatfield(image_dimensions,self.logger)
+        for cohortsamples in samplespercohort :
+            for sample in cohortsamples :
+                if len(sample.rectangles)>0 :
+                    image_dimensions = sample.rectangles[0].imageshapeinoutput
+                    break
+            else :
+                continue
+            break
+        else:
+            raise ValueError("No non-empty samples")
 
-        samplespercohort = super().run(**kwargs)
-        for cohortsamples in samplespercohort:
-            for sample in cohortsamples:
-                #add the sample's information to the flatfield model that's being created
-                msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch '
-                msg+= f'{self.__batchID:02d} ({self.__samples_added+1} of {len(list(self.filteredsamples))})....'
-                sample.logger.info(msg)
-                self.__flatfield.add_batchflatfieldsample(sample)
-                self.__samples_added+=1
-
-        with self.globallogger() as logger :
+        with self.globallogger() as logger:
+            self.__flatfield = Flatfield(image_dimensions,logger)
+    
+            totalsamples = sum(len(cohortsamples) for cohortsamples in samplespercohort)
+    
+            for cohortsamples in samplespercohort:
+                for sample in cohortsamples:
+                  with sample.logger:
+                    #add the sample's information to the flatfield model that's being created
+                    msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch '
+                    msg+= f'{self.__batchID:02d} ({self.__samples_added+1} of {totalsamples})....'
+                    sample.logger.info(msg)
+                    self.__flatfield.add_batchflatfieldsample(sample)
+                    self.__samples_added+=1
+    
             #actually create the flatfield after all the samples have been added
             logger.info(f'Creating final flatfield model for batch {self.__batchID:02d}....')
             self.__flatfield.create_flatfield_model()
