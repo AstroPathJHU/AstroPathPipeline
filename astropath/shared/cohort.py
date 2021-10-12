@@ -7,23 +7,13 @@ from .logging import getlogger
 from .rectangle import rectanglefilter
 from .workflowdependency import ThingWithRoots, WorkflowDependency
 
-class MetaCohortBase:
-  def __init__(self, *args, mainlogroots=[], **kwargs):
-    super().__init__(*args, **kwargs)
-    self.mainlogroots = [pathlib.Path(_) for _ in mainlogroots if _ is not None]
-  def getlogger(self, *, moremainlogroots, **kwargs):
-    return getlogger(moremainlogroots=list(moremainlogroots)+self.mainlogroots, **kwargs)
-  @property
-  @abc.abstractmethod
-  def ProjectsAndCohorts(self): pass
-
-class CohortBase(MetaCohortBase, ThingWithRoots):
+class CohortBase(ThingWithRoots):
   """
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
-    super().__init__(*args, mainlogroots=[logroot]+moremainlogroots, **kwargs)
+  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], **kwargs):
+    super().__init__(*args, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
     self.__logroot = pathlib.Path(logroot)
@@ -31,6 +21,7 @@ class CohortBase(MetaCohortBase, ThingWithRoots):
     self.__sampledefroot = pathlib.Path(sampledefroot)
     self.uselogfiles = uselogfiles
     self.reraiseexceptions = reraiseexceptions
+    self.moremainlogroots = moremainlogroots
 
   @property
   def sampledefs(self):
@@ -65,7 +56,7 @@ class CohortBase(MetaCohortBase, ThingWithRoots):
     if isinstance(samp, WorkflowDependency):
       isglobal = isglobal or samp.usegloballogger()
       samp = samp.samp
-    return super().getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, **kwargs)
+    return super().getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, **kwargs)
 
   @classmethod
   @abc.abstractmethod

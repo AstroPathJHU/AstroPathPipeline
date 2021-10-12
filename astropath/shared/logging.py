@@ -1,4 +1,4 @@
-import collections, datetime, functools, job_lock, logging, os, pathlib, traceback
+import collections, contextlib, datetime, functools, job_lock, logging, os, pathlib, traceback
 
 class MyLogger:
   r"""
@@ -100,8 +100,9 @@ class MyLogger:
 
   @property
   def formatter(self):
+    fmt = ";".join(str(_) for _ in (self.Project, self.Cohort, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None)
     return logging.Formatter(
-      ";".join(str(_) for _ in (self.Project, self.Cohort, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None),
+      fmt,
       self.dateformat,
     )
   def __enter__(self):
@@ -286,3 +287,28 @@ dummylogger.warningglobal = dummylogger.warning
 
 def printlogger(module):
   return getlogger(module=module, root=None, samp=None)
+
+class MultiLogger(contextlib.ExitStack):
+  def __init__(self, *loggers, entermessage=None):
+    self.__loggers = loggers
+    self.__entermessage = entermessage
+    super().__init__()
+
+  def __logfunction(self, functionname, *args, **kwargs):
+    for logger in self.__loggers:
+      getattr(logger, functionname)(*args, **kwargs)
+
+  def log(self, *args, **kwargs): self.__logfunction("log", *args, **kwargs)
+  def critical(self, *args, **kwargs): self.__logfunction("critical", *args, **kwargs)
+  def error(self, *args, **kwargs): self.__logfunction("error", *args, **kwargs)
+  def warningglobal(self, *args, **kwargs): self.__logfunction("warningglobal", *args, **kwargs)
+  def warning(self, *args, **kwargs): self.__logfunction("warning", *args, **kwargs)
+  def info(self, *args, **kwargs): self.__logfunction("info", *args, **kwargs)
+  def imageinfo(self, *args, **kwargs): self.__logfunction("imageinfo", *args, **kwargs)
+  def debug(self, *args, **kwargs): self.__logfunction("debug", *args, **kwargs)
+
+  def __enter__(self):
+    for logger in self.__loggers:
+      self.enter_context(logger)
+    if self.__entermessage is not None:
+      self.critical(self.__entermessage)

@@ -162,7 +162,7 @@ class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
     argsdicts = cls.argsdictsfromargumentparser(argsdict)
     if argsdict:
       raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
-    cls.runfromargsdicts(**argsdicts)
+    return cls.runfromargsdicts(**argsdicts)
 
 class ArgumentParserMoreRoots(RunFromArgumentParser):
   @classmethod
