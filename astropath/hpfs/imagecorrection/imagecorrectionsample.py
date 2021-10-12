@@ -84,8 +84,8 @@ class ImageCorrectionSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, Workflo
         return root.parent / flatw_dir_name / SlideID
 
     @classmethod
-    def getoutputfiles(cls,SlideID,root,root2,layers,**otherworkflowkwargs) :
-        all_rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (root2/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
+    def getoutputfiles(cls,SlideID,root,shardedim3root,layers,**otherworkflowkwargs) :
+        all_rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (shardedim3root/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
         outputfiles = []
         for rfs in all_rawfile_stems :
             if type(layers)==range : #if it's a range then it's just the multilayer images

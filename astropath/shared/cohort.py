@@ -296,22 +296,22 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
 class Im3Cohort(Cohort, Im3ArgumentParser):
   """
   Base class for any cohort that uses im3 files
-  root2: the location of the sharded im3s
+  shardedim3root: the location of the sharded im3s
   """
-  def __init__(self, root, root2, *args, **kwargs):
+  def __init__(self, root, shardedim3root, *args, **kwargs):
     super().__init__(root=root, *args, **kwargs)
-    self.root2 = pathlib.Path(root2)
+    self.shardedim3root = pathlib.Path(shardedim3root)
 
   @property
   def root1(self): return self.root
 
   @property
   def rootnames(self):
-    return {*super().rootnames, "root2"}
+    return {*super().rootnames, "shardedim3root"}
 
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "root2": self.root2}
+    return {**super().initiatesamplekwargs, "shardedim3root": self.shardedim3root}
 
 class DbloadCohortBase(CohortBase):
   def __init__(self, *args, dbloadroot=None, **kwargs):

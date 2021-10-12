@@ -13,7 +13,7 @@ ff_batchID = 99
 warping_correction_filepath = folder/'data'/'corrections'/'TEST_WARPING_weighted_average_warp.csv'
 slide_ID = 'M21_1'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
-root2 = folder/'data'/'raw'
+shardedim3root = folder/'data'/'raw'
 
 class TestApplyFlatWCohort(TestBaseCopyInput, TestBaseSaveOutput) :
     """
@@ -32,7 +32,7 @@ class TestApplyFlatWCohort(TestBaseCopyInput, TestBaseSaveOutput) :
     @property
     def outputfilenames(self) :
         all_fps = []
-        for fns in [fp.name.rstrip(UNIV_CONST.RAW_EXT) for fp in (root2/slide_ID).glob(f'*{UNIV_CONST.RAW_EXT}')] :
+        for fns in [fp.name.rstrip(UNIV_CONST.RAW_EXT) for fp in (shardedim3root/slide_ID).glob(f'*{UNIV_CONST.RAW_EXT}')] :
             all_fps.append(folder/'test_for_jenkins'/'applyflatw'/'flatw'/f'{fns}{UNIV_CONST.FLATW_EXT}')
             all_fps.append(folder/'test_for_jenkins'/'applyflatw'/'flatw'/f'{fns}{UNIV_CONST.FLATW_EXT}01')
         return all_fps
@@ -49,7 +49,8 @@ class TestApplyFlatWCohort(TestBaseCopyInput, TestBaseSaveOutput) :
 
     def test_image_correction_cohort(self) :
         #run the image correction cohort
-        args = [os.fspath(folder/'test_for_jenkins'/'applyflatw'/'root'),os.fspath(root2),
+        args = [os.fspath(folder/'test_for_jenkins'/'applyflatw'/'root'),
+                '--shardedim3root',os.fspath(shardedim3root),
                 '--im3root',os.fspath(folder/'data'),
                 '--sampleregex',slide_ID,
                 '--workingdir',os.fspath(folder/'test_for_jenkins'/'applyflatw'/'flatw'),

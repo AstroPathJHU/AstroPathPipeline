@@ -689,22 +689,22 @@ class MaskWorkflowSampleBase(MaskSampleBase, WorkflowSample):
 class Im3SampleBase(SampleBase, Im3ArgumentParser):
   """
   Base class for any sample that uses sharded im3 images.
-  root2: Root location of the im3 images.
-         (The images are in root2/SlideID)
+  shardedim3root: Root location of the im3 images.
+         (The images are in shardedim3root/SlideID)
   """
-  def __init__(self, root, root2, samp, *args, **kwargs):
+  def __init__(self, root, shardedim3root, samp, *args, **kwargs):
     super().__init__(root=root, samp=samp, *args, **kwargs)
-    self.root2 = pathlib.Path(root2)
+    self.shardedim3root = pathlib.Path(shardedim3root)
 
   @property
   def root1(self): return self.root
 
   @property
-  def rootnames(self): return {"root2", *super().rootnames}
+  def rootnames(self): return {"shardedim3root", *super().rootnames}
 
   @property
   def possiblexmlfolders(self):
-    return super().possiblexmlfolders + [self.root2/self.SlideID]
+    return super().possiblexmlfolders + [self.shardedim3root/self.SlideID]
 
 class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   """
@@ -967,7 +967,7 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase, SelectLayer
   def rectangleextrakwargs(self):
     kwargs = {
       **super().rectangleextrakwargs,
-      "imagefolder": self.root2/self.SlideID,
+      "imagefolder": self.shardedim3root/self.SlideID,
       "filetype": self.filetype,
       "width": self.fwidth,
       "height": self.fheight,

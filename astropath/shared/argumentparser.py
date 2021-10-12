@@ -213,14 +213,14 @@ class Im3ArgumentParser(RunFromArgumentParser):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("root2", type=pathlib.Path, help="root location of sharded im3 files")
+    p.add_argument("--shardedim3root", type=pathlib.Path, help="root location of sharded im3 files", required=True)
     return p
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-      "root2": parsed_args_dict.pop("root2"),
+      "shardedim3root": parsed_args_dict.pop("shardedim3root"),
     }
 
 class WorkingDirArgumentParser(RunFromArgumentParser) :

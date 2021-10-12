@@ -75,8 +75,9 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
     def test_batch_flatfield_cohort(self) :
         #run the BatchFlatfieldCohort selecting the three contrived samples
         root = folder/'data'
-        root2 = folder/'data'/'raw'
-        args = [os.fspath(root),os.fspath(root2),
+        shardedim3root = folder/'data'/'raw'
+        args = [os.fspath(root),
+                '--shardedim3root',os.fspath(shardedim3root),
                 '--sampleregex','('+'|'.join(slide_IDs)+')',
                 '--batchID',str(batchID),
                 '--allow-local-edits',

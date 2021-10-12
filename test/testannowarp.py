@@ -169,7 +169,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     units.np.testing.assert_allclose(units.nominal_values(result6.bigtileindexcoeff), constraintmus[4:8].reshape(2, 2))
 
   def testDetectBigShift(self, SlideID="M21_1"):
-    s = DetectBigShiftSample(root=thisfolder/"data", root2=thisfolder/"data"/"flatw", samp=SlideID, logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=False, selectrectangles=[1])
+    s = DetectBigShiftSample(root=thisfolder/"data", shardedim3root=thisfolder/"data"/"flatw", samp=SlideID, logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=False, selectrectangles=[1])
     assertAlmostEqual(
       units.convertpscale(s.run(), s.pscale/10, s.pscale),
       np.array({
