@@ -57,7 +57,42 @@ class RunFromArgumentParserBase(ThingWithRoots, TableReader, metaclass=MRODebugg
   def runfromparsedargs(cls, parsed_args):
     pass
 
-class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
+class InitAndRunFromArgumentParserBase(RunFromArgumentParserBase):
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {}
+    return kwargs
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {}
+    return kwargs
+
+  @classmethod
+  def misckwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {}
+    return kwargs
+
+  @classmethod
+  def argsdictsfromargumentparser(cls, parsed_args_dict):
+    """
+    Get the kwargs dicts needed to run from the argparse dict
+    from the parsed arguments
+    """
+    initkwargs = cls.initkwargsfromargumentparser(parsed_args_dict)
+    misckwargs = cls.misckwargsfromargumentparser(parsed_args_dict)
+    runkwargs = cls.runkwargsfromargumentparser(parsed_args_dict)
+
+    if parsed_args_dict:
+      raise TypeError(f"Unused command line options:\n{parsed_args_dict}")
+
+    return {
+      "initkwargs": initkwargs,
+      "misckwargs": misckwargs,
+      "runkwargs": runkwargs,
+    }
+
+class RunFromArgumentParser(InitAndRunFromArgumentParserBase, ThingWithRoots):
   @classmethod
   @abc.abstractmethod
   def defaultunits(cls):
@@ -84,6 +119,7 @@ class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     dct = parsed_args_dict
     initkwargs = {
+      super().initkwargsfromargumentparser(parsed_args_dict)
       "root": dct.pop("root"),
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
@@ -95,18 +131,11 @@ class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
   def misckwargsfromargumentparser(cls, parsed_args_dict):
     dct = parsed_args_dict
     misckwargs = {
+      **super().misckwargsfromargumentparser(parsed_args_dict)
       "units": dct.pop("units"),
       "version_requirement": dct.pop("version_requirement"),
     }
     return misckwargs
-
-  @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    """
-    Get the keyword arguments to be passed to cohort.run() from the parsed arguments
-    """
-    kwargs = {}
-    return kwargs
 
   @classmethod
   def argsdictsfromargumentparser(cls, parsed_args_dict):
@@ -114,20 +143,14 @@ class RunFromArgumentParser(RunFromArgumentParserBase, ThingWithRoots):
     Get the kwargs dicts needed to run from the argparse dict
     from the parsed arguments
     """
-    initkwargs = cls.initkwargsfromargumentparser(parsed_args_dict)
-    misckwargs = cls.misckwargsfromargumentparser(parsed_args_dict)
-    runkwargs = cls.runkwargsfromargumentparser(parsed_args_dict)
+    dicts = super().argsdictsfromargumentparser(parsed_args_dict)
 
-    version_requirement = misckwargs.pop("version_requirement")
+    version_requirement = dicts["misckwargs"].pop("version_requirement")
     if version_requirement is None:
-      version_requirement = "commit" if initkwargs["uselogfiles"] else "any"
+      version_requirement = "commit" if dicts["initkwargs"]["uselogfiles"] else "any"
     cls.checkversion(version_requirement)
 
-    return {
-      "initkwargs": initkwargs,
-      "misckwargs": misckwargs,
-      "runkwargs": runkwargs,
-    }
+    return dicts
 
   @staticmethod
   def checkversion(version_requirement):
