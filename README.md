@@ -24,20 +24,26 @@ to set up with Anaconda.
 
 Our recommendation is to download a [Miniconda distribution](https://docs.conda.io/en/latest/miniconda.html).
 Once you install it, open the Anaconda powershell prompt and create an environment
-```
+```pwsh
 conda create --name astropath python=3.8
 conda activate astropath
 ```
+You should activate the `astropath` environment in every new session before
+installing packages (whether through conda or pip) or before running code.
 
 At least the following dependencies should be installed through Anaconda.
+```pwsh
+conda install -c conda-forge pyopencl gdal cvxpy 'ecos!=2.0.8' git
 ```
-conda install -c conda-forge pyopencl gdal cvxpy
-```
+(`ecos!=2.0.8` is a workaround for a [bug](embotech/ecos#201) in the ecos
+distribution on conda.  `git` may or may not be needed, depending if you
+have it installed separately on your computer.)
 Many of the other dependencies can also be installed through Anaconda if you want,
 but we have found that they work just as well when installing with pip.
 
 #### 2.2.1.2. Code installation
-To install the code, first check out the repository, enter its directory, and run
+To install the code, first check out the repository, enter its directory,
+activate the conda envorinment if you are using conda, and run
 ```bash
 pip install .
 ```
