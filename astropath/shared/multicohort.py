@@ -1,6 +1,7 @@
-import abc, methodtools
-from .argumentparser import RunFromArgumentParserBase
-from .samplemetadata import SampleDef
+import abc, methodtools, pathlib
+from ..utilities import units
+from .argumentparser import InitAndRunFromArgumentParserBase
+from .logging import MultiLogger
 
 class MultiCohortBase(InitAndRunFromArgumentParserBase):
   @classmethod
@@ -10,9 +11,9 @@ class MultiCohortBase(InitAndRunFromArgumentParserBase):
   @property
   def globallogentermessage(self): pass
 
-  def __init__(self, roots, **kwargs):
+  def __init__(self, roots, **initkwargs):
     self.__roots = [pathlib.Path(root) for root in roots]
-    self.__kwargs = kwargs
+    self.__initkwargs = initkwargs
 
   def run(self, **kwargs):
     return [c.run(**kwargs) for c in self.cohorts]
@@ -23,7 +24,7 @@ class MultiCohortBase(InitAndRunFromArgumentParserBase):
   @methodtools.lru_cache()
   @property
   def cohorts(self):
-    return [self.singlecohortclass(root=root, moremainlogroots=self.__roots, **kwargs) for root in self.roots]
+    return [self.singlecohortclass(root=root, moremainlogroots=self.__roots, **self.__initkwargs) for root in self.roots]
 
   def globallogger(self):
     return MultiLogger(*(c.globallogger for c in self.cohorts), entermessage=self.globallogentermessage)
@@ -60,8 +61,11 @@ class MultiCohortBase(InitAndRunFromArgumentParserBase):
     Run the multicohort from command line arguments.
     """
     with units.setup_context(misckwargs.pop("units")):
+      dryrun = misckwargs.pop("dry_run")
       if misckwargs:
         raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
+      if dryrun and "uselogfiles" in initkwargs:
+        initkwargs["uselogfiles"] = False
       multicohort = cls(**initkwargs)
       if dryrun:
         multicohort.dryrun(**runkwargs)

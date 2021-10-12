@@ -119,7 +119,7 @@ class RunFromArgumentParser(InitAndRunFromArgumentParserBase, ThingWithRoots):
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     dct = parsed_args_dict
     initkwargs = {
-      super().initkwargsfromargumentparser(parsed_args_dict)
+      **super().initkwargsfromargumentparser(parsed_args_dict),
       "root": dct.pop("root"),
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
@@ -131,7 +131,7 @@ class RunFromArgumentParser(InitAndRunFromArgumentParserBase, ThingWithRoots):
   def misckwargsfromargumentparser(cls, parsed_args_dict):
     dct = parsed_args_dict
     misckwargs = {
-      **super().misckwargsfromargumentparser(parsed_args_dict)
+      **super().misckwargsfromargumentparser(parsed_args_dict),
       "units": dct.pop("units"),
       "version_requirement": dct.pop("version_requirement"),
     }
