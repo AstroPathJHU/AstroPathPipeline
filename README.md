@@ -33,11 +33,16 @@ installing packages (whether through conda or pip) or before running code.
 
 At least the following dependencies should be installed through Anaconda.
 ```pwsh
-conda install -c conda-forge pyopencl gdal cvxpy 'ecos!=2.0.8' git
+conda install -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git
 ```
-(`ecos!=2.0.8` is a workaround for a [bug](embotech/ecos#201) in the ecos
-distribution on conda.  `git` may or may not be needed, depending if you
+(`pyopencl`, `gdal`, and `cvxpy` have C++ dependencies.
+`numba` requires a specific numpy version, and installing it here
+avoids unpleasant interactions between conda and pip.
+`ecos!=2.0.8` is a workaround for a [bug](embotech/ecos#201) in the ecos
+distribution on conda.
+`git` may or may not be needed, depending if you
 have it installed separately on your computer.)
+
 Many of the other dependencies can also be installed through Anaconda if you want,
 but we have found that they work just as well when installing with pip.
 
