@@ -31,7 +31,7 @@ class MultiCohortBase(InitAndRunFromArgumentParserBase):
 
   @classmethod
   def makeargumentparser(cls):
-    p = cls.singlecohortclass().makeargumentparser()
+    p = cls.singlecohortclass.makeargumentparser()
     for a in p._actions[:]:
       if a.dest == "root":
         a.nargs = "+"

@@ -87,37 +87,37 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         return{**super().workflowkwargs,'skip_masking':False}
 
 class BatchFlatfieldMultiCohort(MultiCohortBase):
-  def __init__(self,*args,batchID=-1,**kwargs) :
-    super().__init__(*args,**kwargs)
-    self.__batchID = batchID
+    def __init__(self,*args,batchID=-1,**kwargs) :
+        super().__init__(*args,**kwargs)
+        self.__batchID = batchID
 
-  singlecohortclass = BatchFlatfieldCohort
-  def run(self, **kwargs):
-    self.__samples_added = 0
-    #start up the flatfield after figuring out its dimensions
-    for sample in self.samples :
-      if len(sample.rectangles)>0 :
-        image_dimensions = sample.rectangles[0].imageshapeinoutput
-        break
-    self.__flatfield = Flatfield(image_dimensions,self.logger)
+    singlecohortclass = BatchFlatfieldCohort
+    def run(self, **kwargs):
+        self.__samples_added = 0
+        #start up the flatfield after figuring out its dimensions
+        for sample in self.samples :
+            if len(sample.rectangles)>0 :
+                image_dimensions = sample.rectangles[0].imageshapeinoutput
+                break
+        self.__flatfield = Flatfield(image_dimensions,self.logger)
 
-    samplespercohort = super().run(**kwargs)
-    for cohortsamples in samplespercohort:
-      for sample in cohortsamples:
-        #add the sample's information to the flatfield model that's being created
-        msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch '
-        msg+= f'{self.__batchID:02d} ({self.__samples_added+1} of {len(list(self.filteredsamples))})....'
-        sample.logger.info(msg)
-        self.__flatfield.add_batchflatfieldsample(sample)
-        self.__samples_added+=1
+        samplespercohort = super().run(**kwargs)
+        for cohortsamples in samplespercohort:
+            for sample in cohortsamples:
+                #add the sample's information to the flatfield model that's being created
+                msg = f'Adding mean image and mask stack from {sample.SlideID} to flatfield model for batch '
+                msg+= f'{self.__batchID:02d} ({self.__samples_added+1} of {len(list(self.filteredsamples))})....'
+                sample.logger.info(msg)
+                self.__flatfield.add_batchflatfieldsample(sample)
+                self.__samples_added+=1
 
-    with self.globallogger() as logger :
-      #actually create the flatfield after all the samples have been added
-      logger.info(f'Creating final flatfield model for batch {self.__batchID:02d}....')
-      self.__flatfield.create_flatfield_model()
-      #write out the flatfield model
-      logger.info(f'Writing out flatfield model, plots, and summary pdf for batch {self.__batchID:02d}....')
-      self.__flatfield.write_output(self.__batchID,self.workingdir)
+        with self.globallogger() as logger :
+            #actually create the flatfield after all the samples have been added
+            logger.info(f'Creating final flatfield model for batch {self.__batchID:02d}....')
+            self.__flatfield.create_flatfield_model()
+            #write out the flatfield model
+            logger.info(f'Writing out flatfield model, plots, and summary pdf for batch {self.__batchID:02d}....')
+            self.__flatfield.write_output(self.__batchID,self.workingdir)
 
     @classmethod
     def makeargumentparser(cls):
