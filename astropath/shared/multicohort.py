@@ -42,17 +42,17 @@ class MultiCohortBase(InitAndRunFromArgumentParserBase):
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    dct = cls.singlecohortclass().initkwargsfromargumentparser(parsed_args_dict)
+    dct = cls.singlecohortclass.initkwargsfromargumentparser(parsed_args_dict)
     assert "roots" not in dct
     dct["roots"] = dct.pop("root")
     return dct
   @classmethod
   def runkwargsfromargumentparser(cls, parsed_args_dict):
-    dct = cls.singlecohortclass().runkwargsfromargumentparser(parsed_args_dict)
+    dct = cls.singlecohortclass.runkwargsfromargumentparser(parsed_args_dict)
     return dct
   @classmethod
   def misckwargsfromargumentparser(cls, parsed_args_dict):
-    dct = cls.singlecohortclass().misckwargsfromargumentparser(parsed_args_dict)
+    dct = cls.singlecohortclass.misckwargsfromargumentparser(parsed_args_dict)
     return dct
 
   @classmethod

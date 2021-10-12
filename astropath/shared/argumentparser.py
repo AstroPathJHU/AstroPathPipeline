@@ -92,6 +92,18 @@ class InitAndRunFromArgumentParserBase(RunFromArgumentParserBase):
       "runkwargs": runkwargs,
     }
 
+  @classmethod
+  @abc.abstractmethod
+  def runfromargsdicts(cls, **argsdicts): pass
+
+  @classmethod
+  def runfromparsedargs(cls, parsed_args):
+    argsdict = parsed_args.__dict__.copy()
+    argsdicts = cls.argsdictsfromargumentparser(argsdict)
+    if argsdict:
+      raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
+    return cls.runfromargsdicts(**argsdicts)
+
 class RunFromArgumentParser(InitAndRunFromArgumentParserBase, ThingWithRoots):
   @classmethod
   @abc.abstractmethod
@@ -174,18 +186,6 @@ class RunFromArgumentParser(InitAndRunFromArgumentParserBase, ThingWithRoots):
     if checktag:
       if astropathversionmatch.group("dev"):
         raise ValueError("Specified --no-dev-version, but the current version is a dev version")
-
-  @classmethod
-  @abc.abstractmethod
-  def runfromargsdicts(cls, **argsdicts): pass
-
-  @classmethod
-  def runfromparsedargs(cls, parsed_args):
-    argsdict = parsed_args.__dict__.copy()
-    argsdicts = cls.argsdictsfromargumentparser(argsdict)
-    if argsdict:
-      raise TypeError(f"Some command line arguments were not processed:\n{argsdict}")
-    return cls.runfromargsdicts(**argsdicts)
 
 class ArgumentParserMoreRoots(RunFromArgumentParser):
   @classmethod
