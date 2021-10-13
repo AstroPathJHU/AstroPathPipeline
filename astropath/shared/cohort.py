@@ -12,7 +12,7 @@ class CohortBase(ThingWithRoots):
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
+  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], **kwargs):
     super().__init__(*args, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
@@ -21,6 +21,7 @@ class CohortBase(ThingWithRoots):
     self.__sampledefroot = pathlib.Path(sampledefroot)
     self.uselogfiles = uselogfiles
     self.reraiseexceptions = reraiseexceptions
+    self.moremainlogroots = moremainlogroots
 
   @property
   def sampledefs(self):
@@ -45,17 +46,17 @@ class CohortBase(ThingWithRoots):
   @property
   def logger(self): return self.globallogger()
   @property
-  def mainlog(self): return self.logger.mainlog
+  def mainlogs(self): return self.logger.mainlogs
 
   def globaljoblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
-    lockfile = self.globallogger().mainlog.with_suffix(".lock")
-    return job_lock.JobLock(lockfile, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
+    lockfiles = [logfile.with_suffix(".lock") for logfile in self.globallogger().mainlogs]
+    return job_lock.MultiJobLock(*lockfiles, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
   def getlogger(self, samp, *, isglobal=False, **kwargs):
     if isinstance(samp, WorkflowDependency):
       isglobal = isglobal or samp.usegloballogger()
       samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, **kwargs)
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, **kwargs)
 
   @classmethod
   @abc.abstractmethod
@@ -146,7 +147,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, xmlfolders=[], version_requirement=None, **kwargs):
+  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, xmlfolders=[], **kwargs):
     super().__init__(*args, reraiseexceptions=debug, **kwargs)
     if im3root is None: im3root = self.root
     self.im3root = pathlib.Path(im3root)
@@ -209,7 +210,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
 
   def runsample(self, sample, **kwargs):
     "actually run whatever is supposed to be run on the sample"
-    sample.run(**kwargs)
+    return sample.run(**kwargs)
 
   @property
   @abc.abstractmethod
@@ -223,7 +224,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.reraiseexceptions, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders}
+    return {"root": self.root, "reraiseexceptions": self.reraiseexceptions, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders, "moremainlogroots": self.moremainlogroots}
 
   @classmethod
   def logmodule(cls):
@@ -241,12 +242,12 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
-    for sample in self.filteredsamples:
-      self.processsample(sample, **kwargs)
+    return [self.processsample(sample, **kwargs) for sample in self.filteredsamples]
+      
 
   def processsample(self, sample, **kwargs):
     with sample:
-      self.runsample(sample, **kwargs)
+      return self.runsample(sample, **kwargs)
 
   @property
   def dryrunheader(self):
@@ -295,22 +296,22 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
 class Im3Cohort(Cohort, Im3ArgumentParser):
   """
   Base class for any cohort that uses im3 files
-  root2: the location of the sharded im3s
+  shardedim3root: the location of the sharded im3s
   """
-  def __init__(self, root, root2, *args, **kwargs):
+  def __init__(self, root, shardedim3root, *args, **kwargs):
     super().__init__(root=root, *args, **kwargs)
-    self.root2 = pathlib.Path(root2)
+    self.shardedim3root = pathlib.Path(shardedim3root)
 
   @property
   def root1(self): return self.root
 
   @property
   def rootnames(self):
-    return {*super().rootnames, "root2"}
+    return {*super().rootnames, "shardedim3root"}
 
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "root2": self.root2}
+    return {**super().initiatesamplekwargs, "shardedim3root": self.shardedim3root}
 
 class DbloadCohortBase(CohortBase):
   def __init__(self, *args, dbloadroot=None, **kwargs):
@@ -660,7 +661,7 @@ class WorkflowCohort(Cohort):
           return
 
         with self.getlogger(sample):
-          super().processsample(sample, **kwargs)
+          result = super().processsample(sample, **kwargs)
 
           status = sample.runstatus(**kwargs)
           #we don't want to do anything if there's an error, because that
@@ -668,3 +669,5 @@ class WorkflowCohort(Cohort):
           if status.missingfiles and status.error is None:
             status.ended = True #to get the missing files in the __str__
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
+
+          return result

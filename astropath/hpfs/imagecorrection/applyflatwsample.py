@@ -25,7 +25,7 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
             #and all of the layers are being done
             if self.layers==range(1,self.nlayers+1) :
                 #then the files should overwrite the raw files
-                self.__workingdir = self.__class__.automatic_output_dir(self.SlideID,self.root2)
+                self.__workingdir = self.__class__.automatic_output_dir(self.SlideID,self.shardedim3root)
         if self.__workingdir is None :
             errmsg = f'ERROR: failed to figure out where to put output from workingdir={workingdir} and '
             errmsg+= f'layers={self.layers}'
@@ -50,7 +50,7 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
             msg_append+=f' layer {",".join([str(ln) for ln in layers if ln!=-1])}'
         msg_append+=' files written out'
         outextstem=UNIV_CONST.FLATW_EXT
-        if (self.__workingdir==self.__class__.automatic_output_dir(self.SlideID,self.root2)) and layers==[-1] :
+        if (self.__workingdir==self.__class__.automatic_output_dir(self.SlideID,self.shardedim3root)) and layers==[-1] :
             outextstem=UNIV_CONST.RAW_EXT
         with cd(self.__workingdir) :
             if self.njobs>1 :
@@ -95,24 +95,24 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
     #################### CLASS METHODS ####################
 
     @classmethod
-    def automatic_output_dir(cls,SlideID,root2) :
+    def automatic_output_dir(cls,SlideID,shardedim3root) :
         """
         Only for the case where the raw files are overwritten
         """
-        return root2 / SlideID
+        return shardedim3root / SlideID
 
     @classmethod
-    def getoutputfiles(cls,SlideID,root,root2,layers,workingdir,**otherworkflowkwargs) :
+    def getoutputfiles(cls,SlideID,root,shardedim3root,layers,workingdir,**otherworkflowkwargs) :
         #figure out where the output is supposed to be
         outdir = workingdir
         if (outdir is None) and ((layers is None) or type(layers)==range) :
-            outdir = cls.automatic_output_dir(SlideID,root2)
+            outdir = cls.automatic_output_dir(SlideID,shardedim3root)
         #figure out what the file extension of the output files should be
         outextstem = UNIV_CONST.FLATW_EXT #'flatw' by default
-        if ( (outdir==cls.automatic_output_dir(SlideID,root2)) 
+        if ( (outdir==cls.automatic_output_dir(SlideID,shardedim3root)) 
             and ((layers is None) or type(layers)==range or layers==[-1]) ) :
             outextstem = UNIV_CONST.RAW_EXT #same as raw if we're overwriting the raw multilayer files
-        rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (root2/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
+        rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (shardedim3root/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
         outputfiles = []
         for rfs in rawfile_stems :
             if (layers is None) or type(layers)==range : #if it's None or a range then it's just the multilayer images

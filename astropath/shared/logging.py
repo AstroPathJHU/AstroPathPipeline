@@ -1,4 +1,4 @@
-import collections, datetime, functools, job_lock, logging, os, pathlib, traceback
+import collections, contextlib, datetime, functools, job_lock, logging, os, pathlib, traceback
 
 class MyLogger:
   r"""
@@ -50,7 +50,7 @@ class MyLogger:
     4) if sampledef.csv does not exist yet, you can provide an apidfile argument
        to getlogger and it will read the information from there
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True):
     self.module = module
     self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
@@ -58,11 +58,16 @@ class MyLogger:
     self.nentered = 0
     self.threshold = threshold
     self.printthreshold = printthreshold
+    moremainlogs = []
     if root is None and uselogfiles:
       raise ValueError("Have to provide non-None root if using log files")
     if root is not None:
       if mainlog is None:
         mainlog = self.root/"logfiles"/f"{self.module}.log"
+        if moremainlogroots is not None:
+          moremainlogroots = {pathlib.Path(root) for root in moremainlogroots if root is not None}
+          moremainlogroots.discard(self.root)
+          moremainlogs = [root/"logfiles"/f"{self.module}.log" for root in moremainlogroots]
       if samplelog is None:
         samplelog = self.root/self.samp.SlideID/"logfiles"/f"{self.samp.SlideID}-{self.module}.log"
     if mainlog is not None:
@@ -70,7 +75,7 @@ class MyLogger:
     if samplelog is not None:
       samplelog = pathlib.Path(samplelog)
 
-    self.mainlog = mainlog
+    self.mainlogs = [mainlog] + moremainlogs
     self.samplelog = samplelog
     self.imagelog = None if imagelog is None else pathlib.Path(imagelog)
     self.isglobal = isglobal
@@ -95,8 +100,9 @@ class MyLogger:
 
   @property
   def formatter(self):
+    fmt = ";".join(str(_) for _ in (self.Project, self.Cohort, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None)
     return logging.Formatter(
-      ";".join(str(_) for _ in (self.Project, self.Cohort, self.SlideID, "%(message)s", "%(asctime)s") if _ is not None),
+      fmt,
       self.dateformat,
     )
   def __enter__(self):
@@ -119,12 +125,13 @@ class MyLogger:
       self.logger.addHandler(printhandler)
 
       if self.uselogfiles:
-        self.mainlog.parent.mkdir(exist_ok=True, parents=True)
-        mainhandler = MyFileHandler(self.mainlog)
-        mainhandler.setFormatter(self.formatter)
-        mainhandler.addFilter(self.filter)
-        mainhandler.setLevel(logging.INFO if self.isglobal else logging.WARNING+1)
-        self.logger.addHandler(mainhandler)
+        for mainlog in self.mainlogs:
+          mainlog.parent.mkdir(exist_ok=True, parents=True)
+          mainhandler = MyFileHandler(mainlog)
+          mainhandler.setFormatter(self.formatter)
+          mainhandler.addFilter(self.filter)
+          mainhandler.setLevel(logging.INFO if self.isglobal else logging.WARNING+1)
+          self.logger.addHandler(mainhandler)
 
         if not self.isglobal:
           self.samplelog.parent.mkdir(exist_ok=True, parents=True)
@@ -265,14 +272,14 @@ class MyFileHandler:
 __notgiven = object()
 
 @functools.lru_cache(maxsize=None)
-def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, reraiseexceptions):
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, moremainlogroots, reraiseexceptions):
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=moremainlogroots, reraiseexceptions=reraiseexceptions)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, reraiseexceptions=True, apidfile=None, Project=None, Cohort=None):
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, apidfile=None, Project=None, Cohort=None):
   from .samplemetadata import SampleDef
   if samp is not None:
     samp = SampleDef(root=root, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)
-  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, reraiseexceptions=reraiseexceptions)
+  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=frozenset(moremainlogroots), reraiseexceptions=reraiseexceptions)
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
@@ -280,3 +287,30 @@ dummylogger.warningglobal = dummylogger.warning
 
 def printlogger(module):
   return getlogger(module=module, root=None, samp=None)
+
+class MultiLogger(contextlib.ExitStack):
+  def __init__(self, *loggers, entermessage=None):
+    self.__loggers = loggers
+    self.__entermessage = entermessage
+    super().__init__()
+
+  def __logfunction(self, functionname, *args, **kwargs):
+    for logger in self.__loggers:
+      getattr(logger, functionname)(*args, **kwargs)
+
+  def log(self, *args, **kwargs): self.__logfunction("log", *args, **kwargs)
+  def critical(self, *args, **kwargs): self.__logfunction("critical", *args, **kwargs)
+  def error(self, *args, **kwargs): self.__logfunction("error", *args, **kwargs)
+  def warningglobal(self, *args, **kwargs): self.__logfunction("warningglobal", *args, **kwargs)
+  def warning(self, *args, **kwargs): self.__logfunction("warning", *args, **kwargs)
+  def info(self, *args, **kwargs): self.__logfunction("info", *args, **kwargs)
+  def imageinfo(self, *args, **kwargs): self.__logfunction("imageinfo", *args, **kwargs)
+  def debug(self, *args, **kwargs): self.__logfunction("debug", *args, **kwargs)
+
+  def __enter__(self):
+    super().__enter__()
+    for logger in self.__loggers:
+      self.enter_context(logger)
+    if self.__entermessage is not None:
+      self.critical(self.__entermessage)
+    return self

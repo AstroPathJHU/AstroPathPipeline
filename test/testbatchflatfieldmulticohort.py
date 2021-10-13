@@ -1,5 +1,5 @@
 #imports
-from astropath.hpfs.flatfield.batchflatfieldcohort import BatchFlatfieldCohort
+from astropath.hpfs.flatfield.batchflatfieldmulticohort import BatchFlatfieldMultiCohort
 from astropath.hpfs.flatfield.utilities import FieldLog
 from astropath.hpfs.flatfield.config import CONST
 from astropath.shared.samplemetadata import MetadataSummary
@@ -75,14 +75,14 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
     def test_batch_flatfield_cohort(self) :
         #run the BatchFlatfieldCohort selecting the three contrived samples
         root = folder/'data'
-        root2 = folder/'data'/'raw'
-        args = [os.fspath(root),os.fspath(root2),
+        args = [os.fspath(root),
                 '--sampleregex','('+'|'.join(slide_IDs)+')',
                 '--batchID',str(batchID),
                 '--allow-local-edits',
                 '--ignore-dependencies',
+                '--outdir',os.fspath(root),
                ]
-        BatchFlatfieldCohort.runfromargumentparser(args=args)
+        BatchFlatfieldMultiCohort.runfromargumentparser(args=args)
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'batchflatfieldcohort'
         try :

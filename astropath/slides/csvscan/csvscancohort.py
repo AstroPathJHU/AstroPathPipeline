@@ -149,7 +149,8 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   def getlogfile(cls, *, logroot, **workflowkwargs):
     return logroot/"logfiles"/f"{cls.logmodule()}.log"
   def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
-    return job_lock.JobLock(self.mainlog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
+    lockfiles = [mainlog.with_suffix(".lock") for mainlog in self.mainlogs]
+    return job_lock.MultiJobLock(*lockfiles, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
   @classmethod
   def usegloballogger(cls): return True
@@ -204,6 +205,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         "selectrectangles": False,
         "uselogfiles": True,
         "xmlfolders": False,
+        "moremainlogroots": True,
       }[k]
     }
 
