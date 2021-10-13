@@ -1,99 +1,15 @@
 #imports
-import pathlib, math, logging, re, platform
+import pathlib, logging, re, platform
 from argparse import ArgumentParser
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import split_csv_to_list, split_csv_to_list_of_floats, save_figure_in_dir
+from ...utilities.misc import split_csv_to_list, split_csv_to_list_of_floats
 from ...utilities.tableio import readtable,writetable
-from ...utilities.dataclasses import MyDataClass
 from ...utilities.img_file_io import get_image_hwl_from_xml_file, get_raw_as_hwl
 from ...shared.samplemetadata import SampleDef
 from .config import CONST
-
-class ModelTableEntry(MyDataClass) :
-    """
-    dataclass to organize entries in the flatfield model .csv file
-    """
-    version : str
-    Project : str
-    Cohort  : str
-    BatchID : str
-    SlideID : str
-
-class ComparisonTableEntry(MyDataClass) :
-    """
-    dataclass to organize numerical entries in the outputted table
-    """
-    root_dir_1               : str
-    slide_ID_1               : str
-    root_dir_2               : str
-    slide_ID_2               : str
-    layer_n                  : int
-    delta_over_sigma_std_dev : float
-
-def normalize_image(mi,semi) :
-    """
-    normalize an image by its weighted means in each layer 
-    """
-    weights = np.zeros_like(semi)
-    weights[semi!=0] = 1./(semi[semi!=0]**2)
-    weighted_mi = weights*mi
-    sum_weighted_mi = np.sum(weighted_mi,axis=(0,1))
-    sum_weights = np.sum(weights,axis=(0,1))
-    mi_means = (sum_weighted_mi/sum_weights)[np.newaxis,np.newaxis,:]
-    return mi/mi_means, semi/mi_means
-
-def make_and_save_single_plot(slide_ids,values_to_plot,plot_title,figname,workingdir,lines_after,bounds) :
-    """
-    make a single comparison plot of some type
-    """
-    #make the figure
-    fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
-    #figure out the scaled font sizes
-    scaled_label_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
-    scaled_title_font_size = 10.*(1.+math.log2(len(slide_ids)/6.)) if len(slide_ids)>5 else 10.
-    #add the grid to the plot
-    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1])
-    #add other patches
-    patches = []
-    #black out any zero values in the plot
-    for iy in range(values_to_plot.shape[0]) :
-        for ix in range(values_to_plot.shape[1]) :
-            if values_to_plot[iy,ix]==0. :
-                patches.append(Rectangle((ix-0.5,iy-0.5),1,1,edgecolor='k',facecolor='k',fill=True))
-    #add lines after certain slides
-    if lines_after!=[''] and len(lines_after)>0 :
-        for sid in lines_after :
-            if sid not in slide_ids :
-                errmsg=f'ERROR: requested to add a separator after slide {sid} but this slide will not be on the plot!'
-                raise RuntimeError(errmsg)
-            sindex = slide_ids.index(sid)
-            patches.append(Rectangle((sindex+0.375,-0.5),0.25,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
-            patches.append(Rectangle((-0.5,sindex+0.375),len(slide_ids)+1,0.25,edgecolor='r',facecolor='r',fill=True))
-    for patch in patches :
-        ax.add_patch(patch)
-    #adjust some stuff on the plots
-    ax.set_xticks(np.arange(len(slide_ids)))
-    ax.set_yticks(np.arange(len(slide_ids)))
-    ax.set_xticklabels(slide_ids,fontsize=scaled_label_font_size)
-    ax.set_yticklabels(slide_ids,fontsize=scaled_label_font_size)
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",rotation_mode="anchor")
-    #add the exact numerical values inside each box
-    for i in range(len(slide_ids)):
-        for j in range(len(slide_ids)):
-            v = values_to_plot[i,j]
-            if v!=0. :
-                text = ax.text(j, i, f'{v:.02f}',ha="center", va="center", color="b")
-                text.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='white'))
-    #set the title, add the colorbar, etc.
-    ax.set_title(plot_title,fontsize=1.1*scaled_title_font_size)
-    cax = fig.add_axes([ax.get_position().x1+0.01,ax.get_position().y0,0.02,ax.get_position().height])
-    cbar = fig.colorbar(pos,cax=cax)
-    cbar.ax.tick_params(labelsize=scaled_title_font_size)
-    #save the plot
-    save_figure_in_dir(plt,figname,workingdir)
+from .utilities import ModelTableEntry, ComparisonTableEntry, normalize_mean_image
+from .plotting import meanimage_comparison_plot
 
 class MeanImageComparison :
     """
@@ -217,7 +133,7 @@ class MeanImageComparison :
             layers = []
         for ln in layers : 
             self.logger.debug(f'Saving plot for layer {ln}...')
-            make_and_save_single_plot(slide_ids,
+            meanimage_comparison_plot(slide_ids,
                                       self.dos_std_dev_values[:,:,ln-1],
                                       f'mean image delta/sigma std. devs. in layer {ln}',
                                       f'meanimage_comparison_layer_{ln}.png',
@@ -239,7 +155,7 @@ class MeanImageComparison :
                         average_values[i,j]=0.
                     else :
                         average_values[i,j]=num/den
-            make_and_save_single_plot(slide_ids,
+            meanimage_comparison_plot(slide_ids,
                                       average_values,
                                       'mean image delta/sigma std. devs. (averaged over all layers)',
                                       'meanimage_comparison_average_over_all_layers.png',
@@ -498,8 +414,8 @@ class MeanImageComparison :
         of two meanimages compared to one another
         """
         #normalize the images by their means in each layer
-        mi1,semi1 = normalize_image(mi1,semi1)
-        mi2,semi2 = normalize_image(mi2,semi2)
+        mi1,semi1 = normalize_mean_image(mi1,semi1)
+        mi2,semi2 = normalize_mean_image(mi2,semi2)
         #make the delta/sigma image
         delta_over_sigma = (mi1-mi2)/(np.sqrt(semi1**2+semi2**2))
         std_devs = []

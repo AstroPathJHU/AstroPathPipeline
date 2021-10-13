@@ -1,7 +1,9 @@
 #imports
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+from matplotlib.patches import Rectangle
 from ...shared.image_masking.config import CONST as MASKING_CONST
 from ...utilities.tableio import readtable
 from ...utilities.misc import save_figure_in_dir
@@ -213,6 +215,56 @@ def plot_image_layers(image,name_stem,save_dirpath=None) :
         cax = f.add_axes([ax.get_position().x1+0.006,ax.get_position().y0,0.02,ax.get_position().height])
         f.colorbar(pos,cax=cax)
         save_figure_in_dir(plt,layer_fn,save_dirpath)
+
+def meanimage_comparison_plot(slide_ids,values_to_plot,plot_title,figname,workingdir,lines_after,bounds) :
+    """
+    make a single comparison plot of some type
+    """
+    #make the figure
+    fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
+    #figure out the scaled font sizes
+    scaled_label_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
+    scaled_title_font_size = 10.*(1.+math.log2(len(slide_ids)/6.)) if len(slide_ids)>5 else 10.
+    #add the grid to the plot
+    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1])
+    #add other patches
+    patches = []
+    #black out any zero values in the plot
+    for iy in range(values_to_plot.shape[0]) :
+        for ix in range(values_to_plot.shape[1]) :
+            if values_to_plot[iy,ix]==0. :
+                patches.append(Rectangle((ix-0.5,iy-0.5),1,1,edgecolor='k',facecolor='k',fill=True))
+    #add lines after certain slides
+    if lines_after!=[''] and len(lines_after)>0 :
+        for sid in lines_after :
+            if sid not in slide_ids :
+                errmsg=f'ERROR: requested to add a separator after slide {sid} but this slide will not be on the plot!'
+                raise RuntimeError(errmsg)
+            sindex = slide_ids.index(sid)
+            patches.append(Rectangle((sindex+0.375,-0.5),0.25,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
+            patches.append(Rectangle((-0.5,sindex+0.375),len(slide_ids)+1,0.25,edgecolor='r',facecolor='r',fill=True))
+    for patch in patches :
+        ax.add_patch(patch)
+    #adjust some stuff on the plots
+    ax.set_xticks(np.arange(len(slide_ids)))
+    ax.set_yticks(np.arange(len(slide_ids)))
+    ax.set_xticklabels(slide_ids,fontsize=scaled_label_font_size)
+    ax.set_yticklabels(slide_ids,fontsize=scaled_label_font_size)
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",rotation_mode="anchor")
+    #add the exact numerical values inside each box
+    for i in range(len(slide_ids)):
+        for j in range(len(slide_ids)):
+            v = values_to_plot[i,j]
+            if v!=0. :
+                text = ax.text(j, i, f'{v:.02f}',ha="center", va="center", color="b")
+                text.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='white'))
+    #set the title, add the colorbar, etc.
+    ax.set_title(plot_title,fontsize=1.1*scaled_title_font_size)
+    cax = fig.add_axes([ax.get_position().x1+0.01,ax.get_position().y0,0.02,ax.get_position().height])
+    cbar = fig.colorbar(pos,cax=cax)
+    cbar.ax.tick_params(labelsize=scaled_title_font_size)
+    #save the plot
+    save_figure_in_dir(plt,figname,workingdir)
 
 def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpath=None) :
     """

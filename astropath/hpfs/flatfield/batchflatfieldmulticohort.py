@@ -6,6 +6,7 @@ from ...shared.sample import WorkflowSample
 from ...shared.cohort import WorkflowCohort
 from ...shared.multicohort import MultiCohortBase
 from .config import CONST
+from .utilities import ModelTableEntry
 from .imagestack import Flatfield
 from .meanimagesample import MeanImageSample
 
@@ -73,10 +74,18 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
     into a single flatfield model
     """
 
-    def __init__(self,*args,outdir,batchID=-1,**kwargs) :
+    def __init__(self,*args,version,flatfield_model_file,outdir,**kwargs) :
         super().__init__(*args,**kwargs)
+        self.__version = version
+        self.__flatfield_model_file = flatfield_model_file
         self.__outdir = outdir
-        self.__batchID = batchID
+        #read the model file to get a list of ModelTableEntry objects and add a filter for those slide IDs
+        all_model_table_entries = readtable(flatfield_model_file,ModelTableEntry)
+        self.__model_table_entries = [te for te in all_model_table_entries if te.version==version]
+        if len(self.__model_table_entries)<1 :
+            errmsg =f'ERROR: {len(self.__model_table_entries)} entries found in {self.__flatfield_model_file} '
+            errmsg+=f'for version {self.__version}!'
+            raise ValueError(errmsg)
 
     def run(self, **kwargs):
         totalsamples = 0
@@ -95,14 +104,14 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             #Run all the samples individually like for a regular MultiCohort
             super().run(flatfield=flatfield, 
                         samplesprocessed=samplesprocessed, 
-                        batchID=self.__batchID, 
+                        version=self.__version, 
                         totalsamples=totalsamples, **kwargs)
             totalsamples = len(samplesprocessed)
             #actually create the flatfield after all the samples have been added
-            logger.info(f'Creating final flatfield model for batch {self.__batchID:02d}....')
+            logger.info(f'Creating final flatfield model for version {self.__version}....')
             flatfield.create_flatfield_model()
             #write out the flatfield model
-            logger.info(f'Writing out flatfield model, plots, and summary pdf for batch {self.__batchID:02d}....')
+            logger.debug(f'Writing out flatfield model, plots, and summary pdf for version {self.__version}....')
             flatfield.write_output(self.__batchID,self.workingdir)
 
     #################### CLASS VARIABLES + PROPERTIES ####################
@@ -118,17 +127,22 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
-        p.add_argument('--batchID',type=int,default=-1,
-                       help='BatchID for the flatfield model created from the given list of slideIDs')
-        p.add_argument('--outdir',type=pathlib.Path,required=True,
-                       help='directory where the output will be placed')
+        p.add_argument('--version',type=int,default=-1,
+                       help="version of the flatfield model that should be created from the given slides' meanimages")
+        p.add_argument('--flatfield-model-file',type=pathlib.Path,
+                        default=pathlib.Path('//bki04/astropath_processing/AstroPathFlatfieldModels.csv'),
+                        help='path to a .csv file defining which slides should be used for the given version')
+        p.add_argument('--outdir',type=pathlib.Path,default=pathlib.Path('//bki04/astropath_processing'),
+                       help='''directory where the output will be placed (a "flatfield" directory will be created 
+                                inside outdir if one does not already exist)''')
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         parsed_args_dict['skip_finished']=False #always rerun the samples, they don't produce any output
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
-            'batchID': parsed_args_dict.pop('batchID'), 
+            'version': parsed_args_dict.pop('version'), 
+            'flatfield_model_file': parsed_args_dict.pop('flatfield_model_file'), 
             'outdir': parsed_args_dict.pop('outdir'), 
         }
 
