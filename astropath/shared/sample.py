@@ -535,7 +535,7 @@ class WorkflowSample(SampleBase, WorkflowDependencySlideID):
     return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses()]
 
   def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
-    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, **kwargs)
+    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
 class DbloadSampleBase(SampleBase, DbloadArgumentParser):
   """
