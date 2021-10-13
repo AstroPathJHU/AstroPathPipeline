@@ -178,9 +178,9 @@ pipeline {
 
         stage('flatfield cohorts') {
           stages {
-            stage('batch flatfield cohort') {
+            stage('batch flatfield multicohort') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbatchflatfieldcohort'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbatchflatfieldmulticohort'
               }
             }
             stage('applied flatfield cohort') {

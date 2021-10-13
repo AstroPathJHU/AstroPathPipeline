@@ -57,13 +57,10 @@ class BatchFlatfieldSample(ReadRectanglesIm3FromXML,WorkflowSample) :
 class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
     """
     Class to handle combining several samples' meanimages into a single flatfield model for a batch
+    (Single-cohort placeholder for BatchFlatfieldMultiCohort)
     """
 
-    #################### CLASS VARIABLES + PROPERTIES ####################
-
     sampleclass = BatchFlatfieldSample
-
-    #################### CLASS METHODS ####################
 
     @property
     def initiatesamplekwargs(self) :
@@ -75,16 +72,16 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
         return{**super().workflowkwargs,'skip_masking':False}
 
 class BatchFlatfieldMultiCohort(MultiCohortBase):
+    """
+    Multi-cohort version of batch flatfield code that combines several samples' meanimages 
+    into a single flatfield model
+    """
+
     def __init__(self,*args,outdir,batchID=-1,**kwargs) :
         super().__init__(*args,**kwargs)
-        self.__batchID = batchID
         self.__outdir = outdir
+        self.__batchID = batchID
 
-    @property
-    def workingdir(self) :
-        return self.__outdir / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
-
-    singlecohortclass = BatchFlatfieldCohort
     def run(self, **kwargs):
         totalsamples = 0
         image_dimensions = None
@@ -97,20 +94,30 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
                     totalsamples += 1
             if image_dimensions is None :
                 raise ValueError("No non-empty samples")
-
             flatfield = Flatfield(image_dimensions,logger)
             samplesprocessed=[]
-
-            super().run(flatfield=flatfield, samplesprocessed=samplesprocessed, batchID=self.__batchID, totalsamples=totalsamples, **kwargs)
-
+            #Run all the samples individually like for a regular MultiCohort
+            super().run(flatfield=flatfield, 
+                        samplesprocessed=samplesprocessed, 
+                        batchID=self.__batchID, 
+                        totalsamples=totalsamples, **kwargs)
             totalsamples = len(samplesprocessed)
-
             #actually create the flatfield after all the samples have been added
             logger.info(f'Creating final flatfield model for batch {self.__batchID:02d}....')
             flatfield.create_flatfield_model()
             #write out the flatfield model
             logger.info(f'Writing out flatfield model, plots, and summary pdf for batch {self.__batchID:02d}....')
             flatfield.write_output(self.__batchID,self.workingdir)
+
+    #################### CLASS VARIABLES + PROPERTIES ####################
+
+    singlecohortclass = BatchFlatfieldCohort
+
+    @property
+    def workingdir(self) :
+        return self.__outdir / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
+
+    #################### CLASS METHODS ####################
 
     @classmethod
     def makeargumentparser(cls):
