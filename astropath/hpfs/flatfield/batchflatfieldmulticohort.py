@@ -1,14 +1,15 @@
 #imports
 import pathlib
-from .meanimagesample import MeanImageSample
-from .imagestack import Flatfield
-from .config import CONST
-from ...shared.sample import ReadRectanglesIm3FromXML, WorkflowSample
-from ...shared.cohort import Im3Cohort, WorkflowCohort
-from ...shared.multicohort import MultiCohortBase
 from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.img_file_io import get_image_hwl_from_xml_file
+from ...shared.sample import WorkflowSample
+from ...shared.cohort import WorkflowCohort
+from ...shared.multicohort import MultiCohortBase
+from .config import CONST
+from .imagestack import Flatfield
+from .meanimagesample import MeanImageSample
 
-class BatchFlatfieldSample(ReadRectanglesIm3FromXML,WorkflowSample) :
+class BatchFlatfieldSample(WorkflowSample) :
     """
     Small utility class to hold sample-dependent information for the batch flatfield run
     Just requires as input files the relevant output of the meanimage mode
@@ -54,7 +55,7 @@ class BatchFlatfieldSample(ReadRectanglesIm3FromXML,WorkflowSample) :
     def workflowdependencyclasses(cls):
         return [*super().workflowdependencyclasses(),MeanImageSample]
 
-class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
+class BatchFlatfieldCohort(WorkflowCohort) :
     """
     Class to handle combining several samples' meanimages into a single flatfield model for a batch
     (Single-cohort placeholder for BatchFlatfieldMultiCohort)
@@ -62,11 +63,6 @@ class BatchFlatfieldCohort(Im3Cohort,WorkflowCohort) :
 
     sampleclass = BatchFlatfieldSample
 
-    @property
-    def initiatesamplekwargs(self) :
-        return {**super().initiatesamplekwargs,
-                'filetype':'raw',
-               }
     @property
     def workflowkwargs(self) :
         return{**super().workflowkwargs,'skip_masking':False}
@@ -89,8 +85,8 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             #start up the flatfield after figuring out its dimensions
             for cohort in self.cohorts :
                 for sample in cohort.filteredsamples :
-                    if image_dimensions is None and len(sample.rectangles)>0 :
-                        image_dimensions = sample.rectangles[0].imageshapeinoutput
+                    if image_dimensions is None :
+                        image_dimensions = get_image_hwl_from_xml_file(sample.root,sample.SlideID)
                     totalsamples += 1
             if image_dimensions is None :
                 raise ValueError("No non-empty samples")

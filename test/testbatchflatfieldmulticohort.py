@@ -1,5 +1,5 @@
 #imports
-from astropath.hpfs.flatfield.batchflatfieldcohort import BatchFlatfieldMultiCohort
+from astropath.hpfs.flatfield.batchflatfieldmulticohort import BatchFlatfieldMultiCohort
 from astropath.hpfs.flatfield.utilities import FieldLog
 from astropath.hpfs.flatfield.config import CONST
 from astropath.shared.samplemetadata import MetadataSummary
@@ -75,9 +75,7 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
     def test_batch_flatfield_cohort(self) :
         #run the BatchFlatfieldCohort selecting the three contrived samples
         root = folder/'data'
-        shardedim3root = folder/'data'/'raw'
         args = [os.fspath(root),
-                '--shardedim3root',os.fspath(shardedim3root),
                 '--sampleregex','('+'|'.join(slide_IDs)+')',
                 '--batchID',str(batchID),
                 '--allow-local-edits',
