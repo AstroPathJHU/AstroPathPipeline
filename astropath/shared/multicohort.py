@@ -60,6 +60,8 @@ class MultiCohortBase(ArgumentParserWithVersionRequirement):
       if "root" in a.dest:
         assert a.nargs in {1, None}, a.nargs
         a.nargs = "+"
+        if a.dest != "root" and isinstance(a.help, str):
+          a.help += " The number and order must match root."
     return p
 
   @classmethod
