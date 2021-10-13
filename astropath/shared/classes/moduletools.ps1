@@ -252,4 +252,5 @@
             remove-item $externallog -force -ea Continue
         }
     }
+    #
  }

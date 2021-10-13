@@ -12,6 +12,10 @@
     [string]$mpath
     [string]$slideid
     [string]$psroot = $pshome + "\powershell.exe"
+    [string]$coderoot
+    [string]$pyinstalllocation = '\\'+$env:ComputerName+'\c$\users\public\astropath\py\'
+    [string]$pyenv = $this.pyinstalllocation + 'astropathworkflow'
+    [string]$pyinstalllog = $this.pyinstalllocation + 'pyinstall.log'
     <# -----------------------------------------
      OpenCSVFile
      open a csv file with error checking into a
@@ -261,7 +265,7 @@
      ------------------------------------------
      Usage: ImportCohortsInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportCohortsInfo([string] $mpath = ''){
+    [PSCustomObject]ImportCohortsInfo([string] $mpath){
         #
         $cohort_csv_file = $mpath + '\AstropathCohortsProgress.csv'
         #
@@ -288,7 +292,7 @@
      ------------------------------------------
      Usage: ImportCohortsInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportConfigInfo([string] $mpath = ''){
+    [PSCustomObject]ImportConfigInfo([string] $mpath){
         #
         $config_csv_file = $mpath + '\AstropathConfig.csv'
         #
@@ -308,9 +312,28 @@
      ------------------------------------------
      Usage: ImportSlideIDs(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportSlideIDs([string] $mpath = ''){
+    [PSCustomObject]ImportSlideIDs([string] $mpath){
         #
         $defpath = $mpath + '\AstropathAPIDdef.csv'
+        #
+        $slide_ids = $this.opencsvfile( $defpath)
+        return $slide_ids
+        #
+     }
+    <# -----------------------------------------
+     ImportFlatfieldModels
+     open the AstropathAPIDdef.csv to get all slide
+     available for processing
+     ------------------------------------------
+     Input: 
+        -mpath: main path for the astropath processing
+         which contains all necessary processing files
+     ------------------------------------------
+     Usage: ImportFlatfieldModels(mpath)
+    ----------------------------------------- #>
+    [PSCustomObject]ImportFlatfieldModels([string] $mpath){
+        #
+        $defpath = $mpath + '\AstroPathFlatfieldModels.csv'
         #
         $slide_ids = $this.opencsvfile( $defpath)
         return $slide_ids
@@ -422,14 +445,142 @@
         #
     }
     #
+    [void]defCodeRoot(){
+        #
+        if ($PSScriptRoot[0] -ne '\'){
+            $root = ('\\' + $env:computername+'\'+$PSScriptRoot) -replace ":", "$"
+        } else{
+            $root = $PSScriptRoot -replace ":", "$"
+        }
+        #
+        $folder = $root -Split('\\astropath\\')
+        $this.coderoot = $folder[0] + '\\astropath'
+    }
+    #
     [string]GetVersion($mpath, $module, $project){
         #
         $configfile = $this.ImportConfigInfo($mpath)
         $vers = ($configfile | Where-Object {$_.Project -eq $project}).($module+'version')
-        if ($vers -ne '0.0.1'){
-            Throw 'Does not support specified version'
+        if (!$vers){
+            Throw 'No version number found'
+        } elseif ($vers -ne '0.0.1'){
+            $this.checkconda()
+            $this.checkpyapenvir()
+        } elseif ($module -contains  @('meanimagecomparison', 'warping')){
+            Throw 'module not supported in this version (' + $vers + '): ' + $module
         }
         return $vers
         #
+    }
+    <# -----------------------------------------
+     checkconda
+     Check if conda is a command in Powershell 
+     if not add it to the environment path as a
+     command
+     ------------------------------------------
+     Usage: $this.checkconda()
+    ----------------------------------------- #>
+    [void]CheckConda(){
+        #
+        # check if conda is a
+        #
+        if (!(test-path C:\ProgramData\Miniconda3)){
+            Throw "Miniconda must be installed for this code version"
+        }
+        #
+        try{
+            conda *>> NULL
+        }catch{
+            if($_.Exception.Message -match "The term 'conda' is not"){
+                    #
+                    $env:PATH = $env:PATH + "C:\ProgramData\Miniconda3;C:\ProgramData\Miniconda3\Library\mingw-w64\bin;
+                        C:\ProgramData\Miniconda3\Library\usr\bin;C:\ProgramData\Miniconda3\Library\bin;
+                        C:\ProgramData\Miniconda3\Scripts;C:\ProgramData\Miniconda3\bin;"
+                    #
+                    (& "C:\ProgramData\Miniconda3\Scripts\conda.exe" "shell.powershell" "hook") | Out-String | Invoke-Expression
+                    #
+                }
+             }
+        }
+     <# -----------------------------------------
+     astropathpypath
+     return the path to the astropath python 
+     package root location.
+     ------------------------------------------
+     Usage: $this.astropathpypath()
+    ----------------------------------------- #>    
+    [string]AstroPathpyPath(){
+        $this.defCodeRoot()
+        $astropathpypath = $this.coderoot + '\..\.'
+        return($astropathpypath)
+    }
+     <# -----------------------------------------
+     CheckpyAPEnvir
+     Check if py\astropathworkflow conda environment
+     exists. If it does not create it and install
+     the astropath package from the current working.
+     If it does exist check for updates.
+     ------------------------------------------
+     Usage: $this.CheckpyAPEnvir()
+    ----------------------------------------- #>        
+    [void]CheckpyAPEnvir(){
+        #
+        $this.createdirs($this.pyinstalllocation)
+        $envs = conda info --envs
+        if(!($envs -match $this.pyenv)){
+            $this.createpyapenvir()
+        }
+        #
+    }
+    #
+    [void]CheckpyAPEnvir($u){
+        #
+        $this.createdirs($this.pyinstalllocation)
+        $envs = conda info --envs
+        if($envs -match $this.pyenv){
+            $this.upgradepyapenvir()
+        } else {
+            $this.createpyapenvir()
+        }
+        #
+    }
+    <# -----------------------------------------
+     CreatepyAPEnvir
+     create py\astropathworkflow conda environment.
+     ------------------------------------------
+     Usage: $this.createpyapenvir()
+    ----------------------------------------- #>      
+    [void]CreatepyAPEnvir(){
+        conda create -y -p $this.pyenv python=3.8 2>&1 >> $this.pyinstalllog
+        $this.pyenv + " CONDA ENVIR CREATED" | Out-File $this.pyinstalllog
+        conda activate $this.pyenv 2>&1 >> $this.pyinstalllog
+        $this.pyenv + " CONDA ENVIR ACTIVATED" | Out-File $this.pyinstalllog
+        conda install -y -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git 2>&1 >> $this.pyinstalllog
+        $this.pyenv + " CONDA ENVIR INSTALLS COMPLETE" | Out-File $this.pyinstalllog
+        pip -q install $this.astropathpypath() 2>&1 >> $this.pyinstalllog
+        $this.pyenv + " PIP INSTALLS COMPLETE" | Out-File $this.pyinstalllog
+        conda deactivate $this.pyenv 2>&1 >> $this.pyinstalllog
+    }
+    <# -----------------------------------------
+     upgradepyapenvir
+     create py\astropathworkflow conda environment.
+     ------------------------------------------
+     Usage: $this.upgradepyapenvir()
+    ----------------------------------------- #>    
+    [void]UpgradepyAPEnvir(){
+        conda activate $this.pyenv 2>&1 >> $this.pyinstalllog
+        pip -q install -U $this.astropathpypath()  2>&1 >> $this.pyinstalllog
+        conda deactivate $this.pyenv 2>&1 >> $this.pyinstalllog
+    }
+    <# -----------------------------------------
+     createdirs
+     create a directory if it does not exist 
+     ------------------------------------------
+     Usage: $this.createdirs()
+    ----------------------------------------- #>   
+    [void]CreateDirs($dir){
+        if (!(test-path $dir)){
+            new-item $dir -itemtype "directory" -EA STOP | Out-NULL
+        }
     }
 }
