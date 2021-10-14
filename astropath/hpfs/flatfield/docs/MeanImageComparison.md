@@ -13,7 +13,7 @@ where:
 - `[sample_regex]` is a regular expression that will match any slide IDs to be added from any of the paths in `[Dpaths]`
 
 Running the above command will compare slides in any/all of the directories in `[Dpaths]` that match the given `[sample_regex]`, producing the following output by default at `//bki04/astropath_processing/meanimagecomparison`:
-1. **a `meanimagecomparison_table.csv` file** whose entries list the comparisons between each layer of every pair of slide mean images, stored as [`ComparisonTableEntry` objects](../meanimagecomparison.py#L25-L34). If that file already exists with some entries in it, invoking the command above will automatically perform additional comparisons with any samples listed in the file that match `[sample_regex]`.
+1. **a `meanimagecomparison_table.csv` file** whose entries list the comparisons between each layer of every pair of slide mean images, stored as [`ComparisonTableEntry` objects](../utilities.py#L37-L44). If that file already exists with some entries in it, invoking the command above will automatically perform additional comparisons with any samples listed in the file that match `[sample_regex]`.
 1. **a `meanimage_comparison_average_over_all_layers.png` plot** showing a grid of comparison statistic values for each pair of slides. Again, if the datatable already exists when the command is run, this plot will include comparisons with the slides that were already listed and match `[sample_regex]`.
 1. **a log file** called `meanimage_comparison.log`
 
@@ -21,7 +21,7 @@ The goal is that this script can be used to add a new group of slides to an ever
 
 `meanimagecomparison --sampleregex [sample_regex] --store-as [version_tag]`
 
-where `[version_tag]` is a string used to identify the particular group of slides for the flatfield model (i.e. 'v1.1' or similar). Running the command will add lines to the `//bki04/astropath_processing/AstroPathFlatfieldModels.csv` file listing each of the matched slides as part of a model with the given `[version_tag]` (entries in this file are stored as [`ModelTableEntry` objects](../meanimagecomparison.py#L15-L23)).
+where `[version_tag]` is a string used to identify the particular group of slides for the flatfield model (i.e. 'v1.1' or similar). Running the command will add lines to the `\\bki04\astropath_processing\AstroPathFlatfieldModels.csv` file listing each of the matched slides as part of a model with the given `[version_tag]` (entries in this file are stored as [`ModelTableEntry` objects](../utilities.py#L29-L35)).
 
 Other options for running the code include:
 - Putting output in a different location, including reading existing output from that location: add the `--workingdir [path_to_output_dir]` argument, where `[path_to_output_dir]` is the path to the desired output directory 
