@@ -312,7 +312,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testCohort(self, units="safe"):
     SlideID = "M21_1"
-    args = [str(thisfolder/"data"), str(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--logroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
+    args = [os.fspath(thisfolder/"data"), "--shardedim3root", os.fspath(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--logroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     AlignCohort.runfromargumentparser(args)
 
     a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")

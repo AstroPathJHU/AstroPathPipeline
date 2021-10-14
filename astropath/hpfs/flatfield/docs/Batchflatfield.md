@@ -5,9 +5,9 @@
 
 ## 5.5.5.2. Instructions to Run Standalone Via Python Package
 
-After the mean images for each slide have been run and a suitable set of slides has been determined, the mean images from all of those slides are combined together to produce a single flatfield correction model using the "[batchflatfieldcohort.py](../batchflatfieldcohort.py)" code. To run this code in the most common use case, enter the following command and arguments:
+After the mean images for each slide have been run and a suitable set of slides has been determined, the mean images from all of those slides are combined together to produce a single flatfield correction model using the "[batchflatfieldmulticohort.py](../batchflatfieldmulticohort.py)" code. To run this code in the most common use case, enter the following command and arguments:
 
-`batchflatfieldcohort <Dpath>\<Dname> <Rpath> --sampleregex [sample_regex] --batchID [batch_ID]`
+`batchflatfieldmulticohort <Dpath>\<Dname> <Rpath> --sampleregex [sample_regex] --batchID [batch_ID]`
 
 where:
 - `[sample_regex]` is a regular expression that matches all of the `<SlideID>`s in the cohort that you'd like to combine
@@ -19,7 +19,7 @@ Running the above command will create a `flatfield_BatchID_[batch_ID].bin` file,
 1. **an overview of the image files used to create the flatfield model** in the same "metadata summary" format as the above, called "`metadata_summary_stacked_images.csv`"
 1. **a summary .pdf file** called `flatfield_summary_BatchID_[batch_ID].pdf` containing a plot of the flatfield correction factor distributions as a function of image layer, a datatable with some statistics about the same, and plots of the correction factors, their uncertainties, and the combined stack of image masks in every layer to serve as a quick reference for the contents of the outputted `.bin` files.
 
-To see more command line arguments available, run `batchflatfieldcohort --help`.
+To see more command line arguments available, run `batchflatfieldmulticohort --help`.
 ## 5.5.5.3. Instructions to Run Standalone Version *0.0.1*
 
 # 5.5.6. Batch Flatfield Tests

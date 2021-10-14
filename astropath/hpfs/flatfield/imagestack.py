@@ -1,18 +1,18 @@
 #imports
-from .plotting import plot_image_layers, flatfield_image_pixel_intensity_plot, corrected_mean_image_PI_and_IV_plots
-from .latexsummary import MeanImageLatexSummary, FlatfieldLatexSummary, AppliedFlatfieldLatexSummary
-from .utilities import FieldLog
-from .config import CONST
-from ...shared.image_masking.image_mask import ImageMask
-from ...shared.image_masking.utilities import LabelledMaskRegion
+import numpy as np
+from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.misc import cd
+from ...utilities.tableio import readtable, writetable
+from ...utilities.img_file_io import get_image_hwl_from_xml_file,get_raw_as_hwl, smooth_image_worker
+from ...utilities.img_file_io import smooth_image_with_uncertainty_worker, write_image_to_file
 from ...shared.logging import dummylogger
 from ...shared.samplemetadata import MetadataSummary
-from ...utilities.img_file_io import get_raw_as_hwl, smooth_image_worker
-from ...utilities.img_file_io import smooth_image_with_uncertainty_worker, write_image_to_file
-from ...utilities.tableio import readtable, writetable
-from ...utilities.misc import cd
-from ...utilities.config import CONST as UNIV_CONST
-import numpy as np
+from ...shared.image_masking.utilities import LabelledMaskRegion
+from ...shared.image_masking.image_mask import ImageMask
+from .config import CONST
+from .utilities import FieldLog
+from .plotting import plot_image_layers, flatfield_image_pixel_intensity_plot, corrected_mean_image_PI_and_IV_plots
+from .latexsummary import MeanImageLatexSummary, FlatfieldLatexSummary, AppliedFlatfieldLatexSummary
 
 class ImageStack :
     """
@@ -63,7 +63,7 @@ class ImageStack :
         Add the already-created meanimage/mask stack for a single given sample to the model by reading its files
         """
         #make sure the dimensions match
-        if sample.rectangles[0].imageshapeinoutput!=self.__image_stack.shape :
+        if get_image_hwl_from_xml_file(sample.root,sample.SlideID)!=self.__image_stack.shape :
             errmsg = 'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have '
             errmsg+= f'dimensions {sample.rectangles[0].imageshapeinoutput} but an image stack with '
             errmsg+= f'dimensions {self.__image_stack.shape}'

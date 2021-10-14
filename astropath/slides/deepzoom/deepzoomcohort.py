@@ -10,7 +10,7 @@ class DeepZoomCohort(DbloadCohort, DeepZoomCohort, SelectLayersCohort, WorkflowC
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layers, **super().workflowkwargs}
+    return {"layers": self.layers, "tifflayers": None, **super().workflowkwargs}
 
 def main(args=None):
   DeepZoomCohort.runfromargumentparser(args)

@@ -23,7 +23,7 @@ class AnnoWarpCohortBase(DbloadCohort, SelectRectanglesCohort, WorkflowCohort, X
 
   @property
   def workflowkwargs(self):
-    return {"layers": [1], **super().workflowkwargs}
+    return {"layers": [1], "tifflayers": None, **super().workflowkwargs}
 
 class AnnoWarpCohortMask(AnnoWarpCohortBase, MaskCohort, SelectRectanglesCohort, WorkflowCohort, AnnoWarpArgumentParserTissueMask):
   def __init__(self, *args, mintissuefraction=None, **kwargs):
