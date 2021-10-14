@@ -328,7 +328,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         lines.append('\n')
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
         if self.__version is not None :
-            pattern+= f'_{self.__version:02d}_'
+            pattern+= f'_{self.__version}_'
         pattern+='uncertainty_layer_*.png'
         caption = 'Uncertainties on the flatfield correction factors in each image layer'
         lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)
@@ -345,7 +345,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         lines.append('\n')
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
         if self.__version is not None :
-            pattern+= f'_{self.__version:02d}_'
+            pattern+= f'_{self.__version}_'
         pattern+='mask_stack_layer_*.png'
         caption = 'The stack of all image masks combined over every sample used to measure the flatfield corrections'
         lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)

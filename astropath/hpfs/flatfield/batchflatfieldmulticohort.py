@@ -1,6 +1,7 @@
 #imports
-import pathlib
+import pathlib, re
 from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.tableio import readtable
 from ...utilities.img_file_io import get_image_hwl_from_xml_file
 from ...shared.sample import WorkflowSample
 from ...shared.cohort import WorkflowCohort
@@ -117,14 +118,14 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
 
     @property
     def workingdir(self) :
-        return self.__outdir / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
+        return self.__outdir / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}_{self.__version}'
 
     #################### CLASS METHODS ####################
 
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
-        p.add_argument('--version',type=int,default=-1,
+        p.add_argument('--version',
                        help="version of the flatfield model that should be created from the given slides' meanimages")
         p.add_argument('--flatfield-model-file',type=pathlib.Path,
                         default=pathlib.Path('//bki04/astropath_processing/AstroPathFlatfieldModels.csv'),
@@ -150,7 +151,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         for sid in slide_IDs :
             new_regex+=sid+r'\b|'
         new_regex=new_regex[:-1]+')'
-        parsed_args_dict['sampleregex']=new_regex
+        parsed_args_dict['sampleregex']=re.compile(new_regex)
         #always rerun the samples, they don't produce any output
         parsed_args_dict['skip_finished']=False 
         #return the kwargs dict
