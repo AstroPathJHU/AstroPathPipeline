@@ -275,14 +275,14 @@ class MyFileHandler:
 __notgiven = object()
 
 @functools.lru_cache(maxsize=None)
-def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, moremainlogroots, reraiseexceptions):
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=moremainlogroots, reraiseexceptions=reraiseexceptions)
+def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, moremainlogroots, reraiseexceptions, skipstartfinish):
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=moremainlogroots, reraiseexceptions=reraiseexceptions, skipstartfinish=skipstartfinish)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, apidfile=None, Project=None, Cohort=None):
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None):
   from .samplemetadata import SampleDef
   if samp is not None:
     samp = SampleDef(root=root, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)
-  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=frozenset(moremainlogroots), reraiseexceptions=reraiseexceptions)
+  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=frozenset(moremainlogroots), reraiseexceptions=reraiseexceptions, skipstartfinish=skipstartfinish)
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
