@@ -371,11 +371,11 @@ class Flatfield(ImageStack) :
                     self.__flatfield_image[:,:,li]=sm_mean_image[:,:,li]/layermean
                     self.__flatfield_image_err[:,:,li]=sm_mean_img_err[:,:,li]/layermean
 
-    def write_output(self,batchID,workingdirpath) :
+    def write_output(self,version,workingdirpath) :
         """
         Write out the flatfield image and all other output
 
-        batchID = the batchID to use for the model (in filenames, etc.)
+        version = the version to use for the model (in filenames, etc.)
         workingdirpath = path to the directory where the output should be saved 
                          (the actual flatfield is saved in this directory's parent)
         """
@@ -383,10 +383,10 @@ class Flatfield(ImageStack) :
         if not workingdirpath.is_dir() :
             workingdirpath.mkdir(parents=True)
         with cd(workingdirpath.parent) :
-            write_image_to_file(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}.bin')
+            write_image_to_file(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin')
         with cd(workingdirpath) :
             write_image_to_file(self.__flatfield_image_err,
-                                f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_uncertainty.bin')
+                                f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty.bin')
         #save the metadata summary and the field log
         if len(self.__metadata_summaries)>0 :
             with cd(workingdirpath) :
@@ -395,15 +395,15 @@ class Flatfield(ImageStack) :
             with cd(workingdirpath) :
                 writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}',self.__field_logs)
         #make some plots of the image layers and the pixel intensities
-        plotdir_path = workingdirpath / f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_plots'
+        plotdir_path = workingdirpath / f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_plots'
         plotdir_path.mkdir(exist_ok=True)
-        plot_image_layers(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}',plotdir_path)
+        plot_image_layers(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}',plotdir_path)
         plot_image_layers(self.__flatfield_image_err,
-                          f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_uncertainty',plotdir_path)
-        plot_image_layers(self.mask_stack,f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_mask_stack',plotdir_path)
-        flatfield_image_pixel_intensity_plot(self.__flatfield_image,batchID,plotdir_path)
+                          f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty',plotdir_path)
+        plot_image_layers(self.mask_stack,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_mask_stack',plotdir_path)
+        flatfield_image_pixel_intensity_plot(self.__flatfield_image,version,plotdir_path)
         #make the summary PDF
-        latex_summary = FlatfieldLatexSummary(self.__flatfield_image,plotdir_path,batchID)
+        latex_summary = FlatfieldLatexSummary(self.__flatfield_image,plotdir_path,version)
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :

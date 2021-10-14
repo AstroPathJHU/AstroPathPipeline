@@ -37,9 +37,9 @@ class BatchFlatfieldSample(WorkflowSample) :
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
                 self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
-    def run(self,batchID,flatfield,samplesprocessed,totalsamples) :
-        msg = f'Adding mean image and mask stack from {self.SlideID} to flatfield model for batch '
-        msg+= f'{batchID:02d} ({len(samplesprocessed)+1} of {totalsamples})....'
+    def run(self,version,flatfield,samplesprocessed,totalsamples) :
+        msg = f'Adding mean image and mask stack from {self.SlideID} to flatfield model version '
+        msg+= f'{version} ({len(samplesprocessed)+1} of {totalsamples})....'
         self.logger.info(msg)
         flatfield.add_batchflatfieldsample(self)
         samplesprocessed.append(self)
@@ -74,18 +74,10 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
     into a single flatfield model
     """
 
-    def __init__(self,*args,version,flatfield_model_file,outdir,**kwargs) :
+    def __init__(self,*args,version,outdir,**kwargs) :
         super().__init__(*args,**kwargs)
         self.__version = version
-        self.__flatfield_model_file = flatfield_model_file
         self.__outdir = outdir
-        #read the model file to get a list of ModelTableEntry objects and add a filter for those slide IDs
-        all_model_table_entries = readtable(flatfield_model_file,ModelTableEntry)
-        self.__model_table_entries = [te for te in all_model_table_entries if te.version==version]
-        if len(self.__model_table_entries)<1 :
-            errmsg =f'ERROR: {len(self.__model_table_entries)} entries found in {self.__flatfield_model_file} '
-            errmsg+=f'for version {self.__version}!'
-            raise ValueError(errmsg)
 
     def run(self, **kwargs):
         totalsamples = 0
@@ -94,8 +86,13 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             #start up the flatfield after figuring out its dimensions
             for cohort in self.cohorts :
                 for sample in cohort.filteredsamples :
+                    dims = get_image_hwl_from_xml_file(sample.root,sample.SlideID)
                     if image_dimensions is None :
-                        image_dimensions = get_image_hwl_from_xml_file(sample.root,sample.SlideID)
+                        image_dimensions = dims
+                    else :
+                        if dims!=image_dimensions :
+                            errmsg=f'ERROR: {sample.SlideID} dimensions {dims} mismatched to {image_dimensions}'
+                            raise ValueError(errmsg)
                     totalsamples += 1
             if image_dimensions is None :
                 raise ValueError("No non-empty samples")
@@ -112,7 +109,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             flatfield.create_flatfield_model()
             #write out the flatfield model
             logger.debug(f'Writing out flatfield model, plots, and summary pdf for version {self.__version}....')
-            flatfield.write_output(self.__batchID,self.workingdir)
+            flatfield.write_output(self.__version,self.workingdir)
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -138,11 +135,28 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
-        parsed_args_dict['skip_finished']=False #always rerun the samples, they don't produce any output
+        #overwrite the sample regex to choose samples listed in the model file instead
+        flatfield_model_file = parsed_args_dict.pop('flatfield_model_file')
+        version = parsed_args_dict.pop('version')
+        if not flatfield_model_file.is_file() :
+            raise ValueError(f'ERROR: flatfield model file {flatfield_model_file} not found!')
+        all_model_table_entries = readtable(flatfield_model_file,ModelTableEntry)
+        model_table_entries = [te for te in all_model_table_entries if te.version==version]
+        if len(model_table_entries)<1 :
+            errmsg=f'ERROR: {len(model_table_entries)} entries found in {flatfield_model_file} for version {version}!'
+            raise ValueError(errmsg)
+        slide_IDs = [te.SlideID for te in model_table_entries]
+        new_regex = '('
+        for sid in slide_IDs :
+            new_regex+=sid+r'\b|'
+        new_regex=new_regex[:-1]+')'
+        parsed_args_dict['sampleregex']=new_regex
+        #always rerun the samples, they don't produce any output
+        parsed_args_dict['skip_finished']=False 
+        #return the kwargs dict
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
-            'version': parsed_args_dict.pop('version'), 
-            'flatfield_model_file': parsed_args_dict.pop('flatfield_model_file'), 
+            'version': version,
             'outdir': parsed_args_dict.pop('outdir'), 
         }
 

@@ -266,12 +266,12 @@ def meanimage_comparison_plot(slide_ids,values_to_plot,plot_title,figname,workin
     #save the plot
     save_figure_in_dir(plt,figname,workingdir)
 
-def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpath=None) :
+def flatfield_image_pixel_intensity_plot(flatfield_image,version=None,save_dirpath=None) :
     """
     Plot the max/min, 5th/95th %ile, and std. dev. of a flatfield image's correction factors by layer 
 
     flatfield_image = the flatfield image array for which the plot should be made
-    batchID = the batchID for the given flatfield model (used in titles and names, optional)
+    version = the version for the given flatfield model (used in titles and names, optional)
     save_dirpath = path to directory to save the plots in (if None the plot is saved in the current directory)
     """
     #figure out the number of layers and the filter breaks
@@ -343,8 +343,8 @@ def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpa
     plt.legend(loc='lower right')
     #write out the figure
     fn = 'flatfield'
-    if batchID is not None :
-        fn+=f'_BatchID_{batchID:02d}'
+    if version is not None :
+        fn+=f'_{version}'
     fn+='_pixel_intensities.png'
     save_figure_in_dir(plt,fn,save_dirpath)
 

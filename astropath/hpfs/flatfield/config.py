@@ -98,7 +98,7 @@ class Const :
         """
         prepend for name of the directory holding batch flatfield results (also used for some other image/plot names)
         """
-        return 'flatfield_BatchID_'
+        return 'flatfield'
     @property
     def FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
         return 'flatfield_summary' #prepend for the name of the batch flatfield summary pdf file
