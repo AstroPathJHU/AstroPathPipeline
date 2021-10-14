@@ -464,6 +464,9 @@
         if (!$vers){
             Throw 'No version number found'
         } elseif ($vers -ne '0.0.1'){
+            if ($module -contains  @('batchflatfield')){
+                Throw 'batchflatfield is run from the meanimagecomparison module and is not initiated in powershell for version: ' + $vers    
+            }
             $this.checkconda()
             $this.checkpyapenvir()
             $l = $this.getpythonvers()
