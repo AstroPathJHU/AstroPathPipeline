@@ -256,15 +256,7 @@
     #
     [void]runpythontask($taskname, $pythontask){
         $externallog = $this.ProcessLog($taskname)
-        #TODO: check if version > 0.0.1
-        #TODO: check if conda is installed
-        #
-        #python [-c cmd] [file] [arg]
-        #
-        #start /wait "" Miniconda3-latest-Windows-x86_64.exe /InstallationType=JustMe /RegisterPython=0 /S /D=%$condalocation%
-        #
-        #Test that C:\Program Files\Python38\ exists in env path(in different method), then
-        python38 $pythontask >> $externallog
+        Invoke-Expression $pythontask >> $externallog
         if (test-path $externallog){
             remove-item $externallog -force -ea Continue
         }

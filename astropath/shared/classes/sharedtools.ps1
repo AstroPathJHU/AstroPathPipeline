@@ -426,7 +426,7 @@
         #
         $configfile = $this.ImportConfigInfo($mpath)
         $vers = ($configfile | Where-Object {$_.Project -eq $project}).($module+'version')
-        if ($vers -ne '0.0.1'){
+        if ($vers -lt '0.0.1'){
             Throw 'Does not support specified version'
         }
         return $vers

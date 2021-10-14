@@ -1,8 +1,8 @@
 ﻿<#
 --------------------------------------------------------
-batchflatfield
+meanimagecomparison
 Created By: Andrew Jorquera
-Last Edit: 09/23/2021
+Last Edit: 10/13/2021
 --------------------------------------------------------
 Description
 Task to be launched remotely to ANY computer from ANYWHERE
@@ -16,20 +16,20 @@ $vers[string]: The version number of inform to use
 --------------------------------------------------------
 #>
 #
-Function batchflatfield {
+Function meanimagecomparison {
      #
      param($task, $log)
      #
      # used for testing; when launched manually without launchmodule
      #
      if (!($PSBoundParameters.ContainsKey('log'))){ 
-        $log = [launchmodule]::new($task[$task.Count-1], 'batchflatfield', $task) 
+        $log = [launchmodule]::new($task[$task.Count-1], 'meanimagecomparison', $task) 
         $e = 1
      } else {$e = 0}
      #
-     $inp = [batchflatfield]::new($task, $log)
+     $inp = [meanimagecomparison]::new($task, $log)
      if ($e -ne 1){
-         $inp.RunBatchFlatfield()
+         $inp.RunMeanImageComparison()
      } else{
         return $inp
      }

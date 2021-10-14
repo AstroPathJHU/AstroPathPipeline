@@ -17,33 +17,63 @@ class batchflatfield : moduletools {
         }
     }
     <# -----------------------------------------
-     RunBatchFlatField
+     RunBatchFlatfield
      Run batch flat field
      ------------------------------------------
-     Usage: $this.RunBatchFlatField()
+     Usage: $this.RunBatchFlatfield()
     ----------------------------------------- #>
-    [void]RunBatchFlatField(){
-        $this.GetBatchFlatField()
+    [void]RunBatchFlatfield(){
+        $this.GetBatchFlatfield()
     }
     <# -----------------------------------------
      GetBatchFlatField
         Get Batch flat field
      ------------------------------------------
-     Usage: $this.GetBatchFlatField()
+     Usage: $this.GetBatchFlatfield()
     ----------------------------------------- #>
-    [void]GetBatchFlatField(){
+    [void]GetBatchFlatfield(){
+        #
+        #$this.sample.info('dpath: ' + $this.sample.basepath)
+        #$this.sample.info('batch flatfield path: ' + $this.sample.batchflatfield())
+        #$this.sample.info('slide list: ' + $slidelist)
+        #
+        if ($this.vers -eq '0.0.1'){
+            $this.RunBatchFlatfieldMatlab()
+        }
+        elseif($this.vers -gt '0.0.1'){
+            $this.RunBatchFlatfieldPy()
+        }
+    }
+    <# -----------------------------------------
+     RunBatchFlatfieldMatlab
+        Run batch flatfield matlab code
+     ------------------------------------------
+     Usage: $this.RunBatchFlatfieldMatlab()
+    ----------------------------------------- #>
+    [void]RunBatchFlatfieldMatlab(){
         $slidelist = $this.sample.batchslides.slideID -Join ','
         $taskname = 'fltOneBatch'
-        #
-        $this.sample.info('dpath: ' + $this.sample.basepath)
-        $this.sample.info('batch flatfield path: ' + $this.sample.batchflatfield())
-        $this.sample.info('slide list: ' + $slidelist)
-        #
         $matlabinput = "'"+$this.sample.basepath+"', '"+$this.sample.batchflatfield()+"', '"+$slidelist+"'"
         $matlabtask = ";fltOneBatch("+$matlabinput+");exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
         if (Test-Path $this.processloc) {
             Remove-Item $this.processloc -Force -Recurse -ea Stop
         }
+    }
+    <# -----------------------------------------
+     RunBatchFlatfieldPy
+        Run batch flatfield python code
+     ------------------------------------------
+     Usage: $this.RunBatchFlatfieldPy()
+    ----------------------------------------- #>
+    [void]RunBatchFlatfieldPy(){
+        $taskname = 'fltOneBatch'
+        $dpath = '\\bki04\Clinical_Specimen '
+        #batchflatfieldcohort <Dpath>\<Dname> --sampleregex [sample_regex] --batchID [batch_ID]
+        $pythontask = 'batchflatfieldcohort ' + $dpath + '--batchID ' + $this.sample.BatchID + ' --workingdir ' + $this.processloc + '\batchflatfield'
+        $this.runpythontask($taskname, $pythontask)
+        #if (Test-Path $this.processloc) {
+        #    Remove-Item $this.processloc -Force -Recurse -ea Stop
+        #}
     }
 }

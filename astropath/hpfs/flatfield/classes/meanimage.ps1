@@ -32,7 +32,6 @@ Class meanimage : moduletools {
         $this.DownloadFiles()
         $this.ShredDat()
         $this.GetMeanImage()
-        $this.returndata()
         $this.cleanup()
     }
    <# -----------------------------------------
@@ -43,10 +42,25 @@ Class meanimage : moduletools {
     ----------------------------------------- #>
     [void]GetMeanImage(){
         $this.sample.info("started getting mean image")
+        if ($this.vers -eq '0.0.1'){
+            $this.RunMeanImageMatlab()
+            $this.returndata()
+        }
+        else {
+            $this.RunMeanImagePy()
+        }
+        $this.sample.info("finished getting mean image")
+    }
+    <# -----------------------------------------
+     RunMeanImageMatlab
+        Run mean image matlab code
+     ------------------------------------------
+     Usage: $this.RunMeanImageMatlab()
+    ----------------------------------------- #>
+    [void]RunMeanImageMatlab(){
         $taskname = 'raw2mean'
         $matlabtask = ";raw2mean('"+$this.processvars[1]+"', '"+$this.sample.slideid+"');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
-        $this.sample.info("finished getting mean image")
     }
     <# -----------------------------------------
      RunMeanImagePy
@@ -57,12 +71,28 @@ Class meanimage : moduletools {
     [void]RunMeanImagePy(){
         $this.sample.info("started mean image sample python script")
         $taskname = 'meanimagesample'
-        #meanimagesample <Dpath>\<Dname> <Rpath> <SlideID> --njobs [njobs]
-        $pythontask = 'meanimagesample.py ' + $this.sample.basepath + ' ' + $this.sample.im3folder() + ' ' + $this.sample.SlideID
+        $dpath = '\\bki04\Clinical_Specimen '
+        $rpath = $this.processloc + '\flatw\ '
+        $pythontask = 'meanimagesample ' + $dpath + $rpath + $this.sample.SlideID + ' --workingdir ' + $this.processloc + '\meanimage'+ " --njobs '8' --allow-local-edits"
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished mean image sample python script")
     }
-
+    <# -----------------------------------------
+     RunMeanImageComparison
+        Run mean image comparison python code
+     ------------------------------------------
+     Usage: $this.RunMeanImageComparison()
+    ----------------------------------------- #>
+    [void]RunMeanImagePy(){
+        $this.sample.info("started mean image sample python script")
+        $taskname = 'meanimagesample'
+        $dpath = '\\bki04\Clinical_Specimen '
+        $rpath = $this.processvars[1] + ' '
+        $pythontask = 'meanimagesample ' + $dpath + $rpath + $this.sample.SlideID + 
+         ' --workingdir ' + $this.processvars[0] + '\meanimage'+ " --njobs '8' --allow-local-edits"
+        $this.runpythontask($taskname, $pythontask)
+        $this.sample.info("finished mean image sample python script")
+    }
     <# -----------------------------------------
      returndata
      returns data to source path
