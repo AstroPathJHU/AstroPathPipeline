@@ -466,6 +466,11 @@
         } elseif ($vers -ne '0.0.1'){
             $this.checkconda()
             $this.checkpyapenvir()
+            $l = $this.getpythonvers()
+            if ($vers -match $l){
+                $vers = $l
+            }
+            #
         } elseif ($module -contains  @('meanimagecomparison', 'warping')){
             Throw 'module not supported in this version (' + $vers + '): ' + $module
         }
@@ -582,5 +587,17 @@
         if (!(test-path $dir)){
             new-item $dir -itemtype "directory" -EA STOP | Out-NULL
         }
+    }
+    <# -----------------------------------------
+     getpythonvers
+     get the version number from python
+     ------------------------------------------
+     Usage: $this.getpythonvers()
+    ----------------------------------------- #>   
+    [string]getpythonvers(){
+        conda activate $this.pyenv 2>&1 >> $this.pyinstalllog
+        $l = python -c "from astropath.utilities.version import astropathversion; print(astropathversion)"
+        conda deactivate $this.pyenv 2>&1 >> $this.pyinstalllog
+        return($l)
     }
 }
