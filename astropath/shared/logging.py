@@ -185,8 +185,8 @@ class MyLogger:
         if "\n" in errormessage: errormessage = repr(errormessage)
         self.error(errormessage)
         self.info(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)).replace(";", ""))
-        if not self.skipstartfinish:
-          self.logger.critical(f"FINISH: {self.module} {self.astropathversion}")
+      if not self.skipstartfinish:
+        self.logger.critical(f"FINISH: {self.module} {self.astropathversion}")
       for handler in self.handlers[:]:
         handler.close()
         self.removeHandler(handler)
