@@ -46,7 +46,7 @@ Class meanimage : moduletools {
             $this.RunMeanImageMatlab()
             $this.returndata()
         }
-        else {
+        else{
             $this.RunMeanImagePy()
         }
         $this.sample.info("finished getting mean image")
