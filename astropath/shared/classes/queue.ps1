@@ -82,7 +82,7 @@ class queue : sharedtools{
             #
             if($this.checklog($log)) {
                 #
-                if ($this.('check'+$this.module)($log, $true)) {
+                if (($this.('check'+$this.module)($log, $true) -eq 2)) {
                     #
                     $slidesnotcomplete += $slide
                     #
@@ -128,33 +128,37 @@ class queue : sharedtools{
         #
     }
     #
-    [switch]checktransfer([mylogger]$log){
+    [int]checktransfer([mylogger]$log){
         #
         # check for checksum, qptiff, and annotationxml
         # 
         $file = $log.CheckSumsfile()
         $file2 = $log.qptifffile()
         $file3 = $log.annotationxml()
+        $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count
         #
         if (!(test-path $file)){
-            return $true
+            return 2
         }
         if (!(test-path $file2)){
-            return $true
+            return 2
         }
         if (!(test-path $file3)){
-            return $true
+            return 2
+        }    
+        if (!$im3s){
+            return 2
         }
         #
-        return $false
+        return 3
         #
     }
     #
-    [switch]checkshredxml([mylogger]$log, $dependency){
+    [int]checkshredxml([mylogger]$log, $dependency){
         #
         if ($dependency){
-            if ($this.checktransfer($log)){
-                return $false
+            if (!($this.checktransfer($log) -eq 3)){
+                return 1
             }
         }
         #
@@ -162,80 +166,103 @@ class queue : sharedtools{
         # 
         $xml = $log.xmlfolder()
         $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count
-        if (!$im3s){
-            return $false
-        }
         #
         if (!(test-path $xml)){
-            return $true
+            return 2
         }
         #
         # check files = im3s
         #
         $files = (gci ($xml + '\*') '*xml').Count
         if (!($im3s -eq $files)){
-            return $true
+            return 2
         }
         #
-        return $false
+        return 3
         #
     }
     #
-    [switch]checkmeanimage([mylogger]$log, $dependency){
+    [int]checkmeanimage([mylogger]$log, $dependency){
         #
         if ($dependency){
-            if ($this.checkshredxml($log)){
-                return $false
+            if (!($this.checkshredxml($log, $true) -eq 3)){
+                return 1
             }
         }
         #
-        # check for mean images
-        # 
-        $file = $log.im3folder() + '\' + $log.slideid + '-mean.csv'
-        $file2 = $log.im3folder() + '\' + $log.slideid + '-mean.flt'
+        # check version
         #
-        if (!(test-path $file)){
-            return $true
-        }
-        if (!(test-path $file2)){
-            return $true
+        $cvers = $this.getversion($this.mpath, 'meanimage', $log.project)
+        if ($cvers -eq '0.0.1'){
+            #
+            # check for mean images
+            # 
+            $file = $log.im3folder() + '\' + $log.slideid + '-mean.csv'
+            $file2 = $log.im3folder() + '\' + $log.slideid + '-mean.flt'
+            #
+            if (!(test-path $file)){
+                return 2
+            }
+            if (!(test-path $file2)){
+                return 2
+            }
+        } else {
+            #
+            # check for meanimage directory
+            #
+            $p = $log.meanimagefolder()
+            if (!(test-path $p)){
+                return 2
+            }
         }
         #
-        return $false
+        return 3
+        #
+    }
+    #
+    [switch]checkmeanimagecomparison([mylogger]$log, $dependency){
+        #
+        if ($dependency){
+           if (!($this.checkmeanimage($log, $true) -eq 3)){
+                return 1
+           }
+        }
+        #
+        try {
+            $cvers = $this.getversion($this.mpath, 'meanimage', $log.project)
+            #if slide is not in the meanimagecomparison file return true
+        } catch {}
+        #
+        return 3
         #
     }
     #
     [switch]checkbatchflatfield([mylogger]$log, $dependency){
         #
         if ($dependency){
-           if ($this.checkmeanimage($log, $false)){
-                return $false
+           if (!($this.checkmeanimagecomparison($log, $true) -eq 3)){
+                return 1
            }
         }
-        #
-        # check for batchflatfield
         # 
         $file = $log.batchflatfield()
         #
         if (!(test-path $file)){
-            return $true
+            return 2
         }
-        return $false
+        return 3
         #
     }
     #
     [switch]checkimagecorrection([mylogger]$log, $dependency){
         #
         if ($dependency){
-            if ($this.checkbatchflatfield($log, $false)){
-                return $false
+            if (!($this.checkbatchflatfield($log, $true) -eq 3)){
+                return 1
             }
         }
         #
         $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count
-        if (!$im3s){
-            return $false
-        }
         #
         $paths = @($log.flatwim3folder(), ('\\'+$log.flatwfolder()), ('\\'+$log.flatwfolder()))
         $filetypes = @('*im3', '*fw', '*fw01')
@@ -243,18 +270,18 @@ class queue : sharedtools{
         for ($i=0; $i -lt 3; $i++){
             #
             if (!(test-path $paths[$i])){
-                return $true
+                return 2
             }
             #
             # check files = im3s
             #
             $files = (gci ($paths[$i] + '\*') $filetypes[$i]).Count
             if (!($im3s -eq $files)){
-                return $true
+                return 2
             }
         }
         #
-        return $false
+        return 3
     }
     #
     [void]checkvminform(){

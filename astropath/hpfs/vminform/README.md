@@ -1,6 +1,6 @@
 # 5.8. VMinForm
 ## 5.8.1. Description
-After the images are corrected by the ```flatfield``` module and the ```flatw_path```s are created([5.7.](../imagecorrection/README.md#57-image-correction "Title")), the inForm® (Akoya Biosciences®) classification algorithms can be developed. The *AstroPathPipeline* uses the so-called 'multipass' method for cell classification. This is a novel method of using inForm Cell Analysis®, developed to improve sensitivity and specificty of classication algorithms (described in detail here [5.8.3](docs/inFormMultipassPhenotype.md#583-inform-multipass-phenotype "Title")). 
+After the images are corrected by the ```image correction``` module and the ```flatw_path```s are created([5.7.](../imagecorrection/README.md#57-image-correction "Title")), the inForm® (Akoya Biosciences®) classification algorithms can be developed. The *AstroPathPipeline* uses the so-called 'multipass' method for cell classification. This is a novel method of using inForm Cell Analysis®, developed to improve sensitivity and specificty of classication algorithms (described in detail here [5.8.3](docs/inFormMultipassPhenotype.md#583-inform-multipass-phenotype "Title")). 
 
 Once algorithms are created we process the algorithms through the queued based system. Instructions for setting up the virtual machines and processing queue as well as launching the tasks can also be found there. To use this system, each algorithm should be saved according to the protocol in [5.8.4.](docs/SavingProjectsfortheinFormJHUProcessingFarm.md#584-saving-projects-for-the-inform-jhu-processing-farm "Title") to ensure proper export settings. Next, add the slides to the queue according to the directions described in [5.8.5.](docs/AddingSlidestotheinFormQueue.md#585-adding-slides-to-the-inform-queue). Afterward slides will be processed through inForm®.
 
@@ -24,6 +24,4 @@ Once algorithms are created we process the algorithms through the queued based s
   - [5.8.7.2. Important Definitions](docs/ProcessinginFormTasks.md#5872-important-definitions)
   - [5.8.7.3. Instructions](docs/ProcessinginFormTasks.md#5873-instructions)
     - [5.8.7.3.1. Setting up the Virtual Machines for inForm®](docs/ProcessinginFormTasks.md#58731-setting-up-the-virtual-machines-for-inform)
-    - [5.8.7.3.2. Running the ```inform queue``` Module](docs/ProcessinginFormTasks.md#58732-running-the-inform-queue-module)
-    - [5.8.7.3.3. Running the ```inform worker``` Module](docs/ProcessinginFormTasks.md#58733-running-the-inform-worker-module) 
-  - [5.8.7.4. Workflow](docs/ProcessinginFormTasks.md#5874-workflow) 
+    - [5.8.7.3.2. Running the VMinForm Module](docs/ProcessinginFormTasks.md#58732-running-the-vminform-module)

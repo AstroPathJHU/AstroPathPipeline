@@ -1,35 +1,31 @@
 ﻿##
 # launch a queue for a provide module with a provided mpath and credentials
-
+#
 class Dispatcher : queue{
     #
     [switch]$new
     [array]$running
     [array]$workers
-    [string]$coderoot
     [PSCredential]$cred
     [string]$workerloglocation = '\\'+$env:ComputerName+'\c$\users\public\astropath\'
     #
     Dispatcher($mpath, $module, $cred):base($mpath, $module){
         #
-        $this.cred = $cred
-        $this.defCodeRoot()
+        $this.init($cred)
         $this.Run()
         #
     }
     #
     Dispatcher($mpath, $module, $project, $cred):base($mpath, $module, $project){
         #
-        $this.cred = $cred
-        $this.defCodeRoot()
+        $this.init($cred)
         $this.Run()
         #
     }
     #
     Dispatcher($mpath, $module, $project, $slideid, $cred):base($mpath, $module, $project, $slideid){
         #
-        $this.cred = $cred
-        $this.defCodeRoot()
+        $this.init($cred)
         $this.Run()
         #
     }
@@ -47,18 +43,23 @@ class Dispatcher : queue{
         }
         #
     }
-    [void]defCodeRoot(){
-        #
-        if ($PSScriptRoot[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$PSScriptRoot) -replace ":", "$"
-        } else{
-            $root = $PSScriptRoot -replace ":", "$"
-        }
-        #
-        $folder = $root -Split('\\astropath\\')
-        $this.coderoot = $folder[0]     
+    #
+    # initialize the code
+    #
+    [void]init($cred){
+        $this.cred = $cred
+        $this.defCodeRoot()
+        $this.initepy()
     }
-
+    #
+    # initializing the python environment
+    # upgrade python package if needed.
+    #
+    [void]initepy(){
+        Write-Host "Initializing the conda Environment." -ForegroundColor Yellow
+        $this.checkconda()
+        $this.checkpyapenvir('U')
+    }
     #
     # checks for new tasks to process
     #
@@ -175,6 +176,10 @@ class Dispatcher : queue{
     }
     #
     [string]PrepareWorkerFiles($currenttask, $jobname, $currentworker){
+        #
+        if (!(test-path $this.workerloglocation)){
+            new-item $this.workerloglocation -itemtype "directory" -EA STOP | Out-NULL
+        }
         #
         $workertaskfile = $this.workerloglocation+$jobname+'-taskfile.ps1'
         $workerlogfile = $this.workerloglocation+$jobname+'.log'
