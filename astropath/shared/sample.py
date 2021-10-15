@@ -681,6 +681,12 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
       if self.maskroot != self.im3root:
         result = self.maskroot/result.relative_to(self.im3root)
       return result
+  @maskfolder.setter
+  def maskfolder(self,mf):
+    if self.__maskfolder is None :
+      self.__maskfolder=mf
+    else :
+      raise ValueError(f'ERROR: maskfolder has already been set to {self.__maskfolder}!')
 
 class MaskWorkflowSampleBase(MaskSampleBase, WorkflowSample):
   @property
