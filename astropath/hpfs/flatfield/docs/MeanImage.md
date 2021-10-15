@@ -7,7 +7,7 @@ The `meanimage` submodule runs on raw (".Data.dat") image files. It finds the op
 
 To run the routine for a single sample in the most common use case, enter the following command and arguments:
 
-`meanimagesample <Dpath>\<Dname> <Rpath> <SlideID> --njobs [njobs]`
+`meanimagesample <Dpath>\<Dname> <SlideID> --shardedim3root <Rpath> --njobs [njobs]`
 
 where `[njobs]` is the maximum number of parallel processes allowed to run at once during the parallelized portions of the code running
 
@@ -43,7 +43,7 @@ Other options for running the code include:
 
 The meanimage routine can be run for an entire cohort of samples at once using the command:
 
-`meanimagecohort <Dpath>\<Dname> <Rpath> --njobs [njobs]`
+`meanimagecohort <Dpath>\<Dname> --shardedim3root <Rpath> --njobs [njobs]`
 
 where the arguments are the same as those listed above for `meanimagesample`. To see more command line arguments available for both routines, run `meanimagesample --help` or `meanimagecohort --help`.
 

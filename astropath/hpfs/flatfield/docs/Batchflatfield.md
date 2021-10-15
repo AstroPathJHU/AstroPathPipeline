@@ -27,7 +27,7 @@ To see more command line arguments available, including using different flatfiel
 
 One last routine in this portion of the code can be used to test the effect of applying a set of flatfield corrections. The "[appliedflatfieldcohort.py](../appliedflatfieldcohort.py)" code splits the images in each slide in a given set randomly into two equally-sized subsamples. It creates a mean image from each subsample using the same methods as in `meanimagesample`, and uses one subsample to calculate a set of flatfield correction factors to apply to the mean image created using the other subsample. It outputs the test flatfield model and the corrected mean image. To run the code in the most common use case, enter the following command and arguments:
 
-`appliedflatfieldcohort <Dpath>\<Dname> <Rpath> [workingdir_path]`
+`appliedflatfieldcohort <Dpath>\<Dname> [workingdir_path] --shardedim3root <Rpath>`
 
 where `[workingdir_path]` is the path to the directory where the output should be located
 

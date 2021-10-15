@@ -2,7 +2,7 @@
 
 The "warping" module contains code to measure the warping affecting raw data files in a cohort. To run it for an entire cohort in the most common use case, enter the following command and arguments:
 
-`warpingcohort <Dpath>\<Dname> <Rpath> --flatfield-file [path_to_flatfield_bin_file]`
+`warpingcohort <Dpath>\<Dname> --shardedim3root <Rpath> --flatfield-file [path_to_flatfield_bin_file]`
 
 where `[path_to_flatfield_bin_file]` is the path to the ".bin" file specifying the flatfield corrections to apply, or the name of a file located in the `<Dpath>\<Dname>\Flatfield` directory
 
