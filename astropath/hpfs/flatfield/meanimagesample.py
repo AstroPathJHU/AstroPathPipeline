@@ -160,7 +160,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         background_thresholds = self.__get_background_thresholds()
         #and then create masks for every rectangle's image
         labelled_mask_regions = []
-        if self.njobs>1 :
+        if (self.njobs is not None) and (self.njobs>1) :
             proc_results = {}
             with self.pool() as pool :
                 for ri,r in enumerate(self.rectangles) :
@@ -324,7 +324,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         tissue_edge_layer_hists = np.zeros((np.iinfo(np.uint16).max+1,self.nlayers),dtype=np.uint64)
         rectangle_data_table_entries = []
         #run the thresholding/histogram function in multiple parallel processes
-        if self.njobs>1 :
+        if (self.njobs is not None) and (self.njobs>1) :
             proc_results = {}; current_image_i = 0
             with self.pool() as pool :
                 for ri,r in enumerate(self.tissue_edge_rects) :
@@ -423,7 +423,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         #recompute the masks for those images and write out the masking plots for them
         keys_to_plot = (top_blur_keys | top_saturation_keys | random_keys)
         rects_to_plot = [r for r in self.rectangles if r.file.rstrip(UNIV_CONST.IM3_EXT) in keys_to_plot]
-        if self.njobs>1 :
+        if (self.njobs is not None) and (self.njobs>1) :
             proc_results = {}
             with self.pool() as pool :
                 for ri,r in enumerate(rects_to_plot) :
