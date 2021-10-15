@@ -222,7 +222,7 @@ class MeanImage(ImageStack) :
         """
         Create the mean image with its standard error from the image and mask stacks
         """
-        self.logger.info('Creating the mean image with its standard error....')
+        self.logger.debug('Creating the mean image with its standard error....')
         #make sure there actually was at least some number of images used
         if self.__n_images_read<1 or np.max(self.__n_images_stacked_by_layer)<1 :
             if self.__n_images_read<1 :
@@ -251,7 +251,7 @@ class MeanImage(ImageStack) :
         slide_id       = the ID of the slide to add to the filenames
         workingdirpath = path to the directory where the images etc. should be saved
         """
-        self.logger.info('Writing out the mean image, std. err., mask stack....')
+        self.logger.debug('Writing out the mean image, std. err., mask stack....')
         #write out the mean image, std. err. image, and mask stack
         with cd(workingdirpath) :
             write_image_to_file(self.__mean_image,f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
@@ -260,7 +260,7 @@ class MeanImage(ImageStack) :
                                 f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
             if self.mask_stack is not None :
                 write_image_to_file(self.mask_stack,f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
-        self.logger.info('Making plots of image layers and collecting them in the summary pdf....')
+        self.logger.debug('Making plots of image layers and collecting them in the summary pdf....')
         #save .pngs of the mean image/mask stack etc. layers
         plotdir_path = workingdirpath / CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
         plot_image_layers(self.__mean_image,
