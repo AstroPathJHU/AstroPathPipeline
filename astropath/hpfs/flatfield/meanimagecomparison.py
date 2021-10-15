@@ -204,8 +204,8 @@ class MeanImageComparison :
     def get_args(cls) :
         parser = ArgumentParser()
         # root-dirs: list of root directories whose sampledef.csv file(s) list a group of slides that could be used
-        parser.add_argument('--root-dirs', type=split_csv_to_list, default='',
-                            help='''Comma-separated list of paths to directories with [slideID]/im3/meanimage 
+        parser.add_argument('root-dirs', type=pathlib.Path, nargs='+',
+                            help='''Paths to directories with [slideID]/im3/meanimage 
                                     subdirectories and sampledef.csv files in them''')
         # sampleregex: a regular expression matching all of the slide IDs that should be used
         parser.add_argument('--sampleregex', type=re.compile, help='only run on SlideIDs that match this regex')
