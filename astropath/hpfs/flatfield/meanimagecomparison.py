@@ -257,7 +257,7 @@ class MeanImageComparison :
         #get and parse the command-line arguments
         args = cls.get_args()
         #set up the Comparison
-        mic = cls(args.root_dirs,args.sampleregex,args.workingdir,args.sort_by,args.flatw)
+        mic = cls(args.root,args.sampleregex,args.workingdir,args.sort_by,args.flatw)
         #create (or append to) the datatable of comparison values
         mic.calculate_comparisons()
         #create any requested plots
@@ -265,7 +265,7 @@ class MeanImageComparison :
             mic.create_plots(args.plot,args.lines_after,args.bounds)
         #if requested, add some lines to the flatfield models .csv file
         if args.store_as is not None :
-            mic.save_model(args.root_dirs,args.store_as,args.skip_creation)
+            mic.save_model(args.root,args.store_as,args.skip_creation)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
