@@ -48,6 +48,8 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         """
         #set the image masking directory path (could either be in the workingdir or in the sample's meanimage directory)
         self.__image_masking_dirpath = self.maskfolder if not self.__skip_masking else None
+        if not self.__image_masking_dirpath.is_dir() :
+            self.__image_masking_dirpath.mkdir(parents=True)
         self.__use_precomputed_masks = False
         if self.__image_masking_dirpath.is_dir() :
             self.__use_precomputed_masks = self.__dir_has_precomputed_masks(self.__image_masking_dirpath)
