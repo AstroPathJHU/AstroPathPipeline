@@ -46,9 +46,16 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         Sets some variables as to where to find the image masks for the sample
         If they can't be found they will be created
         """
-        #set the image masking directory path (could either be in the workingdir or in the sample's meanimage directory)
+        #set the image masking directory path 
+        #by default this is just the default maskfolder in root/slideID/im3/meanimage/image_masking
+        #(or the corresponding value from a possibly overwritten maskroot)
+        #but if a workingdirectory was given, and the maskroot hasn't been modified,
+        #then change it to workingdirectory/image_masking instead
+        if ( (self.__workingdirpath.name!=UNIV_CONST.MEANIMAGE_DIRNAME or self.__workingdirpath.parent!=self.im3folder) 
+            and self.maskroot==self.root ) :
+            self.maskfolder=self.__workingdirpath/UNIV_CONST.IMAGE_MASKING_SUBDIR_NAME
         self.__image_masking_dirpath = self.maskfolder if not self.__skip_masking else None
-        if not self.__image_masking_dirpath.is_dir() :
+        if (self.__image_masking_dirpath is not None) and (not self.__image_masking_dirpath.is_dir()) :
             self.__image_masking_dirpath.mkdir(parents=True)
         self.__use_precomputed_masks = False
         if self.__image_masking_dirpath.is_dir() :
@@ -108,6 +115,13 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
+        #if a working directory was given, and maskroot was not, but the working directory also has parent directories
+        #such that the maskroot could be redefined, then redefine the mask root in the parsed arguments
+        wd = parsed_args_dict['workingdir']
+        if (wd is not None) and (parsed_args_dict['maskroot']==parsed_args_dict['root']) :
+            if ( wd.name==UNIV_CONST.MEANIMAGE_DIRNAME and wd.parent.name==UNIV_CONST.IM3_DIR_NAME and 
+                                                            wd.parent.parent.name==parsed_args_dict['SlideID'] ) :
+                parsed_args_dict['maskroot']=wd
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'skip_masking': parsed_args_dict.pop('skip_masking'),
