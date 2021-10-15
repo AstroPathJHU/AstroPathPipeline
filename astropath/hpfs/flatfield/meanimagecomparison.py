@@ -184,8 +184,8 @@ class MeanImageComparison :
             batchflatfieldmulticohortargs = []
             for root_dir in root_dirs :
                 batchflatfieldmulticohortargs.append(os.fspath(root_dir))
-                batchflatfieldmulticohortargs+=['--version',version_tag]
-                batchflatfieldmulticohortargs+=['--flatfield-model-file',os.fspath(self.MODEL_TABLE_PATH)]
+            batchflatfieldmulticohortargs+=['--version',version_tag]
+            batchflatfieldmulticohortargs+=['--flatfield-model-file',os.fspath(self.MODEL_TABLE_PATH)]
             BatchFlatfieldMultiCohort.runfromargumentparser(args=batchflatfieldmulticohortargs)
 
     #################### CLASS VARIABLES & PROPERTIES ####################
