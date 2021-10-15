@@ -203,8 +203,8 @@ class MeanImageComparison :
     @classmethod
     def get_args(cls) :
         parser = ArgumentParser()
-        # root-dirs: list of root directories whose sampledef.csv file(s) list a group of slides that could be used
-        parser.add_argument('root-dirs', type=pathlib.Path, nargs='+',
+        # root: some number of root directories whose sampledef.csv file(s) list a group of slides that could be used
+        parser.add_argument('root', type=pathlib.Path, nargs='+',
                             help='''Paths to directories with [slideID]/im3/meanimage 
                                     subdirectories and sampledef.csv files in them''')
         # sampleregex: a regular expression matching all of the slide IDs that should be used
@@ -241,7 +241,7 @@ class MeanImageComparison :
                                     (BatchFlatfieldMultiCohort can be run standalone later on.)''')
         args = parser.parse_args()
         #make sure some arguments make sense
-        for root_dir in args.root_dirs :
+        for root_dir in args.root :
             if not root_dir.is_dir() :
                 raise ValueError(f'ERROR: root directory {root_dir} not found!')
         if len(args.bounds)!=2 or args.bounds[0]>=args.bounds[1] :
