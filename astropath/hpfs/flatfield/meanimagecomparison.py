@@ -1,5 +1,5 @@
 #imports
-import pathlib, logging, re, platform
+import os, pathlib, logging, re, platform
 from argparse import ArgumentParser
 import numpy as np
 from ...utilities.config import CONST as UNIV_CONST
@@ -10,6 +10,7 @@ from ...shared.samplemetadata import SampleDef
 from .config import CONST
 from .utilities import ModelTableEntry, ComparisonTableEntry, normalize_mean_image
 from .plotting import meanimage_comparison_plot
+from .batchflatfieldmulticohort import BatchFlatfieldMultiCohort
 
 class MeanImageComparison :
     """
@@ -163,10 +164,10 @@ class MeanImageComparison :
                                       self.lines_after,
                                       bounds)
 
-    def save_model(self,version_tag) :
+    def save_model(self,root_dirs,version_tag,skip_creation) :
         """
         Add lines to the flatfield models .csv file defining a model with this group of slides under the given 
-        version_tag
+        version_tag, and then run BatchFlatfieldMultiCohort to actually create the model in the default location
         """
         all_lines = []
         #read anything already in the table
@@ -181,6 +182,14 @@ class MeanImageComparison :
             all_lines.append(ModelTableEntry(version_tag,sd.Project,sd.Cohort,sd.BatchID,sd.SlideID))
         #write out the table
         writetable(self.MODEL_TABLE_PATH,all_lines)
+        #run batchflatfieldmulticohort if requested
+        if not skip_creation :
+            args = []
+            for root_dir in root_dirs :
+                args.append(os.fspath(root_dir))
+                args+=['--version',version_tag]
+                args+=['--flatfield-model-file',os.fspath(self.MODEL_TABLE_PATH)]
+            BatchFlatfieldMultiCohort.runfromargumentparser(args=args)
 
     #################### CLASS VARIABLES & PROPERTIES ####################
 
@@ -226,6 +235,10 @@ class MeanImageComparison :
                             help='''Flatfield model version tag to store the group of slides as. Including this argument 
                                     writes out all of the slides in the plot as part of a flatfield model in the
                                     flatfield models .csv file''')
+        parser.add_argument('--skip-creation',action='store_true',
+                            help='''Add this flag to skip creating the flatfield model in the default location, 
+                                    if "store-as" is given. 
+                                    (BatchFlatfieldMultiCohort can be run standalone later on.)''')
         args = parser.parse_args()
         #make sure some arguments make sense
         args.root_dirs = [pathlib.Path(rd) for rd in args.root_dirs]
@@ -253,7 +266,7 @@ class MeanImageComparison :
             mic.create_plots(args.plot,args.lines_after,args.bounds)
         #if requested, add some lines to the flatfield models .csv file
         if args.store_as is not None :
-            mic.save_model(args.store_as)
+            mic.save_model(args.root_dirs,args.store_as,args.skip_creation)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
