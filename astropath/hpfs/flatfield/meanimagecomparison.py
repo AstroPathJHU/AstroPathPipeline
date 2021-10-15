@@ -241,7 +241,6 @@ class MeanImageComparison :
                                     (BatchFlatfieldMultiCohort can be run standalone later on.)''')
         args = parser.parse_args()
         #make sure some arguments make sense
-        args.root_dirs = [pathlib.Path(rd) for rd in args.root_dirs]
         for root_dir in args.root_dirs :
             if not root_dir.is_dir() :
                 raise ValueError(f'ERROR: root directory {root_dir} not found!')
