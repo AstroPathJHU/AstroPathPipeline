@@ -50,7 +50,7 @@ class MyLogger:
     4) if sampledef.csv does not exist yet, you can provide an apidfile argument
        to getlogger and it will read the information from there
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False):
     self.module = module
     self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
@@ -80,6 +80,7 @@ class MyLogger:
     self.imagelog = None if imagelog is None else pathlib.Path(imagelog)
     self.isglobal = isglobal
     self.reraiseexceptions = reraiseexceptions
+    self.skipstartfinish = skipstartfinish
     if uselogfiles and (self.samp is None or self.Project is None or self.Cohort is None):
       raise ValueError("Have to give a non-None SlideID, Project and Cohort when writing to log files")
 
@@ -149,7 +150,8 @@ class MyLogger:
           imagehandler.setLevel(logging.INFO-1)
           self.logger.addHandler(imagehandler)
 
-        self.logger.critical(f"START: {self.module} {self.astropathversion}")
+        if not self.skipstartfinish:
+          self.logger.critical(f"START: {self.module} {self.astropathversion}")
 
     self.nentered += 1
     return self
@@ -183,7 +185,8 @@ class MyLogger:
         if "\n" in errormessage: errormessage = repr(errormessage)
         self.error(errormessage)
         self.info(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)).replace(";", ""))
-      self.logger.critical(f"FINISH: {self.module} {self.astropathversion}")
+      if not self.skipstartfinish:
+        self.logger.critical(f"FINISH: {self.module} {self.astropathversion}")
       for handler in self.handlers[:]:
         handler.close()
         self.removeHandler(handler)
@@ -272,14 +275,14 @@ class MyFileHandler:
 __notgiven = object()
 
 @functools.lru_cache(maxsize=None)
-def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, moremainlogroots, reraiseexceptions):
-  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=moremainlogroots, reraiseexceptions=reraiseexceptions)
+def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, moremainlogroots, reraiseexceptions, skipstartfinish):
+  return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=moremainlogroots, reraiseexceptions=reraiseexceptions, skipstartfinish=skipstartfinish)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, apidfile=None, Project=None, Cohort=None):
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None):
   from .samplemetadata import SampleDef
   if samp is not None:
     samp = SampleDef(root=root, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)
-  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=frozenset(moremainlogroots), reraiseexceptions=reraiseexceptions)
+  return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=frozenset(moremainlogroots), reraiseexceptions=reraiseexceptions, skipstartfinish=skipstartfinish)
 
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
