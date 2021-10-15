@@ -176,20 +176,17 @@ class MeanImageComparison :
         #add a line for every slide used
         for sid,mid in self.ordered_slide_tuples :
             sd = SampleDef(SlideID=sid,root=mid.parent.parent.parent)
-            print(f'project: {sd.Project} (type = {type(sd.Project)})')
-            print(f'cohort: {sd.Cohort} (type = {type(sd.Cohort)})')
-            print(f'batchID: {sd.BatchID} (type = {type(sd.BatchID)})')
             all_lines.append(ModelTableEntry(version_tag,sd.Project,sd.Cohort,sd.BatchID,sd.SlideID))
         #write out the table
         writetable(self.MODEL_TABLE_PATH,all_lines)
         #run batchflatfieldmulticohort if requested
         if not skip_creation :
-            args = []
+            batchflatfieldmulticohortargs = []
             for root_dir in root_dirs :
-                args.append(os.fspath(root_dir))
-                args+=['--version',version_tag]
-                args+=['--flatfield-model-file',os.fspath(self.MODEL_TABLE_PATH)]
-            BatchFlatfieldMultiCohort.runfromargumentparser(args=args)
+                batchflatfieldmulticohortargs.append(os.fspath(root_dir))
+                batchflatfieldmulticohortargs+=['--version',version_tag]
+                batchflatfieldmulticohortargs+=['--flatfield-model-file',os.fspath(self.MODEL_TABLE_PATH)]
+            BatchFlatfieldMultiCohort.runfromargumentparser(args=batchflatfieldmulticohortargs)
 
     #################### CLASS VARIABLES & PROPERTIES ####################
 
