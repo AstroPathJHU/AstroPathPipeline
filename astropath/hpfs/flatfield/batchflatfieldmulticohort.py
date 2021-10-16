@@ -1,11 +1,13 @@
 #imports
-import pathlib
+import pathlib, re
 from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.tableio import readtable
 from ...utilities.img_file_io import get_image_hwl_from_xml_file
 from ...shared.sample import WorkflowSample
 from ...shared.cohort import WorkflowCohort
 from ...shared.multicohort import MultiCohortBase
 from .config import CONST
+from .utilities import ModelTableEntry
 from .imagestack import Flatfield
 from .meanimagesample import MeanImageSample
 
@@ -36,9 +38,9 @@ class BatchFlatfieldSample(WorkflowSample) :
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
                 self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
-    def run(self,batchID,flatfield,samplesprocessed,totalsamples) :
-        msg = f'Adding mean image and mask stack from {self.SlideID} to flatfield model for batch '
-        msg+= f'{batchID:02d} ({len(samplesprocessed)+1} of {totalsamples})....'
+    def run(self,version,flatfield,samplesprocessed,totalsamples) :
+        msg = f'Adding mean image and mask stack from {self.SlideID} to flatfield model version '
+        msg+= f'{version} ({len(samplesprocessed)+1} of {totalsamples})....'
         self.logger.info(msg)
         flatfield.add_batchflatfieldsample(self)
         samplesprocessed.append(self)
@@ -73,10 +75,10 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
     into a single flatfield model
     """
 
-    def __init__(self,*args,outdir,batchID=-1,**kwargs) :
+    def __init__(self,*args,version,outdir,**kwargs) :
         super().__init__(*args,**kwargs)
+        self.__version = version
         self.__outdir = outdir
-        self.__batchID = batchID
 
     def run(self, **kwargs):
         totalsamples = 0
@@ -85,8 +87,13 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             #start up the flatfield after figuring out its dimensions
             for cohort in self.cohorts :
                 for sample in cohort.filteredsamples :
+                    dims = get_image_hwl_from_xml_file(sample.root,sample.SlideID)
                     if image_dimensions is None :
-                        image_dimensions = get_image_hwl_from_xml_file(sample.root,sample.SlideID)
+                        image_dimensions = dims
+                    else :
+                        if dims!=image_dimensions :
+                            errmsg=f'ERROR: {sample.SlideID} dimensions {dims} mismatched to {image_dimensions}'
+                            raise ValueError(errmsg)
                     totalsamples += 1
             if image_dimensions is None :
                 raise ValueError("No non-empty samples")
@@ -95,15 +102,15 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             #Run all the samples individually like for a regular MultiCohort
             super().run(flatfield=flatfield, 
                         samplesprocessed=samplesprocessed, 
-                        batchID=self.__batchID, 
+                        version=self.__version, 
                         totalsamples=totalsamples, **kwargs)
             totalsamples = len(samplesprocessed)
             #actually create the flatfield after all the samples have been added
-            logger.info(f'Creating final flatfield model for batch {self.__batchID:02d}....')
+            logger.info(f'Creating final flatfield model for version {self.__version}....')
             flatfield.create_flatfield_model()
             #write out the flatfield model
-            logger.info(f'Writing out flatfield model, plots, and summary pdf for batch {self.__batchID:02d}....')
-            flatfield.write_output(self.__batchID,self.workingdir)
+            logger.debug(f'Writing out flatfield model, plots, and summary pdf for version {self.__version}....')
+            flatfield.write_output(self.__version,self.workingdir)
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -111,24 +118,46 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
 
     @property
     def workingdir(self) :
-        return self.__outdir / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}{self.__batchID:02d}'
+        return self.__outdir / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}_{self.__version}'
 
     #################### CLASS METHODS ####################
 
     @classmethod
     def makeargumentparser(cls):
         p = super().makeargumentparser()
-        p.add_argument('--batchID',type=int,default=-1,
-                       help='BatchID for the flatfield model created from the given list of slideIDs')
-        p.add_argument('--outdir',type=pathlib.Path,required=True,
-                       help='directory where the output will be placed')
+        p.add_argument('--version',
+                       help="version of the flatfield model that should be created from the given slides' meanimages")
+        p.add_argument('--flatfield-model-file',type=pathlib.Path,
+                        default=pathlib.Path('//bki04/astropath_processing/AstroPathFlatfieldModels.csv'),
+                        help='path to a .csv file defining which slides should be used for the given version')
+        p.add_argument('--outdir',type=pathlib.Path,default=pathlib.Path('//bki04/astropath_processing'),
+                       help='''directory where the output will be placed (a "flatfield" directory will be created 
+                                inside outdir if one does not already exist)''')
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
-        parsed_args_dict['skip_finished']=False #always rerun the samples, they don't produce any output
+        #overwrite the sample regex to choose samples listed in the model file instead
+        flatfield_model_file = parsed_args_dict.pop('flatfield_model_file')
+        version = parsed_args_dict.pop('version')
+        if not flatfield_model_file.is_file() :
+            raise ValueError(f'ERROR: flatfield model file {flatfield_model_file} not found!')
+        all_model_table_entries = readtable(flatfield_model_file,ModelTableEntry)
+        model_table_entries = [te for te in all_model_table_entries if te.version==version]
+        if len(model_table_entries)<1 :
+            errmsg=f'ERROR: {len(model_table_entries)} entries found in {flatfield_model_file} for version {version}!'
+            raise ValueError(errmsg)
+        slide_IDs = [te.SlideID for te in model_table_entries]
+        new_regex = '('
+        for sid in slide_IDs :
+            new_regex+=sid+r'\b|'
+        new_regex=new_regex[:-1]+')'
+        parsed_args_dict['sampleregex']=re.compile(new_regex)
+        #always rerun the samples, they don't produce any output
+        parsed_args_dict['skip_finished']=False 
+        #return the kwargs dict
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
-            'batchID': parsed_args_dict.pop('batchID'), 
+            'version': version,
             'outdir': parsed_args_dict.pop('outdir'), 
         }
 

@@ -19,7 +19,7 @@ This workflow is described in more detail [here](OverviewWorkflow.md#576-overvie
 
 he "applyflatw" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents, either overwriting the original raw image files, or as new ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
 
-`applyflatwsample <Dpath>\<Dname> <Rpath> <SlideID> --flatfield-file [path_to_flatfield_bin_file] --warping-file [path_to_warping_summary_csv_file] --njobs [njobs]`
+`applyflatwsample <Dpath>\<Dname> <SlideID> --shardedim3root <Rpath> --flatfield-file [path_to_flatfield_bin_file] --warping-file [path_to_warping_summary_csv_file] --njobs [njobs]`
 
 where:
 - `[path_to_flatfield_bin_file]` is the path to the ".bin" file specifying the flatfield corrections to apply, or the name of a file located in the `<Dpath>\<Dname>\Flatfield` directory
@@ -40,8 +40,9 @@ Other options for how the correction should be done include:
 
 The routine can be run for an entire cohort of samples at once using the following command:
 
-`applyflatwcohort <Dpath>\<Dname> <Rpath>`
+`applyflatwcohort <Dpath>\<Dname> --shardedim3root <Rpath>`
 
 To see more command line arguments available for both routines, run `applyflatwsample --help` or `applyflatwcohort --help`.
+
 # 5.7.5.3. Instructions Apply Image Correction Standalone *version 0.0.1*
 

@@ -661,6 +661,7 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
     super().__init__(*args, **kwargs)
     if maskroot is None: maskroot = self.im3root
     self.__maskroot = pathlib.Path(maskroot)
+    self.__maskfolder = None
     if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
     self.__maskfilesuffix = maskfilesuffix
   @property
@@ -673,10 +674,19 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
 
   @property
   def maskfolder(self):
-    result = self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME
-    if self.maskroot != self.im3root:
-      result = self.maskroot/result.relative_to(self.im3root)
-    return result
+    if self.__maskfolder is not None :
+      return self.__maskfolder
+    else :
+      result = self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME
+      if self.maskroot != self.im3root:
+        result = self.maskroot/result.relative_to(self.im3root)
+      return result
+  @maskfolder.setter
+  def maskfolder(self,mf):
+    if self.__maskfolder is None :
+      self.__maskfolder=mf
+    else :
+      raise ValueError(f'ERROR: maskfolder has already been set to {self.__maskfolder}!')
 
 class MaskWorkflowSampleBase(MaskSampleBase, WorkflowSample):
   @property
