@@ -32,7 +32,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[]):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False):
     self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
@@ -43,7 +43,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     self.__im3root = pathlib.Path(im3root)
     if informdataroot is None: informdataroot = root
     self.__informdataroot = pathlib.Path(informdataroot)
-    self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots)
+    self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots, skipstartfinish=skipstartfinish)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__logonenter = []
@@ -661,6 +661,7 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
     super().__init__(*args, **kwargs)
     if maskroot is None: maskroot = self.im3root
     self.__maskroot = pathlib.Path(maskroot)
+    self.__maskfolder = None
     if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
     self.__maskfilesuffix = maskfilesuffix
   @property
@@ -673,10 +674,19 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
 
   @property
   def maskfolder(self):
-    result = self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME
-    if self.maskroot != self.im3root:
-      result = self.maskroot/result.relative_to(self.im3root)
-    return result
+    if self.__maskfolder is not None :
+      return self.__maskfolder
+    else :
+      result = self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME
+      if self.maskroot != self.im3root:
+        result = self.maskroot/result.relative_to(self.im3root)
+      return result
+  @maskfolder.setter
+  def maskfolder(self,mf):
+    if self.__maskfolder is None :
+      self.__maskfolder=mf
+    else :
+      raise ValueError(f'ERROR: maskfolder has already been set to {self.__maskfolder}!')
 
 class MaskWorkflowSampleBase(MaskSampleBase, WorkflowSample):
   @property

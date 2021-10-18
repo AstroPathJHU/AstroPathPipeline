@@ -12,7 +12,7 @@ class CohortBase(ThingWithRoots):
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], **kwargs):
+  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], skipstartfinish=False, **kwargs):
     super().__init__(*args, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
@@ -22,6 +22,7 @@ class CohortBase(ThingWithRoots):
     self.uselogfiles = uselogfiles
     self.reraiseexceptions = reraiseexceptions
     self.moremainlogroots = moremainlogroots
+    self.skipstartfinish = skipstartfinish
 
   @property
   def sampledefs(self):
@@ -56,7 +57,7 @@ class CohortBase(ThingWithRoots):
     if isinstance(samp, WorkflowDependency):
       isglobal = isglobal or samp.usegloballogger()
       samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, **kwargs)
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=self.skipstartfinish, **kwargs)
 
   @classmethod
   @abc.abstractmethod
@@ -224,7 +225,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.reraiseexceptions, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders, "moremainlogroots": self.moremainlogroots}
+    return {"root": self.root, "reraiseexceptions": self.reraiseexceptions, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders, "moremainlogroots": self.moremainlogroots, "skipstartfinish": self.skipstartfinish}
 
   @classmethod
   def logmodule(cls):

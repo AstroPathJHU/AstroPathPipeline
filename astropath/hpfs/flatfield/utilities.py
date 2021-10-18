@@ -5,13 +5,6 @@ from ...utilities.dataclasses import MyDataClass
 from ...utilities.img_file_io import smooth_image_worker
 from ...shared.image_masking.config import CONST as MASKING_CONST
 
-#helper class for inputting slides with their names and raw/root directories
-########### THIS WILL BE DEPRECATED ASAP (not actually used in meanimage/flatfielding code ###########
-class FlatfieldSlideInfo(MyDataClass) :
-    name : str
-    rawfile_top_dir : str
-    root_dir : str
-
 #A small dataclass to hold entries in the background threshold datatable
 class ThresholdTableEntry(MyDataClass) :
   layer_n                 : int
@@ -32,6 +25,23 @@ class FieldLog(MyDataClass) :
     location : str
     use      : str
     stacked_in_layers : str = ''
+
+#dataclass to organize entries in the flatfield model .csv file
+class ModelTableEntry(MyDataClass) :
+    version : str
+    Project : str
+    Cohort  : str
+    BatchID : str
+    SlideID : str
+
+#dataclass to organize numerical entries in the datatable outputted by meanimagecomparison
+class ComparisonTableEntry(MyDataClass) :
+    root_dir_1               : str
+    slide_ID_1               : str
+    root_dir_2               : str
+    slide_ID_2               : str
+    layer_n                  : int
+    delta_over_sigma_std_dev : float
 
 def calculate_statistics_for_image(image) :
     """
@@ -61,6 +71,20 @@ def calculate_statistics_for_image(image) :
     central_spread = np.mean(np.array(central_spreads_by_layer))
     central_stddev = np.mean(np.array(central_stddevs_by_layer))
     return overall_max,overall_min,overall_spread,overall_stddev,central_max,central_min,central_spread,central_stddev
+
+def normalize_mean_image(mi,semi) :
+    """
+    normalize a mean image by its weighted means in each layer 
+    mi = mean image array
+    semi = std. error of the mean image array
+    """
+    weights = np.zeros_like(semi)
+    weights[semi!=0] = 1./(semi[semi!=0]**2)
+    weighted_mi = weights*mi
+    sum_weighted_mi = np.sum(weighted_mi,axis=(0,1))
+    sum_weights = np.sum(weights,axis=(0,1))
+    mi_means = (sum_weighted_mi/sum_weights)[np.newaxis,np.newaxis,:]
+    return mi/mi_means, semi/mi_means
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 
