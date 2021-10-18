@@ -32,25 +32,6 @@ class batchflatfield : moduletools {
      Usage: $this.GetBatchFlatfield()
     ----------------------------------------- #>
     [void]GetBatchFlatfield(){
-        #
-        #$this.sample.info('dpath: ' + $this.sample.basepath)
-        #$this.sample.info('batch flatfield path: ' + $this.sample.batchflatfield())
-        #$this.sample.info('slide list: ' + $slidelist)
-        #
-        if ($this.vers -eq '0.0.1'){
-            $this.RunBatchFlatfieldMatlab()
-        }
-        elseif($this.vers -gt '0.0.1'){
-            $this.RunBatchFlatfieldPy()
-        }
-    }
-    <# -----------------------------------------
-     RunBatchFlatfieldMatlab
-        Run batch flatfield matlab code
-     ------------------------------------------
-     Usage: $this.RunBatchFlatfieldMatlab()
-    ----------------------------------------- #>
-    [void]RunBatchFlatfieldMatlab(){
         $slidelist = $this.sample.batchslides.slideID -Join ','
         $taskname = 'fltOneBatch'
         $matlabinput = "'"+$this.sample.basepath+"', '"+$this.sample.batchflatfield()+"', '"+$slidelist+"'"
@@ -59,21 +40,5 @@ class batchflatfield : moduletools {
         if (Test-Path $this.processloc) {
             Remove-Item $this.processloc -Force -Recurse -ea Stop
         }
-    }
-    <# -----------------------------------------
-     RunBatchFlatfieldPy
-        Run batch flatfield python code
-     ------------------------------------------
-     Usage: $this.RunBatchFlatfieldPy()
-    ----------------------------------------- #>
-    [void]RunBatchFlatfieldPy(){
-        $taskname = 'fltOneBatch'
-        $dpath = '\\bki04\Clinical_Specimen '
-        #batchflatfieldcohort <Dpath>\<Dname> --sampleregex [sample_regex] --batchID [batch_ID]
-        $pythontask = 'batchflatfieldcohort ' + $dpath + '--batchID ' + $this.sample.BatchID + ' --workingdir ' + $this.processloc + '\batchflatfield'
-        $this.runpythontask($taskname, $pythontask)
-        #if (Test-Path $this.processloc) {
-        #    Remove-Item $this.processloc -Force -Recurse -ea Stop
-        #}
     }
 }

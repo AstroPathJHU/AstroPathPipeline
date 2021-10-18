@@ -86,7 +86,7 @@ Class meanimage : moduletools {
     [void]RunMeanImagePy(){
         $this.sample.info("started mean image sample python script")
         $taskname = 'meanimagesample'
-        $dpath = '\\bki04\Clinical_Specimen '
+        $dpath = $this.processvars[0] + ' '
         $rpath = $this.processvars[1] + ' '
         $pythontask = 'meanimagesample ' + $dpath + $rpath + $this.sample.SlideID + 
          ' --workingdir ' + $this.processvars[0] + '\meanimage'+ " --njobs '8' --allow-local-edits"

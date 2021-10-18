@@ -33,7 +33,7 @@ class meanimagecomparison : moduletools {
     ----------------------------------------- #>
     [void]GetMeanImageComparison(){
         $taskname = 'meanimagecomparison'
-        $dpath = '\\bki04\Clinical_Specimen '
+        $dpath = $this.processvars[0]
         #meanimagecomparison --root-dirs [Dpaths] --sampleregex [sample_regex]
         $pythontask = 'meanimagecomparison --root-dirs ' + $dpath + ' --sampleregex ' + ($this.sample.batchslides.slideid -join '|')
         $this.runpythontask($taskname, $pythontask)
