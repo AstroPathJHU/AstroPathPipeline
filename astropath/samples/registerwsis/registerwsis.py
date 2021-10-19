@@ -1,8 +1,8 @@
 import contextlib, cv2, matplotlib.pyplot as plt, methodtools, numpy as np, PIL, skimage.registration, skimage.transform
 
 from ...slides.annowarp.annowarpsample import WSISample
-from ...slides.align.computeshift import computeshift, crosscorrelation, OptimizeResult
-from ...slides.zoom.stitchmasksample import InformMaskSample
+from ...slides.align.computeshift import computeshift, crosscorrelation, OptimizeResult, shiftimg
+from ...slides.stitchmask.stitchmasksample import InformMaskSample
 from ...utilities.misc import floattoint
 
 class ReadWSISample(WSISample, InformMaskSample):
@@ -38,7 +38,7 @@ class RegisterWSIs(contextlib.ExitStack):
         wsis = [skimage.exposure.equalize_adapthist(wsi) for wsi in wsis]
       return wsis
 
-  def runalignment(self, _debugprint=False, zoomfactor=8, smoothsigma):
+  def runalignment(self, *, _debugprint=False, zoomfactor=8, smoothsigma):
     wsi1, wsi2 = wsis = self.scaledwsis(zoomfactor=zoomfactor, smoothsigma=1, equalize=False)
     if _debugprint > .5:
       for _ in wsis:
@@ -127,11 +127,11 @@ class RegisterWSIs(contextlib.ExitStack):
         plt.imshow(_)
         plt.show()
 
-    zoommore = [skimage.transform.resize(wsi, wsi.shape//8) for wsi in wsis]
-    zoomevenmore = [skimage.transform.resize(wsi, wsi.shape//2) for wsi in zoommore]
-    r1 = getrotation(zoomevenmore, -180, 180-15, 15)
-    r2 = getrotation(zoomevenmore, r1.angle-15, r1.angle+15, 2)
-    r3 = getrotation(zoommore, r2.angle-2, r2.angle+2, 0.02)
+    zoommore = [skimage.transform.resize(wsi, np.asarray(wsi.shape)//8) for wsi in wsis]
+    zoomevenmore = [skimage.transform.resize(wsi, np.asarray(wsi.shape)//2) for wsi in zoommore]
+    r1 = self.getrotation(zoomevenmore, -180, 180-15, 15)
+    r2 = self.getrotation(zoomevenmore, r1.angle-15, r1.angle+15, 2)
+    r3 = self.getrotation(zoommore, r2.angle-2, r2.angle+2, 0.02)
     rotationresult = r3
     rotationresult.xcorr.update(r2.xcorr)
     rotationresult.xcorr.update(r1.xcorr)
@@ -143,19 +143,20 @@ class RegisterWSIs(contextlib.ExitStack):
         plt.imshow(_)
         plt.show()
 
-    translationresult = computeshift(rotated, usemaxmovementcut=False, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5, mindistancetootherpeak=10000)
+    translationresult = computeshift(rotated, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
     return rotationresult, translationresult
 
-  def getrotation(rotationwsis, minangle, maxangle, stepangle):
+  def getrotation(self, rotationwsis, minangle, maxangle, stepangle):
     wsi1, wsi2 = rotationwsis
     bestxcorr = {}
     for angle in np.arange(minangle, maxangle+stepangle, stepangle):
       rotated = wsi1, skimage.transform.rotate(wsi2, angle)
       xcorr = crosscorrelation(rotated)
-      bestxcorr[angle] = max(xcorr)
+      bestxcorr[angle] = np.max(xcorr)
     angle = max(bestxcorr, key=bestxcorr.get)
     return OptimizeResult(
       xcorr=bestxcorr,
       angle=angle,
       bestxcorr=bestxcorr[angle],
+      exit=0,
     )
