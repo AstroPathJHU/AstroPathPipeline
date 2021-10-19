@@ -1,16 +1,9 @@
 #imports
-from ..image_masking.config import CONST as MASKING_CONST
+import math
+import numpy as np
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.img_file_io import smooth_image_worker
-import numpy as np
-import math
-
-#helper class for inputting slides with their names and raw/root directories
-########### THIS WILL BE DEPRECATED ASAP (not actually used in meanimage/flatfielding code ###########
-class FlatfieldSlideInfo(MyDataClass) :
-    name : str
-    rawfile_top_dir : str
-    root_dir : str
+from ...shared.image_masking.config import CONST as MASKING_CONST
 
 #A small dataclass to hold entries in the background threshold datatable
 class ThresholdTableEntry(MyDataClass) :
@@ -33,6 +26,23 @@ class FieldLog(MyDataClass) :
     use      : str
     stacked_in_layers : str = ''
 
+#dataclass to organize entries in the flatfield model .csv file
+class ModelTableEntry(MyDataClass) :
+    version : str
+    Project : str
+    Cohort  : str
+    BatchID : str
+    SlideID : str
+
+#dataclass to organize numerical entries in the datatable outputted by meanimagecomparison
+class ComparisonTableEntry(MyDataClass) :
+    root_dir_1               : str
+    slide_ID_1               : str
+    root_dir_2               : str
+    slide_ID_2               : str
+    layer_n                  : int
+    delta_over_sigma_std_dev : float
+
 def calculate_statistics_for_image(image) :
     """
     Return the maximum, minimum, 5th-95th percentile spread, and standard deviation 
@@ -50,15 +60,31 @@ def calculate_statistics_for_image(image) :
     for li in range(image.shape[-1]) :
         sorted_u_layer = np.sort((image[:,:,li]).flatten())/np.mean(image[:,:,li])
         sorted_c_layer = np.sort((flatfield_image_clipped[:,:,li]).flatten())/np.mean(image[:,:,li])
-        overall_spreads_by_layer.append(sorted_u_layer[int(0.95*len(sorted_u_layer))]-sorted_u_layer[int(0.05*len(sorted_u_layer))])
+        overall_spread = sorted_u_layer[int(0.95*len(sorted_u_layer))]-sorted_u_layer[int(0.05*len(sorted_u_layer))]
+        overall_spreads_by_layer.append(overall_spread)
         overall_stddevs_by_layer.append(np.std(sorted_u_layer))
-        central_spreads_by_layer.append(sorted_c_layer[int(0.95*len(sorted_c_layer))]-sorted_c_layer[int(0.05*len(sorted_c_layer))])
+        central_spread = sorted_c_layer[int(0.95*len(sorted_c_layer))]-sorted_c_layer[int(0.05*len(sorted_c_layer))]
+        central_spreads_by_layer.append(central_spread)
         central_stddevs_by_layer.append(np.std(sorted_c_layer))
     overall_spread = np.mean(np.array(overall_spreads_by_layer))
     overall_stddev = np.mean(np.array(overall_stddevs_by_layer))
     central_spread = np.mean(np.array(central_spreads_by_layer))
     central_stddev = np.mean(np.array(central_stddevs_by_layer))
-    return overall_max, overall_min, overall_spread, overall_stddev, central_max, central_min, central_spread, central_stddev
+    return overall_max,overall_min,overall_spread,overall_stddev,central_max,central_min,central_spread,central_stddev
+
+def normalize_mean_image(mi,semi) :
+    """
+    normalize a mean image by its weighted means in each layer 
+    mi = mean image array
+    semi = std. error of the mean image array
+    """
+    weights = np.zeros_like(semi)
+    weights[semi!=0] = 1./(semi[semi!=0]**2)
+    weighted_mi = weights*mi
+    sum_weighted_mi = np.sum(weighted_mi,axis=(0,1))
+    sum_weights = np.sum(weights,axis=(0,1))
+    mi_means = (sum_weighted_mi/sum_weights)[np.newaxis,np.newaxis,:]
+    return mi/mi_means, semi/mi_means
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 

@@ -2,6 +2,7 @@
 
 #imports
 from astropath.hpfs.warping.warp import PolyFieldWarp, CameraWarp
+from astropath.utilities.config import CONST as UNIV_CONST
 #from astropath.utilities.img_file_io import write_image_to_file
 import pathlib, numpy as np
 
@@ -16,8 +17,8 @@ file1stem = slide_ID+'_[45093,13653]'
 file2stem = slide_ID+'_[45093,14053]'
 
 # .raw file paths
-rawfile1path = folder / 'data' / 'raw' / slide_ID / f'{file1stem}.Data.dat'
-rawfile2path = folder / 'data' / 'raw' / slide_ID / f'{file2stem}.Data.dat'
+rawfile1path = folder / 'data' / 'raw' / slide_ID / f'{file1stem}{UNIV_CONST.RAW_EXT}'
+rawfile2path = folder / 'data' / 'raw' / slide_ID / f'{file2stem}{UNIV_CONST.RAW_EXT}'
 
 # warp test file paths
 warp1file1layer1p=folder / 'data' / 'reference' / 'warping' / f'{file1stem}.fieldWarp_layer01'

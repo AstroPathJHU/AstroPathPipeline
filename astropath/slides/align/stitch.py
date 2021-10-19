@@ -398,8 +398,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           primaryregions[gc].append(m*len(average)+b_right)
         else:
           #can't fit a line because there are only at most 2 rows/columns, so do an approximation
-          allcs = sorted({r.cxvec[i] for r in self.rectangles})
-          mindiff = min(np.diff(allcs))
+          allcs = {gc: sorted({self.rectangles[self.rectangledict[n]].cxvec[i] for n in island}) for gc, island in enumerate(islands, start=1)}
+          mindiff = min(itertools.chain(*(np.diff(islandcs) for islandcs in allcs.values())))
           divideby = 1
           while mindiff / divideby > shape[i]:
             divideby += 1

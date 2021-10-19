@@ -1,4 +1,4 @@
-import argparse, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib
+import argparse, collections, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.misc import floattoint
@@ -14,23 +14,87 @@ class AllowedAnnotation(MyDataClassFrozen):
   color: str
   synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
 
+class AnnotationNode:
+  def __init__(self, node):
+    self.__xmlnode = node
+    self.usesubindex = None
+    self.__newannotationtype = None
+  @property
+  def usesubindex(self): return self.__usesubindex
+  @usesubindex.setter
+  def usesubindex(self, value):
+    if value is None or value is True or value is False:
+      self.__usesubindex = value
+    else:
+      raise ValueError("usesubindex can only be None, True, or False")
+  @property
+  def annotationname(self):
+    result = self.__xmlnode.get_xml_attr("Name").lower().strip()
+    if self.__newannotationtype is not None:
+      result = result.replace(self.__oldannotationtype, self.__newannotationtype)
+    if self.usesubindex is None: return result
+
+    regex = " ([0-9]+)$"
+    match = re.search(regex, result)
+    if self.usesubindex is True:
+      if match: return result
+      return result + " 1"
+    elif self.usesubindex is False:
+      if not match: return result
+      subindex = match.group(1)
+      if subindex == 1:
+        return re.sub(regex, "", result)
+      raise ValueError(f"Can't force not having a subindex when the subindex is > 1: {result}")
+
+  @property
+  def annotationtype(self):
+    return re.sub(r" [0-9]+$", "", self.annotationname)
+  @annotationtype.setter
+  def annotationtype(self, value):
+    self.__oldannotationtype = self.annotationtype
+    self.__newannotationtype = value
+  @property
+  def annotationsubindex(self):
+    result = self.annotationname.replace(self.annotationtype, "")
+    if result:
+      return int(self.annotationname.replace(self.annotationtype, ""))
+    else:
+      return 1
+  @property
+  def color(self):
+    color = int(self.__xmlnode.get_xml_attr('LineColor'))
+    color = f"{color:06X}"
+    color = color[4:6] + color[2:4] + color[0:2]
+    return color
+  @property
+  def visible(self):
+    return {"true": True, "false": False}[self.__xmlnode.get_xml_attr("Visible").lower().strip()]
+
+  @property
+  def regions(self):
+    if not self.__xmlnode["Regions"]: return []
+    regions = self.__xmlnode["Regions"]["Region"]
+    if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
+    return regions
+
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, badpolygonimagefolder=None, badpolygonimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False):
+  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, saveallimages=False, imagefolder=None, imagefiletype="pdf", annotationsynonyms=None, reorderannotations=False):
     self.xmlfile = pathlib.Path(xmlfile)
     self.__logger = logger
-    if badpolygonimagefolder is not None: badpolygonimagefolder = pathlib.Path(badpolygonimagefolder)
-    self.__badpolygonimagefolder = badpolygonimagefolder
+    self.__saveallimages = saveallimages
+    if imagefolder is not None: imagefolder = pathlib.Path(imagefolder)
+    self.__imagefolder = imagefolder
     if pscale is None: pscale = 1
     if apscale is None:
-      if self.__badpolygonimagefolder is not None:
+      if self.__imagefolder is not None:
         with QPTiff(self.qptifffilename) as fqptiff:
           apscale = fqptiff.apscale
       else:
         apscale = 1
-    self.__badpolygonimagefiletype = badpolygonimagefiletype
+    self.__imagefiletype = imagefiletype
     self.__pscale = pscale
     self.__apscale = apscale
     if annotationsynonyms is None:
@@ -72,10 +136,6 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
       self.__logger.warningglobal(f"renaming annotation {nameornumber} to {result.name}")
     return result
 
-  @staticmethod
-  def annotationname(xmlnode):
-    return xmlnode.get_xml_attr("Name").lower().strip()
-
   def getXMLpolygonannotations(self):
     annotations = []
     allregions = []
@@ -85,114 +145,136 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
     with open(self.xmlfile, "rb") as f:
       count = more_itertools.peekable(itertools.count(1))
-      nodes = [node for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+      nodes = [AnnotationNode(node) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+      for node in nodes[:]:
+        if not node.regions:
+          if node.annotationtype != "empty":
+            self.__logger.warningglobal(f"Annotation {node.annotationname} is empty, skipping it")
+          nodes.remove(node)
+      for node in nodes:
+        try:
+          node.annotationtype = self.allowedannotation(node.annotationtype).name
+        except ValueError:
+          pass
+
       def annotationorder(node):
         try:
-          return self.allowedannotation(self.annotationname(node), logwarning=False).layer
+          return self.allowedannotation(node.annotationtype, logwarning=False).layer, node.annotationsubindex
         except ValueError:
-          return float("inf")
-      sortednodes = sorted(nodes, key=annotationorder)
-      if sortednodes != nodes:
-        message = f"Annotations are in the wrong order: target order is {', '.join(_.name for _ in self.allowedannotations)}, but your order is {', '.join(self.annotationname(node) for node in nodes)}."
-        if self.__reorderannotations:
-          self.__logger.warning(message+"  Reordering them.")
-        else:
-          errors.append(message)
-      nodes = sortednodes
+          return float("inf"), 0
+      nodes.sort(key=annotationorder)
 
-      for layer, node in zip(count, nodes):
-        color = f"{int(node.get_xml_attr('LineColor')):06X}"
-        color = color[4:6] + color[2:4] + color[0:2]
-        visible = {
-          "true": True,
-          "false": False,
-        }[node.get_xml_attr("Visible").lower().strip()]
-        name = self.annotationname(node)
-        if name == "empty":
-          count.prepend(layer)
-          continue
+      nodesbytype = collections.defaultdict(lambda: [])
+      for node in nodes:
+        nodesbytype[node.annotationtype].append(node)
+      for node in nodes:
+        if len(nodesbytype[node.annotationtype]) > 1:
+          node.usesubindex = True
+        else:
+          node.usesubindex = False
+
+      for layeridx, (annotationtype, annotationnodes) in zip(count, nodesbytype.items()):
         try:
-          targetannotation = self.allowedannotation(name)
+          targetannotation = self.allowedannotation(annotationtype)
         except ValueError as e:
           errors.append(str(e))
           continue
-        name = targetannotation.name
+        subindices = [node.annotationsubindex for node in annotationnodes]
+        if subindices != list(range(1, len(subindices)+1)):
+          errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in subindices)}")
+          continue
+        annotationtype = targetannotation.name
         targetlayer = targetannotation.layer
         targetcolor = targetannotation.color
-        if layer > targetlayer:
+
+        if layeridx > targetlayer:
           assert False
         else:
-          while layer < targetlayer:
-            emptycolor = self.allowedannotation(layer).color
+          while layeridx < targetlayer:
+            emptycolor = self.allowedannotation(layeridx).color
             annotations.append(
               Annotation(
                 color=emptycolor,
                 visible=False,
                 name="empty",
                 sampleid=0,
-                layer=layer,
+                layer=layeridx,
                 poly="poly",
                 pscale=self.pscale,
                 apscale=self.apscale,
               )
             )
-            layer = next(count)
-        if color != targetcolor:
-          self.__logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
-          color = targetcolor
-        annotations.append(
-          Annotation(
-            color=color,
-            visible=visible,
-            name=name,
-            sampleid=0,
-            layer=layer,
-            poly="poly",
-            pscale=self.pscale,
-            apscale=self.apscale,
-          )
-        )
+            layeridx = next(count)
 
-        if not node["Regions"]: continue
-        regions = node["Regions"]["Region"]
-        if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
-        m = 1
-        for region in regions:
-          regioncounter = itertools.count(m)
-          regionid = 1000*layer + m
-          vertices = region["Vertices"]["V"]
-          if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
-          regionvertices = []
-          for k, vertex in enumerate(vertices, start=1):
-            x = int(vertex.get_xml_attr("X")) * self.oneappixel
-            y = int(vertex.get_xml_attr("Y")) * self.oneappixel
-            regionvertices.append(
-              Vertex(
-                regionid=regionid,
-                vid=k,
-                x=x,
-                y=y,
-                apscale=self.apscale,
-                pscale=self.pscale,
-              )
+        for node in annotationnodes:
+          color = node.color
+          visible = node.visible
+          if node.usesubindex:
+            name = f"{annotationtype} {node.annotationsubindex}"
+            layer = layeridx * 1000 + node.annotationsubindex
+          else:
+            name = annotationtype
+            layer = layeridx
+          if color != targetcolor:
+            self.__logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
+            color = targetcolor
+          annotations.append(
+            Annotation(
+              color=color,
+              visible=visible,
+              name=name,
+              sampleid=0,
+              layer=layer,
+              poly="poly",
+              pscale=self.pscale,
+              apscale=self.apscale,
             )
-          isNeg = bool(int(region.get_xml_attr("NegativeROA")))
+          )
 
-          polygon = SimplePolygon(vertices=regionvertices)
-          valid = polygon.makevalid(round=True, imagescale=self.apscale)
+          regions = node.regions
+          if not regions: continue
+          m = 1
+          for region in regions:
+            regioncounter = itertools.count(m)
+            regionid = 1000*layer + m
+            vertices = region["Vertices"]["V"]
+            if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
+            regionvertices = []
+            for k, vertex in enumerate(vertices, start=1):
+              x = int(vertex.get_xml_attr("X")) * self.oneappixel
+              y = int(vertex.get_xml_attr("Y")) * self.oneappixel
+              regionvertices.append(
+                Vertex(
+                  regionid=regionid,
+                  vid=k,
+                  x=x,
+                  y=y,
+                  apscale=self.apscale,
+                  pscale=self.pscale,
+                )
+              )
+            isNeg = bool(int(region.get_xml_attr("NegativeROA")))
 
-          perimeter = 0
-          maxlength = 0
-          longestidx = None
-          for nlines, (v1, v2) in enumerate(more_itertools.pairwise(regionvertices+[regionvertices[0]]), start=1):
-            length = np.sum((v1.xvec-v2.xvec)**2)**.5
-            if not length: continue
-            maxlength, longestidx = max((maxlength, longestidx), (length, nlines))
-            perimeter += length
+            polygon = SimplePolygon(vertices=regionvertices)
+            valid = polygon.makevalid(round=True, imagescale=self.apscale)
 
-          if (longestidx == 1 or longestidx == len(regionvertices)) and maxlength / (perimeter/nlines) > 30:
-            self.__logger.warningglobal(f"annotation polygon might not be closed: region id {regionid}")
-            if self.__badpolygonimagefolder is not None:
+            perimeter = 0
+            maxlength = 0
+            longestidx = None
+            for nlines, (v1, v2) in enumerate(more_itertools.pairwise(regionvertices+[regionvertices[0]]), start=1):
+              length = np.sum((v1.xvec-v2.xvec)**2)**.5
+              if not length: continue
+              maxlength, longestidx = max((maxlength, longestidx), (length, nlines))
+              perimeter += length
+
+            saveimage = self.__saveallimages
+            badimage = False
+            if (longestidx == 1 or longestidx == len(regionvertices)) and maxlength / (perimeter/nlines) > 30:
+              self.__logger.warningglobal(f"annotation polygon might not be closed: region id {regionid}")
+              saveimage = True
+              badimage = True
+
+            if saveimage and self.__imagefolder is not None:
               poly = SimplePolygon(vertices=regionvertices)
               with QPTiff(self.qptifffilename) as fqptiff:
                 zoomlevel = fqptiff.zoomlevels[0]
@@ -214,43 +296,43 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                 )
                 ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.apscale))
 
-              openvertex1 = poly.vertexarray[0]
-              openvertex2 = poly.vertexarray[{1: 1, len(regionvertices): -1}[longestidx]]
-              boxxmin, boxymin = np.min([openvertex1, openvertex2], axis=0) - xybuffer/2
-              boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
-              ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
+              if badimage:
+                openvertex1 = poly.vertexarray[0]
+                openvertex2 = poly.vertexarray[{1: 1, len(regionvertices): -1}[longestidx]]
+                boxxmin, boxymin = np.min([openvertex1, openvertex2], axis=0) - xybuffer/2
+                boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
+                ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
 
-              fig.savefig(self.__badpolygonimagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__badpolygonimagefiletype}").name)
+              fig.savefig(self.__imagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__imagefiletype}").name)
               plt.close(fig)
 
-          for polygon, m in zip(valid, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
-            if valid is not polygon:
-              regionid = 1000*layer + m
-              polygon.regionid = regionid
-              assert not polygon.subtractpolygons
-              regionvertices = polygon.outerpolygon.vertices
+            for subpolygon in valid:
+              for polygon, m in zip([subpolygon.outerpolygon] + subpolygon.subtractpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
+                regionid = 1000*layer + m
+                polygon.regionid = regionid
+                regionvertices = polygon.outerpolygon.vertices
 
-            allvertices += list(regionvertices)
+                allvertices += list(regionvertices)
 
-            allregions.append(
-              Region(
-                regionid=regionid,
-                sampleid=0,
-                layer=layer,
-                rid=m,
-                isNeg=isNeg,
-                type=region.get_xml_attr("Type"),
-                nvert=len(regionvertices),
-                poly=None,
-                apscale=self.apscale,
-                pscale=self.pscale,
-              )
-            )
+                allregions.append(
+                  Region(
+                    regionid=regionid,
+                    sampleid=0,
+                    layer=layer,
+                    rid=m,
+                    isNeg=isNeg ^ (polygon is not subpolygon.outerpolygon),
+                    type=region.get_xml_attr("Type"),
+                    nvert=len(regionvertices),
+                    poly=None,
+                    apscale=self.apscale,
+                    pscale=self.pscale,
+                  )
+                )
 
-          m = next(regioncounter)
+            m = next(regioncounter)
 
-    if not any(a.name == "good tissue" for a in annotations):
-      errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(_.name for _ in annotations if _.name != 'empty')})")
+    if "good tissue" not in nodesbytype:
+      errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(nodesbytype)})")
 
     if errors:
       raise ValueError("\n".join(errors))
@@ -296,11 +378,18 @@ def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
   g = p.add_mutually_exclusive_group()
-  g.add_argument("--save-bad-polygon-images", action="store_const", dest="badpolygonimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
-  g.add_argument("--save-bad-polygon-images-folder", dest="badpolygonimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
-  p.add_argument("--save-bad-polygon-images-filetype", default="pdf", choices=("pdf", "png"), dest="badpolygonimagefiletype", help="image format to save debug images")
+  g.add_argument("--save-polygon-images", action="store_const", dest="imagefolder", const=pathlib.Path("."), help="save all annotation images to the current folder")
+  g.add_argument("--save-polygon-images-folder", type=pathlib.Path, dest="imagefolder", help="save all annotation images to the given directory")
+  g.add_argument("--save-bad-polygon-images", action="store_const", dest="badimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
+  g.add_argument("--save-bad-polygon-images-folder", type=pathlib.Path, dest="badimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
+  p.add_argument("--save-images-filetype", default="pdf", choices=("pdf", "png"), dest="imagefiletype", help="image format to save debug images")
   add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
+  if args.imagefolder is not None:
+    args.saveallimages = True
+  else:
+    args.imagefolder = args.badimagefolder
+  del args.badimagefolder
   with units.setup_context("fast"):
     XMLPolygonAnnotationReader(**args.__dict__, logger=printlogger("annotations")).getXMLpolygonannotations()
   print(f"{args.xmlfile} looks good!")

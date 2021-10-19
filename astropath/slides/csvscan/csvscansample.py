@@ -1,5 +1,7 @@
-import abc, pathlib, re
+import abc, os, pathlib, re
 
+from ...hpfs.flatfield.config import CONST as FF_CONST
+from ...utilities.config import CONST as UNIV_CONST
 from ...shared.argumentparser import RunFromArgumentParser
 from ...shared.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
@@ -52,6 +54,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
+    p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex", default=[])
     return p
 
   @classmethod
@@ -59,6 +62,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
     kwargs = {
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "checkcsvs": parsed_args_dict.pop("checkcsvs"),
+      "ignorecsvs": parsed_args_dict.pop("ignore_csvs"),
     }
     return kwargs
 
@@ -78,7 +82,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
   def processcsv(self, *args, **kwargs):
     return super().processcsv(*args, SlideID=self.SlideID, **kwargs)
 
-  def runcsvscan(self, *, checkcsvs=True):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
     toload = []
     expectcsvs = {
       self.csv(_) for _ in (
@@ -121,12 +125,12 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
 
     meanimagecsvs = {
       self.im3folder/f"{self.SlideID}-mean.csv",
-      self.im3folder/"meanimage"/"fields_used.csv",
-      self.im3folder/"meanimage"/f"{self.SlideID}-background_thresholds.csv",
-      self.im3folder/"meanimage"/f"{self.SlideID}-metadata_summary_stacked_images.csv",
-      self.im3folder/"meanimage"/f"{self.SlideID}-metadata_summary_thresholding_images.csv",
-      self.im3folder/"meanimage"/f"{self.SlideID}-thresholding_data_table.csv",
-      self.im3folder/"meanimage"/"image_masking"/"labelled_mask_regions.csv",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.FIELDS_USED_CSV_FILENAME,
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}",
+      self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME/FF_CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,
     }
     optionalcsvs = {
       self.csv(_) for _ in (
@@ -149,6 +153,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
           optionalcsvs.remove(csv)
         except KeyError:
           if any(otherfolder/csv.relative_to(folder) in expectcsvs|optionalcsvs|goodcsvs for otherfolder in folders): continue
+          if any(regex.match(os.fspath(csv.relative_to(folder))) for regex in ignorecsvs): continue
           unknowncsvs.add(csv)
           continue
 
@@ -223,7 +228,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherworkflowkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [dbload/f"{SlideID}_loadfiles.csv"]
 
   def inputfiles(self, **kwargs):

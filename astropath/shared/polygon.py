@@ -81,6 +81,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
       raise InvalidPolygonError(poly)
 
   def makevalid(self, *, round=False, imagescale=None):
+    if len(self.outerpolygon.vertices) < 3:
+      return []
+    self = Polygon(outerpolygon=self.outerpolygon, subtractpolygons=[p for p in self.subtractpolygons if len(p.vertices) >= 3])
     try:
       self.checkvalidity()
     except InvalidPolygonError as e:
@@ -469,26 +472,32 @@ class SimplePolygon(Polygon):
   def __repr__(self, *, round=True):
     return f"PolygonFromGdal(pixels={str(self.gdalpolygon(round=round))!r}, pscale={self.pscale}, apscale={self.apscale})"
 
-def PolygonFromGdal(*, pixels, pscale, apscale, **kwargs):
+def PolygonFromGdal(*, pixels=None, microns=None, pscale, apscale, **kwargs):
   """
   Create a polygon from a GDAL format string or an
   ogr.Geometry object
   """
-  if isinstance(pixels, ogr.Geometry):
-    gdalpolygon = pixels
+  if (pixels is not None) + (microns is not None) != 1:
+    raise TypeError("Have to provide exactly one of pixels and microns")
+  pixelsormicrons = pixels if pixels is not None else microns
+
+  if isinstance(pixelsormicrons, ogr.Geometry):
+    gdalpolygon = pixelsormicrons
   else:
     try:
-      gdalpolygon = ogr.CreateGeometryFromWkt(pixels)
+      gdalpolygon = ogr.CreateGeometryFromWkt(pixelsormicrons)
     except RuntimeError:
       raise ValueError(f"OGR could not handle the polygon string: {pixels}")
+
+  xymultiplier = (units.onepixel if pixels is not None else units.onemicron)(pscale)
 
   vertices = []
   for polygon in gdalpolygon:
     polyvertices = []
     intvertices = polygon.GetPoints()
     for x, y in intvertices:
-      x *= units.onepixel(pscale)
-      y *= units.onepixel(pscale)
+      x *= xymultiplier
+      y *= xymultiplier
       polyvertices.append([x, y])
     polyvertices = units.convertpscale(polyvertices, pscale, apscale)
     vertices.append(polyvertices)

@@ -15,7 +15,8 @@ class Const :
         return '_qptiff.jpg' # suffix for the qptiff files
     @property
     def EXPOSURE_XML_EXTS(self) :
-        return ['.SpectralBasisInfo.Exposure.xml','.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml'] #extensions for exposure time xml files
+        return ['.SpectralBasisInfo.Exposure.xml',
+                '.SpectralBasisInfo.Exposure.Protocol.DarkCurrentSettings.xml'] #extensions for exposure time xml files
     #subdirectory names
     @property
     def IM3_DIR_NAME(self) :
@@ -26,6 +27,12 @@ class Const :
     @property
     def MEANIMAGE_DIRNAME(self) :
         return 'meanimage' #name of the output directory for slidemeanimage results
+    @property
+    def FLATFIELD_DIRNAME(self) :
+        return 'flatfield' #name of the directory holding flatfield model results for an entire cohort (directory with this name gets created in root)
+    @property
+    def WARPING_DIRNAME(self) :
+        return 'warping' #name of the directory holding warping model results for an entire cohort (directory with this name gets created in root)
     #image information
     @property
     def N_CLIP(self) :
@@ -60,13 +67,5 @@ class Const :
     @property
     def COMP_TIFF_AF_LAYER(self) :
         return 8 #number of the autofluorescence (AF) layer in component tiff images
-    #information for corrections
-    @property
-    def X_WARP_BIN_FILENAME(self) :
-        return 'dx_warp_field' #name of the dx warping field binary file
-    @property
-    def Y_WARP_BIN_FILENAME(self) :
-        return 'dy_warp_field' #name of the dy warping field binary file
-    
 
 CONST=Const()

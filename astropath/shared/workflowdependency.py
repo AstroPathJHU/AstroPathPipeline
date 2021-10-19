@@ -1,4 +1,5 @@
 import abc, contextlib, csv, datetime, more_itertools, re
+from ..utilities.misc import field_size_limit_context
 from .logging import MyLogger
 
 class ThingWithRoots(abc.ABC):
@@ -63,14 +64,13 @@ class WorkflowDependency(ThingWithRoots):
     workflowkwargs["SlideID"] = SlideID
     return SampleRunStatus.fromlog(SlideID=SlideID, samplelog=cls.getlogfile(**workflowkwargs), module=cls.logmodule(), missingfiles=cls.getmissingoutputfiles(**workflowkwargs), startregex=cls.logstartregex(), endregex=cls.logendregex())
 
-  @property
-  def runstatus(self):
+  def runstatus(self, **kwargs):
     """
     returns a SampleRunStatus object that indicates whether
     the sample ran successfully or not, and information about
     the failure, if any.
     """
-    return self.getrunstatus(**self.workflowkwargs)
+    return self.getrunstatus(**self.workflowkwargs, **kwargs)
 
   @property
   def rootnames(self):
@@ -187,6 +187,7 @@ class SampleRunStatus:
     previousrun = None
     error = None
     with contextlib.ExitStack() as stack:
+      stack.enter_context(field_size_limit_context(1000000))
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:

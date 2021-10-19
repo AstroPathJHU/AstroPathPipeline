@@ -104,12 +104,18 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
       try:
         self.rectangles[0].layer
       except AttributeError:
-        raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[0].layers}")
+        if len(self.rectangles[0].layers)==1 :
+          layer1 = self.rectangles[0].layers[0]
+        else :
+          raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[0].layers}")
     if layer2 is None:
       try:
         self.rectangles[1].layer
       except AttributeError:
-        raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[1].layers}")
+        if len(self.rectangles[1].layers)==1 :
+          layer2 = self.rectangles[1].layers[0]
+        else :
+          raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[1].layers}")
     self.__layers = layer1, layer2
 
   def __hash__(self):
@@ -243,7 +249,6 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
         kwargs1 = {k: getattr(self.result, k) for k in ("dxvec", "exit")}
       else:
         raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
-
     try:
       if mseonly: raise Exception("Not aligning this overlap because you specified mseonly")
       if alreadyalignedstrategy != "shift_only":

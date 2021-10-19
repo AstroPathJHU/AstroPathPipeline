@@ -1,12 +1,12 @@
 #imports
-from .utilities import WarpingError
-from .config import CONST
-from ...utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, write_image_to_file
-from ...utilities.img_correction import correctImageLayerWithWarpFields
-from ...utilities.misc import save_figure_in_dir
-from ...utilities.config import CONST as UNIV_CONST
-import numpy as np, matplotlib.pyplot as plt, seaborn as sns
 import pathlib, math, cv2, functools, methodtools
+import numpy as np, seaborn as sns
+import matplotlib.pyplot as plt
+from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.misc import save_figure_in_dir
+from ...utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, write_image_to_file
+from .utilities import correct_image_layer_with_warp_fields
+from .config import CONST
 
 #################### SOME CACHED FILE-SCOPE HELPER FUNCTIONS ####################
 
@@ -119,22 +119,25 @@ class Warp :
 
 class PolyFieldWarp(Warp) :
     """
-    Subclass for applying warping to images based on a polynomial fit to datapoints of warp factors vs. (scaled) distance or distance^2
+    Subclass for applying warping to images based on a polynomial fit to datapoints of 
+    warp factors vs. (scaled) distance or distance^2
     """
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,interpolation=cv2.INTER_LINEAR,plot_fit=False) :
+    def __init__(self,n=1344,m=1004,xc=584,yc=600,max_warp=1.85,pdegree=3,psq=False,interpolation=cv2.INTER_LINEAR,
+                 plot_fit=False) :
         """
         Initializes the warp_field based on a polynomial fit to scaled radial distance or scaled radial distance squared
         Fit range and warp parameters are hardcoded except for maximum warp at furthest location
-        xc              = principal center point x coordinate
-        yc              = principal center point y coordinate
-        max_warp        = warping factor for furthest-from-center point in fit
-        pdegree         = degree of polynomial fit to use
-        psq             = if True, fit to a polynomial in r^2 instead of in r
-        interpolation   = openCV interpolation parameter (see https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html)
-        plot_fit        = if True, show plot of polynomial fit
+        xc            = principal center point x coordinate
+        yc            = principal center point y coordinate
+        max_warp      = warping factor for furthest-from-center point in fit
+        pdegree       = degree of polynomial fit to use
+        psq           = if True, fit to a polynomial in r^2 instead of in r
+        interpolation = openCV interpolation parameter 
+                        (see https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html)
+        plot_fit      = if True, show plot of polynomial fit
         """
         super().__init__(n,m)
         self.xc=xc
@@ -144,10 +147,10 @@ class PolyFieldWarp(Warp) :
 
     def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """
-        Read in an image, warp layer-by-layer with remap, and save each warped layer as its own new file in the current directory
-        infname       = name of image file to split, warp, and re-save
-        nlayers       = number of layers in original image file that's opened
-        layers        = list (of integers) of layers to split out, warp, and save (index starting from 1)
+        Read in an image, warp layer-by-layer with remap, and save each warped layer as its own new file
+        infname = name of image file to split, warp, and re-save
+        nlayers = number of layers in original image file that's opened
+        layers  = list (of integers) of layers to split out, warp, and save (index starting from 1)
         """
         #get the reshaped image from the raw file
         img_to_warp = self.getHWLFromRaw(infname,nlayers)
@@ -165,13 +168,13 @@ class PolyFieldWarp(Warp) :
         """
         Warps and returns a single inputted image layer array
         """
-        return correctImageLayerWithWarpFields(layer,self.x_warps,self.y_warps,self.interp)
+        return correct_image_layer_with_warp_fields(layer,self.x_warps,self.y_warps,self.interp)
 
     def warpLayerInPlace(self,layer,dest) :
         """
         Warps a single inputted image layer into the provided destination
         """
-        return correctImageLayerWithWarpFields(layer,self.x_warps,self.y_warps,self.interp,dest)
+        return correct_image_layer_with_warp_fields(layer,self.x_warps,self.y_warps,self.interp,dest)
 
     def writeImageLayer(self,im,rawfilename,layernumber) :
         """
@@ -186,8 +189,8 @@ class PolyFieldWarp(Warp) :
         Write out .bin files of the dx and dy warping fields and also make an image showing them 
         file_stem = the unique identifier to add to the .bin filenames
         """
-        write_image_to_file(self.x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
-        write_image_to_file(self.y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        write_image_to_file(self.x_warps,f'dx_warp_field_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+        write_image_to_file(self.y_warps,f'dy_warp_field_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(self.r_warps)
         ax[0].scatter(self.xc,self.yc,marker='*',color='yellow')
@@ -212,8 +215,10 @@ class PolyFieldWarp(Warp) :
 
     #################### PRIVATE HELPER FUNCTIONS ####################
     
-    #helper function to make and return r_warps (field of warp factors) and x/y_warps (two fields of warp gradient dx/dy)
     def __getWarpFields(self,xc,yc,max_warp,pdegree,psq,plot_fit) :
+        """
+        make and return r_warps (field of warp factors) and x/y_warps (two fields of warp gradient dx/dy)
+        """
         #define distance fields
         grid = np.mgrid[0:self.m,0:self.n]
         rescale=500. #Alex's parameter
@@ -298,10 +303,12 @@ class CameraWarp(Warp) :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,n=1344,m=1004,cx=None,cy=None,fx=40000.,fy=40000.,k1=0.,k2=0.,k3=0.,p1=0.,p2=0.,k4=None,k5=None,k6=None) :
+    def __init__(self,n=1344,m=1004,cx=None,cy=None,fx=40000.,fy=40000.,
+                 k1=0.,k2=0.,k3=0.,p1=0.,p2=0.,k4=None,k5=None,k6=None) :
         """
         Initialize a camera matrix and vector of distortion parameters for a camera warp transformation
-        See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html for explanations of parameters/functions
+        See https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html 
+        for explanations of parameters/functions
         Parameters k3, k4, k5, and k6 are all optional, but if k4 is defined k5 and k6 must be as well.
         cx         = principal center point x coordinate
         cy         = principal center point y coordinate
@@ -358,11 +365,11 @@ class CameraWarp(Warp) :
         elif pname=='k6' :
             return self.k6
         else :
-            raise WarpingError(f'ERROR: parameter name {pname} not recognized!')
+            raise ValueError(f'ERROR: parameter name {pname} not recognized!')
 
     def warpAndWriteImage(self,infname,nlayers=35,layers=[1]) :
         """
-        Read in an image, warp layer-by-layer with undistort, and save each warped layer as its own new file in the current directory
+        Read in an image, warp layer-by-layer with undistort, and save each warped layer as its own new file
         infname       = name of image file to split, warp, and re-save
         nlayers       = number of layers in original image file that's opened
         layers        = list (of integers) of layers to split out, warp, and save (index starting from 1)
@@ -518,7 +525,8 @@ class CameraWarp(Warp) :
         """
         Get the total, dx, and dy warp amount fields
         """
-        map_x, map_y = cv2.initUndistortRectifyMap(self.__cam_matrix, self.__dist_pars, None, self.__cam_matrix, (self.n,self.m), cv2.CV_32FC1)
+        map_x, map_y = cv2.initUndistortRectifyMap(self.__cam_matrix,self.__dist_pars,None,self.__cam_matrix,
+                                                   (self.n,self.m),cv2.CV_32FC1)
         grid = np.mgrid[0:self.m,0:self.n]
         xpos, ypos = grid[1], grid[0]
         x_warps = xpos-map_x
@@ -536,8 +544,10 @@ class CameraWarp(Warp) :
         """
         r_warps, x_warps, y_warps = self.getWarpFields()
         if save_fields :
-            write_image_to_file(x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
-            write_image_to_file(y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',dtype=CONST.OUTPUT_FIELD_DTYPE)
+            write_image_to_file(x_warps,f'{UNIV_CONST.X_WARP_BIN_FILENAME}_{file_stem}.bin',
+                                dtype=CONST.OUTPUT_FIELD_DTYPE)
+            write_image_to_file(y_warps,f'{UNIV_CONST.Y_WARP_BIN_FILENAME}_{file_stem}.bin',
+                                dtype=CONST.OUTPUT_FIELD_DTYPE)
         f,ax = plt.subplots(1,3,figsize=(3*6.4,(self.m/self.n)*6.4))
         pos = ax[0].imshow(r_warps)
         ax[0].scatter(self.cx,self.cy,marker='*',color='yellow')

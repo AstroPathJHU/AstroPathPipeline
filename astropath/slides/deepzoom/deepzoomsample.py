@@ -283,7 +283,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layers, **super().workflowkwargs}
+    return {"layers": self.layers, "tifflayers": None, **super().workflowkwargs}
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, root, informdataroot, deepzoomroot, layers, checkimages=False, **otherworkflowkwargs):

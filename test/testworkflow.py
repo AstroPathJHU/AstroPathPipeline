@@ -42,13 +42,13 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
     testfolder = thisfolder/"test_for_jenkins"/"workflow"
     root = testfolder/"Clinical_Specimen_0"
     datafolder = thisfolder/"data"
-    root2 = datafolder/"flatw"
+    shardedim3root = datafolder/"flatw"
     zoomroot = testfolder/"zoom"
     deepzoomroot = testfolder/"deepzoom"
     SlideID = "M21_1"
     (root/SlideID).mkdir(parents=True, exist_ok=True)
     selectrectangles = 1, 17, 18, 23, 40
-    args = [os.fspath(root), os.fspath(root2), "--im3root", os.fspath(datafolder), "--informdataroot", os.fspath(datafolder), "--zoomroot", os.fspath(zoomroot), "--deepzoomroot", os.fspath(deepzoomroot), "--selectrectangles", *(str(_) for _ in selectrectangles), "--layers", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--njobs", "3"]
+    args = [os.fspath(root), "--shardedim3root", os.fspath(shardedim3root), "--im3root", os.fspath(datafolder), "--informdataroot", os.fspath(datafolder), "--zoomroot", os.fspath(zoomroot), "--deepzoomroot", os.fspath(deepzoomroot), "--selectrectangles", *(str(_) for _ in selectrectangles), "--layers", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--njobs", "3"]
     try:
       Workflow.runfromargumentparser(args=args)
       assert (root/"dbload"/"project0_loadfiles.csv").exists()

@@ -1,19 +1,19 @@
 #imports
-from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohort
-from astropath.shared.sample import ReadRectanglesIm3FromXML
-from astropath.hpfs.flatfield.utilities import FieldLog
-from astropath.hpfs.flatfield.config import CONST
-from astropath.shared.samplemetadata import MetadataSummary
-from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
-from astropath.utilities.config import CONST as UNIV_CONST
-from .testbase import compare_two_csv_files, TestBaseSaveOutput
-import numpy as np
 import os, pathlib, shutil
+import numpy as np
+from astropath.utilities.config import CONST as UNIV_CONST
+from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
+from astropath.shared.samplemetadata import MetadataSummary
+from astropath.shared.sample import ReadRectanglesIm3FromXML
+from astropath.hpfs.flatfield.config import CONST
+from astropath.hpfs.flatfield.utilities import FieldLog
+from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohort
+from .testbase import compare_two_csv_files, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
 root = folder/'data'
-root2 = folder/'data'/'raw'
+shardedim3root = folder/'data'/'raw'
 et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
 slideID = 'M21_1'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
@@ -59,20 +59,21 @@ class TestAppliedFlatfieldCohort(TestBaseSaveOutput) :
         """
         super().setUp()
         self.__files_to_remove = []
-        sample = DummySample(root,root2,slideID)
-        existing_filepaths = [root2/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
+        sample = DummySample(root,shardedim3root,slideID)
+        existing_filepaths = [shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
         for ir,r in enumerate(sample.rectangles) :
-            thisrfilepath = root2/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)
+            thisrfilepath = shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)
             if not thisrfilepath.is_file() :
                 shutil.copy(existing_filepaths[ir%len(existing_filepaths)],thisrfilepath)
                 self.__files_to_remove.append(thisrfilepath)
 
     def test_applied_flatfield_cohort(self) :
         #run the cohort
-        args = [os.fspath(root),os.fspath(root2),os.fspath(folder/'test_for_jenkins'/'applied_flatfield_cohort'),
-                '--exposure_time_offset_file',os.fspath(et_offset_file),
+        args = [os.fspath(root),os.fspath(folder/'test_for_jenkins'/'applied_flatfield_cohort'),
+                '--shardedim3root',os.fspath(shardedim3root),
+                '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--sampleregex',slideID,
-                '--image_set_split','sequential',
+                '--image-set-split','sequential',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')

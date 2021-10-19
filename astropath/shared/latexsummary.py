@@ -1,6 +1,6 @@
 #imports 
+import os, pathlib, subprocess
 from ..utilities.misc import cd
-import pathlib, subprocess
 
 class LatexSummaryBase :
     """
@@ -47,7 +47,7 @@ class LatexSummaryBase :
         If the compilation fails for any reason then remove the aux/log files and put the .tex file in some specified location
         Returns 0 if the compilation was successful and 1 otherwise
         """
-        cmd = f'pdflatex {self.__tex_filename}'
+        cmd = ['pdflatex',os.fspath(self.__tex_filename)]
         with cd(self.__output_dir) :
             try :
                 subprocess.check_call(cmd)
@@ -136,20 +136,20 @@ class LatexSummaryBase :
     @property
     def preamble(self) :
         lines = []
-        lines.append('\\documentclass[letterpaper,11pt]{article}\n')
-        lines.append('\\usepackage{graphicx}\n')
-        lines.append('\\usepackage[left=10mm,top=10mm,right=10mm,bottom=20mm]{geometry}\n')
-        lines.append('\\renewcommand{\\familydefault}{\\sfdefault}\n')
+        lines.append('\\documentclass[letterpaper,11pt]{article}')
+        lines.append('\\usepackage{graphicx}')
+        lines.append('\\usepackage[left=10mm,top=10mm,right=10mm,bottom=20mm]{geometry}')
+        lines.append('\\renewcommand{\\familydefault}{\\sfdefault}')
         lines.append('\n')
         return lines
 
     @property
     def title(self) :
         lines = []
-        lines.append(f'\\title{{{self.__title}}}\n')
-        lines.append('\\date{\\today}\n')
-        lines.append('\\begin{document}\n')
-        lines.append('\\maketitle\n')
+        lines.append(f'\\title{{{self.__title}}}')
+        lines.append('\\date{\\today}')
+        lines.append('\\begin{document}')
+        lines.append('\\maketitle')
         lines.append('\n')
         return lines
 

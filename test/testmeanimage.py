@@ -1,15 +1,14 @@
 #imports
-#from astropath.hpfs.flatfield.meanimagesample import MeanImageSample
-from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
-from astropath.hpfs.flatfield.utilities import FieldLog, RectangleThresholdTableEntry, ThresholdTableEntry
-from astropath.hpfs.flatfield.config import CONST
-from astropath.hpfs.image_masking.utilities import LabelledMaskRegion
-from astropath.shared.samplemetadata import MetadataSummary
-from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
-from astropath.utilities.config import CONST as UNIV_CONST
-from .testbase import compare_two_csv_files, TestBaseSaveOutput
-import numpy as np
 import os, pathlib, shutil
+import numpy as np
+from astropath.utilities.config import CONST as UNIV_CONST
+from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
+from astropath.shared.samplemetadata import MetadataSummary
+from astropath.shared.image_masking.utilities import LabelledMaskRegion
+from astropath.hpfs.flatfield.config import CONST
+from astropath.hpfs.flatfield.utilities import FieldLog, RectangleThresholdTableEntry, ThresholdTableEntry
+from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
+from .testbase import compare_two_csv_files, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
@@ -29,11 +28,11 @@ class TestMeanImage(TestBaseSaveOutput) :
 
     @property
     def meanimage_dir(self) :
-        return folder/'data'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME
+        return folder/'data'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
 
     @property
     def masking_dir(self) :
-        return folder/'test_for_jenkins'/'mean_image'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME
+        return folder/'test_for_jenkins'/'mean_image'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME
 
     @property
     def outputfilenames(self) :
@@ -60,11 +59,12 @@ class TestMeanImage(TestBaseSaveOutput) :
     def test_mean_image(self,n_threads=1) :
         #run the MeanImageCohort selecting just the single sample with raw files
         root = folder/'data'
-        root2 = folder/'data'/'raw'
+        shardedim3root = folder/'data'/'raw'
         et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
-        (folder/'test_for_jenkins'/'mean_image'/SlideID/'im3'/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME).mkdir(parents=True,exist_ok=True)
-        args = [os.fspath(root),os.fspath(root2),
-                '--exposure_time_offset_file',os.fspath(et_offset_file),
+        (folder/'test_for_jenkins'/'mean_image'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME).mkdir(parents=True,exist_ok=True)
+        args = [os.fspath(root),
+                '--shardedim3root',os.fspath(shardedim3root),
+                '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--njobs',str(n_threads),
                 '--sampleregex',SlideID,
                 '--maskroot',os.fspath(folder/'test_for_jenkins'/'mean_image'),
@@ -100,7 +100,20 @@ class TestMeanImage(TestBaseSaveOutput) :
             raise
         else :
             self.removeoutput()
-            shutil.rmtree(self.meanimage_dir/(CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')))
-            shutil.rmtree(self.meanimage_dir/(CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')))
+            tpdf = self.meanimage_dir/CONST.THRESHOLDING_SUMMARY_PDF_FILENAME
+            if tpdf.is_file() :
+                tpdf.unlink()
+            td = self.meanimage_dir/(CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots'))
+            if td.is_dir() :
+                shutil.rmtree(td)
+            mspdf = self.masking_dir.parent/f'{SlideID}-{CONST.MASKING_SUMMARY_PDF_FILENAME}'
+            if mspdf.is_file() :
+                mspdf.unlink()
+            mispdf = self.meanimage_dir/CONST.MEANIMAGE_SUMMARY_PDF_FILENAME
+            if mispdf.is_file() :
+                mispdf.unlink()
+            misd = self.meanimage_dir/(CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots'))
+            if misd.is_dir() :
+                shutil.rmtree(misd)
             shutil.rmtree(self.masking_dir)
 

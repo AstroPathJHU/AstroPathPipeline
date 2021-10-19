@@ -1,9 +1,14 @@
-import collections, contextlib, contextlib2, cv2, more_itertools, numpy as np, sklearn.decomposition
+import collections, contextlib, cv2, more_itertools, numpy as np, sklearn.decomposition
+try:
+  from contextlib import nullcontext
+except ImportError:
+  from contextlib2 import nullcontext
 
 from ...shared.logging import dummylogger
 from ...shared.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleWithImageBase, RectangleReadIm3MultiLayer
 from ...shared.rectangletransformation import RectangleTransformationBase
 from ...utilities import units
+from ...utilities.dataclasses import MetaDataAnnotation
 from .flatfield import meanimage
 
 class ApplyMeanImage(RectangleTransformationBase):
@@ -79,7 +84,7 @@ class AlignmentRectangleBase(RectangleWithImageBase):
     return self.__meanimagetransformation.meanimage
 
   def using_image_before_flatfield(self):
-    if self.__meanimagetransformation is None: return contextlib2.nullcontext()
+    if self.__meanimagetransformation is None: return nullcontext()
     return self.using_image(self.__meanimagetransformationindex)
   @property
   def image_before_flatfield(self):
@@ -101,12 +106,11 @@ class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideIma
   """
   Alignment rectangle that can be provided with an image (used for warping)
   """
-  def __post_init__(self, *args, layer, **kwargs):
-    self.__layer = layer
-    super().__post_init__(*args, **kwargs)
   @property
-  def layer(self):
-    return self.__layer
+  def layer(self): return self.__layer
+  @layer.setter
+  def layer(self, layer): self.__layer = layer
+  layer: int = MetaDataAnnotation(layer, includeintable=False, use_default=False)
 
 class ConsolidateBroadbandFilters(RectangleTransformationBase):
   """
@@ -169,7 +173,7 @@ class RectanglePCAByBroadbandFilter(RectangleFromOtherRectangle):
     self.__pcabroadbandtransformation.setbroadbandfilters(broadbandfilters=self.originalrectangle.broadbandfilters)
 
   def setrectanglelist(self, rectanglelist): pass
-  def using_image_before_flatfield(self): return contextlib2.nullcontext()
+  def using_image_before_flatfield(self): return nullcontext()
   @property
   def layers(self):
     return self.originalrectangle.layers

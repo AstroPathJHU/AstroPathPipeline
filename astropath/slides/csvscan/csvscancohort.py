@@ -1,4 +1,5 @@
-import contextlib, datetime, job_lock, re
+import contextlib, datetime, job_lock, os, re
+from ...utilities.config import CONST as UNIV_CONST
 from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
 from ...shared.samplemetadata import SampleDef
@@ -21,10 +22,10 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   def samp(self):
     return SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
 
-  def inputfiles(self, *, checkcsvs=True):
+  def inputfiles(self, **kwargs):
     return []  #will be checked in run()
 
-  def runcsvscan(self, *, checkcsvs=True):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
     toload = []
     batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
@@ -60,7 +61,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     ctrlsamplescsv = self.root/"Ctrl"/f"project{self.Project}_ctrlsamples.csv"
     try:
       controlcsvs = {
-        self.root/sample.SlideID/"dbload"/f"{sample.SlideID}_control.csv"
+        self.root/sample.SlideID/UNIV_CONST.DBLOAD_DIR_NAME/f"{sample.SlideID}_control.csv"
         for sample in self.readtable(ctrlsamplescsv, ControlSample)
       }
     except IOError:
@@ -82,6 +83,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
         try:
           optionalcsvs.remove(csv)
         except KeyError:
+          if any(regex.match(os.fspath(csv.relative_to(self.root))) for regex in ignorecsvs): continue
           unknowncsvs.add(csv)
           continue
 
@@ -147,8 +149,8 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   def getlogfile(cls, *, logroot, **workflowkwargs):
     return logroot/"logfiles"/f"{cls.logmodule()}.log"
   def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
-    self.mainlog.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(self.mainlog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, **kwargs)
+    lockfiles = [mainlog.with_suffix(".lock") for mainlog in self.mainlogs]
+    return job_lock.MultiJobLock(*lockfiles, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
   @classmethod
   def usegloballogger(cls): return True
@@ -159,7 +161,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
 
   @classmethod
   def getoutputfiles(cls, *, dbloadroot, Project, **workflowkwargs):
-    return [dbloadroot/"dbload"/f"project{Project}_loadfiles.csv"]
+    return [dbloadroot/UNIV_CONST.DBLOAD_DIR_NAME/f"project{Project}_loadfiles.csv"]
 
   @property
   def workflowkwargs(self):
@@ -203,6 +205,8 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         "selectrectangles": False,
         "uselogfiles": True,
         "xmlfolders": False,
+        "moremainlogroots": True,
+        "skipstartfinish": True,
       }[k]
     }
 

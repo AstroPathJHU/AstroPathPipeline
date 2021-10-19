@@ -31,12 +31,6 @@ pipeline {
       }
     }
 
-    stage('setup dbload folder') {
-      steps {
-        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
-      }
-    }
-
     stage('run tests') {
       parallel {
         stage('console scripts and documents') {
@@ -61,20 +55,17 @@ pipeline {
           }
         }
 
+        stage('prepdb') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
+          }
+        }
+
         stage('alignment') {
           stages {
             stage('test alignment') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
-              }
-            }
-          }
-        }
-        stage('alignment documents') {
-          stages {
-            stage('align') {
-              steps {
-                sh 'aligncohort test/data test/data/flatw --sampleregex M21_1 --debug'
               }
             }
             stage('alignment documents') {
@@ -161,9 +152,9 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
               }
             }
-            stage('test warpfitter') {
+            stage('test warpingcohort') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpfitter'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpingcohort'
               }
             }
           }
@@ -185,40 +176,24 @@ pipeline {
           }
         }
 
-	stage('flatfield cohorts') {
-	  stages {
-	    stage('batch flatfield cohort') {
-	      steps {
-	        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbatchflatfieldcohort'
-	      }
-	    }
-	    stage('applied flatfield cohort') {
-	      steps {
-	        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testappliedflatfieldcohort'
-	      }
-	    }
-	  }
-	}
-
-        stage('exposure time correction') {
+        stage('flatfield cohorts') {
           stages {
-            stage('test exposuretime') {
+            stage('batch flatfield multicohort') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testexposuretimefit'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testbatchflatfieldmulticohort'
               }
             }
-            stage('exposuretime documents') {
+            stage('applied flatfield cohort') {
               steps {
-                sh 'cd documents/exposuretime; pdflatex exposuretime_documentation.tex; bibtex exposuretime_documentation; pdflatex exposuretime_documentation.tex; pdflatex exposuretime_documentation.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/exposuretime/exposuretime_documentation.log'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testappliedflatfieldcohort'
               }
             }
           }
         }
 
-        stage('test image correction') {
+        stage('test applyflatw') {
           steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testimagecorrection'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testapplyflatw'
           }
         }
 
@@ -244,7 +219,6 @@ pipeline {
       archiveArtifacts artifacts: 'documents/alignment/alignment.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/annowarp/annowarp.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documents/exposuretime/exposuretime_documentation.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/layerPCA/layerPCA.pdf', fingerprint: true
       archiveArtifacts artifacts: 'test/test_for_jenkins/**', fingerprint: true, allowEmptyArchive: true
     }

@@ -1,4 +1,5 @@
-import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
+import collections, contextlib, csv, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
+import reikna as rk
 if sys.platform != "cygwin": import psutil
 
 def covariance_matrix(*args, **kwargs):
@@ -41,6 +42,25 @@ def cd(dir):
   finally:
     os.chdir(cdminus)
 
+def crop_and_overwrite_image(im_path,border=0.03) :
+  """
+  small helper function to crop white border out of an image
+  """
+  im = cv2.imread(im_path)
+  y_border = int(im.shape[0]*(border/2))
+  x_border = int(im.shape[1]*(border/2))
+  min_y = 0; max_y = im.shape[0]
+  min_x = 0; max_x = im.shape[1]
+  while np.min(im[min_y:min_y+y_border,:,:])==255 :
+      min_y+=1
+  while np.min(im[max_y-y_border:max_y,:,:])==255 :
+      max_y-=1
+  while np.min(im[:,min_x:min_x+x_border,:])==255 :
+      min_x+=1
+  while np.min(im[:,max_x-x_border:max_x,:])==255 :
+      max_x-=1
+  cv2.imwrite(im_path,im[min_y:max_y+1,min_x:max_x+1,:])
+
 def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
   """
   Save the current figure in the given pyplot instance with a given name and crop it. 
@@ -48,7 +68,7 @@ def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
   """
   if save_dirpath is not None :
     if not save_dirpath.is_dir() :
-      save_dirpath.mkdir()
+      save_dirpath.mkdir(parents=True)
     with cd(save_dirpath) :
       pyplot_inst.savefig(figname)
       pyplot_inst.close()
@@ -108,39 +128,11 @@ def weightedstd(*args, **kwargs):
   """
   return weightedvariance(*args, **kwargs) ** 0.5
 
-def crop_and_overwrite_image(im_path,border=0.03) :
-  """
-  small helper function to crop white border out of an image
-  """
-  im = cv2.imread(im_path)
-  y_border = int(im.shape[0]*(border/2))
-  x_border = int(im.shape[1]*(border/2))
-  min_y = 0; max_y = im.shape[0]
-  min_x = 0; max_x = im.shape[1]
-  while np.min(im[min_y:min_y+y_border,:,:])==255 :
-      min_y+=1
-  while np.min(im[max_y-y_border:max_y,:,:])==255 :
-      max_y-=1
-  while np.min(im[:,min_x:min_x+x_border,:])==255 :
-      min_x+=1
-  while np.min(im[:,max_x-x_border:max_x,:])==255 :
-      max_x-=1
-  cv2.imwrite(im_path,im[min_y:max_y+1,min_x:max_x+1,:])
-
 def split_csv_to_list(value) :
   """
   parser callback function to split a string of comma-separated values into a list
   """
   return value.split(',')
-
-def split_csv_to_list_of_ints(value) :
-  """
-  parser callback function to split a string of comma-separated values into a list of integers
-  """
-  try :
-      return [int(v) for v in value.split(',')]
-  except ValueError :
-      raise ValueError(f'Option value {value} is expected to be a comma-separated list of integers!')
 
 def split_csv_to_list_of_floats(value) :
   """
@@ -151,26 +143,26 @@ def split_csv_to_list_of_floats(value) :
   except ValueError :
       raise ValueError(f'Option value {value} is expected to be a comma-separated list of floats!')
 
-def split_csv_to_dict_of_floats(value) :
+def dict_of_init_par_values_callback(value) :
   """
-  parser callback function to split a string of comma-separated name=value pairs into a dictionary
+  argument parser callback to return a dictionary of fit parameter initial values
   """
   try :
-    pairs = value.split(',')
+    pairs = value.split()
     return_dict = {}
     for pair in pairs :
       name,value = pair.split('=')
       return_dict[name] = float(value)
     return return_dict
   except Exception :
-      raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=float pairs!')
+      raise ValueError(f'Option value {value} is expected to be a space-separated string of name=float pairs!')
 
-def split_csv_to_dict_of_bounds(value) :
+def dict_of_par_bounds_callback(value) :
   """
-  helper function to split a string of comma-separated name=(low bound:high bound) pairs into a dictionary
+  argument parser callback to return a dictionary of fit parameter bounds
   """
   try :
-    pairs = value.split(',')
+    pairs = value.split()
     return_dict = {}
     for pair in pairs :
       name,bounds = pair.split('=')
@@ -179,39 +171,6 @@ def split_csv_to_dict_of_bounds(value) :
     return return_dict
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
-
-def addCommonArgumentsToParser(parser,positional_args=True,et_correction=True,flatfielding=True,warping=True) :
-  """
-  helper function to mutate an argument parser for some very generic options
-  """
-  #positional arguments
-  if positional_args :
-    parser.add_argument('rawfile_top_dir',  help='Path to the directory containing the "[slideID]/*.Data.dat" files')
-    parser.add_argument('root_dir',         help='Path to the Clinical_Specimen directory with info for the given slide')
-    parser.add_argument('workingdir',       help='Path to the working directory (will be created if necessary)')
-  #mutually exclusive group for how to handle the exposure time correction
-  if et_correction :
-    et_correction_group = parser.add_mutually_exclusive_group(required=True)
-    et_correction_group.add_argument('--exposure_time_offset_file',
-                                     help="""Path to the .csv file specifying layer-dependent exposure time correction offsets for the slides in question
-                                    [use this argument to apply corrections for differences in image exposure time]""")
-    et_correction_group.add_argument('--skip_exposure_time_correction', action='store_true',
-                                     help='Add this flag to entirely skip correcting image flux for exposure time differences')
-  #mutually exclusive group for how to handle the flatfielding
-  if flatfielding :
-    flatfield_group = parser.add_mutually_exclusive_group(required=True)
-    flatfield_group.add_argument('--flatfield_file',
-                                 help='Path to the flatfield.bin file that should be applied to the files in this slide')
-    flatfield_group.add_argument('--skip_flatfielding', action='store_true',
-                                 help='Add this flag to entirely skip flatfield corrections')
-  #mutually exclusive group for how to handle the warping corrections
-  if warping :
-    warping_group = parser.add_mutually_exclusive_group(required=True)
-    warping_group.add_argument('--warp_def',   
-                               help="""Path to the weighted average fit result file of the warp to apply, 
-                                    or to the directory with the warp's dx and dy shift fields""")
-    warping_group.add_argument('--skip_warping', action='store_true',
-                               help='Add this flag to entirely skip warping corrections')
 
 class PILmaximagepixels(contextlib.AbstractContextManager):
   """
@@ -448,3 +407,80 @@ def sorted_eig(*args, **kwargs):
   val, vec = np.linalg.eig(*args, **kwargs)
   order = np.argsort(val)[::-1]
   return val[order], vec[:,order]
+
+def get_GPU_thread(interactive) :
+  """
+  Create and return a Reikna Thread object to use for running some computations on the GPU
+  interactive : if True (and some GPU is available), user will be given the option to choose a device 
+  """
+  api = rk.cluda.ocl_api()
+  #return a thread from the API
+  return api.Thread.create(interactive=interactive)
+
+@contextlib.contextmanager
+def field_size_limit_context(limit):
+  if limit is None: yield; return
+  oldlimit = csv.field_size_limit()
+  try:
+    csv.field_size_limit(limit)
+    yield
+  finally:
+    csv.field_size_limit(oldlimit)
+
+def vips_format_dtype(format_or_dtype):
+  """
+  https://libvips.github.io/pyvips/intro.html#numpy-and-pil
+  """
+  result = {
+    'uchar': np.uint8,
+    'char': np.int8,
+    'ushort': np.uint16,
+    'short': np.int16,
+    'uint': np.uint32,
+    'int': np.int32,
+    'float': np.float32,
+    'double': np.float64,
+    'complex': np.complex64,
+    'dpcomplex': np.complex128,
+  }
+  for k, v in list(result.items()):
+    result[v] = k
+    result[np.dtype(v)] = k
+  return result[format_or_dtype]
+
+def vips_image_to_array(img, *, singlelayer=True):
+  """
+  https://libvips.github.io/pyvips/intro.html#numpy-and-pil
+  """
+  shape = [img.height, img.width, img.bands]
+  if singlelayer:
+    if shape[-1] != 1: raise ValueError("Have to write singlelayer=False if the image has more than one channel")
+    del shape[-1]
+  return np.ndarray(
+    buffer=img.write_to_memory(),
+    dtype=vips_format_dtype(img.format),
+    shape=shape,
+  )
+
+def array_to_vips_image(array):
+  """
+  https://libvips.github.io/pyvips/intro.html#numpy-and-pil
+  """
+  try:
+    import pyvips
+  except ImportError:
+    raise ImportError("Please pip install pyvips to use this functionality")
+
+  if len(array.shape) == 2:
+    height, width = array.shape
+    bands = 1
+  else:
+    height, width, bands = array.shape
+
+  return pyvips.Image.new_from_memory(
+    array,
+    format=vips_format_dtype(array.dtype),
+    width=width,
+    height=height,
+    bands=bands,
+  )

@@ -24,20 +24,31 @@ to set up with Anaconda.
 
 Our recommendation is to download a [Miniconda distribution](https://docs.conda.io/en/latest/miniconda.html).
 Once you install it, open the Anaconda powershell prompt and create an environment
-```
+```pwsh
 conda create --name astropath python=3.8
 conda activate astropath
 ```
+You should activate the `astropath` environment in every new session before
+installing packages (whether through conda or pip) or before running code.
 
 At least the following dependencies should be installed through Anaconda.
+```pwsh
+conda install -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git
 ```
-conda install -c conda-forge pyopencl gdal cvxpy
-```
+(`pyopencl`, `gdal`, and `cvxpy` have C++ dependencies.
+`numba` requires a specific numpy version, and installing it here
+avoids unpleasant interactions between conda and pip.
+`ecos!=2.0.8` is a workaround for a [bug](https://github.com/embotech/ecos/issues/201)
+in the ecos distribution on conda.
+`git` may or may not be needed, depending if you
+have it installed separately on your computer.)
+
 Many of the other dependencies can also be installed through Anaconda if you want,
 but we have found that they work just as well when installing with pip.
 
 #### 2.2.1.2. Code installation
-To install the code, first check out the repository, enter its directory, and run
+To install the code, first check out the repository, enter its directory,
+activate the conda envorinment if you are using conda, and run
 ```bash
 pip install .
 ```
@@ -74,20 +85,21 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
    - [4.4. Scanning Instructions](astropath/scans/docs/ScanningInstructionsIntro.md)
    - [4.5. AstroPath Processing Directory and Initalizing Projects](astropath/scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md)
    - [4.6. Directory Organization](astropath/scans/docs/DirectoryOrganization.md)
+   - [4.7. AstroIDGen](astropath/scans/astroidgen#47-astroid-generation-v0000001 "Title")
+   - [4.8. Transfer Daemon](astropath/scans/transferdaemon#48-transfer-daemon "Title")
 - [5. HPF Processing (hpfs)](astropath/hpfs#5-hpf-processing-hpfs "Title")
   - [5.1. Description](astropath/hpfs#51-description "Title")
   - [5.2. Contents](astropath/hpfs#52-contents "Title")
   - [5.3. Instructions](astropath/hpfs/docs/Instructions.md)
   - [5.4. Workflow Overview](astropath/hpfs/docs/WorkflowOverview.md)
-  - [5.5. AstroIDGen](astropath/hpfs/astroidgen#55-astroid-generation-v0000001 "Title")
-  - [5.6. Transfer Daemon](astropath/hpfs/transferdaemon#56-transfer-daemon "Title")
-  - [5.7. Meanimages](astropath/hpfs/meanimages#57-meanimages "Title")
-  - [5.8. Flatw](astropath/hpfs/flatw#58-flatw "Title")
+  - [5.5. Flatfield](astropath/hpfs/flatfield#55-flatfield "Title")
+  - [5.6 Warping](astropath/hpfs/warping#56-warping "Title")
+  - [5.7. Image Correction](astropath/hpfs/imagecorrection#57-image-correction "Title")
+  - [5.8. VMinForm](astropath/hpfs/vminform#58-vminform "Title")
   - [5.9. Mergeloop](astropath/hpfs/mergeloop#59-mergeloop "Title")
-  - [5.10. Inform Processing](astropath/hpfs/inform_processing#510-inform-processing "Title")
-  - [5.11. Segmaps](astropath/hpfs/segmaps#511-seg-maps "Title")
-  - [5.12. Create & Transfer Annotations](astropath/hpfs/transferanno#512-transfer-annotations "Title")
-  - [5.13. Cleanup](astropath/hpfs/cleanup#513-clean-up)
+  - [5.10. Segmaps](astropath/hpfs/segmaps#510-seg-maps "Title")
+  - [5.11. Create & Transfer Annotations](astropath/hpfs/transferanno#511-transfer-annotations "Title")
+  - [5.12. Validate Data](astropath/hpfs/validatedata#512-validate-data)
  - [6. Slide Processing (slides)](astropath/slides/#6-slide-processing)
    - [6.1 Description](astropath/slides/#61-description)
    - [6.2 Prepdb](astropath/slides/prepdb/#62-prepdb)

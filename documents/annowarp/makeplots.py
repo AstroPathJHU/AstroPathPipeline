@@ -20,7 +20,9 @@ def makeplots():
         shutil.copy(filename, dbloadroot/samp/"dbload")
     from ...test.testzoom import gunzipreference
     gunzipreference(samp)
-    A = AnnoWarpSampleInformTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=dbloadroot)
+    A = AnnoWarpSampleInformTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=dbloadroot, annotationsynonyms={"Good tisue": "Good tissue"})
+    #annotationsynonyms is in case of an unlucky collision in the jenkins tests
+    #where this runs at the same time as M206 in prepdb
     warpedregions = A.readtable(A.regionscsv, Region)
 
     with A.using_images() as (wsi, fqptiff):

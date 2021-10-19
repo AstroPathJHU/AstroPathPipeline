@@ -1,16 +1,18 @@
-import methodtools, numpy as np, PIL, skimage
+import argparse, methodtools, numpy as np, PIL, skimage
 from ...shared.argumentparser import DbloadArgumentParser, XMLPolygonReaderArgumentParser
 from ...shared.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
 from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader, XMLPolygonReader
 from ...utilities import units
+from ...utilities.config import CONST as UNIV_CONST
 
 class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-annotations", action="store_true", help="do not check the annotations for validity and do not write the annotations, vertices, and regions csvs (they will be written later, in the annowarp step)")
+    p.add_argument("--skip-qptiff", action="store_true", help=argparse.SUPPRESS)
     return p
 
   @classmethod
@@ -18,6 +20,7 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
     return {
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "skipannotations": parsed_args_dict.pop("skip_annotations"),
+      "_skipqptiff": parsed_args_dict.pop("skip_qptiff"),
     }
 
 class PrepDbSampleBase(XMLLayoutReader, XMLPolygonReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
@@ -74,7 +77,7 @@ class PrepDbSampleBase(XMLLayoutReader, XMLPolygonReader, RectangleOverlapCollec
   def vertices(self): return self.getXMLpolygonannotations()[2]
 
   @property
-  def jpgfilename(self): return self.dbload/(self.SlideID+"_qptiff.jpg")
+  def jpgfilename(self): return self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)
 
   @methodtools.lru_cache()
   def getqptiffcsvandimage(self):
@@ -141,9 +144,11 @@ class PrepDbSampleBase(XMLLayoutReader, XMLPolygonReader, RectangleOverlapCollec
     return self.getqptiffcsv()[0].YResolution
   @property
   def qpscale(self):
+    if not self.qptifffilename.exists(): return 1
     return self.getqptiffcsv()[0].qpscale
   @property
   def apscale(self):
+    if not self.qptifffilename.exists(): return 1
     return self.getqptiffcsv()[0].apscale
 
   @property
@@ -315,16 +320,19 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
     self.logger.info("write constants")
     self.writecsv("constants", self.getconstants())
 
-  def writemetadata(self, *, skipannotations=False):
+  def writemetadata(self, *, skipannotations=False, _skipqptiff=False):
     self.dbload.mkdir(parents=True, exist_ok=True)
     self.writerectangles()
     self.writeexposures()
     self.writeoverlaps()
     self.writebatch()
-    self.writeconstants()
     self.writeglobals()
-    self.writeqptiffcsv()
-    self.writeqptiffjpg()
+    if _skipqptiff:
+      self.logger.warningglobal("as requested, not writing the qptiff info.  subsequent steps that rely on constants.csv may not work.")
+    else:
+      self.writeconstants()
+      self.writeqptiffcsv()
+      self.writeqptiffjpg()
     if skipannotations:
       self.logger.warningglobal("as requested, not checking annotations. the csvs will be written in the annowarp step.")
     else:
@@ -334,14 +342,22 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
 
   run = writemetadata
 
-  def inputfiles(self, *, skipannotations=False, **kwargs):
+  def inputfiles(self, *, skipannotations=False, _skipqptiff=False, **kwargs):
     result = super().inputfiles(**kwargs) + [
       self.annotationsxmlfile,
       self.fullxmlfile,
       self.parametersxmlfile,
-      self.qptifffilename,
-      self.scanfolder/"MSI",
     ]
+    imagefolder = self.scanfolder/"MSI"
+    if not imagefolder.exists():
+      imagefolder = self.scanfolder/"flatw"
+    result += [
+      imagefolder,
+    ]
+    if not _skipqptiff:
+      result += [
+        self.qptifffilename,
+      ]
     if not skipannotations:
       result += [
         self.annotationspolygonsxmlfile,
@@ -349,17 +365,23 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
     return result
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, dbloadroot, skipannotations=False, **otherkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+  def getoutputfiles(cls, SlideID, *, dbloadroot, skipannotations=False, _skipqptiff=False, **otherkwargs):
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [
       dbload/f"{SlideID}_batch.csv",
-      dbload/f"{SlideID}_constants.csv",
       dbload/f"{SlideID}_exposures.csv",
       dbload/f"{SlideID}_overlap.csv",
-      dbload/f"{SlideID}_qptiff.csv",
-      dbload/f"{SlideID}_qptiff.jpg",
       dbload/f"{SlideID}_rect.csv",
-    ]
+    ] + ([
+      dbload/f"{SlideID}_constants.csv",
+      dbload/f"{SlideID}_qptiff.csv",
+      dbload/f"{SlideID}{UNIV_CONST.QPTIFF_SUFFIX}",
+    ] if not _skipqptiff else []) + ([
+      dbload/f"{SlideID}_annotations.csv",
+      dbload/f"{SlideID}_regions.csv",
+      dbload/f"{SlideID}_vertices.csv",
+    ] if not skipannotations else [])
+
     #do not include annotations, regions, and vertices
     #they get rewritten anyway in annowarp, the only reason
     #to write them here is to check the annotation validity

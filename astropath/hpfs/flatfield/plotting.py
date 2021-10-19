@@ -1,12 +1,14 @@
 #imports
-from .utilities import RectangleThresholdTableEntry
-from ..image_masking.config import CONST as MASKING_CONST
-from ...utilities.tableio import readtable
-from ...utilities.misc import save_figure_in_dir
-from ...utilities.config import CONST as UNIV_CONST
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+from matplotlib.patches import Rectangle
+from ...shared.image_masking.config import CONST as MASKING_CONST
+from ...utilities.tableio import readtable
+from ...utilities.misc import save_figure_in_dir
+from ...utilities.config import CONST as UNIV_CONST
+from .utilities import RectangleThresholdTableEntry
 
 def plot_tissue_edge_rectangle_locations(all_rects,edge_rects,root_dir,slideID,save_dirpath=None) :
     """
@@ -27,7 +29,8 @@ def plot_tissue_edge_rectangle_locations(all_rects,edge_rects,root_dir,slideID,s
     edge_rect_ys = [r.y for r in edge_rects]
     bulk_rect_xs = [r.x for r in all_rects if r not in edge_rects]
     bulk_rect_ys = [r.y for r in all_rects if r not in edge_rects]
-    has_qptiff = (root_dir / f'{slideID}' / f'{UNIV_CONST.DBLOAD_DIR_NAME}' / f'{slideID}{UNIV_CONST.QPTIFF_SUFFIX}').is_file()
+    qptiff_fp = root_dir/f'{slideID}'/f'{UNIV_CONST.DBLOAD_DIR_NAME}'/f'{slideID}{UNIV_CONST.QPTIFF_SUFFIX}'
+    has_qptiff = qptiff_fp.is_file()
     if has_qptiff :
         f,(ax1,ax2) = plt.subplots(1,2,figsize=(2*SINGLE_FIG_SIZE[0],SINGLE_FIG_SIZE[1]))
     else :
@@ -40,24 +43,25 @@ def plot_tissue_edge_rectangle_locations(all_rects,edge_rects,root_dir,slideID,s
     ax1.set_xlabel('x position',fontsize=FONTSIZE)
     ax1.set_ylabel('y position',fontsize=FONTSIZE)
     if has_qptiff :
-        ax2.imshow(mpimg.imread(root_dir / f'{slideID}' / f'{UNIV_CONST.DBLOAD_DIR_NAME}' / f'{slideID}{UNIV_CONST.QPTIFF_SUFFIX}'))
+        ax2.imshow(mpimg.imread(qptiff_fp))
         ax2.set_title('reference qptiff',fontsize=FONTSIZE)
     save_figure_in_dir(plt,FIGURE_NAME,save_dirpath)
 
-def plot_image_layer_thresholds_with_histograms(image_background_thresholds_by_layer,slide_thresholds,hists_by_layer,save_dirpath=None) :
+def plot_image_layer_thresholds_with_histograms(image_bgts_by_layer,slide_thresholds,hists_by_layer,
+                                                save_dirpath=None) :
     """
     Make and save plots of a slide's distributions of background thresholds found/overall best thresholds 
     and comparisons with the pixel histograms, one plot for every image layer
     
-    image_background_thresholds_by_layer = an array of all background thresholds found in every image layer 
+    image_bgts_by_layer = an array of all background thresholds found in every image layer 
     slide_thresholds = a list of the optimal thresholds found for the slide by layer
     hists_by_layer = an array of layer pixel histograms summed over all images used to find the background thresholds
     save_dirpath = path to directory to save the plot in (if None the plot is saved in the current directory)
     """
-    assert(image_background_thresholds_by_layer.shape[-1]==len(slide_thresholds)==hists_by_layer.shape[-1])
+    assert(image_bgts_by_layer.shape[-1]==len(slide_thresholds)==hists_by_layer.shape[-1])
     for threshold in slide_thresholds :
         layer_n = threshold.layer_n
-        thresholds_to_plot = image_background_thresholds_by_layer[:,layer_n-1][image_background_thresholds_by_layer[:,layer_n-1]!=0]
+        thresholds_to_plot = image_bgts_by_layer[:,layer_n-1][image_bgts_by_layer[:,layer_n-1]!=0]
         f,(ax1,ax2) = plt.subplots(1,2,figsize=(2*6.4,4.6))
         max_threshold_found = np.max(thresholds_to_plot)
         ax1.hist(thresholds_to_plot,max_threshold_found+11,(0,max_threshold_found+11))            
@@ -85,9 +89,12 @@ def plot_image_layer_thresholds_with_histograms(image_background_thresholds_by_l
                 signal_layer_log_hist[log_bin_i]+=hists_by_layer[lin_bin,layer_n-1]
             else :
                 background_layer_log_hist[log_bin_i]+=hists_by_layer[lin_bin,layer_n-1]
-        ax2.bar(log_bins[:-1],background_layer_log_hist,width=np.diff(log_bins),log=True,align='edge',alpha=0.7,label='background')
-        ax2.bar(log_bins[:-1],signal_layer_log_hist,width=np.diff(log_bins),log=True,align='edge',alpha=0.7,label='signal')
-        ax2.plot([chosen_t,chosen_t],[ax2.get_ylim()[0],0.8*ax2.get_ylim()[1]],linewidth=2,color='r',label=f'threshold = {chosen_t} counts')
+        ax2.bar(log_bins[:-1],background_layer_log_hist,width=np.diff(log_bins),log=True,align='edge',
+                alpha=0.7,label='background')
+        ax2.bar(log_bins[:-1],signal_layer_log_hist,width=np.diff(log_bins),log=True,align='edge',
+                alpha=0.7,label='signal')
+        ax2.plot([chosen_t,chosen_t],[ax2.get_ylim()[0],0.8*ax2.get_ylim()[1]],linewidth=2,color='r',
+                 label=f'threshold = {chosen_t} counts')
         ax2.set_xscale('log')
         ax2.set_title('pixel histogram (summed over all images)')
         ax2.set_xlabel('log pixel intensity (counts)')
@@ -102,11 +109,11 @@ def plot_background_thresholds_by_layer(datatable_filepath,chosen_threshold_tabl
 
     datatable_filepath = path to the datatable file containing RectangleThresholdTableEntry objects stored after 
                          all the individual tissue edge image thresholds were found
-    chosen_threshold_table_entries = the list of overall optimal background thresholds stored as ThresholdTableEntry objects
+    chosen_threshold_table_entries = the list of overall optimal background thresholds as ThresholdTableEntry objects
     save_dirpath = path to directory to save the plot in (if None the plot is saved in the current directory)
     """
-    rectangle_thresholds = readtable(datatable_filepath,RectangleThresholdTableEntry)
-    assert len(chosen_threshold_table_entries) == len(set([rt.layer_n for rt in rectangle_thresholds]))
+    rts = readtable(datatable_filepath,RectangleThresholdTableEntry)
+    assert len(chosen_threshold_table_entries) == len(set([rt.layer_n for rt in rts]))
     nlayers = len(chosen_threshold_table_entries)
     chosen_cts_by_layer = []; chosen_cpmsts_by_layer = []
     for li in range(nlayers) :
@@ -115,8 +122,8 @@ def plot_background_thresholds_by_layer(datatable_filepath,chosen_threshold_tabl
             return
         chosen_cts_by_layer.append(layer_tobjs[0].counts_threshold)
         chosen_cpmsts_by_layer.append(layer_tobjs[0].counts_per_ms_threshold)
-    cts_by_layer = [[rt.counts_threshold for rt in rectangle_thresholds if rt.layer_n==li+1] for li in range(nlayers)]
-    cpmsts_by_layer = [[rt.counts_per_ms_threshold for rt in rectangle_thresholds if rt.layer_n==li+1] for li in range(nlayers)]
+    cts_by_layer = [[rt.counts_threshold for rt in rts if rt.layer_n==li+1] for li in range(nlayers)]
+    cpmsts_by_layer = [[rt.counts_per_ms_threshold for rt in rts if rt.layer_n==li+1] for li in range(nlayers)]
     low_ct_pctiles_by_layer = []; high_ct_pctiles_by_layer = []
     low_cpmst_pctiles_by_layer = []; high_cpmst_pctiles_by_layer = []
     for li in range(nlayers) :
@@ -209,12 +216,62 @@ def plot_image_layers(image,name_stem,save_dirpath=None) :
         f.colorbar(pos,cax=cax)
         save_figure_in_dir(plt,layer_fn,save_dirpath)
 
-def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpath=None) :
+def meanimage_comparison_plot(slide_ids,values_to_plot,plot_title,figname,workingdir,lines_after,bounds) :
+    """
+    make a single comparison plot of some type
+    """
+    #make the figure
+    fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
+    #figure out the scaled font sizes
+    scaled_label_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
+    scaled_title_font_size = 10.*(1.+math.log2(len(slide_ids)/6.)) if len(slide_ids)>5 else 10.
+    #add the grid to the plot
+    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1])
+    #add other patches
+    patches = []
+    #black out any zero values in the plot
+    for iy in range(values_to_plot.shape[0]) :
+        for ix in range(values_to_plot.shape[1]) :
+            if values_to_plot[iy,ix]==0. :
+                patches.append(Rectangle((ix-0.5,iy-0.5),1,1,edgecolor='k',facecolor='k',fill=True))
+    #add lines after certain slides
+    if lines_after!=[''] and len(lines_after)>0 :
+        for sid in lines_after :
+            if sid not in slide_ids :
+                errmsg=f'ERROR: requested to add a separator after slide {sid} but this slide will not be on the plot!'
+                raise RuntimeError(errmsg)
+            sindex = slide_ids.index(sid)
+            patches.append(Rectangle((sindex+0.375,-0.5),0.25,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
+            patches.append(Rectangle((-0.5,sindex+0.375),len(slide_ids)+1,0.25,edgecolor='r',facecolor='r',fill=True))
+    for patch in patches :
+        ax.add_patch(patch)
+    #adjust some stuff on the plots
+    ax.set_xticks(np.arange(len(slide_ids)))
+    ax.set_yticks(np.arange(len(slide_ids)))
+    ax.set_xticklabels(slide_ids,fontsize=scaled_label_font_size)
+    ax.set_yticklabels(slide_ids,fontsize=scaled_label_font_size)
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",rotation_mode="anchor")
+    #add the exact numerical values inside each box
+    for i in range(len(slide_ids)):
+        for j in range(len(slide_ids)):
+            v = values_to_plot[i,j]
+            if v!=0. :
+                text = ax.text(j, i, f'{v:.02f}',ha="center", va="center", color="b")
+                text.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='white'))
+    #set the title, add the colorbar, etc.
+    ax.set_title(plot_title,fontsize=1.1*scaled_title_font_size)
+    cax = fig.add_axes([ax.get_position().x1+0.01,ax.get_position().y0,0.02,ax.get_position().height])
+    cbar = fig.colorbar(pos,cax=cax)
+    cbar.ax.tick_params(labelsize=scaled_title_font_size)
+    #save the plot
+    save_figure_in_dir(plt,figname,workingdir)
+
+def flatfield_image_pixel_intensity_plot(flatfield_image,version=None,save_dirpath=None) :
     """
     Plot the max/min, 5th/95th %ile, and std. dev. of a flatfield image's correction factors by layer 
 
     flatfield_image = the flatfield image array for which the plot should be made
-    batchID = the batchID for the given flatfield model (used in titles and names, optional)
+    version = the version for the given flatfield model (used in titles and names, optional)
     save_dirpath = path to directory to save the plots in (if None the plot is saved in the current directory)
     """
     #figure out the number of layers and the filter breaks
@@ -240,16 +297,23 @@ def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpa
         u_mins.append(sorted_u_layer[0]); u_lows.append(sorted_u_layer[int(0.05*len(sorted_u_layer))])
         u_stddev = np.std(sorted_u_layer); u_std_devs.append(u_stddev)
         u_maxs.append(sorted_u_layer[-1]); u_highs.append(sorted_u_layer[int(0.95*len(sorted_u_layer))])
-        sorted_c_layer = np.sort((flatfield_image_clipped[:,:,layer_i]).flatten())/np.mean(flatfield_image_clipped[:,:,layer_i])
+        sorted_c_layer = np.sort((flatfield_image_clipped[:,:,layer_i]).flatten())
+        sorted_c_layer/=np.mean(flatfield_image_clipped[:,:,layer_i])
         c_mins.append(sorted_c_layer[0]); c_lows.append(sorted_c_layer[int(0.05*len(sorted_c_layer))])
         c_stddev = np.std(sorted_c_layer); c_std_devs.append(c_stddev)
         c_maxs.append(sorted_c_layer[-1]); c_highs.append(sorted_c_layer[int(0.95*len(sorted_c_layer))])
         if layer_i==0 :
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5,label='overall std. dev.')
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5,label='std. dev. (central 64%)')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],
+                     'mediumseagreen',alpha=0.5,label='overall std. dev.')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],
+                     'goldenrod',alpha=0.5,label='std. dev. (central 64%)')
         else :
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
     #plot the relative intensity plots together, with the broadband filter breaks
     plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='darkgreen',linestyle='dashed',label='mean')
     totalmin=min(min(u_lows),min(c_lows))
@@ -262,7 +326,8 @@ def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpa
             plt.plot(xaxis_vals[f_i:l_i],u_highs[f_i:l_i],color='darkred',marker='^',label=r'overall 95th %ile')
             plt.plot(xaxis_vals[f_i:l_i],c_lows[f_i:l_i],color='darkblue',marker='v',label=r'5th %ile (central 64%)')
             plt.plot(xaxis_vals[f_i:l_i],c_highs[f_i:l_i],color='darkblue',marker='^',label=r'95th %ile (central 64%)')
-            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],
+                     color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
         else :
             plt.plot(xaxis_vals[f_i:l_i],u_lows[f_i:l_i],color='darkred',marker='v')
             plt.plot(xaxis_vals[f_i:l_i],u_highs[f_i:l_i],color='darkred',marker='^')
@@ -278,8 +343,8 @@ def flatfield_image_pixel_intensity_plot(flatfield_image,batchID=None,save_dirpa
     plt.legend(loc='lower right')
     #write out the figure
     fn = 'flatfield'
-    if batchID is not None :
-        fn+=f'_BatchID_{batchID:02d}'
+    if version is not None :
+        fn+=f'_{version}'
     fn+='_pixel_intensities.png'
     save_figure_in_dir(plt,fn,save_dirpath)
 
@@ -318,11 +383,17 @@ def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None) :
         c_stddev = np.std(sorted_c_layer); c_std_devs.append(c_stddev)
         c_maxs.append(sorted_c_layer[-1]); c_highs.append(sorted_c_layer[int(0.95*len(sorted_c_layer))])
         if layer_i==0 :
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5,label='overall std. dev.')
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5,label='std. dev. (central 64%)')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],
+                     'mediumseagreen',alpha=0.5,label='overall std. dev.')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],
+                     'goldenrod',alpha=0.5,label='std. dev. (central 64%)')
         else :
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
     #plot the relative intensity plots together, with the broadband filter breaks
     plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='darkgreen',linestyle='dashed',label='mean')
     totalmin=min(min(u_lows),min(c_lows))
@@ -335,7 +406,8 @@ def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None) :
             plt.plot(xaxis_vals[f_i:l_i],u_highs[f_i:l_i],color='darkred',marker='^',label=r'overall 95th %ile')
             plt.plot(xaxis_vals[f_i:l_i],c_lows[f_i:l_i],color='darkblue',marker='v',label=r'5th %ile (central 64%)')
             plt.plot(xaxis_vals[f_i:l_i],c_highs[f_i:l_i],color='darkblue',marker='^',label=r'95th %ile (central 64%)')
-            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],
+                     color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
         else :
             plt.plot(xaxis_vals[f_i:l_i],u_lows[f_i:l_i],color='darkred',marker='v')
             plt.plot(xaxis_vals[f_i:l_i],u_highs[f_i:l_i],color='darkred',marker='^')
@@ -357,10 +429,12 @@ def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None) :
     print(f'Mean whole image std. dev. = {np.mean(np.array(u_std_devs))}')
     print(f'Mean central 64% std. dev. = {np.mean(np.array(c_std_devs))}')
 
-def corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=False,save_dirpath=None) :
+def corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=False,
+                                         save_dirpath=None) :
     """
-    Plot the max/min, 5th/95th %ile, and std. dev. of a mean image's pixel intensities by layer, before and after correction by a flatfield model
-    Also creates a second plot of the pre/post correction std. dev. and 5th-95th percentile relative intensity variations
+    Plot the max/min, 5th/95th %ile, and std. dev. of a mean image's pixel intensities by layer, 
+    before and after correction by a flatfield model
+    Also creates a plot of the pre/post correction std. dev. and 5th-95th percentile relative intensity variations
     Plots can be created for the entire image region or for the central region only.
 
     smoothed_mean_image = the smoothed pre-correction mean image array
@@ -383,7 +457,7 @@ def corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_
         last_filter_layers = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_43[:-1]]
     else :
         raise ValueError(f'ERROR: number of layers {nlayers} is not a recognized option!') 
-    #keep track of the uncorrected and corrected images' minimum and maximum (and 5/95%ile) pixel intensities while the other plots are made
+    #keep track of the uncorrected and corrected images' minimum and maximum (and 5/95%ile) pixel intensities 
     u_low_pixel_intensities=[]; u_high_pixel_intensities=[]
     c_low_pixel_intensities=[]; c_high_pixel_intensities=[]
     u_std_devs=[]; c_std_devs=[]
@@ -396,16 +470,23 @@ def corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_
         u_low_pixel_intensities.append(sorted_u_layer[int(0.05*len(sorted_u_layer))])
         u_stddev = np.std(sorted_u_layer); u_std_devs.append(u_stddev)
         u_high_pixel_intensities.append(sorted_u_layer[int(0.95*len(sorted_u_layer))])
-        sorted_c_layer = np.sort((smoothed_corrected_mean_image[:,:,layer_i]).flatten())/np.mean(smoothed_corrected_mean_image[:,:,layer_i])
+        sorted_c_layer = np.sort((smoothed_corrected_mean_image[:,:,layer_i]).flatten())
+        sorted_c_layer/=np.mean(smoothed_corrected_mean_image[:,:,layer_i])
         c_low_pixel_intensities.append(sorted_c_layer[int(0.05*len(sorted_c_layer))])
         c_stddev = np.std(sorted_c_layer); c_std_devs.append(c_stddev)
         c_high_pixel_intensities.append(sorted_c_layer[int(0.95*len(sorted_c_layer))])
         if layer_i==0 :
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5,label='uncorrected std. dev.')
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5,label='corrected std. dev.')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],
+                     'mediumseagreen',alpha=0.5,label='uncorrected std. dev.')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],
+                     'goldenrod',alpha=0.5,label='corrected std. dev.')
         else :
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
-            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],[1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-c_stddev,1.+c_stddev,1.+c_stddev,1.-c_stddev],'goldenrod',alpha=0.5)
     #plot the relative intensity plots together, with the broadband filter breaks
     plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='darkgreen',linestyle='dashed',label='mean')
     totalmin=min(min(u_low_pixel_intensities),min(c_low_pixel_intensities))
@@ -414,11 +495,16 @@ def corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_
         f_i = 0 if i==0 else last_filter_layers[i-1]
         l_i = xaxis_vals[-1] if i==len(last_filter_layers) else last_filter_layers[i]
         if i==0 :
-            plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],color='darkred',marker='v',label=r'uncorrected 5th %ile')
-            plt.plot(xaxis_vals[f_i:l_i],u_high_pixel_intensities[f_i:l_i],color='darkred',marker='^',label=r'uncorrected 95th %ile')
-            plt.plot(xaxis_vals[f_i:l_i],c_low_pixel_intensities[f_i:l_i],color='darkblue',marker='v',label=r'corrected 5th %ile')
-            plt.plot(xaxis_vals[f_i:l_i],c_high_pixel_intensities[f_i:l_i],color='darkblue',marker='^',label=r'corrected 95th %ile')
-            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+            plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],
+                     color='darkred',marker='v',label=r'uncorrected 5th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],u_high_pixel_intensities[f_i:l_i],
+                     color='darkred',marker='^',label=r'uncorrected 95th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],c_low_pixel_intensities[f_i:l_i],
+                     color='darkblue',marker='v',label=r'corrected 5th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],c_high_pixel_intensities[f_i:l_i],
+                     color='darkblue',marker='^',label=r'corrected 95th %ile')
+            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],
+                     color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
         else :
             plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],color='darkred',marker='v')
             plt.plot(xaxis_vals[f_i:l_i],u_high_pixel_intensities[f_i:l_i],color='darkred',marker='^')

@@ -1,4 +1,5 @@
 import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+from ...utilities.config import CONST as UNIV_CONST
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
@@ -20,8 +21,13 @@ class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer,
   pass
 
 class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample):
-  segmentationorder = ["Tumor", "Immune"]
-  ignoresegmentations = []
+  @property
+  def segmentationorder(self):
+    return sorted(
+      self.segmentationids,
+      key=lambda x: -2*(x=="Tumor")-(x=="Immune")
+    )
+
   def celltype(self, layer):
     segid = self.segmentationidfromlayer(layer)
     membrane = self.ismembranelayer(layer)
@@ -31,6 +37,11 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     if membrane and segid == "Immune": return 1
     if nucleus and segid == "Tumor": return 2
     if nucleus and segid == "Immune": return 3
+    if isinstance(segid, int) and segid >= 3:
+      if membrane: nucleusmembranebit = 0
+      if nucleus: nucleusmembranebit = 2
+      #shift all bits besides the first to the left, and put in the nucleus/membrane bit
+      return (((segid-1) & ~0b1) << 1) | ((segid-1) & 0b1) | nucleusmembranebit
     assert False, (membrane, nucleus, segid)
 
   def __init__(self, *args, **kwargs):
@@ -40,15 +51,11 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       layers="setlater",
       **kwargs
     )
-    self.usesegmentations = [seg for seg in self.segmentationorder if seg in self.segmentationids]
-    unknownsegmentations = [seg for seg in self.segmentationids if seg not in self.segmentationorder and seg not in self.ignoresegmentations]
-    if unknownsegmentations:
-      raise ValueError("Unknown segmentations: {unknownsegmentations}")
     self.setlayers(
       layers=[
-        self.segmentationmembranelayer(seg) for seg in self.usesegmentations
+        self.segmentationmembranelayer(seg) for seg in self.segmentationorder
       ] + [
-        self.segmentationnucleuslayer(seg) for seg in self.usesegmentations
+        self.segmentationnucleuslayer(seg) for seg in self.segmentationorder
       ],
     )
 
@@ -84,21 +91,25 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layers],
       "pscale": self.pscale,
       "apscale": self.apscale,
-      "unitsmode": units.currentmode,
+      "unitsargs": units.currentargs(),
     })
-    with self.pool() as pool:
-      results = [
-        pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
-        for i, field in enumerate(self.rectangles, start=1)
-      ]
-      for r in results:
-        r.get()
+    if self.njobs is None or self.njobs > 1:
+      with self.pool() as pool:
+        results = [
+          pool.apply_async(self.rungeomcellfield, args=(i, field), kwds=kwargs)
+          for i, field in enumerate(self.rectangles, start=1)
+        ]
+        for r in results:
+          r.get()
+    else:
+      for i, field in enumerate(self.rectangles, start=1):
+        self.rungeomcellfield(i, field, **kwargs)
 
   run = rungeomcell
 
   @staticmethod
-  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsmode):
-    with units.setup_context(unitsmode), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
+  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsargs):
+    with units.setup_context(*unitsargs), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
       if not lock: return
       if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): return
       onepixel = units.onepixel(pscale)
@@ -120,7 +131,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
             if polygon is None: continue
             if polygon.area < minarea: continue
 
-            box = np.array(cellproperties.bbox).reshape(2, 2) * onepixel * 1.0
+            box = np.array(cellproperties.bbox).reshape(2, 2)[:,::-1] * onepixel * 1.0
             box += pxvec
             box = box // onepixel * onepixel
 
@@ -151,7 +162,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, geomroot, selectrectangles=lambda r: True, **otherworkflowkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     fieldscsv = dbload/f"{SlideID}_fields.csv"
     constantscsv = dbload/f"{SlideID}_constants.csv"
     if not fieldscsv.exists(): return [fieldscsv]
@@ -236,6 +247,8 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           self.logger.warningglobal(f"{estring} {self.loginfo}")
         return None
       else:
+        if not polygons:
+          return None
         if len(polygons) > 1:
           if self.isprimary:
             biggestarea = polygons[0].area
