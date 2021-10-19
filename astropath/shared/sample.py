@@ -10,7 +10,7 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.config import CONST as UNIV_CONST
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer
@@ -18,7 +18,7 @@ from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentParser):
+class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMoreRoots):
   """
   Base class for all sample classes.
 
@@ -32,7 +32,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False):
     self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
@@ -43,7 +43,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     self.__im3root = pathlib.Path(im3root)
     if informdataroot is None: informdataroot = root
     self.__informdataroot = pathlib.Path(informdataroot)
-    self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog)
+    self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots, skipstartfinish=skipstartfinish)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__logonenter = []
@@ -367,18 +367,18 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
       segstatus = layer.SegmentationStatus
       if segstatus != 0:
         segid = layer.ImageQA
+        if segid == "NA":
+          segid = segstatus
         if segstatus not in dct:
           dct[segstatus] = segid
-        elif segid != "NA":
-          if segid != dct[segstatus] != "NA":
+        elif segid != segstatus:
+          if segid != dct[segstatus] != segstatus:
             raise ValueError(f"Multiple different non-NA ImageQAs for SegmentationStatus {segstatus} ({self.mergeconfigcsv})")
           else:
             dct[segstatus] = segid
-    if "NA" in dct.values():
-      raise ValueError(f"No non-NA ImageQA for SegmentationStatus {', '.join(str(k) for k, v in dct.items() if v == 'NA')} ({self.mergeconfigcsv})")
     if sorted(dct.keys()) != list(range(1, len(dct)+1)):
       raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
-    return [dct[k] for k in range(1, len(dct)+1)]
+    return tuple(dct[k] for k in range(1, len(dct)+1))
 
   @property
   def nsegmentations(self):
@@ -398,11 +398,11 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, RunFromArgumentPar
     """
     return self.logger.samplelog
   @property
-  def mainlog(self):
+  def mainlogs(self):
     """
     The cohort log file, which contains basic logging info
     """
-    return self.logger.mainlog
+    return self.logger.mainlogs
 
   @property
   def pscale(self):
@@ -535,8 +535,7 @@ class WorkflowSample(SampleBase, WorkflowDependencySlideID):
     return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses()]
 
   def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
-    self.samplelog.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, **kwargs)
+    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
 class DbloadSampleBase(SampleBase, DbloadArgumentParser):
   """
@@ -662,6 +661,7 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
     super().__init__(*args, **kwargs)
     if maskroot is None: maskroot = self.im3root
     self.__maskroot = pathlib.Path(maskroot)
+    self.__maskfolder = None
     if maskfilesuffix is None: maskfilesuffix = self.defaultmaskfilesuffix
     self.__maskfilesuffix = maskfilesuffix
   @property
@@ -674,10 +674,19 @@ class MaskSampleBase(SampleBase, MaskArgumentParser):
 
   @property
   def maskfolder(self):
-    result = self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME
-    if self.maskroot != self.im3root:
-      result = self.maskroot/result.relative_to(self.im3root)
-    return result
+    if self.__maskfolder is not None :
+      return self.__maskfolder
+    else :
+      result = self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME
+      if self.maskroot != self.im3root:
+        result = self.maskroot/result.relative_to(self.im3root)
+      return result
+  @maskfolder.setter
+  def maskfolder(self,mf):
+    if self.__maskfolder is None :
+      self.__maskfolder=mf
+    else :
+      raise ValueError(f'ERROR: maskfolder has already been set to {self.__maskfolder}!')
 
 class MaskWorkflowSampleBase(MaskSampleBase, WorkflowSample):
   @property
@@ -690,22 +699,22 @@ class MaskWorkflowSampleBase(MaskSampleBase, WorkflowSample):
 class Im3SampleBase(SampleBase, Im3ArgumentParser):
   """
   Base class for any sample that uses sharded im3 images.
-  root2: Root location of the im3 images.
-         (The images are in root2/SlideID)
+  shardedim3root: Root location of the im3 images.
+         (The images are in shardedim3root/SlideID)
   """
-  def __init__(self, root, root2, samp, *args, **kwargs):
+  def __init__(self, root, shardedim3root, samp, *args, **kwargs):
     super().__init__(root=root, samp=samp, *args, **kwargs)
-    self.root2 = pathlib.Path(root2)
+    self.shardedim3root = pathlib.Path(shardedim3root)
 
   @property
   def root1(self): return self.root
 
   @property
-  def rootnames(self): return {"root2", *super().rootnames}
+  def rootnames(self): return {"shardedim3root", *super().rootnames}
 
   @property
   def possiblexmlfolders(self):
-    return super().possiblexmlfolders + [self.root2/self.SlideID]
+    return super().possiblexmlfolders + [self.shardedim3root/self.SlideID]
 
 class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   """
@@ -738,9 +747,14 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
     Wsi filename for a given layer.
     """
     return self.wsifolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-wsi.png"
-  @property
-  def wsitifffilename(self):
-    return self.wsifolder/f"{self.SlideID}-Z{self.ztiff}-wsi.tiff"
+  def wsitifffilename(self, layers):
+    name = f"{self.SlideID}-Z{self.ztiff}"
+    if layers == "color":
+      name += "-color"
+    elif frozenset(layers) != frozenset(range(1, self.nlayersunmixed+1)):
+      name += "-L" + "".join(str(l) for l in sorted(layers))
+    name += "-wsi.tiff"
+    return self.wsifolder/name
 
 class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """
@@ -963,7 +977,7 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase, SelectLayer
   def rectangleextrakwargs(self):
     kwargs = {
       **super().rectangleextrakwargs,
-      "imagefolder": self.root2/self.SlideID,
+      "imagefolder": self.shardedim3root/self.SlideID,
       "filetype": self.filetype,
       "width": self.fwidth,
       "height": self.fheight,
@@ -1229,6 +1243,8 @@ class XMLLayoutReader(SampleBase):
     List all rectangles that have im3 files.
     """
     folder = self.scanfolder/"MSI"
+    if not folder.exists():
+      folder = self.scanfolder/"flatw"
     im3s = folder.glob(f"*{UNIV_CONST.IM3_EXT}")
     result = []
     for im3 in im3s:

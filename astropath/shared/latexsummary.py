@@ -1,5 +1,5 @@
 #imports 
-import pathlib, subprocess
+import os, pathlib, subprocess
 from ..utilities.misc import cd
 
 class LatexSummaryBase :
@@ -47,7 +47,7 @@ class LatexSummaryBase :
         If the compilation fails for any reason then remove the aux/log files and put the .tex file in some specified location
         Returns 0 if the compilation was successful and 1 otherwise
         """
-        cmd = f'pdflatex {self.__tex_filename}'
+        cmd = ['pdflatex',os.fspath(self.__tex_filename)]
         with cd(self.__output_dir) :
             try :
                 subprocess.check_call(cmd)

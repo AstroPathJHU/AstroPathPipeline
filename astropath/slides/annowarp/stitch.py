@@ -109,12 +109,14 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
     """
 
   @classmethod
-  def floatedparams(cls, floatedparams):
+  def floatedparams(cls, floatedparams, alignmentresults):
     """
     Returns an array of bools that determine which parameters get floated.
     takes in an array of bools, in which case it returns the input,
     or a string that depends on the model (e.g. "all" for any model,
     or "constants" for the default model)
+
+    Can also depend on alignmentresults to detect degenerate cases.
     """
     if isinstance(floatedparams, str):
       if floatedparams == "all":
@@ -179,7 +181,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     sigmas: widths of the gaussian constraints
     floatedparams: which parameters to float
     """
-    floatedparams = cls.floatedparams(floatedparams)
+    floatedparams = cls.floatedparams(floatedparams, alignmentresults)
 
     #add the alignment result contributions
     A = b = c = 0
@@ -405,11 +407,20 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     return 10
 
   @classmethod
-  def floatedparams(cls, floatedparams):
+  def floatedparams(cls, floatedparams, alignmentresults):
     if isinstance(floatedparams, str):
       if floatedparams == "constants":
         floatedparams = [False]*8+[True]*2
-    return super().floatedparams(floatedparams)
+    floatedparams = super().floatedparams(floatedparams, alignmentresults)
+
+    bigtileindices = np.array([_.bigtileindex for _ in alignmentresults])
+    bigtilexs, bigtileys = bigtileindices.T
+    if len(set(bigtilexs)) == 1:
+      floatedparams[4] = floatedparams[6] = False
+    if len(set(bigtileys)) == 1:
+      floatedparams[5] = floatedparams[7] = False
+
+    return floatedparams
 
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
   """

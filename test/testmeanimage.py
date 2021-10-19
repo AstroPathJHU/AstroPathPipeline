@@ -59,10 +59,11 @@ class TestMeanImage(TestBaseSaveOutput) :
     def test_mean_image(self,n_threads=1) :
         #run the MeanImageCohort selecting just the single sample with raw files
         root = folder/'data'
-        root2 = folder/'data'/'raw'
+        shardedim3root = folder/'data'/'raw'
         et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
         (folder/'test_for_jenkins'/'mean_image'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME).mkdir(parents=True,exist_ok=True)
-        args = [os.fspath(root),os.fspath(root2),
+        args = [os.fspath(root),
+                '--shardedim3root',os.fspath(shardedim3root),
                 '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--njobs',str(n_threads),
                 '--sampleregex',SlideID,
@@ -99,7 +100,20 @@ class TestMeanImage(TestBaseSaveOutput) :
             raise
         else :
             self.removeoutput()
-            shutil.rmtree(self.meanimage_dir/(CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')))
-            shutil.rmtree(self.meanimage_dir/(CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')))
+            tpdf = self.meanimage_dir/CONST.THRESHOLDING_SUMMARY_PDF_FILENAME
+            if tpdf.is_file() :
+                tpdf.unlink()
+            td = self.meanimage_dir/(CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots'))
+            if td.is_dir() :
+                shutil.rmtree(td)
+            mspdf = self.masking_dir.parent/f'{SlideID}-{CONST.MASKING_SUMMARY_PDF_FILENAME}'
+            if mspdf.is_file() :
+                mspdf.unlink()
+            mispdf = self.meanimage_dir/CONST.MEANIMAGE_SUMMARY_PDF_FILENAME
+            if mispdf.is_file() :
+                mispdf.unlink()
+            misd = self.meanimage_dir/(CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots'))
+            if misd.is_dir() :
+                shutil.rmtree(misd)
             shutil.rmtree(self.masking_dir)
 

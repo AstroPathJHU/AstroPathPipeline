@@ -1,5 +1,5 @@
 #imports
-from astropath.hpfs.flatfield.batchflatfieldcohort import BatchFlatfieldCohort
+from astropath.hpfs.flatfield.batchflatfieldmulticohort import BatchFlatfieldMultiCohort
 from astropath.hpfs.flatfield.utilities import FieldLog
 from astropath.hpfs.flatfield.config import CONST
 from astropath.shared.samplemetadata import MetadataSummary
@@ -11,7 +11,7 @@ import os, pathlib, shutil
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
-batchID = 99
+version = 'TEST'
 slide_IDs = ['M21_1','M148','M206']
 
 class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
@@ -21,15 +21,15 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
 
     @property
     def batchflatfield_dir(self) :
-        return folder/'data'/UNIV_CONST.FLATFIELD_DIRNAME/f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}'
+        return folder/'data'/UNIV_CONST.FLATFIELD_DIRNAME/f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}'
 
     @property
     def outputfilenames(self) :
         all_fps = []
         all_fps.append(self.batchflatfield_dir/CONST.FIELDS_USED_CSV_FILENAME)
         all_fps.append(self.batchflatfield_dir/f'{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
-        all_fps.append(self.batchflatfield_dir/f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_uncertainty.bin')
-        all_fps.append(self.batchflatfield_dir.parent/f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}.bin')
+        all_fps.append(self.batchflatfield_dir/f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty.bin')
+        all_fps.append(self.batchflatfield_dir.parent/f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin')
         return all_fps
 
     def setUp(self) :
@@ -75,24 +75,24 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
     def test_batch_flatfield_cohort(self) :
         #run the BatchFlatfieldCohort selecting the three contrived samples
         root = folder/'data'
-        root2 = folder/'data'/'raw'
-        args = [os.fspath(root),os.fspath(root2),
-                '--sampleregex','('+'|'.join(slide_IDs)+')',
-                '--batchID',str(batchID),
+        args = [os.fspath(root),
+                '--version',version,
+                '--flatfield-model-file',os.fspath(root/'flatfield_models_for_testing.csv'),
                 '--allow-local-edits',
                 '--ignore-dependencies',
+                '--outdir',os.fspath(root),
                ]
-        BatchFlatfieldCohort.runfromargumentparser(args=args)
+        BatchFlatfieldMultiCohort.runfromargumentparser(args=args)
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'batchflatfieldcohort'
         try :
             compare_two_csv_files(self.batchflatfield_dir,reffolder,CONST.FIELDS_USED_CSV_FILENAME,FieldLog)
             compare_two_csv_files(self.batchflatfield_dir,reffolder,f'{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',MetadataSummary)
-            ffa = get_raw_as_hwl(self.batchflatfield_dir.parent/f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}.bin',*dims,np.float64)
-            ref_ffa = read_image_from_layer_files(reffolder/f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}.bin',*dims,np.float64)
+            ffa = get_raw_as_hwl(self.batchflatfield_dir.parent/f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin',*dims,np.float64)
+            ref_ffa = read_image_from_layer_files(reffolder/f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin',*dims,np.float64)
             np.testing.assert_allclose(ffa,ref_ffa,rtol=1e-09)
-            ffua = get_raw_as_hwl(self.batchflatfield_dir/f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_uncertainty.bin',*dims,np.float64)
-            ref_ffua = read_image_from_layer_files(reffolder/f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_uncertainty.bin',*dims,np.float64)
+            ffua = get_raw_as_hwl(self.batchflatfield_dir/f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty.bin',*dims,np.float64)
+            ref_ffua = read_image_from_layer_files(reffolder/f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty.bin',*dims,np.float64)
             np.testing.assert_allclose(ffua,ref_ffua,rtol=1e-09)
         except :
             self.saveoutput()

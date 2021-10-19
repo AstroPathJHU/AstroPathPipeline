@@ -58,8 +58,8 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
     AnnoWarpSampleInformTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--allow-local-edits"])
 
-    if not s.runstatus:
-      raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus}")
+    if not s.runstatus():
+      raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus()}")
 
     rows = s.readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
     targetrows = s.readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
@@ -113,13 +113,16 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       rtol=0.01,
     )
 
-  def testCohort(self, SlideID="M206", units="fast"):
+  def testCohort(self, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     logroot = thisfolder/"test_for_jenkins"/"annowarp"
     maskroot = thisfolder/"data"/"reference"/"stitchmask"
     args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot), "--ignore-dependencies", "--rerun-finished"]
     AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
+
+  def testCohortFastUnits(self, SlideID="M206"):
+    self.testCohort(SlideID=SlideID, units="fast")
 
   def testConstraint(self, SlideID="M206"):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp")
@@ -166,7 +169,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     units.np.testing.assert_allclose(units.nominal_values(result6.bigtileindexcoeff), constraintmus[4:8].reshape(2, 2))
 
   def testDetectBigShift(self, SlideID="M21_1"):
-    s = DetectBigShiftSample(root=thisfolder/"data", root2=thisfolder/"data"/"flatw", samp=SlideID, logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=False, selectrectangles=[1])
+    s = DetectBigShiftSample(root=thisfolder/"data", shardedim3root=thisfolder/"data"/"flatw", samp=SlideID, logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=False, selectrectangles=[1])
     assertAlmostEqual(
       units.convertpscale(s.run(), s.pscale/10, s.pscale),
       np.array({

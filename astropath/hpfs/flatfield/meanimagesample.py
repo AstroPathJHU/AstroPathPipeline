@@ -46,8 +46,17 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         Sets some variables as to where to find the image masks for the sample
         If they can't be found they will be created
         """
-        #set the image masking directory path (could either be in the workingdir or in the sample's meanimage directory)
+        #set the image masking directory path 
+        #by default this is just the default maskfolder in root/slideID/im3/meanimage/image_masking
+        #(or the corresponding value from a possibly overwritten maskroot)
+        #but if a workingdirectory was given, and the maskroot hasn't been modified,
+        #then change it to workingdirectory/image_masking instead
+        if ( (self.__workingdirpath.name!=UNIV_CONST.MEANIMAGE_DIRNAME or self.__workingdirpath.parent!=self.im3folder) 
+            and self.maskroot==self.root ) :
+            self.maskfolder=self.__workingdirpath/CONST.IMAGE_MASKING_SUBDIR_NAME
         self.__image_masking_dirpath = self.maskfolder if not self.__skip_masking else None
+        if (self.__image_masking_dirpath is not None) and (not self.__image_masking_dirpath.is_dir()) :
+            self.__image_masking_dirpath.mkdir(parents=True)
         self.__use_precomputed_masks = False
         if self.__image_masking_dirpath.is_dir() :
             self.__use_precomputed_masks = self.__dir_has_precomputed_masks(self.__image_masking_dirpath)
@@ -106,6 +115,13 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
+        #if a working directory was given, and maskroot was not, but the working directory also has parent directories
+        #such that the maskroot could be redefined, then redefine the mask root in the parsed arguments
+        wd = parsed_args_dict['workingdir']
+        if (wd is not None) and (parsed_args_dict['maskroot']==parsed_args_dict['root']) :
+            if ( wd.name==UNIV_CONST.MEANIMAGE_DIRNAME and wd.parent.name==UNIV_CONST.IM3_DIR_NAME and 
+                                                            wd.parent.parent.name==parsed_args_dict['SlideID'] ) :
+                parsed_args_dict['maskroot']=wd
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'skip_masking': parsed_args_dict.pop('skip_masking'),
@@ -144,7 +160,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         background_thresholds = self.__get_background_thresholds()
         #and then create masks for every rectangle's image
         labelled_mask_regions = []
-        if self.njobs>1 :
+        if (self.njobs is not None) and (self.njobs>1) :
             proc_results = {}
             with self.pool() as pool :
                 for ri,r in enumerate(self.rectangles) :
@@ -308,7 +324,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         tissue_edge_layer_hists = np.zeros((np.iinfo(np.uint16).max+1,self.nlayers),dtype=np.uint64)
         rectangle_data_table_entries = []
         #run the thresholding/histogram function in multiple parallel processes
-        if self.njobs>1 :
+        if (self.njobs is not None) and (self.njobs>1) :
             proc_results = {}; current_image_i = 0
             with self.pool() as pool :
                 for ri,r in enumerate(self.tissue_edge_rects) :
@@ -407,7 +423,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         #recompute the masks for those images and write out the masking plots for them
         keys_to_plot = (top_blur_keys | top_saturation_keys | random_keys)
         rects_to_plot = [r for r in self.rectangles if r.file.rstrip(UNIV_CONST.IM3_EXT) in keys_to_plot]
-        if self.njobs>1 :
+        if (self.njobs is not None) and (self.njobs>1) :
             proc_results = {}
             with self.pool() as pool :
                 for ri,r in enumerate(rects_to_plot) :

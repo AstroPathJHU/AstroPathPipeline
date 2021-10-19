@@ -232,19 +232,20 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
     Class to make a LatexSummary about a batch's flatfield model
     """
 
-    def __init__(self,flatfield_image,plot_dirpath,batchID=None) :
+    def __init__(self,flatfield_image,plot_dirpath,version=None) :
         """
         flatfield_image = the actual flatfield image that was created
         plot_dirpath = path to the directory that has all the individual .png plots in it
-        batchID = the batchID for the model in question (used in figure/filenames, optional)
+        version = the version for the model in question (used in figure/filenames, optional)
         """
         self.__flatfield_image = flatfield_image
-        self.__batchID = batchID
-        title = 'Flatfield Summary'
+        self.__version = version
+        title = 'Flatfield'
         filename = CONST.FLATFIELD_SUMMARY_PDF_FILENAME_STEM
-        if self.__batchID is not None :
-            title+=f' for Batch {self.__batchID:02d}'
-            filename+=f'_BatchID_{self.__batchID:02d}'
+        if self.__version is not None :
+            title+=f' Version {self.__version}'
+            filename+=f'_{self.__version}'
+        title+=' Summary'
         filename+='.pdf'
         super().__init__(title,filename,plot_dirpath)
 
@@ -262,16 +263,16 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         figlabel = 'fig:flatflield_pixel_intensities'
         l = f'Figure~\\ref{{{figlabel}}} shows the 5th and 95th percentile, as well as the standard deviation, of the '
         l+= 'pixel-by-pixel correction factors in each layer of the flatfield model'
-        if self.__batchID is not None :
-            l+=f' created for batch {self.__batchID:02d}'
+        if self.__version is not None :
+            l+=f' created as version {self.__version}'
         l+='. The red lines and green shaded areas show the values calculated over the entire area of the '
         l+='correction image, and the blue lines and yellow shading show the values calculated considering only the '
         l+='central 64\\% ``primary region" of the correction image.'
         lines.append(l)
         lines.append('\n')
         path = f'{self.plot_dirpath_tex}/flatfield'
-        if self.__batchID is not None :
-            path+=f'_BatchID_{self.__batchID:02d}'
+        if self.__version is not None :
+            path+=f'_{self.__version}'
         path+='_pixel_intensities'
         caption = '5th and 95th percentile and standard deviation of flatfield correction factors in each image layer. '
         caption+= 'Red lines and green shaded areas show statistics calculated using the entire area of each '
@@ -311,8 +312,8 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         lines.append(f'Figure~\\ref{{{figlabel}}} shows the flatfield correction factors found for each image layer.\n')
         lines.append('\n')
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
-        if self.__batchID is not None :
-            pattern+= f'{self.__batchID:02d}_'
+        if self.__version is not None :
+            pattern+= f'_{self.__version}_'
         pattern+='layer_*.png'
         caption = 'Flatfield correction factors in each image layer'
         lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)
@@ -326,8 +327,8 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         lines.append(f'Figure~\\ref{{{figlabel}}} shows the uncertainties on the flatfield correction factors.\n')
         lines.append('\n')
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
-        if self.__batchID is not None :
-            pattern+= f'{self.__batchID:02d}_'
+        if self.__version is not None :
+            pattern+= f'_{self.__version}_'
         pattern+='uncertainty_layer_*.png'
         caption = 'Uncertainties on the flatfield correction factors in each image layer'
         lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)
@@ -343,8 +344,8 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         lines.append(l+'\n')
         lines.append('\n')
         pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
-        if self.__batchID is not None :
-            pattern+= f'{self.__batchID:02d}_'
+        if self.__version is not None :
+            pattern+= f'_{self.__version}_'
         pattern+='mask_stack_layer_*.png'
         caption = 'The stack of all image masks combined over every sample used to measure the flatfield corrections'
         lines+=self.image_layer_grid_plot_tex_lines(pattern,caption,figlabel)

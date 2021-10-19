@@ -219,7 +219,7 @@ def asrow(obj, *, dict_factory=dict):
 
   return dict_factory(result)
 
-def pathfield(*args, **metadata):
+def pathfield(*defaultvalue, **metadata):
   """
   returns a MetaDataAnnotation for writing a path.
   if the path location is on a mount, it tries to find the actual
@@ -231,7 +231,19 @@ def pathfield(*args, **metadata):
     **metadata,
   }
 
-  return MetaDataAnnotation(*args, **metadata)
+  return MetaDataAnnotation(*defaultvalue, **metadata)
+
+def boolasintfield(*defaultvalue, **metadata):
+  """
+  returns a MetaDataAnnotation for writing a bool as an int (i.e. 1 or 0)
+  """
+  metadata = {
+    "readfunction": lambda x: bool(int(x)),
+    "writefunction": int,
+    **metadata,
+  }
+
+  return MetaDataAnnotation(*defaultvalue, **metadata)
 
 def datefield(dateformat, *defaultvalue, optional=False, **metadata):
   """

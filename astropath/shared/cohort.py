@@ -2,10 +2,9 @@ import abc, datetime, job_lock, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from .argumentparser import DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
-from .samplemetadata import SampleDef
 from .workflowdependency import ThingWithRoots, WorkflowDependency
 
 class CohortBase(ThingWithRoots):
@@ -13,16 +12,22 @@ class CohortBase(ThingWithRoots):
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, logroot=None, uselogfiles=True, reraiseexceptions=False, **kwargs):
+  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], skipstartfinish=False, **kwargs):
     super().__init__(*args, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
     self.__logroot = pathlib.Path(logroot)
+    if sampledefroot is None: sampledefroot = self.__root
+    self.__sampledefroot = pathlib.Path(sampledefroot)
     self.uselogfiles = uselogfiles
     self.reraiseexceptions = reraiseexceptions
+    self.moremainlogroots = moremainlogroots
+    self.skipstartfinish = skipstartfinish
 
   @property
-  def sampledefs(self): return readtable(self.root/"sampledef.csv", SampleDef)
+  def sampledefs(self):
+    from .samplemetadata import SampleDef
+    return readtable(self.sampledefroot/"sampledef.csv", SampleDef)
   @property
   def SlideIDs(self): return [_.SlideID for _ in self.sampledefs]
   @property
@@ -35,24 +40,24 @@ class CohortBase(ThingWithRoots):
     return Cohort
 
   def globallogger(self):
+    from .samplemetadata import SampleDef
     samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
     return self.getlogger(samp, isglobal=True)
 
   @property
   def logger(self): return self.globallogger()
   @property
-  def mainlog(self): return self.logger.mainlog
+  def mainlogs(self): return self.logger.mainlogs
 
   def globaljoblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
-    lockfile = self.globallogger().mainlog.with_suffix(".lock")
-    lockfile.parent.mkdir(exist_ok=True, parents=True)
-    return job_lock.JobLock(lockfile, corruptfiletimeout=corruptfiletimeout, **kwargs)
+    lockfiles = [logfile.with_suffix(".lock") for logfile in self.globallogger().mainlogs]
+    return job_lock.MultiJobLock(*lockfiles, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
   def getlogger(self, samp, *, isglobal=False, **kwargs):
     if isinstance(samp, WorkflowDependency):
       isglobal = isglobal or samp.usegloballogger()
       samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, **kwargs)
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=self.skipstartfinish, **kwargs)
 
   @classmethod
   @abc.abstractmethod
@@ -63,10 +68,75 @@ class CohortBase(ThingWithRoots):
   @property
   def logroot(self): return self.__logroot
   @property
+  def sampledefroot(self): return self.__sampledefroot
+  @property
   def rootnames(self):
-    return {*super().rootnames, "root", "logroot"}
+    return {*super().rootnames, "root", "logroot", "sampledefroot"}
 
-class Cohort(CohortBase, RunFromArgumentParser):
+class RunCohortBase(CohortBase, RunFromArgumentParser):
+  """
+  Base class for a cohort that can be run from the command line
+  """
+
+  @abc.abstractmethod
+  def run(self): pass
+  def dryrun(self, **kwargs):
+    print("Command line is valid")
+
+  @classmethod
+  def defaultunits(cls):
+    return "fast_pixels"
+
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    """
+    Create an argument parser to run this cohort on the command line
+    """
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--sampledefroot", type=pathlib.Path, help="folder to look for sampledef.csv")
+    p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    """
+    Get the kwargs to be passed to the cohort constructor
+    from the parsed arguments
+    """
+    dct = parsed_args_dict
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "sampledefroot": dct.pop("sampledefroot"),
+    }
+    return kwargs
+
+  @classmethod
+  def misckwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().misckwargsfromargumentparser(parsed_args_dict),
+      "dry_run": parsed_args_dict.pop("dry_run"),
+    }
+    return kwargs
+
+  @classmethod
+  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
+    """
+    Run the cohort from command line arguments.
+    """
+    with units.setup_context(misckwargs.pop("units")):
+      dryrun = misckwargs.pop("dry_run")
+      if misckwargs:
+        raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
+      if dryrun:
+        initkwargs["uselogfiles"] = False
+      cohort = cls(**initkwargs)
+      if dryrun:
+        cohort.dryrun(**runkwargs)
+      else:
+        cohort.run(**runkwargs)
+      return cohort
+
+class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   """
   Base class for a cohort that can be run in a loop
 
@@ -78,7 +148,7 @@ class Cohort(CohortBase, RunFromArgumentParser):
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, xmlfolders=[], version_requirement=None, **kwargs):
+  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, xmlfolders=[], **kwargs):
     super().__init__(*args, reraiseexceptions=debug, **kwargs)
     if im3root is None: im3root = self.root
     self.im3root = pathlib.Path(im3root)
@@ -141,7 +211,7 @@ class Cohort(CohortBase, RunFromArgumentParser):
 
   def runsample(self, sample, **kwargs):
     "actually run whatever is supposed to be run on the sample"
-    sample.run(**kwargs)
+    return sample.run(**kwargs)
 
   @property
   @abc.abstractmethod
@@ -155,7 +225,7 @@ class Cohort(CohortBase, RunFromArgumentParser):
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.reraiseexceptions, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders}
+    return {"root": self.root, "reraiseexceptions": self.reraiseexceptions, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders, "moremainlogroots": self.moremainlogroots, "skipstartfinish": self.skipstartfinish}
 
   @classmethod
   def logmodule(cls):
@@ -173,12 +243,12 @@ class Cohort(CohortBase, RunFromArgumentParser):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
-    for sample in self.filteredsamples:
-      self.processsample(sample, **kwargs)
+    return [self.processsample(sample, **kwargs) for sample in self.filteredsamples]
+      
 
   def processsample(self, sample, **kwargs):
     with sample:
-      self.runsample(sample, **kwargs)
+      return self.runsample(sample, **kwargs)
 
   @property
   def dryrunheader(self):
@@ -201,7 +271,6 @@ class Cohort(CohortBase, RunFromArgumentParser):
     """
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
-    p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
     return p
 
@@ -225,51 +294,25 @@ class Cohort(CohortBase, RunFromArgumentParser):
       kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
     return kwargs
 
-  @classmethod
-  def misckwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().misckwargsfromargumentparser(parsed_args_dict),
-      "dry_run": parsed_args_dict.pop("dry_run"),
-    }
-    return kwargs
-
-  @classmethod
-  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
-    """
-    Run the cohort from command line arguments.
-    """
-    with units.setup_context(misckwargs.pop("units")):
-      dryrun = misckwargs.pop("dry_run")
-      if misckwargs:
-        raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
-      if dryrun:
-        initkwargs["uselogfiles"] = False
-      cohort = cls(**initkwargs)
-      if dryrun:
-        cohort.dryrun(**runkwargs)
-      else:
-        cohort.run(**runkwargs)
-      return cohort
-
 class Im3Cohort(Cohort, Im3ArgumentParser):
   """
   Base class for any cohort that uses im3 files
-  root2: the location of the sharded im3s
+  shardedim3root: the location of the sharded im3s
   """
-  def __init__(self, root, root2, *args, **kwargs):
+  def __init__(self, root, shardedim3root, *args, **kwargs):
     super().__init__(root=root, *args, **kwargs)
-    self.root2 = pathlib.Path(root2)
+    self.shardedim3root = pathlib.Path(shardedim3root)
 
   @property
   def root1(self): return self.root
 
   @property
   def rootnames(self):
-    return {*super().rootnames, "root2"}
+    return {*super().rootnames, "shardedim3root"}
 
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "root2": self.root2}
+    return {**super().initiatesamplekwargs, "shardedim3root": self.shardedim3root}
 
 class DbloadCohortBase(CohortBase):
   def __init__(self, *args, dbloadroot=None, **kwargs):
@@ -580,7 +623,7 @@ class WorkflowCohort(Cohort):
 
     def samplefilter(self, sample):
       return filter(
-        runstatus=sample.runstatus,
+        runstatus=sample.runstatus(),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
           for dependency, SlideID in sample.workflowdependencies()
@@ -602,7 +645,7 @@ class WorkflowCohort(Cohort):
   def processsample(self, sample, *, print_errors, ignore_errors, **kwargs):
     if print_errors:
       if ignore_errors is None: ignore_errors = []
-      status = sample.runstatus
+      status = sample.runstatus(**kwargs)
       if status: return
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       print(f"{sample.SlideID} {status}")
@@ -614,16 +657,18 @@ class WorkflowCohort(Cohort):
           if missinginputs:
             raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
         except Exception: #don't log KeyboardInterrupt here
-          with self.getlogger(sample):
+          with sample:
             raise
           return
 
         with self.getlogger(sample):
-          super().processsample(sample, **kwargs)
+          result = super().processsample(sample, **kwargs)
 
-          status = sample.runstatus
+          status = sample.runstatus(**kwargs)
           #we don't want to do anything if there's an error, because that
           #was already logged so no need to log it again and confuse the issue.
           if status.missingfiles and status.error is None:
             status.ended = True #to get the missing files in the __str__
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
+
+          return result

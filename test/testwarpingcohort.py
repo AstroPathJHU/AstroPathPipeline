@@ -12,7 +12,7 @@ from .testbase import compare_two_csv_files, TestBaseSaveOutput
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
 root = folder/'data'
-root2 = folder/'data'/'raw'
+shardedim3root = folder/'data'/'raw'
 slideID = 'M21_1'
 et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
 ff_file = folder/'data'/'reference'/'batchflatfieldcohort'/'flatfield_BatchID_99.bin'
@@ -54,10 +54,10 @@ class TestWarpingCohort(TestBaseSaveOutput) :
         """
         super().setUp()
         self.__files_to_remove = []
-        sample = DummySample(root,root2,slideID)
-        existing_filepaths = [root2/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
+        sample = DummySample(root,shardedim3root,slideID)
+        existing_filepaths = [shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
         for ir,r in enumerate(sample.rectangles) :
-            thisrfilepath = root2/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)
+            thisrfilepath = shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)
             if not thisrfilepath.is_file() :
                 shutil.copy(existing_filepaths[ir%len(existing_filepaths)],thisrfilepath)
                 self.__files_to_remove.append(thisrfilepath)
@@ -84,7 +84,8 @@ class TestWarpingCohort(TestBaseSaveOutput) :
 
     def test_warping_cohort_octets_only(self) :
         #run the cohort
-        args = [os.fspath(root),os.fspath(root2),
+        args = [os.fspath(root),
+                '--shardedim3root',os.fspath(shardedim3root),
                 '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--flatfield-file',ff_file.name,
                 '--sampleregex',slideID,
@@ -117,7 +118,8 @@ class TestWarpingCohort(TestBaseSaveOutput) :
             new_path = self.output_dir/'octets'/existing_path.name
             shutil.copy(existing_path,new_path)
         #run the cohort
-        args = [os.fspath(root),os.fspath(root2),
+        args = [os.fspath(root),
+                '--shardedim3root',os.fspath(shardedim3root),
                 '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--flatfield-file',ff_file.name,
                 '--sampleregex',slideID,

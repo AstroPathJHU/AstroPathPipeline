@@ -18,37 +18,37 @@ rc = {
 }
 
 @functools.lru_cache()
-def __alignsample(*, root1, root2, samp, dapi, dbloadroot, **kwargs):
+def __alignsample(*, root1, shardedim3root, samp, dapi, dbloadroot, **kwargs):
   if dapi:
-    A = alignsample(root1=root1, root2=root2, samp=samp, dbloadroot=dbloadroot, **kwargs)
+    A = alignsample(root1=root1, shardedim3root=shardedim3root, samp=samp, dbloadroot=dbloadroot, **kwargs)
     A.getDAPI()
     return A
 
-  if root1 is root2 is samp is dbloadroot is None:
+  if root1 is shardedim3root is samp is dbloadroot is None:
     return alignsample(samp="M21_1", **kwargs)
 
-  if root1 is root2 is dbloadroot is None:
-    if samp == "M21_1": root1, root2 = data, data/"flatw"
-    elif samp == "M1_1" or samp == "M2_3": root1, root2 = r"\\Bki02\g\heshy", r"\\Bki02\g\heshy\flatw"
-    elif samp == "TS19_0181_A_1_3_BMS_MITRE": root1, root2 = r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", r"\\Bki02\g\flatw"
-    elif samp == "L1_4": root1, root2 = r"\\bki04\Clinical_Specimen_2", r"\\bki02\g\heshy\Clinical_Specimen_2"
-    elif samp == "PZ1": root1, root2 = r"\\bki03\Clinical_Specimen_4", r"\\bki02\g\heshy\Clinical_Specimen_4"
-    elif samp == "ML1603474_BMS069_5_21" or samp == "ML1603480_BMS078_5_22": root1, root2 = r"\\bki03\Clinical_Specimen_BMS_01", r"\\bki02\g\heshy\Clinical_Specimen_BMS_01"
-    elif samp == "M115": root1, root2 = r"\\bki07\Clinical_Specimen_11", r"\\bki07\flatw_11"
+  if root1 is shardedim3root is dbloadroot is None:
+    if samp == "M21_1": root1, shardedim3root = data, data/"flatw"
+    elif samp == "M1_1" or samp == "M2_3": root1, shardedim3root = r"\\Bki02\g\heshy", r"\\Bki02\g\heshy\flatw"
+    elif samp == "TS19_0181_A_1_3_BMS_MITRE": root1, shardedim3root = r"\\bki02\g\heshy\Clinical_Specimen_BMS_03", r"\\Bki02\g\flatw"
+    elif samp == "L1_4": root1, shardedim3root = r"\\bki04\Clinical_Specimen_2", r"\\bki02\g\heshy\Clinical_Specimen_2"
+    elif samp == "PZ1": root1, shardedim3root = r"\\bki03\Clinical_Specimen_4", r"\\bki02\g\heshy\Clinical_Specimen_4"
+    elif samp == "ML1603474_BMS069_5_21" or samp == "ML1603480_BMS078_5_22": root1, shardedim3root = r"\\bki03\Clinical_Specimen_BMS_01", r"\\bki02\g\heshy\Clinical_Specimen_BMS_01"
+    elif samp == "M115": root1, shardedim3root = r"\\bki07\Clinical_Specimen_11", r"\\bki07\flatw_11"
     else: raise ValueError(samp)
-    return alignsample(root1=root1, root2=root2, dbloadroot=dbloadroot, samp=samp, **kwargs)
+    return alignsample(root1=root1, shardedim3root=shardedim3root, dbloadroot=dbloadroot, samp=samp, **kwargs)
 
   if dbloadroot is None:
-    return alignsample(root1=root1, root2=root2, samp=samp, dbloadroot=root1, **kwargs)
+    return alignsample(root1=root1, shardedim3root=shardedim3root, samp=samp, dbloadroot=root1, **kwargs)
 
-  A = AlignSample(root1, root2, dbloadroot=dbloadroot, samp=samp, interactive=interactive, **kwargs)
+  A = AlignSample(root1, shardedim3root, dbloadroot=dbloadroot, samp=samp, interactive=interactive, **kwargs)
 
   A.readalignments()
   A.readstitchresult()
   return A
 
-def alignsample(*, root1=None, root2=None, samp=None, dapi=False, dbloadroot=None, **kwargs):
-  return __alignsample(root1=root1, root2=root2, samp=samp, dapi=dapi, dbloadroot=dbloadroot, **kwargs)
+def alignsample(*, root1=None, shardedim3root=None, samp=None, dapi=False, dbloadroot=None, **kwargs):
+  return __alignsample(root1=root1, shardedim3root=shardedim3root, samp=samp, dapi=dapi, dbloadroot=dbloadroot, **kwargs)
 
 def overlap():
   A = alignsample(dapi=True)

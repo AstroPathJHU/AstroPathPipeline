@@ -1,18 +1,18 @@
 #imports
-from .plotting import plot_image_layers, flatfield_image_pixel_intensity_plot, corrected_mean_image_PI_and_IV_plots
-from .latexsummary import MeanImageLatexSummary, FlatfieldLatexSummary, AppliedFlatfieldLatexSummary
-from .utilities import FieldLog
-from .config import CONST
-from ...shared.image_masking.image_mask import ImageMask
-from ...shared.image_masking.utilities import LabelledMaskRegion
+import numpy as np
+from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.misc import cd
+from ...utilities.tableio import readtable, writetable
+from ...utilities.img_file_io import get_image_hwl_from_xml_file,get_raw_as_hwl, smooth_image_worker
+from ...utilities.img_file_io import smooth_image_with_uncertainty_worker, write_image_to_file
 from ...shared.logging import dummylogger
 from ...shared.samplemetadata import MetadataSummary
-from ...utilities.img_file_io import get_raw_as_hwl, smooth_image_worker
-from ...utilities.img_file_io import smooth_image_with_uncertainty_worker, write_image_to_file
-from ...utilities.tableio import readtable, writetable
-from ...utilities.misc import cd
-from ...utilities.config import CONST as UNIV_CONST
-import numpy as np
+from ...shared.image_masking.utilities import LabelledMaskRegion
+from ...shared.image_masking.image_mask import ImageMask
+from .config import CONST
+from .utilities import FieldLog
+from .plotting import plot_image_layers, flatfield_image_pixel_intensity_plot, corrected_mean_image_PI_and_IV_plots
+from .latexsummary import MeanImageLatexSummary, FlatfieldLatexSummary, AppliedFlatfieldLatexSummary
 
 class ImageStack :
     """
@@ -63,7 +63,7 @@ class ImageStack :
         Add the already-created meanimage/mask stack for a single given sample to the model by reading its files
         """
         #make sure the dimensions match
-        if sample.rectangles[0].imageshapeinoutput!=self.__image_stack.shape :
+        if get_image_hwl_from_xml_file(sample.root,sample.SlideID)!=self.__image_stack.shape :
             errmsg = 'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have '
             errmsg+= f'dimensions {sample.rectangles[0].imageshapeinoutput} but an image stack with '
             errmsg+= f'dimensions {self.__image_stack.shape}'
@@ -222,7 +222,7 @@ class MeanImage(ImageStack) :
         """
         Create the mean image with its standard error from the image and mask stacks
         """
-        self.logger.info('Creating the mean image with its standard error....')
+        self.logger.debug('Creating the mean image with its standard error....')
         #make sure there actually was at least some number of images used
         if self.__n_images_read<1 or np.max(self.__n_images_stacked_by_layer)<1 :
             if self.__n_images_read<1 :
@@ -251,7 +251,7 @@ class MeanImage(ImageStack) :
         slide_id       = the ID of the slide to add to the filenames
         workingdirpath = path to the directory where the images etc. should be saved
         """
-        self.logger.info('Writing out the mean image, std. err., mask stack....')
+        self.logger.debug('Writing out the mean image, std. err., mask stack....')
         #write out the mean image, std. err. image, and mask stack
         with cd(workingdirpath) :
             write_image_to_file(self.__mean_image,f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
@@ -260,7 +260,7 @@ class MeanImage(ImageStack) :
                                 f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
             if self.mask_stack is not None :
                 write_image_to_file(self.mask_stack,f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
-        self.logger.info('Making plots of image layers and collecting them in the summary pdf....')
+        self.logger.debug('Making plots of image layers and collecting them in the summary pdf....')
         #save .pngs of the mean image/mask stack etc. layers
         plotdir_path = workingdirpath / CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
         plot_image_layers(self.__mean_image,
@@ -371,11 +371,11 @@ class Flatfield(ImageStack) :
                     self.__flatfield_image[:,:,li]=sm_mean_image[:,:,li]/layermean
                     self.__flatfield_image_err[:,:,li]=sm_mean_img_err[:,:,li]/layermean
 
-    def write_output(self,batchID,workingdirpath) :
+    def write_output(self,version,workingdirpath) :
         """
         Write out the flatfield image and all other output
 
-        batchID = the batchID to use for the model (in filenames, etc.)
+        version = the version to use for the model (in filenames, etc.)
         workingdirpath = path to the directory where the output should be saved 
                          (the actual flatfield is saved in this directory's parent)
         """
@@ -383,10 +383,10 @@ class Flatfield(ImageStack) :
         if not workingdirpath.is_dir() :
             workingdirpath.mkdir(parents=True)
         with cd(workingdirpath.parent) :
-            write_image_to_file(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}.bin')
+            write_image_to_file(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin')
         with cd(workingdirpath) :
             write_image_to_file(self.__flatfield_image_err,
-                                f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_uncertainty.bin')
+                                f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty.bin')
         #save the metadata summary and the field log
         if len(self.__metadata_summaries)>0 :
             with cd(workingdirpath) :
@@ -395,15 +395,15 @@ class Flatfield(ImageStack) :
             with cd(workingdirpath) :
                 writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}',self.__field_logs)
         #make some plots of the image layers and the pixel intensities
-        plotdir_path = workingdirpath / f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_plots'
+        plotdir_path = workingdirpath / f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_plots'
         plotdir_path.mkdir(exist_ok=True)
-        plot_image_layers(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}',plotdir_path)
+        plot_image_layers(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}',plotdir_path)
         plot_image_layers(self.__flatfield_image_err,
-                          f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_uncertainty',plotdir_path)
-        plot_image_layers(self.mask_stack,f'{CONST.FLATFIELD_DIRNAME_STEM}{batchID:02d}_mask_stack',plotdir_path)
-        flatfield_image_pixel_intensity_plot(self.__flatfield_image,batchID,plotdir_path)
+                          f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty',plotdir_path)
+        plot_image_layers(self.mask_stack,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_mask_stack',plotdir_path)
+        flatfield_image_pixel_intensity_plot(self.__flatfield_image,version,plotdir_path)
         #make the summary PDF
-        latex_summary = FlatfieldLatexSummary(self.__flatfield_image,plotdir_path,batchID)
+        latex_summary = FlatfieldLatexSummary(self.__flatfield_image,plotdir_path,version)
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :

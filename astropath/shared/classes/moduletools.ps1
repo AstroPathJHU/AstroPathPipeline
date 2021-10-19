@@ -23,6 +23,7 @@
     [string]$vers
     [string]$funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     [int]$flevel
+    [string]$condalocation = '"'+$PSScriptRoot + '\..\..\utilities\Miniconda3"'
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
@@ -253,4 +254,15 @@
         }
     }
     #
+    [void]runpythontask($taskname, $pythontask){
+        $externallog = $this.ProcessLog($taskname)
+        conda activate $this.sample.pyenv
+        #$pythontask = 'import astropath; ' + $pythontask
+        #python -c $pythontask *>> $externallog
+        Invoke-Expression $pythontask *>> $externallog
+        conda deactivate $this.sample.pyenv
+        if (test-path $externallog){
+            remove-item $externallog -force -ea Continue
+        }
+    }
  }
