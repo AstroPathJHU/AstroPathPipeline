@@ -230,7 +230,7 @@ class queue : sharedtools{
         #
         try {
             $cvers = $this.getversion($this.mpath, 'meanimage', $log.project)
-            #if slide is not in the meanimagecomparison file return true
+            #if slide is not in the meanimagecomparison file return 2
         } catch {}
         #
         return 3
@@ -240,16 +240,24 @@ class queue : sharedtools{
     [switch]checkbatchflatfield([mylogger]$log, $dependency){
         #
         if ($dependency){
-           if (!($this.checkmeanimagecomparison($log, $true) -eq 3)){
+           if (!($this.checkmeanimage($log, $true) -eq 3)){
                 return 1
            }
         }
-        # 
+        #
+        # version depedendent checks
+        #
+        $cvers = $this.getversion($this.mpath, 'meanimage', $log.project)
         $file = $log.batchflatfield()
         #
         if (!(test-path $file)){
-            return 2
+            if ($cvers -eq '0.0.1'){
+                return 2
+            } else {
+                return 1
+            }
         }
+        #
         return 3
         #
     }
@@ -316,7 +324,19 @@ class queue : sharedtools{
     # return one sample
     #
     [array]Aggregatebatches($batcharray){
-        $batcharray = $batcharray | Sort-Object | Get-Unique
+        $batcharrayunique = $batcharray | Sort-Object | Get-Unique
+        $slides = $this.importslideids($this.mpath)
+        $batchescomplete = @()
+        #
+        $batcharrayunique | foreach-object {
+            $nslidescomplete = ($batcharray -match $batcharrayunique[0]).count
+            $projectbatchpair = $_ -split ','
+            $this.ParseAPIDdefbatch($projectbatchpair[1], $slides)
+            $nslidesbatch = $this.batchslides.count
+            if ($nslidescomplete -eq $nslidesbatch){
+                $batchescomplete += $_
+            }
+        }
         return $batcharray
     }
     #
