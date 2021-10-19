@@ -454,7 +454,7 @@
         }
         #
         $folder = $root -Split('\\astropath\\')
-        $this.coderoot = $folder[0] + '\\astropath'
+        $this.coderoot = $folder[0] + '\astropath'
     }
     #
     [string]GetVersion($mpath, $module, $project){
@@ -501,9 +501,9 @@
         }catch{
             if($_.Exception.Message -match "The term 'conda' is not"){
                     #
-                    $env:PATH = $env:PATH + "C:\ProgramData\Miniconda3;C:\ProgramData\Miniconda3\Library\mingw-w64\bin;
-                        C:\ProgramData\Miniconda3\Library\usr\bin;C:\ProgramData\Miniconda3\Library\bin;
-                        C:\ProgramData\Miniconda3\Scripts;C:\ProgramData\Miniconda3\bin;"
+                    $env:PATH += ";C:\ProgramData\Miniconda3;C:\ProgramData\Miniconda3\Library\mingw-w64\bin; " +
+                        "C:\ProgramData\Miniconda3\Library\usr\bin;C:\ProgramData\Miniconda3\Library\bin; " +
+                        "C:\ProgramData\Miniconda3\Scripts;C:\ProgramData\Miniconda3\bin;"
                     #
                     (& "C:\ProgramData\Miniconda3\Scripts\conda.exe" "shell.powershell" "hook") | Out-String | Invoke-Expression
                     #
@@ -535,7 +535,7 @@
         #
         $this.createdirs($this.pyinstalllocation)
         $envs = conda info --envs
-        if(!($envs -match $this.pyenv)){
+        if(!($envs -match [regex]::Escape($this.pyenv))){
             $this.createpyapenvir()
         }
         #
@@ -545,7 +545,7 @@
         #
         $this.createdirs($this.pyinstalllocation)
         $envs = conda info --envs
-        if($envs -match $this.pyenv){
+        if($envs -match [regex]::Escape($this.pyenv)){
             $this.upgradepyapenvir()
         } else {
             $this.createpyapenvir()
