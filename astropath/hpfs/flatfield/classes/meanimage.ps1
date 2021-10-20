@@ -73,10 +73,11 @@ Class meanimage : moduletools {
         $taskname = 'meanimagesample'
         $dpath = $this.sample.basepath + ' '
         $rpath = $this.processvars[1] + ' '
-        $pythontask = 'meanimagesample.exe ' + $dpath + $rpath + $this.sample.SlideID + 
+        $pythontask = 'meanimagesample ' + $dpath + ' ' + $this.sample.SlideID
+         ' --shardedim3root ' + $rpath + " --njobs '8'" +
          ' --workingdir ' + $this.processvars[0] + '\meanimage' +
          ' --logroot ' + $this.processvars[0] + '\meanimage' +
-         " --njobs '8' --allow-local-edits"
+         " --allow-local-edits"
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished mean image sample python script")
     }
@@ -91,14 +92,12 @@ Class meanimage : moduletools {
         if (!$this.processvars[4]){
             return
         }
-        $this.sample.info("started return data")
         if ($this.vers -eq '0.0.1'){
             $this.ReturnDataMatlab()
         }
         else{
             $this.ReturnDataPy()
         }
-        $this.sample.info("finished return data")
     }
     <# -----------------------------------------
      ReturnDataMatlab
