@@ -21,7 +21,7 @@ class RegisterWSIs(contextlib.ExitStack):
     super().__init__(*args, **kwargs)
 
     self.__nentered = collections.defaultdict(lambda: 0)
-    self.__scaledwsis = {}
+    self.__scaledwsisandmasks = {}
 
   @contextlib.contextmanager
   def using_wsis(self):
@@ -30,32 +30,44 @@ class RegisterWSIs(contextlib.ExitStack):
       yield wsis
 
   @contextlib.contextmanager
-  def __using_scaled_wsis(self, **kwargs):
+  def using_tissuemasks(self):
+    with self.enter_context(contextlib.ExitStack()) as stack:
+      masks = [stack.enter_context(_.using_tissuemask()) for _ in self.samples]
+      yield masks
+
+  @contextlib.contextmanager
+  def __using_scaled_wsis_and_masks(self, **kwargs):
     kwargskey = tuple(sorted(kwargs.items()))
-    with self.using_wsis() as wsis:
+    with self.using_wsis() as wsis, self.using_tissuemasks() as masks:
       if self.__nentered[kwargskey] == 0:
-        self.__scaledwsis[kwargskey] = self.__getscaledwsis(**kwargs)
+        self.__scaledwsisandmasks[kwargskey] = self.__getscaledwsisandmasks(**kwargs)
       try:
-        yield self.__scaledwsis[kwargskey]
+        yield self.__scaledwsisandmasks[kwargskey]
       finally:
-        del self.__scaledwsis[kwargskey]
+        del self.__scaledwsisandmasks[kwargskey]
 
-  def using_scaled_wsis(self, *, zoomfactor, smoothsigma, equalize=False):
-    return self.__using_scaled_wsis(zoomfactor=zoomfactor, smoothsigma=smoothsigma, equalize=equalize)
+  def using_scaled_wsis_and_masks(self, *, zoomfactor, smoothsigma, equalize=False):
+    return self.__using_scaled_wsis_and_masks(zoomfactor=zoomfactor, smoothsigma=smoothsigma, equalize=equalize)
 
-  def __getscaledwsis(self, *, zoomfactor, smoothsigma, equalize=False):
-    with self.using_wsis() as wsis:
+  def __getscaledwsisandmasks(self, *, zoomfactor, smoothsigma, equalize=False):
+    with self.using_wsis() as wsis, self.using_tissuemasks() as masks:
       if zoomfactor > 1:
         wsis = [wsi.resize(np.array(wsi.size)//zoomfactor) for wsi in wsis]
+        #masks = [mask.resize(np.array(mask.size)//zoomfactor) for mask in masks]
+      masks = [np.asarray(mask) for mask in masks]
       wsis = [np.asarray(wsi) for wsi in wsis]
       if smoothsigma is not None:
         wsis = [skimage.filters.gaussian(wsi, smoothsigma, mode="nearest") for wsi in wsis]
       if equalize:
         wsis = [skimage.exposure.equalize_adapthist(wsi) for wsi in wsis]
-      return wsis
+      return wsis, masks
 
   def runalignment(self, *, _debugprint=False, zoomfactor=8, smoothsigma):
-    with self.using_scaled_wsis(zoomfactor=zoomfactor, smoothsigma=1, equalize=False) as wsis:
+    with self.using_scaled_wsis_and_masks(zoomfactor=zoomfactor, smoothsigma=1, equalize=False) as (wsis, masks):
+      for _ in wsis:
+        print(_.shape, _.dtype)
+      for _ in masks:
+        print(_.shape, _.dtype)
       wsi1, wsi2 = wsis
       if _debugprint > .5:
         for _ in wsis:
