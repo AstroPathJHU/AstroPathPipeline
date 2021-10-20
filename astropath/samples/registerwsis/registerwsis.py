@@ -81,6 +81,8 @@ class RegisterWSIs(contextlib.ExitStack):
 
     lowersize = max(lowersize)
     uppersize = max(uppersize)
+    lowersize += 500
+    uppersize += 500
 
     padlow1 = np.max([lowersize-centroid1, [0, 0]], axis=0)
     padhigh1 = np.max([centroid1 + uppersize - wsi1.shape, [0, 0]], axis=0)
@@ -115,14 +117,23 @@ class RegisterWSIs(contextlib.ExitStack):
     wsis = wsi1, wsi2 = wsi1[slice1], wsi2[slice2]
 
     if _debugprint > .5:
+      print("raw wsis")
       for _ in wsis:
         plt.imshow(_)
         plt.show()
 
-    wsis = [skimage.filters.gaussian(wsi>12, smoothsigma, mode="nearest") for wsi in wsis]
+    wsis = [skimage.filters.gaussian(wsi, smoothsigma, mode="nearest") for wsi in wsis]
+
+    if _debugprint > .5:
+      print("smoothed")
+      for _ in wsis:
+        plt.imshow(_)
+        plt.show()
+
     wsi1, wsi2 = wsis = [skimage.exposure.equalize_adapthist(wsi) for wsi in wsis]
 
     if _debugprint > .5:
+      print("equalized")
       for _ in wsis:
         plt.imshow(_)
         plt.show()
@@ -139,7 +150,8 @@ class RegisterWSIs(contextlib.ExitStack):
     rotated = wsi1, skimage.transform.rotate(wsi2, rotationresult.angle)
 
     if _debugprint > .5:
-      for _ in wsis:
+      print("rotated")
+      for _ in rotated:
         plt.imshow(_)
         plt.show()
 
