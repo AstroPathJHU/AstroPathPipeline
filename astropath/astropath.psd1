@@ -56,7 +56,10 @@ PowerShellVersion = '3.0'
 # RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
- ScriptsToProcess = @('shared\classes\sharedtools.ps1',
+ ScriptsToProcess = @('shared\classes\generalutils.ps1',
+                      'shared\classes\fileutils.ps1',
+                      'shared\classes\aptabletools.ps1',
+                      'shared\classes\sharedtools.ps1',
 		              'shared\classes\sampledef.ps1',
                       'shared\classes\logging.ps1',
 		              'shared\classes\launchmodule.ps1',

@@ -41,15 +41,19 @@
     #
     [void]BuildProcessLocPaths($task){
         $fwpath = '\\'+$this.sample.project_data.fwpath
-        $this.processvars = @($this.sample.basepath, $fwpath, $this.sample.flatwim3folder(), $this.sample.batchflatfield())
+        $this.processvars = @($this.sample.basepath, $fwpath, `
+            $this.sample.flatwim3folder(), $this.sample.batchflatfield())
         #
-        # If processloc is not '*' a processing destination was added as input, correct the paths to analyze from there
+        # If processloc is not '*' a processing destination was added as 
+        # input, correct the paths to analyze from there
         #
         if ($task[2]){
             $this.processloc = ($task[2]+'\processing_'+$this.sample.module+'\'+$task[1])
             #
-            $processvarsa = $this.processvars[0,2,3] -replace [regex]::escape($this.sample.basepath), $this.processloc 
-            $processvarsb = $this.processvars[1] -replace [regex]::escape('\\'+$this.sample.project_data.fwpath), ($this.processloc+'\flatw')
+            $processvarsa = $this.processvars[0,2,3] -replace `
+                [regex]::escape($this.sample.basepath), $this.processloc 
+            $processvarsb = $this.processvars[1] -replace `
+                [regex]::escape('\\'+$this.sample.project_data.fwpath), ($this.processloc+'\flatw')
             $this.processvars = @($processvarsa[0], $processvarsb, $processvarsa[1], $processvarsa[2], 1)
         } else {
             $this.processloc = $this.sample.flatwfolder()
@@ -127,7 +131,8 @@
     ----------------------------------------- #>
     [void]DownloadIm3s(){
         if (($this.flevel -band [FileDownloads]::IM3) -eq [FileDownloads]::IM3){
-            $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
+            $des = $this.processvars[0] +'\'+
+                $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
             $sor = $this.sample.MSIfolder()
             robocopy $sor $des *im3 -r:3 -w:3 -np -mt:30 |out-null
             if(!(((gci ($sor+'\*') -Include '*im3').Count) -eq (gci $des).count)){
@@ -144,7 +149,8 @@
     ----------------------------------------- #>
     [void]DownloadBatchID(){
         if (($this.flevel -band [FileDownloads]::BATCHID) -eq [FileDownloads]::BATCHID){
-            $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\'+$this.sample.Scan()
+            $des = $this.processvars[0] +'\'+
+                $this.sample.slideid+'\im3\'+$this.sample.Scan()
             xcopy $this.sample.batchIDfile(), $des /q /y /z /j /v | Out-Null
         }
     }
@@ -205,11 +211,14 @@
         $this.sample.info(($type + " data started"))
         $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
         if ($type -match 'inject'){
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -i -verbose 4>&1 >> $externallog
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $this.sample.slideid -i -verbose 4>&1 >> $externallog
         } elseif($type -match 'shreddat') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -d -verbose 4>&1 >> $externallog
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $this.sample.slideid -s -d -verbose 4>&1 >> $externallog
         } elseif($type -match 'shredxml') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -xml -verbose 4>&1 >> $externallog
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $this.sample.slideid -s -xml -verbose 4>&1 >> $externallog
         } 
         $log = $this.sample.GetContent($externallog) |
              where-object  {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 
@@ -262,7 +271,7 @@
         Invoke-Expression $pythontask *>> $externallog
         conda deactivate $this.sample.pyenv
         if (test-path $externallog){
-            remove-item $externallog -force -ea Continue
+            # remove-item $externallog -force -ea Continue
         }
     }
  }

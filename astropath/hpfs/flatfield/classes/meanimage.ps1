@@ -42,14 +42,12 @@ Class meanimage : moduletools {
      Usage: $this.GetMeanImage()
     ----------------------------------------- #>
     [void]GetMeanImage(){
-        $this.sample.info("started getting mean image")
         if ($this.vers -eq '0.0.1'){
             $this.GetMeanImageMatlab()
         }
         else{
             $this.GetMeanImagePy()
         }
-        $this.sample.info("finished getting mean image")
     }
     <# -----------------------------------------
      GetMeanImageMatlab
@@ -58,9 +56,11 @@ Class meanimage : moduletools {
      Usage: $this.GetMeanImageMatlab()
     ----------------------------------------- #>
     [void]GetMeanImageMatlab(){
+        $this.sample.info("started mean image sample -- matlab")
         $taskname = 'raw2mean'
         $matlabtask = ";raw2mean('"+$this.processvars[1]+"', '"+$this.sample.slideid+"');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $this.sample.info("finished mean image sample -- matlab")
     }
     <# -----------------------------------------
      GetMeanImagePy
@@ -69,17 +69,17 @@ Class meanimage : moduletools {
      Usage: $this.GetMeanImagePy()
     ----------------------------------------- #>
     [void]GetMeanImagePy(){
-        $this.sample.info("started mean image sample python script")
+        $this.sample.info("started mean image sample -- python")
         $taskname = 'meanimagesample'
         $dpath = $this.sample.basepath + ' '
-        $rpath = $this.processvars[1] + ' '
-        $pythontask = 'meanimagesample ' + $dpath + ' ' + $this.sample.SlideID
-         ' --shardedim3root ' + $rpath + " --njobs '8'" +
+        $rpath = $this.processvars[1]
+        $pythontask = 'meanimagesample ' + $dpath + $this.sample.SlideID + 
+         ' --shardedim3root ' + $rpath +
          ' --workingdir ' + $this.processvars[0] + '\meanimage' +
          ' --logroot ' + $this.processvars[0] + '\meanimage' +
-         " --allow-local-edits"
+         " --njobs '8' --allow-local-edits --skip-start-finish"
         $this.runpythontask($taskname, $pythontask)
-        $this.sample.info("finished mean image sample python script")
+        $this.sample.info("finished mean image sample -- python")
     }
     
     <# -----------------------------------------
@@ -107,8 +107,6 @@ Class meanimage : moduletools {
     ----------------------------------------- #>
     [void]ReturnDataMatlab(){
         #
-        $this.sample.info("Return data started")
-        #
 		$des = $this.sample.im3folder()
         #
         $sor = $this.processvars[1] +'\flat\'+$this.sample.slideid+'\*.flt'
@@ -119,7 +117,6 @@ Class meanimage : moduletools {
         #
         $sor = $this.processvars[1] + '\flat\'+$this.sample.slideid
         Remove-Item $sor -force -recurse
-        $this.sample.info("Return data finished")
         #
     }
     <# -----------------------------------------
@@ -131,13 +128,9 @@ Class meanimage : moduletools {
     [void]ReturnDataPy(){
         if ($this.processvars[4]){
             #
-            $this.sample.info("Return data started")
-            #
 		    $des = $this.sample.im3folder() + '\meanimage'
-            #
             $sor = $this.processvars[2] +'\..\meanimage'
             xcopy $sor, $des /q /y /z /j /v /s /i | Out-Null
-            $this.sample.info("Return data finished")
             #
         }
     }
@@ -150,7 +143,6 @@ Class meanimage : moduletools {
     [void]cleanup(){
         #
         $this.sample.info("cleanup started")
-        #
         if ($this.processvars[4]){
             Get-ChildItem -Path $this.processloc -Recurse | Remove-Item -force -recurse
         }
