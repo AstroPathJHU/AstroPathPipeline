@@ -129,9 +129,9 @@ class RegisterWSIs(contextlib.ExitStack):
 
     zoommore = [skimage.transform.resize(wsi, np.asarray(wsi.shape)//8) for wsi in wsis]
     zoomevenmore = [skimage.transform.resize(wsi, np.asarray(wsi.shape)//2) for wsi in zoommore]
-    r1 = self.getrotation(zoomevenmore, -180, 180-15, 15)
-    r2 = self.getrotation(zoomevenmore, r1.angle-15, r1.angle+15, 2)
-    r3 = self.getrotation(zoommore, r2.angle-2, r2.angle+2, 0.02)
+    r1 = self.getrotation(zoomevenmore, -180, 180-15, 15, _debugprint=_debugprint)
+    r2 = self.getrotation(zoomevenmore, r1.angle-15, r1.angle+15, 2, _debugprint=_debugprint)
+    r3 = self.getrotation(zoommore, r2.angle-2, r2.angle+2, 0.02, _debugprint=_debugprint)
     rotationresult = r3
     rotationresult.xcorr.update(r2.xcorr)
     rotationresult.xcorr.update(r1.xcorr)
@@ -143,14 +143,19 @@ class RegisterWSIs(contextlib.ExitStack):
         plt.imshow(_)
         plt.show()
 
-    translationresult = computeshift(rotated, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
+    translationresult = computeshift(rotated, checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
     return rotationresult, translationresult
 
-  def getrotation(self, rotationwsis, minangle, maxangle, stepangle):
+  def getrotation(self, rotationwsis, minangle, maxangle, stepangle, *, _debugprint=-float("inf")):
     wsi1, wsi2 = rotationwsis
     bestxcorr = {}
     for angle in np.arange(minangle, maxangle+stepangle, stepangle):
       rotated = wsi1, skimage.transform.rotate(wsi2, angle)
+      if _debugprint > 100:
+        for _ in rotated:
+          print(angle)
+          plt.imshow(_)
+          plt.show()
       xcorr = crosscorrelation(rotated)
       bestxcorr[angle] = np.max(xcorr)
     angle = max(bestxcorr, key=bestxcorr.get)
