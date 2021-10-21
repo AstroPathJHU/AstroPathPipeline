@@ -96,9 +96,9 @@
             if($_.Exception.Message -match "The term 'conda' is not"){
                     #
                     $str = ";C:\ProgramData\Miniconda3;" +
-                           "C:\ProgramData\Miniconda3\Library\mingw-w64\bin; " +
+                           "C:\ProgramData\Miniconda3\Library\mingw-w64\bin;" +
                            "C:\ProgramData\Miniconda3\Library\usr\bin;" +
-                           "C:\ProgramData\Miniconda3\Library\bin; " +
+                           "C:\ProgramData\Miniconda3\Library\bin;" +
                            "C:\ProgramData\Miniconda3\Scripts;"+
                            "C:\ProgramData\Miniconda3\bin;"
                     $env:PATH += $str.replace('C:', $drive)
