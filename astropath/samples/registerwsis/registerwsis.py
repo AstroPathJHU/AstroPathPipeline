@@ -1,4 +1,4 @@
-import collections, contextlib, cv2, matplotlib.pyplot as plt, methodtools, numpy as np, PIL, skimage.registration, skimage.transform
+import collections, contextlib, cv2, matplotlib.pyplot as plt, methodtools, numpy as np, PIL, scipy.ndimage, skimage.registration, skimage.transform
 
 from ...slides.annowarp.annowarpsample import WSISample
 from ...slides.align.computeshift import computeshift, crosscorrelation, OptimizeResult, shiftimg
@@ -13,7 +13,7 @@ class ReadWSISample(WSISample, AstroPathTissueMaskSample):
   def run(self): assert False
 
 class RegisterWSIs(contextlib.ExitStack):
-  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, **kwargs):
+  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilesize=256, **kwargs):
     self.samples = (
       ReadWSISample(root=root1, samp=samp1, zoomroot=zoomroot1),
       ReadWSISample(root=root2, samp=samp2, zoomroot=zoomroot2),
@@ -22,6 +22,7 @@ class RegisterWSIs(contextlib.ExitStack):
 
     self.__nentered = collections.defaultdict(lambda: 0)
     self.__scaledwsisandmasks = {}
+    self.__tilesize = tilesize
 
   @contextlib.contextmanager
   def using_wsis(self):
@@ -64,13 +65,11 @@ class RegisterWSIs(contextlib.ExitStack):
 
   def runalignment(self, *, _debugprint=False, zoomfactor=8, smoothsigma):
     with self.using_scaled_wsis_and_masks(zoomfactor=zoomfactor, smoothsigma=1, equalize=False) as (wsis, masks):
-      for _ in wsis:
-        print(_.shape, _.dtype)
-      for _ in masks:
-        print(_.shape, _.dtype)
       wsi1, wsi2 = wsis
+      mask1, mask2 = masks
       if _debugprint > .5:
-        for _ in wsis:
+        for _ in wsis+masks:
+          print(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
@@ -117,15 +116,18 @@ class RegisterWSIs(contextlib.ExitStack):
       padhigh1 = np.max([centroid1 + uppersize - wsi1.shape, [0, 0]], axis=0)
       if np.any([padlow1, padhigh1]):
         wsi1 = np.pad(wsi1, ((padlow1[0], padhigh1[0]), (padlow1[1], padhigh1[1])))
+        mask1 = np.pad(mask1, ((padlow1[0], padhigh1[0]), (padlow1[1], padhigh1[1])))
         centroid1 += padlow1
 
       padlow2 = np.max([lowersize-centroid2, [0, 0]], axis=0)
       padhigh2 = np.max([centroid2 + uppersize - wsi2.shape, [0, 0]], axis=0)
       if np.any([padlow2, padhigh2]):
         wsi2 = np.pad(wsi2, ((padlow2[0], padhigh2[0]), (padlow2[1], padhigh2[1])))
+        mask2 = np.pad(mask2, ((padlow2[0], padhigh2[0]), (padlow2[1], padhigh2[1])))
         centroid2 += padlow2
 
       wsis = wsi1, wsi2
+      masks = mask1, mask2
 
       slice1 = slice(
         (centroid1 - lowersize)[0],
@@ -155,26 +157,30 @@ class RegisterWSIs(contextlib.ExitStack):
       )
 
       wsis = wsi1, wsi2 = wsi1[slice1], wsi2[slice2]
+      masks = mask1, mask2 = mask1[slice1], mask2[slice2]
 
       if _debugprint > .5:
         print("raw wsis")
-        for _ in wsis:
+        for _ in wsis+masks:
+          print(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
-      wsis = [skimage.filters.gaussian(wsi, smoothsigma, mode="nearest") for wsi in wsis]
+      wsis = tuple(skimage.filters.gaussian(wsi, smoothsigma, mode="nearest") for wsi in wsis)
 
       if _debugprint > .5:
         print("smoothed")
-        for _ in wsis:
+        for _ in wsis+masks:
+          print(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
-      wsi1, wsi2 = wsis = [skimage.exposure.equalize_adapthist(wsi) for wsi in wsis]
+      wsi1, wsi2 = wsis = tuple(skimage.exposure.equalize_adapthist(wsi) for wsi in wsis)
 
       if _debugprint > .5:
         print("equalized")
-        for _ in wsis:
+        for _ in wsis+masks:
+          print(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
@@ -187,15 +193,48 @@ class RegisterWSIs(contextlib.ExitStack):
       rotationresult.xcorr.update(r2.xcorr)
       rotationresult.xcorr.update(r1.xcorr)
 
-      rotated = wsi1, skimage.transform.rotate(wsi2, rotationresult.angle)
+      wsis = wsi1, wsi2 = wsi1, skimage.transform.rotate(wsi2, rotationresult.angle)
+      mask1, mask2 = masks = mask1, skimage.transform.rotate(mask2, rotationresult.angle).astype(bool)
 
       if _debugprint > .5:
         print("rotated")
-        for _ in rotated:
+        for _ in wsis+masks:
+          print(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
-      translationresult = computeshift(rotated[::-1], checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
+      translationresult = computeshift(wsis[::-1], checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
+
+      wsis = wsi1, wsi2 = tuple(shiftimg(wsis, -translationresult.dx.n, -translationresult.dy.n))
+      masks = mask1, mask2 = tuple(shiftimg(masks, -translationresult.dx.n, -translationresult.dy.n)>0.5)
+
+      if _debugprint > .5:
+        print("shifted")
+        for _ in wsis+masks:
+          print(_.shape, _.dtype)
+          plt.imshow(_)
+          plt.show()
+
+      masks = mask1, mask2 = tuple(self.processmask(mask) for mask in masks)
+
+      if _debugprint > .5:
+        print("processed masks")
+        for _ in wsis+masks:
+          print(_.shape, _.dtype)
+          plt.imshow(_)
+          plt.show()
+
+      mask = mask1 | mask2
+      del mask1, mask2
+      masks = mask,
+
+      if _debugprint > .5:
+        print("unioned masks")
+        for _ in wsis+masks:
+          print(_.shape, _.dtype)
+          plt.imshow(_)
+          plt.show()
+
       return firsttranslationresult, rotationresult, translationresult
 
   @staticmethod
@@ -218,3 +257,13 @@ class RegisterWSIs(contextlib.ExitStack):
       bestxcorr=bestxcorr[angle],
       exit=0,
     )
+
+  @staticmethod
+  def processmask(mask):
+    mask = scipy.ndimage.binary_fill_holes(mask)
+    mask = skimage.morphology.area_opening(mask, 1000)
+    disk = skimage.morphology.disk(20, dtype=np.bool)
+    mask = skimage.morphology.binary_closing(mask, disk)
+    mask = skimage.morphology.binary_opening(mask, disk)
+    mask = skimage.morphology.binary_dilation(mask, disk)
+    return mask
