@@ -53,7 +53,7 @@ class RegisterWSIs(contextlib.ExitStack):
     with self.using_wsis() as wsis, self.using_tissuemasks() as masks:
       if zoomfactor > 1:
         wsis = [wsi.resize(np.array(wsi.size)//zoomfactor) for wsi in wsis]
-        #masks = [mask.resize(np.array(mask.size)//zoomfactor) for mask in masks]
+        masks = [skimage.transform.downscale_local_mean(mask, (zoomfactor, zoomfactor)) >= 0.5 for mask in masks]
       masks = [np.asarray(mask) for mask in masks]
       wsis = [np.asarray(wsi) for wsi in wsis]
       if smoothsigma is not None:
@@ -143,6 +143,17 @@ class RegisterWSIs(contextlib.ExitStack):
         (centroid2 + uppersize)[1],
       )
 
+      firsttranslationresult = OptimizeResult(
+        slice1=slice1,
+        slice2=slice2,
+        padlow1=padlow1,
+        padhigh1=padhigh1,
+        padlow2=padlow2,
+        padhigh2=padhigh2,
+        dx=slice1[1].start - slice2[1].start + padlow2[1] - padlow1[1],
+        dy=slice1[0].start - slice2[0].start + padlow2[0] - padlow1[0],
+      )
+
       wsis = wsi1, wsi2 = wsi1[slice1], wsi2[slice2]
 
       if _debugprint > .5:
@@ -184,8 +195,8 @@ class RegisterWSIs(contextlib.ExitStack):
           plt.imshow(_)
           plt.show()
 
-      translationresult = computeshift(rotated, checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
-      return rotationresult, translationresult
+      translationresult = computeshift(rotated[::-1], checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
+      return firsttranslationresult, rotationresult, translationresult
 
   @staticmethod
   def getrotation(rotationwsis, minangle, maxangle, stepangle, *, _debugprint=-float("inf")):
