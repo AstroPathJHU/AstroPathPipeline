@@ -235,7 +235,66 @@ class RegisterWSIs(contextlib.ExitStack):
           plt.imshow(_)
           plt.show()
 
-      return firsttranslationresult, rotationresult, translationresult
+      shape, = {_.shape for _ in wsis+masks}
+
+      ntilesy, ntilesx = 4*np.array(shape)//self.tilesize+1
+      ntiles = ntilesx * ntilesy
+      results = []
+      for i, (ix, iy) in enumerate(itertools.product(range(1, ntilesx+1), range(1, ntilesy+1)), start=1):
+        if i % 100 == 0 or i == ntiles: self.logger.debug("%d / %d", i, ntiles)
+        ixvec = np.array([ix, iy])
+        xvec = x, y = (ixvec-1) * self.tilesize // 4
+        slc = slice(y, y+self.tilesize), slice(x, x+self.tilesize)
+        maskslice = mask[slc]
+        if np.count_nonzero(maskslice) / maskslice.size < self.mintissuefraction:
+          continue
+        tile1 = wsi1[slc]
+        tile2 = wsi2[slc]
+        alignmentresultkwargs = dict(
+          n=n,
+          x=x,
+          y=y,
+          zoomedscale=self.zoomedscale,
+          tilesize=self.tilesize,
+          firsttranslationresult=firsttranslationresult,
+          rotationresult=rotationresult,
+          translationresult=translationresult,
+        )
+        try:
+          shiftresult = computeshift((tile1, tile2), usemaxmovementcut=False)
+        except Exception as e:
+          results.append(
+            CrossRegAlignmentResult(
+              **alignmentresultkwargs,
+              dxvec=(
+                units.Distance(pixels=unc.ufloat(0, 9999.), pscale=self.zoomedscale),
+                units.Distance(pixels=unc.ufloat(0, 9999.), pscale=self.zoomedscale),
+              ),
+              exit=255,
+              exception=e,
+            )
+          )
+        else:
+          results.append(
+            CrossRegAlignmentResult(
+              **alignmentresultkwargs,
+              dxvec=units.correlated_distances(
+                #here we apply initialdx and initialdy so that the reported
+                #result is the global shift
+                pixels=(shiftresult.dx, shiftresult.dy),
+                zoomedscale=zoomedscale,
+                power=1,
+              ),
+              exit=shiftresult.exit,
+            )
+          )
+      self.__alignmentresults = results
+      if not results:
+        raise ValueError("Couldn't align any tiles")
+      if write_result:
+        self.writealignments()
+
+      return results
 
   @staticmethod
   def getrotation(rotationwsis, minangle, maxangle, stepangle, *, _debugprint=-float("inf")):
