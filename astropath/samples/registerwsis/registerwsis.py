@@ -1,23 +1,31 @@
-import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, methodtools, numpy as np, PIL, scipy.ndimage, skimage.registration, skimage.transform
+import collections, contextlib, itertools, matplotlib.pyplot as plt, numpy as np, scipy.ndimage, skimage.registration, skimage.transform, uncertainties as unc
 
-from ...slides.annowarp.annowarpsample import WSISample
+from ...shared.logging import MultiLogger
 from ...slides.align.computeshift import computeshift, crosscorrelation, OptimizeResult, shiftimg
+from ...slides.align.overlap import AlignmentComparison
+from ...slides.annowarp.annowarpsample import WSISample
 from ...slides.stitchmask.stitchmasksample import AstroPathTissueMaskSample
-from ...utilities.misc import floattoint
-from ...utilities.units import ThingWithPscale
+from ...utilities import units
+from ...utilities.dataclasses import MetaDataAnnotation
+from ...utilities.misc import covariance_matrix, floattoint
+from ...utilities.units import ThingWithPscale, ThingWithScale
+from ...utilities.units.dataclasses import distancefield, makedataclasswithpscale
 
 class ReadWSISample(WSISample, AstroPathTissueMaskSample):
   def __init__(self, *args, uselogfiles=False, **kwargs):
     super().__init__(*args, uselogfiles=uselogfiles, **kwargs)
   @classmethod
-  def logmodule(cls): return "readwsi"
+  def logmodule(cls): return "crossregistration"
   def run(self): assert False
 
-class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, scale="zoomedscale"):
-  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, **kwargs):
+class ThingWithZoomedScale(ThingWithScale, scale="zoomedscale"): pass
+DataClassWithZoomedScale, DataClassWithZoomedScaleFrozen = makedataclasswithpscale("DataClassWithZoomedScale", "zoomedscale", ThingWithZoomedScale)
+
+class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
+  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, uselogfiles=True, **kwargs):
     self.samples = (
-      ReadWSISample(root=root1, samp=samp1, zoomroot=zoomroot1),
-      ReadWSISample(root=root2, samp=samp2, zoomroot=zoomroot2),
+      ReadWSISample(root=root1, samp=samp1, zoomroot=zoomroot1, uselogfiles=uselogfiles),
+      ReadWSISample(root=root2, samp=samp2, zoomroot=zoomroot2, uselogfiles=uselogfiles),
     )
     self.__zoomfactor = zoomfactor
     super().__init__(*args, **kwargs)
@@ -26,6 +34,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, scale="zoomedscale"):
     self.__scaledwsisandmasks = {}
     self.__tilesize = tilepixels * self.onezoomedpixel
     self.__mintissuefraction = mintissuefraction
+    self.__logger = MultiLogger(*(s.logger for s in self.samples), entermessage=f"cross-registering {self.samples[0].SlideID} and {self.samples[1].SlideID}")
 
   @property
   def pscale(self):
@@ -39,6 +48,8 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, scale="zoomedscale"):
   def tilesize(self): return self.__tilesize
   @property
   def mintissuefraction(self): return self.__mintissuefraction
+  @property
+  def logger(self): return self.__logger
 
   @contextlib.contextmanager
   def using_wsis(self):
@@ -257,8 +268,8 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, scale="zoomedscale"):
       ntilesy, ntilesx = floattoint((4*np.array(shape)//self.tilesize+1).astype(float))
       ntiles = ntilesx * ntilesy
       results = []
-      for i, (ix, iy) in enumerate(itertools.product(range(1, ntilesx+1), range(1, ntilesy+1)), start=1):
-        if i % 100 == 0 or i == ntiles: self.logger.debug("%d / %d", i, ntiles)
+      for n, (ix, iy) in enumerate(itertools.product(range(1, ntilesx+1), range(1, ntilesy+1)), start=1):
+        if n % 100 == 0 or n == ntiles: self.logger.debug("%d / %d", n, ntiles)
         ixvec = np.array([ix, iy])
         xvec = x, y = (ixvec-1) * self.tilesize / 4
         slc = slice(
@@ -305,7 +316,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, scale="zoomedscale"):
                 #here we apply initialdx and initialdy so that the reported
                 #result is the global shift
                 pixels=(shiftresult.dx, shiftresult.dy),
-                zoomedscale=zoomedscale,
+                pscale=self.zoomedscale,
                 power=1,
               ),
               exit=shiftresult.exit,
@@ -314,8 +325,8 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, scale="zoomedscale"):
       self.__alignmentresults = results
       if not results:
         raise ValueError("Couldn't align any tiles")
-      if write_result:
-        self.writealignments()
+#      if write_result:
+#        self.writealignments()
 
       return results
 
@@ -349,3 +360,42 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, scale="zoomedscale"):
     mask = skimage.morphology.binary_opening(mask, disk)
     mask = skimage.morphology.binary_dilation(mask, disk)
     return mask
+
+class CrossRegAlignmentResult(AlignmentComparison, DataClassWithZoomedScale):
+  n: int
+  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="zoomedscale")
+  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="zoomedscale")
+  dx: units.Distance = distancefield(pixelsormicrons="pixels", secondfunction="{:.6g}".format, pscalename="zoomedscale")
+  dy: units.Distance = distancefield(pixelsormicrons="pixels", secondfunction="{:.6g}".format, pscalename="zoomedscale")
+  covxx: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="zoomedscale")
+  covxy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="zoomedscale")
+  covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="zoomedscale")
+  exit: int
+  tilesize: units.Distance = distancefield(pixelsormicrons="pixels", includeintable=False, pscalename="zoomedscale")
+  exception: Exception = MetaDataAnnotation(None, includeintable=False)
+  firsttranslationresult: OptimizeResult = MetaDataAnnotation(None, includeintable=False)
+  rotationresult: OptimizeResult = MetaDataAnnotation(None, includeintable=False)
+  translationresult: OptimizeResult = MetaDataAnnotation(None, includeintable=False)
+
+  @classmethod
+  def transforminitargs(cls, *args, **kwargs):
+    dxvec = kwargs.pop("dxvec", None)
+    morekwargs = {}
+
+    if dxvec is not None:
+      morekwargs["dx"] = dxvec[0].n
+      morekwargs["dy"] = dxvec[1].n
+      covariancematrix = covariance_matrix(dxvec)
+    else:
+      covariancematrix = kwargs.pop("covariance", None)
+
+    if covariancematrix is not None:
+      units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
+      (morekwargs["covxx"], morekwargs["covxy"]), (morekwargs["covxy"], morekwargs["covyy"]) = covariancematrix
+
+    return super().transforminitargs(*args, **kwargs, **morekwargs)
+
+  @property
+  def dxvec(self): return np.array([self.dx, self.dy])
+  @property
+  def unshifted(self): raise NotImplementedError

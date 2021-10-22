@@ -1075,17 +1075,19 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
+    morekwargs = {}
+
     if dxvec is not None:
-      kwargs["dx"] = dxvec[0].n
-      kwargs["dy"] = dxvec[1].n
-      kwargs["covariance"] = covariance_matrix(dxvec)
+      morekwargs["dx"] = dxvec[0].n
+      morekwargs["dy"] = dxvec[1].n
+      morekwargs["covariance"] = covariance_matrix(dxvec)
 
     covariancematrix = kwargs.pop("covariance", None)
     if covariancematrix is not None:
       units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
-      (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
+      (morekwargs["covxx"], morekwargs["covxy"]), (morekwargs["covxy"], morekwargs["covyy"]) = covariancematrix
 
-    return super().transforminitargs(*args, **kwargs)
+    return super().transforminitargs(*args, **kwargs, **morekwargs)
 
   def __post_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
     self.use_gpu = False
