@@ -222,8 +222,8 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
       rotationresult.xcorr.update(r1.xcorr)
       rotation = affinetransformation(rotation=umath.radians(rotationresult.angle))
 
-      wsis = wsi1, wsi2 = wsi1, skimage.transform.rotate(wsi2, rotationresult.angle)
-      mask1, mask2 = masks = mask1, skimage.transform.rotate(mask2, rotationresult.angle).astype(bool)
+      wsis = wsi1, wsi2 = wsi1, skimage.transform.rotate(wsi2, rotationresult.angle.n)
+      mask1, mask2 = masks = mask1, skimage.transform.rotate(mask2, rotationresult.angle.n).astype(bool)
 
       if _debugprint > .5:
         print("rotated")
