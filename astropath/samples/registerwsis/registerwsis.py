@@ -1,9 +1,10 @@
-import collections, contextlib, cv2, matplotlib.pyplot as plt, methodtools, numpy as np, PIL, scipy.ndimage, skimage.registration, skimage.transform
+import collections, contextlib, cv2, itertools, matplotlib.pyplot as plt, methodtools, numpy as np, PIL, scipy.ndimage, skimage.registration, skimage.transform
 
 from ...slides.annowarp.annowarpsample import WSISample
 from ...slides.align.computeshift import computeshift, crosscorrelation, OptimizeResult, shiftimg
 from ...slides.stitchmask.stitchmasksample import AstroPathTissueMaskSample
 from ...utilities.misc import floattoint
+from ...utilities.units import ThingWithPscale
 
 class ReadWSISample(WSISample, AstroPathTissueMaskSample):
   def __init__(self, *args, uselogfiles=False, **kwargs):
@@ -12,17 +13,32 @@ class ReadWSISample(WSISample, AstroPathTissueMaskSample):
   def logmodule(cls): return "readwsi"
   def run(self): assert False
 
-class RegisterWSIs(contextlib.ExitStack):
-  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilesize=256, **kwargs):
+class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, scale="zoomedscale"):
+  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, **kwargs):
     self.samples = (
       ReadWSISample(root=root1, samp=samp1, zoomroot=zoomroot1),
       ReadWSISample(root=root2, samp=samp2, zoomroot=zoomroot2),
     )
+    self.__zoomfactor = zoomfactor
     super().__init__(*args, **kwargs)
 
     self.__nentered = collections.defaultdict(lambda: 0)
     self.__scaledwsisandmasks = {}
-    self.__tilesize = tilesize
+    self.__tilesize = tilepixels * self.onezoomedpixel
+    self.__mintissuefraction = mintissuefraction
+
+  @property
+  def pscale(self):
+    pscale, = {s.pscale for s in self.samples}
+    return pscale
+  @property
+  def zoomfactor(self): return self.__zoomfactor
+  @property
+  def zoomedscale(self): return self.pscale / self.zoomfactor
+  @property
+  def tilesize(self): return self.__tilesize
+  @property
+  def mintissuefraction(self): return self.__mintissuefraction
 
   @contextlib.contextmanager
   def using_wsis(self):
@@ -47,14 +63,14 @@ class RegisterWSIs(contextlib.ExitStack):
       finally:
         del self.__scaledwsisandmasks[kwargskey]
 
-  def using_scaled_wsis_and_masks(self, *, zoomfactor, smoothsigma, equalize=False):
-    return self.__using_scaled_wsis_and_masks(zoomfactor=zoomfactor, smoothsigma=smoothsigma, equalize=equalize)
+  def using_scaled_wsis_and_masks(self, *, smoothsigma, equalize=False):
+    return self.__using_scaled_wsis_and_masks(smoothsigma=smoothsigma, equalize=equalize)
 
-  def __getscaledwsisandmasks(self, *, zoomfactor, smoothsigma, equalize=False):
+  def __getscaledwsisandmasks(self, *, smoothsigma, equalize=False):
     with self.using_wsis() as wsis, self.using_tissuemasks() as masks:
-      if zoomfactor > 1:
-        wsis = [wsi.resize(np.array(wsi.size)//zoomfactor) for wsi in wsis]
-        masks = [skimage.transform.downscale_local_mean(mask, (zoomfactor, zoomfactor)) >= 0.5 for mask in masks]
+      if self.zoomfactor > 1:
+        wsis = [wsi.resize(np.array(wsi.size)//self.zoomfactor) for wsi in wsis]
+        masks = [skimage.transform.downscale_local_mean(mask, (self.zoomfactor, self.zoomfactor)) >= 0.5 for mask in masks]
       masks = [np.asarray(mask) for mask in masks]
       wsis = [np.asarray(wsi) for wsi in wsis]
       if smoothsigma is not None:
@@ -63,8 +79,8 @@ class RegisterWSIs(contextlib.ExitStack):
         wsis = [skimage.exposure.equalize_adapthist(wsi) for wsi in wsis]
       return wsis, masks
 
-  def runalignment(self, *, _debugprint=False, zoomfactor=8, smoothsigma):
-    with self.using_scaled_wsis_and_masks(zoomfactor=zoomfactor, smoothsigma=1, equalize=False) as (wsis, masks):
+  def runalignment(self, *, _debugprint=False, smoothsigma):
+    with self.using_scaled_wsis_and_masks(smoothsigma=1, equalize=False) as (wsis, masks):
       wsi1, wsi2 = wsis
       mask1, mask2 = masks
       if _debugprint > .5:
@@ -236,15 +252,22 @@ class RegisterWSIs(contextlib.ExitStack):
           plt.show()
 
       shape, = {_.shape for _ in wsis+masks}
+      shape = np.array(shape) * self.onezoomedpixel
 
-      ntilesy, ntilesx = 4*np.array(shape)//self.tilesize+1
+      ntilesy, ntilesx = floattoint((4*np.array(shape)//self.tilesize+1).astype(float))
       ntiles = ntilesx * ntilesy
       results = []
       for i, (ix, iy) in enumerate(itertools.product(range(1, ntilesx+1), range(1, ntilesy+1)), start=1):
         if i % 100 == 0 or i == ntiles: self.logger.debug("%d / %d", i, ntiles)
         ixvec = np.array([ix, iy])
-        xvec = x, y = (ixvec-1) * self.tilesize // 4
-        slc = slice(y, y+self.tilesize), slice(x, x+self.tilesize)
+        xvec = x, y = (ixvec-1) * self.tilesize / 4
+        slc = slice(
+          floattoint(float(y / self.onezoomedpixel)),
+          floattoint(float((y+self.tilesize) / self.onezoomedpixel)),
+        ), slice(
+          floattoint(float(x / self.onezoomedpixel)),
+          floattoint(float((x+self.tilesize) / self.onezoomedpixel)),
+        )
         maskslice = mask[slc]
         if np.count_nonzero(maskslice) / maskslice.size < self.mintissuefraction:
           continue

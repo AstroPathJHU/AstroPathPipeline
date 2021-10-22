@@ -57,7 +57,7 @@ class ThingWithScale(TableReader):
     super().__init_subclass__(**kwargs)
     if scales is None: scales = []
     if scale is not None: scales.append(scale)
-    cls.__scales = set.union(*(subcls.__scales for subcls in cls.__mro__ if issubclass(subcls, ThingWithScale)))
+    cls.__scales = set.union(*(supercls.__scales for supercls in cls.__mro__ if issubclass(supercls, ThingWithScale)))
     for scale in scales:
       if isinstance(scale, str): scale = PScale(scale)
 
