@@ -7,7 +7,7 @@ from ...slides.annowarp.annowarpsample import WSISample
 from ...slides.stitchmask.stitchmasksample import AstroPathTissueMaskSample
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation
-from ...utilities.misc import covariance_matrix, floattoint
+from ...utilities.misc import affinetransformation, covariance_matrix, floattoint
 from ...utilities.units import ThingWithPscale, ThingWithScale
 from ...utilities.units.dataclasses import distancefield, makedataclasswithpscale
 
@@ -182,6 +182,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
         dx=slice1[1].start - slice2[1].start + padlow2[1] - padlow1[1],
         dy=slice1[0].start - slice2[0].start + padlow2[0] - padlow1[0],
       )
+      firsttranslation = affinetransformation(translation=(firsttranslationresult.dx, firsttranslationresult.dy))
 
       wsis = wsi1, wsi2 = wsi1[slice1], wsi2[slice2]
       masks = mask1, mask2 = mask1[slice1], mask2[slice2]
@@ -219,6 +220,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
       rotationresult = r3
       rotationresult.xcorr.update(r2.xcorr)
       rotationresult.xcorr.update(r1.xcorr)
+      rotation = affinetransformation(rotation=rotationresult.angle)
 
       wsis = wsi1, wsi2 = wsi1, skimage.transform.rotate(wsi2, rotationresult.angle)
       mask1, mask2 = masks = mask1, skimage.transform.rotate(mask2, rotationresult.angle).astype(bool)
@@ -231,6 +233,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
           plt.show()
 
       translationresult = computeshift(wsis[::-1], checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
+      translation = affinetransformation(translation=(translationresult.dx, translationresult.dy))
 
       wsis = wsi1, wsi2 = tuple(shiftimg(wsis, -translationresult.dx.n, -translationresult.dy.n))
       masks = mask1, mask2 = tuple(shiftimg(masks, -translationresult.dx.n, -translationresult.dy.n)>0.5)
@@ -290,9 +293,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
           y=y,
           zoomedscale=self.zoomedscale,
           tilesize=self.tilesize,
-          firsttranslationresult=firsttranslationresult,
-          rotationresult=rotationresult,
-          translationresult=translationresult,
+          affinetransformation = translation @ rotation @ firsttranslation,
         )
         try:
           shiftresult = computeshift((tile1, tile2), usemaxmovementcut=False)
@@ -373,9 +374,7 @@ class CrossRegAlignmentResult(AlignmentComparison, DataClassWithZoomedScale):
   exit: int
   tilesize: units.Distance = distancefield(pixelsormicrons="pixels", includeintable=False, pscalename="zoomedscale")
   exception: Exception = MetaDataAnnotation(None, includeintable=False)
-  firsttranslationresult: OptimizeResult = MetaDataAnnotation(None, includeintable=False)
-  rotationresult: OptimizeResult = MetaDataAnnotation(None, includeintable=False)
-  translationresult: OptimizeResult = MetaDataAnnotation(None, includeintable=False)
+  affinetransformation: np.ndarray = MetaDataAnnotation(None, includeintable=False)
 
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
@@ -394,6 +393,11 @@ class CrossRegAlignmentResult(AlignmentComparison, DataClassWithZoomedScale):
       (morekwargs["covxx"], morekwargs["covxy"]), (morekwargs["covxy"], morekwargs["covyy"]) = covariancematrix
 
     return super().transforminitargs(*args, **kwargs, **morekwargs)
+
+  def __post_init__(self, *args, **kwargs):
+    if self.affinetransformation is None:
+      self.affinetransformation = np.identity(3)
+    super().__post_init__(*args, **kwargs)
 
   @property
   def dxvec(self): return np.array([self.dx, self.dy])
