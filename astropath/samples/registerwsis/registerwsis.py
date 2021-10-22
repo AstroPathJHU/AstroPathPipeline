@@ -1,4 +1,4 @@
-import collections, contextlib, itertools, matplotlib.pyplot as plt, numpy as np, scipy.ndimage, skimage.registration, skimage.transform, uncertainties as unc
+import collections, contextlib, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.registration, skimage.transform, uncertainties as unc, uncertainties.umath as umath, uncertainties.unumpy as unp
 
 from ...shared.logging import MultiLogger
 from ...slides.align.computeshift import computeshift, crosscorrelation, OptimizeResult, shiftimg
@@ -215,12 +215,12 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
       zoommore = [skimage.transform.resize(wsi, np.asarray(wsi.shape)//8) for wsi in wsis]
       zoomevenmore = [skimage.transform.resize(wsi, np.asarray(wsi.shape)//2) for wsi in zoommore]
       r1 = self.getrotation(zoomevenmore, -180, 180-15, 15, _debugprint=_debugprint)
-      r2 = self.getrotation(zoomevenmore, r1.angle-15, r1.angle+15, 2, _debugprint=_debugprint)
-      r3 = self.getrotation(zoommore, r2.angle-2, r2.angle+2, 0.02, _debugprint=_debugprint)
+      r2 = self.getrotation(zoomevenmore, r1.angle.n-15, r1.angle.n+15, 2, _debugprint=_debugprint)
+      r3 = self.getrotation(zoommore, r2.angle.n-2, r2.angle.n+2, 0.02, _debugprint=_debugprint)
       rotationresult = r3
       rotationresult.xcorr.update(r2.xcorr)
       rotationresult.xcorr.update(r1.xcorr)
-      rotation = affinetransformation(rotation=rotationresult.angle)
+      rotation = affinetransformation(rotation=umath.radians(rotationresult.angle))
 
       wsis = wsi1, wsi2 = wsi1, skimage.transform.rotate(wsi2, rotationresult.angle)
       mask1, mask2 = masks = mask1, skimage.transform.rotate(mask2, rotationresult.angle).astype(bool)
@@ -334,21 +334,44 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
   @staticmethod
   def getrotation(rotationwsis, minangle, maxangle, stepangle, *, _debugprint=-float("inf")):
     wsi1, wsi2 = rotationwsis
-    bestxcorr = {}
-    for angle in np.arange(minangle, maxangle+stepangle, stepangle):
+    xcorrs = {}
+    angles = more_itertools.peekable(np.arange(minangle, maxangle+stepangle, stepangle))
+    for angle in angles:
       rotated = wsi1, skimage.transform.rotate(wsi2, angle)
       if _debugprint > 100:
         for _ in rotated:
           print(angle)
           plt.imshow(_)
           plt.show()
-      xcorr = crosscorrelation(rotated)
-      bestxcorr[angle] = np.max(xcorr)
-    angle = max(bestxcorr, key=bestxcorr.get)
+      shiftresult = computeshift(rotated, checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000)
+      xcorrs[angle] = shiftresult.crosscorrelation
+
+      if not angles and max(xcorrs, key=xcorrs.get) == angle:
+        angles.prepend(angle + stepangle)
+
+    bestangle, bestxcorr = max(xcorrs.items(), key=lambda x: x[1].n)
+
+    x = []
+    y = []
+    for angle, xcorr in xcorrs.items():
+      anglediff = abs(bestangle - angle)
+      if anglediff > 180:
+        anglediff = abs(anglediff - 360)
+      assert anglediff <= 180
+      if anglediff < stepangle * 1.2:
+        x.append(angle)
+        y.append(xcorr)
+    x = np.asarray(x)
+    y = np.asarray(y)
+    xmatrix = np.asarray([x**2, x, x**0]).T
+    a, b, c = unp.ulinalg.inv(xmatrix) @ y
+    bestangle = -b / (2*a)
+    bestxcorr = a*bestangle**2 + b*bestangle + c
+
     return OptimizeResult(
-      xcorr=bestxcorr,
-      angle=angle,
-      bestxcorr=bestxcorr[angle],
+      xcorr=xcorrs,
+      angle=bestangle,
+      xcorrs=bestxcorr,
       exit=0,
     )
 

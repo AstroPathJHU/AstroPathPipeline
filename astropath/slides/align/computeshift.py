@@ -114,6 +114,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     bounds=((x[maxidx]-windowsizex, x[maxidx]+windowsizex), (y[maxidx]-windowsizey, y[maxidx]+windowsizey)),
     method="TNC",
   )
+  crosscorr = -r.fun
 
   #calculate the error on the shift from the 2nd derivative of the spline
   hessian = -np.array([
@@ -167,6 +168,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   return OptimizeResult(
     dx=dx,
     dy=dy,
+    crosscorrelation=unc.ufloat(crosscorr, error_crosscorrelation),
     exit=exit,
     spline=spline,
   )
