@@ -207,7 +207,7 @@ def mse(a):
 def doravel(a):
   return np.ravel(a)
 
-def shiftimg(images, dx, dy, *, clip=True, use_gpu=False):
+def shiftimg(images, dx, dy, *, clip=True, use_gpu=False, shiftwhich=None):
   """
   Apply the shift to the two images, using
   a symmetric shift with fractional pixels
@@ -215,28 +215,39 @@ def shiftimg(images, dx, dy, *, clip=True, use_gpu=False):
   dx = float(dx)
   dy = float(dy)
 
+  shifta = {
+    0: 2,
+    None: 1,
+    1: 0,
+  }[shiftwhich]
+  shiftb = {
+    0: 0,
+    None: 1,
+    1: 2,
+  }[shiftwhich]
+
   a, b = images
-  a = a.astype(np.float32)
-  b = b.astype(np.float32)
+  if shifta: a = a.astype(np.float32)
+  if shiftb: b = b.astype(np.float32)
 
   warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
 
   if use_gpu :
-    a = cv2.UMat(a)
-    b = cv2.UMat(b)
+    if shifta: a = cv2.UMat(a)
+    if shiftb: b = cv2.UMat(b)
 
-  a = cv2.warpAffine(a, np.array([[1, 0,  dx/2], [0, 1,  dy/2]]), **warpkwargs)
-  b = cv2.warpAffine(b, np.array([[1, 0, -dx/2], [0, 1, -dy/2]]), **warpkwargs)
+  if shifta: a = cv2.warpAffine(a, np.array([[1, 0,  dx*shifta/2], [0, 1,  dy*shifta/2]]), **warpkwargs)
+  if shiftb: b = cv2.warpAffine(b, np.array([[1, 0, -dx*shiftb/2], [0, 1, -dy*shiftb/2]]), **warpkwargs)
 
   if use_gpu :
-    a = a.get()
-    b = b.get()
+    if shifta: a = a.get()
+    if shiftb: b = b.get()
 
   assert a.shape == b.shape == np.shape(images)[1:], (a.shape, b.shape, np.shape(images))
 
   if clip:
     ww = 10*(1+int(max(np.abs([dx, dy]))/10))
-    clipslice = slice(ww, -ww or None), slice(ww, -ww or None)
+    clipslice = slice(ww*shifta, -ww*shiftb or None), slice(ww*shifta, -ww*shiftb or None)
   else:
     clipslice = ...
 

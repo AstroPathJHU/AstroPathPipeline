@@ -235,8 +235,10 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
       translationresult = computeshift(wsis[::-1], checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
       translation = affinetransformation(translation=(translationresult.dx*self.onezoomedpixel, translationresult.dy*self.onezoomedpixel))
 
-      wsis = wsi1, wsi2 = tuple(shiftimg(wsis, -translationresult.dx.n, -translationresult.dy.n))
-      masks = mask1, mask2 = tuple(shiftimg(masks, -translationresult.dx.n, -translationresult.dy.n)>0.5)
+      initialaffinetransformation = translation @ rotation @ firsttranslation
+
+      wsis = wsi1, wsi2 = tuple(shiftimg(wsis, -translationresult.dx.n, -translationresult.dy.n, shiftwhich=1))
+      masks = mask1, mask2 = tuple(shiftimg(masks, -translationresult.dx.n, -translationresult.dy.n, shiftwhich=1)>0.5)
 
       if _debugprint > .5:
         print("shifted")
@@ -293,7 +295,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
           y=y,
           zoomedscale=self.zoomedscale,
           tilesize=self.tilesize,
-          initialaffinetransformation=translation @ rotation @ firsttranslation,
+          initialaffinetransformation=affinetransformation,
         )
         try:
           shiftresult = computeshift((tile1, tile2), usemaxmovementcut=False)
