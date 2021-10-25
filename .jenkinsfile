@@ -16,7 +16,7 @@ pipeline {
 
   environment {
     JENKINS_NO_GPU = "1"
-    HOME = "/home/circleci"
+    HOME = "/home/astropath"
     GITHUB_TOKEN = credentials('astropath-github')
   }
 
