@@ -182,7 +182,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
         dx=slice1[1].start - slice2[1].start + padlow2[1] - padlow1[1],
         dy=slice1[0].start - slice2[0].start + padlow2[0] - padlow1[0],
       )
-      firsttranslation = affinetransformation(translation=(firsttranslationresult.dx, firsttranslationresult.dy))
+      firsttranslation = affinetransformation(translation=(firsttranslationresult.dx*self.onezoomedpixel, firsttranslationresult.dy*self.onezoomedpixel))
 
       wsis = wsi1, wsi2 = wsi1[slice1], wsi2[slice2]
       masks = mask1, mask2 = mask1[slice1], mask2[slice2]
@@ -233,7 +233,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
           plt.show()
 
       translationresult = computeshift(wsis[::-1], checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
-      translation = affinetransformation(translation=(translationresult.dx, translationresult.dy))
+      translation = affinetransformation(translation=(translationresult.dx*self.onezoomedpixel, translationresult.dy*self.onezoomedpixel))
 
       wsis = wsi1, wsi2 = tuple(shiftimg(wsis, -translationresult.dx.n, -translationresult.dy.n))
       masks = mask1, mask2 = tuple(shiftimg(masks, -translationresult.dx.n, -translationresult.dy.n)>0.5)
@@ -293,7 +293,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
           y=y,
           zoomedscale=self.zoomedscale,
           tilesize=self.tilesize,
-          affinetransformation = translation @ rotation @ firsttranslation,
+          initialaffinetransformation=translation @ rotation @ firsttranslation,
         )
         try:
           shiftresult = computeshift((tile1, tile2), usemaxmovementcut=False)
@@ -397,13 +397,13 @@ class CrossRegAlignmentResult(AlignmentComparison, DataClassWithZoomedScale):
   exit: int
   tilesize: units.Distance = distancefield(pixelsormicrons="pixels", includeintable=False, pscalename="zoomedscale")
   exception: Exception = MetaDataAnnotation(None, includeintable=False)
-  affinetransformation: np.ndarray = MetaDataAnnotation(None, includeintable=False)
+  initialaffinetransformation: np.ndarray = MetaDataAnnotation(None, includeintable=False)
 
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
-    dxvec = kwargs.pop("dxvec", None)
     morekwargs = {}
 
+    dxvec = kwargs.pop("dxvec", None)
     if dxvec is not None:
       morekwargs["dx"] = dxvec[0].n
       morekwargs["dy"] = dxvec[1].n
@@ -418,11 +418,20 @@ class CrossRegAlignmentResult(AlignmentComparison, DataClassWithZoomedScale):
     return super().transforminitargs(*args, **kwargs, **morekwargs)
 
   def __post_init__(self, *args, **kwargs):
-    if self.affinetransformation is None:
-      self.affinetransformation = np.identity(3)
+    if self.initialaffinetransformation is None:
+      self.initialaffinetransformation = np.identity(3)
     super().__post_init__(*args, **kwargs)
 
   @property
-  def dxvec(self): return np.array([self.dx, self.dy])
+  def covariancematrix(self):
+    return np.array([[self.covxx, self.covxy], [self.covxy, self.covyy]])
+  @property
+  def dxvec(self): return units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariancematrix)
+  @property
+  def xvec(self): return np.array([self.x, self.y])
   @property
   def unshifted(self): raise NotImplementedError
+
+  @property
+  def affinetransformation(self):
+    return affinetransformation(translation=self.dxvec) @ self.initialaffinetransformation
