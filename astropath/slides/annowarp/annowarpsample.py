@@ -1080,9 +1080,10 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     if dxvec is not None:
       morekwargs["dx"] = dxvec[0].n
       morekwargs["dy"] = dxvec[1].n
-      morekwargs["covariance"] = covariance_matrix(dxvec)
+      covariancematrix = covariance_matrix(dxvec)
+    else:
+      covariancematrix = kwargs.pop("covariance", None)
 
-    covariancematrix = kwargs.pop("covariance", None)
     if covariancematrix is not None:
       units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
       (morekwargs["covxx"], morekwargs["covxy"]), (morekwargs["covxy"], morekwargs["covyy"]) = covariancematrix
