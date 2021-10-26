@@ -20,7 +20,6 @@ def makeplots():
       for folder in root/samp, root/samp/"dbload":
         for filename in folder.glob("*.csv"):
           shutil.copy(filename, dbloadroot/samp/"dbload")
-          print(filename)
     from ...test.testzoom import gunzipreference
     gunzipreference(samp)
     A = AnnoWarpSampleInformTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=dbloadroot, annotationsynonyms={"Good tisue": "Good tissue"})
