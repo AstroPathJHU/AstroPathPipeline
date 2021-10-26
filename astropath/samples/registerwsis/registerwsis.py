@@ -9,7 +9,7 @@ from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation
 from ...utilities.misc import affinetransformation, covariance_matrix, floattoint
 from ...utilities.units import ThingWithPscale, ThingWithScale
-from ...utilities.units.dataclasses import distancefield, makedataclasswithpscale
+from ...utilities.units.dataclasses import DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, makedataclasswithpscale
 
 class ReadWSISample(WSISample, AstroPathTissueMaskSample):
   def __init__(self, *args, uselogfiles=False, **kwargs):
@@ -18,10 +18,14 @@ class ReadWSISample(WSISample, AstroPathTissueMaskSample):
   def logmodule(cls): return "crossregistration"
   def run(self): assert False
 
-class ThingWithZoomedScale(ThingWithScale, scale="zoomedscale"): pass
+class ThingWithZoomedScale(ThingWithPscale, scale="zoomedscale"):
+  @property
+  def zoomfactor(self): return self.pscale / self.zoomedscale
 DataClassWithZoomedScale, DataClassWithZoomedScaleFrozen = makedataclasswithpscale("DataClassWithZoomedScale", "zoomedscale", ThingWithZoomedScale)
+class DataClassWithZoomedScale(DataClassWithZoomedScale, DataClassWithPscale): pass
+class DataClassWithZoomedScaleFrozen(DataClassWithZoomedScaleFrozen, DataClassWithPscaleFrozen): pass
 
-class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
+class RegisterWSIs(contextlib.ExitStack, ThingWithZoomedScale):
   def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, uselogfiles=True, **kwargs):
     self.samples = (
       ReadWSISample(root=root1, samp=samp1, zoomroot=zoomroot1, uselogfiles=uselogfiles),
@@ -34,8 +38,23 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
     self.__scaledwsisandmasks = {}
     self.__tilesize = tilepixels * self.onezoomedpixel
     self.__mintissuefraction = mintissuefraction
-    self.__logger = MultiLogger(*(s.logger for s in self.samples), entermessage=f"cross-registering {self.samples[0].SlideID} and {self.samples[1].SlideID}")
+    self.__logger = MultiLogger(*(s.logger for s in self.samples), entermessage=f"cross-registering {self.SlideID1} and {self.SlideID2}")
 
+  @property
+  def SlideID1(self): return self.samples[0].SlideID
+  @property
+  def SlideID2(self): return self.samples[1].SlideID
+  @property
+  def SampleID1(self): return self.samples[0].SampleID
+  @property
+  def SampleID2(self): return self.samples[1].SampleID
+  @property
+  def REDCapID(self):
+    try:
+      redcapid, = {s.REDCapID for s in self.samples}
+    except ValueError:
+      raise ValueError("samples {self.SlideID1, self.SlideID2} have different REDCapIDs {tuple(s.REDCapID for s in self.samples)}")
+    return redcapid
   @property
   def pscale(self):
     pscale, = {s.pscale for s in self.samples}
@@ -235,7 +254,8 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
       translationresult = computeshift(wsis[::-1], checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000, showbigimage=_debugprint>0.5, showsmallimage=_debugprint>0.5)
       translation = affinetransformation(translation=(translationresult.dx*self.onezoomedpixel, translationresult.dy*self.onezoomedpixel))
 
-      initialaffinetransformation = translation @ rotation @ firsttranslation
+      self.__initialaffinetransformation = initialaffinetransformation = translation @ rotation @ firsttranslation
+      self.writecsvs("xform", [CrossRegAffineMatrix(matrix=initialaffinetransformation, pscale=self.pscale, zoomedscale=self.zoomedscale, SlideID=self.SlideID1, SlideID1=self.SlideID2, SampleID=self.SampleID1, SampleID1=self.SampleID2, REDCapID=self.REDCapID)])
 
       wsis = wsi1, wsi2 = tuple(shiftimg(wsis, -translationresult.dx.n, -translationresult.dy.n, shiftwhich=1))
       masks = mask1, mask2 = tuple(shiftimg(masks, -translationresult.dx.n, -translationresult.dy.n, shiftwhich=1)>0.5)
@@ -293,9 +313,10 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
           n=n,
           x=x,
           y=y,
+          pscale=self.pscale,
           zoomedscale=self.zoomedscale,
           tilesize=self.tilesize,
-          initialaffinetransformation=affinetransformation,
+          initialaffinetransformation=initialaffinetransformation,
         )
         try:
           shiftresult = computeshift((tile1, tile2), usemaxmovementcut=False)
@@ -332,6 +353,10 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
 #        self.writealignments()
 
       return results
+
+  def writecsvs(self, csv, *args, **kwargs):
+    for s in self.samples:
+      s.writecsv(csv, *args, **kwargs)
 
   @staticmethod
   def getrotation(rotationwsis, minangle, maxangle, stepangle, *, _debugprint=-float("inf")):
@@ -387,6 +412,10 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithPscale, ThingWithZoomedScale):
     mask = skimage.morphology.binary_dilation(mask, disk)
     return mask
 
+  @property
+  def affineentry(self):
+    return 
+
 class CrossRegAlignmentResult(AlignmentComparison, DataClassWithZoomedScale):
   n: int
   x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="zoomedscale")
@@ -437,3 +466,80 @@ class CrossRegAlignmentResult(AlignmentComparison, DataClassWithZoomedScale):
   @property
   def affinetransformation(self):
     return affinetransformation(translation=self.dxvec) @ self.initialaffinetransformation
+
+class CrossRegAffineMatrix(DataClassWithZoomedScale):
+  REDCapID: int
+  SlideID: str
+  SampleID: int
+  SlideID1: str
+  SampleID1: int
+  @property
+  def ppscale(self): return floattoint(self.zoomfactor)
+  @ppscale.setter
+  def ppscale(self, ppscale):
+    try:
+      pscale = self.pscale
+    except AttributeError:
+      pscale = None
+    try:
+      zoomedscale = self.zoomedscale
+    except AttributeError:
+      zoomedscale = None
+    if pscale is zoomedscale is None: assert False
+    if pscale is None: self.pscale = zoomedscale * ppscale
+    if zoomedscale is None: self.zoomedscale = pscale / ppscale
+    assert ppscale == pscale / zoomedscale
+  ppscale: int = MetaDataAnnotation(ppscale, writefunction=floattoint, use_default=False)
+  a: float
+  b: float
+  c: float
+  d: float
+  e: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  f: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  cov_a_a: float
+  cov_a_b: float
+  cov_a_c: float
+  cov_a_d: float
+  cov_a_e: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  cov_a_f: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  cov_b_b: float
+  cov_b_c: float
+  cov_b_d: float
+  cov_b_e: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  cov_b_f: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  cov_c_c: float
+  cov_c_d: float
+  cov_c_e: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  cov_c_f: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  cov_d_d: float
+  cov_d_e: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  cov_d_f: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale")
+  cov_e_e: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale", power=2)
+  cov_e_f: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale", power=2)
+  cov_f_f: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="zoomedscale", power=2)
+
+  @classmethod
+  def transforminitargs(cls, **kwargs):
+    morekwargs = {}
+    if len({"pscale", "zoomedscale", "ppscale"} & set(kwargs)) < 2:
+      raise TypeError("Have to give at least 2 of pscale, zoomedscale, ppscale")
+    if "pscale" not in kwargs:
+      morekwargs["pscale"] = kwargs["zoomedscale"] * kwargs["ppscale"]
+    elif "zoomedscale" not in kwargs:
+      morekwargs["zoomedscale"] = kwargs["pscale"] / kwargs["ppscale"]
+    elif "ppscale" not in kwargs:
+      morekwargs["ppscale"] = kwargs["pscale"] / kwargs["zoomedscale"]
+
+    if "matrix" in kwargs:
+      (morekwargs["a"], morekwargs["b"], morekwargs["e"]), (morekwargs["c"], morekwargs["d"], morekwargs["f"]), lastrow = kwargs.pop("matrix")
+      if not np.all(lastrow == [0, 0, 1]):
+        raise ValueError(f"Last row of the matrix is {lastrow}, should be [0, 0, 1]")
+
+      letters = "abcdef"
+      covariance = units.covariance_matrix([morekwargs[_] for _ in letters])
+      for (i, x), (j, y) in itertools.combinations_with_replacement(enumerate(letters), 2):
+        morekwargs[f"cov_{x}_{y}"] = covariance[i,j]
+      for letter in letters:
+        morekwargs[letter] = units.nominal_values(morekwargs[letter])
+
+    return super().transforminitargs(**kwargs, **morekwargs)
