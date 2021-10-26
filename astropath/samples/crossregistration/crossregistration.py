@@ -26,10 +26,10 @@ class DataClassWithZoomedScale(DataClassWithZoomedScale, DataClassWithPscale): p
 class DataClassWithZoomedScaleFrozen(DataClassWithZoomedScaleFrozen, DataClassWithPscaleFrozen): pass
 
 class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
-  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, uselogfiles=True, **kwargs):
+  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, dbloadroot1=None, dbloadroot2=None, logroot1=None, logroot2=None, maskroot1=None, maskroot2=None, uselogfiles=True, **kwargs):
     self.samples = (
-      ReadWSISample(root=root1, samp=samp1, zoomroot=zoomroot1, uselogfiles=uselogfiles),
-      ReadWSISample(root=root2, samp=samp2, zoomroot=zoomroot2, uselogfiles=uselogfiles),
+      ReadWSISample(root=root1, samp=samp1, zoomroot=zoomroot1, dbloadroot=dbloadroot1, logroot=logroot1, maskroot=maskroot1, uselogfiles=uselogfiles),
+      ReadWSISample(root=root2, samp=samp2, zoomroot=zoomroot2, dbloadroot=dbloadroot2, logroot=logroot2, maskroot=maskroot2, uselogfiles=uselogfiles),
     )
     self.__zoomfactor = zoomfactor
     super().__init__(*args, **kwargs)
@@ -50,10 +50,11 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
   def SampleID2(self): return self.samples[1].SampleID
   @property
   def REDCapID(self):
+    redcapids = {s.REDCapID for s in self.samples}
     try:
-      redcapid, = {s.REDCapID for s in self.samples}
+      redcapid, = redcapids
     except ValueError:
-      raise ValueError("samples {self.SlideID1, self.SlideID2} have different REDCapIDs {tuple(s.REDCapID for s in self.samples)}")
+      raise ValueError(f"samples {self.SlideID1, self.SlideID2} have different REDCapIDs {tuple(redcapids)}")
     return redcapid
   @property
   def pscale(self):
@@ -109,7 +110,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
         wsis = [skimage.exposure.equalize_adapthist(wsi) for wsi in wsis]
       return wsis, masks
 
-  def runalignment(self, *, _debugprint=False, smoothsigma):
+  def runalignment(self, *, _debugprint=False, smoothsigma=10):
     with self.using_scaled_wsis_and_masks(smoothsigma=1, equalize=False) as (wsis, masks):
       wsi1, wsi2 = wsis
       mask1, mask2 = masks
