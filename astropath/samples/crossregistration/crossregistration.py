@@ -11,13 +11,6 @@ from ...utilities.misc import affinetransformation, covariance_matrix, floattoin
 from ...utilities.units import ThingWithPscale
 from ...utilities.units.dataclasses import DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, makedataclasswithpscale
 
-class ReadWSISample(WSISample, AstroPathTissueMaskSample):
-  def __init__(self, *args, uselogfiles=False, **kwargs):
-    super().__init__(*args, uselogfiles=uselogfiles, **kwargs)
-  @classmethod
-  def logmodule(cls): return "crossregistration"
-  def run(self): assert False
-
 class ThingWithZoomedScale(ThingWithPscale, scale="zoomedscale"):
   @property
   def zoomfactor(self): return self.pscale / self.zoomedscale
@@ -25,13 +18,26 @@ DataClassWithZoomedScale, DataClassWithZoomedScaleFrozen = makedataclasswithpsca
 class DataClassWithZoomedScale(DataClassWithZoomedScale, DataClassWithPscale): pass
 class DataClassWithZoomedScaleFrozen(DataClassWithZoomedScaleFrozen, DataClassWithPscaleFrozen): pass
 
+class CrossRegistrationSample(WSISample, AstroPathTissueMaskSample, ThingWithZoomedScale):
+  """
+  Just a utility class for reading the WSI info
+  """
+  def __init__(self, *args, zoomfactor, uselogfiles=False, **kwargs):
+    super().__init__(*args, uselogfiles=uselogfiles, **kwargs)
+    self.__zoomedscale = self.pscale / zoomfactor
+  @classmethod
+  def logmodule(cls): return "crossregistration"
+  def run(self): assert False
+  @property
+  def zoomedscale(self): return self.__zoomedscale
+
 class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
   def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, dbloadroot1=None, dbloadroot2=None, logroot1=None, logroot2=None, maskroot1=None, maskroot2=None, uselogfiles=True, **kwargs):
-    self.samples = (
-      ReadWSISample(root=root1, samp=samp1, zoomroot=zoomroot1, dbloadroot=dbloadroot1, logroot=logroot1, maskroot=maskroot1, uselogfiles=uselogfiles),
-      ReadWSISample(root=root2, samp=samp2, zoomroot=zoomroot2, dbloadroot=dbloadroot2, logroot=logroot2, maskroot=maskroot2, uselogfiles=uselogfiles),
-    )
     self.__zoomfactor = zoomfactor
+    self.samples = (
+      CrossRegistrationSample(root=root1, samp=samp1, zoomroot=zoomroot1, dbloadroot=dbloadroot1, logroot=logroot1, maskroot=maskroot1, uselogfiles=uselogfiles, zoomfactor=self.zoomfactor),
+      CrossRegistrationSample(root=root2, samp=samp2, zoomroot=zoomroot2, dbloadroot=dbloadroot2, logroot=logroot2, maskroot=maskroot2, uselogfiles=uselogfiles, zoomfactor=self.zoomfactor),
+    )
     super().__init__(*args, **kwargs)
 
     self.__nentered = collections.defaultdict(lambda: 0)
@@ -316,7 +322,6 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
           y=y,
           pscale=self.pscale,
           zoomedscale=self.zoomedscale,
-          tilesize=self.tilesize,
           initialaffinetransformation=initialaffinetransformation,
         )
         try:
@@ -426,7 +431,6 @@ class CrossRegAlignmentResult(AlignmentComparison, DataClassWithZoomedScale):
   covxy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="zoomedscale")
   covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format, pscalename="zoomedscale")
   exit: int
-  tilesize: units.Distance = distancefield(pixelsormicrons="pixels", includeintable=False, pscalename="zoomedscale")
   exception: Exception = MetaDataAnnotation(None, includeintable=False)
   initialaffinetransformation: np.ndarray = MetaDataAnnotation(None, includeintable=False)
 
