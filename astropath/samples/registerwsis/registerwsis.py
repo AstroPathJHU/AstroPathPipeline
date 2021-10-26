@@ -349,8 +349,7 @@ class RegisterWSIs(contextlib.ExitStack, ThingWithZoomedScale):
       self.__alignmentresults = results
       if not results:
         raise ValueError("Couldn't align any tiles")
-#      if write_result:
-#        self.writealignments()
+      self.writecsvs("xwarp", self.__alignmentresults)
 
       return results
 
