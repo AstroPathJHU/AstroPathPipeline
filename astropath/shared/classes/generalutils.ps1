@@ -1,4 +1,4 @@
-﻿class generalutils {
+﻿class generalutils : copyutils {
      #
     <# -----------------------------------------
      MergePSCustomObject

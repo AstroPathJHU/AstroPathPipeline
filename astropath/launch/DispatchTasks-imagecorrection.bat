@@ -2,9 +2,9 @@
 ::
 SETLOCAL
 ::
-SET code=%~dp0..\..\..
-for /f "delims=" %%a in ('dir  /b %code%\AstropathPipeline*') do set "name=%%a"
-SET code=%code%\%name%
+SET code=%~dp0..
+:: for /f "delims=" %%a in ('dir  /b %code%\astropath*') do set "name=%%a"
+:: SET code=%code%\%name%
 ::
 SET module=imagecorrection
 ::

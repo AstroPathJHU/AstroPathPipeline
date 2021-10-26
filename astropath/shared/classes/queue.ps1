@@ -78,16 +78,8 @@ class queue : sharedtools{
         $slidesnotcomplete = @()
         foreach($slide in $cleanedslides){
             #
-            $log = [mylogger]::new($this.mpath, $this.module, $slide.slideid)
-            #
-            if($this.checklog($log)) {
-                #
-                if (($this.('check'+$this.module)($log, $true) -eq 2)) {
-                    #
-                    $slidesnotcomplete += $slide
-                    #
-                }
-                #
+            if (($this.('check'+$this.module)($slide.SlideID, $true) -eq 2)) {
+                $slidesnotcomplete += $slide
             }
             #
         }
@@ -107,7 +99,7 @@ class queue : sharedtools{
         #
         # parse log
         #
-        $statustypes = @('Started','Error','Finished')
+        $statustypes = @('START:','ERROR:','FINISH:')
         $savelog = @()
         #
         foreach ($statustype in $statustypes){
@@ -116,9 +108,9 @@ class queue : sharedtools{
                     Select-Object -Last 1 
         }
         #
-        $d1 = ($savelog | Where-Object {$_.Message -match 'START'}).Date
-        $d2 = ($savelog | Where-Object {$_.Message -match 'ERROR'}).Date
-        $d3 = ($savelog | Where-Object {$_.Message -match 'FINISH'}).Date
+        $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
+        $d2 = ($savelog | Where-Object {$_.Message -match $statustypes[1]}).Date
+        $d3 = ($savelog | Where-Object {$_.Message -match $statustypes[2]}).Date
         #
         if (!$d3 -or ($d1 -lt $d2 -and $d3 -ge $d2)){
             return $true
@@ -128,18 +120,26 @@ class queue : sharedtools{
         #
     }
     #
-    [int]checktransfer([mylogger]$log){
+    [int]checktransfer([string]$slideid){
+        #
+        # check the log
+        #
+        $log = [mylogger]::new($this.mpath, 'transfer', $slideid)
+        #
+        if ($this.checklog($log)){
+            return 2
+        }
         #
         # check for checksum, qptiff, and annotationxml
-        # 
+        #
         $file = $log.CheckSumsfile()
         $file2 = $log.qptifffile()
         $file3 = $log.annotationxml()
         $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count
         #
-        if (!(test-path $file)){
-            return 2
-        }
+        #if (!(test-path $file)){
+        #    return 2
+        #}
         if (!(test-path $file2)){
             return 2
         }
@@ -154,12 +154,20 @@ class queue : sharedtools{
         #
     }
     #
-    [int]checkshredxml([mylogger]$log, $dependency){
+    [int]checkshredxml([string]$slideid, $dependency){
         #
         if ($dependency){
-            if (!($this.checktransfer($log) -eq 3)){
+            if (!($this.checktransfer($slideid) -eq 3)){
                 return 1
             }
+        }
+        #
+        # check the log
+        #
+        $log = [mylogger]::new($this.mpath, 'shredxml', $slideid)
+        #
+        if ($this.checklog($log)){
+            return 2
         }
         #
         # check for xmls
@@ -182,12 +190,20 @@ class queue : sharedtools{
         #
     }
     #
-    [int]checkmeanimage([mylogger]$log, $dependency){
+    [int]checkmeanimage([string]$slideid, $dependency){
         #
         if ($dependency){
-            if (!($this.checkshredxml($log, $true) -eq 3)){
+            if (!($this.checkshredxml($slideid, $true) -eq 3)){
                 return 1
             }
+        }
+        #
+        # check the log
+        #
+        $log = [mylogger]::new($this.mpath, 'meanimage', $slideid)
+        #
+        if ($this.checklog($log)){
+            return 2
         }
         #
         # check version
@@ -220,16 +236,24 @@ class queue : sharedtools{
         #
     }
     #
-    [switch]checkmeanimagecomparison([mylogger]$log, $dependency){
+    [switch]checkmeanimagecomparison([string]$slideid, $dependency){
         #
         if ($dependency){
-           if (!($this.checkmeanimage($log, $true) -eq 3)){
+           if (!($this.checkmeanimage($slideid, $true) -eq 3)){
                 return 1
            }
         }
         #
+        # check the log
+        #
+        $log = [mylogger]::new($this.mpath, 'meanimagecomparison', $slideid)
+        #
+        if ($this.checklog($log)){
+            return 2
+        }
+        #
         try {
-            $cvers = $this.getversion($this.mpath, 'meanimage', $log.project)
+            $cvers = $this.getversion($this.mpath, 'meanimagecomparison', $log.project)
             #if slide is not in the meanimagecomparison file return 2
         } catch {}
         #
@@ -237,12 +261,20 @@ class queue : sharedtools{
         #
     }
     #
-    [switch]checkbatchflatfield([mylogger]$log, $dependency){
+    [switch]checkbatchflatfield([string]$slideid, $dependency){
         #
         if ($dependency){
-           if (!($this.checkmeanimage($log, $true) -eq 3)){
+           if (!($this.checkmeanimage($slideid, $true) -eq 3)){
                 return 1
            }
+        }
+        #
+        # check the log
+        #
+        $log = [mylogger]::new($this.mpath, 'batchflatfield', $slideid)
+        #
+        if ($this.checklog($log)){
+            return 2
         }
         #
         # version depedendent checks
@@ -262,12 +294,20 @@ class queue : sharedtools{
         #
     }
     #
-    [switch]checkimagecorrection([mylogger]$log, $dependency){
+    [switch]checkimagecorrection([string]$slideid, $dependency){
         #
         if ($dependency){
-            if (!($this.checkbatchflatfield($log, $true) -eq 3)){
+            if (!($this.checkbatchflatfield($slideid, $true) -eq 3)){
                 return 1
             }
+        }
+        #
+        # check the log
+        #
+        $log = [mylogger]::new($this.mpath, 'imagecorrection', $slideid)
+        #
+        if ($this.checklog($log)){
+            return 2
         }
         #
         $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count

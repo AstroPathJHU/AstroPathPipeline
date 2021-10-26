@@ -56,7 +56,8 @@ PowerShellVersion = '3.0'
 # RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
- ScriptsToProcess = @('shared\classes\generalutils.ps1',
+ ScriptsToProcess = @('shared\classes\copyutils.ps1',
+                      'shared\classes\generalutils.ps1',
                       'shared\classes\fileutils.ps1',
                       'shared\classes\aptabletools.ps1',
                       'shared\classes\sharedtools.ps1',
@@ -69,6 +70,7 @@ PowerShellVersion = '3.0'
                       'hpfs\vminform\classes\vminform.ps1',
                       'hpfs\imagecorrection\classes\imagecorrection.ps1',
                       'hpfs\flatfield\classes\meanimage.ps1',
+                      'hpfs\flatfield\classes\meanimagecomparison.ps1',
                       'hpfs\flatfield\classes\batchflatfield.ps1',
                       'hpfs\segmaps\classes\segmaps.ps1',
                       'hpfs\shredxml\classes\shredxml.ps1'

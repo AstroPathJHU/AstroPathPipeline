@@ -48,6 +48,9 @@ class Dispatcher : queue{
     #
     [void]init($cred){
         $this.cred = $cred
+        Write-Host "Starting the AstroPath Pipeline." -ForegroundColor Yellow
+        Write-Host ("Module: " + $this.module) -ForegroundColor Yellow
+        Write-Host ("Username: " + $this.cred.UserName) -ForegroundColor Yellow
         $this.defCodeRoot()
         $this.initepy()
     }
@@ -56,7 +59,7 @@ class Dispatcher : queue{
     # upgrade python package if needed.
     #
     [void]initepy(){
-        Write-Host "Initializing the conda Environment." -ForegroundColor Yellow
+        Write-Host "Initializing\updating the conda envir." -ForegroundColor Yellow
         $this.checkconda()
         $this.checkpyapenvir('U')
     }
@@ -85,7 +88,7 @@ class Dispatcher : queue{
         
         #
         Write-Host "." -ForegroundColor Yellow
-        Write-Host "Starting" $this.module"-Task-Distribution" -ForegroundColor Yellow
+        Write-Host " Starting-Task-Distribution" -ForegroundColor Yellow
         write-host " Current Computers for Processing:" -ForegroundColor Yellow
         write-host " " ($this.workers | 
                         Format-Table  @{Name="module";Expression = { $_.module }; Alignment="center" },

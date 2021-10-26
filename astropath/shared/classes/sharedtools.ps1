@@ -57,9 +57,15 @@
                 Throw 'batchflatfield is run from the meanimagecomparison module ' +
                     'and is not initiated in powershell for version: ' + $vers    
             }
-            $this.checkconda()
-            $this.checkpyapenvir()
-            $l = $this.getpythonvers()
+            #
+            try {
+                $l = $this.getpythonvers()
+            } catch{
+                $this.checkconda()
+                $this.checkpyapenvir()
+                $l = $this.getpythonvers()
+            }
+            #
             if ($vers -match $l){
                 $vers = $l
             }
