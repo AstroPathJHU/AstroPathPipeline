@@ -25,7 +25,7 @@ DataClassWithZoomedScale, DataClassWithZoomedScaleFrozen = makedataclasswithpsca
 class DataClassWithZoomedScale(DataClassWithZoomedScale, DataClassWithPscale): pass
 class DataClassWithZoomedScaleFrozen(DataClassWithZoomedScaleFrozen, DataClassWithPscaleFrozen): pass
 
-class RegisterWSIs(contextlib.ExitStack, ThingWithZoomedScale):
+class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
   def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, uselogfiles=True, **kwargs):
     self.samples = (
       ReadWSISample(root=root1, samp=samp1, zoomroot=zoomroot1, uselogfiles=uselogfiles),
