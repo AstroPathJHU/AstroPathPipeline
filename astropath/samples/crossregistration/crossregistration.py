@@ -1,14 +1,14 @@
 import collections, contextlib, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.registration, skimage.transform, uncertainties as unc, uncertainties.umath as umath, uncertainties.unumpy as unp
 
 from ...shared.logging import MultiLogger
-from ...slides.align.computeshift import computeshift, crosscorrelation, OptimizeResult, shiftimg
+from ...slides.align.computeshift import computeshift, OptimizeResult, shiftimg
 from ...slides.align.overlap import AlignmentComparison
 from ...slides.annowarp.annowarpsample import WSISample
 from ...slides.stitchmask.stitchmasksample import AstroPathTissueMaskSample
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation
 from ...utilities.misc import affinetransformation, covariance_matrix, floattoint
-from ...utilities.units import ThingWithPscale, ThingWithScale
+from ...utilities.units import ThingWithPscale
 from ...utilities.units.dataclasses import DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, makedataclasswithpscale
 
 class ReadWSISample(WSISample, AstroPathTissueMaskSample):
@@ -86,7 +86,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
   @contextlib.contextmanager
   def __using_scaled_wsis_and_masks(self, **kwargs):
     kwargskey = tuple(sorted(kwargs.items()))
-    with self.using_wsis() as wsis, self.using_tissuemasks() as masks:
+    with self.using_wsis(), self.using_tissuemasks():
       if self.__nentered[kwargskey] == 0:
         self.__scaledwsisandmasks[kwargskey] = self.__getscaledwsisandmasks(**kwargs)
       try:
@@ -120,7 +120,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
           plt.imshow(_)
           plt.show()
 
-      ysize1, xsize1 = shape1 = wsi1.shape
+      ysize1, xsize1 = wsi1.shape
       ygrid1, xgrid1 = np.mgrid[0:ysize1,0:xsize1].astype(np.int64)
       sumwsi1 = np.sum(wsi1)
       centroid1 = floattoint(np.rint(np.array([np.sum(wsi1*ygrid1) / sumwsi1, np.sum(wsi1*xgrid1) / sumwsi1])))
@@ -133,7 +133,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       ylowersize1 = centroid1[0] - np.where(ycumsum1<lowersumcut1)[0][-1]
       yuppersize1 = np.where(ycumsum1>uppersumcut1)[0][0] - centroid1[0]
 
-      ysize2, xsize2 = shape2 = wsi2.shape
+      ysize2, xsize2 = wsi2.shape
       ygrid2, xgrid2 = np.mgrid[0:ysize2,0:xsize2]
       sumwsi2 = np.sum(wsi2)
       centroid2 = floattoint(np.rint(np.array([np.sum(wsi2*ygrid2) / sumwsi2, np.sum(wsi2*xgrid2) / sumwsi2])))
@@ -297,7 +297,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       for n, (ix, iy) in enumerate(itertools.product(range(1, ntilesx+1), range(1, ntilesy+1)), start=1):
         if n % 100 == 0 or n == ntiles: self.logger.debug("%d / %d", n, ntiles)
         ixvec = np.array([ix, iy])
-        xvec = x, y = (ixvec-1) * self.tilesize / 4
+        x, y = (ixvec-1) * self.tilesize / 4
         slc = slice(
           floattoint(float(y / self.onezoomedpixel)),
           floattoint(float((y+self.tilesize) / self.onezoomedpixel)),
