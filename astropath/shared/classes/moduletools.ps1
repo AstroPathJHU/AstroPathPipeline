@@ -266,8 +266,6 @@
     [void]runpythontask($taskname, $pythontask){
         $externallog = $this.ProcessLog($taskname)
         conda activate $this.sample.pyenv
-        #$pythontask = 'import astropath; ' + $pythontask # -replace "\\",'\\'
-        #python -c R'' + $pythontask *>> $externallog
         Invoke-Expression $pythontask *>> $externallog
         conda deactivate $this.sample.pyenv
         if (test-path $externallog){
