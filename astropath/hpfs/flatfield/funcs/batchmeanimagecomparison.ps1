@@ -1,8 +1,8 @@
 ﻿<#
 --------------------------------------------------------
-meanimagecomparison
+batchmeanimagecomparison
 Created By: Andrew Jorquera
-Last Edit: 10/13/2021
+Last Edit: 10/27/2021
 --------------------------------------------------------
 Description
 Task to be launched remotely to ANY computer from ANYWHERE
@@ -16,20 +16,20 @@ $vers[string]: The version number of inform to use
 --------------------------------------------------------
 #>
 #
-Function meanimagecomparison {
+Function batchmeanimagecomparison {
      #
      param($task, $log)
      #
      # used for testing; when launched manually without launchmodule
      #
      if (!($PSBoundParameters.ContainsKey('log'))){ 
-        $log = [launchmodule]::new($task[$task.Count-1], 'meanimagecomparison', $task) 
+        $log = [launchmodule]::new($task[$task.Count-1], 'batchmeanimagecomparison', $task) 
         $e = 1
      } else {$e = 0}
      #
-     $inp = [meanimagecomparison]::new($task, $log)
+     $inp = [batchmeanimagecomparison]::new($task, $log)
      if ($e -ne 1){
-         $inp.RunMeanImageComparison()
+         $inp.RunBatchMeanImageComparison()
      } else{
         return $inp
      }

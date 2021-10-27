@@ -33,7 +33,6 @@ class Dispatcher : queue{
     [void]Run(){
         #
         while(1){
-            $this.ExtractQueue()
             $this.checknew()
             $this.InitializeWorkerlist()
             $this.GetRunningJobs()
@@ -48,7 +47,7 @@ class Dispatcher : queue{
     #
     [void]init($cred){
         $this.cred = $cred
-        Write-Host "Starting the AstroPath Pipeline." -ForegroundColor Yellow
+        Write-Host "Starting the AstroPath Pipeline" -ForegroundColor Yellow
         Write-Host ("Module: " + $this.module) -ForegroundColor Yellow
         Write-Host ("Username: " + $this.cred.UserName) -ForegroundColor Yellow
         $this.defCodeRoot()
@@ -59,7 +58,7 @@ class Dispatcher : queue{
     # upgrade python package if needed.
     #
     [void]initepy(){
-        Write-Host "Initializing\updating the conda envir." -ForegroundColor Yellow
+        Write-Host "Initializing\updating the conda environment" -ForegroundColor Yellow
         $this.checkconda()
         $this.checkpyapenvir('U')
     }
@@ -68,12 +67,17 @@ class Dispatcher : queue{
     #
     [void]CheckNew(){
         #
-        while (!($this.cleanedtasks)){
-            Write-Host "No new samples to process." -ForegroundColor Yellow
-            Start-Sleep -s (10 * 60)
+        while (1){
             $this.ExtractQueue()
-            $this.CheckCompletedWorkers()
+            if (!($this.cleanedtasks)){
+                Write-Host "No new samples to process." -ForegroundColor Yellow
+                Start-Sleep -s (10 * 60)
+            } else {
+                break
+            }
         }
+        #
+        $this.CheckCompletedWorkers()
         #
     }
     #
@@ -149,7 +153,7 @@ class Dispatcher : queue{
             $myscriptblock = {
                 param($username, $password, $currentworkerip, $workertaskfile)
                 psexec -nobanner -accepteula -u $username -p $password \\$currentworkerip `
-                    powershell -noprofile -executionpolicy bypass -command "$workertaskfile" 
+                    powershell -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" 
             }
         }
         #
@@ -213,7 +217,7 @@ class Dispatcher : queue{
     }
     #
     [void]CheckCompletedWorkers(){
-         #
+        #
         $donejobs = Get-Job | Where-Object { $_.State -eq 'Completed'  -and $_.Name -match $this.module}
         if ($donejobs){
             $donejobs | Remove-Job

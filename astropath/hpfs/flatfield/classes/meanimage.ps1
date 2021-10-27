@@ -72,6 +72,7 @@ Class meanimage : moduletools {
         $this.sample.info("started mean image sample -- python")
         $taskname = 'meanimagesample'
         $dpath = $this.sample.basepath + ' '
+        # $dpath = '\\bki04\Clinical_Specimen '
         $rpath = $this.processvars[1]
         $pythontask = 'meanimagesample ' + $dpath + $this.sample.SlideID + 
          ' --shardedim3root ' + $rpath +
@@ -91,14 +92,12 @@ Class meanimage : moduletools {
         if (!$this.processvars[4]){
             return
         }
-        $this.sample.info("started return data")
         if ($this.vers -eq '0.0.1'){
             $this.ReturnDataMatlab()
         }
         else{
             $this.ReturnDataPy()
         }
-        $this.sample.info("finished return data")
     }
     <# -----------------------------------------
      ReturnDataMatlab
@@ -130,7 +129,7 @@ Class meanimage : moduletools {
         if ($this.processvars[4]){
             #
 		    $des = $this.sample.im3folder() + '\meanimage'
-            $sor = $this.processvars[2] +'\..\meanimage'
+            $sor = $this.processvars[0] +'\meanimage'
             xcopy $sor, $des /q /y /z /j /v /s /i | Out-Null
             #
         }
