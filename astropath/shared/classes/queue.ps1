@@ -79,7 +79,7 @@ class queue : sharedtools{
         foreach($slide in $cleanedslides){
             #
             $log = [mylogger]::new($this.mpath, $this.module, $slide.slideid)
-            if ($this.checklog($log)){
+            if ($this.checklog($log, $false)){
                 #
                 if (($this.('check'+$this.module)($log, $false) -eq 2)) {
                     $slidesnotcomplete += $slide
@@ -93,7 +93,7 @@ class queue : sharedtools{
     #
     # returns true if the slide has not yet started or if there was an error between runs
     #
-    [switch]checklog([mylogger]$log){
+    [switch]checklog([mylogger]$log, $dependency){
         #
         if (!(test-path $log.slidelog)){
             return $true
@@ -116,9 +116,17 @@ class queue : sharedtools{
         $d2 = ($savelog | Where-Object {$_.Message -match $statustypes[1]}).Date
         $d3 = ($savelog | Where-Object {$_.Message -match $statustypes[2]}).Date
         #
-        if (!$d1 -or ($d1 -lt $d2 -and $d3 -ge $d2)){ #-or ($d3 -gt $d1) 
+        # if there was an error return true 
+        # if not a dependency check and the latest run is finished return true
+        # if it is a dependency check and it is not finished return true
+        #
+        if (
+             ($d1 -lt $d2 -and $d3 -ge $d2) -or 
+            (!$dependency -and ($d3 -gt $d1)) -or 
+            ($dependency -and !($d3 -gt $d1))
+        ){
             return $true
-        } else { 
+        } else {
             return $false
         }
         #
@@ -128,7 +136,7 @@ class queue : sharedtools{
         #
         $log = [mylogger]::new($this.mpath, 'transfer', $log.slideid)
         #
-        if ($this.checklog($log)){
+        if ($this.checklog($log, $true)){
             return 2
         }
         #
@@ -164,7 +172,7 @@ class queue : sharedtools{
         #
         if($dependency){
             $log = [mylogger]::new($this.mpath, 'shredxml', $log.slideid)
-            if ($this.checklog($log)){
+            if ($this.checklog($log, $true)){
                 return 2
             }
         }
@@ -197,7 +205,7 @@ class queue : sharedtools{
         #
         if($dependency){
             $log = [mylogger]::new($this.mpath, 'meanimage', $log.slideid)
-            if ($this.checklog($log)){
+            if ($this.checklog($log, $true)){
                 return 2
             }
         }
@@ -278,7 +286,7 @@ class queue : sharedtools{
         #
         if($dependency){
             $log = [mylogger]::new($this.mpath, 'imagecorrection', $log.slideid)
-            if ($this.checklog($log)){
+            if ($this.checklog($log, $true)){
                 return 2
             }
         }
