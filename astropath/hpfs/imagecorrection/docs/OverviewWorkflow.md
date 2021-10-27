@@ -1,5 +1,5 @@
 # 5.7.6. Overview Workflow
-The following is the overview workflow for the flatfield processing itself. This does not include the wrappers that go along with the code for the *AstroPath
+The following is the overview workflow for the image correction processing itself. This does not include the wrappers that go along with the code for the *AstroPath
 Pipeline*. 
 
 Input Parameters: ```<base>```, ```<FWpath>```, ```<SlideID>```

@@ -2,18 +2,18 @@
     param(
         [Parameter()][string]$module = '',
         [Parameter()][PSCredential]$Credential = [PSCredential]::Empty, 
-        [Parameter()][string]$mpath='\\bki04\astropath_processing'
+        [Parameter()][string]$mpath='\\bki04\astropath_processing',
+        [Parameter()][string]$project
     )
     #
     if($Credential -eq [PSCredential]::Empty){
         $Credential = Get-Credential -Message "Provide a user name (domain\username) and password"
     } # error catch on credential
-    <#
-    $LoadedModules = Get-Module | Select Name
-    if (!$LoadedModules -like "AstroPathPipeline") {
-        Import-Module -Name $PScriptRoot + '\..\..\..\AstroPathPipeline'
+    #
+    if (($PSBoundParameters.ContainsKey('project'))){
+        $q = [dispatcher]::new($mpath, $module, $project, $Credential)
+    } else {
+        $q = [dispatcher]::new($mpath, $module, $Credential)
     }
-    #>
-    $q = [dispatcher]::new($mpath, $module, $Credential)
     #
 }

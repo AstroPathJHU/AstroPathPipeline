@@ -187,6 +187,11 @@ class sampledef : sharedtools{
         return $path
     }
     #
+    [string]meanimagefolder(){
+        $path = $this.im3folder() + '\meanimage'
+        return $path
+    }
+    #
     [string]flatwim3folder(){
         $path = $this.basepath + '\' + $this.slideid + '\im3\flatw'
         return $path

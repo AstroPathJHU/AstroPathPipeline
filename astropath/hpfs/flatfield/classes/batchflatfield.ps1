@@ -17,28 +17,23 @@ class batchflatfield : moduletools {
         }
     }
     <# -----------------------------------------
-     RunBatchFlatField
+     RunBatchFlatfield
      Run batch flat field
      ------------------------------------------
-     Usage: $this.RunBatchFlatField()
+     Usage: $this.RunBatchFlatfield()
     ----------------------------------------- #>
-    [void]RunBatchFlatField(){
-        $this.GetBatchFlatField()
+    [void]RunBatchFlatfield(){
+        $this.GetBatchFlatfield()
     }
     <# -----------------------------------------
      GetBatchFlatField
         Get Batch flat field
      ------------------------------------------
-     Usage: $this.GetBatchFlatField()
+     Usage: $this.GetBatchFlatfield()
     ----------------------------------------- #>
-    [void]GetBatchFlatField(){
+    [void]GetBatchFlatfield(){
         $slidelist = $this.sample.batchslides.slideID -Join ','
         $taskname = 'fltOneBatch'
-        #
-        $this.sample.info('dpath: ' + $this.sample.basepath)
-        $this.sample.info('batch flatfield path: ' + $this.sample.batchflatfield())
-        $this.sample.info('slide list: ' + $slidelist)
-        #
         $matlabinput = "'"+$this.sample.basepath+"', '"+$this.sample.batchflatfield()+"', '"+$slidelist+"'"
         $matlabtask = ";fltOneBatch("+$matlabinput+");exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
