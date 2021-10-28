@@ -1,6 +1,7 @@
 import abc, contextlib, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.rectangle import MaskRectangle
+from ...shared.argumentparser import *
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...shared.image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import im3writeraw
@@ -12,7 +13,7 @@ from ..zoom.zoomsample import ZoomSampleBase
 
 class MaskField(Field, MaskRectangle): pass
 
-class MaskSample(MaskSampleBase):
+class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
@@ -158,7 +159,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   def tissuemask(cls, mask):
     return mask
 
-class StitchMaskSample(WriteMaskSampleBase, ZoomSampleBase):
+class StitchMaskSample(WriteMaskSampleBase):
   """
   Base class for stitching the global mask together from the individual HPF masks
   """
