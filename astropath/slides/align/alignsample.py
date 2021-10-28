@@ -141,7 +141,7 @@ class AlignSampleBase(SampleBase):
     return result
 
   def dostitching(self, **kwargs):
-    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
+    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, margin=self.margin, logger=self.logger, **kwargs)
 
   def applystitchresult(self, result):
     result.applytooverlaps()

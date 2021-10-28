@@ -23,7 +23,7 @@ class ZoomSampleBase(ReadRectanglesDbload):
   @methodtools.lru_cache()
   @property
   def ntiles(self):
-    maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
+    maxxy = np.max([units.nominal_values(field.pxvec)+field.shape+self.margin for field in self.rectangles], axis=0)
     return floattoint(-((-maxxy) // (self.zoomtilesize*self.onepixel)).astype(float))
   def PILmaximagepixels(self):
     return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
