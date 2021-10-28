@@ -1,7 +1,7 @@
 import abc, contextlib, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.rectangle import MaskRectangle
-from ...shared.argumentparser import *
+from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...shared.image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import im3writeraw

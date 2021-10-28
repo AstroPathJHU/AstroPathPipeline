@@ -611,7 +611,9 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     if minx > 0: minx = 0
     if miny > 0: miny = 0
     if minx or miny:
-      self.__logger.warningglobal(f"Some HPFs have (x, y) < (xposition, yposition) + margin, shifting the whole slide by {-minx, -miny}")
+      self.__logger.warningglobal(f"Some HPFs have (x, y) < (xposition, yposition) + margin, shifting the whole slide by ({-minx/self.onepixel}, {-miny/self.onepixel})")
+      x = self.x()
+      x -= ((minx, miny))
       for f in result:
         f.pxvec -= (minx, miny)
         f.primaryregionx -= minx
@@ -663,6 +665,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       T1 = self.T
       x2 = readback.x()
       T2 = readback.T
+      print(self.fields[0].pxvec)
+      print(readback.fields[0].pxvec)
       self.__logger.debug("comparing nominals")
       units.np.testing.assert_allclose(units.nominal_values(x1), units.nominal_values(x2), atol=atol, rtol=rtol)
       units.np.testing.assert_allclose(units.nominal_values(T1), units.nominal_values(T2), atol=atol, rtol=rtol)
