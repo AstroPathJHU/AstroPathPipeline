@@ -84,24 +84,24 @@ class TissueMaskSample(MaskSample):
     super().__init__(*args, **kwargs)
     self.__using_tissuemask_count = 0
 
-  @classmethod
   @abc.abstractmethod
-  def tissuemask(cls, mask):
+  def tissuemask(self, mask):
     """
     Get the tissue mask from the main mask
     """
 
   @contextlib.contextmanager
   def using_tissuemask(self):
-    if self.__using_tissuemask_count == 0:
-      self.__tissuemask = self.tissuemask(self.readmask())
-    self.__using_tissuemask_count += 1
-    try:
-      yield self.__tissuemask
-    finally:
-      self.__using_tissuemask_count -= 1
+    with contextlib.ExitStack() as stack:
       if self.__using_tissuemask_count == 0:
-        del self.__tissuemask
+        self.__tissuemask = self.tissuemask(stack.enter_context(self.using_mask()))
+      self.__using_tissuemask_count += 1
+      try:
+        yield self.__tissuemask
+      finally:
+        self.__using_tissuemask_count -= 1
+        if self.__using_tissuemask_count == 0:
+          del self.__tissuemask
 
 class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
   """
@@ -143,9 +143,8 @@ class InformMaskSample(TissueMaskSample):
   """
   @classmethod
   def maskfilestem(cls): return "inform_mask"
-  @classmethod
-  def tissuemask(cls, mask):
-    return mask != 2
+  def tissuemask(self, mask):
+    return mask < self.nsegmentations
 
 class AstroPathTissueMaskSample(TissueMaskSample):
   """
@@ -155,8 +154,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   """
   @classmethod
   def maskfilestem(cls): return "tissue_mask"
-  @classmethod
-  def tissuemask(cls, mask):
+  def tissuemask(self, mask):
     return mask
 
 class StitchMaskSample(WriteMaskSampleBase):
@@ -263,7 +261,7 @@ class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadComponentTiff
     return result
 
   @property
-  def backgroundvalue(self): return 2
+  def backgroundvalue(self): return self.nsegmentations
   def getHPFmask(self, field):
     with field.using_image() as im:
       return im

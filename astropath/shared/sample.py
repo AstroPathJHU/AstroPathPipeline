@@ -11,7 +11,7 @@ from ..utilities.config import CONST as UNIV_CONST
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
-from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
+from .csvclasses import constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
@@ -508,6 +508,29 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
   @abc.abstractmethod
   def run(self, **kwargs):
     "actually run whatever is supposed to be run on the sample"
+
+  @property
+  def clinicalfolder(self): return self.root/"Clinical"
+  @methodtools.lru_cache()
+  @property
+  def clinicalinfo(self, *, filenamepattern="*.csv"):
+    results = []
+    for filename in self.clinicalfolder.glob(filenamepattern):
+      ClinicalInfo = MakeClinicalInfo(filename)
+      clinicalinfos = readtable(filename, ClinicalInfo)
+      for c in clinicalinfos:
+        if c.SlideID == self.SlideID:
+          results.append(c)
+    try:
+      result, = results
+    except ValueError:
+      if not results:
+        raise ValueError(f"Didn't find clinical info for {self.SlideID}")
+      raise ValueError("Found multiple clinical infos:\n"+"\n".join(str(_) for _ in results))
+    return result
+  @property
+  def REDCapID(self):
+    return self.clinicalinfo.REDCapID
 
 class WorkflowSample(SampleBase, WorkflowDependencySlideID):
   """

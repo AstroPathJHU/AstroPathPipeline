@@ -16,8 +16,7 @@ The *AstroPath Pipeline* was designed to automate the processing of whole slide 
 ## 2.2. Instructions
 ### 2.2.1. Python Instructions
 #### 2.2.1.1. Environment setup
-Especially on Windows,
-it is recommended to run python using an Anaconda distribution, which helps
+Especially on Windows, it is recommended to run python using an Anaconda distribution, which helps
 with installing dependencies.  While most of the dependencies can just be
 installed with pip, others have C++ requirements that are significantly easier
 to set up with Anaconda.
@@ -63,8 +62,34 @@ import astropath
 ```
 from any directory.
 
-### 2.2.2. MATLAB Instructions
-Check out\ download the github repository. In MATLAB add the entire *AstroPath Pipeline* to the MATLAB path. The *AstroPath Pipeline* commands should then be available in MATLAB. 
+### 2.2.2. PowerShell Instructions
+#### 2.2.2.1. Launch using batch files
+Most of the code written into powershell was designed to run automated as a background process launched by double clicking a batch file. 
+The code monitors all projects defined in the astropath processing files and starts new tasks for slides when appropriate triggers take place.
+The set of batch files for modules launched this way can be found in the [*\*\astropath\launch*](astropath/launch) directory. Assuming slides are set up in the [astropath format](astropath/scans/docs/DirectoryOrganization.md) and the [AstroPath processing directory](astropath/scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md) is set up correctly, double clicking the file with the appropriate module name will initiate it. 
+
+#### 2.2.2.2. Starting in Powershell
+To run a module on particular slide, check out the repository and in a powershell console enter:
+``` 
+import-module *\astropath 
+``` 
+replacing the '`*' with the path to the repository. 
+
+Next use the launchmodule function to start a module as follows: 
+```
+LaunchModule -mpath:<mpath> -module:<module name> -stringin:<module input>
+```
+- ```<mapth>```: the astropath processing directory
+- ```<module name>```: module name to be launched, most modules launched in powershell are located in the hpfs or scans directories
+- ```<stringin>```: dash separated list of arguements for a particular module
+For simplicity (understanding that most users will not have a great deal of comfort in powershell), 
+one could launch a module such as vminform by invoking the following from a command line:
+```
+powershell -noprofile -command import-module *\astropath; LaunchModule -mpath:*\astropath_processing -module:vminform -stringin:<dpath>-<slideid>-<antibody>-<algorithm>-<inform version>
+```
+
+### 2.2.3. MATLAB Instructions
+Check out\ download the github repository. In MATLAB, add the entire *AstroPath Pipeline* to the MATLAB path. The *AstroPath Pipeline* commands should then be available in MATLAB. 
 
 *NOTE*: For specific Python, MATLAB, cmd, or PowerShell commands of a particular module check the module or workflow instructions.
 
@@ -74,9 +99,8 @@ Check out\ download the github repository. In MATLAB add the entire *AstroPath P
    - [2.1. Prerequisites](#21-prerequisites)
    - [2.2. Instructions](#22-instructions)
       - [2.2.1. Python Instructions](#221-python-instructions)
-         - [2.2.1.1. Environment setup](#2211-environment-setup)
-         - [2.2.1.2. Code installation](#2212-code-installation)
-      - [2.2.2. MATLAB Instructions](#222-matlab-instructions)
+      - [2.2.2. PowerShell Instructions](#222-powershell-instructions)
+      - [2.2.3. MATLAB Instructions](#223-matlab-instructions)
 - [3. Contents](#3-contents "Title")
 - [4. Scanning Slides (scans)](astropath/scans#4-scans "Title")
    - [4.1. Description](astropath/scans#41-description "Title")

@@ -139,12 +139,12 @@ class mylogger : sampledef {
     #
     [void]start($msg){
         $this.buildappend()
-        $this.message = "START: "+$msg+'-'+$this.vers
+        $this.message = "START: "+$msg+' '+$this.vers
         $this.defmsgcaps()
     }
     #
     [void]finish($msg){
-        $this.message =  "FINISH: "+$msg+'-'+$this.vers
+        $this.message =  "FINISH: "+$msg+' '+$this.vers
         $this.defmsgcaps()
     }
     #

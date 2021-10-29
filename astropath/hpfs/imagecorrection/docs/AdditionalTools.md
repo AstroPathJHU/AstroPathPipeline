@@ -3,13 +3,12 @@
 Different coding tools that can be run outside of the *AstroPath Pipeline* are described here. Note that, the code still workers under the assumption that the ```<Mpath>``` exists with all its configuration files and the samples to be process are in the *AstroPath* format.
 
 # 5.7.5.1. Instructions to Run Standalone via *AstroPath Pipeline* Workflow
-
-# 5.7.5.2. Instructions to Apply Image Correction Standalone via Python Package
-The entire workflow can be run for a single slide outside of the *AstroPath Pipeline* by running the following commands in Powershell:
+The entire image correction workflow can be run for a single slide outside of the *AstroPath Pipeline* by running the following commands in Powershell:
 
 ```
-Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrection' @(<Project>, <slideid>, <ProcessingLocation>)
+Import-Module '*.\astropath'; launchmodule -slideid:<slideid> -mpath:<mpath> -module:'imagecorrection' -stringin:<Project>-<slideid>-<ProcessingLocation>
 ```
+- replace '\*' with the location up to and including the *AstroPathPipeline* repository
 - ```<SlideID>```: the names for the specimens in the astropath processing pipeline
 - ```<mpath>```: the main path for all the astropath processing .csv configuration files; the current location of this path is *\\bki04\astropath_processing*
 - ```<Project>```: Project Number
@@ -17,7 +16,8 @@ Import-Module '*.\AstroPathPipline'; launchmodule <slideid> <mpath> 'imagecorrec
 
 This workflow is described in more detail [here](OverviewWorkflow.md#576-overview-workflow "Title").
 
-he "applyflatw" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents, either overwriting the original raw image files, or as new ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
+# 5.7.5.2. Instructions to Apply Image Correction Standalone via Python Package
+The "applyflatw" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents, either overwriting the original raw image files, or as new ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
 
 `applyflatwsample <Dpath>\<Dname> <SlideID> --shardedim3root <Rpath> --flatfield-file [path_to_flatfield_bin_file] --warping-file [path_to_warping_summary_csv_file] --njobs [njobs]`
 

@@ -252,12 +252,12 @@ def covariance_matrix(distances):
   pixels = __pixels(distances, power=None)
   covpixels = dimensionless_covariance_matrix(pixels)
 
-  pscale = {_._pscale for _ in distances if _._pscale is not None}
+  pscale = {_._pscale for _ in distances if hasattr(_, "_pscale") and _._pscale is not None}
   if not pscale: pscale = {None}
   if len(pscale) > 1: raise UnitsError("Provided distances with multiple pscales")
   pscale = pscale.pop()
 
-  distpowers = [_._power for _ in distances]
+  distpowers = [_._power if hasattr(_, "_power") else 0 for _ in distances]
   covpowers = [[a + b for b in distpowers] for a in distpowers]
 
   return __distances(pixels=covpixels, pscale=pscale, power=covpowers)
