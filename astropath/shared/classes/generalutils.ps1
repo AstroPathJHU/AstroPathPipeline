@@ -7,10 +7,7 @@
      ------------------------------------------
      Usage: MergePSCustomObject(d1, d2, property)
     ----------------------------------------- #>
-    [PSCustomObject]MergeCustomObject([PSCustomObject]$d1,
-              [PSCustomObject]$d2, 
-              [string]$property = ''
-              ){
+    [PSCustomObject]MergeCustomObject([PSCustomObject]$d1, [PSCustomObject]$d2, [string]$property = ''){
         #
         # get new columns
         #
@@ -143,5 +140,22 @@
         if (!(test-path $dir)){
             new-item $dir -itemtype "directory" -EA STOP | Out-NULL
         }
+    }
+    #
+    [void]removedir([string]$dir){
+        #
+        if (test-path $dir){
+            gci $dir -Recurse | Remove-Item -force -recurse
+            remove-item $dir -force
+        }
+        #
+    }
+    #
+    [void]removefile([string]$file){
+        #
+        if (test-path $file){
+            remove-item $file -force -ea Continue
+        }
+        #
     }
 }

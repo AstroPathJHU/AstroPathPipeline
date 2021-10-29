@@ -60,7 +60,7 @@ class Dispatcher : queue{
     [void]initepy(){
         Write-Host "Initializing\updating the conda environment" -ForegroundColor Yellow
         $this.checkconda()
-        $this.checkpyapenvir('U')
+        $this.checkpyapenvir()
     }
     #
     # checks for new tasks to process

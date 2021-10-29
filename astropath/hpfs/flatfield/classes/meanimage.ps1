@@ -145,6 +145,7 @@ Class meanimage : moduletools {
         $this.sample.info("cleanup started")
         if ($this.processvars[4]){
             Get-ChildItem -Path $this.processloc -Recurse | Remove-Item -force -recurse
+            Remove-Item $this.processloc -Force
         }
         $this.sample.info("cleanup finished")
         #

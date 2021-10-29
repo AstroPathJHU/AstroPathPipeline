@@ -99,9 +99,7 @@
     [void]WipeProcessDirs(){
         #
         foreach($ii in @(0,1,2)){
-            if (test-path $this.processvars[$ii]){
-                    remove-item $this.processvars[$ii] -force -Recurse -EA STOP
-                }
+            $this.sample.removedir($this.processvars[$ii])
         }
         #
     }
@@ -128,10 +126,8 @@
     [void]Downloadflatfield(){
         if (($this.flevel -band [FileDownloads]::FLATFIELD) -eq [FileDownloads]::FLATFIELD){
             $flatfieldfolder = $this.processvars[0]+'\flatfield'
-            if (test-path $flatfieldfolder){
-                    remove-item $flatfieldfolder -force -Recurse -EA STOP
-                }
-            New-Item $flatfieldfolder -itemtype "directory" -EA STOP | Out-NULL
+            $this.sample.removedir($flatfieldfolder)
+            $this.sample.CreateDirs($flatfieldfolder)
             $this.sample.copy($this.sample.batchflatfield(), $flatfieldfolder)
         }
     }
@@ -271,9 +267,7 @@
     [void]runmatlabtask($taskname, $matlabtask, $source){
         $externallog = $this.ProcessLog($taskname)
         matlab -nosplash -nodesktop -minimize -sd $source -r $matlabtask -wait >> $externallog
-        if (test-path $externallog){
-            remove-item $externallog -force -ea Continue
-        }
+        $this.sample.removefile($externallog)
     }
     #
     [void]runpythontask($taskname, $pythontask){
@@ -281,8 +275,6 @@
         conda activate $this.sample.pyenv
         Invoke-Expression $pythontask *>> $externallog
         conda deactivate $this.sample.pyenv
-        if (test-path $externallog){
-            remove-item $externallog -force -ea Continue
-        }
+        $this.sample.removefile($externallog)
     }
  }

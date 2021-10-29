@@ -62,8 +62,7 @@ Class shredxml : moduletools {
         $this.sample.info("cleanup started")
         #
         if ($this.processvars[4]){
-            gci $this.processloc -Recurse | Remove-Item -force -recurse
-            remove-item $this.processloc -force
+           
         } else {
             gci ($this.processloc+'\*') -Include '*.xml' -Recurse | Remove-Item -force -recurse
         }
