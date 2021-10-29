@@ -1,4 +1,5 @@
-import gzip, more_itertools, numpy as np, pathlib, PIL.Image, tifffile
+import gzip, more_itertools, numpy as np, os, pathlib, PIL.Image, tifffile
+from astropath.slides.stitchmask.stitchmasksample import StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
 from .testbase import TestBaseSaveOutput
@@ -11,6 +12,18 @@ class TestZoom(TestBaseSaveOutput):
     super().setUpClass()
     gunzipreference("M206")
     gunzipreference("L1_1")
+    cls.hackM206mask()
+
+  @classmethod
+  def hackM206mask(cls):
+    root = thisfolder/"data"
+    maskroot = thisfolder/"data"/"reference"/"stitchmask"
+    s1 = StitchInformMaskSample(root, "M206", maskroot=maskroot)
+    s2 = StitchAstroPathTissueMaskSample(root, "M206")
+    filename = s2.maskfilename()
+    if not filename.exists():
+      with s1.using_tissuemask() as mask:
+        np.savez_compressed(s2.maskfilename(), mask=mask)
 
   @classmethod
   def layers(cls, SlideID):
@@ -56,22 +69,27 @@ class TestZoom(TestBaseSaveOutput):
   def testZoomWsi(self, SlideID="L1_1", units="safe", mode="vips", tifflayers="color"):
     root = thisfolder/"data"
     zoomroot = thisfolder/"test_for_jenkins"/"zoom"
-    args = [str(root), "--zoomroot", str(zoomroot), "--logroot", str(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
-    if self.selectrectangles(SlideID) is not None:
-      args += ["--selectrectangles", *(str(_) for _ in self.selectrectangles(SlideID))]
-    if self.layers(SlideID) is not None:
-      args += ["--layers", *(str(_) for _ in self.layers(SlideID))]
+    selectrectangles = self.selectrectangles(SlideID)
+    layers = self.layers(SlideID)
+    maskroot = None
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
+    if selectrectangles is not None:
+      args += ["--selectrectangles", *(str(_) for _ in selectrectangles)]
+    if layers is not None:
+      args += ["--layers", *(str(_) for _ in layers)]
     if tifflayers != "color":
       args += ["--tiff-layers", *(str(_) for _ in tifflayers)]
+    if maskroot is not None:
+      args += ["--maskroot", os.fspath(maskroot)]
     ZoomCohort.runfromargumentparser(args)
-    sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=self.selectrectangles(SlideID), layers=self.layers(SlideID), tifflayers=tifflayers)
+    sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=selectrectangles, layers=layers, tifflayers=tifflayers, maskroot=maskroot)
 
     try:
       assert not sample.bigfolder.exists()
       tifffilename = sample.wsitifffilename(tifflayers)
       with tifffile.TiffFile(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/tifffilename) as tiff, \
            tifffile.TiffFile(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/tifffilename) as targettiff:
-        for layer in self.layers(SlideID):
+        for layer in layers:
           filename = f"{SlideID}-Z9-L{layer}-wsi.png"
           sample.logger.info("comparing "+filename)
           with sample.PILmaximagepixels(), \

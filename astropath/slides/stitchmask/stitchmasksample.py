@@ -9,7 +9,7 @@ from ...utilities.misc import floattoint
 from ...utilities.config import CONST as UNIV_CONST
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiff
-from ..zoom.zoomsample import ZoomSampleBase
+from ..zoom.zoomsamplebase import ZoomSampleBase
 
 class MaskField(Field, MaskRectangle): pass
 
@@ -155,7 +155,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   @classmethod
   def maskfilestem(cls): return "tissue_mask"
   def tissuemask(self, mask):
-    return mask
+    return mask.astype(bool)
 
 class StitchMaskSample(WriteMaskSampleBase):
   """
