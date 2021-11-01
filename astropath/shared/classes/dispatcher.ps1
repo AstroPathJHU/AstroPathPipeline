@@ -50,8 +50,8 @@ class Dispatcher : queue{
         Write-Host "Starting the AstroPath Pipeline" -ForegroundColor Yellow
         Write-Host ("Module: " + $this.module) -ForegroundColor Yellow
         Write-Host ("Username: " + $this.cred.UserName) -ForegroundColor Yellow
-        $this.defCodeRoot()
-        $this.initepy()
+        # $this.defCodeRoot()
+        # $this.initepy()
     }
     #
     # initializing the python environment
@@ -60,7 +60,6 @@ class Dispatcher : queue{
     [void]initepy(){
         Write-Host "Initializing\updating the conda environment" -ForegroundColor Yellow
         $this.checkconda()
-        $this.checkpyapenvir()
     }
     #
     # checks for new tasks to process
