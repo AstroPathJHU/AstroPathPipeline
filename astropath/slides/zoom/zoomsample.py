@@ -154,14 +154,14 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   @methodtools.lru_cache()
   @staticmethod
-  def _colormatrix():
+  def _colormatrix(*, dtype):
     here = pathlib.Path(__file__).parent
     with open(here/"color_matrix.txt") as f:
       matrix = re.search(r"(?<=\[).*(?=\])", f.read(), re.DOTALL).group(0)
-    return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")])
+    return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")], dtype=dtype)
 
   @property
-  def colormatrix(self): return self._colormatrix()[tuple(np.array(self.layers)-1), :]
+  def colormatrix(self): return self._colormatrix(dtype=np.float16)[tuple(np.array(self.layers)-1), :]
 
   @property
   def needtifflayers(self):
@@ -187,7 +187,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
     if self.tifflayers == "color":
       self.logger.info("  normalizing")
-      layerarrays = np.array([vips_image_to_array(layer) for layer in layers], dtype=np.float16)
+      layerarrays = np.array([np.array(vips_image_to_array(layer), dtype=np.float16) for layer in layers])
       layerarrays = layerarrays / np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
       layerarrays = 180 * np.sinh(1.5 * layerarrays)
       self.logger.info("  multiplying by color matrix")
