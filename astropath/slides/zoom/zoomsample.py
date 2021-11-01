@@ -189,6 +189,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       self.logger.info("  normalizing")
       layerarrays = np.zeros(dtype=np.float16, shape=(len(layers),)+tuple(floattoint(self.ntiles * self.zoomtilesize * scale)[::-1]))
       for i, layer in enumerate(layers):
+        self.logger.debug(f"    layer {i+1} / {len(layers)}")
         layerarrays[i] = vips_image_to_array(layer)
       layerarrays /= np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
       layerarrays = 180 * np.sinh(1.5 * layerarrays)
