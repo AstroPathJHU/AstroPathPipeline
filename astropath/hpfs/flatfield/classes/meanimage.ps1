@@ -72,7 +72,6 @@ Class meanimage : moduletools {
         $this.sample.info("started mean image sample -- python")
         $taskname = 'meanimagesample'
         $dpath = $this.sample.basepath + ' '
-        # $dpath = '\\bki04\Clinical_Specimen '
         $rpath = $this.processvars[1]
         $pythontask = 'meanimagesample ' + $dpath + $this.sample.SlideID + 
          ' --shardedim3root ' + $rpath +

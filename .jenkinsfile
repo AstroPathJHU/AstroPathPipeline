@@ -77,7 +77,7 @@ pipeline {
             }
           }
         }
-        stage('test zoom') {
+        stage('zoom') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
           }
@@ -191,9 +191,15 @@ pipeline {
           }
         }
 
-        stage('test applyflatw') {
+        stage('applyflatw') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testapplyflatw'
+          }
+        }
+
+        stage('crossregistration') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testcrossregistration'
           }
         }
 

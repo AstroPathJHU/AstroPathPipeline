@@ -1,6 +1,6 @@
 import cv2, matplotlib.pyplot as plt, numba as nb, numpy as np, scipy.interpolate, scipy.optimize, skimage.feature, skimage.filters, textwrap, uncertainties as unc
 
-def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None, usemaxmovementcut=True):
+def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoothsigma=None, window=None, showsmallimage=False, savesmallimage=None, showbigimage=False, savebigimage=None, errorfactor=1/4, staterrorimages=None, usemaxmovementcut=True, mindistancetootherpeak=None, checkpositivedefinite=True):
   """
   Compute the relative shift between two images by maximizing the cross correlation.
   The cross correlation is computed using the FFT.
@@ -10,12 +10,14 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   DOI:10.4236/ijmpcero.2014.31008
 
   gputhread, gpufftdict: a gpu thread and dict of compiled FFT functions, if using the GPU (default: None)
-  windowsize: window around the maximum to use for fitting to compute subpixel shifts (default: 10)
+  windowsize: window around the maximum to use for fitting to compute subpixel shifts (default: 10). Can also be a tuple of (windowsizex, windowsizey).
   smoothsigma: width to use for gaussian smearing (default: None)
   window: window to apply to the image after smearing (default: None)
   errorfactor: scale the computed error by this factor (default: 1/4; see the LaTeX document in the documentation folder)
   staterrorimages: precomputed statistical error on the images (default: None; the statistical error is computed as difference between the two images after alignment)
   usemaxmovementcut: report the alignment as failed if the shift is more than 10% of the image size
+  mindistancetootherpeak: report the alignment as failed if there's another peak in the cross correlation within this distance of the main peak (default: np.max(windowsize))
+  checkpositivedefinite: report the alignment as failed if the Hessian matrix of the 2nd degree polynomial fitted to the peak is not positive definite
 
   #the remaining arguments are for debugging
   showsmallimage: show the zoomed cross correlation image
@@ -41,25 +43,34 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   y, x = np.mgrid[0:invfourier.shape[0],0:invfourier.shape[1]]
   z = invfourier
 
+  #find the maximum integer value of the cross correlation
+  maxidx = np.unravel_index(np.argmax(np.abs(z)), z.shape)
+  rollby = np.array(z.shape)//2 - maxidx
+
   #roll to get the peak in the middle
-  x = np.roll(x, x.shape[0]//2, axis=0)
-  y = np.roll(y, y.shape[0]//2, axis=0)
-  z = np.roll(z, z.shape[0]//2, axis=0)
-  x = np.roll(x, x.shape[1]//2, axis=1)
-  y = np.roll(y, y.shape[1]//2, axis=1)
-  z = np.roll(z, z.shape[1]//2, axis=1)
+  x = np.roll(x, rollby[0], axis=0)
+  y = np.roll(y, rollby[0], axis=0)
+  z = np.roll(z, rollby[0], axis=0)
+  x = np.roll(x, rollby[1], axis=1)
+  y = np.roll(y, rollby[1], axis=1)
+  z = np.roll(z, rollby[1], axis=1)
+
+  maxidx = tuple((maxidx + rollby) % z.shape)
 
   #change coordinate system, so 0 is in the middle
   x[x > x.shape[1]/2] -= x.shape[1]
   y[y > y.shape[0]/2] -= y.shape[0]
 
-  #find the maximum integer value of the cross correlation
-  maxidx = np.unravel_index(np.argmax(np.abs(z)), z.shape)
+  try:
+    windowsizex, windowsizey = windowsize
+  except TypeError:
+    windowsizex = windowsizey = windowsize
+  windowsize = np.array([windowsizex, windowsizey])
 
   #zoom into around the maximum
   slc = (
-    slice(maxidx[0]-windowsize, maxidx[0]+windowsize+1),
-    slice(maxidx[1]-windowsize, maxidx[1]+windowsize+1),
+    slice(max(maxidx[0]-windowsizey, 0), maxidx[0]+windowsizey+1),
+    slice(max(maxidx[1]-windowsizex, 0), maxidx[1]+windowsizex+1),
   )
   xx = x[slc]
   yy = y[slc]
@@ -100,9 +111,10 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     fun=lambda xy: -f(*xy),
     x0=(x[maxidx], y[maxidx]),
     jac=lambda xy: np.array([-f(*xy, dx=1), -f(*xy, dy=1)]),
-    bounds=((x[maxidx]-windowsize, x[maxidx]+windowsize), (y[maxidx]-windowsize, y[maxidx]+windowsize)),
+    bounds=((x[maxidx]-windowsizex, x[maxidx]+windowsizex), (y[maxidx]-windowsizey, y[maxidx]+windowsizey)),
     method="TNC",
   )
+  crosscorr = -r.fun
 
   #calculate the error on the shift from the 2nd derivative of the spline
   hessian = -np.array([
@@ -130,16 +142,19 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
 
   #various error codes:
   #  if there are other significant peaks in the cross correlation
-  otherbigindices = skimage.feature.corner_peaks(z, min_distance=windowsize, threshold_abs=z[maxidx] - 3*error_crosscorrelation, threshold_rel=0)
+  if mindistancetootherpeak is None:
+    mindistancetootherpeak = np.max(windowsize)
+  otherbigindices = skimage.feature.corner_peaks(z, min_distance=mindistancetootherpeak, threshold_abs=z[maxidx] - 3*error_crosscorrelation, threshold_rel=0)
   for idx in otherbigindices:
     if np.all(idx == maxidx): continue
+    if np.all(np.abs(idx - maxidx) < windowsize): continue
     dx = unc.ufloat(0, 9999.)
     dy = unc.ufloat(0, 9999.)
     exit = 1
     break
 
   #  if the covariance matrix is not positive definite
-  if not np.all(np.linalg.eig(covariance)[0] > 0):
+  if checkpositivedefinite and not np.all(np.linalg.eig(covariance)[0] > 0):
     dx = unc.ufloat(0, 9999.)
     dy = unc.ufloat(0, 9999.)
     exit = 2
@@ -153,6 +168,7 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   return OptimizeResult(
     dx=dx,
     dy=dy,
+    crosscorrelation=unc.ufloat(crosscorr, error_crosscorrelation),
     exit=exit,
     spline=spline,
   )
@@ -191,7 +207,7 @@ def mse(a):
 def doravel(a):
   return np.ravel(a)
 
-def shiftimg(images, dx, dy, *, clip=True, use_gpu=False):
+def shiftimg(images, dx, dy, *, clip=True, use_gpu=False, shiftwhich=None):
   """
   Apply the shift to the two images, using
   a symmetric shift with fractional pixels
@@ -199,28 +215,39 @@ def shiftimg(images, dx, dy, *, clip=True, use_gpu=False):
   dx = float(dx)
   dy = float(dy)
 
+  shifta = {
+    0: 2,
+    None: 1,
+    1: 0,
+  }[shiftwhich]
+  shiftb = {
+    0: 0,
+    None: 1,
+    1: 2,
+  }[shiftwhich]
+
   a, b = images
-  a = a.astype(np.float32)
-  b = b.astype(np.float32)
+  if shifta: a = a.astype(np.float32)
+  if shiftb: b = b.astype(np.float32)
 
   warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
 
   if use_gpu :
-    a = cv2.UMat(a)
-    b = cv2.UMat(b)
+    if shifta: a = cv2.UMat(a)
+    if shiftb: b = cv2.UMat(b)
 
-  a = cv2.warpAffine(a, np.array([[1, 0,  dx/2], [0, 1,  dy/2]]), **warpkwargs)
-  b = cv2.warpAffine(b, np.array([[1, 0, -dx/2], [0, 1, -dy/2]]), **warpkwargs)
+  if shifta: a = cv2.warpAffine(a, np.array([[1, 0,  dx*shifta/2], [0, 1,  dy*shifta/2]]), **warpkwargs)
+  if shiftb: b = cv2.warpAffine(b, np.array([[1, 0, -dx*shiftb/2], [0, 1, -dy*shiftb/2]]), **warpkwargs)
 
   if use_gpu :
-    a = a.get()
-    b = b.get()
+    if shifta: a = a.get()
+    if shiftb: b = b.get()
 
   assert a.shape == b.shape == np.shape(images)[1:], (a.shape, b.shape, np.shape(images))
 
   if clip:
     ww = 10*(1+int(max(np.abs([dx, dy]))/10))
-    clipslice = slice(ww, -ww or None), slice(ww, -ww or None)
+    clipslice = slice(ww*shifta, -ww*shiftb or None), slice(ww*shifta, -ww*shiftb or None)
   else:
     clipslice = ...
 
