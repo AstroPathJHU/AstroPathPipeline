@@ -177,6 +177,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       self.logger.info(f"{filename.name} already exists")
       return
 
+    inputlayers = layers
     self.logger.info(f"saving {filename.name}")
     scale = 2**(self.ztiff-self.zmax)
     if scale == 1:
@@ -188,9 +189,12 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     if self.tifflayers == "color":
       self.logger.info("  normalizing")
       layerarrays = np.zeros(dtype=np.float16, shape=(len(layers),)+tuple(floattoint(self.ntiles * self.zoomtilesize * scale)[::-1]))
+      import pyvips
+      pyvips.cache_set_max(0)
       for i, layer in enumerate(layers):
         self.logger.debug(f"    layer {i+1} / {len(layers)}")
         layerarrays[i] = vips_image_to_array(layer)
+        layers[i] = inputlayers[i] = None
       layerarrays /= np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
       layerarrays = 180 * np.sinh(1.5 * layerarrays)
       self.logger.info("  multiplying by color matrix")
