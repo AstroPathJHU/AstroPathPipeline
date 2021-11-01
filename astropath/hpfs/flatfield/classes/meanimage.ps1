@@ -71,12 +71,11 @@ Class meanimage : moduletools {
     [void]GetMeanImagePy(){
         $this.sample.info("started mean image sample -- python")
         $taskname = 'meanimagesample'
-        #$dpath = $this.sample.basepath + ' '
-        $dpath = '\\bki04\Clinical_Specimen '
+        $dpath = $this.sample.basepath + ' '
         $rpath = $this.processvars[1]
         $pythontask = 'meanimagesample ' + $dpath + $this.sample.SlideID + 
          ' --shardedim3root ' + $rpath +
-        # ' --workingdir ' + $this.processvars[0] + '\meanimage' +
+         ' --workingdir ' + $this.processvars[0] + '\meanimage' +
          " --njobs '8' --allow-local-edits --skip-start-finish"
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished mean image sample -- python")
