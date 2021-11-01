@@ -144,6 +144,11 @@ class sampledef : sharedtools{
         return $path
     }
     #
+    [string]flatfieldfolder(){
+        $path = $this.basepath +'\flatfield'
+        return $path
+    }
+    #
     [string]batchflatfield(){
         $path = $this.basepath +'\flatfield\flatfield_BatchID_' + $this.BatchID + '.bin'
         return $path

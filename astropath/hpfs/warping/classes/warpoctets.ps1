@@ -2,7 +2,7 @@
 --------------------------------------------------------
 warpoctets
 Created By: Andrew Jorquera
-Last Edit: 10/29/2021
+Last Edit: 11/1/2021
 --------------------------------------------------------
 Description
 Task to be launched remotely to ANY computer from ANYWHERE
@@ -43,14 +43,11 @@ Class warpoctets : moduletools {
     [void]GetWarpOctets(){
         $this.sample.info("started warp octets")
         $taskname = 'warpoctets'
-        #$dpath = $this.sample.basepath + ' '
-        $dpath = '\\bki04\Clinical_Specimen'
-        $rpath = $this.processvars[1]
-        $flatfield = $this.sample.flatwfolder()
+        $dpath = $this.sample.basepath + ' '
+        $rpath = $this.processvars[1] + '\' + $this.sample.slideid
         $pythontask = 'warpingcohort ' + $dpath +
          ' --shardedim3root ' + $rpath +
-        # ' --workingdir ' + $this.processvars[0] + '\meanimage' +
-         " --flatfield-file " + $flatfield + ' --octets-only'
+         " --flatfield-file " + $this.sample.flatfieldfolder() + ' --octets-only --allow-local-edits'
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished warp octets")
     }
