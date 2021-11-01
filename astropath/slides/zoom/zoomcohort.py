@@ -1,7 +1,7 @@
 from ...shared.cohort import DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
 from .zoomsample import ZoomSample
 
-class ZoomCohort(DbloadCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort, MaskCohort):
+class ZoomCohort(DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort):
   __doc__ = ZoomSample.__doc__
 
   sampleclass = ZoomSample
