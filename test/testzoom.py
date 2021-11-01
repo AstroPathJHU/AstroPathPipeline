@@ -1,4 +1,4 @@
-import gzip, more_itertools, numpy as np, os, pathlib, PIL.Image, tifffile
+import gzip, more_itertools, numpy as np, os, pathlib, PIL.Image, shutil, tifffile
 from astropath.slides.stitchmask.stitchmasksample import StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
@@ -114,6 +114,13 @@ class TestZoom(TestBaseSaveOutput):
 
   def testzoomM206(self, **kwargs):
     self.testZoomWsi("M206", mode="memmap", tifflayers=[1], **kwargs)
+
+  def testExistingWSI(self, SlideID="L1_1", **kwargs):
+    reffolder = thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"
+    testfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"
+    for filename in reffolder.glob("*.png"):
+      shutil.copy(filename, testfolder)
+    self.testZoomWsi(SlideID=SlideID, **kwargs)
 
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID

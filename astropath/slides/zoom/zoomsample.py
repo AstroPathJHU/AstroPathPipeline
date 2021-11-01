@@ -273,6 +273,13 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))
       ]
 
+      wsilayer1 = self.wsifilename(1)
+      if wsilayer1.exists():
+        with self.PILmaximagepixels(), PIL.Image.open(wsilayer1) as img:
+          img = np.asarray(img)
+          meanintensitynumerator += np.sum(img[mask])
+          meanintensitydenominator += np.count_nonzero(mask)
+
       for tilen, tile in enumerate(tiles, start=1):
         with tile:
           tilemask = mask[
@@ -289,10 +296,12 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
                 break
           else:
             self.logger.info(f"  {self.bigfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
-            with PIL.Image.open(self.bigfilename(1, tile.tilex, tile.tiley)) as img:
-              img = np.asarray(img)
-              meanintensitynumerator += np.sum(img[:,:,0][tilemask])
-              meanintensitydenominator += np.count_nonzero(tilemask)
+            if not wsilayer1.exists():
+              filename = self.bigfilename(1, tile.tilex, tile.tiley)
+              with PIL.Image.open(filename) as img:
+                img = np.asarray(img)
+                meanintensitynumerator += np.sum(img[tilemask])
+                meanintensitydenominator += np.count_nonzero(tilemask)
             continue
 
           #tileimage is initialized to None so that we don't have
