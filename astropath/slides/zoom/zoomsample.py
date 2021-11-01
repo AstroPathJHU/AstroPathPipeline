@@ -187,8 +187,10 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
     if self.tifflayers == "color":
       self.logger.info("  normalizing")
-      layerarrays = np.array([np.array(vips_image_to_array(layer), dtype=np.float16) for layer in layers])
-      layerarrays = layerarrays / np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
+      layerarrays = np.zeros(dtype=np.float16, shape=(len(layers),)+tuple(floattoint(self.ntiles * self.zoomtilesize * scale)[::-1]))
+      for i, layer in enumerate(layers):
+        layerarrays[i] = vips_image_to_array(layer)
+      layerarrays /= np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
       layerarrays = 180 * np.sinh(1.5 * layerarrays)
       self.logger.info("  multiplying by color matrix")
       img = np.tensordot(layerarrays, self.colormatrix, [[0], [0]])
