@@ -272,6 +272,7 @@
     #
     [void]runpythontask($taskname, $pythontask){
         $externallog = $this.ProcessLog($taskname)
+        $this.sample.checkconda()
         conda activate $this.sample.pyenv
         Invoke-Expression $pythontask *>> $externallog
         conda deactivate $this.sample.pyenv

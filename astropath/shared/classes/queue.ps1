@@ -75,8 +75,16 @@ class queue : sharedtools{
     }
     #
     [array]defNotCompletedSlides($cleanedslides){
+        #
         $slidesnotcomplete = @()
+        $c = 1
+        $ctotal = $cleanedslides.count
+        #
         foreach($slide in $cleanedslides){
+            #
+            $p = [math]::Round(100 * ($c / $ctotal))
+            Write-Progress -Activity "Checking slides" -Status "$p% Complete:" -PercentComplete $p -CurrentOperation $slide.slideid
+            $c += 1 
             #
             $log = [mylogger]::new($this.mpath, $this.module, $slide.slideid)
             if ($this.checklog($log, $false)){

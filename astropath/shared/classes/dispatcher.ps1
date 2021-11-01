@@ -33,6 +33,8 @@ class Dispatcher : queue{
     [void]Run(){
         #
         while(1){
+            Write-Host "." -ForegroundColor Yellow
+            Write-Host " Checking for tasks" -ForegroundColor Yellow
             $this.checknew()
             $this.InitializeWorkerlist()
             $this.GetRunningJobs()
@@ -69,7 +71,7 @@ class Dispatcher : queue{
         while (1){
             $this.ExtractQueue()
             if (!($this.cleanedtasks)){
-                Write-Host "No new samples to process." -ForegroundColor Yellow
+                Write-Host "  No new samples to process." -ForegroundColor Yellow
                 Start-Sleep -s (10 * 60)
             } else {
                 break
@@ -90,7 +92,6 @@ class Dispatcher : queue{
                              Where-Object {$_.module -eq $this.module}
         
         #
-        Write-Host "." -ForegroundColor Yellow
         Write-Host " Starting-Task-Distribution" -ForegroundColor Yellow
         write-host " Current Computers for Processing:" -ForegroundColor Yellow
         write-host " " ($this.workers | 

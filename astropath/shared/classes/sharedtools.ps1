@@ -31,7 +31,6 @@
     ----------------------------------------- #>
     [void]createpypaths(){
         #
-        $this.checkconda()
         $this.pyinstalllocation = '\\'+$this.defserver()+'\c$\users\public\'+$this.package +'\py\'
         $this.pyenv = $this.pyinstalllocation + $this.package+'workflow'
         $this.pyinstalllog = $this.pyinstalllocation + 'pyinstall.log'
@@ -48,9 +47,9 @@
     [void]defCodeRoot(){
         #
         $root = $this.defRoot()
-        #
         $folder = $root -Split('\\'+$this.package+'\\')
         $this.coderoot = $folder[0] + '\'+$this.package
+        #
     }
     <# -----------------------------------------
      GetVersion
@@ -90,14 +89,14 @@
     ----------------------------------------- #>
     [switch]APVersionChecks($mpath, $module, $vers){
         #
-        if ($vers -eq 'v0.0.1' -and ($module -contains  @('meanimagecomparison', 'warping'))){
+        if (($module -contains  @('meanimagecomparison', 'warping')) -and $vers -eq 'v0.0.1'){
             Throw 'module not supported in this version (' + $vers + '): ' + $module
-        } elseif ($vers -ne 'v0.0.1' -and $module -contains  @('batchflatfield')) {
+        } elseif ($module -contains  @('batchflatfield') -and $vers -ne 'v0.0.1' ) {
              Throw 'batchflatfield is run from the meanimagecomparison module ' +
                     'and is not initiated in powershell for version: ' + $vers    
         }
         #
-        if ($this.package -match 'astropath' -and $vers -eq '0.0.1'){
+        if ($this.package -match 'astropath' -and $vers -eq 'v0.0.1'){
             return $true
         } else {
             return $false
@@ -220,6 +219,7 @@
         $version = "v0.0.0.dev0+g0000000"
         if ($this.CheckpyEnvir()){
             #
+            $this.checkconda()
             $condalist = conda list -p $this.pyenv
             $astropath = $condalist -match $this.package
             if ($astropath[1]){
@@ -278,6 +278,7 @@
     ----------------------------------------- #>        
     [switch]CheckpyEnvir(){
         #
+        $this.checkconda()
         try {
             conda activate $this.pyenv 2>&1 >> $this.pyinstalllog
             conda deactivate $this.pyenv 2>&1 >> $this.pyinstalllog
@@ -295,6 +296,7 @@
      Usage: $this.createpyenvir()
     ----------------------------------------- #>      
     [void]CreatepyEnvir(){
+        $this.checkconda()
         $this.createdirs($this.pyinstalllocation)
         conda create -y -p $this.pyenv python=3.8 2>&1 >> $this.pyinstalllog
         $this.PopFile($this.pyinstalllog, ($this.pyenv + " CONDA ENVIR CREATED"))
@@ -315,6 +317,7 @@
     ----------------------------------------- #>    
     [void]UpgradepyEnvir(){
         try{
+            $this.checkconda()
             conda activate $this.pyenv 2>&1 >> $this.pyinstalllog
             pip -q install -U $this.pypackagepath  2>&1 >> $this.pyinstalllog
             conda deactivate $this.pyenv 2>&1 >> $this.pyinstalllog
