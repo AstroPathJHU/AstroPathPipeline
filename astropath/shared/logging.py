@@ -83,6 +83,7 @@ class MyLogger:
     self.skipstartfinish = skipstartfinish
     if uselogfiles and (self.samp is None or self.Project is None or self.Cohort is None):
       raise ValueError("Have to give a non-None SlideID, Project and Cohort when writing to log files")
+    self.__logonenter = []
 
   @property
   def SlideID(self):
@@ -154,7 +155,15 @@ class MyLogger:
           self.logger.critical(f"START: {self.module} {self.astropathversion}")
 
     self.nentered += 1
+    self.processlogonenterqueue()
     return self
+
+  def processlogonenterqueue(self):
+    if not self.uselogfiles: self.__enter__()
+    if self.nentered > 0:
+      for functionname, args, kwargs in self.__logonenter:
+        getattr(self, functionname)(*args, **kwargs)
+      del self.__logonenter[:]
 
   @property
   def astropathversion(self):
@@ -212,6 +221,31 @@ class MyLogger:
     An info message that only goes in the image log
     """
     return self.logger.log(logging.INFO-1, *args, **kwargs)
+
+  def logonenter(self, *args, **kwargs):
+    self.__logonenter.append(("log", args, kwargs))
+    self.processlogonenterqueue()
+  def debugonenter(self, *args, **kwargs):
+    self.__logonenter.append(("debug", args, kwargs))
+    self.processlogonenterqueue()
+  def imageinfoonenter(self, *args, **kwargs):
+    self.__logonenter.append(("imageinfo", args, kwargs))
+    self.processlogonenterqueue()
+  def infoonenter(self, *args, **kwargs):
+    self.__logonenter.append(("info", args, kwargs))
+    self.processlogonenterqueue()
+  def warningonenter(self, *args, **kwargs):
+    self.__logonenter.append(("warning", args, kwargs))
+    self.processlogonenterqueue()
+  def warningglobalonenter(self, *args, **kwargs):
+    self.__logonenter.append(("warningglobal", args, kwargs))
+    self.processlogonenterqueue()
+  def erroronenter(self, *args, **kwargs):
+    self.__logonenter.append(("error", args, kwargs))
+    self.processlogonenterqueue()
+  def criticalonenter(self, *args, **kwargs):
+    self.__logonenter.append(("critical", args, kwargs))
+    self.processlogonenterqueue()
 
 class MyFileHandler:
   """
