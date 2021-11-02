@@ -159,7 +159,7 @@ class MyLogger:
     return self
 
   def processlogonenterqueue(self):
-    if not self.uselogfiles: self.__enter__()
+    if self.nentered == 0 and not self.uselogfiles: self.__enter__()
     if self.nentered > 0:
       for functionname, args, kwargs in self.__logonenter:
         getattr(self, functionname)(*args, **kwargs)
