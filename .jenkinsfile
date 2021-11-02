@@ -117,22 +117,6 @@ pipeline {
           }
         }
 
-        stage('align layers') {
-          stages {
-            stage('test align layers') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignlayers'
-              }
-            }
-            stage('layer PCA plots') {
-              steps {
-                sh 'cd documents/layerPCA; pdflatex layerPCA.tex; pdflatex layerPCA.tex; pdflatex layerPCA.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/layerPCA/layerPCA.log'
-              }
-            }
-          }
-        }
-
         stage('stitch mask') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.teststitchmask'
