@@ -43,11 +43,11 @@ Class warpoctets : moduletools {
     [void]GetWarpOctets(){
         $this.sample.info("started warp octets")
         $taskname = 'warpoctets'
-        $dpath = $this.sample.basepath + ' '
+        $dpath = $this.sample.basepath
         $rpath = $this.processvars[1] + '\' + $this.sample.slideid
         $pythontask = 'warpingcohort ' + $dpath +
          ' --shardedim3root ' + $rpath +
-         " --flatfield-file " + $this.sample.flatfieldfolder() + ' --octets-only --allow-local-edits'
+         ' --flatfield-file ' + $this.sample.flatfieldfolder() + ' --octets-only --allow-local-edits'
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished warp octets")
     }
