@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
+import argparse, collections, contextlib, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
 from astropath.slides.align.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
 from astropath.slides.align.isotropy import isotropy, stitchingisotropy
 from astropath.slides.align.alignsample import AlignSample
