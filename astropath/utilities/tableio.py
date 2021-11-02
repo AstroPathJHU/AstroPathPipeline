@@ -185,11 +185,14 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
           reader = csv.DictReader(f, fieldnames=readfieldnames)
           if reader.fieldnames != fieldnames:
             raise ValueError(f"Inconsistent fieldnames for append:\nprevious lines were written with:\n{reader.fieldnames}\nnew lines would be written with:\n{fieldnames}")
-          #this check is only really needed if not header
-          firstline = next(reader)
-          nfields = sum(1 for k, v in firstline.items() if k is not None is not v) + len(firstline.get(None, []))
-          if nfields != len(fieldnames):
-            raise ValueError(f"Inconsistent number of fields for append: previous lines had {nfields}, new lines would have {len(fieldnames)}")
+          #this check handles two cases:
+          # 1) if not header, checks that the line lengths match
+          # 2) checks that a previous write didn't get interrupted
+          #    and end up with a truncated line
+          for row in reader:
+            nfields = sum(1 for k, v in row.items() if k is not None is not v) + len(row.get(None, []))
+            if nfields != len(fieldnames):
+              raise ValueError(f"Inconsistent number of fields for append: previous lines had {nfields}, new lines would have {len(fieldnames)}")
   try:
     openmode = "a" if append else "w"
     with open(filename, openmode, newline='') as f:
