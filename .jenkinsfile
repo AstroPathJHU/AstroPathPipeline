@@ -209,7 +209,6 @@ pipeline {
       archiveArtifacts artifacts: 'documents/alignment/alignment.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/annowarp/annowarp.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documents/layerPCA/layerPCA.pdf', fingerprint: true
       archiveArtifacts artifacts: 'test/test_for_jenkins/**', fingerprint: true, allowEmptyArchive: true
     }
   }
