@@ -1,4 +1,4 @@
-import abc, csv, dataclasses, dataclassy, datetime
+import abc, contextlib, csv, dataclasses, dataclassy, datetime
 
 from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
@@ -104,7 +104,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
   return result
 
-def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("inf"), logger=dummylogger, header=True):
+def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("inf"), logger=dummylogger, header=True, append=False):
   """
   Write a csv table into filename based on the rows.
   The rows should all be the same dataclass type.
@@ -170,10 +170,31 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
 
   fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
 
+  if append:
+    with contextlib.ExitStack() as stack:
+      try:
+        f = stack.enter_context(open(filename, "r"))
+      except FileNotFoundError:
+        append = False
+      else:
+        with open(filename, "r") as f:
+          if header:
+            readfieldnames = None
+          else:
+            readfieldnames = fieldnames
+          reader = csv.DictReader(f, fieldnames=readfieldnames)
+          if reader.fieldnames != fieldnames:
+            raise ValueError(f"Inconsistent fieldnames for append:\nprevious lines were written with:\n{reader.fieldnames}\nnew lines would be written with:\n{fieldnames}")
+          #this check is only really needed if not header
+          firstline = next(reader)
+          nfields = sum(1 for k, v in firstline.items() if k is not None is not v) + len(firstline.get(None, []))
+          if nfields != len(fieldnames):
+            raise ValueError(f"Inconsistent number of fields for append: previous lines had {nfields}, new lines would have {len(fieldnames)}")
   try:
-    with open(filename, "w", newline='') as f:
+    openmode = "a" if append else "w"
+    with open(filename, openmode, newline='') as f:
       writer = csv.DictWriter(f, fieldnames, lineterminator='\r\n')
-      if header: writer.writeheader()
+      if header and not append: writer.writeheader()
       for i, row in enumerate(rows, start=1):
         if printevery is not None and not i % printevery:
           logger.debug(f"{i} / {size}")
