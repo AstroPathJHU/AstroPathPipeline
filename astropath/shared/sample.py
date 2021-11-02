@@ -673,6 +673,13 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     Pixels/micron of the first qptiff layer
     """
     return self.constantsdict["apscale"]
+  @property
+  def margin(self):
+    """
+    Margin to add outside the image area in the wsi
+    Default 0 for backwards compatibility
+    """
+    return self.constantsdict.get("margin", 0)
 
 class MaskSampleBase(SampleBase, MaskArgumentParser):
   """
@@ -1447,7 +1454,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir] = r.allexposuretimes[self.__layer-1]
     self.__med_et = np.median(slide_exp_times)
-    if (not self.skip_et_corrections) and (self.self.et_offset_file is not None) :
+    if (not self.skip_et_corrections) and (self.et_offset_file is not None) :
       #read the exposure time offsets
       offset = self.__get_exposure_time_offset()
       #add the exposure time correction to every rectangle's transformations

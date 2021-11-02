@@ -141,7 +141,7 @@ class AlignSampleBase(SampleBase):
     return result
 
   def dostitching(self, **kwargs):
-    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
+    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, margin=self.margin, logger=self.logger, **kwargs)
 
   def applystitchresult(self, result):
     result.applytooverlaps()
@@ -306,6 +306,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
         overlaps=self.overlaps,
         rectangles=self.rectangles,
         origin=self.position,
+        margin=self.margin,
         logger=self.logger,
       )
     except Exception:
@@ -368,15 +369,19 @@ class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
   An alignment set that does not rely on the dbload folder and cannot write the output.
   It is a little slower to initialize than an alignment set that does have dbload.
   """
-  def __init__(self, *args, nclip, position=None, **kwargs):
+  def __init__(self, *args, nclip, margin=None, position=None, **kwargs):
     self.__nclip = nclip
     super().__init__(*args, **kwargs)
     if position is None: position = np.array([0, 0])
     self.__position = position
+    if margin is None: margin = 1024 * self.onepixel
+    self.__margin = margin
   @property
   def nclip(self): return self.__nclip*self.onepixel
   @property
   def position(self): return self.__position
+  @property
+  def margin(self): return self.__margin
 
 class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
   """

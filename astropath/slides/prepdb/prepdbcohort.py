@@ -5,6 +5,17 @@ class PrepDbCohort(DbloadCohort, WorkflowCohort, XMLPolygonReaderCohort, PrepDbA
   sampleclass = PrepDbSample
   __doc__ = sampleclass.__doc__
 
+  def __init__(self, *args, margin, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__margin = margin
+
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "margin": self.__margin,
+    }
+
 def main(args=None):
   PrepDbCohort.runfromargumentparser(args)
 
