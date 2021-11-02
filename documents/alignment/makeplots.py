@@ -17,6 +17,8 @@ rc = {
   "figure.subplot.bottom": 0.12,
 }
 
+stack = contextlib.ExitStack()
+
 @functools.lru_cache()
 def __alignsample(*, root1, shardedim3root, samp, dapi, dbloadroot, **kwargs):
   if dapi:
@@ -41,7 +43,7 @@ def __alignsample(*, root1, shardedim3root, samp, dapi, dbloadroot, **kwargs):
   if dbloadroot is None:
     return alignsample(root1=root1, shardedim3root=shardedim3root, samp=samp, dbloadroot=root1, **kwargs)
 
-  A = AlignSample(root1, shardedim3root, dbloadroot=dbloadroot, samp=samp, interactive=interactive, **kwargs)
+  A = stack.enter_context(AlignSample(root1, shardedim3root, dbloadroot=dbloadroot, samp=samp, interactive=interactive, **kwargs))
 
   A.readalignments()
   A.readstitchresult()
