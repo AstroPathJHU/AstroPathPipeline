@@ -50,6 +50,11 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     self.__entered = False
     super().__init__()
 
+    if not self.scanfolder.exists():
+      raise OSError(f"{self.scanfolder} does not exist")
+    if not self.scanfolder.is_dir():
+      raise OSError(f"{self.scanfolder} is not a directory")
+
   @property
   def root(self): return self.__root
   @property
