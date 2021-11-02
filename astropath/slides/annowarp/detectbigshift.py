@@ -25,7 +25,7 @@ class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, scale="zoomeds
   def getshift(self):
     if self.__shift is not None: return self.__shift
     r, = self.rectangles
-    with r.using_image() as im, self.using_qptiff() as fqptiff:
+    with self, r.using_image() as im, self.using_qptiff() as fqptiff:
       im = PIL.Image.fromarray(im)
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = zoomlevel[self.qptifflayer-1].asarray()

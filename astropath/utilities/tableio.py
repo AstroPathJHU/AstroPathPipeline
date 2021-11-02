@@ -1,4 +1,4 @@
-import abc, csv, dataclasses, dataclassy, datetime
+import abc, contextlib, csv, dataclasses, dataclassy, datetime, job_lock, pathlib
 
 from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
@@ -104,7 +104,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
   return result
 
-def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("inf"), logger=dummylogger, header=True):
+def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("inf"), logger=dummylogger, header=True, append=False):
   """
   Write a csv table into filename based on the rows.
   The rows should all be the same dataclass type.
@@ -144,53 +144,81 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
                          (default: lambda obj: {})
     includeintable:      if this is False, the field is not written in the table
   """
-  size = len(rows)
-  if printevery > size:
-    printevery = None
-  if printevery is not None:
-    logger.info(f"writing {filename}, which will have {size} rows")
+  filename = pathlib.Path(filename)
+  lockfilename = filename.with_suffix(filename.suffix+".lock")
 
-  rowclasses = {type(_) for _ in rows}
-  if rowclass is None:
-    if len(rowclasses) > 1:
-      raise TypeError(
-        "Provided rows of different types:\n  "
-        + "\n  ".join(_.__name__ for _ in rowclasses)
-      )
-    rowclass = rowclasses.pop()
-  else:
-    badclasses = {cls for cls in rowclasses if not issubclass(cls, rowclass)}
-    if badclasses:
-      raise TypeError(f"Provided rows of types that aren't consistent with rowclass={rowclass.__name__}:\n  "
-        + "\n  ".join(_.__name__ for _ in badclasses)
-      )
+  with job_lock.JobLockAndWait(lockfilename, 1, corruptfiletimeout=datetime.timedelta(minutes=10), task=f"writing to {filename}"):
+    size = len(rows)
+    if printevery > size:
+      printevery = None
+    if printevery is not None:
+      logger.info(f"writing {filename}, which will have {size} rows")
 
-  if not issubclass(rowclass, MyDataClass):
-    raise TypeError(f"{rowclass} should inherit from {MyDataClass}")
-
-  fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
-
-  try:
-    with open(filename, "w", newline='') as f:
-      writer = csv.DictWriter(f, fieldnames, lineterminator='\r\n')
-      if header: writer.writeheader()
-      for i, row in enumerate(rows, start=1):
-        if printevery is not None and not i % printevery:
-          logger.debug(f"{i} / {size}")
-        writer.writerow(asrow(row))
-  except PermissionError:
-    if retry:
-      result = None
-      while True:
-        result = input(f"Permission error writing to {filename} - do you want to retry? yes/no  ")
-        if result == "yes":
-          return writetable(filename, rows, retry=False, rowclass=rowclass, printevery=printevery)
-        elif result == "no":
-          raise
+    rowclasses = {type(_) for _ in rows}
+    if rowclass is None:
+      if len(rowclasses) > 1:
+        raise TypeError(
+          "Provided rows of different types:\n  "
+          + "\n  ".join(_.__name__ for _ in rowclasses)
+        )
+      rowclass = rowclasses.pop()
     else:
-      raise
-  if printevery is not None:
-    logger.info("finished!")
+      badclasses = {cls for cls in rowclasses if not issubclass(cls, rowclass)}
+      if badclasses:
+        raise TypeError(f"Provided rows of types that aren't consistent with rowclass={rowclass.__name__}:\n  "
+          + "\n  ".join(_.__name__ for _ in badclasses)
+        )
+
+    if not issubclass(rowclass, MyDataClass):
+      raise TypeError(f"{rowclass} should inherit from {MyDataClass}")
+
+    fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
+
+    if append:
+      with contextlib.ExitStack() as stack:
+        try:
+          f = stack.enter_context(open(filename, "r"))
+        except FileNotFoundError:
+          append = False
+        else:
+          with open(filename, "r") as f:
+            if header:
+              readfieldnames = None
+            else:
+              readfieldnames = fieldnames
+            reader = csv.DictReader(f, fieldnames=readfieldnames)
+            if reader.fieldnames != fieldnames:
+              raise ValueError(f"Inconsistent fieldnames for append:\nprevious lines were written with:\n{reader.fieldnames}\nnew lines would be written with:\n{fieldnames}")
+            #this check handles two cases:
+            # 1) if not header, checks that the line lengths match
+            # 2) checks that a previous write didn't get interrupted
+            #    and end up with a truncated line
+            for row in reader:
+              nfields = sum(1 for k, v in row.items() if k is not None is not v) + len(row.get(None, []))
+              if nfields != len(fieldnames):
+                raise ValueError(f"Inconsistent number of fields for append: previous lines had {nfields}, new lines would have {len(fieldnames)}")
+    try:
+      openmode = "a" if append else "w"
+      with open(filename, openmode, newline='') as f:
+        writer = csv.DictWriter(f, fieldnames, lineterminator='\r\n')
+        if header and not append: writer.writeheader()
+        for i, row in enumerate(rows, start=1):
+          if printevery is not None and not i % printevery:
+            logger.debug(f"{i} / {size}")
+          writer.writerow(asrow(row))
+    except PermissionError:
+      if retry:
+        result = None
+        while True:
+          result = input(f"Permission error writing to {filename} - do you want to retry? yes/no  ")
+          if result == "yes":
+            return writetable(filename, rows, retry=False, rowclass=rowclass, printevery=printevery)
+          elif result == "no":
+            raise
+      else:
+        raise
+    if printevery is not None:
+      logger.info("finished!")
 
 class TableReader(abc.ABC):
   """
