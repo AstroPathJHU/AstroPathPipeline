@@ -673,6 +673,13 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     Pixels/micron of the first qptiff layer
     """
     return self.constantsdict["apscale"]
+  @property
+  def margin(self):
+    """
+    Margin to add outside the image area in the wsi
+    Default 0 for backwards compatibility
+    """
+    return self.constantsdict.get("margin", 0)
 
 class MaskSampleBase(SampleBase, MaskArgumentParser):
   """

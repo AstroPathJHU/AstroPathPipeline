@@ -485,6 +485,15 @@ def array_to_vips_image(array):
     bands=bands,
   )
 
+def vips_sinh(image):
+  try:
+    #https://github.com/libvips/pyvips/pull/282
+    return image.sinh()
+  except AttributeError:
+    exp = image.exp()
+    minusexp = 1/exp
+    return (exp - minusexp) / 2
+
 def affinetransformation(scale=None, rotation=None, shear=None, translation=None):
   """
   https://github.com/scikit-image/scikit-image/blob/f0fcdc8d73c20d741e31e5d57efad1a38426f7fd/skimage/transform/_geometric.py#L876-L880

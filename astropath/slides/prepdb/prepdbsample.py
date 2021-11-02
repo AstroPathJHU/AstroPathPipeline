@@ -13,6 +13,7 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-annotations", action="store_true", help="do not check the annotations for validity and do not write the annotations, vertices, and regions csvs (they will be written later, in the annowarp step)")
     p.add_argument("--skip-qptiff", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--margin", type=int, help="minimum number of pixels between the tissue and the wsi edge", default=1024)
     return p
 
   @classmethod
@@ -23,19 +24,32 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
       "_skipqptiff": parsed_args_dict.pop("skip_qptiff"),
     }
 
-class PrepDbSampleBase(XMLLayoutReader, XMLPolygonReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "margin": parsed_args_dict.pop("margin"),
+    }
+
+class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   """
   The prepdb stage of the pipeline extracts metadata for a sample from the `.xml` files
   and writes it out to `.csv` files.
   For more information, see README.md in this folder.
   """
 
+  def __init__(self, *args, nclip=8, margin=1024, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__margin = margin
+    self.__nclip = nclip
+
   @classmethod
   def logmodule(self): return "prepdb"
 
   @property
-  def nclip(self):
-    return 8
+  def nclip(self): return self.__nclip * self.onepixel
+  @property
+  def margin(self): return self.__margin * self.onepixel
 
   @methodtools.lru_cache()
   def getbatch(self):
@@ -237,9 +251,16 @@ class PrepDbSampleBase(XMLLayoutReader, XMLPolygonReader, RectangleOverlapCollec
       ),
       Constant(
         name='nclip',
-        value=self.nclip * self.onepixel,
+        value=self.nclip,
         unit='pixels',
         description='pixels to clip off the edge after warping',
+        **pscales,
+      ),
+      Constant(
+        name='margin',
+        value=self.margin,
+        unit='pixels',
+        description='minimum margin between the tissue and the wsi edge',
         **pscales,
       ),
       Constant(
@@ -273,7 +294,7 @@ class PrepDbSampleBase(XMLLayoutReader, XMLPolygonReader, RectangleOverlapCollec
     ]
     return constants
 
-class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
+class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
   def writebatch(self):
     self.logger.info("write batch")
     self.writecsv("batch", self.getbatch())
@@ -382,25 +403,20 @@ class PrepDbSample(PrepDbSampleBase, DbloadSampleBase, PrepDbArgumentParser):
       dbload/f"{SlideID}_vertices.csv",
     ] if not skipannotations else [])
 
-    #do not include annotations, regions, and vertices
-    #they get rewritten anyway in annowarp, the only reason
-    #to write them here is to check the annotation validity
-    #(which can be skipped)
-
   @classmethod
   def workflowdependencyclasses(cls):
     return super().workflowdependencyclasses()
 
   @classmethod
   def logstartregex(cls):
-    old = super().logstartregex()
-    new = "prepSample started"
+    new = super().logstartregex()
+    old = "prepSample started"
     return rf"(?:{old}|{new})"
 
   @classmethod
   def logendregex(cls):
-    old = super().logendregex()
-    new = "prepSample end"
+    new = super().logendregex()
+    old = "prepSample end"
     return rf"(?:{old}|{new})"
 
 def main(args=None):
