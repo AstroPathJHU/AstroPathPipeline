@@ -267,7 +267,14 @@ class MyFileHandler:
     self.__handler.setLevel(self.__level)
     self.__handler.filters = self.__filters
     with job_lock.JobLockAndWait(self.__lockfilename, 1, corruptfiletimeout=datetime.timedelta(minutes=10), task=f"logging to {self.__filename}"):
-      self.__handler.handle(record)
+      def trylog(): self.__handler.handle(record)
+      try:
+        trylog()
+      except OSError:
+        try:
+          trylog()
+        except OSError:
+          trylog()
 
   def __repr__(self):
     return f"{type(self).__name__}({self.__filename})"
