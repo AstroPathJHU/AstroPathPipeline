@@ -118,6 +118,7 @@ class TestZoom(TestBaseSaveOutput):
   def testExistingWSI(self, SlideID="L1_1", **kwargs):
     reffolder = thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"
     testfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"
+    testfolder.mkdir(exist_ok=True, parents=True)
     for filename in reffolder.glob("*.png"):
       shutil.copy(filename, testfolder)
     self.testZoomWsi(SlideID=SlideID, **kwargs)
