@@ -46,7 +46,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     ]
 
   def testAlignment(self, SlideID="M21_1", componenttiff=False, **kwargs):
-    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0)
+    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0, root=thisfolder/"data")
     dbloadroot = thisfolder/"test_for_jenkins"/"alignment"/("" if not componenttiff else "component_tiff")
     alignsampletype = AlignSample if not componenttiff else AlignSampleComponentTiff
     alignsampleargs = (
@@ -334,7 +334,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
         a.stitch()
 
   def testNoLog(self, SlideID="M21_1"):
-    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0)
+    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0, root=thisfolder/"data")
     with AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", samp, selectrectangles=range(10), uselogfiles=True, logthreshold=logging.CRITICAL, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment") as a:
       a.getDAPI()
       a.align()
