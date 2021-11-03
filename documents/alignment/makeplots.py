@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, collections, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
+import argparse, collections, contextlib, functools, os, matplotlib.patches as patches, matplotlib.pyplot as plt, numpy as np, pathlib, scipy.interpolate
 from astropath.slides.align.plots import shiftplotprofile, closedlooppulls, plotpairwisealignments, shiftplot2D
 from astropath.slides.align.isotropy import isotropy, stitchingisotropy
 from astropath.slides.align.alignsample import AlignSample
@@ -16,6 +16,8 @@ rc = {
   "font.size": 20,
   "figure.subplot.bottom": 0.12,
 }
+
+stack = contextlib.ExitStack()
 
 @functools.lru_cache()
 def __alignsample(*, root1, shardedim3root, samp, dapi, dbloadroot, **kwargs):
@@ -41,7 +43,7 @@ def __alignsample(*, root1, shardedim3root, samp, dapi, dbloadroot, **kwargs):
   if dbloadroot is None:
     return alignsample(root1=root1, shardedim3root=shardedim3root, samp=samp, dbloadroot=root1, **kwargs)
 
-  A = AlignSample(root1, shardedim3root, dbloadroot=dbloadroot, samp=samp, interactive=interactive, **kwargs)
+  A = stack.enter_context(AlignSample(root1, shardedim3root, dbloadroot=dbloadroot, samp=samp, interactive=interactive, **kwargs))
 
   A.readalignments()
   A.readstitchresult()

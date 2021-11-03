@@ -46,7 +46,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     ]
 
   def testAlignment(self, SlideID="M21_1", componenttiff=False, **kwargs):
-    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0)
+    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0, root=thisfolder/"data")
     dbloadroot = thisfolder/"test_for_jenkins"/"alignment"/("" if not componenttiff else "component_tiff")
     alignsampletype = AlignSample if not componenttiff else AlignSampleComponentTiff
     alignsampleargs = (
@@ -124,8 +124,9 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     readfilename = thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
     a.readalignments(filename=readfilename)
 
-    agpu.getDAPI(writeimstat=False)
-    agpu.align(write_result=False)
+    with agpu:
+      agpu.getDAPI(writeimstat=False)
+      agpu.align(write_result=False)
 
     for o, ogpu in zip(a.overlaps, agpu.overlaps):
       assertAlmostEqual(o.result, ogpu.result, rtol=1e-5, atol=1e-5)
@@ -260,15 +261,16 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testSymmetry(self, SlideID="M21_1"):
     a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=(10, 11), dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-    a.getDAPI(writeimstat=False)
-    o1, o2 = a.overlaps
-    o1.align()
-    o2.align()
-    assertAlmostEqual(o1.result.dx, -o2.result.dx, rtol=1e-5)
-    assertAlmostEqual(o1.result.dy, -o2.result.dy, rtol=1e-5)
-    assertAlmostEqual(o1.result.covxx, o2.result.covxx, rtol=1e-5)
-    assertAlmostEqual(o1.result.covyy, o2.result.covyy, rtol=1e-5)
-    assertAlmostEqual(o1.result.covxy, o2.result.covxy, rtol=1e-5)
+    with a:
+      a.getDAPI(writeimstat=False)
+      o1, o2 = a.overlaps
+      o1.align()
+      o2.align()
+      assertAlmostEqual(o1.result.dx, -o2.result.dx, rtol=1e-5)
+      assertAlmostEqual(o1.result.dy, -o2.result.dy, rtol=1e-5)
+      assertAlmostEqual(o1.result.covxx, o2.result.covxx, rtol=1e-5)
+      assertAlmostEqual(o1.result.covyy, o2.result.covyy, rtol=1e-5)
+      assertAlmostEqual(o1.result.covxy, o2.result.covxy, rtol=1e-5)
 
   @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
   def testPscale(self, SlideID="M21_1"):
@@ -287,9 +289,10 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     with temporarilyremove(thisfolder/"data"/SlideID/"inform_data"/"Component_Tiffs"), temporarilyreplace(constantsfile, newconstantscontents), temporarilyremove(thisfolder/"data"/SlideID/"im3"/"xml"):
       a2 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
       assert a1.pscale != a2.pscale
-      a2.getDAPI(writeimstat=False)
-      a2.align(debug=True)
-      a2.stitch()
+      with a2:
+        a2.getDAPI(writeimstat=False)
+        a2.align(debug=True)
+        a2.stitch()
 
     pscale1 = a1.pscale
     pscale2 = a2.pscale
@@ -325,12 +328,13 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   def testMissingFolders(self, SlideID="M21_1"):
     with temporarilyremove(thisfolder/"data"/SlideID/"im3"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"), units.setup_context("fast"):
       a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=range(10), dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-      a.getDAPI()
-      a.align()
-      a.stitch()
+      with a:
+        a.getDAPI()
+        a.align()
+        a.stitch()
 
   def testNoLog(self, SlideID="M21_1"):
-    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0)
+    samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0, root=thisfolder/"data")
     with AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", samp, selectrectangles=range(10), uselogfiles=True, logthreshold=logging.CRITICAL, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment") as a:
       a.getDAPI()
       a.align()
@@ -349,16 +353,18 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     args = thisfolder/"data", thisfolder/"data"/"flatw", SlideID
     kwargs = {**kwargs, "selectrectangles": range(10), "xmlfolders": [thisfolder/"data"/"raw"], "logroot": thisfolder/"test_for_jenkins"/"alignment"}
     a1 = AlignSample(*args, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", **kwargs)
-    a1.getDAPI()
-    a1.align()
-    result1 = a1.stitch()
-    nclip = a1.nclip
-    position = a1.position
+    with a1:
+      a1.getDAPI()
+      a1.align()
+      result1 = a1.stitch()
+      nclip = a1.nclip
+      position = a1.position
 
     a2 = AlignSampleFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), position=position, **kwargs)
-    a2.getDAPI()
-    a2.align()
-    result2 = a2.stitch()
+    with a2:
+      a2.getDAPI()
+      a2.align()
+      result2 = a2.stitch()
 
     units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result2.T))
     units.np.testing.assert_allclose(units.nominal_values(result1.x()), units.nominal_values(result2.x()))
@@ -366,9 +372,10 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     if not os.environ.get("JENKINS_PARALLEL", 0): #temporarilyremove messes with other tests run in parallel
       with temporarilyremove(thisfolder/"data"/SlideID/"dbload"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"):
         a3 = AlignSampleFromXML(*args, nclip=units.pixels(nclip, pscale=a1.pscale), **kwargs)
-        a3.getDAPI()
-        a3.align()
-        result3 = a3.stitch()
+        with a3:
+          a3.getDAPI()
+          a3.align()
+          result3 = a3.stitch()
 
       units.np.testing.assert_allclose(units.nominal_values(result1.T), units.nominal_values(result3.T), atol=1e-8)
 

@@ -1,13 +1,14 @@
-import cv2, hashlib, more_itertools, numpy as np, os, pathlib, skimage
+import cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib, skimage
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
+from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
-from astropath.utilities.tableio import readtable
+from astropath.utilities.tableio import readtable, writetable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -22,7 +23,9 @@ class TestMisc(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"misc"/"M21_1_annotations.csv",
       thisfolder/"test_for_jenkins"/"misc"/"M21_1_regions.csv",
       thisfolder/"test_for_jenkins"/"misc"/"M21_1_vertices.csv",
-      thisfolder/"test_for_jenkins"/"misc"/"sampledef.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"makesampledef"/"sampledef.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"sampledef.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"noheader.csv",
     ]
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
@@ -166,7 +169,7 @@ class TestMisc(TestBaseSaveOutput):
 
   def testMakeSampleDef(self):
     self.maxDiff = None
-    outfile = thisfolder/"test_for_jenkins"/"misc"/"sampledef.csv"
+    outfile = thisfolder/"test_for_jenkins"/"misc"/"makesampledef"/"sampledef.csv"
     outfile.parent.mkdir(parents=True, exist_ok=True)
     reference = thisfolder/"data"/"sampledef.csv"
     args = [os.fspath(thisfolder/"data"), "--apidfile", os.fspath(thisfolder/"data"/"AstropathAPIDdef.csv"), "--first-sample-id", "1", "--outfile", os.fspath(outfile)]
@@ -178,6 +181,40 @@ class TestMisc(TestBaseSaveOutput):
 
       for row, target in more_itertools.zip_equal(rows, targetrows):
         assertAlmostEqual(row, target)
+    except:
+      self.saveoutput()
+      raise
+    else:
+      self.removeoutput()
+
+  def testTableAppend(self):
+    self.maxDiff = None
+    outfile = thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"sampledef.csv"
+    noheader = outfile.parent/"noheader.csv"
+    outfile.parent.mkdir(parents=True, exist_ok=True)
+    reference = thisfolder/"data"/"sampledef.csv"
+    sampledefs = readtable(reference, SampleDef, checkorder=True, checknewlines=True)
+    firstbatch = sampledefs[:3]
+    secondbatch = sampledefs[3:]
+    writetable(outfile, firstbatch)
+    writetable(outfile, secondbatch, append=True)
+    writetable(noheader, firstbatch, header=False)
+    with self.assertRaises(ValueError):
+      writetable(noheader, secondbatch, append=True)
+    onepixel = units.Distance(pixels=1, pscale=1)
+    with self.assertRaises(ValueError):
+      writetable(noheader, [Vertex(regionid=1, vid=1, x=onepixel, y=onepixel)], append=True, header=False)
+    with self.assertRaises(ValueError):
+      writetable(noheader, [Rectangle(pscale=1, n=1, x=onepixel, y=onepixel, cx=onepixel, cy=onepixel, w=onepixel, h=onepixel, file='file.im3', t=datetime.datetime.now())], append=True, header=False)
+    writetable(noheader, secondbatch, append=True, header=False)
+
+    try:
+      for rows in (
+        readtable(outfile, SampleDef, checkorder=True, checknewlines=True),
+        readtable(noheader, SampleDef, checkorder=True, checknewlines=True, header=False),
+      ):
+        for row, target in more_itertools.zip_equal(rows, sampledefs):
+          assertAlmostEqual(row, target)
     except:
       self.saveoutput()
       raise

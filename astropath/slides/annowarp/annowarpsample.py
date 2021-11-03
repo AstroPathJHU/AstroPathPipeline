@@ -23,8 +23,13 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     super().__init__(*args, **kwargs)
 
     self.__nentered = 0
-    self.__using_qptiff_context = self.enter_context(contextlib.ExitStack())
+    self.__using_qptiff_context = None
     self.__qptiff = None
+
+  def __enter__(self):
+    result = super().__enter__()
+    self.__using_qptiff_context = self.enter_context(contextlib.ExitStack())
+    return result
 
   @contextlib.contextmanager
   def using_qptiff(self):
@@ -77,8 +82,13 @@ class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
     super().__init__(*args, **kwargs)
 
     self.__nentered = 0
-    self.__using_wsi_context = self.enter_context(contextlib.ExitStack())
+    self.__using_wsi_context = None
     self.__wsi = None
+
+  def __enter__(self):
+    result = super().__enter__()
+    self.__using_wsi_context = self.enter_context(contextlib.ExitStack())
+    return result
 
   @contextlib.contextmanager
   def using_wsi(self, layer):
