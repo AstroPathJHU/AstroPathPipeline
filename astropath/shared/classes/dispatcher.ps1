@@ -7,7 +7,8 @@ class Dispatcher : queue{
     [array]$running
     [array]$workers
     [PSCredential]$cred
-    [string]$workerloglocation = '\\'+$env:ComputerName+'\c$\users\public\astropath\'
+    [string]$workerloglocation = '\\' + $env:ComputerName +
+        '\c$\users\public\astropath\'
     #
     Dispatcher($mpath, $module, $cred):base($mpath, $module){
         #
@@ -52,8 +53,6 @@ class Dispatcher : queue{
         Write-Host "Starting the AstroPath Pipeline" -ForegroundColor Yellow
         Write-Host ("Module: " + $this.module) -ForegroundColor Yellow
         Write-Host ("Username: " + $this.cred.UserName) -ForegroundColor Yellow
-        # $this.defCodeRoot()
-        # $this.initepy()
     }
     #
     # initializing the python environment
@@ -71,9 +70,12 @@ class Dispatcher : queue{
         while (1){
             $this.ExtractQueue()
             if (!($this.cleanedtasks)){
-                Write-Host "  No new samples to process." -ForegroundColor Yellow
+                Write-Host " No new samples to process." -ForegroundColor Yellow
+                Write-Host " Sleeping for 10 minutes." -ForegroundColor Yellow
                 Start-Sleep -s (10 * 60)
+                Write-Host " Checking for tasks" -ForegroundColor Yellow
             } else {
+                Write-Host " Tasks Found" -ForegroundColor Yellow
                 break
             }
         }
@@ -147,13 +149,15 @@ class Dispatcher : queue{
             $myscriptblock = {
                 param($username, $password, $currentworkerip, $workertaskfile)
                 psexec -i -nobanner -accepteula -u $username -p $password \\$currentworkerip `
-                    powershell -noprofile -executionpolicy bypass -command "$workertaskfile" 
+                    powershell -noprofile -executionpolicy bypass -command "$workertaskfile" `
+                    *>> ($workertaskfile -replace '.ps1', '-job.log')
             }
         } else {
             $myscriptblock = {
                 param($username, $password, $currentworkerip, $workertaskfile)
                 psexec -nobanner -accepteula -u $username -p $password \\$currentworkerip `
-                    powershell -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" 
+                    powershell -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" `
+                    *>> ($workertaskfile -replace '.ps1', '-job.log')
             }
         }
         #
@@ -197,7 +201,7 @@ class Dispatcher : queue{
             $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
             $currenttaskinput = ($currenttask, $currentworkerstring) -join ',' -replace ',','-'
         }
-        $currenttasktowrite = ("&{Import-Module ", $this.coderoot, ";LaunchModule -mpath:", `
+        $currenttasktowrite = ("&{Import-Module ", $this.coderoot(), ";LaunchModule -mpath:", `
                              $this.mpath, " -module:", $this.module, " -stringin:", `
                              $currenttaskinput, " } *>> '", $workerlogfile, "'") -join ''
         #
@@ -221,8 +225,16 @@ class Dispatcher : queue{
         $donejobs = Get-Job | Where-Object { $_.State -eq 'Completed'  -and $_.Name -match $this.module}
         if ($donejobs){
             $donejobs | Remove-Job
-            $donejobs | ForEach {Get-Content ($this.workerloglocation+$_.Name+'.log')}
-            $donejobs | ForEach {Remove-Item ($this.workerloglocation+$_.Name+'.log') -force -ea SilentlyContinue}
+            $donejobs | ForEach {
+                $output = Get-Content ($this.workerloglocation+$_.Name+'.log') 
+                if ($output) {
+                    write-host $_.Name 
+                    Write-host $output
+                    # remove-item ($this.workerloglocation+$_.Name+'.log') -force -ea SilentlyContinue
+                }
+            }
+            # $donejobs | ForEach {Remove-Item ($this.workerloglocation+$_.Name+'.log') -force -ea SilentlyContinue}
+            # $donejobs | ForEach {Remove-Item ($this.workerloglocation+$_.Name+'-job.log') -force -ea SilentlyContinue}
         }
         #
     }

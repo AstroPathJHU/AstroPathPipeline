@@ -12,43 +12,42 @@
     [string]$mpath
     [string]$slideid
     [string]$psroot = $pshome + "\powershell.exe"
-    [string]$coderoot
-    [string]$pyinstalllocation
-    [string]$pyenv 
-    [string]$pyinstalllog
     [string]$package = 'astropath'
-    [string]$pypackagepath
     #
-    sharedtools(){
-        $this.createpypaths()
+    sharedtools(){}
+    #
+    [string]pyinstalllocation(){
+         $str = '\\' + $this. defserver() + 
+                '\c$\users\public\' + $this.package +'\py\'
+        return $str
+    }
+    #
+    [string]pyenv(){
+        $str = $this.pyinstalllocation() + $this.package + 'workflow'
+        return $str
+    }
+    #
+    [string]pyinstalllog(){
+        $str = $this.pyinstalllocation() + 'pyinstall.log'
+        return $str
+    }
+    #
+    [string]pypackagepath(){
+        $str = $this.coderoot() + '\..\.'
+        return $str
     }
     <# -----------------------------------------
-     createpypaths
-     initializes the python paths and activates
-     conda commands 
-     ------------------------------------------
-     Usage: $this.createpypaths()
-    ----------------------------------------- #>
-    [void]createpypaths(){
-        #
-        $this.pyinstalllocation = '\\'+$this.defserver()+'\c$\users\public\'+$this.package +'\py\'
-        $this.pyenv = $this.pyinstalllocation + $this.package+'workflow'
-        $this.pyinstalllog = $this.pyinstalllocation + 'pyinstall.log'
-        $this.defCodeRoot()
-        $this.pypackagepath = $this.coderoot + '\..\.'
-        #
-    } 
-    <# -----------------------------------------
-     defCodeRoot
+     CodeRoot
      the path to the powershell module (package)
      ------------------------------------------
-     Usage: $this.defCodeRoot()
+     Usage: $this.CodeRoot()
     ----------------------------------------- #>
-    [void]defCodeRoot(){
+    [string]coderoot(){
         #
         $root = $this.defRoot()
-        $folder = $root -Split('\\'+$this.package+'\\')
-        $this.coderoot = $folder[0] + '\'+$this.package
+        $folder = $root -Split('\\' + $this.package + '\\')
+        $str = $folder[0] + '\' + $this.package
+        return $str
         #
     }
     <# -----------------------------------------
@@ -66,13 +65,14 @@
     [string]GetVersion($mpath, $module, $project){
         #
         $configfile = $this.ImportConfigInfo($mpath)
-        $vers = ($configfile | Where-Object {$_.Project -eq $project}).($module+'version')
+        $vers = ($configfile | 
+            Where-Object {$_.Project -eq $project}).($module+'version')
         if (!$vers){
             Throw 'No version number found'
         }
         #
         if ($this.apversionchecks($mpath, $module, $vers)){
-            return $vers
+            return ("v" + $vers)
         }
         # 
         $vers = $this.getfullversion()
@@ -89,14 +89,25 @@
     ----------------------------------------- #>
     [switch]APVersionChecks($mpath, $module, $vers){
         #
-        if (($module -contains  @('meanimagecomparison', 'warping')) -and $vers -eq 'v0.0.1'){
-            Throw 'module not supported in this version (' + $vers + '): ' + $module
-        } elseif ($module -contains  @('batchflatfield') -and $vers -ne 'v0.0.1' ) {
-             Throw 'batchflatfield is run from the meanimagecomparison module ' +
-                    'and is not initiated in powershell for version: ' + $vers    
+        if (
+            ($module -contains  @('meanimagecomparison', 'warping')) -and 
+                $vers -eq '0.0.1'
+            ){
+            #
+            Throw 'module not supported in this version (' + $vers + 
+                '): ' + $module
+            #
+        } elseif (
+            $module -contains  @('batchflatfield') -and 
+                $vers -ne '0.0.1' 
+            ) {
+            #
+            Throw 'batchflatfield is run from the meanimagecomparison module ' +
+                'and is not initiated in powershell for version: ' + $vers    
+            #
         }
         #
-        if ($this.package -match 'astropath' -and $vers -eq 'v0.0.1'){
+        if ($this.package -match 'astropath' -and $vers -eq '0.0.1'){
             return $true
         } else {
             return $false
@@ -185,7 +196,7 @@
      clean return true else return false
     ----------------------------------------- #>
     [switch]checkgitstatus(){
-           $gitstatus = git -C $this.pypackagepath status
+           $gitstatus = git -C $this.pypackagepath() status
            if ($gitstatus -match "nothing to commit, working tree clean"){
                 return $true
            } else {
@@ -199,7 +210,7 @@
      get the git version in the astropath format
     ----------------------------------------- #>
     [string]getgitversion(){
-        $v = git -C $this.pypackagepath describe --tags --long
+        $v = git -C $this.pypackagepath() describe --tags --long
         $v2 = $v -split '-'
         $v3 = $v2[0] -split '\.'
         $v4 = [int]$v3[2] + 1
@@ -220,7 +231,7 @@
         if ($this.CheckpyEnvir()){
             #
             $this.checkconda()
-            $condalist = conda list -p $this.pyenv
+            $condalist = conda list -p $this.pyenv()
             $astropath = $condalist -match $this.package
             if ($astropath[1]){
                 $version = 'v'+($astropath[1] -split ' ') -match 'dev'
@@ -245,7 +256,8 @@
         #
         $minicondapath = ($drive + '\ProgramData\Miniconda3')
         if (!(test-path $minicondapath )){
-            Throw "Miniconda must be installed for this code version " + $minicondapath
+            Throw "Miniconda must be installed for this code version " + 
+                $minicondapath
         }
         #
         try{
@@ -280,8 +292,8 @@
         #
         $this.checkconda()
         try {
-            conda activate $this.pyenv 2>&1 >> $this.pyinstalllog
-            conda deactivate $this.pyenv 2>&1 >> $this.pyinstalllog
+            conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+            conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
             return $true
         } catch {
             return $false
@@ -297,17 +309,17 @@
     ----------------------------------------- #>      
     [void]CreatepyEnvir(){
         $this.checkconda()
-        $this.createdirs($this.pyinstalllocation)
-        conda create -y -p $this.pyenv python=3.8 2>&1 >> $this.pyinstalllog
-        $this.PopFile($this.pyinstalllog, ($this.pyenv + " CONDA ENVIR CREATED"))
-        conda activate $this.pyenv 2>&1 >> $this.pyinstalllog
-        $this.PopFile($this.pyinstalllog, ($this.pyenv + " CONDA ENVIR ACTIVATED"))
+        $this.createdirs($this.pyinstalllocation())
+        conda create -y -p $this.pyenv() python=3.8 2>&1 >> $this.pyinstalllog()
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR CREATED"))
+        conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED"))
         conda install -y -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git `
-              2>&1 >> $this.pyinstalllog
-        $this.PopFile($this.pyinstalllog, ($this.pyenv + " CONDA ENVIR INSTALLS COMPLETE"))
-        pip -q install $this.pypackagepath 2>&1 >> $this.pyinstalllog
-        $this.PopFile($this.pyinstalllog, ($this.pyenv + " PIP INSTALLS COMPLETE"))
-        conda deactivate $this.pyenv 2>&1 >> $this.pyinstalllog
+              2>&1 >> $this.pyinstalllog()
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE"))
+        pip -q install $this.pypackagepath 2>&1 >> $this.pyinstalllog()
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE"))
+        conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
     }
     <# -----------------------------------------
      upgradepyenvir
@@ -318,11 +330,25 @@
     [void]UpgradepyEnvir(){
         try{
             $this.checkconda()
-            conda activate $this.pyenv 2>&1 >> $this.pyinstalllog
-            pip -q install -U $this.pypackagepath  2>&1 >> $this.pyinstalllog
-            conda deactivate $this.pyenv 2>&1 >> $this.pyinstalllog
+            conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+            pip -q install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
+            conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
         } catch {
             $this.createpyenvir()
         }
+    }
+    <# -----------------------------------------
+     progressindicator
+     ------------------------------------------
+     Usage: $this.progressindicator()
+    ----------------------------------------- #>    
+    [void]progressindicator($previous, $current, $c, $ctotal){
+        #
+        $prepend = 'Checking Slides'
+        $append = '% Complete'
+        $p = [math]::Round(100 * ($c / $ctotal))
+        $writecurrent = "`r" + $prepend + ': ' + $p + $append + ' ' + $current
+        Write-Host -NoNewline $($writecurrent)
+        #
     }
 }

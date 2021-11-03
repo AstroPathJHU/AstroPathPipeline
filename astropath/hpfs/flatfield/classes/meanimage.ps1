@@ -18,9 +18,8 @@ Usage: $a = [meanimage]::new($task, $sample)
 #>
 Class meanimage : moduletools {
     #
-    meanimage([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    meanimage([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
         $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
-        $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
     <# -----------------------------------------
      RunMeanImage
@@ -42,7 +41,7 @@ Class meanimage : moduletools {
      Usage: $this.GetMeanImage()
     ----------------------------------------- #>
     [void]GetMeanImage(){
-        if ($this.vers -eq '0.0.1'){
+        if ($this.vers -match '0.0.1'){
             $this.GetMeanImageMatlab()
         }
         else{
@@ -58,7 +57,8 @@ Class meanimage : moduletools {
     [void]GetMeanImageMatlab(){
         $this.sample.info("started mean image sample -- matlab")
         $taskname = 'raw2mean'
-        $matlabtask = ";raw2mean('"+$this.processvars[1]+"', '"+$this.sample.slideid+"');exit(0);"
+        $matlabtask = ";raw2mean('" + $this.processvars[1] + 
+            "', '" + $this.sample.slideid + "');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
         $this.sample.info("finished mean image sample -- matlab")
     }
@@ -91,7 +91,7 @@ Class meanimage : moduletools {
         if (!$this.processvars[4]){
             return
         }
-        if ($this.vers -eq '0.0.1'){
+        if ($this.vers -match '0.0.1'){
             $this.ReturnDataMatlab()
         }
         else{
@@ -108,14 +108,12 @@ Class meanimage : moduletools {
         #
 		$des = $this.sample.im3folder()
         #
-        $sor = $this.processvars[1] +'\flat\'+$this.sample.slideid+'\*.flt'
-        xcopy $sor, $des /q /y /z /j /v | Out-Null
+        $sor = $this.processvars[1] + '\flat\' + 
+            $this.sample.slideid + '\*.flt'
+        $this.sample.copy($sor, $des) 
         #
-        $sor = $this.processvars[1] + '\flat\'+$this.sample.slideid+'\*.csv'
-        xcopy $sor, $des /q /y /z /j /v | Out-Null
-        #
-        $sor = $this.processvars[1] + '\flat\'+$this.sample.slideid
-        Remove-Item $sor -force -recurse
+        $sor = $sor -replace 'flt', 'csv'
+        $this.sample.copy($sor, $des) 
         #
     }
     <# -----------------------------------------
@@ -129,7 +127,7 @@ Class meanimage : moduletools {
             #
 		    $des = $this.sample.im3folder() + '\meanimage'
             $sor = $this.processvars[0] +'\meanimage'
-            xcopy $sor, $des /q /y /z /j /v /s /i | Out-Null
+            $this.sample($sor, $des, '*', 30)
             #
         }
     }
@@ -143,8 +141,7 @@ Class meanimage : moduletools {
         #
         $this.sample.info("cleanup started")
         if ($this.processvars[4]){
-            Get-ChildItem -Path $this.processloc -Recurse | Remove-Item -force -recurse
-            Remove-Item $this.processloc -Force
+            $this.sample.removedir($this.processloc)
         }
         $this.sample.info("cleanup finished")
         #

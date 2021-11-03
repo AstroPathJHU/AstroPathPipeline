@@ -1,12 +1,17 @@
-﻿   ##
-# manage the queues 
-
+﻿<# -------------------------------------------
+ queue
+ created by: Benjamin Green - JHU
+ Last Edit: 11.02.2021
+ --------------------------------------------
+ Description
+ methods used to build the queues and check 
+ dependencies
+ -------------------------------------------#>
 class queue : sharedtools{
     #
     [Array]$originaltasks
     [Array]$cleanedtasks
     [string]$queue_file
-    [string]$vers
     [string]$informvers
     [string]$project
     #
@@ -25,9 +30,13 @@ class queue : sharedtools{
         $this.project = $project
         $this.slideid = $slideid.trim()
     }
-    #
-    # gets available tasks from the queue
-    #
+    <# -----------------------------------------
+     ExtractQueue
+     get the queue either from the file (vminform)
+     or from the dependency checks
+     ------------------------------------------
+     Usage: $this.ExtractQueue()
+    ----------------------------------------- #>
     [void]ExtractQueue(){
         #
         if ('vminform' -ne $this.module){
@@ -37,7 +46,12 @@ class queue : sharedtools{
         }
         #
     }
-    #
+    <# -----------------------------------------
+     buildqueue
+     build the queue from the dependency checks
+     ------------------------------------------
+     Usage: $this.buildqueue()
+    ----------------------------------------- #>
     [void]buildqueue(){
         #
         $slides = $this.importslideids($this.mpath)
@@ -46,23 +60,29 @@ class queue : sharedtools{
         # select samples from the appropriate modules 
         #
         if ($this.project -eq $null){
-            $projects = ($project_dat | Where-object {$_.($this.module) -match 'yes'}).Project
+            $projects = ($project_dat | 
+                Where-object {$_.($this.module) -match 'yes'}).Project
         } else {
             $projects = $this.project
         }
         #
-        $cleanedslides = $slides | Where-Object {$projects -contains $_.Project}
+        $cleanedslides = $slides | 
+            Where-Object {$projects -contains $_.Project}
         #
         $slidesnotcomplete = $this.defNotCompletedSlides($cleanedslides)
         $slidearray = @()
         $batcharray = @()
         if ($slidesnotcomplete.count -eq 1){
-            $slidearray += $slidesnotcomplete.Project + ',' + $slidesnotcomplete.Slideid
-            $batcharray += $slidesnotcomplete.Project + ',' + $slidesnotcomplete.Slideid
+            $slidearray += $slidesnotcomplete.Project + 
+                ',' + $slidesnotcomplete.Slideid
+            $batcharray += $slidesnotcomplete.Project + 
+                ',' + $slidesnotcomplete.Slideid
         } else {
             for($i=0; $i -lt $slidesnotcomplete.count;$i++){
-                $slidearray += $slidesnotcomplete.Project[$i] + ',' + $slidesnotcomplete.Slideid[$i]
-                $batcharray += $slidesnotcomplete.Project[$i] + ',' + $slidesnotcomplete.BatchID[$i]
+                $slidearray += $slidesnotcomplete.Project[$i] + 
+                    ',' + $slidesnotcomplete.Slideid[$i]
+                $batcharray += $slidesnotcomplete.Project[$i] + 
+                    ',' + $slidesnotcomplete.BatchID[$i]
             }
         }
         #
@@ -73,7 +93,14 @@ class queue : sharedtools{
         $this.cleanedtasks = $slidearray
         #
     }
-    #
+    <# -----------------------------------------
+     defNotCompletedSlides
+     For each slide, check the current module 
+     and the module dependencies to see if the
+     slide needs to be run through the module
+     ------------------------------------------
+     Usage: $this.defNotCompletedSlides(cleanedslides)
+    ----------------------------------------- #>
     [array]defNotCompletedSlides($cleanedslides){
         #
         $slidesnotcomplete = @()
@@ -83,10 +110,18 @@ class queue : sharedtools{
         foreach($slide in $cleanedslides){
             #
             $p = [math]::Round(100 * ($c / $ctotal))
-            Write-Progress -Activity "Checking slides" -Status "$p% Complete:" -PercentComplete $p -CurrentOperation $slide.slideid
+            Write-Progress -Activity "Checking slides" `
+                           -Status "$p% Complete:" `
+                           -PercentComplete $p `
+                           -CurrentOperation $slide.slideid
             $c += 1 
             #
             $log = [mylogger]::new($this.mpath, $this.module, $slide.slideid)
+            #
+            if ($this.module -match 'batch'){
+                $log.slidelog = $log.mainlog
+            }
+            #
             if ($this.checklog($log, $false)){
                 #
                 if (($this.('check'+$this.module)($log, $false) -eq 2)) {
@@ -96,27 +131,58 @@ class queue : sharedtools{
             }
         }
         #
+        write-progress -Activity "Checking slides" -Status "100% Complete:" -Completed
+        #
         return $slidesnotcomplete
     }
-    #
-    # returns true if the slide has not yet started or if there was an error between runs
-    #
+    <# -----------------------------------------
+     checklog
+     check the provide log to see if the log
+     exists and if the task has finished. 
+     ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: 
+     returns true if the slide has not yet 
+     started or if there was an error between
+     runs. if it is a dependency run it returns
+     false if the task is finished and true if
+     the task is still running (as inidicated by
+     the logs). If is not a dependency it returns
+     the opposite.
+     ------------------------------------------
+     Usage: $this.checklog(log, dependency)
+    ----------------------------------------- #>
     [switch]checklog([mylogger]$log, $dependency){
         #
         if (!(test-path $log.slidelog)){
             return $true
         }
         #
-        $loglines = import-csv $log.slidelog -Delimiter ';' -header 'Project','Cohort','slideid','Message','Date' 
+        $loglines = import-csv $log.slidelog `
+            -Delimiter ';' `
+            -header 'Project','Cohort','slideid','Message','Date' 
         #
         # parse log
         #
         $statustypes = @('START:','ERROR:','FINISH:')
         $savelog = @()
+        $vers = $log.vers -replace 'v', ''
+        $vers = ($vers -split '\.')[0,1,2] -join '.'
+        #
+        if ($log.slidelog -match [regex]::Escape($log.mainlog)){
+            $ID= $log.BatchID
+        } else {
+            $ID = $log.slideid
+        }
         #
         foreach ($statustype in $statustypes){
             $savelog += $loglines |
-                    where-object {($_.Message -match $vers) -and ($_.Slideid -match $slideid) -and ($_.Message -match $statustype)} |
+                    where-object {($_.Message -match $vers) `
+                        -and ($_.Slideid -match $ID) `
+                        -and ($_.Message -match $statustype)} |
                     Select-Object -Last 1 
         }
         #
@@ -126,9 +192,9 @@ class queue : sharedtools{
         #
         # if there was an error return true 
         # if not a dependency check and the latest run is finished return true
-        # if it is a dependency check and it is not finished return true
+        # if it is a dependency check and the lastest run is not finished return true
         #
-        if (
+        if ( !$d1 -or
              ($d1 -lt $d2 -and $d3 -ge $d2) -or 
             (!$dependency -and ($d3 -gt $d1)) -or 
             ($dependency -and !($d3 -gt $d1))
@@ -139,12 +205,27 @@ class queue : sharedtools{
         }
         #
     }
-    #
+    <# -----------------------------------------
+     checktransfer
+     check that the transfer process has completed
+     and all transfer products exist
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checktransfer(log, dependency)
+    ----------------------------------------- #>
     [int]checktransfer([mylogger]$log){
         #
         $log = [mylogger]::new($this.mpath, 'transfer', $log.slideid)
         #
-        if ($this.checklog($log, $true)){
+        if (!($log.vers -match '0.0.1') -and 
+            $this.checklog($log, $true)){
             return 2
         }
         #
@@ -171,84 +252,88 @@ class queue : sharedtools{
         return 3
         #
     }
-    #
+    <# -----------------------------------------
+     checkshredxml
+     check that the shredxml module has completed
+     and all products exist
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkshredxml(log, dependency)
+    ----------------------------------------- #>
     [int]checkshredxml([mylogger]$log, $dependency){
         #
         if (!($this.checktransfer($log) -eq 3)){
             return 1
         }
         #
-        if($dependency){
-            $log = [mylogger]::new($this.mpath, 'shredxml', $log.slideid)
-            if ($this.checklog($log, $true)){
-                return 2
-            }
-        }
-        #
-        # check for xmls
-        # 
-        $xml = $log.xmlfolder()
-        $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count + 2
-        #
-        if (!(test-path $xml)){
+        $log = [mylogger]::new($this.mpath, 'shredxml', $log.slideid)
+        if ($this.checklog($log, $true)){
             return 2
         }
         #
-        # check files = im3s
-        #
-        $files = (gci ($xml + '\*') '*xml').Count
-        if (!($im3s -eq $files)){
+        if (!$log.testxmlfiles()){
             return 2
         }
         #
         return 3
         #
     }
-    #
+    <# -----------------------------------------
+     checkmeanimage
+     check that the meanimage module has completed
+     and all products exist
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkmeanimage(log, dependency)
+    ----------------------------------------- #>
     [int]checkmeanimage([mylogger]$log, $dependency){
         #
         if (!($this.checkshredxml($log, $true) -eq 3)){
             return 1
         }
         #
-        if($dependency){
-            $log = [mylogger]::new($this.mpath, 'meanimage', $log.slideid)
-            if ($this.checklog($log, $true)){
-                return 2
-            }
+        $log = [mylogger]::new($this.mpath, 'meanimage', $log.slideid)
+        if ($this.checklog($log, $true)){
+            return 2
         }
         #
-        # check version
-        #
-        $cvers = $this.getversion($this.mpath, 'meanimage', $log.project)
-        if ($cvers -eq '0.0.1'){
-            #
-            # check for mean images
-            # 
-            $file = $log.im3folder() + '\' + $log.slideid + '-mean.csv'
-            $file2 = $log.im3folder() + '\' + $log.slideid + '-mean.flt'
-            #
-            if (!(test-path $file)){
-                return 2
-            }
-            if (!(test-path $file2)){
-                return 2
-            }
-        } else {
-            #
-            # check for meanimage directory
-            #
-            $p = $log.meanimagefolder()
-            if (!(test-path $p)){
-                return 2
-            }
+        if (!$log.testmeanimagefiles()){
+            return 2
         }
         #
         return 3
         #
     }
-    #
-    [switch]checkmeanimagecomparison([mylogger]$log, $dependency){
+    <# -----------------------------------------
+     checkmeanimagecomparison
+     check that the meanimagecomparison module has completed
+     and all products exist
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkmeanimagecomparison(log, dependency)
+    ----------------------------------------- #>
+    [int]checkmeanimagecomparison([mylogger]$log, $dependency){
         #
         if (!($this.checkmeanimage($log, $true) -eq 3)){
             return 1
@@ -262,8 +347,22 @@ class queue : sharedtools{
         return 3
         #
     }
-    #
-    [switch]checkbatchflatfield([mylogger]$log, $dependency){
+    <# -----------------------------------------
+     checkbatchflatfield
+     check that the batchflatfield module has completed
+     and all products exist
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkbatchflatfield(log, dependency)
+    ----------------------------------------- #>
+    [int]checkbatchflatfield([mylogger]$log, $dependency){
         #
         if (!($this.checkmeanimage($log, $true) -eq 3)){
             return 1
@@ -271,11 +370,10 @@ class queue : sharedtools{
         #
         # version depedendent checks
         #
-        $cvers = $this.getversion($this.mpath, 'meanimage', $log.project)
-        $file = $log.batchflatfield()
+        $cvers = $this.getversion($this.mpath, 'batchflatfield', $log.project)
         #
-        if (!(test-path $file)){
-            if ($cvers -eq '0.0.1'){
+        if (!$log.testbatchflatfield()){
+            if ($cvers -match '0.0.1'){
                 return 2
             } else {
                 return 1
@@ -285,42 +383,53 @@ class queue : sharedtools{
         return 3
         #
     }
-    #
-    [switch]checkimagecorrection([mylogger]$log, $dependency){
+    <# -----------------------------------------
+     checkimagecorrection
+     check that the imagecorrection module has completed
+     and all products exist
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkimagecorrection(log, dependency)
+    ----------------------------------------- #>
+    [int]checkimagecorrection([mylogger]$log, $dependency){
         #
         if (!($this.checkbatchflatfield($log, $true) -eq 3)){
             return 1
         }
         #
-        if($dependency){
-            $log = [mylogger]::new($this.mpath, 'imagecorrection', $log.slideid)
-            if ($this.checklog($log, $true)){
-                return 2
-            }
+        $log = [mylogger]::new($this.mpath, 'imagecorrection', $log.slideid)
+        if ($this.checklog($log, $true)){
+            return 2
         }
         #
-        $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count
-        #
-        $paths = @($log.flatwim3folder(), ('\\'+$log.flatwfolder()), ('\\'+$log.flatwfolder()))
-        $filetypes = @('*im3', '*fw', '*fw01')
-        #
-        for ($i=0; $i -lt 3; $i++){
-            #
-            if (!(test-path $paths[$i])){
-                return 2
-            }
-            #
-            # check files = im3s
-            #
-            $files = (gci ($paths[$i] + '\*') $filetypes[$i]).Count
-            if (!($im3s -eq $files)){
-                return 2
-            }
+        if(!$log.testimagecorrectionfiles()){
+            return 2
         }
         #
         return 3
     }
-    #
+    <# -----------------------------------------
+     checkvminform
+     check that the vminform module has completed
+     and all products exist
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkvminform(log, dependency)
+    ----------------------------------------- #>
     [void]checkvminform(){
         #
         $this.informvers = '2.4.8'
@@ -348,25 +457,35 @@ class queue : sharedtools{
         $this.cleanedtasks = $this.cleanedtasks | ForEach {$_.Split(',')[0..3] -join(',')}
         #
     }
-    #
-    # check that all slides from each unqiue batch are on the list
-    # return one sample
-    #
+    <# -----------------------------------------
+     Aggregatebatches
+     check that all slides from each unqiue batch are on the list
+     return one sample
+    ------------------------------------------
+     Input: 
+        - batcharry[array]: project, batch pairs
+            for each slide that has finished.
+     ------------------------------------------
+     Output: returns a list of unique project batch 
+     pairs that have all slides complete
+     ------------------------------------------
+     Usage: $this.Aggregatebatches(batcharray)
+    ----------------------------------------- #>
     [array]Aggregatebatches($batcharray){
         $batcharrayunique = $batcharray | Sort-Object | Get-Unique
         $slides = $this.importslideids($this.mpath)
         $batchescomplete = @()
         #
         $batcharrayunique | foreach-object {
-            $nslidescomplete = ($batcharray -match $batcharrayunique[0]).count
+            $nslidescomplete = ($batcharray -match $_).count
             $projectbatchpair = $_ -split ','
-            $this.ParseAPIDdefbatch($projectbatchpair[1], $slides)
-            $nslidesbatch = $this.batchslides.count
+            $sample = [sampledef]::new($this.mpath, $this.module, $projectbatchpair[1], $projectbatchpair[0])
+            $nslidesbatch = $sample.batchslides.count
             if ($nslidescomplete -eq $nslidesbatch){
                 $batchescomplete += $_
             }
         }
-        return $batcharray
+        return $batchescomplete
     }
     #
     [void]UpdateQueue($currenttask, $currentworker, $tasktomatch){

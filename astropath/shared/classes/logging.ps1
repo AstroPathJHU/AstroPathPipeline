@@ -66,7 +66,8 @@ class mylogger : sampledef {
     [void]defpaths(){
         #
         $this.mainlog = $this.basepath + '\logfiles\' + $this.module + '.log'
-        $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' + $this.slideid + '-' + $this.module + '.log'
+        $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
+             $this.slideid + '-' + $this.module + '.log'
         #
         #$this.mainlog = Convert-Path $this.mainlog
         #$this.samplelog = Convert-Path $this.samplelog
@@ -81,7 +82,8 @@ class mylogger : sampledef {
     [string]formatter(
         ){
            $mydate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-           $msg = @($this.Project, $this.Cohort, $this.slideid, ($this.message+$this.messageappend), $mydate) -join ';'
+           $msg = @($this.Project, $this.Cohort, $this.slideid, `
+                ($this.message+$this.messageappend), $mydate) -join ';'
            return  @($msg,"`r`n") -join ''
         }   
     #
@@ -176,9 +178,9 @@ class mylogger : sampledef {
     #
     [void]buildappend(){
         if ($this.module -eq 'vminform'){
-            $this.messageappend = ": Antibody: "+$this.val[2]+" - Algorithm: "+$this.val[3]+" - inForm version: "+$this.val[4]
+            $this.messageappend = ": Antibody: " + $this.val[2] + 
+                " - Algorithm: " + $this.val[3] + 
+                " - inForm version: " + $this.val[4]
         }
     }
 }
-
-#$a = [MyLogger]::new('LY34', '\\bki04\astropath_processing', 'gitcha')

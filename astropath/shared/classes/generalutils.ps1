@@ -141,6 +141,11 @@
             new-item $dir -itemtype "directory" -EA STOP | Out-NULL
         }
     }
+    [void]CreateFile($fpath){
+        if (!(test-path $fpath)){
+            New-Item -path $fpath -itemtype file -Force -EA Stop | Out-Null
+        }
+    }
     #
     [void]removedir([string]$dir){
         #
@@ -156,6 +161,14 @@
         if (test-path $file){
             remove-item $file -force -ea Continue
         }
+        #
+    }
+    #
+    [void]removefile([string]$folder, [string] $filespec){
+        #
+        $filespec = '*' + $filespec
+        $files = gci ($folder+'\*') -Include  $filespec -Recurse 
+        if ($files ){ Remove-Item -force -recurse }
         #
     }
 }

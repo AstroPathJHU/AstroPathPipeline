@@ -21,14 +21,15 @@
     [array]$processvars
     [string]$processloc
     [string]$vers
-    [string]$funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
+    [string]$funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
     [int]$flevel
-    [string]$condalocation = '"'+$PSScriptRoot + '\..\..\utilities\Miniconda3"'
+    [string]$condalocation = '"' + $PSScriptRoot + '\..\..\utilities\Miniconda3"'
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
-        $this.vers = $this.sample.GetVersion($this.sample.mpath, $this.sample.module, $task[0])   
+        $this.vers = $this.sample.GetVersion(
+            $this.sample.mpath, $this.sample.module, $task[0])   
     }
     <# -----------------------------------------
     BuildProcessLocPath
@@ -48,13 +49,16 @@
         # input, correct the paths to analyze from there
         #
         if ($task[2] -AND !($task[2] -match '\*')){
-            $this.processloc = ($task[2]+'\astropath_ws\'+$this.sample.module+'\'+$task[1])
+            $this.processloc = ($task[2] + '\astropath_ws\' + 
+                $this.sample.module + '\'+$task[1])
             #
             $processvarsa = $this.processvars[0,2,3] -replace `
                 [regex]::escape($this.sample.basepath), $this.processloc 
             $processvarsb = $this.processvars[1] -replace `
-                [regex]::escape('\\'+$this.sample.project_data.fwpath), ($this.processloc+'\flatw')
-            $this.processvars = @($processvarsa[0], $processvarsb, $processvarsa[1], $processvarsa[2], 1)
+                [regex]::escape('\\'+$this.sample.project_data.fwpath), `
+                ($this.processloc+'\flatw')
+            $this.processvars = @($processvarsa[0], $processvarsb, `
+                $processvarsa[1], $processvarsa[2], 1)
         } else {
             $this.processloc = $this.sample.flatwfolder()
         }
@@ -68,7 +72,7 @@
     ----------------------------------------- #>
     [string]ProcessLog($externaltask){
         $out = $this.processloc + '\' + $externaltask + '.log'
-        return ($out)
+        return $out
     }
     <# -----------------------------------------
      DownloadIm3
@@ -124,12 +128,15 @@
      Usage: $this.Downloadflatfield()
     ----------------------------------------- #>
     [void]Downloadflatfield(){
-        if (($this.flevel -band [FileDownloads]::FLATFIELD) -eq [FileDownloads]::FLATFIELD){
+        #
+        if (($this.flevel -band [FileDownloads]::FLATFIELD) -eq 
+            [FileDownloads]::FLATFIELD){
             $flatfieldfolder = $this.processvars[0]+'\flatfield'
             $this.sample.removedir($flatfieldfolder)
             $this.sample.CreateDirs($flatfieldfolder)
             $this.sample.copy($this.sample.batchflatfield(), $flatfieldfolder)
         }
+        #
     }
     <# -----------------------------------------
      DownloadIm3s
@@ -139,7 +146,9 @@
      Usage: $this.DownloadIm3s()
     ----------------------------------------- #>
     [void]DownloadIm3s(){
-        if (($this.flevel -band [FileDownloads]::IM3) -eq [FileDownloads]::IM3){
+        #
+        if (($this.flevel -band [FileDownloads]::IM3) -eq 
+            [FileDownloads]::IM3){
             $des = $this.processvars[0] +'\'+
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
             $sor = $this.sample.MSIfolder()
@@ -148,6 +157,7 @@
                 Throw 'im3s did not download correctly'
             }
         }
+        #
     }
     <# -----------------------------------------
      DowloadBatchID
@@ -157,11 +167,14 @@
      Usage: $this.DowloadBatchID()
     ----------------------------------------- #>
     [void]DownloadBatchID(){
-        if (($this.flevel -band [FileDownloads]::BATCHID) -eq [FileDownloads]::BATCHID){
+        #
+        if (($this.flevel -band [FileDownloads]::BATCHID) -eq
+             [FileDownloads]::BATCHID){
             $des = $this.processvars[0] +'\'+
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()
             $this.sample.copy($this.sample.BatchIDfile(), $des)
         }
+        #
     }
     <# -----------------------------------------
      DowloadXML
@@ -171,7 +184,9 @@
      Usage: $this.DowloadXML()
     ----------------------------------------- #>
     [void]DownloadXML(){
-        if (($this.flevel -band [FileDownloads]::XML) -eq [FileDownloads]::XML){
+        #
+        if (($this.flevel -band [FileDownloads]::XML) -eq 
+            [FileDownloads]::XML){
             $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
             $sor = $this.sample.xmlfolder()
             $this.sample.copy($sor, $des, 'xml', 30)
@@ -179,6 +194,7 @@
                 Throw 'xmls did not download correctly'
             }
         }
+        #
     }
     <# -----------------------------------------
      ShredDat
@@ -265,17 +281,21 @@
     }
     #
     [void]runmatlabtask($taskname, $matlabtask, $source){
+        #
         $externallog = $this.ProcessLog($taskname)
         matlab -nosplash -nodesktop -minimize -sd $source -r $matlabtask -wait >> $externallog
         $this.sample.removefile($externallog)
+        #
     }
     #
     [void]runpythontask($taskname, $pythontask){
+        #
         $externallog = $this.ProcessLog($taskname)
         $this.sample.checkconda()
-        conda activate $this.sample.pyenv
+        conda activate $this.sample.pyenv()
         Invoke-Expression $pythontask *>> $externallog
-        conda deactivate $this.sample.pyenv
+        conda deactivate $this.sample.pyenv()
         $this.sample.removefile($externallog)
+        #
     }
  }

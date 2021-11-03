@@ -1,5 +1,25 @@
-﻿class fileutils : generalutils {
-    #
+﻿<# -------------------------------------------
+ fileutils
+ created by: Benjamin Green - JHU
+ Last Edit: 11.02.2021
+ --------------------------------------------
+ Description
+ methods used to read and write files with 
+ error checking and using file locking mutexes
+ -------------------------------------------#>
+class fileutils : generalutils {
+    <# -----------------------------------------
+     OpenCSVFile
+     open a csv file with error checking and a 
+     file locking mutex into a powershell
+     object where each row is a different 
+     object and columns are the object fields
+     ------------------------------------------
+     Input: 
+        -fpath[string]: file path to read in
+     ------------------------------------------
+     Usage: $this.OpenCSVFile(fpath)
+    ----------------------------------------- #>
     [PSCustomObject]OpenCSVFile([string] $fpath){
         #
         $cnt = 0
@@ -7,11 +27,6 @@
         $err = ''
         $Max = 120
         $mxtxid = 'Global\' + $fpath.replace('\', '_') + '.LOCK'
-        
-        #
-        if (!(test-path $fpath)){
-            New-Item -path $fpath -itemtype file -Force
-        }
         #
         $Q = New-Object -TypeName psobject
         #
@@ -19,6 +34,7 @@
            #
            $mxtx = $this.GrabMxtx($mxtxid)
             try{
+                $this.createfile($fpath)
                 $Q = Import-CSV $fpath -ErrorAction Stop
                 $e = 0
             }catch{
@@ -35,7 +51,8 @@
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-           Throw $cnt + ' attempts failed reading ' + $fpath + '. Final message: ' + $err
+           Throw $cnt + ' attempts failed reading ' `
+                + $fpath + '. Final message: ' + $err
         }
         #
         return $Q
@@ -49,7 +66,7 @@
      Input: 
         -fpath[string]: file path to read in
      ------------------------------------------
-     Usage: GetContent(fpath)
+     Usage: $this.GetContent(fpath)
     ----------------------------------------- #>
     [Array]GetContent([string] $fpath){
         #
@@ -58,11 +75,6 @@
         $err = ''
         $Max = 120
         $mxtxid = 'Global\' + $fpath.replace('\', '_') + '.LOCK'
-        
-        #
-        if (!(test-path $fpath)){
-            New-Item -path $fpath -itemtype file -Force
-        }
         #
         $Q = New-Object -TypeName psobject
         #
@@ -70,6 +82,7 @@
            #
            $mxtx = $this.GrabMxtx($mxtxid)
             try{
+                $this.createfile($fpath)
                 $Q = Get-Content $fpath -ErrorAction Stop
                 $e = 0
             }catch{
@@ -86,7 +99,8 @@
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-           Throw $cnt + ' attempts failed reading ' + $fpath + '. Final message: ' + $err
+           Throw $cnt + ' attempts failed reading ' `
+                + $fpath + '. Final message: ' + $err
         }
         #
         return $Q
@@ -99,7 +113,7 @@
      Input: 
         -fpath[string]: file path to read in
      ------------------------------------------
-     Usage: PopFile(fpath)
+     Usage: $this.PopFile(fpath)
     ----------------------------------------- #>
     [void]PopFile([string] $fpath = '',[Object] $fstring){
         #
@@ -108,12 +122,12 @@
     }
     <# -----------------------------------------
      SetFile
-     Overwrite a file
+     Overwrite an entire file
      ------------------------------------------
      Input: 
         -fpath[string]: file path to read in
      ------------------------------------------
-     Usage: SetFile(fpath)
+     Usage: $this.SetFile(fpath)
     ----------------------------------------- #>
     [void]SetFile([string] $fpath = '',[string] $fstring){
         #
@@ -122,12 +136,16 @@
     }
     <# -----------------------------------------
      HandleReadFile
-     write to a file with error checking
+     Checks that the file exists and grabs the 
+     mutex for a file. When it has the mutex,
+     calls the write file method
      ------------------------------------------
      Input: 
         -fpath[string]: file path to read in
+        -fstring[string]: input array
+        -opt[sting]: 'Set' or 'Pop'
      ------------------------------------------
-     Usage: SetFile(fpath)
+     Usage: $this.HandleReadFile(fpath, fstring, opt)
     ----------------------------------------- #>
     [void]HandleWriteFile([string] $fpath = '',[string] $fstring, [string] $opt){
         #
@@ -137,14 +155,11 @@
         $Max = 120
         $mxtxid = 'Global\' + $fpath.replace('\', '_') + '.LOCK'
         #
-        if (!(test-path $fpath)){
-            New-Item -path $fpath -itemtype file -Force
-        }
-        #
         do{
            #
            $mxtx = $this.GrabMxtx($mxtxid)
              try{
+                $this.createfile($fpath)
                 $this.WriteFile($fpath, $fstring, $opt)
                 $e = 0
              }catch{
@@ -161,18 +176,22 @@
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-            Throw $cnt + ' attempts failed writing ' + $fstring + ' to ' + $fpath + '. Final message: ' + $err
+            Throw $cnt + ' attempts failed writing ' +
+                $fstring + ' to ' + $fpath + '. Final message: ' + $err
         }
         #
     }
     <# -----------------------------------------
-     ReadFile
-     append or overwrite a file
+     WriteFile
+     append or overwrite a file depending on 
+     input
      ------------------------------------------
      Input: 
         -fpath[string]: file path to read in
+        -fstring[string]:line \ lines to write to the file
+        -opt[string]: 'Set' or 'Pop'
      ------------------------------------------
-     Usage: SetFile(fpath)
+     Usage: $this.WriteFile(fpath, fstring, opt)
     ----------------------------------------- #>
      [void]WriteFile([string] $fpath = '',[string] $fstring, [string] $opt){
         if ($opt -eq 'Set'){
@@ -184,28 +203,25 @@
     <# -----------------------------------------
      GrabMxtx
      Grab my mutex, from: 
-     https://stackoverflow.com/questions/7664490/interactively-using-mutexes-et-al-in-powershell
+     https://stackoverflow.com/questions/7664490/
+        interactively-using-mutexes-et-al-in-powershell
      ------------------------------------------
      Input: 
         -mxtxid: string object for a mutex
      ------------------------------------------
-     Usage: GrabMxtx(mxtxid)
+     Usage: $this.GrabMxtx(mxtxid)
     ----------------------------------------- #>
     [System.Threading.Mutex]GrabMxtx([string] $mxtxid){
-         try
-            {
-                $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
-                while (-not $mxtx.WaitOne(1000))
-                {
-                    Start-Sleep -m 500;
-                }
-                return $mxtx
-            } 
-            catch [System.Threading.AbandonedMutexException] 
-            {
-                $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
-                return $this.GrabMutex($mxtxid)
+         try {
+            $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
+            while (-not $mxtx.WaitOne(1000)) {
+                Start-Sleep -m 500;
             }
+            return $mxtx
+        } catch [System.Threading.AbandonedMutexException] {
+            $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
+            return $this.GrabMutex($mxtxid)
+        }
     }
     <# -----------------------------------------
      ReleaseMxtx
@@ -213,13 +229,20 @@
      ------------------------------------------
      Input: 
         -mxtxid: string object for a mutex
+        -fpath[string]: file path
      ------------------------------------------
-     Usage: ReleaseMxtx(mxtx)
+     Usage: $this.ReleaseMxtx(mxtx, fpath)
     ----------------------------------------- #>
     [void]ReleaseMxtx([System.Threading.Mutex]$mxtx, [string] $fpath){
         try{
             $mxtx.ReleaseMutex()
-            try { $mxtx.ReleaseMutex() } catch {} # if another process crashes the mutex is never given up.
+            #
+            # if another process crashes the mutex is never given up,
+            # but is passed to the next grabbing process.
+            # this attempts to close it again for the off chance there
+            # is a duplicate grab
+            #
+            try { $mxtx.ReleaseMutex() } catch {} 
         } catch {
             Throw "mutex not released: " + $fpath
         }

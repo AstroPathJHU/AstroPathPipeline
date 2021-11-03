@@ -15,13 +15,21 @@ class copyutils{
     }
     #
     [void]copy([string]$sor, [string]$des, [string]$filespec){
-        $filespec = '*' + $filespec
-        robocopy $sor $des $filespec -r:3 -w:3 -np -mt:1 | out-null
+        if ($filespec -match '\*'){
+            robocopy $sor $des -r:3 -w:3 -np -mt:1 | out-null
+        } else {
+            $filespec = '*' + $filespec
+            robocopy $sor $des $filespec -r:3 -w:3 -np -mt:1 | out-null
+        }
     }
     #
     [void]copy([string]$sor, [string]$des, [string]$filespec, [int]$threads){
-        $filespec = '*' + $filespec
-        robocopy $sor $des $filespec -r:3 -w:3 -np -mt:$threads | out-null
+        if ($filespec -match '\*'){
+            robocopy $sor $des -r:3 -w:3 -np -mt:$threads | out-null
+        } else {
+            $filespec = '*' + $filespec
+            robocopy $sor $des $filespec -r:3 -w:3 -np -mt:$threads | out-null
+        }
     }
     #
 }
