@@ -19,6 +19,7 @@ Usage: $a = [meanimage]::new($task, $sample)
 Class meanimage : moduletools {
     #
     meanimage([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
+        $this.funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
         $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
     }
     <# -----------------------------------------
@@ -41,12 +42,14 @@ Class meanimage : moduletools {
      Usage: $this.GetMeanImage()
     ----------------------------------------- #>
     [void]GetMeanImage(){
+        #
         if ($this.vers -match '0.0.1'){
             $this.GetMeanImageMatlab()
         }
         else{
             $this.GetMeanImagePy()
         }
+        #
     }
     <# -----------------------------------------
      GetMeanImageMatlab
@@ -59,7 +62,8 @@ Class meanimage : moduletools {
         $taskname = 'raw2mean'
         $matlabtask = ";raw2mean('" + $this.processvars[1] + 
             "', '" + $this.sample.slideid + "');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $this.runmatlabtask($taskname, $matlabtask)
+        $this.checkexternalerrors()
         $this.sample.info("finished mean image sample -- matlab")
     }
     <# -----------------------------------------
@@ -78,9 +82,25 @@ Class meanimage : moduletools {
          ' --workingdir ' + $this.processvars[0] + '\meanimage' +
          " --njobs '8' --allow-local-edits --skip-start-finish"
         $this.runpythontask($taskname, $pythontask)
+        $this.checkexternalerrors()
         $this.sample.info("finished mean image sample -- python")
     }
-    
+    <# -----------------------------------------
+     checkexternalerrors
+        checkexternalerrors
+     ------------------------------------------
+     Usage: $this.checkexternalerrors()
+    ----------------------------------------- #>
+    [void]checkexternalerrors(){
+        #
+        if ($this.logoutput){
+            if ($this.processvars[4]){
+                $this.sample.removedir($this.processloc)
+            }
+            Throw (($this.logoutput.trim() -ne '') -notmatch 'ERROR')
+        }
+        #
+    }
     <# -----------------------------------------
      returndata
         return data
@@ -110,9 +130,16 @@ Class meanimage : moduletools {
         #
         $sor = $this.processvars[1] + '\flat\' + 
             $this.sample.slideid + '\*.flt'
+        #
+        if (!(gci $sor)){
+            Throw 'no .flt file found, matlab meanimage failed'
+        }                        
         $this.sample.copy($sor, $des) 
         #
         $sor = $sor -replace 'flt', 'csv'
+        if (!(gci $sor)){
+            Throw 'no .csv file found, matlab meanimage failed'
+        }
         $this.sample.copy($sor, $des) 
         #
     }

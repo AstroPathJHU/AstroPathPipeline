@@ -21,9 +21,10 @@
     [array]$processvars
     [string]$processloc
     [string]$vers
-    [string]$funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
     [int]$flevel
     [string]$condalocation = '"' + $PSScriptRoot + '\..\..\utilities\Miniconda3"'
+    [string]$funclocation
+    [string]$logoutput
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
@@ -280,11 +281,11 @@
         #
     }
     #
-    [void]runmatlabtask($taskname, $matlabtask, $source){
+    [void]runmatlabtask($taskname, $matlabtask){
         #
         $externallog = $this.ProcessLog($taskname)
-        matlab -nosplash -nodesktop -minimize -sd $source -r $matlabtask -wait >> $externallog
-        $this.sample.removefile($externallog)
+        matlab -nosplash -nodesktop -minimize -sd $this.funclocation -batch $matlabtask -wait >> $externallog
+        $this.getexternallogs($externallog)
         #
     }
     #
@@ -295,7 +296,15 @@
         conda activate $this.sample.pyenv()
         Invoke-Expression $pythontask *>> $externallog
         conda deactivate $this.sample.pyenv()
+        $this.getexternallogs($externallog)
+        #
+    }
+    #
+    [void]getexternallogs($externallog){
+        #
+        $this.logoutput = $this.sample.GetContent($externallog)
         $this.sample.removefile($externallog)
         #
     }
+    #
  }

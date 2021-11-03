@@ -10,7 +10,7 @@ class copyutils{
     #
     copyutiles(){}
     #
-    [void]copy([string]$sor, [string]$des){
+    [void]copy([string]$sor, [string]$des){ 
         xcopy $sor, $des /q /y /z /j /v | Out-Null
     }
     #
