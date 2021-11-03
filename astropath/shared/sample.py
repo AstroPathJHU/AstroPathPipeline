@@ -460,11 +460,6 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     return super().enter_context(*args, **kwargs)
 
   @classmethod
-  @abc.abstractmethod
-  def logmodule(cls):
-    "name of the log files for this class (e.g. align)"
-
-  @classmethod
   def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} v[0-9a-f.devgd+]+$"
   @classmethod
   def logendregex(cls): return rf"end {cls.logmodule()}$|FINISH: {cls.logmodule()} v[0-9a-f.devgd+]+$"
