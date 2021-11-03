@@ -28,14 +28,14 @@ class CohortBase(ThingWithRoots):
     from .samplemetadata import SampleDef
     return readtable(self.sampledefroot/"sampledef.csv", SampleDef)
   @property
-  def SlideIDs(self): return [_.SlideID for _ in self.sampledefs]
+  def SlideIDs(self): return [_.SlideID for _ in self.sampledefs()]
   @property
   def Project(self):
-    Project, = {_.Project for _ in self.sampledefs}
+    Project, = {_.Project for _ in self.sampledefs()}
     return Project
   @property
   def Cohort(self):
-    Cohort, = {_.Cohort for _ in self.sampledefs}
+    Cohort, = {_.Cohort for _ in self.sampledefs()}
     return Cohort
 
   def globallogger(self):
@@ -234,7 +234,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     for sample in self.samples(**kwargs):
       yield sample, [filter(self, sample) for filter in self.samplefilters]
 
-  def filteredsamples(self):
+  def filteredsamples(self, **kwargs):
     for sample, filters in self.sampleswithfilters(**kwargs):
       if not all(filters):
         continue
@@ -630,7 +630,7 @@ class WorkflowCohort(Cohort):
     rerun_errors = parsed_args_dict.pop("rerun_errors")
 
     def filter(runstatus, dependencyrunstatuses):
-      if rerun_errors and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
+      if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
         runstatus = True
 
       if not skip_finished and not dependencies:
