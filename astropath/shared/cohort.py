@@ -24,7 +24,6 @@ class CohortBase(ThingWithRoots):
     self.moremainlogroots = moremainlogroots
     self.skipstartfinish = skipstartfinish
 
-  @property
   def sampledefs(self):
     from .samplemetadata import SampleDef
     return readtable(self.sampledefroot/"sampledef.csv", SampleDef)
@@ -136,6 +135,29 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
         cohort.run(**runkwargs)
       return cohort
 
+class FilterResult:
+  def __init__(self, result, message=None):
+    if isinstance(result, FilterResult):
+      result, message = result.result, result.message
+    self.result = result
+    self.message = message
+
+  def __bool__(self):
+    return bool(self.result)
+
+  def __str__(self):
+    return self.message
+
+class SampleFilter:
+  def __init__(self, function, truemessage, falsemessage):
+    self.function = function
+    self.messages = {True: truemessage, False: falsemessage}
+  def __call__(self, *args, **kwargs):
+    result = FilterResult(self.function(*args, **kwargs))
+    if result.message is None:
+      result.message = self.messages[bool(result)]
+    return result
+
 class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   """
   Base class for a cohort that can be run in a loop
@@ -158,39 +180,32 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     self.samplefilters = samplefilters
     self.xmlfolders = xmlfolders
 
-  @property
-  def filteredsampledefs(self):
+  def sampledefswithfilters(self, **kwargs):
+    for samp in self.sampledefs(**kwargs):
+      if not samp: continue
+      try:
+        yield samp, [filter(self, samp) for filter in self.slideidfilters]
+      except Exception: #don't log KeyboardInterrupt here
+        with self.getlogger(samp):
+          raise
+
+  def filteredsampledefs(self, *, printnotrunning=False, **kwargs):
     """
     Iterate over the sample's sampledef.csv file.
     It yields all the good samples (as defined by the isGood column)
     that pass the filters.
     """
-    for samp in self.sampledefs:
-      if not samp: continue
-      try:
-        if not all(filter(self, samp) for filter in self.slideidfilters): continue
-      except Exception: #don't log KeyboardInterrupt here
-        with self.getlogger(samp):
-          raise
-      yield samp
+    for samp, filters in self.sampledefswithfilters(**kwargs):
+      if all(filters):
+        yield samp
+      elif printnotrunning:
+        print(f"Not running {samp.SlideID}:")
+        for filter in filters:
+          if not filter:
+            print(filter.message)
 
-  @property
-  def allsamples(self) :
-    for samp in self.sampledefs:
-      try:
-        sample = self.initiatesample(samp)
-        if sample.logmodule() != self.logmodule():
-          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
-        yield sample
-      except Exception:
-        #enter the logger here to log exceptions in __init__ of the sample
-        #but not KeyboardInterrupt
-        with self.getlogger(samp):
-          raise
-
-  @property
-  def samples(self):
-    for samp in self.filteredsampledefs:
+  def allsamples(self, **kwargs) :
+    for samp in self.sampledefs(**kwargs):
       try:
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
@@ -202,10 +217,26 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
         with self.getlogger(samp):
           raise
 
-  @property
+  def samples(self, **kwargs):
+    for samp in self.filteredsampledefs(**kwargs):
+      try:
+        sample = self.initiatesample(samp)
+        if sample.logmodule() != self.logmodule():
+          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+        yield sample
+      except Exception:
+        #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
+        with self.getlogger(samp):
+          raise
+
+  def sampleswithfilters(self, **kwargs):
+    for sample in self.samples(**kwargs):
+      yield sample, [filter(self, sample) for filter in self.samplefilters]
+
   def filteredsamples(self):
-    for sample in self.samples:
-      if not all(filter(self, sample) for filter in self.samplefilters):
+    for sample, filters in self.sampleswithfilters(**kwargs):
+      if not all(filters):
         continue
       yield sample
 
@@ -239,26 +270,37 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   def workflowkwargs(self):
     return self.rootkwargs
 
-  def run(self, **kwargs):
+  def run(self, *, printnotrunning=True, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
-    return [self.processsample(sample, **kwargs) for sample in self.filteredsamples]
-      
+    result = []
+    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning):
+      if all(filters):
+        result.append(self.processsample(sample, **kwargs))
+      elif printnotrunning:
+        print(f"Not running {sample.SlideID}:")
+        for filter in filters:
+          if not filter:
+            print(filter.message)
+    return result
 
   def processsample(self, sample, **kwargs):
     with sample:
       return self.runsample(sample, **kwargs)
 
-  @property
-  def dryrunheader(self):
-    return "would run the following samples:"
   def dryrun(self, **kwargs):
     """
     Print which samples would be run if you run the cohort
     """
-    print(self.dryrunheader)
-    for samp in self.filteredsampledefs: print(samp)
+    for samp, filters in self.sampledefswithfilters():
+      if all(filters):
+        print(f"{samp} would run")
+      else:
+        print(f"{samp} would not run:")
+        for filter in filters:
+          if not filter:
+            print(filter.message)
 
   @classmethod
   def defaultunits(cls):
@@ -291,7 +333,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       kwargs["uselogfiles"] = False
     regex = dct.pop("sampleregex")
     if regex is not None:
-      kwargs["slideidfilters"].append(lambda self, sample: regex.match(sample.SlideID))
+      kwargs["slideidfilters"].append(SampleFilter(lambda self, sample: regex.match(sample.SlideID), f"SlideID matches {regex.pattern}", f"SlideID doesn't match {regex.pattern}"))
     return kwargs
 
 class Im3Cohort(Cohort, Im3ArgumentParser):
@@ -592,22 +634,28 @@ class WorkflowCohort(Cohort):
         runstatus = True
 
       if not skip_finished and not dependencies:
-        return True
+        return FilterResult(True, "this filter is not run")
 
       elif skip_finished and not dependencies:
-        return not runstatus
+        if not runstatus:
+          return FilterResult(True, "sample did not already run")
+        else:
+          return FilterResult(False, "sample already ran")
 
       elif dependencies and not skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return False
-        return True
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
+        return FilterResult(True, "all dependencies already ran")
 
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return False
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
           if runstatus and runstatus.started < dependencyrunstatus.ended:
             runstatus = False #it's as if this step hasn't run
-        return not runstatus
+        if not runstatus:
+          return FilterResult(True, "all dependencies already ran, sample has not run since then")
+        else:
+          return FilterResult(False, "sample already ran")
       else:
         assert False
 
@@ -619,7 +667,7 @@ class WorkflowCohort(Cohort):
           for dependency in self.sampleclass.workflowdependencyclasses()
         ],
       )
-    kwargs["slideidfilters"].append(slideidfilter)
+    kwargs["slideidfilters"].append(SampleFilter(slideidfilter, None, None))
 
     def samplefilter(self, sample):
       return filter(
@@ -629,7 +677,7 @@ class WorkflowCohort(Cohort):
           for dependency, SlideID in sample.workflowdependencies()
         ],
       )
-    kwargs["samplefilters"].append(samplefilter)
+    kwargs["samplefilters"].append(SampleFilter(samplefilter, None, None))
 
     return kwargs
 
