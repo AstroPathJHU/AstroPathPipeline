@@ -644,12 +644,12 @@ class WorkflowCohort(Cohort):
 
       elif dependencies and not skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} didn't run yet")
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
         return FilterResult(True, "all dependencies already ran")
 
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} didn't run yet")
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
           if runstatus and runstatus.started < dependencyrunstatus.ended:
             runstatus = False #it's as if this step hasn't run
         if not runstatus:
