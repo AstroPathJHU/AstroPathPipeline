@@ -180,14 +180,21 @@ class queue : sharedtools{
         #
         foreach ($statustype in $statustypes){
             $savelog += $loglines |
-                    where-object {($_.Message -match $vers) `
-                        -and ($_.Slideid -match $ID) `
-                        -and ($_.Message -match $statustype)} |
+                    where-object {
+                        ($_.Message -match $vers) -and 
+                         ($_.Slideid -match $ID) -and 
+                         ($_.Message -match $statustype)
+                    } |
                     Select-Object -Last 1 
         }
         #
         $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
-        $d2 = ($savelog | Where-Object {$_.Message -match $statustypes[1]}).Date
+        $d2 = ($loglines |
+                 Where-Object {
+                    $_.Message -match $statustypes[1] -and
+                     ($_.Slideid -match $ID)
+                 }).Date |
+               Select-Object -Last 1 
         $d3 = ($savelog | Where-Object {$_.Message -match $statustypes[2]}).Date
         #
         # if there was an error return true 
@@ -368,12 +375,16 @@ class queue : sharedtools{
             return 1
         }
         #
+        $log = [mylogger]::new($this.mpath, 'batchflatfield', $log.slideid)
+        $log.slidelog = $log.mainlog
+        if ($this.checklog($log, $true)){
+            return 2
+        }
+        #
         # version depedendent checks
         #
-        $cvers = $this.getversion($this.mpath, 'batchflatfield', $log.project)
-        #
         if (!$log.testbatchflatfield()){
-            if ($cvers -match '0.0.1'){
+            if ($log.vers -match '0.0.1'){
                 return 2
             } else {
                 return 1

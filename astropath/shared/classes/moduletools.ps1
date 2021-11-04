@@ -25,6 +25,7 @@
     [string]$condalocation = '"' + $PSScriptRoot + '\..\..\utilities\Miniconda3"'
     [string]$funclocation
     [string]$logoutput
+    [string]$pythonmodulename
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
@@ -304,7 +305,77 @@
         #
         $this.logoutput = $this.sample.GetContent($externallog)
         $this.sample.removefile($externallog)
+        $this.checkexternalerrors()
+        $this.checkastropathlog()
         #
     }
-    #
+    <# -----------------------------------------
+     checkexternalerrors
+        checkexternalerrors
+     ------------------------------------------
+     Usage: $this.checkexternalerrors()
+    ----------------------------------------- #>
+    [void]checkexternalerrors(){
+        #
+        if ($this.vers -match '0.0.1'){
+            $test = 'ERROR'
+            if ($this.logoutput -match $test){
+                $this.silentcleanup()
+                $potentialerrors = ($this.logoutput.trim() -ne '') -notmatch 'ERROR'
+                Throw $potentialerrors
+            } elseif ($this.logoutput) {
+                $this.sample.info($this.logoutput.trim())
+            }
+            #
+        } else {
+            $test = $this.pythonmodulename + ' : ' +
+                $this.sample.project + ';' + $this.sample.cohort
+            if ($this.logoutput[0] -notmatch $test) {
+                $this.silentcleanup()
+                Throw ($this.logoutput.trim() -ne '')
+            }
+        }
+        #
+    }
+    <# -----------------------------------------
+     checkastropathlog
+        checkastropathlog
+     ------------------------------------------
+     Usage: $this.checkastropathlog()
+    ----------------------------------------- #>
+    [void]checkastropathlog(){
+        #
+        $loglines = import-csv $this.sample.mainlog `
+            -Delimiter ';' `
+            -header 'Project','Cohort','slideid','Message','Date' 
+        
+        #
+        # parse log
+        #
+        if ($this.sample.module -match 'batch'){
+            $ID= $this.sample.BatchID
+        } else {
+            $ID = $this.sample.slideid
+        }
+        $statustypes = @('START:','ERROR:','FINISH:')
+        $savelog = @()
+        $parsedvers = $this.vers -replace 'v', ''
+        $parsedvers = ($parsedvers -split '\.')[0,1,2] -join '.'
+        #
+        foreach ($statustype in $statustypes){
+            $savelog += $loglines |
+                    where-object {($_.Slideid -match $ID) -and 
+                        ($_.Message -match $statustype)} |
+                    Select-Object -Last 1 
+        }
+        #
+        $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
+        $d2 = ($savelog | Where-Object {$_.Message -match $statustypes[1]}).Date
+        #
+        if ($d2 -gt $d1){
+            $this.silentcleanup()
+            Throw 'detected error in external task'
+        }
+        #
+    }
  }

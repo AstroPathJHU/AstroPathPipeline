@@ -63,7 +63,6 @@ Class meanimage : moduletools {
         $matlabtask = ";raw2mean('" + $this.processvars[1] + 
             "', '" + $this.sample.slideid + "');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask)
-        $this.checkexternalerrors()
         $this.sample.info("finished mean image sample -- matlab")
     }
     <# -----------------------------------------
@@ -77,29 +76,13 @@ Class meanimage : moduletools {
         $taskname = 'meanimagesample'
         $dpath = $this.sample.basepath + ' '
         $rpath = $this.processvars[1]
-        $pythontask = 'meanimagesample ' + $dpath + $this.sample.SlideID + 
-         ' --shardedim3root ' + $rpath +
-         ' --workingdir ' + $this.processvars[0] + '\meanimage' +
-         " --njobs '8' --allow-local-edits --skip-start-finish"
+        $this.pythonmodulename = 'meanimagesample'
+        $pythontask = $this.pythonmodulename, $dpath, $this.sample.SlideID, `
+         '--shardedim3root', $rpath, `
+         ' --workingdir', ($this.processvars[0] + '\meanimage'), `
+         "--njobs '8' --allow-local-edits --skip-start-finish" -join ' '
         $this.runpythontask($taskname, $pythontask)
-        $this.checkexternalerrors()
         $this.sample.info("finished mean image sample -- python")
-    }
-    <# -----------------------------------------
-     checkexternalerrors
-        checkexternalerrors
-     ------------------------------------------
-     Usage: $this.checkexternalerrors()
-    ----------------------------------------- #>
-    [void]checkexternalerrors(){
-        #
-        if ($this.logoutput){
-            if ($this.processvars[4]){
-                $this.sample.removedir($this.processloc)
-            }
-            Throw (($this.logoutput.trim() -ne '') -notmatch 'ERROR')
-        }
-        #
     }
     <# -----------------------------------------
      returndata
@@ -167,10 +150,21 @@ Class meanimage : moduletools {
     [void]cleanup(){
         #
         $this.sample.info("cleanup started")
+        $this.silentcleanup()
+        $this.sample.info("cleanup finished")
+        #
+    }
+    <# -----------------------------------------
+     deleteprocessloc
+     deleteprocessloc
+     ------------------------------------------
+     Usage: $this.deleteprocessloc()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
+        #
         if ($this.processvars[4]){
             $this.sample.removedir($this.processloc)
         }
-        $this.sample.info("cleanup finished")
         #
     }
 }

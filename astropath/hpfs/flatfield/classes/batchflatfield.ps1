@@ -34,8 +34,7 @@ class batchflatfield : moduletools {
             $this.sample.batchflatfield() + "', '" + $slidelist + "'"
         $matlabtask = ";fltOneBatch(" + $matlabinput + ");exit(0);"
         $this.runmatlabtask($taskname, $matlabtask)
-        $this.sample.removedir($this.processloc)
-        $this.checkexternalerrors()
+        $this.silentcleanup()
     }
     <# -----------------------------------------
      checkexternalerrors
@@ -43,11 +42,9 @@ class batchflatfield : moduletools {
      ------------------------------------------
      Usage: $this.checkexternalerrors()
     ----------------------------------------- #>
-    [void]checkexternalerrors(){
+    [void]silentcleanup(){
         #
-        if ($this.logoutput){
-            Throw (($this.logoutput.trim() -ne '') -notmatch 'ERROR')
-        }
+        $this.sample.removedir($this.processloc)
         #
     }
 }

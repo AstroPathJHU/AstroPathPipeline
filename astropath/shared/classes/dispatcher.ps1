@@ -226,15 +226,20 @@ class Dispatcher : queue{
         if ($donejobs){
             $donejobs | Remove-Job
             $donejobs | ForEach {
-                $output = Get-Content ($this.workerloglocation+$_.Name+'.log') 
-                if ($output) {
-                    write-host $_.Name 
-                    Write-host $output
-                    # remove-item ($this.workerloglocation+$_.Name+'.log') -force -ea SilentlyContinue
+                #
+                # write new os errors to the console
+                #
+                $output = $this.getcontent($this.workerloglocation+$_.Name+'.log') 
+                if ($output -and $output[$output.count-1] -notmatch $_.Name) {
+                    $errors = $output -match $_.Name
+                    $idx = [array]::IndexOf($output, ($output -match $j.Name).last)
+                    $newerror = $output[$idx..($output.count-1)]
+                    $errortaskid = ($_.Name, $_.PSBeginTime, $_.PSEndTime) -join '-'
+                    write-host $errortaskid
+                    Write-host $newerror
+                    $this.popfile(($this.workerloglocation+$_.Name + '.log'), $errortaskid)
                 }
             }
-            # $donejobs | ForEach {Remove-Item ($this.workerloglocation+$_.Name+'.log') -force -ea SilentlyContinue}
-            # $donejobs | ForEach {Remove-Item ($this.workerloglocation+$_.Name+'-job.log') -force -ea SilentlyContinue}
         }
         #
     }
