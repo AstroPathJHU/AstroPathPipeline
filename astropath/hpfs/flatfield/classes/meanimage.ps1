@@ -155,10 +155,10 @@ Class meanimage : moduletools {
         #
     }
     <# -----------------------------------------
-     deleteprocessloc
-     deleteprocessloc
+     silentcleanup
+     silentcleanup
      ------------------------------------------
-     Usage: $this.deleteprocessloc()
+     Usage: $this.silentcleanup()
     ----------------------------------------- #>
     [void]silentcleanup(){
         #

@@ -24,7 +24,7 @@
     [int]$flevel
     [string]$condalocation = '"' + $PSScriptRoot + '\..\..\utilities\Miniconda3"'
     [string]$funclocation
-    [arraypower]$logoutput
+    [array]$logoutput
     [string]$pythonmodulename
     #
     moduletools([array]$task,[launchmodule]$sample){
