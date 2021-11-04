@@ -31,7 +31,7 @@ class TestMeanImageComparison(TestBaseCopyInput,TestBaseSaveOutput) :
     @classmethod
     def filestocopy(cls):
         """
-        Need to copy the sampledef.csv and Parameters.xml files to get slide dimensions
+        Need to copy the sampledef.csv and Parameters.xml files
         """
         newroot = folder/'test_for_jenkins'/'meanimagecomparison'/'root'
         yield folder/'data'/'sampledef.csv', newroot
