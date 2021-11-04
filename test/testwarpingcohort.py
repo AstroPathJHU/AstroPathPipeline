@@ -56,8 +56,10 @@ class TestWarpingCohort(TestBaseSaveOutput) :
         """
         super().setUp()
         self.__files_to_remove = []
-        sample = DummySample(root,shardedim3root,slideID)
-        existing_filepaths = [shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
+        if not (shardedim3root/slideID).is_dir() :
+            (shardedim3root/slideID).mkdir(parents=True)
+        sample = DummySample(root,root/'raw',slideID)
+        existing_filepaths = [root/'raw'/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
         for ir,r in enumerate(sample.rectangles) :
             thisrfilepath = shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)
             if not thisrfilepath.is_file() :
@@ -167,8 +169,6 @@ class TestWarpingCohort(TestBaseSaveOutput) :
 
     @classmethod
     def tearDownClass(cls) :
-        #Remove the flatfield file that was created and the directory it's in
-        shutil.rmtree(root/UNIV_CONST.FLATFIELD_DIRNAME)
         #Remove the copied background threshold file
         (folder/'data'/slideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/f'{slideID}-background_thresholds.csv').unlink()
         super().tearDownClass()
