@@ -1,13 +1,12 @@
 import collections, contextlib, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.registration, skimage.transform, uncertainties as unc, uncertainties.umath as umath, uncertainties.unumpy as unp
 
-from ...shared.logging import MultiLogger
+from ...shared.logging import dummylogger, MultiLogger
 from ...slides.align.computeshift import computeshift, OptimizeResult, shiftimg
 from ...slides.align.overlap import AlignmentComparison
 from ...slides.annowarp.annowarpsample import WSISample
 from ...slides.stitchmask.stitchmasksample import AstroPathTissueMaskSample
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation
-from ...utilities.logging import dummylogger
 from ...utilities.misc import affinetransformation, covariance_matrix, floattoint
 from ...utilities.units import ThingWithPscale
 from ...utilities.units.dataclasses import DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, makedataclasswithpscale

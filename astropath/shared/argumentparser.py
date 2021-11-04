@@ -1,4 +1,4 @@
-import abc, argparse, pathlib, re
+import abc, argparse, logging, pathlib, re
 from ..utilities.tableio import TableReader
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
@@ -167,6 +167,7 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root).")
     g.add_argument("--no-log", action="store_true", help="do not write to log files.")
     p.add_argument("--skip-start-finish", action="store_true", help="do not write the START: and FINISH: lines to the log (this should only be used if external code writes those lines).")
+    p.add_argument("--print-threshold", choices=("all", "info", "warning", "error", "critical", "none"), default="all")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--no-dev-version", help="refuse to run unless the package version is tagged.", action="store_const", const="tag", dest="version_requirement")
     g.add_argument("--allow-dev-version", help="ok to run even if the package is at a dev version (default if using a log file).", action="store_const", const="commit", dest="version_requirement")
@@ -182,6 +183,14 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
       "skipstartfinish": dct.pop("skip_start_finish"),
+      "printthreshold": {
+        "all": logging.NOTSET-100,
+        "info": logging.INFO-1,
+        "warning": logging.WARNING,
+        "error": logging.ERROR,
+        "critical": logging.CRITICAL,
+        "none": logging.CRITICAL+100,
+      }[dct.pop("print_threshold")],
     }
     if initkwargs["logroot"] is None: initkwargs["logroot"] = initkwargs["root"]
     return initkwargs

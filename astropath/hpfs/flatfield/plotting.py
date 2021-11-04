@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib.patches import Rectangle
 from ...shared.image_masking.config import CONST as MASKING_CONST
-from ...utilities.tableio import readtable
-from ...utilities.logging import printlogger
-from ...utilities.misc import save_figure_in_dir
+from ...shared.logging import printlogger
 from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.misc import save_figure_in_dir
+from ...utilities.tableio import readtable
 from .utilities import RectangleThresholdTableEntry
 
 def plot_tissue_edge_rectangle_locations(all_rects,edge_rects,root_dir,slideID,save_dirpath=None) :
@@ -349,7 +349,7 @@ def flatfield_image_pixel_intensity_plot(flatfield_image,version=None,save_dirpa
     fn+='_pixel_intensities.png'
     save_figure_in_dir(plt,fn,save_dirpath)
 
-def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None,logger=printlogger("flatfieldplots")) :
+def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None,logger=None) :
     """
     Plot the max/min, 5th/95th %ile, and std. dev. of a mask stack's number of images stacked by layer 
     in the whole image and in the central region of the image only
@@ -357,6 +357,7 @@ def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None,logger
     mask_stack = the mask stack to plot
     save_dirpath = path to directory to save the plots in (if None the plot is saved in the current directory)
     """
+    if logger is None: logger = printlogger("flatfieldplots")
     nlayers=mask_stack.shape[-1]
     if nlayers==35 :
         last_filter_layers = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_35[:-1]] 
