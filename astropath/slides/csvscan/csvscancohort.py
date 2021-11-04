@@ -209,6 +209,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         "xmlfolders": False,
         "moremainlogroots": True,
         "skipstartfinish": True,
+        "printthreshold": True,
       }[k]
     }
 
