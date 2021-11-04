@@ -91,6 +91,7 @@ class TestWarpingCohort(TestBaseSaveOutput) :
                 '--sampleregex',slideID,
                 '--workingdir',os.fspath(self.output_dir),
                 '--octets-only',
+                '--noGPU',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
@@ -127,6 +128,7 @@ class TestWarpingCohort(TestBaseSaveOutput) :
                 '--initial-pattern-octets','2',
                 '--principal-point-octets','2',
                 '--final-pattern-octets','2',
+                '--noGPU',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
