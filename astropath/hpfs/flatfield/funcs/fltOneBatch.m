@@ -42,9 +42,9 @@ function [B] = mean2flat(fname,basepath,slideids,g,k, m, n)
 %%---------------------------------------
 A = zeros(m,n,k);
 N = 0;
-for i=1:numel(slideids)
+for i1=1:numel(slideids)
     %
-    f1 = fullfile(basepath, slideids{1}, 'im3\',[slideids{1},'-mean.flt']);
+    f1 = fullfile(basepath, slideids{i1}, 'im3\',[slideids{i1},'-mean.flt']);
     f2 = replace(f1,'.flt','.csv');
     %
     nn  = csvread(f2);
@@ -60,10 +60,10 @@ A = A ./ N;
 % smooth the images and normalize to mean=1
 %---------------------------------------------
 fprintf('%d fields averaged, smooth/normalize...\n',N);
-for i=1:k
-    B(:,:,i) = imgaussfilt(A(:,:,i),g);
-    bmean    = mean(B(:,:,i),'all');
-    B(:,:,i) = B(:,:,i) ./ bmean;
+for i1=1:k
+    B(:,:,i1) = imgaussfilt(A(:,:,i1),g);
+    bmean    = mean(B(:,:,i1),'all');
+    B(:,:,i1) = B(:,:,i1) ./ bmean;
 end
 %
 if N < 3000

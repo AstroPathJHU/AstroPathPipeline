@@ -24,7 +24,7 @@
     [int]$flevel
     [string]$condalocation = '"' + $PSScriptRoot + '\..\..\utilities\Miniconda3"'
     [string]$funclocation
-    [string]$logoutput
+    [array]$logoutput
     [string]$pythonmodulename
     #
     moduletools([array]$task,[launchmodule]$sample){
@@ -285,7 +285,7 @@
     [void]runmatlabtask($taskname, $matlabtask){
         #
         $externallog = $this.ProcessLog($taskname)
-        matlab -nosplash -nodesktop -minimize -sd $this.funclocation -batch $matlabtask -wait >> $externallog
+        matlab -nosplash -nodesktop -minimize -sd $this.funclocation -batch $matlabtask -wait *>> $externallog
         $this.getexternallogs($externallog)
         #
     }
@@ -332,7 +332,8 @@
                 $this.sample.project + ';' + $this.sample.cohort
             if ($this.logoutput[0] -notmatch $test) {
                 $this.silentcleanup()
-                Throw ($this.logoutput.trim() -ne '')
+                $potentialerrors = $this.logoutput.trim() -ne ''
+                Throw $potentialerrors
             }
         }
         #
