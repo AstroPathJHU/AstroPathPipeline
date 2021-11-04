@@ -15,7 +15,7 @@ root = folder/'data'
 shardedim3root = folder/'data'/'raw'
 slideID = 'M21_1'
 et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
-ff_file = folder/'data'/'reference'/'batchflatfieldcohort'/'flatfield_BatchID_99.bin'
+ff_file = folder/'data'/'reference'/'batchflatfieldcohort'/'flatfield_TEST.bin'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
 
 class DummySample(ReadRectanglesIm3FromXML) :

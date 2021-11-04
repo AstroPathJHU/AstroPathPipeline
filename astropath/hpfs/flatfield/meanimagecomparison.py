@@ -194,7 +194,7 @@ class MeanImageComparison :
     #################### CLASS METHODS ####################
 
     @classmethod
-    def get_args(cls) :
+    def get_args(cls,given_args=None) :
         parser = ArgumentParser()
         # root: some number of root directories whose sampledef.csv file(s) list a group of slides that could be used
         parser.add_argument('root', type=pathlib.Path, nargs='+',
@@ -232,7 +232,7 @@ class MeanImageComparison :
                             help='''Add this flag to skip creating the flatfield model in the default location, 
                                     if "store-as" is given. 
                                     (BatchFlatfieldMultiCohort can be run standalone later on.)''')
-        args = parser.parse_args()
+        args = parser.parse_args(args=given_args)
         #make sure some arguments make sense
         for root_dir in args.root :
             if not root_dir.is_dir() :
@@ -243,12 +243,12 @@ class MeanImageComparison :
         return args
 
     @classmethod
-    def run(cls) :
+    def run(cls,args=None) :
         """
         Actually run the code start to finish
         """
         #get and parse the command-line arguments
-        args = cls.get_args()
+        args = cls.get_args(args)
         #set up the Comparison
         mic = cls(args.root,args.sampleregex,args.workingdir,args.sort_by,args.flatw)
         #create (or append to) the datatable of comparison values
@@ -430,8 +430,8 @@ class MeanImageComparison :
 
 #################### MAIN SCRIPT ####################
 
-def main() :
-    MeanImageComparison.run()
+def main(args=None) :
+    MeanImageComparison.run(args)
 
 if __name__=='__main__' :
     main()
