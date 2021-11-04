@@ -23,6 +23,7 @@
     [string]$vers
     [string]$funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     [int]$flevel
+    [string]$condalocation = '"'+$PSScriptRoot + '\..\..\utilities\Miniconda3"'
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
@@ -40,15 +41,19 @@
     #
     [void]BuildProcessLocPaths($task){
         $fwpath = '\\'+$this.sample.project_data.fwpath
-        $this.processvars = @($this.sample.basepath, $fwpath, $this.sample.flatwim3folder(), $this.sample.batchflatfield())
+        $this.processvars = @($this.sample.basepath, $fwpath, `
+            $this.sample.flatwim3folder(), $this.sample.batchflatfield())
         #
-        # If processloc is not '*' a processing destination was added as input, correct the paths to analyze from there
+        # If processloc is not '*' a processing destination was added as 
+        # input, correct the paths to analyze from there
         #
-        if ($task[2]){
-            $this.processloc = ($task[2]+'\processing_'+$this.sample.module+'\'+$task[1])
+        if ($task[2] -AND !($task[2] -match '\*')){
+            $this.processloc = ($task[2]+'\astropath_ws\'+$this.sample.module+'\'+$task[1])
             #
-            $processvarsa = $this.processvars[0,2,3] -replace [regex]::escape($this.sample.basepath), $this.processloc 
-            $processvarsb = $this.processvars[1] -replace [regex]::escape('\\'+$this.sample.project_data.fwpath), ($this.processloc+'\flatw')
+            $processvarsa = $this.processvars[0,2,3] -replace `
+                [regex]::escape($this.sample.basepath), $this.processloc 
+            $processvarsb = $this.processvars[1] -replace `
+                [regex]::escape('\\'+$this.sample.project_data.fwpath), ($this.processloc+'\flatw')
             $this.processvars = @($processvarsa[0], $processvarsb, $processvarsa[1], $processvarsa[2], 1)
         } else {
             $this.processloc = $this.sample.flatwfolder()
@@ -76,7 +81,8 @@
     [void]DownloadFiles(){
         if ($this.processvars[4]){
             $this.sample.info("Download Files started")
-            $this.BuildDir()
+            $this.WipeProcessDirs()
+            $this.BuildProcessDirs()
             $this.Downloadflatfield()
             $this.DownloadIm3s()
             $this.DownloadBatchID()
@@ -85,18 +91,30 @@
         }
     }
     <# -----------------------------------------
-     BuildDir
-     Build the processing directory
+     WipeProcessDirs
+     wipe the processing directory
      ------------------------------------------
-     Usage: $this.BuildDir()
+     Usage: $this.WipeProcessDirs()
     ----------------------------------------- #>
-    [void]BuildDir(){
+    [void]WipeProcessDirs(){
         #
         foreach($ii in @(0,1,2)){
             if (test-path $this.processvars[$ii]){
                     remove-item $this.processvars[$ii] -force -Recurse -EA STOP
                 }
-            New-Item $this.processvars[$ii] -itemtype "directory" -EA STOP | Out-NULL
+        }
+        #
+    }
+    <# -----------------------------------------
+     BuildProcessDirs
+     Build the processing directory
+     ------------------------------------------
+     Usage: $this.BuildProcessDirs()
+    ----------------------------------------- #>
+    [void]BuildProcessDirs(){
+        #
+        foreach($ii in @(0,1,2)){
+            $this.sample.CreateDirs($this.processvars[$ii])
         }
         #
     }
@@ -114,7 +132,7 @@
                     remove-item $flatfieldfolder -force -Recurse -EA STOP
                 }
             New-Item $flatfieldfolder -itemtype "directory" -EA STOP | Out-NULL
-            xcopy $this.sample.batchflatfield(), $flatfieldfolder /q /y /z /j /v | Out-Null
+            $this.sample.copy($this.sample.batchflatfield(), $flatfieldfolder)
         }
     }
     <# -----------------------------------------
@@ -126,9 +144,10 @@
     ----------------------------------------- #>
     [void]DownloadIm3s(){
         if (($this.flevel -band [FileDownloads]::IM3) -eq [FileDownloads]::IM3){
-            $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
+            $des = $this.processvars[0] +'\'+
+                $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
             $sor = $this.sample.MSIfolder()
-            robocopy $sor $des *im3 -r:3 -w:3 -np -mt:30 |out-null
+            $this.sample.copy($sor, $des, 'im3', 30)
             if(!(((gci ($sor+'\*') -Include '*im3').Count) -eq (gci $des).count)){
                 Throw 'im3s did not download correctly'
             }
@@ -143,8 +162,9 @@
     ----------------------------------------- #>
     [void]DownloadBatchID(){
         if (($this.flevel -band [FileDownloads]::BATCHID) -eq [FileDownloads]::BATCHID){
-            $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\'+$this.sample.Scan()
-            xcopy $this.sample.batchIDfile(), $des /q /y /z /j /v | Out-Null
+            $des = $this.processvars[0] +'\'+
+                $this.sample.slideid+'\im3\'+$this.sample.Scan()
+            $this.sample.copy($this.sample.BatchIDfile(), $des)
         }
     }
     <# -----------------------------------------
@@ -158,7 +178,7 @@
         if (($this.flevel -band [FileDownloads]::XML) -eq [FileDownloads]::XML){
             $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
             $sor = $this.sample.xmlfolder()
-            robocopy $sor $des *xml -r:3 -w:3 -np -mt:30 |out-null
+            $this.sample.copy($sor, $des, 'xml', 30)
             if(!(((gci ($sor+'\*') -Include '*xml').Count) -eq (gci $des).count)){
                 Throw 'xmls did not download correctly'
             }
@@ -204,11 +224,14 @@
         $this.sample.info(($type + " data started"))
         $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
         if ($type -match 'inject'){
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -i -verbose 4>&1 >> $externallog
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $this.sample.slideid -i -verbose 4>&1 >> $externallog
         } elseif($type -match 'shreddat') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -d -verbose 4>&1 >> $externallog
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $this.sample.slideid -s -d -verbose 4>&1 >> $externallog
         } elseif($type -match 'shredxml') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] $this.sample.slideid -s -xml -verbose 4>&1 >> $externallog
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $this.sample.slideid -s -xml -verbose 4>&1 >> $externallog
         } 
         $log = $this.sample.GetContent($externallog) |
              where-object  {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 
@@ -248,6 +271,16 @@
     [void]runmatlabtask($taskname, $matlabtask, $source){
         $externallog = $this.ProcessLog($taskname)
         matlab -nosplash -nodesktop -minimize -sd $source -r $matlabtask -wait >> $externallog
+        if (test-path $externallog){
+            remove-item $externallog -force -ea Continue
+        }
+    }
+    #
+    [void]runpythontask($taskname, $pythontask){
+        $externallog = $this.ProcessLog($taskname)
+        conda activate $this.sample.pyenv
+        Invoke-Expression $pythontask *>> $externallog
+        conda deactivate $this.sample.pyenv
         if (test-path $externallog){
             remove-item $externallog -force -ea Continue
         }

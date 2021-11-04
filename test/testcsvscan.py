@@ -22,6 +22,9 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
         yield csv, new
 
     for SlideID in "M206",:
+      Scan = {
+        "M206": 1,
+      }[SlideID]
       newdbload = testroot/SlideID/"dbload"
       newtables = testroot/SlideID/"inform_data"/"Phenotyped"/"Results"/"Tables"
 
@@ -36,6 +39,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
         yield csv, newtables
 
       yield dataroot/SlideID/"im3"/f"{SlideID}-mean.csv", testroot/SlideID/"im3"
+      yield dataroot/SlideID/"im3"/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}_annotations.xml", testroot/SlideID/"im3"/f"Scan{Scan}"
 
   @property
   def outputfilenames(self):

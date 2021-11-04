@@ -77,7 +77,7 @@ pipeline {
             }
           }
         }
-        stage('test zoom') {
+        stage('zoom') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
           }
@@ -114,22 +114,6 @@ pipeline {
         stage('geomcell') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeomcell'
-          }
-        }
-
-        stage('align layers') {
-          stages {
-            stage('test align layers') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignlayers'
-              }
-            }
-            stage('layer PCA plots') {
-              steps {
-                sh 'cd documents/layerPCA; pdflatex layerPCA.tex; pdflatex layerPCA.tex; pdflatex layerPCA.tex'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/layerPCA/layerPCA.log'
-              }
-            }
           }
         }
 
@@ -191,9 +175,15 @@ pipeline {
           }
         }
 
-        stage('test applyflatw') {
+        stage('applyflatw') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testapplyflatw'
+          }
+        }
+
+        stage('crossregistration') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testcrossregistration'
           }
         }
 
@@ -219,7 +209,6 @@ pipeline {
       archiveArtifacts artifacts: 'documents/alignment/alignment.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/annowarp/annowarp.pdf', fingerprint: true
       archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documents/layerPCA/layerPCA.pdf', fingerprint: true
       archiveArtifacts artifacts: 'test/test_for_jenkins/**', fingerprint: true, allowEmptyArchive: true
     }
   }

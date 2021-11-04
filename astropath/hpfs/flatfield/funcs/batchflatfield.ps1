@@ -23,13 +23,13 @@ Function batchflatfield {
      # used for testing; when launched manually without launchmodule
      #
      if (!($PSBoundParameters.ContainsKey('log'))){ 
-        $log = [launchmodule]::new('\\bki08\e$\testing\astropath_processing', 'batchflatfield', $task) 
+        $log = [launchmodule]::new($task[$task.Count-1], 'batchflatfield', $task) 
         $e = 1
      } else {$e = 0}
      #
      $inp = [batchflatfield]::new($task, $log)
      if ($e -ne 1){
-         $inp.RunBatchFlatField()
+         $inp.RunBatchFlatfield()
      } else{
         return $inp
      }

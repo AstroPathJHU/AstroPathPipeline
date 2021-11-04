@@ -11,7 +11,7 @@ from .field import Field, FieldOverlap
 def stitch(*, usecvxpy=False, **kwargs):
   return (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
 
-def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, scaleedges=1, scalecorners=1, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
+def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, scaleedges=1, scalecorners=1, fixpoint="origin", origin=np.array([0, 0]), margin, logger=dummylogger):
   """
   stitch the alignment results together
 
@@ -177,9 +177,9 @@ def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, s
 
   logger.debug("done")
 
-  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix, origin=origin, logger=logger)
+  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix, origin=origin, margin=margin, logger=logger)
 
-def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([0, 0]), logger=dummylogger):
+def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([0, 0]), margin, logger=dummylogger):
   """
   Run the stitching using cvxpy as a cross check.
   Arguments are the same as __stitch, with some limitations.
@@ -269,7 +269,7 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
   prob = cp.Problem(minimize)
   prob.solve()
 
-  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale, origin=origin, logger=logger)
+  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale, origin=origin, margin=margin, logger=logger)
 
 class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   """
@@ -280,10 +280,11 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   origin: the origin for defining the pxvec coordinate system
   logger: the AlignSample's logger
   """
-  def __init__(self, *, rectangles, overlaps, origin, logger=dummylogger):
+  def __init__(self, *, rectangles, overlaps, origin, margin, logger=dummylogger):
     self.__rectangles = rectangles
     self.__overlaps = overlaps
     self.__origin = origin
+    self.__margin = margin
     self.__logger = logger
 
   @methodtools.lru_cache()
@@ -298,6 +299,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   def rectangles(self): return self.__rectangles
   @property
   def origin(self): return self.__origin
+  @property
+  def margin(self): return self.__margin
 
   @abc.abstractmethod
   def x(self, rectangle_or_id=None):
@@ -332,7 +335,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       o.stitchresult = self.dx(o)
 
   @methodtools.lru_cache()
-  def __fields(self):
+  @property
+  def fields(self):
     """
     Create the field objects from the rectangles and stitch result
     """
@@ -603,21 +607,19 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         )
       )
 
-    minx, miny = np.floor(minpxvec/(100*onepixel))*100*onepixel
+    minx, miny = np.floor((minpxvec - self.margin)/(100*onepixel))*100*onepixel
     if minx > 0: minx = 0
     if miny > 0: miny = 0
     if minx or miny:
-      self.__logger.warningglobal(f"Some HPFs have (x, y) < (xposition, yposition), shifting the whole slide by {-minx, -miny}")
+      self.__logger.warningglobal(f"Some HPFs have (x, y) < (xposition, yposition) + margin, shifting the whole slide by ({-minx/self.onepixel}, {-miny/self.onepixel})")
+      x = self.x()
+      x -= ((minx, miny))
       for f in result:
         f.pxvec -= (minx, miny)
         f.primaryregionx -= minx
         f.primaryregiony -= miny
 
     return result
-
-  @property
-  def fields(self):
-    return self.__fields()
 
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
     """
@@ -657,12 +659,14 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
     if check:
       self.__logger.debug("reading back from the file")
-      readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps, origin=self.origin, logger=self.__logger)
+      readback = ReadStitchResult(*filenames, rectangles=self.rectangles, overlaps=self.overlaps, origin=self.origin, margin=self.margin, logger=self.__logger)
       self.__logger.debug("done reading")
       x1 = self.x()
       T1 = self.T
       x2 = readback.x()
       T2 = readback.T
+      print(self.fields[0].pxvec)
+      print(readback.fields[0].pxvec)
       self.__logger.debug("comparing nominals")
       units.np.testing.assert_allclose(units.nominal_values(x1), units.nominal_values(x2), atol=atol, rtol=rtol)
       units.np.testing.assert_allclose(units.nominal_values(T1), units.nominal_values(T2), atol=atol, rtol=rtol)
@@ -825,8 +829,8 @@ class ReadStitchResult(StitchResultOverlapCovariances):
   """
   Stitch result that reads from csvs
   """
-  def __init__(self, *args, rectangles, overlaps, origin, logger=dummylogger, **kwargs):
-    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, fieldoverlaps=None, origin=origin, logger=logger)
+  def __init__(self, *args, rectangles, overlaps, origin, margin, logger=dummylogger, **kwargs):
+    super().__init__(rectangles=rectangles, overlaps=overlaps, x=None, T=None, fieldoverlaps=None, origin=origin, margin=margin, logger=logger)
     self.readtables(*args, **kwargs)
 
 class CalculatedStitchResult(StitchResultFullCovariance):

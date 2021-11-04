@@ -33,12 +33,12 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
       for csv in ("MergeConfig", "BatchID")
-      for s in self.sampledefs
+      for s in self.sampledefs()
     }
     otherbatchcsvs = {
       self.root/"Batch"/f"{csv}_{BatchID:02d}.csv"
       for csv in ("MergeConfig", "BatchID")
-      for BatchID in range(1, max(s.BatchID for s in self.sampledefs)+1)
+      for BatchID in range(1, max(s.BatchID for s in self.sampledefs())+1)
     } - batchcsvs
 
     CSfoldername = self.root.name
@@ -175,15 +175,14 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     }
 
   def workflowdependencies(self):
-    return [(CsvScanSample, sampledef.SlideID) for sampledef in self.sampledefs if sampledef]
+    return [(CsvScanSample, sampledef.SlideID) for sampledef in self.sampledefs() if sampledef]
 
 class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, RunCsvScanBase):
   sampleclass = CsvScanSample
   __doc__ = sampleclass.__doc__
 
-  @property
-  def samples(self):
-    yield from super().samples
+  def samples(self, **kwargs):
+    yield from super().samples(**kwargs)
     yield self.globalcsv()
 
   def runsample(self, sample, **kwargs):

@@ -1,6 +1,7 @@
 import abc, contextlib, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.rectangle import MaskRectangle
+from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...shared.image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import im3writeraw
@@ -8,11 +9,11 @@ from ...utilities.misc import floattoint
 from ...utilities.config import CONST as UNIV_CONST
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiff
-from ..zoom.zoomsample import ZoomSampleBase
+from ..zoom.zoomsamplebase import ZoomSampleBase
 
 class MaskField(Field, MaskRectangle): pass
 
-class MaskSample(MaskSampleBase):
+class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
@@ -83,24 +84,24 @@ class TissueMaskSample(MaskSample):
     super().__init__(*args, **kwargs)
     self.__using_tissuemask_count = 0
 
-  @classmethod
   @abc.abstractmethod
-  def tissuemask(cls, mask):
+  def tissuemask(self, mask):
     """
     Get the tissue mask from the main mask
     """
 
   @contextlib.contextmanager
   def using_tissuemask(self):
-    if self.__using_tissuemask_count == 0:
-      self.__tissuemask = self.tissuemask(self.readmask())
-    self.__using_tissuemask_count += 1
-    try:
-      yield self.__tissuemask
-    finally:
-      self.__using_tissuemask_count -= 1
+    with contextlib.ExitStack() as stack:
       if self.__using_tissuemask_count == 0:
-        del self.__tissuemask
+        self.__tissuemask = self.tissuemask(stack.enter_context(self.using_mask()))
+      self.__using_tissuemask_count += 1
+      try:
+        yield self.__tissuemask
+      finally:
+        self.__using_tissuemask_count -= 1
+        if self.__using_tissuemask_count == 0:
+          del self.__tissuemask
 
 class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
   """
@@ -142,9 +143,8 @@ class InformMaskSample(TissueMaskSample):
   """
   @classmethod
   def maskfilestem(cls): return "inform_mask"
-  @classmethod
-  def tissuemask(cls, mask):
-    return mask != 2
+  def tissuemask(self, mask):
+    return mask < self.nsegmentations
 
 class AstroPathTissueMaskSample(TissueMaskSample):
   """
@@ -154,11 +154,10 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   """
   @classmethod
   def maskfilestem(cls): return "tissue_mask"
-  @classmethod
-  def tissuemask(cls, mask):
-    return mask
+  def tissuemask(self, mask):
+    return mask.astype(bool)
 
-class StitchMaskSample(WriteMaskSampleBase, ZoomSampleBase):
+class StitchMaskSample(WriteMaskSampleBase):
   """
   Base class for stitching the global mask together from the individual HPF masks
   """
@@ -262,7 +261,7 @@ class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadComponentTiff
     return result
 
   @property
-  def backgroundvalue(self): return 2
+  def backgroundvalue(self): return self.nsegmentations
   def getHPFmask(self, field):
     with field.using_image() as im:
       return im

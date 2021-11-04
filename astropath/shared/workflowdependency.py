@@ -54,6 +54,10 @@ class WorkflowDependency(ThingWithRoots):
 
   @classmethod
   @abc.abstractmethod
+  def logmodule(cls):
+    "name of the log files for this class (e.g. align)"
+  @classmethod
+  @abc.abstractmethod
   def logstartregex(cls): pass
   @classmethod
   @abc.abstractmethod
@@ -105,10 +109,6 @@ class WorkflowDependencySlideID(WorkflowDependency):
       "SlideID": self.SlideID,
     }
 
-  @classmethod
-  @abc.abstractmethod
-  def logmodule(cls): pass
-
   @property
   @abc.abstractmethod
   def SlideID(self): pass
@@ -153,7 +153,8 @@ class SampleRunStatus:
   previousrun: SampleRunStatus for the previous run of this sample, if any
   missingfiles: files that are supposed to be in the output, but are missing
   """
-  def __init__(self, started, ended, error=None, previousrun=None, missingfiles=()):
+  def __init__(self, *, module, started, ended, error=None, previousrun=None, missingfiles=()):
+    self.module = module
     self.started = started
     self.ended = ended
     self.error = error
@@ -191,7 +192,7 @@ class SampleRunStatus:
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:
-        return cls(started=None, ended=None, missingfiles=missingfiles)
+        return cls(started=None, ended=None, missingfiles=missingfiles, module=module)
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
@@ -213,9 +214,9 @@ class SampleRunStatus:
               error = row["message"]
           elif re.match(endregex, row["message"]):
             ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
-            result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
+            result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module)
     if result is None:
-      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles)
+      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module)
     return result
 
   def __str__(self):

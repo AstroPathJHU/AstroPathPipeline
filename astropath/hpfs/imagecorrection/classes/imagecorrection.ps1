@@ -88,34 +88,29 @@ Class imagecorrection : moduletools {
         #
         $this.sample.info("cleanup started")
         # xml files
-        $sor = $this.processvars[1] +'\'+$this.sample.slideid
-        $des = $this.sample.xmlfolder()
-        robocopy $sor $des *.xml -r:3 -w:3 -np -mt:30 |out-null
-        robocopy $sor $des *log -r:3 -w:3 -np -mt:1 |out-null
-        gci ($sor+'\*') -include '*.xml' | Remove-Item -force
         #
         if ($this.processvars[4]){
             # im3s
             $sor = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\flatw'
             $des = $this.sample.flatwim3folder()
-            robocopy $sor $des *im3 -r:3 -w:3 -np -mt:30 |out-null
+            $this.sample.copy($sor, $des, '.im3', 30)
             if(!(((gci ($sor+'\*') -Include '*im3').Count) -eq ((gci ($des+'\*') -Include '*.im3').Count))){
                 Throw 'im3s did not upload correctly'
             }
-            robocopy $sor $des *log -r:3 -w:3 -np -mt:1 |out-null
+            $this.sample.copy($sor, $des, '.log')
             # fw files
             $sor = $this.processvars[1] +'\'+$this.sample.slideid
             $des = $this.sample.flatwfolder()
-            robocopy $sor $des *.fw -r:3 -w:3 -np -mt:30 |out-null
+            $this.sample.copy($sor, $des, '.fw', 30)
             if(!(((gci ($sor+'\*') -Include '*.fw').Count) -eq ((gci ($des+'\*') -Include '*.fw').Count))){
                 Throw 'fws did not upload correctly'
             }
             # fw01 files
-            robocopy $sor $des *.fw01 -r:3 -w:3 -np -mt:30 |out-null
+            $this.sample.copy($sor, $des, '.fw01', 30)
             if(!(((gci ($sor+'\*') -Include '*.fw01').Count) -eq ((gci ($des+'\*') -Include '*.fw01').Count))){
                 Throw 'fws did not upload correctly'
             }
-            robocopy $sor $des *log -r:3 -w:3 -np -mt:1 |out-null
+            $this.sample.copy($sor, $des, '.log')
             #
             Get-ChildItem -Path $this.processloc -Recurse | Remove-Item -force -recurse
             remove-item $this.processloc -force

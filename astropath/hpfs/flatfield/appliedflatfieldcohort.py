@@ -97,7 +97,7 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
         self.__skip_masking = skip_masking
         self.__image_set_split = image_set_split
         #figure out the image dimensions to give to the flatfield and corrected mean image
-        for sample in self.samples :
+        for sample in self.samples() :
             if len(sample.rectangles)>0 :
                 image_dimensions = sample.rectangles[0].imageshapeinoutput
                 break

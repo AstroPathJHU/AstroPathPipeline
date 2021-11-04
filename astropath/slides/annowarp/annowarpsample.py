@@ -23,8 +23,13 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     super().__init__(*args, **kwargs)
 
     self.__nentered = 0
-    self.__using_qptiff_context = self.enter_context(contextlib.ExitStack())
+    self.__using_qptiff_context = None
     self.__qptiff = None
+
+  def __enter__(self):
+    result = super().__enter__()
+    self.__using_qptiff_context = self.enter_context(contextlib.ExitStack())
+    return result
 
   @contextlib.contextmanager
   def using_qptiff(self):
@@ -51,63 +56,14 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
   @property
   def __imageinfo(self):
     """
-    Get the image info from the wsi and qptiff
-    (various scales and the x and y position)
+    Get the x and y position from the qptiff
     """
     with self.using_qptiff() as fqptiff:
-      zoomlevel = fqptiff.zoomlevels[0]
-      apscale = zoomlevel.qpscale
-      ipscale = self.pscale / apscale
-      ppscale = floattoint(np.round(float(ipscale)))
-      iqscale = ipscale / ppscale
-      imscales = {apscale * iqscale, self.pscale / ppscale}
-      imscale, = imscales
       return {
-        "apscale": apscale,
-        "ipscale": ipscale,
-        "ppscale": ppscale,
-        "iqscale": iqscale,
-        "imscale": imscale,
         "xposition": fqptiff.xposition,
         "yposition": fqptiff.yposition,
       }
 
-  @property
-  def apscale(self):
-    """
-    The pixels/micron scale of the qptiff image
-    """
-    return self.__imageinfo["apscale"]
-  @property
-  def ipscale(self):
-    """
-    The ratio of pixels/micron scales of the im3 and qptiff images
-    """
-    return self.__imageinfo["ipscale"]
-  @property
-  def ppscale(self):
-    """
-    The ratio of pixels/micron scales of the im3 and qptiff images,
-    rounded to an integer
-    """
-    return self.__imageinfo["ppscale"]
-  @property
-  def iqscale(self):
-    """
-    The ratio of ipscale and ppscale, i.e. the remaining non-integer
-    part of the ratio of pixels/micron scales of the im3 and qptiff
-    images
-    """
-    return self.__imageinfo["iqscale"]
-  @property
-  def imscale(self):
-    """
-    The scale used for alignment: the wsi is scaled by ppscale,
-    which is the integer that brings it closest to the qptiff's
-    scale, and the qptiff is scaled by whatever 1.00x is needed
-    to bring it to the same scale.
-    """
-    return self.__imageinfo["imscale"]
   @property
   def xposition(self):
     """
@@ -120,6 +76,41 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     y position of the qptiff image
     """
     return self.__imageinfo["yposition"]
+
+class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
+    self.__nentered = 0
+    self.__using_wsi_context = None
+    self.__wsi = None
+
+  def __enter__(self):
+    result = super().__enter__()
+    self.__using_wsi_context = self.enter_context(contextlib.ExitStack())
+    return result
+
+  @contextlib.contextmanager
+  def using_wsi(self, layer):
+    """
+    Context manager for opening the wsi
+    """
+    if self.__nentered == 0:
+      #if it's not currently open
+      #disable PIL's warning when opening big images
+      self.__using_wsi_context.enter_context(self.PILmaximagepixels())
+      #open the wsi
+      self.__wsi = self.__using_wsi_context.enter_context(PIL.Image.open(self.wsifilename(layer=layer)))
+    self.__nentered += 1
+    try:
+      yield self.__wsi
+    finally:
+      self.__nentered -= 1
+      if self.__nentered == 0:
+        #if we don't have any other copies of this context manager going,
+        #close the wsi and free the memory
+        self.__wsi = None
+        self.__using_wsi_context.close()
 
 class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
   defaulttilepixels = 100
@@ -152,7 +143,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, WorkflowSample, XMLPolygonReader, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonReader, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -184,10 +175,6 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
 
-    self.__nentered = 0
-    self.__using_images_context = self.enter_context(contextlib.ExitStack())
-    self.__wsi = self.__qptiff = None
-
     self.__images = None
 
   @contextlib.contextmanager
@@ -195,23 +182,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     """
     Context manager for opening the wsi and qptiff images
     """
-    if self.__nentered == 0:
-      #if they're not currently open
-      #disable PIL's warning when opening big images
-      self.__using_images_context.enter_context(self.PILmaximagepixels())
-      #open the images
-      self.__wsi = self.__using_images_context.enter_context(PIL.Image.open(self.wsifilename(layer=self.wsilayer)))
-      self.__qptiff = self.__using_images_context.enter_context(self.using_qptiff())
-    self.__nentered += 1
-    try:
-      yield self.__wsi, self.__qptiff
-    finally:
-      self.__nentered -= 1
-      if self.__nentered == 0:
-        #if we don't have any other copies of this context manager going,
-        #close the images and free the memory
-        self.__wsi = self.__qptiff = None
-        self.__using_images_context.close()
+    with self.using_wsi(layer=self.wsilayer) as wsi, self.using_qptiff() as qptiff:
+      yield wsi, qptiff
 
   @property
   def tilesize(self):
@@ -297,8 +269,8 @@ class AnnoWarpSampleBase(QPTiffSample, ZoomFolderSampleBase, ZoomSampleBase, Wor
     qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//zoomfactor))
     firstresult = computeshift((qptiffzoom, wsizoom), usemaxmovementcut=False)
 
-    initialdx = floattoint(float(np.rint(firstresult.dx.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel)), rtol=1e-4)
-    initialdy = floattoint(float(np.rint(firstresult.dy.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel)), rtol=1e-4)
+    initialdx = floattoint(float(np.rint(firstresult.dx.n * zoomfactor / (self.tilesize/self.oneimpixel)) * np.rint(self.tilesize/self.oneimpixel)), rtol=1e-4)
+    initialdy = floattoint(float(np.rint(firstresult.dy.n * zoomfactor / (self.tilesize/self.oneimpixel)) * np.rint(self.tilesize/self.oneimpixel)), rtol=1e-4)
 
     if initialdx or initialdy:
       self.logger.warningglobal(f"found a relative shift of {firstresult.dx*zoomfactor, firstresult.dy*zoomfactor} pixels between the qptiff and wsi")
@@ -1113,17 +1085,20 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
-    if dxvec is not None:
-      kwargs["dx"] = dxvec[0].n
-      kwargs["dy"] = dxvec[1].n
-      kwargs["covariance"] = covariance_matrix(dxvec)
+    morekwargs = {}
 
-    covariancematrix = kwargs.pop("covariance", None)
+    if dxvec is not None:
+      morekwargs["dx"] = dxvec[0].n
+      morekwargs["dy"] = dxvec[1].n
+      covariancematrix = covariance_matrix(dxvec)
+    else:
+      covariancematrix = kwargs.pop("covariance", None)
+
     if covariancematrix is not None:
       units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
-      (kwargs["covxx"], kwargs["covxy"]), (kwargs["covxy"], kwargs["covyy"]) = covariancematrix
+      (morekwargs["covxx"], morekwargs["covxy"]), (morekwargs["covxy"], morekwargs["covyy"]) = covariancematrix
 
-    return super().transforminitargs(*args, **kwargs)
+    return super().transforminitargs(*args, **kwargs, **morekwargs)
 
   def __post_init__(self, tilesize, bigtilesize, bigtileoffset, exception=None, imageshandle=None, *args, **kwargs):
     self.use_gpu = False
@@ -1169,7 +1144,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     the index of the tile in [x, y]
     """
-    return floattoint((self.xvec / self.tilesize).astype(float), rtol=.1)
+    return floattoint((self.xvec / self.tilesize).astype(float), atol=.1)
 
   @property
   def unshifted(self):

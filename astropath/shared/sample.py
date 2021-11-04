@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, datetime, fractions, functools, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
+import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
 
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
@@ -11,7 +11,7 @@ from ..utilities.config import CONST as UNIV_CONST
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
-from .csvclasses import constantsdict, ExposureTime, MergeConfig, RectangleFile
+from .csvclasses import constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
@@ -46,9 +46,13 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots, skipstartfinish=skipstartfinish)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
-    self.__logonenter = []
-    self.__entered = False
+    self.__nentered = 0
     super().__init__()
+
+    if not self.scanfolder.exists():
+      raise OSError(f"{self.scanfolder} does not exist")
+    if not self.scanfolder.is_dir():
+      raise OSError(f"{self.scanfolder} is not a directory")
 
   @property
   def root(self): return self.__root
@@ -82,9 +86,6 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
   @property
   def isGood(self): return self.samp.isGood
   def __bool__(self): return bool(self.samp)
-
-  def __str__(self):
-    return str(self.mainfolder)
 
   @property
   def mainfolder(self):
@@ -335,8 +336,6 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
         warnfunction = self.logger.warningglobal
 
     if warnfunction is not None:
-      if not self.logger.nentered:
-        warnfunction = functools.partial(self._logonenter, warnfunction=warnfunction)
       fmt = "{:30} {:30} {:30} {:30}"
       warninglines = [
         "Found inconsistent image infos from different sources:",
@@ -383,13 +382,6 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
   @property
   def nsegmentations(self):
     return len(self.segmentationids)
-
-  def _logonenter(self, warning, warnfunction):
-    """
-    Puts the function and warning into a queue to be logged
-    when we enter the with statement.
-    """
-    self.__logonenter.append((warnfunction, warning))
 
   @property
   def samplelog(self):
@@ -454,21 +446,18 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     return self.getXMLplan()[3]
 
   def __enter__(self):
-    self.__entered = True
+    self.__nentered += 1
     self.enter_context(self.logger)
-    for warnfunction, warning in self.__logonenter:
-      warnfunction(warning)
     return super().__enter__()
 
-  #def enter_context(self, *args, **kwargs):
-  #  if not self.__entered:
-  #    raise ValueError(f"Have to use {self} in a with statement if you want to enter_context")
-  #  return super().enter_context(*args, **kwargs)
+  def __exit__(self, *exc):
+    self.__nentered -= 1
+    return super().__exit__(*exc)
 
-  @classmethod
-  @abc.abstractmethod
-  def logmodule(cls):
-    "name of the log files for this class (e.g. align)"
+  def enter_context(self, *args, **kwargs):
+    if not self.__nentered:
+      raise ValueError(f"Have to use {self} in a with statement if you want to enter_context")
+    return super().enter_context(*args, **kwargs)
 
   @classmethod
   def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} v[0-9a-f.devgd+]+$"
@@ -508,6 +497,29 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
   @abc.abstractmethod
   def run(self, **kwargs):
     "actually run whatever is supposed to be run on the sample"
+
+  @property
+  def clinicalfolder(self): return self.root/"Clinical"
+  @methodtools.lru_cache()
+  @property
+  def clinicalinfo(self, *, filenamepattern="*.csv"):
+    results = []
+    for filename in self.clinicalfolder.glob(filenamepattern):
+      ClinicalInfo = MakeClinicalInfo(filename)
+      clinicalinfos = readtable(filename, ClinicalInfo)
+      for c in clinicalinfos:
+        if c.SlideID == self.SlideID:
+          results.append(c)
+    try:
+      result, = results
+    except ValueError:
+      if not results:
+        raise ValueError(f"Didn't find clinical info for {self.SlideID}")
+      raise ValueError("Found multiple clinical infos:\n"+"\n".join(str(_) for _ in results))
+    return result
+  @property
+  def REDCapID(self):
+    return self.clinicalinfo.REDCapID
 
 class WorkflowSample(SampleBase, WorkflowDependencySlideID):
   """
@@ -650,6 +662,13 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     Pixels/micron of the first qptiff layer
     """
     return self.constantsdict["apscale"]
+  @property
+  def margin(self):
+    """
+    Margin to add outside the image area in the wsi
+    Default 0 for backwards compatibility
+    """
+    return self.constantsdict.get("margin", 0)
 
 class MaskSampleBase(SampleBase, MaskArgumentParser):
   """
@@ -881,7 +900,6 @@ class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgume
     self.__initedrectangles = False
 
   def initrectangles(self):
-    self.enter_context(self.logger)
     self.__initedrectangles = True
     self.__rectangles  = self.readallrectangles()
     self.__rectangles = [r for r in self.rectangles if self.__rectanglefilter(r)]
@@ -1178,13 +1196,13 @@ class XMLLayoutReader(SampleBase):
         if self.__checkim3s:
           raise FileNotFoundError(errormessage)
         else:
-          self.logger.warningglobal(errormessage)
+          self.logger.warningglobalonenter(errormessage)
         rectangles.remove(r)
       else:
         rf = rfs.pop()
         maxtimediff = max(maxtimediff, abs(rf.t-r.t))
     if maxtimediff >= datetime.timedelta(seconds=5):
-      self.logger.warning(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
+      self.logger.warningonenter(f"Biggest time difference between annotation and file mtime is {maxtimediff}")
     rectangles.sort(key=lambda x: x.t)
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
@@ -1203,7 +1221,7 @@ class XMLLayoutReader(SampleBase):
           rectangle.file = rectangle.file.replace("_M2", "")
         for d in duplicates:
           rectangles.remove(d)
-        self.logger.warningglobal(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
+        self.logger.warningglobalonenter(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
 
@@ -1417,7 +1435,6 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     """
     Init Rectangles with additional transformations for corrections that will be applied
     """
-    self.enter_context(self.logger)
     super().initrectangles()
     #find the median exposure time
     slide_exp_times = np.zeros(shape=(len(self.rectangles)))
@@ -1507,7 +1524,6 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     """
     Init Rectangles with additional transformations for corrections that will be applied
     """
-    self.enter_context(self.logger)
     super().initrectangles()
     #find the median exposure times
     slide_exp_times = np.zeros(shape=(len(self.rectangles),self.nlayers)) 
@@ -1523,7 +1539,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     if self.flatfield_file is not None :
       #read the flatfield correction factors from the file
       flatfield = get_raw_as_hwl(self.flatfield_file,*(self.rectangles[0].imageshapeinoutput),np.float64)
-      self.logger.info(f'Flatfield corrections will be applied from {self.flatfield_file}')
+      self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
       for r in self.rectangles :
         r.add_flatfield_correction_transformation(flatfield)
     if self.warping_file is not None :
@@ -1535,7 +1551,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     """
     Read in the offset factors for exposure time corrections from the file defined by command line args
     """
-    self.logger.info(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
+    self.logger.infoonenter(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
     #read the offset from the Full.xml file
     if self.et_offset_file==self.fullxmlfile :
       tree = ET.parse(self.et_offset_file)
@@ -1561,7 +1577,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
           elif len(this_layer_offset)==0 :
               warnmsg = f'WARNING: LayerOffset file {self.et_offset_file} does not have an entry for layer {ln}'
               warnmsg+=  ', so that offset will be set to zero!'
-              self.logger.warning(warnmsg)
+              self.logger.warningonenter(warnmsg)
               offsets_to_return.append(0)
           else :
               raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.et_offset_file} for layer {ln}!')

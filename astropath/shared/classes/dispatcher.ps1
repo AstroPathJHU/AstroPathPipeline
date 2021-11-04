@@ -1,35 +1,31 @@
 ﻿##
 # launch a queue for a provide module with a provided mpath and credentials
-
+#
 class Dispatcher : queue{
     #
     [switch]$new
     [array]$running
     [array]$workers
-    [string]$coderoot
     [PSCredential]$cred
     [string]$workerloglocation = '\\'+$env:ComputerName+'\c$\users\public\astropath\'
     #
     Dispatcher($mpath, $module, $cred):base($mpath, $module){
         #
-        $this.cred = $cred
-        $this.defCodeRoot()
+        $this.init($cred)
         $this.Run()
         #
     }
     #
     Dispatcher($mpath, $module, $project, $cred):base($mpath, $module, $project){
         #
-        $this.cred = $cred
-        $this.defCodeRoot()
+        $this.init($cred)
         $this.Run()
         #
     }
     #
     Dispatcher($mpath, $module, $project, $slideid, $cred):base($mpath, $module, $project, $slideid){
         #
-        $this.cred = $cred
-        $this.defCodeRoot()
+        $this.init($cred)
         $this.Run()
         #
     }
@@ -37,7 +33,6 @@ class Dispatcher : queue{
     [void]Run(){
         #
         while(1){
-            $this.ExtractQueue()
             $this.checknew()
             $this.InitializeWorkerlist()
             $this.GetRunningJobs()
@@ -47,29 +42,42 @@ class Dispatcher : queue{
         }
         #
     }
-    [void]defCodeRoot(){
-        #
-        if ($PSScriptRoot[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$PSScriptRoot) -replace ":", "$"
-        } else{
-            $root = $PSScriptRoot -replace ":", "$"
-        }
-        #
-        $folder = $root -Split('\\astropath\\')
-        $this.coderoot = $folder[0]     
+    #
+    # initialize the code
+    #
+    [void]init($cred){
+        $this.cred = $cred
+        Write-Host "Starting the AstroPath Pipeline" -ForegroundColor Yellow
+        Write-Host ("Module: " + $this.module) -ForegroundColor Yellow
+        Write-Host ("Username: " + $this.cred.UserName) -ForegroundColor Yellow
+        $this.defCodeRoot()
+        $this.initepy()
     }
-
+    #
+    # initializing the python environment
+    # upgrade python package if needed.
+    #
+    [void]initepy(){
+        Write-Host "Initializing\updating the conda environment" -ForegroundColor Yellow
+        $this.checkconda()
+        $this.checkpyapenvir('U')
+    }
     #
     # checks for new tasks to process
     #
     [void]CheckNew(){
         #
-        while (!($this.cleanedtasks)){
-            Write-Host "No new samples to process." -ForegroundColor Yellow
-            Start-Sleep -s (10 * 60)
+        while (1){
             $this.ExtractQueue()
-            $this.CheckCompletedWorkers()
+            if (!($this.cleanedtasks)){
+                Write-Host "No new samples to process." -ForegroundColor Yellow
+                Start-Sleep -s (10 * 60)
+            } else {
+                break
+            }
         }
+        #
+        $this.CheckCompletedWorkers()
         #
     }
     #
@@ -84,7 +92,7 @@ class Dispatcher : queue{
         
         #
         Write-Host "." -ForegroundColor Yellow
-        Write-Host "Starting" $this.module"-Task-Distribution" -ForegroundColor Yellow
+        Write-Host " Starting-Task-Distribution" -ForegroundColor Yellow
         write-host " Current Computers for Processing:" -ForegroundColor Yellow
         write-host " " ($this.workers | 
                         Format-Table  @{Name="module";Expression = { $_.module }; Alignment="center" },
@@ -145,7 +153,7 @@ class Dispatcher : queue{
             $myscriptblock = {
                 param($username, $password, $currentworkerip, $workertaskfile)
                 psexec -nobanner -accepteula -u $username -p $password \\$currentworkerip `
-                    powershell -noprofile -executionpolicy bypass -command "$workertaskfile" 
+                    powershell -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" 
             }
         }
         #
@@ -176,6 +184,10 @@ class Dispatcher : queue{
     #
     [string]PrepareWorkerFiles($currenttask, $jobname, $currentworker){
         #
+        if (!(test-path $this.workerloglocation)){
+            new-item $this.workerloglocation -itemtype "directory" -EA STOP | Out-NULL
+        }
+        #
         $workertaskfile = $this.workerloglocation+$jobname+'-taskfile.ps1'
         $workerlogfile = $this.workerloglocation+$jobname+'.log'
         #
@@ -205,7 +217,7 @@ class Dispatcher : queue{
     }
     #
     [void]CheckCompletedWorkers(){
-         #
+        #
         $donejobs = Get-Job | Where-Object { $_.State -eq 'Completed'  -and $_.Name -match $this.module}
         if ($donejobs){
             $donejobs | Remove-Job

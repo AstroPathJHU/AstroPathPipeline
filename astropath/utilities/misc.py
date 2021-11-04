@@ -1,4 +1,4 @@
-import collections, contextlib, csv, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc
+import collections, contextlib, csv, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc, uncertainties.umath as umath
 import reikna as rk
 if sys.platform != "cygwin": import psutil
 
@@ -403,6 +403,11 @@ def mountedpath(filename):
   else:
     return guesspathtype(filename)
 
+def sorted_eig(*args, **kwargs):
+  val, vec = np.linalg.eig(*args, **kwargs)
+  order = np.argsort(val)[::-1]
+  return val[order], vec[:,order]
+
 def get_GPU_thread(interactive) :
   """
   Create and return a Reikna Thread object to use for running some computations on the GPU
@@ -479,3 +484,33 @@ def array_to_vips_image(array):
     height=height,
     bands=bands,
   )
+
+def vips_sinh(image):
+  try:
+    #https://github.com/libvips/pyvips/pull/282
+    return image.sinh()
+  except AttributeError:
+    exp = image.exp()
+    minusexp = 1/exp
+    return (exp - minusexp) / 2
+
+def affinetransformation(scale=None, rotation=None, shear=None, translation=None):
+  """
+  https://github.com/scikit-image/scikit-image/blob/f0fcdc8d73c20d741e31e5d57efad1a38426f7fd/skimage/transform/_geometric.py#L876-L880
+  """
+  if scale is None: scale = 1
+  if np.isscalar(scale): scale = scale, scale
+  sx, sy = scale
+
+  if rotation is None: rotation = 0
+  if shear is None: shear = 0
+
+  if translation is None: translation = 0
+  if np.isscalar(translation): translation = translation, translation
+  tx, ty = translation
+
+  return np.array([
+    [sx * umath.cos(rotation), -sy * umath.sin(rotation + shear), tx],
+    [sx * umath.sin(rotation),  sy * umath.cos(rotation + shear), ty],
+    [                       0,                                 0, 1],
+  ])

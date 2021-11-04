@@ -86,7 +86,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         with self.globallogger() as logger:
             #start up the flatfield after figuring out its dimensions
             for cohort in self.cohorts :
-                for sample in cohort.filteredsamples :
+                for sample in cohort.filteredsamples() :
                     dims = get_image_hwl_from_xml_file(sample.root,sample.SlideID)
                     if image_dimensions is None :
                         image_dimensions = dims
