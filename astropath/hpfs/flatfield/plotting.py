@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib.patches import Rectangle
 from ...shared.image_masking.config import CONST as MASKING_CONST
-from ...utilities.tableio import readtable
-from ...utilities.misc import save_figure_in_dir
+from ...shared.logging import printlogger
 from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.misc import save_figure_in_dir
+from ...utilities.tableio import readtable
 from .utilities import RectangleThresholdTableEntry
 
 def plot_tissue_edge_rectangle_locations(all_rects,edge_rects,root_dir,slideID,save_dirpath=None) :
@@ -348,7 +349,7 @@ def flatfield_image_pixel_intensity_plot(flatfield_image,version=None,save_dirpa
     fn+='_pixel_intensities.png'
     save_figure_in_dir(plt,fn,save_dirpath)
 
-def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None) :
+def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None,logger=None) :
     """
     Plot the max/min, 5th/95th %ile, and std. dev. of a mask stack's number of images stacked by layer 
     in the whole image and in the central region of the image only
@@ -356,6 +357,7 @@ def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None) :
     mask_stack = the mask stack to plot
     save_dirpath = path to directory to save the plots in (if None the plot is saved in the current directory)
     """
+    if logger is None: logger = printlogger("flatfieldplots")
     nlayers=mask_stack.shape[-1]
     if nlayers==35 :
         last_filter_layers = [lg[1] for lg in UNIV_CONST.LAYER_GROUPS_35[:-1]] 
@@ -424,10 +426,10 @@ def mask_stack_whole_image_vs_central_region(mask_stack,save_dirpath=None) :
     save_figure_in_dir(plt,'mask_stack_whole_image_vs_central_region.png',save_dirpath)
     u_hi_lo_spread = [u_highs[li]-u_lows[li] for li in range(nlayers)]
     c_hi_lo_spread = [c_highs[li]-c_lows[li] for li in range(nlayers)]
-    print(f'Mean whole image 5th-95th %ile = {np.mean(np.array(u_hi_lo_spread))}')
-    print(f'Mean central 64% 5th-95th %ile = {np.mean(np.array(c_hi_lo_spread))}')
-    print(f'Mean whole image std. dev. = {np.mean(np.array(u_std_devs))}')
-    print(f'Mean central 64% std. dev. = {np.mean(np.array(c_std_devs))}')
+    logger.info(f'Mean whole image 5th-95th %ile = {np.mean(np.array(u_hi_lo_spread))}')
+    logger.info(f'Mean central 64% 5th-95th %ile = {np.mean(np.array(c_hi_lo_spread))}')
+    logger.info(f'Mean whole image std. dev. = {np.mean(np.array(u_std_devs))}')
+    logger.info(f'Mean central 64% std. dev. = {np.mean(np.array(c_std_devs))}')
 
 def corrected_mean_image_PI_and_IV_plots(smoothed_mean_image,smoothed_corrected_mean_image,central_region=False,
                                          save_dirpath=None) :

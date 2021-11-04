@@ -2,6 +2,7 @@ import cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib, skimage
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
+from astropath.shared.logging import printlogger
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
@@ -39,6 +40,7 @@ class TestMisc(TestBaseSaveOutput):
       self.testRectangleOverlapList()
 
   def testPolygonAreas(self, seed=None):
+    logger = printlogger("polygonareas")
     p = PolygonFromGdal(pixels="POLYGON ((1 1,2 1,2 2,1 2,1 1))", pscale=5, apscale=3)
     assertAlmostEqual(p.area, p.onepixel**2, rtol=1e-15)
     assertAlmostEqual(p.perimeter, 4*p.onepixel, rtol=1e-15)
@@ -76,7 +78,7 @@ class TestMisc(TestBaseSaveOutput):
           str(p.gdalpolygon(round=True)),
         )
     except:
-      print(xysx2)
+      logger.error(xysx2)
       raise
 
   def testPolygonAreasFastUnitsPixels(self):

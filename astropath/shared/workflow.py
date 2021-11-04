@@ -36,7 +36,6 @@ class Workflow(RunFromArgumentParserBase):
   def runfromparsedargs(cls, parsed_args):
     for cohort in cls.cohorts:
       p = cohort.makeargumentparser(_forworkflow=True)
-      print(cohort)
       cohort.runfromparsedargs(
         argparse.Namespace(**{
           k: v for k, v in parsed_args.__dict__.items()

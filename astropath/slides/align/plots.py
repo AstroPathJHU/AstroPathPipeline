@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-import logging, matplotlib.cm, matplotlib.collections, matplotlib.colors, matplotlib.patches, matplotlib.pyplot as plt, more_itertools, mpl_toolkits.axes_grid1, networkx as nx, numpy as np, uncertainties.unumpy as unp
+import matplotlib.cm, matplotlib.collections, matplotlib.colors, matplotlib.patches, matplotlib.pyplot as plt, more_itertools, mpl_toolkits.axes_grid1, networkx as nx, numpy as np, uncertainties.unumpy as unp
+from ...shared.logging import dummylogger
 from ...utilities import units
 from ...utilities.misc import floattoint, pullhist
-
-logger = logging.getLogger("alignmentplots")
 
 def rectanglelayout(alignsample, *, xrange=None, yrange=None, primaryarea=True, figurekwargs={}, showplot=None, saveas=None):
   fig = plt.figure(**figurekwargs)
@@ -71,7 +70,8 @@ def rectanglelayout(alignsample, *, xrange=None, yrange=None, primaryarea=True, 
     plt.close()
 
 def plotpairwisealignments(alignsample, *, stitched=False, tags=[1, 2, 3, 4, 6, 7, 8, 9], plotstyling=lambda fig, ax: None, errorbars=True, saveas=None, showplot=None, figurekwargs={}, pull=False, pixelsormicrons=None, pullkwargs={}, pullbinning=None):
-  logger.debug(alignsample.samp)
+  logger = alignsample.printlogger
+  logger.debug("pairwise alignments")
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
 
@@ -139,7 +139,8 @@ def plotpairwisealignments(alignsample, *, stitched=False, tags=[1, 2, 3, 4, 6, 
   return vectors
 
 def closedlooppulls(alignsample, *, tagsequence, binning=np.linspace(-5, 5, 51), quantileforstats=1, verbose=True, stitchresult=None, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax: None):
-  logger.debug(alignsample.samp)
+  logger = alignsample.printlogger
+  logger.debug("closed loop pulls")
   dct = {
     1: (-1, -1),
     2: ( 0, -1),
@@ -182,10 +183,10 @@ def closedlooppulls(alignsample, *, tagsequence, binning=np.linspace(-5, 5, 51),
       dxs, dys = zip(*dxvecs)
 
       if verbose is True or verbose is not False and verbose(path, dxs, dys):
-        print(" --> ".join(f"{node:4d}" for node in path))
+        logger.info(" --> ".join(f"{node:4d}" for node in path))
         for nodepair, dx, dy in zip(more_itertools.pairwise(path), dxs, dys):
-          print(f"  {nodepair[0]:4d} --> {nodepair[1]:4d}: {dx:10} {dy:10}")
-        print(f"          total: {sum(dxs):10} {sum(dys):10}")
+          logger.info(f"  {nodepair[0]:4d} --> {nodepair[1]:4d}: {dx:10} {dy:10}")
+        logger.info(f"          total: {sum(dxs):10} {sum(dys):10}")
 
       totaldx = sum(dxs)
       totaldy = sum(dys)
@@ -193,18 +194,18 @@ def closedlooppulls(alignsample, *, tagsequence, binning=np.linspace(-5, 5, 51),
       yresiduals.append(totaldy)
 
   if verbose:
-    print()
-    print()
-    print()
+    logger.info("")
+    logger.info("")
+    logger.info("")
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
-  print("x pulls:")
-  pullhist(xresiduals, binning=binning, verbose=True, alpha=0.5, label="$x$ pulls", stdinlabel=True)
-  print()
-  print()
-  print()
-  print("y pulls:")
-  pullhist(yresiduals, binning=binning, verbose=True, alpha=0.5, label="$y$ pulls", stdinlabel=True)
+  logger.info("x pulls:")
+  pullhist(xresiduals, binning=binning, logger=logger if verbose else dummylogger, alpha=0.5, label="$x$ pulls", stdinlabel=True)
+  logger.info("")
+  logger.info("")
+  logger.info("")
+  logger.info("y pulls:")
+  pullhist(yresiduals, binning=binning, logger=logger, alpha=0.5, label="$y$ pulls", stdinlabel=True)
   plotstyling(fig=fig, ax=ax)
 
   if saveas is not None:
@@ -215,7 +216,8 @@ def closedlooppulls(alignsample, *, tagsequence, binning=np.linspace(-5, 5, 51),
   return xresiduals, yresiduals
 
 def shiftplot2D(alignsample, *, saveasx=None, saveasy=None, figurekwargs={}, plotstyling=lambda fig, ax, cbar, xory: None, island=None, showplot=None):
-  logger.debug(alignsample.samp)
+  logger = alignsample.printlogger
+  logger.debug("shift plot 2D")
   fields = alignsample.fields
   onepixel = alignsample.onepixel
   if island is not None:
@@ -265,6 +267,7 @@ def shiftplot2D(alignsample, *, saveasx=None, saveasy=None, figurekwargs={}, plo
 
 
 def shiftplotprofile(alignsample, *, deltaxory, vsxory, saveas=None, figurekwargs={}, plotstyling=lambda fig, ax, deltaxory, vsxory: None, drawfourier=False, guessparameters=None, plotsine=True, sinetext=True, **kwargs):
+  logger = alignsample.printlogger
   onepixel = alignsample.onepixel
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
@@ -397,7 +400,7 @@ def shiftplotprofile(alignsample, *, deltaxory, vsxory, saveas=None, figurekwarg
     )
     amplitude, kk, phase = units.correlated_distances(distances=p, covariance=cov)
   except (RuntimeError, np.linalg.LinAlgError):
-    print("fit failed")
+    logger.info("fit failed")
     amplitude = kk = phase = 0
     p = amplitude, kk, phase
     cov = np.diag([1, 1, 1])
@@ -411,27 +414,27 @@ def shiftplotprofile(alignsample, *, deltaxory, vsxory, saveas=None, figurekwarg
     phase *= -1
   p = amplitude, kk, phase
 
-  print("Average:")
-  print(f"  {mean}")
+  logger.info("Average:")
+  logger.info(f"  {mean}")
   try:
     o = alignsample.overlaps[0]
     expected = ((alignsample.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
   except AttributeError:
     pass
   else:
-    print(f"  (expected from T matrix: {expected})")
-  print("Sine wave:")
-  print(f"  amplitude: {amplitude}")
+    logger.info(f"  (expected from T matrix: {expected})")
+  logger.info("Sine wave:")
+  logger.info(f"  amplitude: {amplitude}")
   if abs(amplitude.n) > 5*amplitude.s and np.count_nonzero(abs(amplitude.n) > yerr) > len(yerr)/4:
     wavelength = 2*np.pi / kk
-    print(f"  wavelength: {wavelength}")
-    print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
+    logger.info(f"  wavelength: {wavelength}")
+    logger.info(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
   else:
-    print("  (not significant)")
+    logger.info("  (not significant)")
     plotsine = False
 
-  print("Remaining noise:")
-  print(f"  RMS     = {RMS}")
+  logger.info("Remaining noise:")
+  logger.info(f"  RMS     = {RMS}")
 
   oldylim = ax.get_ylim()
   plotstyling(fig=fig, ax=ax)
