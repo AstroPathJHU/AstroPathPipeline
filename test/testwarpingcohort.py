@@ -12,7 +12,7 @@ from .testbase import compare_two_csv_files, TestBaseSaveOutput
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
 root = folder/'data'
-shardedim3root = folder/'data'/'raw'
+shardedim3root = folder/'test_for_jenkins'/'warping_cohort'/'raw'
 slideID = 'M21_1'
 et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
 ff_file = folder/'data'/'reference'/'batchflatfieldcohort'/'flatfield_TEST.bin'
@@ -40,7 +40,7 @@ class TestWarpingCohort(TestBaseSaveOutput) :
         #put together a flatfield file from the individual example layer files
         ff_img = read_image_from_layer_files(ff_file,*(dims),dtype=np.float64)
         (root/UNIV_CONST.FLATFIELD_DIRNAME).mkdir(exist_ok=True,parents=True)
-        write_image_to_file(ff_img,root/UNIV_CONST.FLATFIELD_DIRNAME/ff_file.name)
+        write_image_to_file(ff_img,folder/'test_for_jenkins'/'warping_cohort'/ff_file.name)
         #move the example background thresholds file to the expected location
         existing_path = folder/'data'/'reference'/'meanimage'/f'{slideID}-background_thresholds.csv'
         new_path = folder/'data'/slideID/UNIV_CONST.IM3_DIR_NAME/'meanimage'/existing_path.name
@@ -87,7 +87,7 @@ class TestWarpingCohort(TestBaseSaveOutput) :
         args = [os.fspath(root),
                 '--shardedim3root',os.fspath(shardedim3root),
                 '--exposure-time-offset-file',os.fspath(et_offset_file),
-                '--flatfield-file',ff_file.name,
+                '--flatfield-file',os.fspath(folder/'test_for_jenkins'/'warping_cohort'/ff_file.name),
                 '--sampleregex',slideID,
                 '--workingdir',os.fspath(self.output_dir),
                 '--octets-only',
@@ -122,7 +122,7 @@ class TestWarpingCohort(TestBaseSaveOutput) :
         args = [os.fspath(root),
                 '--shardedim3root',os.fspath(shardedim3root),
                 '--exposure-time-offset-file',os.fspath(et_offset_file),
-                '--flatfield-file',ff_file.name,
+                '--flatfield-file',os.fspath(folder/'test_for_jenkins'/'warping_cohort'/ff_file.name),
                 '--sampleregex',slideID,
                 '--workingdir',os.fspath(self.output_dir),
                 '--initial-pattern-octets','2',
