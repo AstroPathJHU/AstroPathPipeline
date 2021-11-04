@@ -103,12 +103,7 @@ class MeanImageComparison :
                             new_entry = ComparisonTableEntry(mid1.parent.parent.parent,sid1,
                                                              mid2.parent.parent.parent,sid2,
                                                              ln,self.dos_std_dev_values[is1,is2,ln-1])
-                            if self.datatable_path.is_file() :
-                                all_entries = readtable(self.datatable_path,ComparisonTableEntry)
-                            else :
-                                all_entries = []
-                            all_entries.append(new_entry)
-                            writetable(self.datatable_path,all_entries)
+                            writetable(self.datatable_path,[new_entry],append=True)
                     pairs_done.add((sid1,sid2))
 
     def create_plots(self,to_plot,lines_after,bounds) :
