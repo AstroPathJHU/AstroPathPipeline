@@ -99,11 +99,12 @@ class MeanImageComparison :
                         dossd_list = self.__get_delta_over_sigma_std_devs_by_layer(mi1,semi1,mi2,semi2)
                         self.dos_std_dev_values[is1,is2,:] = dossd_list
                         #append the values to the table
+                        new_entries = []
                         for ln in layers :
-                            new_entry = ComparisonTableEntry(mid1.parent.parent.parent,sid1,
-                                                             mid2.parent.parent.parent,sid2,
-                                                             ln,self.dos_std_dev_values[is1,is2,ln-1])
-                            writetable(self.datatable_path,[new_entry],append=True)
+                            new_entries.append(ComparisonTableEntry(mid1.parent.parent.parent,sid1,
+                                                                    mid2.parent.parent.parent,sid2,
+                                                                    ln,self.dos_std_dev_values[is1,is2,ln-1]))
+                        writetable(self.datatable_path,new_entries,append=True)
                     pairs_done.add((sid1,sid2))
 
     def create_plots(self,to_plot,lines_after,bounds) :
