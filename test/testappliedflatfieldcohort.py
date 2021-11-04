@@ -59,6 +59,8 @@ class TestAppliedFlatfieldCohort(TestBaseSaveOutput) :
         """
         super().setUp()
         self.__files_to_remove = []
+        if not shardedim3root.is_dir() :
+            shardedim3root.mkdir(parents=True)
         sample = DummySample(root,shardedim3root,slideID)
         existing_filepaths = [shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
         for ir,r in enumerate(sample.rectangles) :

@@ -40,6 +40,8 @@ class TestWarpingCohort(TestBaseSaveOutput) :
         #put together a flatfield file from the individual example layer files
         ff_img = read_image_from_layer_files(ff_file,*(dims),dtype=np.float64)
         (root/UNIV_CONST.FLATFIELD_DIRNAME).mkdir(exist_ok=True,parents=True)
+        if not (folder/'test_for_jenkins'/'warping_cohort').is_dir() :
+            (folder/'test_for_jenkins'/'warping_cohort').mkdir(parents=True)
         write_image_to_file(ff_img,folder/'test_for_jenkins'/'warping_cohort'/ff_file.name)
         #move the example background thresholds file to the expected location
         existing_path = folder/'data'/'reference'/'meanimage'/f'{slideID}-background_thresholds.csv'
