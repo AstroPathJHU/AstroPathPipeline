@@ -1,6 +1,5 @@
 import collections, contextlib, csv, cv2, itertools, more_itertools, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, pyopencl
 import matplotlib.pyplot as plt, numba as nb, numpy as np, uncertainties as unc, uncertainties.umath as umath, reikna as rk
-import 
 if sys.platform != "cygwin": import psutil
 
 def covariance_matrix(*args, **kwargs):
