@@ -1,6 +1,6 @@
 import collections, contextlib, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.registration, skimage.transform, uncertainties as unc, uncertainties.umath as umath, uncertainties.unumpy as unp
 
-from ...shared.logging import MultiLogger
+from ...shared.logging import dummylogger, MultiLogger
 from ...slides.align.computeshift import computeshift, OptimizeResult, shiftimg
 from ...slides.align.overlap import AlignmentComparison
 from ...slides.annowarp.annowarpsample import WSISample
@@ -122,7 +122,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       mask1, mask2 = masks
       if _debugprint > .5:
         for _ in wsis+masks:
-          print(_.shape, _.dtype)
+          self.logger.debug(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
@@ -214,35 +214,35 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       masks = mask1, mask2 = mask1[slice1], mask2[slice2]
 
       if _debugprint > .5:
-        print("raw wsis")
+        self.logger.debug("raw wsis")
         for _ in wsis+masks:
-          print(_.shape, _.dtype)
+          self.logger.debug(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
       wsis = tuple(skimage.filters.gaussian(wsi, smoothsigma, mode="nearest") for wsi in wsis)
 
       if _debugprint > .5:
-        print("smoothed")
+        self.logger.debug("smoothed")
         for _ in wsis+masks:
-          print(_.shape, _.dtype)
+          self.logger.debug(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
       wsi1, wsi2 = wsis = tuple(skimage.exposure.equalize_adapthist(wsi) for wsi in wsis)
 
       if _debugprint > .5:
-        print("equalized")
+        self.logger.debug("equalized")
         for _ in wsis+masks:
-          print(_.shape, _.dtype)
+          self.logger.debug(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
       zoommore = [skimage.transform.resize(wsi, np.asarray(wsi.shape)//8) for wsi in wsis]
       zoomevenmore = [skimage.transform.resize(wsi, np.asarray(wsi.shape)//2) for wsi in zoommore]
-      r1 = self.getrotation(zoomevenmore, -180, 180-15, 15, _debugprint=_debugprint)
-      r2 = self.getrotation(zoomevenmore, r1.angle.n-15, r1.angle.n+15, 2, _debugprint=_debugprint)
-      r3 = self.getrotation(zoommore, r2.angle.n-2, r2.angle.n+2, 0.02, _debugprint=_debugprint)
+      r1 = self.getrotation(zoomevenmore, -180, 180-15, 15, _debugprint=_debugprint, logger=self.logger)
+      r2 = self.getrotation(zoomevenmore, r1.angle.n-15, r1.angle.n+15, 2, _debugprint=_debugprint, logger=self.logger)
+      r3 = self.getrotation(zoommore, r2.angle.n-2, r2.angle.n+2, 0.02, _debugprint=_debugprint, logger=self.logger)
       rotationresult = r3
       rotationresult.xcorr.update(r2.xcorr)
       rotationresult.xcorr.update(r1.xcorr)
@@ -252,9 +252,9 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       mask1, mask2 = masks = mask1, skimage.transform.rotate(mask2, rotationresult.angle.n).astype(bool)
 
       if _debugprint > .5:
-        print("rotated")
+        self.logger.debug("rotated")
         for _ in wsis+masks:
-          print(_.shape, _.dtype)
+          self.logger.debug(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
@@ -268,18 +268,18 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       masks = mask1, mask2 = tuple(shiftimg(masks, -translationresult.dx.n, -translationresult.dy.n, shiftwhich=1)>0.5)
 
       if _debugprint > .5:
-        print("shifted")
+        self.logger.debug("shifted")
         for _ in wsis+masks:
-          print(_.shape, _.dtype)
+          self.logger.debug(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
       masks = mask1, mask2 = tuple(self.processmask(mask) for mask in masks)
 
       if _debugprint > .5:
-        print("processed masks")
+        self.logger.debug("processed masks")
         for _ in wsis+masks:
-          print(_.shape, _.dtype)
+          self.logger.debug(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
@@ -288,9 +288,9 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       masks = mask,
 
       if _debugprint > .5:
-        print("unioned masks")
+        self.logger.debug("unioned masks")
         for _ in wsis+masks:
-          print(_.shape, _.dtype)
+          self.logger.debug(_.shape, _.dtype)
           plt.imshow(_)
           plt.show()
 
@@ -364,7 +364,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       s.writecsv(csv, *args, **kwargs)
 
   @staticmethod
-  def getrotation(rotationwsis, minangle, maxangle, stepangle, *, _debugprint=-float("inf")):
+  def getrotation(rotationwsis, minangle, maxangle, stepangle, *, _debugprint=-float("inf"), logger=dummylogger):
     wsi1, wsi2 = rotationwsis
     xcorrs = {}
     angles = more_itertools.peekable(np.arange(minangle, maxangle+stepangle, stepangle))
@@ -372,7 +372,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       rotated = wsi1, skimage.transform.rotate(wsi2, angle)
       if _debugprint > 100:
         for _ in rotated:
-          print(angle)
+          logger.debug(angle)
           plt.imshow(_)
           plt.show()
       shiftresult = computeshift(rotated, checkpositivedefinite=False, usemaxmovementcut=False, mindistancetootherpeak=10000)
