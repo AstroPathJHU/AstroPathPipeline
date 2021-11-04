@@ -2,13 +2,13 @@ import cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib, skimage
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
+from astropath.shared.logger import printlogger
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
-from astropath.utilities.logger import printlogger
 from astropath.utilities.tableio import readtable, writetable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
