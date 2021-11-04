@@ -25,9 +25,9 @@ def pullhist(array, *, binning=None, label="", stdinlabel=True, quantileforstats
     if label: label += ": "
     label += rf"$\text{{std dev}} = {np.std(pulls):.02f}$"
   if logger is not None:
-    logger.info(f"mean of middle {100*quantileforstats}%:   ", unc.ufloat(np.mean(pulls), scipy.stats.sem(pulls)))
-    logger.info(f"std dev of middle {100*quantileforstats}%:", unc.ufloat(np.std(pulls), np.std(pulls) / np.sqrt(2*len(pulls)-2)))
-    logger.info("n outliers: ", outliers)
+    logger.info(f"mean of middle {100*quantileforstats}%:    {unc.ufloat(np.mean(pulls), scipy.stats.sem(pulls))}")
+    logger.info(f"std dev of middle {100*quantileforstats}%: {unc.ufloat(np.std(pulls), np.std(pulls) / np.sqrt(2*len(pulls)-2))}")
+    logger.info(f"n outliers: {outliers}")
   return plt.hist(pulls, bins=binning, label=label, **kwargs)
 
 @contextlib.contextmanager
