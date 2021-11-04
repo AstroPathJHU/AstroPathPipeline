@@ -38,13 +38,17 @@ class CohortBase(ThingWithRoots):
     Cohort, = {_.Cohort for _ in self.sampledefs()}
     return Cohort
 
-  def globallogger(self):
+  def globallogger(self, **kwargs):
     from .samplemetadata import SampleDef
     samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
-    return self.getlogger(samp, isglobal=True)
+    return self.getlogger(samp, isglobal=True, **kwargs)
+
+  def printlogger(self, *args, **kwargs): return self.getlogger(*args, uselogfiles=False, **kwargs)
 
   @property
   def logger(self): return self.globallogger()
+  @property
+  def globalprintlogger(self): return self.globallogger(uselogfiles=False)
   @property
   def mainlogs(self): return self.logger.mainlogs
 
@@ -52,11 +56,11 @@ class CohortBase(ThingWithRoots):
     lockfiles = [logfile.with_suffix(".lock") for logfile in self.globallogger().mainlogs]
     return job_lock.MultiJobLock(*lockfiles, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
-  def getlogger(self, samp, *, isglobal=False, **kwargs):
+  def getlogger(self, samp, *, isglobal=False, uselogfiles=True, **kwargs):
     if isinstance(samp, WorkflowDependency):
       isglobal = isglobal or samp.usegloballogger()
       samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=self.skipstartfinish, **kwargs)
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=uselogfiles and self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=self.skipstartfinish, **kwargs)
 
   @classmethod
   @abc.abstractmethod
@@ -80,7 +84,7 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
   @abc.abstractmethod
   def run(self): pass
   def dryrun(self, **kwargs):
-    print("Command line is valid")
+    self.globalprintlogger.critical("Command line is valid")
 
   @classmethod
   def defaultunits(cls):
@@ -199,10 +203,11 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       if all(filters):
         yield samp
       elif printnotrunning:
-        print(f"Not running {samp.SlideID}:")
+        logger = self.printlogger(samp)
+        logger.info(f"Not running {samp.SlideID}:")
         for filter in filters:
           if not filter:
-            print(filter.message)
+            logger.info(filter.message)
 
   def allsamples(self, **kwargs) :
     for samp in self.sampledefs(**kwargs):
@@ -279,10 +284,11 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       if all(filters):
         result.append(self.processsample(sample, **kwargs))
       elif printnotrunning:
-        print(f"Not running {sample.SlideID}:")
+        logger = self.printlogger(sample)
+        logger.info(f"Not running {sample.SlideID}:")
         for filter in filters:
           if not filter:
-            print(filter.message)
+            logger.info(filter.message)
     return result
 
   def processsample(self, sample, **kwargs):
@@ -294,13 +300,14 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     Print which samples would be run if you run the cohort
     """
     for samp, filters in self.sampledefswithfilters():
+      logger = self.printlogger(samp)
       if all(filters):
-        print(f"{samp} would run")
+        logger.info(f"{samp} would run")
       else:
-        print(f"{samp} would not run:")
+        logger.info(f"{samp} would not run:")
         for filter in filters:
           if not filter:
-            print(filter.message)
+            logger.info(filter.message)
 
   @classmethod
   def defaultunits(cls):
@@ -696,7 +703,8 @@ class WorkflowCohort(Cohort):
       status = sample.runstatus(**kwargs)
       if status: return
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
-      print(f"{sample.SlideID} {status}")
+      logger = self.printlogger(sample)
+      logger.info(f"{sample.SlideID} {status}")
     else:
       with sample.joblock() as lock:
         if not lock: return

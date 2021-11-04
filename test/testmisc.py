@@ -8,6 +8,7 @@ from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
+from astropath.utilities.logger import printlogger
 from astropath.utilities.tableio import readtable, writetable
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
@@ -39,6 +40,7 @@ class TestMisc(TestBaseSaveOutput):
       self.testRectangleOverlapList()
 
   def testPolygonAreas(self, seed=None):
+    logger = printlogger("polygonareas")
     p = PolygonFromGdal(pixels="POLYGON ((1 1,2 1,2 2,1 2,1 1))", pscale=5, apscale=3)
     assertAlmostEqual(p.area, p.onepixel**2, rtol=1e-15)
     assertAlmostEqual(p.perimeter, 4*p.onepixel, rtol=1e-15)
@@ -76,7 +78,7 @@ class TestMisc(TestBaseSaveOutput):
           str(p.gdalpolygon(round=True)),
         )
     except:
-      print(xysx2)
+      logger.error(xysx2)
       raise
 
   def testPolygonAreasFastUnitsPixels(self):

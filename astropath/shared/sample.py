@@ -44,6 +44,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     if informdataroot is None: informdataroot = root
     self.__informdataroot = pathlib.Path(informdataroot)
     self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots, skipstartfinish=skipstartfinish)
+    self.__printlogger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=False, threshold=logthreshold, skipstartfinish=skipstartfinish)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__nentered = 0
@@ -64,6 +65,8 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
   def informdataroot(self): return self.__informdataroot
   @property
   def logger(self): return self.__logger
+  @property
+  def printlogger(self): return self.__printlogger
   @classmethod
   def usegloballogger(cls): return False
 

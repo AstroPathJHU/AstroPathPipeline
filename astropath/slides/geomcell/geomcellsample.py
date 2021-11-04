@@ -459,7 +459,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
         if self._debugdraw:
           plt.imshow(slicedmask)
           plt.show()
-          print(nlabels)
+          self.logger.info(nlabels)
           plt.imshow(thisregion)
           plt.show()
           plt.imshow(distance1)
@@ -476,7 +476,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
           plt.show()
           plt.imshow(partiallyconnected)
           plt.show()
-          print(nnewlabels)
+          self.logger.info(nnewlabels)
 
       if nfilled < bestnfilled:
         bestnfilled = nfilled

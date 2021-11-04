@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import contextlib, numpy as np, traceback
+import contextlib, numpy as np
 
 from ...shared.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
 from ...utilities.config import CONST as UNIV_CONST
@@ -215,29 +215,14 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     if filename is None: filename = self.alignmentsfilename
     writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive, logger=self.logger)
 
-  def readalignments(self, *, filename=None, interactive=True):
+  def readalignments(self, *, filename=None):
     """
     Read the alignment results from align.csv
     """
-    interactive = interactive and self.interactive and filename is None
     if filename is None: filename = self.alignmentsfilename
     self.logger.info("reading alignments from "+str(filename))
 
-    try:
-      alignmentresults = {o.n: o for o in self.readtable(filename, self.alignmentresulttype)}
-    except Exception:
-      if interactive:
-        print()
-        traceback.print_exc()
-        print()
-        answer = ""
-        while answer.lower() not in ("y", "n"):
-          answer = input(f"readalignments() gave an exception for {self.SlideID}.  Do the alignment?  [Y/N] ")
-        if answer.lower() == "y":
-          if not hasattr(self, "images"): self.getDAPI()
-          self.align()
-          return self.readalignments(interactive=False)
-      raise
+    alignmentresults = {o.n: o for o in self.readtable(filename, self.alignmentresulttype)}
 
     for o in self.overlaps:
       try:
@@ -292,35 +277,21 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
       logger=self.logger,
     )
 
-  def readstitchresult(self, *, filenames=None, saveresult=True, interactive=True):
+  def readstitchresult(self, *, filenames=None, saveresult=True):
     """
     Read the stitch results from the stitched csvs
     """
     self.logger.info("reading stitch results")
-    interactive = interactive and self.interactive and saveresult and filenames is None
     if filenames is None: filenames = self.stitchfilenames
 
-    try:
-      result = ReadStitchResult(
-        *filenames,
-        overlaps=self.overlaps,
-        rectangles=self.rectangles,
-        origin=self.position,
-        margin=self.margin,
-        logger=self.logger,
-      )
-    except Exception:
-      if interactive:
-        print()
-        traceback.print_exc()
-        print()
-        answer = ""
-        while answer.lower() not in ("y", "n"):
-          answer = input(f"readstitchresult() gave an exception for {self.SlideID}.  Do the stitching?  [Y/N] ")
-        if answer.lower() == "y":
-          self.stitch()
-          return self.readstitchresult(interactive=False)
-      raise
+    result = ReadStitchResult(
+      *filenames,
+      overlaps=self.overlaps,
+      rectangles=self.rectangles,
+      origin=self.position,
+      margin=self.margin,
+      logger=self.logger,
+    )
 
     if saveresult:
       self.applystitchresult(result)

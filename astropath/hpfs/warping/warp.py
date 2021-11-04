@@ -1,10 +1,11 @@
 #imports
-import pathlib, math, cv2, functools, methodtools
+import pathlib, math, cv2, functools, methodtools, more_itertools
 import numpy as np, seaborn as sns
 import matplotlib.pyplot as plt
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import save_figure_in_dir
+from ...utilities.logging import printlogger
 from ...utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, write_image_to_file
+from ...utilities.misc import save_figure_in_dir
 from .utilities import correct_image_layer_with_warp_fields
 from .config import CONST
 
@@ -510,16 +511,17 @@ class CameraWarp(Warp) :
         parnames = ['cx',   'cy',   'fx',   'fy',   'k1',   'k2',   'k3',   'p1',   'p2',   'k4',   'k5',   'k6']
         parvals  = [self.cx,self.cy,self.fx,self.fy,self.k1,self.k2,self.k3,self.p1,self.p2,self.k4,self.k5,self.k6]
         s=''
-        for n,v in zip(parnames,parvals) :
+        for n,v in more_itertools.zip_equal(parnames,parvals) :
             if v is not None :
                 s+=f'{n}={v:.3f}, '
         return s[:-2]
 
-    def printParams(self) :
+    def printParams(self, logger=None) :
         """
         Print the current warp parameters in a nice string
         """
-        print(self.paramString())
+        if logger is None: logger = printlogger("warp")
+        logger.info(self.paramString())
 
     def getWarpFields(self) :
         """

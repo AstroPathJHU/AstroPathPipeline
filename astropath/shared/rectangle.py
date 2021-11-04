@@ -1,9 +1,10 @@
 import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
+from ..utilities.config import CONST as UNIV_CONST
+from ..utilities.logger import printlogger
 from ..utilities.misc import floattoint, memmapcontext
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
-from ..utilities.config import CONST as UNIV_CONST
 from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
 from .rectangletransformation import RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationSinglelayer
 
@@ -173,7 +174,7 @@ class RectangleWithImageBase(Rectangle):
       for i, ctr in enumerate(self.__debug_load_images_counter):
         if ctr > 1:
           for formattedtb in self.__debug_load_images_tracebacks[i]:
-            print("".join(formattedtb))
+            printlogger("rectangle").debug("".join(formattedtb))
           warnings.warn(f"Loaded image {i} for rectangle {self} {ctr} times")
 
   def add_transformation(self,new_transformation) :

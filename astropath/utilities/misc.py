@@ -11,7 +11,7 @@ def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
   return (result + result.T) / 2
 
-def pullhist(array, *, binning=None, verbose=True, label="", stdinlabel=True, quantileforstats=1, **kwargs):
+def pullhist(array, *, binning=None, label="", stdinlabel=True, quantileforstats=1, logger=None, **kwargs):
   """
   Make a histogram of uncertainties.nominal_values(array) / uncertainties.std_dev(array)
   """
@@ -24,10 +24,10 @@ def pullhist(array, *, binning=None, verbose=True, label="", stdinlabel=True, qu
   if stdinlabel:
     if label: label += ": "
     label += rf"$\text{{std dev}} = {np.std(pulls):.02f}$"
-  if verbose:
-    print(f"mean of middle {100*quantileforstats}%:   ", unc.ufloat(np.mean(pulls), scipy.stats.sem(pulls)))
-    print(f"std dev of middle {100*quantileforstats}%:", unc.ufloat(np.std(pulls), np.std(pulls) / np.sqrt(2*len(pulls)-2)))
-    print("n outliers: ", outliers)
+  if logger is not None:
+    logger.info(f"mean of middle {100*quantileforstats}%:   ", unc.ufloat(np.mean(pulls), scipy.stats.sem(pulls)))
+    logger.info(f"std dev of middle {100*quantileforstats}%:", unc.ufloat(np.std(pulls), np.std(pulls) / np.sqrt(2*len(pulls)-2)))
+    logger.info("n outliers: ", outliers)
   return plt.hist(pulls, bins=binning, label=label, **kwargs)
 
 @contextlib.contextmanager

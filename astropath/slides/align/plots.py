@@ -182,10 +182,10 @@ def closedlooppulls(alignsample, *, tagsequence, binning=np.linspace(-5, 5, 51),
       dxs, dys = zip(*dxvecs)
 
       if verbose is True or verbose is not False and verbose(path, dxs, dys):
-        print(" --> ".join(f"{node:4d}" for node in path))
+        alignsample.printlogger.info(" --> ".join(f"{node:4d}" for node in path))
         for nodepair, dx, dy in zip(more_itertools.pairwise(path), dxs, dys):
-          print(f"  {nodepair[0]:4d} --> {nodepair[1]:4d}: {dx:10} {dy:10}")
-        print(f"          total: {sum(dxs):10} {sum(dys):10}")
+          alignsample.printlogger.info(f"  {nodepair[0]:4d} --> {nodepair[1]:4d}: {dx:10} {dy:10}")
+        alignsample.printlogger.info(f"          total: {sum(dxs):10} {sum(dys):10}")
 
       totaldx = sum(dxs)
       totaldy = sum(dys)
@@ -193,17 +193,17 @@ def closedlooppulls(alignsample, *, tagsequence, binning=np.linspace(-5, 5, 51),
       yresiduals.append(totaldy)
 
   if verbose:
-    print()
-    print()
-    print()
+    alignsample.printlogger.info()
+    alignsample.printlogger.info()
+    alignsample.printlogger.info()
   fig = plt.figure(**figurekwargs)
   ax = fig.add_subplot(1, 1, 1)
-  print("x pulls:")
+  alignsample.printlogger.info("x pulls:")
   pullhist(xresiduals, binning=binning, verbose=True, alpha=0.5, label="$x$ pulls", stdinlabel=True)
-  print()
-  print()
-  print()
-  print("y pulls:")
+  alignsample.printlogger.info()
+  alignsample.printlogger.info()
+  alignsample.printlogger.info()
+  alignsample.printlogger.info("y pulls:")
   pullhist(yresiduals, binning=binning, verbose=True, alpha=0.5, label="$y$ pulls", stdinlabel=True)
   plotstyling(fig=fig, ax=ax)
 
@@ -397,7 +397,7 @@ def shiftplotprofile(alignsample, *, deltaxory, vsxory, saveas=None, figurekwarg
     )
     amplitude, kk, phase = units.correlated_distances(distances=p, covariance=cov)
   except (RuntimeError, np.linalg.LinAlgError):
-    print("fit failed")
+    alignsample.printlogger.info("fit failed")
     amplitude = kk = phase = 0
     p = amplitude, kk, phase
     cov = np.diag([1, 1, 1])
@@ -411,27 +411,27 @@ def shiftplotprofile(alignsample, *, deltaxory, vsxory, saveas=None, figurekwarg
     phase *= -1
   p = amplitude, kk, phase
 
-  print("Average:")
-  print(f"  {mean}")
+  alignsample.printlogger.info("Average:")
+  alignsample.printlogger.info(f"  {mean}")
   try:
     o = alignsample.overlaps[0]
     expected = ((alignsample.T - np.identity(2)) @ (o.x1vec - o.x2vec))[yidx]
   except AttributeError:
     pass
   else:
-    print(f"  (expected from T matrix: {expected})")
-  print("Sine wave:")
-  print(f"  amplitude: {amplitude}")
+    alignsample.printlogger.info(f"  (expected from T matrix: {expected})")
+  alignsample.printlogger.info("Sine wave:")
+  alignsample.printlogger.info(f"  amplitude: {amplitude}")
   if abs(amplitude.n) > 5*amplitude.s and np.count_nonzero(abs(amplitude.n) > yerr) > len(yerr)/4:
     wavelength = 2*np.pi / kk
-    print(f"  wavelength: {wavelength}")
-    print(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
+    alignsample.printlogger.info(f"  wavelength: {wavelength}")
+    alignsample.printlogger.info(f"              = field size * {wavelength / o.rectangles[0].shape[xidx]}")
   else:
-    print("  (not significant)")
+    alignsample.printlogger.info("  (not significant)")
     plotsine = False
 
-  print("Remaining noise:")
-  print(f"  RMS     = {RMS}")
+  alignsample.printlogger.info("Remaining noise:")
+  alignsample.printlogger.info(f"  RMS     = {RMS}")
 
   oldylim = ax.get_ylim()
   plotstyling(fig=fig, ax=ax)

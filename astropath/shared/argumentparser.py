@@ -3,6 +3,7 @@ from ..utilities.tableio import TableReader
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
 from .annotationpolygonxmlreader import add_rename_annotation_argument
+from .logging import printlogger
 from .workflowdependency import ThingWithRoots
 
 class MRODebuggingMetaClass(abc.ABCMeta):
@@ -11,22 +12,23 @@ class MRODebuggingMetaClass(abc.ABCMeta):
       return super().__new__(cls, name, bases, dct, **kwargs)
     except TypeError as e:
       if "Cannot create a consistent" in str(e):
-        print("========================")
-        print(f"MROs of bases of {name}:")
+        logger = printlogger("mro")
+        logger.critical("========================")
+        logger.critical(f"MROs of bases of {name}:")
         for base in bases:
-          print("------------------------")
+          logger.critical("------------------------")
           for c in base.__mro__:
-            print(c.__name__)
-        print("************************")
-        print("filtered for the bad ones:")
+            logger.critical(c.__name__)
+        logger.critical("************************")
+        logger.critical("filtered for the bad ones:")
         for base in bases:
           bad = [c for c in base.__mro__ if re.search(rf"\b{c.__name__}\b", str(e))]
           if len(bad) < 2: continue
-          print("------------------------")
-          print(base.__name__)
+          logger.critical("------------------------")
+          logger.critical(base.__name__)
           for c in bad:
-            print(c.__name__)
-        print("========================")
+            logger.critical(c.__name__)
+        logger.critical("========================")
       raise
 
 class RunFromArgumentParserBase(ThingWithRoots, TableReader, metaclass=MRODebuggingMetaClass):
