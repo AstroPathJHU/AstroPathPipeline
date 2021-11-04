@@ -303,7 +303,7 @@ class sampledef : sharedtools{
         #
         $im3s = (gci ($this.Scanfolder() + '\MSI\*') *im3).Count
         #
-        $paths = @($this.flatwim3folder(), ('\\'+$this.flatwfolder()), ('\\'+$this.flatwfolder()))
+        $paths = @($this.flatwim3folder(), $this.flatwfolder(), $this.flatwfolder())
         $filetypes = @('*im3', '*fw', '*fw01')
         #
         for ($i=0; $i -lt 3; $i++){

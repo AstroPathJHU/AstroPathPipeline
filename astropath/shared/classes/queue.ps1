@@ -202,7 +202,7 @@ class queue : sharedtools{
         # if it is a dependency check and the lastest run is not finished return true
         #
         if ( !$d1 -or
-             ($d1 -lt $d2 -and $d3 -ge $d2) -or 
+             ($d1 -le $d2 -and $d3 -ge $d2) -or 
             (!$dependency -and ($d3 -gt $d1)) -or 
             ($dependency -and !($d3 -gt $d1))
         ){
