@@ -141,6 +141,17 @@
             new-item $dir -itemtype "directory" -EA STOP | Out-NULL
         }
     }
+    #
+    [void]CreateNewDirs($dir){
+        #
+        $this.removedir($dir)
+        #
+        if (!(test-path $dir)){
+            new-item $dir -itemtype "directory" -EA STOP | Out-NULL
+        }
+        #
+    }
+    #
     [void]CreateFile($fpath){
         if (!(test-path $fpath)){
             New-Item -path $fpath -itemtype file -Force -EA Stop | Out-Null
