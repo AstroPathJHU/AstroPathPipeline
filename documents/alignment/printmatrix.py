@@ -6,35 +6,35 @@ def printmatrix(**kwargs):
   A = alignsample(**kwargs)
   T = A.T
 
-  print()
-  print("Matrix:")
-  print(T)
+  A.printlogger.debug()
+  A.printlogger.debug("Matrix:")
+  A.printlogger.debug(T)
 
-  print()
-  print("Latex with siunitx:")
+  A.printlogger.debug()
+  A.printlogger.debug("Latex with siunitx:")
   for _ in np.ravel(T):
-    print(units.drawing.siunitxformat(_, power=0, fmt=":f"))
+    A.printlogger.debug(units.drawing.siunitxformat(_, power=0, fmt=":f"))
 
   dT = T - np.identity(2)
 
-  print()
-  print("(Matrix - identity) * 10^3:")
-  print(dT*1e3)
+  A.printlogger.debug()
+  A.printlogger.debug("(Matrix - identity) * 10^3:")
+  A.printlogger.debug(dT*1e3)
 
-  print()
-  print("Latex with siunitx:")
+  A.printlogger.debug()
+  A.printlogger.debug("Latex with siunitx:")
   for _ in np.ravel(dT*1e3):
-    print(units.drawing.siunitxformat(_, power=0, fmt=":f"))
+    A.printlogger.debug(units.drawing.siunitxformat(_, power=0, fmt=":f"))
 
-  print()
-  print("Average shift when moving horizontally:")
+  A.printlogger.debug()
+  A.printlogger.debug("Average shift when moving horizontally:")
   o = next(o for o in A.overlaps if o.tag == 4)
-  print(dT @ (o.x2vec - o.x1vec))
+  A.printlogger.debug(dT @ (o.x2vec - o.x1vec))
 
-  print()
-  print("Average shift when moving vertically:")
+  A.printlogger.debug()
+  A.printlogger.debug("Average shift when moving vertically:")
   o = next(o for o in A.overlaps if o.tag == 2)
-  print(dT @ (o.x2vec - o.x1vec))
+  A.printlogger.debug(dT @ (o.x2vec - o.x1vec))
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser()

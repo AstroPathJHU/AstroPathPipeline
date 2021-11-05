@@ -665,8 +665,6 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       T1 = self.T
       x2 = readback.x()
       T2 = readback.T
-      print(self.fields[0].pxvec)
-      print(readback.fields[0].pxvec)
       self.__logger.debug("comparing nominals")
       units.np.testing.assert_allclose(units.nominal_values(x1), units.nominal_values(x2), atol=atol, rtol=rtol)
       units.np.testing.assert_allclose(units.nominal_values(T1), units.nominal_values(T2), atol=atol, rtol=rtol)
