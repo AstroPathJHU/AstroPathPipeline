@@ -59,6 +59,59 @@ class fileutils : generalutils {
         #
     }
     <# -----------------------------------------
+     OpenCSVFile
+     open a csv file with error checking and a 
+     file locking mutex into a powershell
+     object where each row is a different 
+     object and columns are the object fields
+     ------------------------------------------
+     Input: 
+        -fpath[string]: file path to read in
+     ------------------------------------------
+     Usage: $this.OpenCSVFile(fpath)
+    ----------------------------------------- #>
+    [PSCustomObject]OpenCSVFile([string] $fpath, [string] $delim, [array] $header){
+        #
+        $cnt = 0
+        $e = 1
+        $err = ''
+        $Max = 120
+        $mxtxid = 'Global\' + $fpath.replace('\', '_') + '.LOCK'
+        #
+        $Q = New-Object -TypeName psobject
+        #
+        do{
+           #
+           $mxtx = $this.GrabMxtx($mxtxid)
+            try{
+                $this.createfile($fpath)
+                $Q = Import-CSV $fpath `
+                    -Delimiter $delim `
+                    -header $header `
+                    -ErrorAction Stop
+                $e = 0
+            }catch{
+                $err = $_.Exception.Message
+                $cnt = $cnt + 1
+                Start-Sleep -s 3
+                Continue
+            }
+            $this.ReleaseMxtx($mxtx, $fpath)
+            #
+        } while(($cnt -lt $Max) -and ($e -eq 1))
+        #
+        # if code cannot access the file 
+        # after 10 minutes return an error indicator
+        #
+        if ($cnt -ge $Max){
+           Throw $cnt + ' attempts failed reading ' `
+                + $fpath + '. Final message: ' + $err
+        }
+        #
+        return $Q
+        #
+    }
+    <# -----------------------------------------
      GetContent
      open a file with error checking where each
      row is in a separate line

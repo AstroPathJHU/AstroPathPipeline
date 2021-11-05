@@ -24,31 +24,27 @@ Class informinput {
     [string]$alg
     [string]$abpath
     [string]$algpath
-    [string]$outpath
+    [string]$outpath = "C:\Users\Public\BatchProcessing"
     [string]$informoutpath
-    [string]$image_list_file
+    [string]$image_list_file = $this.outpath + "\image_list.tmp"
     [array]$image_list
     [string]$informpath
     [launchmodule]$sample
-    [string]$informbatchlog
+    [string]$informbatchlog = $this.informoutpath + "\Batch.log"
     [int]$err
-    [string]$informprocesserrorlog
-    [string]$vers
+    [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     #
-    informinput([array]$task,[launchmodule]$sample){
+    informinput([array]$task,[launchmodule]$sample) {
         #
         $this.sample = $sample
         $this.abx = $task[2].trim()
         $this.alg = $task[3].trim()
-        $this.abpath = $this.sample.phenotypefolder()+'\'+$this.abx
-        $this.algpath = $this.sample.basepath+'\tmp_inform_data\Project_Development\'+$this.alg
-        $this.outpath = "C:\Users\Public\BatchProcessing"
-        $this.informoutpath = $this.outpath+"\"+$this.abx
-        $this.informprocesserrorlog =  $this.outpath+"\informprocesserror.log"
-        $this.informbatchlog = $this.informoutpath+"\Batch.log"
-        $this.image_list_file = $this.outpath+"\image_list.tmp"
-        $this.vers = $task[4].trim()
-        $this.informpath = '"'+"C:\Program Files\Akoya\inForm\"+$this.vers+"\inForm.exe"+'"'
+        $this.abpath = $this.sample.phenotypefolder() + '\' + $this.abx
+        $this.algpath = $this.sample.basepath +
+             '\tmp_inform_data\Project_Development\' + $this.alg
+        $this.informoutpath = $this.outpath + "\" + $this.abx
+        $this.informpath = '"'+"C:\Program Files\Akoya\inForm\" + 
+            $task[4].trim() + "\inForm.exe"+'"'
         #
         $this.TestPaths()
         $this.KillinFormProcess()
@@ -69,11 +65,7 @@ Class informinput {
         if (!(test-path $this.sample.flatwim3folder())){
             Throw "flatw path not found for:" + $this.sample.flatwim3folder()
         }
-        <#
-        if (!(test-path $this.informpath)){
-            Throw "inform path not found for:" + $this.vers
-        }
-        #>
+        #
     }
     <# -----------------------------------------
      CreateOutputDir
@@ -88,13 +80,8 @@ Class informinput {
     [void]CreateOutputDir(){
         #
         $this.KillinFormProcess()
-        #
         $this.sample.info("Create inForm output location")
-        $tQ = test-path $this.informoutpath
-        if ($tQ){
-                remove-item $this.informoutpath -force -Recurse -EA STOP
-            }
-        New-Item $this.informoutpath -itemtype "directory" -EA STOP | Out-NULL
+        $this.sample.createnewdirs($this.informoutpath)
         #
     }
     <# -----------------------------------------
@@ -124,15 +111,12 @@ Class informinput {
     [void]DownloadIm3(){
         #
         $this.sample.info("Download im3s")
-        $tQ = test-path $this.outpath
-        if ($tQ){
-                remove-item $this.outpath -force -Recurse -EA STOP
-            }
-        New-Item $this.outpath -itemtype "directory" -EA STOP | Out-NULL
+        $this.sample.createnewdirs($this.outpath)
         #
         $des = $this.outpath +'\'+$this.sample.slideid+'\im3\flatw'
         $sor = $this.sample.flatwim3folder()
-        robocopy $sor $des *im3 -r:3 -w:3 -np -mt:30 |out-null
+        #
+        $this.sample.copy($sor, $des, 'im3', 30)
         if(!(((gci ($sor+'\*') -Include '*im3').Count) -eq (gci $des).count)){
             Throw 'im3s did not download correctly'
         }
@@ -148,9 +132,9 @@ Class informinput {
     [void]CreateImageList(){
         #
         $this.sample.info("Compile image list")
-        $p = $this.outpath +'\'+$this.sample.slideid+'\im3\flatw\*'
+        $p = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw\*'
         $this.image_list = gci -Path $p -include *.im3 | % {$_.FullName}
-        Set-Content $this.image_list_file $this.image_list -EA STOP
+        $this.sample.setfile($this.image_list_file, $this.image_list)
         #
     }
     <# -----------------------------------------
@@ -161,8 +145,8 @@ Class informinput {
     ----------------------------------------- #>
     [void]StartInForm(){
         #
-        $processoutputlog =  $this.outpath+"\processoutput.log"
-        $arginput = " -a "+$this.algpath+" -o "+$this.informoutpath+" -i "+$this.image_list_file
+        $processoutputlog =  $this.outpath + "\processoutput.log"
+        $arginput = " -a",  $this.algpath, "-o",  $this.informoutpath, "-i", $this.image_list_file -join ' ' 
         $this.sample.info("Start inForm Batch Process")
         $prc = Start-Process $this.informpath `
                 -NoNewWindow `

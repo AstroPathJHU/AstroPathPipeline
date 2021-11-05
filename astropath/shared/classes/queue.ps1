@@ -161,9 +161,7 @@ class queue : sharedtools{
             return $true
         }
         #
-        $loglines = import-csv $log.slidelog `
-            -Delimiter ';' `
-            -header 'Project','Cohort','slideid','Message','Date' 
+        $loglines = $this.opencsvfile($log.slidelog, ';', @('Project','Cohort','slideid','Message','Date'))
         #
         # parse log
         #
