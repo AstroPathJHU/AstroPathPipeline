@@ -12,7 +12,7 @@
 RootModule = 'astropath.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.0.1'
+ModuleVersion = '0.0.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -73,7 +73,8 @@ PowerShellVersion = '3.0'
                       'hpfs\flatfield\classes\batchmeanimagecomparison.ps1',
                       'hpfs\flatfield\classes\batchflatfield.ps1',
                       'hpfs\segmaps\classes\segmaps.ps1',
-                      'hpfs\shredxml\classes\shredxml.ps1'
+                      'hpfs\shredxml\classes\shredxml.ps1',
+		      'hpfs\warping\classes\warpoctets.ps1'
                       )
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess

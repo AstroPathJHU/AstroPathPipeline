@@ -21,7 +21,6 @@ Class shredxml : moduletools {
     shredxml([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
         $this.processvars[0] = $this.sample.basepath
         $this.sample.CreateDirs($this.processloc)
-        $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
     <# -----------------------------------------
      RunShredXML
@@ -62,10 +61,9 @@ Class shredxml : moduletools {
         $this.sample.info("cleanup started")
         #
         if ($this.processvars[4]){
-            gci $this.processloc -Recurse | Remove-Item -force -recurse
-            remove-item $this.processloc -force
+            $this.sample.removedir($this.processloc) 
         } else {
-            gci ($this.processloc+'\*') -Include '*.xml' -Recurse | Remove-Item -force -recurse
+            $this.sample.removefile($this.processloc, '.xml')
         }
         #
         $this.sample.info("cleanup finished")

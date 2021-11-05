@@ -19,7 +19,10 @@ Usage: $a = [imagecorrection]::new($task, $sample)
 Class imagecorrection : moduletools {
     #
     imagecorrection([array]$task,[launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
-        $this.flevel = [FileDownloads]::BATCHID + [FileDownloads]::IM3 + [FileDownloads]::FLATFIELD + [FileDownloads]::XML
+        $this.flevel = [FileDownloads]::BATCHID + 
+            [FileDownloads]::IM3 + 
+            [FileDownloads]::FLATFIELD + 
+            [FileDownloads]::XML
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
     <# -----------------------------------------
@@ -46,7 +49,8 @@ Class imagecorrection : moduletools {
      Usage: $this.TestPaths()
     ----------------------------------------- #>
     [void]TestPaths(){
-        $s = $this.sample.basepath+' '+$this.sample.flatwfolder()+' '+$this.sample.slideid
+        $s = $this.sample.basepath, $this.sample.flatwfolder(), 
+            $this.sample.slideid -join ' '
         $this.sample.info($s)
         $this.sample.testim3folder()
         $this.sample.testbatchflatfield()
@@ -60,8 +64,10 @@ Class imagecorrection : moduletools {
     [void]ApplyCorr(){
         $this.sample.info("started applying correction")
         $taskname = 'applycorr'
-        $matlabtask = ";runFlatw('"+$this.processvars[0]+"', '"+$this.processvars[1]+"', '"+$this.sample.slideid+"');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $matlabtask = ";runFlatw('"+$this.processvars[0] + 
+            "', '" + $this.processvars[1] + "', '" + 
+            $this.sample.slideid + "');exit(0);"
+        $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished applying correction")
     }
    <# -----------------------------------------
@@ -73,8 +79,9 @@ Class imagecorrection : moduletools {
     [void]ExtractLayer([int]$layer){
         $this.sample.info("Extract Layer started")
         $taskname = 'extractlayer'
-        $matlabtask = ";extractLayer('"+$this.processvars[1]+"', '"+$this.sample.slideid+"', '"+$layer+"');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $matlabtask = ";extractLayer('" + $this.processvars[1] + 
+            "', '" + $this.sample.slideid + "', '" + $layer + "');exit(0);"
+        $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("Extract Layer finished")
     }
     <# -----------------------------------------
@@ -87,37 +94,54 @@ Class imagecorrection : moduletools {
     [void]cleanup(){
         #
         $this.sample.info("cleanup started")
-        # xml files
+        $this.silentcleanup()
+        $this.sample.info("cleanup finished")
+        #
+    }
+    <# -----------------------------------------
+     silentcleanup
+     silentcleanup
+     ------------------------------------------
+     Usage: $this.silentcleanup()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
         #
         if ($this.processvars[4]){
+            #
             # im3s
-            $sor = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\flatw'
+            #
+            $sor = $this.processvars[0] + '\' + 
+                $this.sample.slideid + '\im3\flatw'
             $des = $this.sample.flatwim3folder()
             $this.sample.copy($sor, $des, '.im3', 30)
-            if(!(((gci ($sor+'\*') -Include '*im3').Count) -eq ((gci ($des+'\*') -Include '*.im3').Count))){
+            #
+            $sorcount = (gci ($sor + '\*') -Include '*im3').Count
+            $descount = (gci ($des + '\*') -Include '*.im3').Count
+            if(!($sorcount -eq $descount)){
                 Throw 'im3s did not upload correctly'
             }
-            $this.sample.copy($sor, $des, '.log')
-            # fw files
-            $sor = $this.processvars[1] +'\'+$this.sample.slideid
-            $des = $this.sample.flatwfolder()
-            $this.sample.copy($sor, $des, '.fw', 30)
-            if(!(((gci ($sor+'\*') -Include '*.fw').Count) -eq ((gci ($des+'\*') -Include '*.fw').Count))){
-                Throw 'fws did not upload correctly'
-            }
-            # fw01 files
-            $this.sample.copy($sor, $des, '.fw01', 30)
-            if(!(((gci ($sor+'\*') -Include '*.fw01').Count) -eq ((gci ($des+'\*') -Include '*.fw01').Count))){
-                Throw 'fws did not upload correctly'
-            }
+            #
             $this.sample.copy($sor, $des, '.log')
             #
-            Get-ChildItem -Path $this.processloc -Recurse | Remove-Item -force -recurse
-            remove-item $this.processloc -force
+            # fw files
+            #
+            $sor = $this.processvars[1] + '\' + $this.sample.slideid
+            $des = $this.sample.flatwfolder()
+            #
+            @('.fw', '.fw01') | foreach-object {
+                #
+                $this.sample.copy($sor, $des, $_, 30)
+                $sorcount = (gci ($sor + '\*') -Include ('*' + $_)).Count
+                $descount = (gci ($des + '\*') -Include ('*' + $_)).Count
+                if(!($sorcount -eq $descount)){
+                    Throw ('*' + $_ + 's did not upload correctly')
+                }
+            }
+            #
+            $this.sample.copy($sor, $des, '.log')
+            $this.sample.removedir($this.processloc)
             #
         }
-        #
-        $this.sample.info("cleanup finished")
         #
     }
 }

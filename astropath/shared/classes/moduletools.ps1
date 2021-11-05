@@ -21,14 +21,17 @@
     [array]$processvars
     [string]$processloc
     [string]$vers
-    [string]$funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     [int]$flevel
-    [string]$condalocation = '"'+$PSScriptRoot + '\..\..\utilities\Miniconda3"'
+    [string]$condalocation = '"' + $PSScriptRoot + '\..\..\utilities\Miniconda3"'
+    [string]$funclocation
+    [array]$logoutput
+    [string]$pythonmodulename
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
-        $this.vers = $this.sample.GetVersion($this.sample.mpath, $this.sample.module, $task[0])   
+        $this.vers = $this.sample.GetVersion(
+            $this.sample.mpath, $this.sample.module, $task[0])   
     }
     <# -----------------------------------------
     BuildProcessLocPath
@@ -48,13 +51,16 @@
         # input, correct the paths to analyze from there
         #
         if ($task[2] -AND !($task[2] -match '\*')){
-            $this.processloc = ($task[2]+'\astropath_ws\'+$this.sample.module+'\'+$task[1])
+            $this.processloc = ($task[2] + '\astropath_ws\' + 
+                $this.sample.module + '\'+$task[1])
             #
             $processvarsa = $this.processvars[0,2,3] -replace `
                 [regex]::escape($this.sample.basepath), $this.processloc 
             $processvarsb = $this.processvars[1] -replace `
-                [regex]::escape('\\'+$this.sample.project_data.fwpath), ($this.processloc+'\flatw')
-            $this.processvars = @($processvarsa[0], $processvarsb, $processvarsa[1], $processvarsa[2], 1)
+                [regex]::escape('\\'+$this.sample.project_data.fwpath), `
+                ($this.processloc+'\flatw')
+            $this.processvars = @($processvarsa[0], $processvarsb, `
+                $processvarsa[1], $processvarsa[2], 1)
         } else {
             $this.processloc = $this.sample.flatwfolder()
         }
@@ -68,7 +74,7 @@
     ----------------------------------------- #>
     [string]ProcessLog($externaltask){
         $out = $this.processloc + '\' + $externaltask + '.log'
-        return ($out)
+        return $out
     }
     <# -----------------------------------------
      DownloadIm3
@@ -99,9 +105,7 @@
     [void]WipeProcessDirs(){
         #
         foreach($ii in @(0,1,2)){
-            if (test-path $this.processvars[$ii]){
-                    remove-item $this.processvars[$ii] -force -Recurse -EA STOP
-                }
+            $this.sample.removedir($this.processvars[$ii])
         }
         #
     }
@@ -126,14 +130,15 @@
      Usage: $this.Downloadflatfield()
     ----------------------------------------- #>
     [void]Downloadflatfield(){
-        if (($this.flevel -band [FileDownloads]::FLATFIELD) -eq [FileDownloads]::FLATFIELD){
+        #
+        if (($this.flevel -band [FileDownloads]::FLATFIELD) -eq 
+            [FileDownloads]::FLATFIELD){
             $flatfieldfolder = $this.processvars[0]+'\flatfield'
-            if (test-path $flatfieldfolder){
-                    remove-item $flatfieldfolder -force -Recurse -EA STOP
-                }
-            New-Item $flatfieldfolder -itemtype "directory" -EA STOP | Out-NULL
+            $this.sample.removedir($flatfieldfolder)
+            $this.sample.CreateDirs($flatfieldfolder)
             $this.sample.copy($this.sample.batchflatfield(), $flatfieldfolder)
         }
+        #
     }
     <# -----------------------------------------
      DownloadIm3s
@@ -143,7 +148,9 @@
      Usage: $this.DownloadIm3s()
     ----------------------------------------- #>
     [void]DownloadIm3s(){
-        if (($this.flevel -band [FileDownloads]::IM3) -eq [FileDownloads]::IM3){
+        #
+        if (($this.flevel -band [FileDownloads]::IM3) -eq 
+            [FileDownloads]::IM3){
             $des = $this.processvars[0] +'\'+
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
             $sor = $this.sample.MSIfolder()
@@ -152,6 +159,7 @@
                 Throw 'im3s did not download correctly'
             }
         }
+        #
     }
     <# -----------------------------------------
      DowloadBatchID
@@ -161,11 +169,14 @@
      Usage: $this.DowloadBatchID()
     ----------------------------------------- #>
     [void]DownloadBatchID(){
-        if (($this.flevel -band [FileDownloads]::BATCHID) -eq [FileDownloads]::BATCHID){
+        #
+        if (($this.flevel -band [FileDownloads]::BATCHID) -eq
+             [FileDownloads]::BATCHID){
             $des = $this.processvars[0] +'\'+
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()
             $this.sample.copy($this.sample.BatchIDfile(), $des)
         }
+        #
     }
     <# -----------------------------------------
      DowloadXML
@@ -175,7 +186,9 @@
      Usage: $this.DowloadXML()
     ----------------------------------------- #>
     [void]DownloadXML(){
-        if (($this.flevel -band [FileDownloads]::XML) -eq [FileDownloads]::XML){
+        #
+        if (($this.flevel -band [FileDownloads]::XML) -eq 
+            [FileDownloads]::XML){
             $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
             $sor = $this.sample.xmlfolder()
             $this.sample.copy($sor, $des, 'xml', 30)
@@ -183,6 +196,7 @@
                 Throw 'xmls did not download correctly'
             }
         }
+        #
     }
     <# -----------------------------------------
      ShredDat
@@ -268,21 +282,101 @@
         #
     }
     #
-    [void]runmatlabtask($taskname, $matlabtask, $source){
+    [void]runmatlabtask($taskname, $matlabtask){
+        #
         $externallog = $this.ProcessLog($taskname)
-        matlab -nosplash -nodesktop -minimize -sd $source -r $matlabtask -wait >> $externallog
-        if (test-path $externallog){
-            remove-item $externallog -force -ea Continue
-        }
+        matlab -nosplash -nodesktop -minimize -sd $this.funclocation -batch $matlabtask -wait *>> $externallog
+        $this.getexternallogs($externallog)
+        #
     }
     #
     [void]runpythontask($taskname, $pythontask){
+        #
         $externallog = $this.ProcessLog($taskname)
-        conda activate $this.sample.pyenv
+        $this.sample.checkconda()
+        conda activate $this.sample.pyenv()
         Invoke-Expression $pythontask *>> $externallog
-        conda deactivate $this.sample.pyenv
-        if (test-path $externallog){
-            remove-item $externallog -force -ea Continue
+        conda deactivate $this.sample.pyenv()
+        $this.getexternallogs($externallog)
+        #
+    }
+    #
+    [void]getexternallogs($externallog){
+        #
+        $this.logoutput = $this.sample.GetContent($externallog)
+        $this.sample.removefile($externallog)
+        $this.checkexternalerrors()
+        $this.checkastropathlog()
+        #
+    }
+    <# -----------------------------------------
+     checkexternalerrors
+        checkexternalerrors
+     ------------------------------------------
+     Usage: $this.checkexternalerrors()
+    ----------------------------------------- #>
+    [void]checkexternalerrors(){
+        #
+        if ($this.vers -match '0.0.1'){
+            $test = 'ERROR'
+            if ($this.logoutput -match $test){
+                $this.silentcleanup()
+                $potentialerrors = ($this.logoutput.trim() -ne '') -notmatch 'ERROR'
+                Throw $potentialerrors
+            } elseif ($this.logoutput) {
+                $this.sample.info($this.logoutput.trim())
+            }
+            #
+        } else {
+            $test = $this.pythonmodulename + ' : ' +
+                $this.sample.project + ';' + $this.sample.cohort
+            if ($this.logoutput[0] -notmatch $test) {
+                $this.silentcleanup()
+                $potentialerrors = $this.logoutput.trim() -ne ''
+                Throw $potentialerrors
+            }
         }
+        #
+    }
+    <# -----------------------------------------
+     checkastropathlog
+        checkastropathlog
+     ------------------------------------------
+     Usage: $this.checkastropathlog()
+    ----------------------------------------- #>
+    [void]checkastropathlog(){
+        #
+        $loglines = import-csv $this.sample.mainlog `
+            -Delimiter ';' `
+            -header 'Project','Cohort','slideid','Message','Date' 
+        
+        #
+        # parse log
+        #
+        if ($this.sample.module -match 'batch'){
+            $ID= $this.sample.BatchID
+        } else {
+            $ID = $this.sample.slideid
+        }
+        $statustypes = @('START:','ERROR:','FINISH:')
+        $savelog = @()
+        $parsedvers = $this.vers -replace 'v', ''
+        $parsedvers = ($parsedvers -split '\.')[0,1,2] -join '.'
+        #
+        foreach ($statustype in $statustypes){
+            $savelog += $loglines |
+                    where-object {($_.Slideid -match $ID) -and 
+                        ($_.Message -match $statustype)} |
+                    Select-Object -Last 1 
+        }
+        #
+        $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
+        $d2 = ($savelog | Where-Object {$_.Message -match $statustypes[1]}).Date
+        #
+        if ($d2 -gt $d1){
+            $this.silentcleanup()
+            Throw 'detected error in external task'
+        }
+        #
     }
  }

@@ -1,4 +1,11 @@
-﻿
+﻿<# -------------------------------------------
+ sampledef
+ created by: Benjamin Green - JHU
+ Last Edit: 11.02.2021
+ --------------------------------------------
+ Description
+ methods used to build a sample object
+ -------------------------------------------#>
 class sampledef : sharedtools{
     [string]$cohort
     [string]$project
@@ -22,10 +29,10 @@ class sampledef : sharedtools{
         $this.sampledefslide($slideid)
     }
     #
-    sampledef($mpath, $module, $slideid, $project){
+    sampledef($mpath, $module, $batchid, $project){
         $this.mpath = $mpath
         $this.module = $module 
-        $this.sampledefbatch($slideid, $project)
+        $this.sampledefbatch($batchid, $project)
     }
     #
     sampledefslide($slideid){
@@ -58,7 +65,7 @@ class sampledef : sharedtools{
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
-        $slide = $slides | `
+        $slide = $slides | 
                 Where-Object -FilterScript {$_.SlideID -eq $slideid.trim()}
         #
         if (!$slide){
@@ -81,8 +88,9 @@ class sampledef : sharedtools{
             $mbatchid = $mbatchid[1]
         }
         #
-        $batch = $slides | `
-                Where-Object -FilterScript {$_.BatchID -eq $mbatchid.trim() -and $_.Project -eq $this.project.trim()}
+        $batch = $slides | 
+                Where-Object -FilterScript {$_.BatchID -eq $mbatchid.trim() -and 
+                    $_.Project -eq $this.project.trim()}
         #
         if (!$batch){
             Throw 'Not a valid batchid'
@@ -104,7 +112,7 @@ class sampledef : sharedtools{
     [void]DefRoot([string]$mpath){
         $this.mpath = $mpath
         $project_dat = $this.importcohortsinfo($this.mpath)
-        $project_dat = $project_dat | `
+        $project_dat = $project_dat | 
                 Where-Object -FilterScript {$_.Project -eq $this.project}
         $this.basepath = '\\' + $project_dat.dpath + '\' + $project_dat.dname
         $this.project_data = $project_dat
@@ -119,23 +127,29 @@ class sampledef : sharedtools{
     [string]Scan(){
         $path = $this.basepath + '\' + $this.slideid + '\im3\Scan*'
         $paths = gci $path
-        $scan = $paths | select-object *, @{n = "IntVal"; e = {[int]$_.Name.substring(4)}} | sort-object IntVal | Select-Object -Last 1
+        $scan = $paths | 
+            select-object *, @{n = "IntVal"; e = {[int]$_.Name.substring(4)}} |
+            sort-object IntVal |
+            Select-Object -Last 1
         return $scan.Name
     }
     #
     [string]Scanfolder(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3\'+$this.Scan()
+        $path = $this.basepath + '\' + $this.slideid + 
+            '\im3\'+$this.Scan()
         return $path
 
     }
     #
     [string]qptifffile(){
-        $path = $this.Scanfolder() + '\' + $this.slideid + '_' + $this.Scan() + '.qptiff'
+        $path = $this.Scanfolder() + '\' + $this.slideid + 
+            '_' + $this.Scan() + '.qptiff'
         return $path
     }
     #
     [string]annotationxml(){
-        $path = $this.Scanfolder() + '\' + $this.slideid + '_' + $this.Scan() + '_annotations.xml'
+        $path = $this.Scanfolder() + '\' + $this.slideid + '_' + 
+            $this.Scan() + '_annotations.xml'
         return $path
     }
     #
@@ -150,7 +164,8 @@ class sampledef : sharedtools{
     }
     #
     [string]batchflatfield(){
-        $path = $this.basepath +'\flatfield\flatfield_BatchID_' + $this.BatchID + '.bin'
+        $path = $this.basepath +'\flatfield\flatfield_BatchID_' + 
+            $this.BatchID + '.bin'
         return $path
     }
     #
@@ -165,30 +180,35 @@ class sampledef : sharedtools{
     }
     #
     [string]informfolder(){
-        $path = $this.basepath + '\' + $this.slideid + '\inform_data'
+        $path = $this.basepath + '\' + $this.slideid + 
+            '\inform_data'
         return $path
 
     }
     #
     [string]componentfolder(){
-        $path = $this.basepath + '\' + $this.slideid + '\inform_data\Component_Tiffs'
+        $path = $this.basepath + '\' + $this.slideid + 
+            '\inform_data\Component_Tiffs'
         return $path
     }
     #
     [string]phenotypefolder(){
-        $path = $this.basepath + '\' + $this.slideid + '\inform_data\Phenotyped'
+        $path = $this.basepath + '\' + $this.slideid + 
+            '\inform_data\Phenotyped'
         return $path
 
     }
     #
     [string]xmlfolder(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3\xml'
+        $path = $this.basepath + '\' + $this.slideid + 
+            '\im3\xml'
         return $path
 
     }
     #
     [string]meanimagefile(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3\' + $this.slideid + '-mean.flt'
+        $path = $this.basepath + '\' + $this.slideid + 
+            '\im3\' + $this.slideid + '-mean.flt'
         return $path
     }
     #
@@ -198,17 +218,20 @@ class sampledef : sharedtools{
     }
     #
     [string]flatwim3folder(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3\flatw'
+        $path = $this.basepath + '\' + $this.slideid + 
+            '\im3\flatw'
         return $path
     }
     #
     [string]flatwfolder(){
-        $path = '\\'+$this.project_data.fwpath + '\' + $this.slideid
+        $path = '\\'+$this.project_data.fwpath + '\' + 
+            $this.slideid
         return $path
     }
     #
     [string]mergeconfigfile(){
-        $path = $this.basepath + '\Batch\MergeConfig_' + $this.BatchID
+        $path = $this.basepath + '\Batch\MergeConfig_' + 
+            $this.BatchID
         return $path
     }
     #
@@ -218,10 +241,87 @@ class sampledef : sharedtools{
         }
     }
     #
-    [void]testbatchflatfield(){
+    [switch]testbatchflatfield(){
+        #
         if (!(test-path $this.batchflatfield())){
-            Throw "batch flatfield not found for:" + $this.batchflatfield()
+            return $false
         }
+        #
+        return $true
     }
-
+    #
+    [switch]testxmlfiles(){
+        #
+        $xml = $this.xmlfolder()
+        $im3s = (gci ($this.Scanfolder() + '\MSI\*') *im3).Count + 2
+        #
+        if (!(test-path $xml)){
+            return $false
+        }
+        #
+        # check files = im3s
+        #
+        $files = (gci ($xml + '\*') '*xml').Count
+        if (!($im3s -eq $files)){
+            return $false
+        }
+        #
+        return $true
+        #
+    }
+    #
+    [switch]testmeanimagefiles(){
+        #
+        if ($this.vers -match '0.0.1'){
+            #
+            # check for mean images
+            # 
+            $file = $this.im3folder() + '\' + $this.slideid + '-mean.csv'
+            $file2 = $this.im3folder() + '\' + $this.slideid + '-mean.flt'
+            #
+            if (!(test-path $file)){
+                return $false
+            }
+            if (!(test-path $file2)){
+                return $false
+            }
+        } else {
+            #
+            # check for meanimage directory
+            #
+            $p = $this.meanimagefolder()
+            if (!(test-path $p)){
+                return $false
+            }
+        }
+        #
+        return $true
+        #
+    }
+    #
+    [switch]testimagecorrectionfiles(){
+        #
+        $im3s = (gci ($this.Scanfolder() + '\MSI\*') *im3).Count
+        #
+        $paths = @($this.flatwim3folder(), $this.flatwfolder(), $this.flatwfolder())
+        $filetypes = @('*im3', '*fw', '*fw01')
+        #
+        for ($i=0; $i -lt 3; $i++){
+            #
+            if (!(test-path $paths[$i])){
+                return $false
+            }
+            #
+            # check files = im3s
+            #
+            $files = (gci ($paths[$i] + '\*') $filetypes[$i]).Count
+            if (!($im3s -eq $files)){
+                return $false
+            }
+        }
+        #
+        return $true
+        #
+    }
+    #
 }
