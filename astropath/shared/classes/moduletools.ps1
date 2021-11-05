@@ -330,7 +330,7 @@
         } else {
             $test = $this.pythonmodulename + ' : ' +
                 $this.sample.project + ';' + $this.sample.cohort
-            if ($this.logoutput[0] -notmatch $test) {
+            if ($this.logoutput -and $this.logoutput[0] -notmatch $test) {
                 $this.silentcleanup()
                 $potentialerrors = $this.logoutput.trim() -ne ''
                 Throw $potentialerrors
