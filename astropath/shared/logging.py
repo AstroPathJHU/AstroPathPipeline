@@ -172,7 +172,7 @@ class MyLogger:
 
   def filter(self, record):
     levelname = {
-      logging.DEBUG: None,
+      logging.DEBUG: "DEBUG",
       logging.INFO-1: "INFO",
       logging.INFO: "INFO",
       logging.WARNING: "WARNING",

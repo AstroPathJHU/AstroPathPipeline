@@ -99,16 +99,12 @@ class MeanImageComparison :
                         dossd_list = self.__get_delta_over_sigma_std_devs_by_layer(mi1,semi1,mi2,semi2)
                         self.dos_std_dev_values[is1,is2,:] = dossd_list
                         #append the values to the table
+                        new_entries = []
                         for ln in layers :
-                            new_entry = ComparisonTableEntry(mid1.parent.parent.parent,sid1,
-                                                             mid2.parent.parent.parent,sid2,
-                                                             ln,self.dos_std_dev_values[is1,is2,ln-1])
-                            if self.datatable_path.is_file() :
-                                all_entries = readtable(self.datatable_path,ComparisonTableEntry)
-                            else :
-                                all_entries = []
-                            all_entries.append(new_entry)
-                            writetable(self.datatable_path,all_entries)
+                            new_entries.append(ComparisonTableEntry(mid1.parent.parent.parent,sid1,
+                                                                    mid2.parent.parent.parent,sid2,
+                                                                    ln,self.dos_std_dev_values[is1,is2,ln-1]))
+                        writetable(self.datatable_path,new_entries,append=True)
                     pairs_done.add((sid1,sid2))
 
     def create_plots(self,to_plot,lines_after,bounds) :
@@ -198,7 +194,7 @@ class MeanImageComparison :
     #################### CLASS METHODS ####################
 
     @classmethod
-    def get_args(cls) :
+    def get_args(cls,given_args=None) :
         parser = ArgumentParser()
         # root: some number of root directories whose sampledef.csv file(s) list a group of slides that could be used
         parser.add_argument('root', type=pathlib.Path, nargs='+',
@@ -236,7 +232,7 @@ class MeanImageComparison :
                             help='''Add this flag to skip creating the flatfield model in the default location, 
                                     if "store-as" is given. 
                                     (BatchFlatfieldMultiCohort can be run standalone later on.)''')
-        args = parser.parse_args()
+        args = parser.parse_args(args=given_args)
         #make sure some arguments make sense
         for root_dir in args.root :
             if not root_dir.is_dir() :
@@ -247,12 +243,12 @@ class MeanImageComparison :
         return args
 
     @classmethod
-    def run(cls) :
+    def run(cls,args=None) :
         """
         Actually run the code start to finish
         """
         #get and parse the command-line arguments
-        args = cls.get_args()
+        args = cls.get_args(args)
         #set up the Comparison
         mic = cls(args.root,args.sampleregex,args.workingdir,args.sort_by,args.flatw)
         #create (or append to) the datatable of comparison values
@@ -434,8 +430,8 @@ class MeanImageComparison :
 
 #################### MAIN SCRIPT ####################
 
-def main() :
-    MeanImageComparison.run()
+def main(args=None) :
+    MeanImageComparison.run(args)
 
 if __name__=='__main__' :
     main()

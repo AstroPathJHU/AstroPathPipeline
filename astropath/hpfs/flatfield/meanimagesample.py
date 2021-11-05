@@ -40,6 +40,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         #set some other variables
         self.__skip_masking = skip_masking
         self.field_logs = []
+        self.__image_masking_dirpath = None
 
     def create_or_find_image_masks(self) :
         """
@@ -450,7 +451,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             for ri,r in enumerate(rects_to_plot) :
                 msg = f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots '
                 msg+= f'({ri+1} of {len(rects_to_plot)})....'
-                self.logger.info(msg)
+                self.logger.debug(msg)
                 try :
                     with r.using_image() as im :
                         save_plots_for_image(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,

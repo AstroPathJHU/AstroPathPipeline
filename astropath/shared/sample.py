@@ -1444,7 +1444,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir] = r.allexposuretimes[self.__layer-1]
     self.__med_et = np.median(slide_exp_times)
-    if (not self.skip_et_corrections) and (self.self.et_offset_file is not None) :
+    if (not self.skip_et_corrections) and (self.et_offset_file is not None) :
       #read the exposure time offsets
       offset = self.__get_exposure_time_offset()
       #add the exposure time correction to every rectangle's transformations
@@ -1455,7 +1455,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
       flatfield = get_raw_as_hwl(self.flatfield_file,
                                  self.rectangles[0].imageshapeinoutput[0],self.rectangles[0].imageshapeinoutput[1],self.nlayers,
                                  np.float64)
-      self.logger.info(f'Flatfield corrections will be applied from {self.flatfield_file}')
+      self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
       for r in self.rectangles :
         r.add_flatfield_correction_transformation(flatfield[:,:,self.__layer-1])
     if self.warping_file is not None :
@@ -1464,7 +1464,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
         r.add_warping_correction_transformation(warp)
 
   def __get_exposure_time_offset(self) :
-    self.logger.info(f'Copying exposure time offset for {self.SlideID} layer {self.__layer} from file {self.et_offset_file}')
+    self.logger.infoonenter(f'Copying exposure time offset for {self.SlideID} layer {self.__layer} from file {self.et_offset_file}')
     #read the offset from the Full.xml file
     if self.et_offset_file==self.fullxmlfile :
       tree = ET.parse(self.et_offset_file)
@@ -1494,7 +1494,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
       raise ValueError(f'ERROR: found {len(relevant_warps)} warps for layer {self.__layer} in {self.warping_file}')
     ws = relevant_warps[0]
     warp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
-    self.logger.info(f'Warping corrections will be applied from {self.__warping_file}')
+    self.logger.infoonenter(f'Warping corrections will be applied from {self.__warping_file}')
     return warp
 
   @classmethod
@@ -1604,12 +1604,12 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
         if warps_by_layer[ln-1] is not None :
           raise ValueError(f'ERROR: warping summary {self.warping_file} has conflicting entries for image layer {ln}!')
         warps_by_layer[ln-1] = thiswarp
-    self.logger.info(f'Warping corrections will be applied from {self.warping_file}')
+    self.logger.infoonenter(f'Warping corrections will be applied from {self.warping_file}')
     for li in range(self.nlayers) :
       if warps_by_layer[li] is None :
         warnmsg = f'WARNING: warping summary file {self.warping_file} does not contain any definitions for image layer '
         warnmsg+= f'{li+1} and so warping corrections for this image layer WILL BE SKIPPED!'
-        self.logger.warning(warnmsg)
+        self.logger.warningonenter(warnmsg)
     return warps_by_layer
 
   @property

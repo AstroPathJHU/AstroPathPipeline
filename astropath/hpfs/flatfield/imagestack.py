@@ -26,7 +26,8 @@ class ImageStack :
         self.__logger = logger
         self.__image_stack = np.zeros(img_dims,dtype=np.float64)
         self.__image_squared_stack = np.zeros(img_dims,dtype=np.float64)
-        self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
+        self.__mask_stack = None
+        self.n_images_read = 0
 
     def stack_rectangle_images(self,rectangles,med_ets=None,maskingdirpath=None) :
         """
@@ -72,6 +73,8 @@ class ImageStack :
         thismeanimage = get_raw_as_hwl(sample.meanimage,*(self.__image_stack.shape),dtype=np.float64)
         thisimagesquaredstack = get_raw_as_hwl(sample.sumimagessquared,*(self.__image_stack.shape),dtype=np.float64)
         thismaskstack = get_raw_as_hwl(sample.maskstack,*(self.__image_stack.shape),dtype=np.uint64)
+        if self.__mask_stack is None :
+            self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
         self.__mask_stack+=thismaskstack
         self.__image_stack+=thismaskstack*thismeanimage
         self.__image_squared_stack+=thisimagesquaredstack
@@ -83,10 +86,10 @@ class ImageStack :
         that must be done in some superclass that calls this method
         """
         #if the images haven't been masked then this is trivial
-        if np.max(self.__mask_stack)==0 :
-            self.__mean_image = self.__image_stack/self.__n_images_read
-            self.__std_err_of_mean_image = np.sqrt(np.abs(self.__image_squared_stack/self.__n_images_read-(np.power(self.__mean_image,2)))/self.__n_images_read)
-            return
+        if self.__mask_stack is None :
+            self.__mean_image = self.__image_stack/self.n_images_read
+            self.__std_err_of_mean_image = np.sqrt(np.abs(self.__image_squared_stack/self.n_images_read-(np.power(self.__mean_image,2)))/self.n_images_read)
+            return self.__mean_image, self.__std_err_of_mean_image
         #otherwise though we have to be a bit careful and take the mean value pixel-wise, 
         #being careful to fix any pixels that never got added to so there's no division by zero
         zero_fixed_mask_stack = np.copy(self.__mask_stack)
@@ -132,13 +135,16 @@ class ImageStack :
                 n_images_read+=1
                 n_images_stacked_by_layer+=1
                 field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
-                                           'bulk','stacking',str(list(range(self.__image_stack.shape[-1])))))
+                                           'bulk','stacking',str(list(range(1,self.__image_stack.shape[-1]+1)))))
         return n_images_read, n_images_stacked_by_layer, field_logs
 
     def __stack_images_with_masking(self,rectangles,med_ets,maskingdirpath) :
         """
         Read all of the image masks and add the masked images and their masks to the stacks 
         """
+        #start up the mask stack
+        if self.__mask_stack is None :
+            self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
         #make sure the masking files exist for every image, 
         #otherwise throw a warning and remove the associated image from the list of those to stack
         rectangles_to_stack = rectangles
@@ -202,7 +208,6 @@ class MeanImage(ImageStack) :
 
     def __init__(self,*args,**kwargs) :
         super().__init__(*args,**kwargs)
-        self.__n_images_read = 0
         self.__n_images_stacked_by_layer = None
         self.__mean_image=None
         self.__std_err_of_mean_image=None
@@ -214,7 +219,7 @@ class MeanImage(ImageStack) :
             self.__n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
         n_images_read, n_images_stacked_by_layer, field_logs = super().stack_rectangle_images(rectangles,
                                                                                               *otherstackimagesargs)
-        self.__n_images_read+=n_images_read
+        self.n_images_read+=n_images_read
         self.__n_images_stacked_by_layer+=n_images_stacked_by_layer
         return field_logs
 
@@ -224,9 +229,9 @@ class MeanImage(ImageStack) :
         """
         self.logger.debug('Creating the mean image with its standard error....')
         #make sure there actually was at least some number of images used
-        if self.__n_images_read<1 or np.max(self.__n_images_stacked_by_layer)<1 :
-            if self.__n_images_read<1 :
-                msg = f'WARNING: {self.__n_images_read} images were read in and so '
+        if self.n_images_read<1 or np.max(self.__n_images_stacked_by_layer)<1 :
+            if self.n_images_read<1 :
+                msg = f'WARNING: {self.n_images_read} images were read in and so '
                 msg+= 'the mean image will be zero everywhere!'
             else :
                 msg = 'WARNING: There are no layers with images stacked in them and so '
@@ -301,7 +306,6 @@ class Flatfield(ImageStack) :
         logger = the logging object to use (passed from whatever is using this meanimage)
         """
         super().__init__(*args,**kwargs)
-        self.__n_images_read = 0
         self.__n_images_stacked_by_layer = None
         self.__flatfield_image = None
         self.__flatfield_image_err = None
@@ -323,7 +327,7 @@ class Flatfield(ImageStack) :
             self.__n_images_stacked_by_layer = np.zeros((self.image_stack.shape[-1]),dtype=np.uint64)
         n_images_read, n_images_stacked_by_layer, field_logs = super().stack_rectangle_images(rectangles,
                                                                                               *otherstackimagesargs)
-        self.__n_images_read+=n_images_read
+        self.n_images_read+=n_images_read
         self.__n_images_stacked_by_layer+=n_images_stacked_by_layer
         return field_logs
 
@@ -335,7 +339,7 @@ class Flatfield(ImageStack) :
         self.__flatfield_image_err = np.empty_like(self.image_stack)
         #warn if not enough image were stacked overall
         if ( (self.mask_stack is not None and np.max(self.mask_stack)<1) or 
-             (self.mask_stack is None and (self.__n_images_read<1 or np.max(self.__n_images_stacked_by_layer)<1)) ) :
+             (self.mask_stack is None and (self.n_images_read<1 or np.max(self.__n_images_stacked_by_layer)<1)) ) :
             warnmsg = 'WARNING: not enough images were stacked overall, so the flatfield model will be all ones!'
             self.logger.warningglobal(warnmsg)
             self.__flatfield_image = np.ones_like(self.image_stack)
@@ -400,7 +404,8 @@ class Flatfield(ImageStack) :
         plot_image_layers(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}',plotdir_path)
         plot_image_layers(self.__flatfield_image_err,
                           f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty',plotdir_path)
-        plot_image_layers(self.mask_stack,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_mask_stack',plotdir_path)
+        if self.mask_stack is not None :
+            plot_image_layers(self.mask_stack,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_mask_stack',plotdir_path)
         flatfield_image_pixel_intensity_plot(self.__flatfield_image,version,plotdir_path)
         #make the summary PDF
         latex_summary = FlatfieldLatexSummary(self.__flatfield_image,plotdir_path,version)

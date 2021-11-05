@@ -45,6 +45,8 @@ have it installed separately on your computer.)
 Many of the other dependencies can also be installed through Anaconda if you want,
 but we have found that they work just as well when installing with pip.
 
+Note: GPU computation is supported in some Python modules through PyOpenCL. You will need to have third-party OpenCL drivers installed for any GPU you want to use. Any GPU built in 2011 or later supports OpenCL. OpenCL drivers can be downloaded [here for Intel GPUs](https://www.intel.com/content/www/us/en/developer/articles/tool/opencl-drivers.html), [here for AMD GPUs](https://www.amd.com/en/support), and [here for NVIDIA GPUs](https://www.nvidia.com/Download/index.aspx).
+
 #### 2.2.1.2. Code installation
 To install the code, first check out the repository, enter its directory,
 activate the conda envorinment if you are using conda, and run
