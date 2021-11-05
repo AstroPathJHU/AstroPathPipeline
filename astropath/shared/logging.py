@@ -260,17 +260,6 @@ class FileHandlerWrapper:
     self.__lockfilename = self.__filename.with_suffix(self.__filename.suffix+".lock")
     if filename not in self.__handlers:
       handler = self.__handlers[filename] = MyFileHandler(filename, delay=True)
-      kwargs = {"newline": "", "mode": handler.mode, "encoding": handler.encoding}
-      try:
-        kwargs["errors"] = handler.errors
-      except AttributeError: #python < 3.9
-        pass
-      newfile = open(filename, **kwargs)
-      try:
-        handler.setStream(newfile)
-      except AttributeError: #python < 3.7
-        handler.stream = newfile
-      handler.terminator = "\r\n"
     self.__handler = self.__handlers[filename]
     self.__counts[filename] += 1
     self.__formatter = self.__handler.formatter
@@ -307,13 +296,17 @@ class FileHandlerWrapper:
     return f"{type(self).__name__}({self.__filename})"
 
 class MyFileHandler(logging.FileHandler):
+  terminator = "\r\n"
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.__emit_iteration = 0
+    try:
+      self._builtin_open
+    except AttributeError:  #python < 3.10
+      self._builtin_open = open
   def emit(self, record, *, iteration=0):
     self.__emit_iteration = iteration
     return super().emit(record)
-
   def handleError(self, record):
     iteration = self.__emit_iteration
 
@@ -330,6 +323,19 @@ class MyFileHandler(logging.FileHandler):
     time.sleep(2)
 
     self.emit(record, iteration=iteration+1)
+
+  def _open(self):
+    """
+    From https://github.com/python/cpython/blob/bcb236c19e4ddf5ccf0fc45ab541eabf1f757a64/Lib/logging/__init__.py#L1191-L1198
+    with fixed newline
+    """
+    open_func = self._builtin_open
+    kwargs = {"newline": "", "mode": self.mode, "encoding": self.encoding}
+    try:
+      kwargs["errors"] = self.errors
+    except AttributeError:  #python < 3.9
+      pass
+    return open_func(self.baseFilename, **kwargs)
 
 __notgiven = object()
 
