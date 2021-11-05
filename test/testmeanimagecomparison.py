@@ -3,10 +3,11 @@ import os, pathlib, shutil
 import numpy as np
 from astropath.utilities.config import CONST as UNIV_CONST
 from astropath.utilities.img_file_io import read_image_from_layer_files, write_image_to_file
+from astropath.utilities.tableio import readtable
 from astropath.hpfs.flatfield.config import CONST
 from astropath.hpfs.flatfield.utilities import ComparisonTableEntry
 from astropath.hpfs.flatfield.meanimagecomparison import MeanImageComparison
-from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
@@ -86,7 +87,13 @@ class TestMeanImageComparison(TestBaseCopyInput,TestBaseSaveOutput) :
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'meanimagecomparison'
         try :
-            compare_two_csv_files(self.workingdir,reffolder,'meanimagecomparison_table.csv',ComparisonTableEntry)
+            created = readtable(self.workingdir/'meanimagecomparison_table.csv',ComparisonTableEntry)
+            ref = readtable(reffolder/'meanimagecomparison_table.csv',ComparisonTableEntry)
+            for c,r in zip(created,ref) :
+                assert c.slide_ID_1 == r.slide_ID_1
+                assert c.slide_ID_2 == r.slide_ID_2
+                assert c.layer_n == r.layer_n
+                assert c.delta_over_sigma_std_dev == r.delta_over_sigma_std_dev
         except :
             self.saveoutput()
             raise
