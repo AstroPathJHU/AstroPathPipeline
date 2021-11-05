@@ -1,16 +1,17 @@
 #imports
 from .meanimagesample import MeanImageSample
-from ...shared.argumentparser import FileTypeArgumentParser
+from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort
 
 class MeanImageCohort(CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, 
-                      WorkflowCohort, FileTypeArgumentParser) :
+                      WorkflowCohort, WorkingDirArgumentParser, FileTypeArgumentParser) :
     sampleclass = MeanImageSample
     __doc__ = sampleclass.__doc__
 
-    def __init__(self,*args,filetype='raw',skip_masking=False,**kwargs) :
+    def __init__(self,*args,filetype='raw',workingdir=None,skip_masking=False,**kwargs) :
         super().__init__(*args,**kwargs)
         self.filetype = filetype
+        self.workingdir=workingdir
         self.skip_masking = skip_masking
 
     @classmethod
@@ -30,10 +31,13 @@ class MeanImageCohort(CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, 
 
     @property
     def initiatesamplekwargs(self) :
-        return {**super().initiatesamplekwargs,
-                'filetype':self.filetype,
-                'skip_masking':self.skip_masking,
-               }
+        rd = {**super().initiatesamplekwargs,
+              'filetype':self.filetype,
+              'skip_masking':self.skip_masking,
+            }
+        if self.workingdir is not None :
+            rd['workingdir'] = self.workingdir
+        return rd
 
     @property
     def workflowkwargs(self) :
