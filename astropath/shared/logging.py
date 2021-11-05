@@ -259,7 +259,7 @@ class FileHandlerWrapper:
     self.__filename = pathlib.Path(filename)
     self.__lockfilename = self.__filename.with_suffix(self.__filename.suffix+".lock")
     if filename not in self.__handlers:
-      handler = self.__handlers[filename] = MyFileHandler(filename, delay=True)
+      self.__handlers[filename] = MyFileHandler(filename, delay=True)
     self.__handler = self.__handlers[filename]
     self.__counts[filename] += 1
     self.__formatter = self.__handler.formatter
