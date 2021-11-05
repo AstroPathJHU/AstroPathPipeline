@@ -40,6 +40,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         #set some other variables
         self.__skip_masking = skip_masking
         self.field_logs = []
+        self.__image_masking_dirpath = None
 
     def create_or_find_image_masks(self) :
         """

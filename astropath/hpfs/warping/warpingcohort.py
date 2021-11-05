@@ -54,10 +54,10 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             self.__workingdir = self.root / UNIV_CONST.WARPING_DIRNAME
         if not self.__workingdir.is_dir() :
             self.__workingdir.mkdir(parents=True)
-        self.__useGPU = useGPU
         #if running with the GPU, create a GPU thread and start a dictionary of GPU FFTs to give to each sample
         self.gputhread = get_GPU_thread(sys.platform=='darwin',self.logger) if useGPU else None
         self.gpufftdict = None if self.gputhread is None else {}
+        self.__useGPU = useGPU if self.gputhread is not None else False
         self.__octets_only = octets_only
         #placeholders for the groups of octets
         self.__fit_1_octets = []; self.__fit_2_octets = []; self.__fit_3_octets = []

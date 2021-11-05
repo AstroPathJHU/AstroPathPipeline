@@ -8,7 +8,7 @@ from astropath.shared.sample import ReadRectanglesIm3FromXML
 from astropath.hpfs.flatfield.config import CONST
 from astropath.hpfs.flatfield.utilities import FieldLog
 from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohort
-from .testbase import compare_two_csv_files, TestBaseSaveOutput
+from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
@@ -30,10 +30,16 @@ class DummySample(ReadRectanglesIm3FromXML) :
     def logmodule(cls) : 
         return "dummy_sample"
 
-class TestAppliedFlatfieldCohort(TestBaseSaveOutput) :
+class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
     """
     Class to test AppliedFlatfieldCohort functions
     """
+
+    @classmethod
+    def filestocopy(cls):
+        origraw = folder/'data'/'raw'
+        for fp in (origraw/slideID).glob('*.Data.dat') :
+            yield fp,(shardedim3root/slideID)
 
     @property
     def output_dir(self) :
@@ -76,6 +82,7 @@ class TestAppliedFlatfieldCohort(TestBaseSaveOutput) :
                 '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--sampleregex',slideID,
                 '--image-set-split','sequential',
+                '--skip-masking',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
@@ -102,5 +109,6 @@ class TestAppliedFlatfieldCohort(TestBaseSaveOutput) :
 
     def tearDown(self) :
         for fp_to_remove in self.__files_to_remove :
-            fp_to_remove.unlink()
+            if fp_to_remove.is_file() :
+                fp_to_remove.unlink()
         super().tearDown()
