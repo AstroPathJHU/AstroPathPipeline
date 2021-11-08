@@ -44,7 +44,7 @@ Class warpoctets : moduletools {
         $this.sample.info("started warp octets")
         $taskname = 'warpoctets'
         $dpath = $this.sample.basepath
-        $rpath = $this.processvars[1] + '\' + $this.sample.slideid
+        $rpath = $this.processvars[1]
         $flatfield = $this.sample.flatfieldfolder() + '\flatfield_BatchID_' + $this.sample.BatchID + '.bin'
         $this.pythonmodulename = 'warpingcohort'
         $pythontask = $this.pythonmodulename, $dpath, `
