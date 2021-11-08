@@ -32,11 +32,11 @@ class CrossRegistrationSample(WSISample, AstroPathTissueMaskSample, ThingWithZoo
   def zoomedscale(self): return self.__zoomedscale
 
 class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
-  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, dbloadroot1=None, dbloadroot2=None, logroot1=None, logroot2=None, maskroot1=None, maskroot2=None, uselogfiles=True, **kwargs):
+  def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, dbloadroot1=None, dbloadroot2=None, logroot1=None, logroot2=None, maskroot1=None, maskroot2=None, maskfilesuffix1=None, maskfilesuffix2=None, uselogfiles=True, **kwargs):
     self.__zoomfactor = zoomfactor
     self.samples = (
-      CrossRegistrationSample(root=root1, samp=samp1, zoomroot=zoomroot1, dbloadroot=dbloadroot1, logroot=logroot1, maskroot=maskroot1, uselogfiles=uselogfiles, zoomfactor=self.zoomfactor),
-      CrossRegistrationSample(root=root2, samp=samp2, zoomroot=zoomroot2, dbloadroot=dbloadroot2, logroot=logroot2, maskroot=maskroot2, uselogfiles=uselogfiles, zoomfactor=self.zoomfactor),
+      CrossRegistrationSample(root=root1, samp=samp1, zoomroot=zoomroot1, dbloadroot=dbloadroot1, logroot=logroot1, maskroot=maskroot1, maskfilesuffix=maskfilesuffix1, uselogfiles=uselogfiles, zoomfactor=self.zoomfactor),
+      CrossRegistrationSample(root=root2, samp=samp2, zoomroot=zoomroot2, dbloadroot=dbloadroot2, logroot=logroot2, maskroot=maskroot2, maskfilesuffix=maskfilesuffix2, uselogfiles=uselogfiles, zoomfactor=self.zoomfactor),
     )
     super().__init__(*args, **kwargs)
 
@@ -76,6 +76,13 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
   def mintissuefraction(self): return self.__mintissuefraction
   @property
   def logger(self): return self.__logger
+
+  def __enter__(self):
+    super().__enter__()
+    for _ in self.samples:
+      self.enter_context(_)
+    self.enter_context(self.logger)
+    return self
 
   @contextlib.contextmanager
   def using_wsis(self):
@@ -117,7 +124,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
       return wsis, masks
 
   def runalignment(self, *, _debugprint=False, smoothsigma=10):
-    with self.using_scaled_wsis_and_masks(smoothsigma=1, equalize=False) as (wsis, masks):
+    with self, self.using_scaled_wsis_and_masks(smoothsigma=1, equalize=False) as (wsis, masks):
       wsi1, wsi2 = wsis
       mask1, mask2 = masks
       if _debugprint > .5:

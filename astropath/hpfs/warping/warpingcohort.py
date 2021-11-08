@@ -54,10 +54,10 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             self.__workingdir = self.root / UNIV_CONST.WARPING_DIRNAME
         if not self.__workingdir.is_dir() :
             self.__workingdir.mkdir(parents=True)
-        self.__useGPU = useGPU
         #if running with the GPU, create a GPU thread and start a dictionary of GPU FFTs to give to each sample
-        self.gputhread = get_GPU_thread(sys.platform=='darwin') if useGPU else None
+        self.gputhread = get_GPU_thread(sys.platform=='darwin',self.logger) if useGPU else None
         self.gpufftdict = None if self.gputhread is None else {}
+        self.__useGPU = useGPU if self.gputhread is not None else False
         self.__octets_only = octets_only
         #placeholders for the groups of octets
         self.__fit_1_octets = []; self.__fit_2_octets = []; self.__fit_3_octets = []
@@ -254,7 +254,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             msg+= f'({oi+1} of {len(octets)})....'
             self.logger.debug(msg)
             this_sample = None
-            for s in self.samples :
+            for s in self.samples() :
                 if s.SlideID==o.slide_ID :
                     this_sample = s
                     break
@@ -397,7 +397,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             final_pars[fpn] = weighted_sum/sum_weights
         all_slide_ids = list(set([r.slide_ID for r in fit_1_results+fit_2_results+fit_3_results]))
         ex_samp = None
-        for s in self.samples :
+        for s in self.samples() :
             ex_samp = s 
             break
         warping_summary = [WarpingSummary(str(all_slide_ids),ex_samp.Project,ex_samp.Cohort,

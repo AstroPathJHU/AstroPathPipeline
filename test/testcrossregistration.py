@@ -51,7 +51,7 @@ class TestCrossRegistration(TestBaseCopyInput, TestBaseSaveOutput):
     samp2 = "MA12"
     #args = [os.fspath(root), os.fspath(root), "--dbloadroot", os.fspath(testroot), os.fspath(testroot), "--logroot", os.fspath(testroot), os.fspath(testroot), "--zoomroot", os.fspath(zoomroot), os.fspath(zoomroot), "--maskroot1", os.fspath(maskroot), os.fspath(root), "--units", units, "--sampleregex", f"^({samp1}|{samp2})$", "--debug", "--allow-local-edits", "--ignore-dependencies"]
 
-    r = CrossRegistration(root1=root, root2=root, samp1=samp1, samp2=samp2, dbloadroot1=testroot, dbloadroot2=testroot, logroot1=testroot, logroot2=testroot, zoomroot1=zoomroot, zoomroot2=zoomroot, maskroot1=maskroot1, uselogfiles=False)
+    r = CrossRegistration(root1=root, root2=root, samp1=samp1, samp2=samp2, dbloadroot1=testroot, dbloadroot2=testroot, logroot1=testroot, logroot2=testroot, zoomroot1=zoomroot, zoomroot2=zoomroot, maskroot1=maskroot1, maskfilesuffix1=".bin", uselogfiles=False)
     r.runalignment()
 
     #CrossRegistration.runfromargumentparser(args=args)

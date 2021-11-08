@@ -133,12 +133,12 @@ pipeline {
           stages {
             stage('test warping') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarping'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarping'
               }
             }
             stage('test warpingcohort') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testwarpingcohort'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
               }
             }
           }
@@ -175,15 +175,21 @@ pipeline {
           }
         }
 
+        stage('meanimagecomparison') {
+          steps {
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimagecomparison'
+          }
+        }
+
         stage('applyflatw') {
           steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testapplyflatw'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
           }
         }
 
         stage('crossregistration') {
           steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.test.testcrossregistration'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
           }
         }
 
@@ -199,7 +205,7 @@ pipeline {
         //make sure normal execution doesn't make files that aren't ignored by .gitignore
         sh 'if ! [ -z "$(git status --porcelain)" ]; then echo "tests created uncommitted changes"; git status; git diff; git submodule foreach bash -c "git status; git diff"; exit 1; fi'
         sh 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)'
-        sh '''git submodule foreach bash -c 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows."; exit 1)\''''
+        sh '''git submodule foreach bash -c 'chmod u-x $(find $(git ls-files) -maxdepth 0 -type f); git diff --exit-code || (echo "The above files ^^^^^^ are chmodded to +x.  This causes git status to show up as dirty on windows. Run chmod a-x on those files to fix this error."; exit 1)\''''
         sh '! find test/test_for_jenkins -type f | grep . || (echo "expected the test_for_jenkins folder to be empty when tests succeed (feel free to modify this check if you want to keep output files from successful tests)"; exit 1)'
       }
     }

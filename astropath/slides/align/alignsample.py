@@ -29,7 +29,9 @@ class AlignSampleBase(SampleBase):
 
     if forceGPU: useGPU = True
     self.gpufftdict = None
-    self.gputhread=get_GPU_thread(interactive) if useGPU else None
+    self.gputhread=get_GPU_thread(interactive,self.logger) if useGPU else None
+    if self.gputhread is None and forceGPU :
+      raise RuntimeError(f'ERROR: GPU computation is not available, but "forceGPU" is {forceGPU}!')
     self.__images = None
 
   def initrectangles(self):

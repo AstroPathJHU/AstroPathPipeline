@@ -250,6 +250,10 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         super().__init__(title,filename,plot_dirpath)
 
     @property
+    def version_tex(self) :
+        return self.__version.replace('_',r'\_')
+
+    @property
     def sections(self) :
         return [*super().sections,self.pixel_intensities_and_data_table,self.flatfield_layers,
                 self.flatfield_uncertainty_layers,self.mask_stack_layers]
@@ -264,7 +268,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         l = f'Figure~\\ref{{{figlabel}}} shows the 5th and 95th percentile, as well as the standard deviation, of the '
         l+= 'pixel-by-pixel correction factors in each layer of the flatfield model'
         if self.__version is not None :
-            l+=f' created as version {self.__version}'
+            l+=f' created as version {self.version_tex}'
         l+='. The red lines and green shaded areas show the values calculated over the entire area of the '
         l+='correction image, and the blue lines and yellow shading show the values calculated considering only the '
         l+='central 64\\% ``primary region" of the correction image.'
