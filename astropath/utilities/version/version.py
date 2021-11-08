@@ -11,7 +11,7 @@ happens when editing the repo on cygwin and running on cmd or powershell.
 """
 
 import datetime, os, pkg_resources, re, setuptools_scm
-from .. import __name__ as package_name
+from ... import __name__ as package_name
 
 try:
   if int(os.environ.get("_ASTROPATH_VERSION_NO_GIT", 0)):
