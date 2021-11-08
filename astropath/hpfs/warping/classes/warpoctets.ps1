@@ -46,10 +46,11 @@ Class warpoctets : moduletools {
         $dpath = $this.sample.basepath
         $rpath = $this.processvars[1] + '\' + $this.sample.slideid
         $flatfield = $this.sample.flatfieldfolder() + '\flatfield_BatchID_' + $this.sample.BatchID + '.bin'
-        $pythontask = 'warpingcohort ' + $dpath +
-         ' --shardedim3root ' + $rpath +
-         ' --flatfield-file ' + $flatfield +
-         ' --octets-only --noGPU --allow-local-edits'
+        $this.pythonmodulename = 'warpingcohort'
+        $pythontask = $this.pythonmodulename, $dpath, `
+         '--shardedim3root',  $rpath, `
+         '--flatfield-file',  $flatfield, `
+         '--octets-only --noGPU --allow-local-edits' -join ' '
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished warp octets")
     }
@@ -62,10 +63,21 @@ Class warpoctets : moduletools {
     [void]cleanup(){
         #
         $this.sample.info("cleanup started")
-        if ($this.processvars[4]){
-            Get-ChildItem -Path $this.processloc -Recurse | Remove-Item -force -recurse
-        }
+        $this.silentcleanup()
         $this.sample.info("cleanup finished")
+        #
+    }
+    <# -----------------------------------------
+     silentcleanup
+     silentcleanup
+     ------------------------------------------
+     Usage: $this.silentcleanup()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
+        #
+        if ($this.processvars[4]){
+            $this.sample.removedir($this.processloc)
+        }
         #
     }
 }
