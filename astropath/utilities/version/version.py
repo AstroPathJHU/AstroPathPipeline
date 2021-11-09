@@ -18,7 +18,7 @@ try:
     env_var_no_git = True
     raise LookupError
   env_var_no_git = False
-  astropathversion = "v"+setuptools_scm.get_version(root="../..", relative_to=__file__)
+  astropathversion = "v"+setuptools_scm.get_version(root="../../..", relative_to=__file__)
   have_git = True
 except LookupError:
   have_git = False
