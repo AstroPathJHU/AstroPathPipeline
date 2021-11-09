@@ -30,7 +30,7 @@ Class informinput {
     [array]$image_list
     [string]$informpath
     [launchmodule]$sample
-    [string]$informbatchlog = $this.informoutpath + "\Batch.log"
+    [string]$informbatchlog
     [int]$err
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     #
@@ -45,6 +45,7 @@ Class informinput {
         $this.informoutpath = $this.outpath + "\" + $this.abx
         $this.informpath = '"'+"C:\Program Files\Akoya\inForm\" + 
             $task[4].trim() + "\inForm.exe"+'"'
+        $this.informbatchlog = $this.informoutpath + "\Batch.log"
         #
         $this.TestPaths()
         $this.KillinFormProcess()
@@ -65,6 +66,34 @@ Class informinput {
         if (!(test-path $this.sample.flatwim3folder())){
             Throw "flatw path not found for:" + $this.sample.flatwim3folder()
         }
+        #
+    }
+    <# -----------------------------------------
+     RunBatchInForm
+     Run the batch process 
+     ------------------------------------------
+     Usage: $this.RunBatchInForm()
+    ----------------------------------------- #>
+    [void]RunBatchInForm(){
+        #
+        $this.DownloadIm3()
+        while(($this.err -le 5) -AND ($this.err -ge 0)){
+            #
+            $this.CreateOutputDir()
+            $this.CreateImageList()
+            $this.StartInForm()
+            $this.WatchBatchInForm()
+            $this.CheckErrors()
+            if (($this.err -le 5) -and ($this.err -gt 0)){
+                $this.sample.warning("Task will restart. Attempt "+ $this.err)
+            } elseif ($this.err -gt 5){
+                Throw "Could not complete task after 5 attempts"
+            } elseif ($this.err -eq -1){
+                $this.sample.info("inForm Batch Process Finished Successfully")
+            }
+        }
+        #
+        $this.ReturnData()
         #
     }
     <# -----------------------------------------
@@ -133,7 +162,9 @@ Class informinput {
         #
         $this.sample.info("Compile image list")
         $p = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw\*'
-        $this.image_list = gci -Path $p -include *.im3 | % {$_.FullName}
+        $this.image_list = gci -Path $p -include *.im3 |
+             % {$_.FullName} |
+            foreach-object {$_+"`r`n"}
         $this.sample.setfile($this.image_list_file, $this.image_list)
         #
     }
@@ -146,7 +177,9 @@ Class informinput {
     [void]StartInForm(){
         #
         $processoutputlog =  $this.outpath + "\processoutput.log"
-        $arginput = " -a",  $this.algpath, "-o",  $this.informoutpath, "-i", $this.image_list_file -join ' ' 
+        $arginput = " -a",  $this.algpath, `
+                    "-o",  $this.informoutpath, `
+                    "-i", $this.image_list_file -join ' ' 
         $this.sample.info("Start inForm Batch Process")
         $prc = Start-Process $this.informpath `
                 -NoNewWindow `
@@ -179,29 +212,34 @@ Class informinput {
             %{$_.CloseMainWindow()} | out-null
         Start-Sleep 20
         #
-        if (!(test-path $this.informbatchlog) `
-            -or !(get-process -name inform -EA SilentlyContinue)){
-                Throw 'inForm did not properly start'
+        if (!(test-path $this.informbatchlog) -or 
+            !(get-process -name inform -EA SilentlyContinue)){
+                $this.sample.warning('inForm did not properly start')
+                return
             }
         $value = $true
         #
-        # wait for inform to complete, if the process has not completed check the batch file
-        # has been updated within that time limit. Kill inForm otherwise.
+        # wait for inform to complete, if the process has 
+        # not completed check the batch file
+        # has been updated within that time limit. 
+        # Kill inForm otherwise.
         #
         while($value){
-                #
-                if ((gci $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-10)){
-                    $this.KillinFormProcess()
-                    $this.sample.warning('Timeout reached for batch run')
-                    if (get-process -name inform -EA SilentlyContinue){
-                        Throw 'Could not close failed inForm'
-                    }
+            #
+            if ((gci $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-10)){
+                $this.KillinFormProcess()
+                $this.sample.warning('Timeout reached for batch run')
+                if (get-process -name inform -EA SilentlyContinue){
+                    Throw 'Could not close failed inForm'
                 } else {
-                    get-process -name inform -EA SilentlyContinue |
-                        Wait-Process -Timeout 300 -EA SilentlyContinue -ErrorVariable value
+                    $value = $false
                 }
-                #
+            } else {
+                get-process -name inform -EA SilentlyContinue |
+                    Wait-Process -Timeout 300 -EA SilentlyContinue -ErrorVariable value
             }
+            #
+        }
         #
     }
    <# -----------------------------------------
@@ -296,16 +334,17 @@ Class informinput {
         $sor3 = gci $sor1 -include "*.ifr" | % {$_.FullName}
         try {Remove-Item $sor3 -Force -EA SilentlyContinue} catch {}
         XCOPY /q /y /z $this.algpath $sor 
-        $old_name = $sor+'\'+$this.alg
-        $new_name = $sor+'\'+'batch_procedure'+$this.alg.Substring($this.alg.Length-4, 4)
+        $old_name = $sor + '\' + $this.alg
+        $new_name = $sor + '\' + 'batch_procedure' + 
+            $this.alg.Substring($this.alg.Length-4, 4)
         Rename-Item -LiteralPath $old_name $new_name -Force
         #
-        if (test-path $this.abpath){
-            remove-item $this.abpath -force -Recurse -EA SilentlyContinue   
-        }
+        $this.sample.removedir($this.abpath)
         #
         $logfile = $this.outpath+'\robolog.log'
-        $moutput = robocopy $sor $this.abpath *maps.tif *.txt *.ifr *.ifp *.log -r:3 -w:3 -np -mt:50 -log:$logfile
+        $moutput = robocopy $sor $this.abpath `
+            *maps.tif *.txt *.ifr *.ifp *.log `
+            -r:3 -w:3 -np -mt:50 -log:$logfile
         #
         $sor4 = gci $sor1 -include "*data.tif"
         if ($sor4){
@@ -313,40 +352,14 @@ Class informinput {
             if (test-path $cc) {
                 remove-item $cc -Force -Recurse -EA SilentlyContinue
             }
-            $moutput = robocopy $sor $cc *data.tif *.ifr *.ifp *.log -r:3 -w:3 -np -mt:1 -log:$logfile
+            $moutput = robocopy $sor $cc `
+            *data.tif *.ifr *.ifp *.log `
+            -r:3 -w:3 -np -mt:1 -log:$logfile
         }
         #
         Remove-Item $this.outpath -Recurse -Force -EA STOP
         #
         $this.sample.info("Data transfer finished")
-        #
-    }
-    <# -----------------------------------------
-     RunBatchInForm
-     Run the batch process 
-     ------------------------------------------
-     Usage: $this.RunBatchInForm()
-    ----------------------------------------- #>
-    [void]RunBatchInForm(){
-        #
-        $this.DownloadIm3()
-        while(($this.err -le 5) -AND ($this.err -ge 0)){
-            #
-            $this.CreateOutputDir()
-            $this.CreateImageList()
-            $this.StartInForm()
-            $this.WatchBatchInForm()
-            $this.CheckErrors()
-            if (($this.err -le 5) -and ($this.err -gt 0)){
-                $this.sample.warning("Task will restart. Attempt "+ $this.err)
-            } elseif ($this.err -gt 5){
-                Throw "Could not complete task after 5 attempts"
-            } elseif ($this.err -eq -1){
-                $this.sample.info("inForm Batch Process Finished Successfully")
-            }
-        }
-        #
-        $this.ReturnData()
         #
     }
 #
