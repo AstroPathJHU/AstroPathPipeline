@@ -60,7 +60,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
   result = []
   if checknewlines:
     checkwindowsnewlines(filename)
-  with field_size_limit_context(fieldsizelimit), open(filename) as f:
+  with field_size_limit_context(fieldsizelimit), contextlib.nullcontext(filename) if isinstance(filename, io.TextIOBase) else open(filename) as f:
     if header:
       fieldnames = None
     else:

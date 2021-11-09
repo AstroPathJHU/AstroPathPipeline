@@ -19,12 +19,14 @@ try:
     raise LookupError
   env_var_no_git = False
   astropathversion = "v"+setuptools_scm.get_version(root="../..", relative_to=__file__)
+  have_git = True
 except LookupError:
+  have_git = False
   try:
     astropathversion = "v"+pkg_resources.get_distribution(package_name).version
   except pkg_resources.DistributionNotFound:
     astropathversion = "v0.0.0.dev0+g0000000.d"+datetime.date.today().strftime("%Y%m%d")
 
-astropathversionmatch = re.match(r"v(?P<version>[0-9]+(?:\.[0-9]+)*)(?P<dev>\.dev[0-9]+\+g[0-9a-f]+)?(?P<date>\.d[0-9]+)?", astropathversion)
+astropathversionmatch = re.match(r"v(?P<version>[0-9]+(?:\.[0-9]+)*)(?P<dev>\.dev(?P<devnumber>[0-9]+)\+g(?P<commit>[0-9a-f]+))?(?:\.d(?P<date>[0-9]+))?", astropathversion)
 if not astropathversionmatch:
   raise RuntimeError(f"got a version number '{astropathversion}' that doesn't match the desired regex")
