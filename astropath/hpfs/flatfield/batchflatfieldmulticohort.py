@@ -136,22 +136,24 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
-        #overwrite the sample regex to choose samples listed in the model file instead
-        flatfield_model_file = parsed_args_dict.pop('flatfield_model_file')
+        #use the sample regex to choose samples listed in the model file (if no sampleregex was given)
         version = parsed_args_dict.pop('version')
-        if not flatfield_model_file.is_file() :
-            raise ValueError(f'ERROR: flatfield model file {flatfield_model_file} not found!')
-        all_model_table_entries = readtable(flatfield_model_file,ModelTableEntry)
-        model_table_entries = [te for te in all_model_table_entries if te.version==version]
-        if len(model_table_entries)<1 :
-            errmsg=f'ERROR: {len(model_table_entries)} entries found in {flatfield_model_file} for version {version}!'
-            raise ValueError(errmsg)
-        slide_IDs = [te.SlideID for te in model_table_entries]
-        new_regex = '('
-        for sid in slide_IDs :
-            new_regex+=sid+r'\b|'
-        new_regex=new_regex[:-1]+')'
-        parsed_args_dict['sampleregex']=re.compile(new_regex)
+        flatfield_model_file = parsed_args_dict.pop('flatfield_model_file')
+        if parsed_args_dict['sampleregex'] is None :
+            if not flatfield_model_file.is_file() :
+                raise ValueError(f'ERROR: flatfield model file {flatfield_model_file} not found!')
+            all_model_table_entries = readtable(flatfield_model_file,ModelTableEntry)
+            model_table_entries = [te for te in all_model_table_entries if te.version==version]
+            n_entries = len(model_table_entries)
+            if n_entries<1 :
+                errmsg=f'ERROR: {n_entries} entries found in {flatfield_model_file} for version {version}!'
+                raise ValueError(errmsg)
+            slide_IDs = [te.SlideID for te in model_table_entries]
+            new_regex = '('
+            for sid in slide_IDs :
+                new_regex+=sid+r'\b|'
+            new_regex=new_regex[:-1]+')'
+            parsed_args_dict['sampleregex']=re.compile(new_regex)
         #always rerun the samples, they don't produce any output
         parsed_args_dict['skip_finished']=False 
         #return the kwargs dict

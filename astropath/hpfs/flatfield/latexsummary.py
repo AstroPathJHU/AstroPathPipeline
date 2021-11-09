@@ -243,7 +243,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         title = 'Flatfield'
         filename = CONST.FLATFIELD_SUMMARY_PDF_FILENAME_STEM
         if self.__version is not None :
-            title+=f' Version {self.__version}'
+            title+=f' Version {self.version_tex}'
             filename+=f'_{self.__version}'
         title+=' Summary'
         filename+='.pdf'
