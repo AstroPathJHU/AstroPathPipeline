@@ -1,7 +1,8 @@
 import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
 from ..utilities.config import CONST as UNIV_CONST
-from ..utilities.misc import floattoint, memmapcontext
+from ..utilities.miscmath import floattoint
+from ..utilities.misc import memmapcontext
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .logging import printlogger

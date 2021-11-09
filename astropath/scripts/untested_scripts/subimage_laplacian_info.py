@@ -2,7 +2,7 @@
 from astropath.flatfield.utilities import chunkListOfFilepaths, readImagesMT
 from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedianExposureTimesByLayer, LayerOffset
 from astropath.utilities.tableio import readtable, writetable
-from astropath.utilities.misc import cd
+from astropath.utilities.miscpath import cd
 from astropath.scripts.untested_scripts.utilities import addCommonArgumentsToParser
 from argparse import ArgumentParser
 from scipy.ndimage.filters import convolve

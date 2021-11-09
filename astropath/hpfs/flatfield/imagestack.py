@@ -1,7 +1,7 @@
 #imports
 import numpy as np
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import cd
+from ...utilities.miscpath import cd
 from ...utilities.tableio import readtable, writetable
 from ...utilities.img_file_io import get_image_hwl_from_xml_file,get_raw_as_hwl, smooth_image_worker
 from ...utilities.img_file_io import smooth_image_with_uncertainty_worker, write_image_to_file

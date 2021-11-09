@@ -1,7 +1,7 @@
 import csv, dataclassy, datetime, numbers, numpy as np
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
-from ..utilities.misc import floattoint
+from ..utilities.miscmath import floattoint
 from ..utilities.tableio import datefield, optionalfield, readtable
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, Polygon, polygonfield

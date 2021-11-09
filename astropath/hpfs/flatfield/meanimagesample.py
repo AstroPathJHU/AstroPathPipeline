@@ -15,7 +15,7 @@ from ...shared.sample import WorkflowSample, ParallelSample
 from ...shared.samplemetadata import MetadataSummary
 from ...shared.overlap import Overlap
 from ...utilities.tableio import readtable, writetable
-from ...utilities.misc import cd
+from ...utilities.miscpath import cd
 from ...utilities.config import CONST as UNIV_CONST
 import numpy as np
 import pathlib, methodtools, random

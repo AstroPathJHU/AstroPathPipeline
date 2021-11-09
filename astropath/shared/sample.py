@@ -4,7 +4,7 @@ from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
 from ..hpfs.warping.utilities import WarpingSummary
 from ..utilities import units
-from ..utilities.misc import floattoint
+from ..utilities.miscmath import floattoint
 from ..utilities.img_file_io import get_raw_as_hwl, LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.config import CONST as UNIV_CONST

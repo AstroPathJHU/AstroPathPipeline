@@ -1,5 +1,5 @@
 #imports
-from ...utilities.misc import save_figure_in_dir
+from ...utilities.miscplotting import save_figure_in_dir
 import numpy as np
 import matplotlib.pyplot as plt
 

@@ -8,7 +8,7 @@ from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample,
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
-from ...utilities.misc import covariance_matrix, floattoint
+from ...utilities.miscmath import covariance_matrix, floattoint
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift

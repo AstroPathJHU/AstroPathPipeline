@@ -5,7 +5,7 @@ from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...shared.image_masking.image_mask import ImageMask
 from ...utilities.img_file_io import im3writeraw
-from ...utilities.misc import floattoint
+from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiff

@@ -4,7 +4,7 @@ from ...shared.overlap import RectangleOverlapCollection
 from ...shared.rectangle import Rectangle, rectangledict, RectangleList
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation, MyDataClass
-from ...utilities.misc import covariance_matrix, floattoint, weightedstd
+from ...utilities.miscmath import covariance_matrix, floattoint, weightedstd
 from ...utilities.tableio import writetable
 from .field import Field, FieldOverlap
 

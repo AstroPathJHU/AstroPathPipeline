@@ -2,7 +2,9 @@ import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, nu
 
 from ...shared.argumentparser import SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
-from ...utilities.misc import floattoint, memmapcontext, vips_image_to_array
+from ...utilities.misc import memmapcontext
+from ...utilities.miscimage import vips_image_to_array
+from ...utilities.miscmath import floattoint
 from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample

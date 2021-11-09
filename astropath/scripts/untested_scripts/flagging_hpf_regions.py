@@ -7,7 +7,8 @@ from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedi
 from astropath.utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer
 #from astropath.utilities.img_file_io import writeImageToFile
 from astropath.utilities.tableio import readtable, writetable
-from astropath.utilities.misc import cd, cropAndOverwriteImage
+from astropath.utilities.miscpath import cd
+from astropath.utilities.miscplotting import crop_and_overwrite_image
 #from astropath.utilities import units
 #from astropath.shared.csvclasses import constantsdict
 from astropath.utilities.dataclasses import MyDataClass
@@ -293,7 +294,7 @@ def doMaskingPlotsForImage(image_key,tissue_mask,plot_dict_lists,full_mask,worki
     else :
         with cd(workingdir) :
             fn = f'{image_key}_masking_plots.png'
-            plt.savefig(fn); plt.close(); cropAndOverwriteImage(fn)
+            plt.savefig(fn); plt.close(); crop_and_overwrite_image(fn)
 
 #helper function to plot all of the hpf locations for a slide with their reasons for being flagged
 #def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,pscale,xpos,ypos,truncated,workingdir) :
@@ -348,7 +349,7 @@ def plotFlaggedHPFLocations(sid,all_rfps,all_lmrs,truncated,workingdir) :
     fn = f'{sid}_flagged_hpf_locations.png'
     with cd(workingdir) :
         plt.savefig(fn)
-        cropAndOverwriteImage(fn)
+        crop_and_overwrite_image(fn)
 
 #helper function to change a mask from zeroes and ones to region indices and zeroes
 def getEnumeratedMask(layer_mask,start_i) :
