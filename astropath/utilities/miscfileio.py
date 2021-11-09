@@ -134,3 +134,41 @@ def mountedpath(filename):
       return pathlib.PureWindowsPath(filename)
   else:
     return guesspathtype(filename)
+
+def checkwindowsnewlines(filename):
+  r"""
+  Check that the file consistently uses windows newlines \r\n
+  """
+  with open(filename, newline="") as f:
+    contents = f.read()
+    if re.search(r"(?<!\r)\n", contents):
+      raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
+    if re.search(r"\r\r", contents):
+      raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
+
+@contextlib.contextmanager
+def memmapcontext(filename, *args, **kwargs):
+  """
+  Context manager for a numpy memmap that closes the memmap
+  on exit.
+  """
+  try:
+    memmap = np.memmap(filename, *args, **kwargs)
+  except OSError as e:
+    if hasattr(filename, "name"): filename = filename.name
+    if getattr(e, "winerror", None) == 8:
+      raise IOError(f"Failed to create memmap from corrupted file {filename}")
+  try:
+    yield memmap
+  finally:
+    memmap._mmap.close()
+
+@contextlib.contextmanager
+def field_size_limit_context(limit):
+  if limit is None: yield; return
+  oldlimit = csv.field_size_limit()
+  try:
+    csv.field_size_limit(limit)
+    yield
+  finally:
+    csv.field_size_limit(oldlimit)

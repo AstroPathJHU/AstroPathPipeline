@@ -14,9 +14,9 @@ from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML
 from ...shared.sample import WorkflowSample, ParallelSample
 from ...shared.samplemetadata import MetadataSummary
 from ...shared.overlap import Overlap
-from ...utilities.tableio import readtable, writetable
-from ...utilities.miscpath import cd
 from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.miscfileio import cd
+from ...utilities.tableio import readtable, writetable
 import numpy as np
 import pathlib, methodtools, random
 

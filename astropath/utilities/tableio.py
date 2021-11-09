@@ -2,8 +2,7 @@ import abc, contextlib, csv, dataclasses, dataclassy, datetime, io, job_lock, pa
 
 from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
-from .misc import checkwindowsnewlines, field_size_limit_context
-from .miscpath import guesspathtype, mountedpathtopath, pathtomountedpath
+from .miscfileio import checkwindowsnewlines, field_size_limit_context, guesspathtype, mountedpathtopath, pathtomountedpath
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """

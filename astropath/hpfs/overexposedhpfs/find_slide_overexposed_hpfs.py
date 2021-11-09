@@ -3,7 +3,7 @@ from astropath.slides.align.alignsample import AlignSampleComponentTiffFromXML
 from astropath.utilities.tableio import writetable
 from astropath.utilities import units
 from astropath.utilities.dataclasses import MyDataClass
-from astropath.utilities.miscpath import cd
+from astropath.utilities.miscfileio import cd
 from astropath.utilities.miscplotting import save_figure_in_dir
 from astropath.utilities.config import CONST as UNIV_CONST
 from argparse import ArgumentParser

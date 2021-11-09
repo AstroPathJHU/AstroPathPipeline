@@ -4,7 +4,7 @@ from astropath.shared.overlap import Overlap
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
-from astropath.utilities.misc import checkwindowsnewlines
+from astropath.utilities.miscfileio import checkwindowsnewlines
 from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent

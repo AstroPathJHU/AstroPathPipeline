@@ -44,23 +44,6 @@ def dict_of_par_bounds_callback(value) :
   except Exception as e :
     raise ValueError(f'Option value {value} is expected to be a comma-separated list of name=low_bound:high_bound pairs! Exception: {e}')
 
-@contextlib.contextmanager
-def memmapcontext(filename, *args, **kwargs):
-  """
-  Context manager for a numpy memmap that closes the memmap
-  on exit.
-  """
-  try:
-    memmap = np.memmap(filename, *args, **kwargs)
-  except OSError as e:
-    if hasattr(filename, "name"): filename = filename.name
-    if getattr(e, "winerror", None) == 8:
-      raise IOError(f"Failed to create memmap from corrupted file {filename}")
-  try:
-    yield memmap
-  finally:
-    memmap._mmap.close()
-
 def re_subs(string, *patternsandrepls, **kwargs):
   """
   Helper function to do multiple iterations of re.sub
@@ -118,17 +101,6 @@ def dict_product(dct):
   for values in itertools.product(*valuelists):
     yield {k: v for k, v in more_itertools.zip_equal(keys, values)}
 
-def checkwindowsnewlines(filename):
-  r"""
-  Check that the file consistently uses windows newlines \r\n
-  """
-  with open(filename, newline="") as f:
-    contents = f.read()
-    if re.search(r"(?<!\r)\n", contents):
-      raise ValueError(rf"{filename} uses unix newlines (contains \n without preceding \r)")
-    if re.search(r"\r\r", contents):
-      raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
-
 def get_GPU_thread(interactive,logger) :
   """
   Create and return a Reikna Thread object to use for running some computations on the GPU
@@ -148,13 +120,3 @@ def get_GPU_thread(interactive,logger) :
     warnmsg+= 'GPU computation will be disabled. Rerun with "--noGPU" to remove this warning.'
     logger.warningglobal(warnmsg)
     return None
-
-@contextlib.contextmanager
-def field_size_limit_context(limit):
-  if limit is None: yield; return
-  oldlimit = csv.field_size_limit()
-  try:
-    csv.field_size_limit(limit)
-    yield
-  finally:
-    csv.field_size_limit(oldlimit)

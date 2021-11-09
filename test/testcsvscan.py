@@ -3,7 +3,7 @@ import contextlib, datetime, job_lock, more_itertools, os, pathlib
 from astropath.shared.logging import MyLogger
 from astropath.slides.csvscan.csvscancohort import CsvScanCohort
 from astropath.slides.csvscan.csvscansample import LoadFile, CsvScanSample
-from astropath.utilities.miscpath import commonroot
+from astropath.utilities.miscfileio import commonroot
 
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 

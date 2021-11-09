@@ -1,5 +1,5 @@
 import abc, contextlib, csv, datetime, more_itertools, re
-from ..utilities.misc import field_size_limit_context
+from ..utilities.miscfileio import field_size_limit_context
 from .logging import MyLogger
 
 class ThingWithRoots(abc.ABC):

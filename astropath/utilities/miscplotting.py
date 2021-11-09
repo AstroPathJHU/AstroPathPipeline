@@ -1,5 +1,5 @@
 import cv2, matplotlib.pyplot as plt, numpy as np, scipy.stats, uncertainties as unc
-from .miscpath import cd
+from .miscfileio import cd
 
 def crop_and_overwrite_image(im_path,border=0.03) :
   """

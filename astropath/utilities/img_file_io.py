@@ -1,6 +1,6 @@
 #imports
 from .dataclasses import MyDataClass
-from .miscpath import cd
+from .miscfileio import cd
 from .config import CONST
 import numpy as np
 import xml.etree.ElementTree as et

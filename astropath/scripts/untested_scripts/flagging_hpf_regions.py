@@ -7,7 +7,7 @@ from astropath.utilities.img_file_io import getImageHWLFromXMLFile, getSlideMedi
 from astropath.utilities.img_file_io import smoothImageWorker, getExposureTimesByLayer
 #from astropath.utilities.img_file_io import writeImageToFile
 from astropath.utilities.tableio import readtable, writetable
-from astropath.utilities.miscpath import cd
+from astropath.utilities.miscfileio import cd
 from astropath.utilities.miscplotting import crop_and_overwrite_image
 #from astropath.utilities import units
 #from astropath.shared.csvclasses import constantsdict
