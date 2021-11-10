@@ -2,6 +2,7 @@ import abc, datetime, job_lock, logging, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
+from ..utilities.version import thisrepo
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
@@ -620,7 +621,7 @@ class WorkflowCohort(Cohort):
     g.add_argument("--rerun-error", type=re.compile, action="append", dest="rerun_errors", help="rerun only samples with an error that matches this regex")
     g.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
     p.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
-    p.add_argument("--require-commit", help="rerun samples that already finished with an AstroPath pipeline version earlier than this commit")
+    p.add_argument("--require-commit", type=thisrepo.getcommit, help="rerun samples that already finished with an AstroPath pipeline version earlier than this commit")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
     return p
@@ -637,12 +638,12 @@ class WorkflowCohort(Cohort):
     dependencies = parsed_args_dict.pop("dependencies")
     skip_finished = parsed_args_dict.pop("skip_finished")
     rerun_errors = parsed_args_dict.pop("rerun_errors")
-    require_commit = parsed_args_dict.pop("rerun_commit")
+    require_commit = parsed_args_dict.pop("require_commit")
 
     def filter(runstatus, dependencyrunstatuses):
       if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
         runstatus = True
-      if require_commit is not None and not thisrepo.commit(require_commit).is_ancestor(thisrepo.currentcommit):
+      if require_commit is not None and not require_commit.isancestor(thisrepo.currentcommit):
         runstatus = False
 
       if not skip_finished and not dependencies:

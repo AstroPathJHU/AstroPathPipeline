@@ -1,4 +1,4 @@
-import collections, contextlib, csv, itertools, more_itertools, numpy as np, re, sys
+import collections, contextlib, itertools, more_itertools, re, sys
 
 def split_csv_to_list(value) :
   """

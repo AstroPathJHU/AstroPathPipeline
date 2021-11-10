@@ -27,6 +27,7 @@ except LookupError:
   except pkg_resources.DistributionNotFound:
     astropathversion = "v0.0.0.dev0+g0000000.d"+datetime.date.today().strftime("%Y%m%d")
 
-astropathversionmatch = re.match(r"v(?P<version>[0-9]+(?:\.[0-9]+)*)(?P<dev>\.dev(?P<devnumber>[0-9]+)\+g(?P<commit>[0-9a-f]+))?(?:\.d(?P<date>[0-9]+))?", astropathversion)
+astropathversionregex = re.compile(r"v(?P<version>[0-9]+(?:\.[0-9]+)*)(?P<dev>\.dev(?P<devnumber>[0-9]+)\+g(?P<commit>[0-9a-f]+))?(?:\.d(?P<date>[0-9]+))?")
+astropathversionmatch = astropathversionregex.match(astropathversion)
 if not astropathversionmatch:
   raise RuntimeError(f"got a version number '{astropathversion}' that doesn't match the desired regex")

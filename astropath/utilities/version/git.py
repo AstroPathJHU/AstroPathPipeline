@@ -116,3 +116,4 @@ class GitCommit(MyDataClass):
   def __hash__(self):
     return hash(self.hash)
 
+thisrepo = GitRepo(here.parent.parent.parent)

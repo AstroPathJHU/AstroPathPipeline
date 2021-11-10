@@ -4,10 +4,11 @@ from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
 from ..hpfs.warping.utilities import WarpingSummary
 from ..utilities import units
+from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.miscmath import floattoint
 from ..utilities.img_file_io import get_raw_as_hwl, LayerOffset
 from ..utilities.tableio import readtable, writetable
-from ..utilities.config import CONST as UNIV_CONST
+from ..utilities.version import astropathversionregex
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
@@ -463,7 +464,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     return super().enter_context(*args, **kwargs)
 
   @classmethod
-  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} v[0-9a-f.devgd+]+$"
+  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} {astropathversionregex.pattern}$"
   @classmethod
   def logendregex(cls): return rf"end {cls.logmodule()}$|FINISH: {cls.logmodule()} v[0-9a-f.devgd+]+$"
 
