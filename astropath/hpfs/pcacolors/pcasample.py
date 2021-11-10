@@ -1,5 +1,7 @@
 #imports
+import numpy as np
 from sklearn.decomposition import IncrementalPCA
+from astropath.utilities.img_file_io import smooth_image_worker
 from astropath.shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, MaskSampleBase
 from astropath.shared.image_masking.image_mask import ImageMask
 
@@ -23,6 +25,7 @@ class PCASample(ReadCorrectedRectanglesIm3MultiLayerFromXML,MaskSampleBase) :
         #loop over the rectangles
         for ir,r in enumerate(self.rectangles,start=1) :
             self.logger.debug(f'Adding {r.file.replace(".im3","")} to PCA ({ir}/{len(self.rectangles)})...')
+            dims = r.imageshapeinoutput
             #find the mask to use for this image
             fmfp = self.maskfolder/r.file.replace('.im3','_full_mask.bin')
             if fmfp.is_file() :
