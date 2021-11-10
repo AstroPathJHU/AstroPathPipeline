@@ -1,4 +1,4 @@
-import contextlib, csv, itertools, more_itertools, numpy as np, pyopencl, re, reikna as rk
+import collections, contextlib, csv, itertools, more_itertools, numpy as np, re, sys
 
 def split_csv_to_list(value) :
   """
@@ -101,22 +101,22 @@ def dict_product(dct):
   for values in itertools.product(*valuelists):
     yield {k: v for k, v in more_itertools.zip_equal(keys, values)}
 
-def get_GPU_thread(interactive,logger) :
+class recursionlimit(contextlib.AbstractContextManager):
   """
-  Create and return a Reikna Thread object to use for running some computations on the GPU
-  If the Thread can't be created, a globa warning is logged and None is returned
-
-  interactive : if True (and some GPU is available), user will be given the option to choose a device 
-  logger : used to log a warning if the GPU thread can't be created
+  Context manager to increase the recursion limit.
+  Using this context manager will never decrease the recursion limit.
   """
-  api = rk.cluda.ocl_api()
-  #return a thread from the API
-  try :
-    thread = api.Thread.create(interactive=interactive)
-    return thread
-  except pyopencl._cl.LogicError :
-    warnmsg = 'WARNING: A GPU Thread could not be created using PyOpenCL and Reikna. '
-    warnmsg+= 'Please make sure an OpenCL-compatible GPU is available and that the OpenCL driver for it is installed. '
-    warnmsg+= 'GPU computation will be disabled. Rerun with "--noGPU" to remove this warning.'
-    logger.warningglobal(warnmsg)
-    return None
+  __recursionlimitcounter = collections.Counter()
+  __defaultrecursionlimit = sys.getrecursionlimit()
+  def __init__(self, recursionlimit):
+    self.__recursionlimit = recursionlimit
+  def __enter__(self):
+    self.__recursionlimitcounter[self.__recursionlimit] += 1
+    self.__updaterecursionlimit()
+  def __exit__(self, *exc):
+    self.__recursionlimitcounter[self.__recursionlimit] -= 1
+    self.__updaterecursionlimit()
+  @classmethod
+  def __updaterecursionlimit(cls):
+    elements = set(cls.__recursionlimitcounter.elements()) | {cls.__defaultrecursionlimit}
+    sys.setrecursionlimit(max(elements))

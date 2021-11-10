@@ -1,6 +1,7 @@
 import abc, io, methodtools, pathlib, subprocess
 from .version import astropathversionmatch, have_git
 from ..dataclasses import MetaDataAnnotation, MyDataClass
+from ..misc import recursionlimit
 from ..tableio import readtable, writetable
 
 here = pathlib.Path(__file__).parent
@@ -14,6 +15,7 @@ class GitCommand(abc.ABC):
       withgit = self.run_git(*args, **kwargs)
       if nogit != withgit:
         raise ValueError(f"Outputs don't match:\n{nogit}\n{withgit}")
+    return nogit
   @abc.abstractmethod
   def run_nogit(self, *args, **kwargs): pass
   @abc.abstractmethod
@@ -56,17 +58,29 @@ class GitRepo:
     writetable(here/"commits.csv", self.commits)
 
   def __iter__(self): return iter(self.commits)
+  def __len__(self): return len(self.commits)
 
   @methodtools.lru_cache()
   @property
   def rev_parse(self): return GitRevParse(self)
 
+  @methodtools.lru_cache()
+  def getcommit(self, commit):
+    result, = {_ for _ in self if commit == _}
+    return result
+
   def currentcommit(self):
-    return self.rev_parse(astropathversionmatch.group("commit"))
+    return self.getcommit(astropathversionmatch.group("commit"))
 
 class GitCommit(MyDataClass):
   hash: str
-  parents: frozenset = MetaDataAnnotation(writefunction=lambda x: ",".join(sorted(x)), readfunction=lambda x: frozenset(x.split()))
+  @property
+  def parents(self):
+    return frozenset(self.repo.getcommit(p) for p in self.__parents)
+  @parents.setter
+  def parents(self, parents):
+    self.__parents = parents
+  parents: frozenset = MetaDataAnnotation(parents, writefunction=lambda x: ",".join(sorted(x)), readfunction=lambda x: frozenset(x.split()), usedefault=False)
   tags: frozenset = MetaDataAnnotation(writefunction=lambda x: ",".join(sorted(x)), readfunction=lambda x: frozenset(_ for _ in x.split() if _ != "->"))
   repo: GitRepo = MetaDataAnnotation(includeintable=False)
 
@@ -75,9 +89,13 @@ class GitCommit(MyDataClass):
       return self.hash == other.hash
     if self.hash == other: return True
     return self.hash == self.repo.rev_parse(other)
+  def __str__(self):
+    return self.hash
   @methodtools.lru_cache()
   def isancestor(self, other):
-    return other == self or any(self.isancestor(parent) for parent in other.parents)
+    print(self, other)
+    with recursionlimit(3*len(self.repo)+100):
+      return other == self or any(self.isancestor(parent) for parent in other.parents)
   def __hash__(self):
     return hash(self.hash)
 

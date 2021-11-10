@@ -4,7 +4,7 @@ import contextlib, numpy as np
 
 from ...shared.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import get_GPU_thread
+from ...utilities.gpu import get_GPU_thread
 from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
