@@ -100,7 +100,10 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
       if not filter(row): continue
 
-      result.append(Row(**row, **extrakwargs))
+      try:
+        result.append(Row(**row, **extrakwargs))
+      except TypeError:
+        raise ValueError(f"Row has bad syntax:\n{row}\n{extrakwargs}")
 
   return result
 

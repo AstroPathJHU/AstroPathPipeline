@@ -1,7 +1,6 @@
 import abc, io, methodtools, pathlib, subprocess
 from .version import astropathversionmatch, have_git
 from ..dataclasses import MetaDataAnnotation, MyDataClass
-from ..misc import recursionlimit
 from ..tableio import readtable, writetable
 
 here = pathlib.Path(__file__).parent
@@ -46,7 +45,7 @@ class GitRepo:
     self.cwd = cwd
 
     if have_git:
-      committable = io.StringIO("hash,parents,tags\n"+subprocess.run(["git", "log", "--all", "--pretty=%H,%P,%D", "--no-abbrev-commit"], capture_output=True, encoding="ascii").stdout)
+      committable = io.StringIO("hash,parents,tags\n"+subprocess.run(["git", "log", "--all", "--pretty=%H\t%P\t%D", "--no-abbrev-commit"], capture_output=True, encoding="ascii").stdout.replace(",", "").replace("\t", ","))
     else:
       committable = here/"commits.csv"
 
