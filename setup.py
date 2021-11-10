@@ -1,23 +1,25 @@
-import pathlib, setuptools.command.build_ext, site
+import csv, pathlib, setuptools.command.build_py, site, subprocess, sys
 
 site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
 here = pathlib.Path(__file__).parent
 
-class build_ext(setuptools.command.build_ext.build_ext):
+class build_py(setuptools.command.build_py.build_py):
   def run(self):
-    bkp = sys.path[:]
-    try:
-      sys.path.insert(0, here)
-      from astropath.utilities.version.git import thisrepo
-      thisrepo.writecommits()
-    finally:
-      sys.path[:] = bkp
+    with open(here/"astropath"/"utilities"/"version"/"commits.csv", "w", newline="") as f:
+      writer = csv.DictWriter(f, ["hash", "parents", "tags"], lineterminator='\r\n')
+      writer.writeheader()
+      for line in subprocess.run(["git", "log", "--all", "--pretty=%H\t%P\t%D", "--no-abbrev-commit"], cwd=here, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="ascii").stdout.split("\n"):
+        if not line.strip(): continue
+        hash, parents, tags = line.split("\t")
+        parents = parents.split()
+        tags = tags.replace(",", "").replace("->", "").split()
+        writer.writerow({"hash": hash, "parents": parents, "tags": tags})
     super().run()
 
 setupkwargs = dict(
   name = "astropath",
   packages = setuptools.find_packages(include=["astropath*"]),
-  cmdclass={'build_ext': build_ext},
+  cmdclass={'build_py': build_py},
   entry_points = {
     "console_scripts": [
       "aligncohort=astropath.slides.align.aligncohort:main",

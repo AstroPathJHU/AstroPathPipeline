@@ -23,7 +23,7 @@ class GitCommand(abc.ABC):
 class GitRevParse(GitCommand):
   @methodtools.lru_cache()
   def run_git(self, commit):
-    return subprocess.run(["git", "rev-parse", commit], capture_output=True, check=True, cwd=self.repo.cwd, encoding="ascii").stdout.strip()
+    return subprocess.run(["git", "rev-parse", commit], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, cwd=self.repo.cwd, encoding="ascii").stdout.strip()
 
   @methodtools.lru_cache()
   def run_nogit(self, commit):

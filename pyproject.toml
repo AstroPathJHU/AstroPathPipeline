@@ -1,5 +1,5 @@
 [build-system]
-requires = ["dataclassy", "methodtools", "numpy", "setuptools >= 42", "setuptools_scm[toml]>=3.4", "slurm_python_utils", "wheel"]
+requires = ["setuptools >= 42", "setuptools_scm[toml]>=3.4", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
