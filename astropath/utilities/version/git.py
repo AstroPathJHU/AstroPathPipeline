@@ -102,9 +102,18 @@ class GitCommit(MyDataClass):
   def __str__(self):
     return self.hash
   @methodtools.lru_cache()
+  @property
+  def recursiveparents(self):
+    result = set()
+    tohandle = {self}
+    while tohandle:
+      result |= tohandle
+      tohandle = frozenset.union(*(_.parents for _ in tohandle)) - result
+    return frozenset(result)
+  @methodtools.lru_cache()
   def isancestor(self, other):
-    with recursionlimit(3*len(self.repo)+100):
-      return other == self or any(self.isancestor(parent) for parent in other.parents)
+    other = self.repo.getcommit(other)
+    return self in other.recursiveparents
   def __hash__(self):
     return hash(self.hash)
 
