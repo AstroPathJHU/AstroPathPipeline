@@ -10,6 +10,8 @@ from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseSaveOutput
 thisfolder = pathlib.Path(__file__).parent
 
 class TestPrepDb(TestBaseSaveOutput):
+  testrequirecommit = thisrepo.getcommit("cf271f3a")
+
   @property
   def outputfilenames(self):
     SlideIDs = "M21_1", "YZ71", "M206", "ZW2"
@@ -29,6 +31,49 @@ class TestPrepDb(TestBaseSaveOutput):
     ] + [
       thisfolder/"test_for_jenkins"/"prepdb"/"logfiles"/"prepdb.log",
     ]
+
+  def setUp(self):
+    stack = self.__stack = contextlib.ExitStack()
+    super().setUp()
+    try:
+      slideids = "M21_1", "M206", "YZ71", "ZW2"
+      testroot = thisfolder/"test_for_jenkins"/"prepdb"
+      for SlideID in slideids:
+        logfolder = testroot/SlideID/"logfiles"
+        logfolder.mkdir(exist_ok=True, parents=True)
+
+        filename = logfolder/f"{SlideID}-prepdb.log"
+        assert stack.enter_context(job_lock.JobLock(filename))
+        with getlogger(root=testroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="geom", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1):
+          pass
+        with open(filename) as f:
+          f, f2 = itertools.tee(f)
+          startregex = PrepDbSample.logstartregex()
+          reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
+          for row in reader:
+            match = startregex.match(row["message"])
+            commit = thisrepo.getcommit(match.group("commit") or match.group("version"))
+            istag = bool(match.group("commit"))
+            if match: break
+          else:
+            assert False
+          contents = f2.read()
+
+        usecommit = next(iter(self.testrequirecommit.parents))
+        if istag:
+          contents = contents.replace(commit, f"{commit}.dev0+g{usecommit}")
+        else:
+          contents = contents.replace(commit, str(usecommit))
+
+        with open(filename, "w"):
+          filename.write(contents)
+    except:
+      self.close()
+      raise
+
+  def tearDown(self):
+    super().tearDown()
+    self.__stack.close()
 
 
   def testPrepDb(self, SlideID="M21_1", units="safe", skipannotations=False, skipqptiff=False):
@@ -51,8 +96,10 @@ class TestPrepDb(TestBaseSaveOutput):
       args.append("--skip-qptiff")
 
     try:
-      PrepDbCohort.runfromargumentparser(args)
       sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID], dbloadroot=dbloadroot, logroot=dbloadroot)
+      PrepDbCohort.runfromargumentparser(args)
+      assert not sample.csv("rect").exists()
+      PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit)])
 
       rectangles = None
       for filename, cls, extrakwargs in (

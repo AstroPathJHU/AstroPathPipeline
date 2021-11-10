@@ -61,6 +61,10 @@ class TestGeom(TestBaseCopyInput, TestBaseSaveOutput):
       stack.close()
       raise
 
+  def tearDown(self):
+    super().tearDown()
+    self.__stack.close()
+
   def testGeom(self, SlideID="M206", units="safe", selectrectangles=None):
     root = thisfolder/"data"
     testroot = thisfolder/"test_for_jenkins"/"geom"

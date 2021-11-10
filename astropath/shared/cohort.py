@@ -640,10 +640,13 @@ class WorkflowCohort(Cohort):
     rerun_errors = parsed_args_dict.pop("rerun_errors")
     require_commit = parsed_args_dict.pop("require_commit")
 
+    if require_commit is not None and not require_commit.isancestor(thisrepo.currentcommit):
+      raise ValueError(f"Trying to require commit {require_commit}, but that is not an ancestor of the current commit {thisrepo.currentcommit}")
+
     def filter(runstatus, dependencyrunstatuses):
       if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
         runstatus = True
-      if require_commit is not None and not require_commit.isancestor(thisrepo.currentcommit):
+      if require_commit is not None and not require_commit.isancestor(runstatus.gitcommit):
         runstatus = False
 
       if not skip_finished and not dependencies:
