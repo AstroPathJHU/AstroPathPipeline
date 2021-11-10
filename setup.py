@@ -1,10 +1,23 @@
-import setuptools, site
+import pathlib, setuptools.command.build_ext, site
 
 site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
+here = pathlib.Path(__file__).parent
+
+class build_ext(setuptools.command.build_ext.build_ext):
+  def run(self):
+    bkp = sys.path[:]
+    try:
+      sys.path.insert(0, here)
+      from astropath.utilities.version.git import thisrepo
+      thisrepo.writecommits()
+    finally:
+      sys.path[:] = bkp
+    super().run()
 
 setupkwargs = dict(
   name = "astropath",
   packages = setuptools.find_packages(include=["astropath*"]),
+  cmdclass={'build_ext': build_ext},
   entry_points = {
     "console_scripts": [
       "aligncohort=astropath.slides.align.aligncohort:main",
@@ -45,6 +58,9 @@ setupkwargs = dict(
       "zoomsample=astropath.slides.zoom.zoomsample:main",
     ],
   },
+  setup_requires = [
+    
+  ],
   install_requires = [
     "contextlib2>=0.6.0; python_version < '3.7'",
     "cvxpy",
@@ -79,6 +95,7 @@ setupkwargs = dict(
     "astropath": [
       "shared/master_annotation_list.csv",
       "slides/zoom/color_matrix.txt",
+      "utilities/version/commits.csv",
     ],
   },
 )

@@ -1,6 +1,6 @@
 import abc, io, methodtools, pathlib, subprocess
 from .version import astropathversionmatch, have_git
-from ..dataclasses import MetaDataAnnotation, MyDataClass
+from ..dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..tableio import readtable, writetable
 
 here = pathlib.Path(__file__).parent
@@ -81,18 +81,24 @@ class GitRepo:
   def currentcommit(self):
     return self.getcommit(astropathversionmatch.group("commit"))
 
-class GitCommit(MyDataClass):
+class GitCommit(MyDataClassFrozen):
   hash: str
   @property
   def parents(self):
     return frozenset(self.repo.getcommit(p) for p in self.__parents)
   @parents.setter
   def parents(self, parents):
-    self.__parents = parents
-  parents: frozenset = MetaDataAnnotation(parents, writefunction=lambda x: ",".join(sorted(x)), readfunction=lambda x: frozenset(x.split()), usedefault=False)
-  tags: frozenset = MetaDataAnnotation(writefunction=lambda x: ",".join(sorted(x)), readfunction=lambda x: frozenset(_ for _ in x.split() if _ != "->"))
+    attrname = "_GitCommit__parents"
+    if hasattr(self, attrname): raise AttributeError("Frozen class")
+    object.__setattr__(self, attrname, parents)
+  parents: frozenset = MetaDataAnnotation(parents, writefunction=lambda x: " ".join(sorted(_.hash for _ in x)), readfunction=lambda x: frozenset(x.split()), usedefault=False)
+  tags: frozenset = MetaDataAnnotation(writefunction=lambda x: " ".join(sorted(x)), readfunction=lambda x: frozenset(_ for _ in x.split() if _ != "->"))
   repo: GitRepo = MetaDataAnnotation(includeintable=False)
 
+  def __copy__(self):
+    return GitCommit(hash=self.hash, parents=self.__parents, tags=self.tags, repo=self.repo)
+  def __deepcopy__(self, memo):
+    return GitCommit(hash=self.hash, parents=self.__parents, tags=self.tags, repo=self.repo)
   def __eq__(self, other):
     if isinstance(other, GitCommit):
       return self.hash == other.hash
