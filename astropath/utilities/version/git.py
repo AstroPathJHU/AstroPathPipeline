@@ -57,6 +57,13 @@ class GitRepo:
       raise RuntimeError("Can only write the commits csv if git is available")
     writetable(here/"commits.csv", self.commits)
 
+  @methodtools.lru_cache()
+  @property
+  def commitdict(self):
+    return {
+      key: commit for commit in self for key in (commit, commit.hash, *commit.tags)
+    }
+
   def __iter__(self): return iter(self.commits)
   def __len__(self): return len(self.commits)
 
@@ -66,8 +73,11 @@ class GitRepo:
 
   @methodtools.lru_cache()
   def getcommit(self, commit):
-    result, = {_ for _ in self if commit == _}
-    return result
+    try:
+      return self.commitdict[commit]
+    except KeyError:
+      result, = {_ for _ in self if commit == _}
+      return result
 
   def currentcommit(self):
     return self.getcommit(astropathversionmatch.group("commit"))
@@ -93,7 +103,6 @@ class GitCommit(MyDataClass):
     return self.hash
   @methodtools.lru_cache()
   def isancestor(self, other):
-    print(self, other)
     with recursionlimit(3*len(self.repo)+100):
       return other == self or any(self.isancestor(parent) for parent in other.parents)
   def __hash__(self):
