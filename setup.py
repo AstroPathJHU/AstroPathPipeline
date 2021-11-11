@@ -1,9 +1,12 @@
-import csv, pathlib, setuptools.command.build_py, site, subprocess
+import csv, pathlib, setuptools.command.build_py, setuptools.command.develop, site, subprocess
 
 site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
 here = pathlib.Path(__file__).parent
 
-class build_py(setuptools.command.build_py.build_py):
+class build_commits_csv(setuptools.Command):
+  def initialize_options(self): pass
+  def finalize_options(self): pass
+
   def run(self):
     with open(here/"astropath"/"utilities"/"version"/"commits.csv", "w", newline="") as f:
       writer = csv.DictWriter(f, ["hash", "parents", "tags"], lineterminator='\r\n')
@@ -14,12 +17,25 @@ class build_py(setuptools.command.build_py.build_py):
         parents = parents.split()
         tags = tags.replace(",", "").replace("->", "").split()
         writer.writerow({"hash": hash, "parents": parents, "tags": tags})
+
+class build_py(setuptools.command.build_py.build_py):
+  def run(self):
+    self.run_command("build_commits_csv")
+    super().run()
+
+class develop(setuptools.command.develop.develop):
+  def run(self):
+    self.run_command("build_commits_csv")
     super().run()
 
 setupkwargs = dict(
   name = "astropath",
   packages = setuptools.find_packages(include=["astropath*"]),
-  cmdclass={'build_py': build_py},
+  cmdclass={
+    'build_commits_csv': build_commits_csv,
+    'build_py': build_py,
+    'develop': develop,
+  },
   entry_points = {
     "console_scripts": [
       "aligncohort=astropath.slides.align.aligncohort:main",
