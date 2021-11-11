@@ -1,10 +1,13 @@
-import more_itertools, numpy as np, os, pathlib, PIL.Image, sys
+import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, sys
 from astropath.shared.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
+from astropath.shared.logging import getlogger
 from astropath.shared.overlap import Overlap
 from astropath.shared.rectangle import Rectangle
+from astropath.shared.sample import SampleDef
 from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities.miscfileio import checkwindowsnewlines
+from astropath.utilities.version.git import thisrepo
 from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -49,7 +52,7 @@ class TestPrepDb(TestBaseSaveOutput):
         with open(filename) as f:
           f, f2 = itertools.tee(f)
           startregex = PrepDbSample.logstartregex()
-          reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
+          reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";")
           for row in reader:
             match = startregex.match(row["message"])
             commit = thisrepo.getcommit(match.group("commit") or match.group("version"))

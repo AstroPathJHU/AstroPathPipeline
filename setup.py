@@ -1,4 +1,4 @@
-import csv, pathlib, setuptools.command.build_py, site, subprocess, sys
+import csv, pathlib, setuptools.command.build_py, site, subprocess
 
 site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
 here = pathlib.Path(__file__).parent

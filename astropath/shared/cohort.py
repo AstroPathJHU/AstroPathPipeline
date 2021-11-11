@@ -2,7 +2,7 @@ import abc, datetime, job_lock, logging, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
-from ..utilities.version import thisrepo
+from ..utilities.version.git import thisrepo
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
