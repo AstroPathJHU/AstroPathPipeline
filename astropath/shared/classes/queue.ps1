@@ -94,6 +94,20 @@ class queue : sharedtools{
         #
     }
     <# -----------------------------------------
+     updateCSVFiles
+     update csv files
+     ------------------------------------------
+     Usage: $this.updateCSVFiles()
+    ----------------------------------------- #>
+    [void]updateCSVFiles($mainqueue, $localqueue){
+        
+        $local = $this.opencsvfile($localqueue, ',', @('Path','Specimen','Antibody','Algorithm','Processing', 'Timestamp'))
+        $main = $this.opencsvfile($mainqueue, ',', @('Path','Specimen','Antibody','Algorithm','Processing', 'Timestamp'))
+
+        
+        return
+    }
+    <# -----------------------------------------
      defNotCompletedSlides
      For each slide, check the current module 
      and the module dependencies to see if the
