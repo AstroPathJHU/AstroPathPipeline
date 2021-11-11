@@ -2,7 +2,7 @@
 import pathlib, cv2
 import numpy as np
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import cd
+from ...utilities.miscfileio import cd
 from ...utilities.img_file_io import smooth_image_worker, im3writeraw, write_image_to_file, get_raw_as_hwl
 from .config import CONST
 from .plotting import do_masking_plots_for_image

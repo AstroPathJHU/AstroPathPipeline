@@ -1,6 +1,6 @@
 import dataclassy, functools, methodtools, numbers, numpy as np
 from ..dataclasses import MetaDataAnnotation, MyDataClass, MyDataClassFrozen
-from ..misc import floattoint
+from ..miscmath import floattoint
 from .core import ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def __setup(mode):

@@ -1,15 +1,20 @@
-import more_itertools, numpy as np, os, pathlib, PIL.Image, sys
+import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, re, sys
 from astropath.shared.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
+from astropath.shared.logging import getlogger
 from astropath.shared.overlap import Overlap
 from astropath.shared.rectangle import Rectangle
+from astropath.shared.sample import SampleDef
 from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
-from astropath.utilities.misc import checkwindowsnewlines
+from astropath.utilities.miscfileio import checkwindowsnewlines
+from astropath.utilities.version.git import thisrepo
 from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
 class TestPrepDb(TestBaseSaveOutput):
+  testrequirecommit = thisrepo.getcommit("cf271f3a")
+
   @property
   def outputfilenames(self):
     SlideIDs = "M21_1", "YZ71", "M206", "ZW2"
@@ -30,29 +35,92 @@ class TestPrepDb(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"prepdb"/"logfiles"/"prepdb.log",
     ]
 
+  def setUp(self):
+    stack = self.__stack = contextlib.ExitStack()
+    super().setUp()
+    try:
+      slideids = "M21_1", "M206", "YZ71", "ZW2"
+      testroot = thisfolder/"test_for_jenkins"/"prepdb"
+      for SlideID in slideids:
+        logfolder = testroot/SlideID/"logfiles"
+        logfolder.mkdir(exist_ok=True, parents=True)
 
-  def testPrepDb(self, SlideID="M21_1", units="safe", skipannotations=False, skipqptiff=False):
+        filename = logfolder/f"{SlideID}-prepdb.log"
+        assert stack.enter_context(job_lock.JobLock(filename))
+        filename.unlink()
+        with getlogger(root=testroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="prepdb", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1) as logger:
+          logger.info("testing")
+        with open(filename, newline="") as f:
+          f, f2 = itertools.tee(f)
+          startregex = re.compile(PrepDbSample.logstartregex())
+          reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";")
+          for row in reader:
+            match = startregex.match(row["message"])
+            istag = not bool(match.group("commit"))
+            if match: break
+          else:
+            assert False
+          contents = "".join(f2)
+
+        usecommit = self.testrequirecommit.parents[0]
+        if istag:
+          contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}")
+        else:
+          contents = contents.replace(match.group("commit"), usecommit.shorthash(8))
+
+        with open(filename, "w", newline="") as f:
+          f.write(contents)
+
+        dbloadfolder = testroot/SlideID/"dbload"
+        dbloadfolder.mkdir(exist_ok=True, parents=True)
+        for filename in "batch.csv", "exposures.csv", "overlap.csv", "rect.csv", "constants.csv", "qptiff.csv", "qptiff.jpg", "annotations.csv", "regions.csv", "vertices.csv", "globals.csv":
+          if self.skipannotations(SlideID) and filename in ("regions.csv", "annotations.csv", "vertices.csv"): continue
+          if self.skipqptiff(SlideID) and filename in ("constants.csv", "qptiff.csv", "qptiff.jpg"): continue
+          if SlideID == "M21_1" and filename == "globals.csv": continue
+          (dbloadfolder/f"{SlideID}_{filename}").touch()
+    except:
+      stack.close()
+      raise
+
+  def tearDown(self):
+    super().tearDown()
+    self.__stack.close()
+
+  @classmethod
+  def skipannotations(cls, SlideID):
+    return {
+      "M206": False,
+      "M21_1": False,
+      "YZ71": True,
+      "ZW2": False
+    }[SlideID]
+  @classmethod
+  def skipqptiff(cls, SlideID):
+    return {
+      "M206": False,
+      "M21_1": False,
+      "YZ71": False,
+      "ZW2": True,
+    }[SlideID]
+
+  def testPrepDb(self, SlideID="M21_1", units="safe"):
     dbloadroot = thisfolder/"test_for_jenkins"/"prepdb"
 
-    logs = (
-      dbloadroot/"logfiles"/"prepdb.log",
-      dbloadroot/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
-    )
-    for log in logs:
-      try:
-        log.unlink()
-      except FileNotFoundError:
-        pass
+    skipannotations = self.skipannotations(SlideID)
+    skipqptiff = self.skipqptiff(SlideID)
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rename-annotation", "Good tisue", "Good tissue", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rename-annotation", "Good tisue", "Good tissue", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)]
     if skipannotations:
       args.append("--skip-annotations")
     if skipqptiff:
       args.append("--skip-qptiff")
 
     try:
-      PrepDbCohort.runfromargumentparser(args)
       sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID], dbloadroot=dbloadroot, logroot=dbloadroot)
+      PrepDbCohort.runfromargumentparser(args) #this should not run anything
+      PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit.parents[0])]) #this should not run anything either
+      with open(sample.csv("rect")) as f: assert not f.read().strip()
+      PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit)])
 
       rectangles = None
       for filename, cls, extrakwargs in (
@@ -95,6 +163,10 @@ class TestPrepDb(TestBaseSaveOutput):
              PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff_{platform}.jpg") as targetimg:
           np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
+      logs = (
+        dbloadroot/"logfiles"/"prepdb.log",
+        dbloadroot/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
+      )
       for log in logs:
         checkwindowsnewlines(log)
     except:
@@ -109,7 +181,7 @@ class TestPrepDb(TestBaseSaveOutput):
   def testPrepDbPolaris(self, **kwargs):
     from .data.YZ71.im3.Scan3.assembleqptiff import assembleqptiff
     assembleqptiff()
-    self.testPrepDb(SlideID="YZ71", skipannotations=True, **kwargs)
+    self.testPrepDb(SlideID="YZ71", **kwargs)
   def testPrepDbPolarisFastUnits(self):
     self.testPrepDbPolaris(units="fast")
 
@@ -123,4 +195,4 @@ class TestPrepDb(TestBaseSaveOutput):
       self.testPrepDb(SlideID="M206", units="fast_microns")
 
   def testPrepDBZW2(self):
-    self.testPrepDb(SlideID="ZW2", units="fast_microns", skipqptiff=True)
+    self.testPrepDb(SlideID="ZW2", units="fast_microns")

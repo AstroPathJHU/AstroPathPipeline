@@ -1,5 +1,6 @@
 import abc, contextlib, csv, datetime, more_itertools, re
-from ..utilities.misc import field_size_limit_context
+from ..utilities.miscfileio import field_size_limit_context
+from ..utilities.version.git import thisrepo
 from .logging import MyLogger
 
 class ThingWithRoots(abc.ABC):
@@ -152,14 +153,17 @@ class SampleRunStatus:
   error: error traceback as a string, if any
   previousrun: SampleRunStatus for the previous run of this sample, if any
   missingfiles: files that are supposed to be in the output, but are missing
+  gitcommit: the commit at which it was run
   """
-  def __init__(self, *, module, started, ended, error=None, previousrun=None, missingfiles=()):
+  def __init__(self, *, module, started, ended, error=None, previousrun=None, missingfiles=(), gitcommit=None, localedits=False):
     self.module = module
     self.started = started
     self.ended = ended
     self.error = error
     self.previousrun = previousrun
     self.missingfiles = missingfiles
+    self.gitcommit = gitcommit
+    self.localedits = localedits
   def __bool__(self):
     """
     True if the sample started and ended with no error and all output files are present
@@ -187,6 +191,8 @@ class SampleRunStatus:
     ended = None
     previousrun = None
     error = None
+    gitcommit = None
+    localedits = False
     with contextlib.ExitStack() as stack:
       stack.enter_context(field_size_limit_context(1000000))
       try:
@@ -200,23 +206,33 @@ class SampleRunStatus:
             continue
           elif not row["message"]:
             continue
-          elif re.match(startregex, row["message"]):
-            started = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
-            error = None
-            ended = None
-            previousrun = result
-            result = None
-          elif row["message"].startswith("ERROR:"):
-            error = reader.peek(default={"message": ""})["message"]
-            if error and error[0] == "[" and error[-1] == "]":
-              error = "".join(eval(error))
-            else:
-              error = row["message"]
-          elif re.match(endregex, row["message"]):
-            ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
-            result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module)
+          else:
+            startmatch = re.match(startregex, row["message"])
+            endmatch = re.match(endregex, row["message"])
+            if startmatch:
+              started = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
+              error = None
+              ended = None
+              previousrun = result
+              result = None
+              try:
+                gitcommit = startmatch.group("commit")
+                if gitcommit is None: gitcommit = startmatch.group("version")
+                if gitcommit is not None: gitcommit = thisrepo.getcommit(gitcommit)
+                localedits = bool(startmatch.group("date"))
+              except IndexError:
+                gitcommit = None
+            elif row["message"].startswith("ERROR:"):
+              error = reader.peek(default={"message": ""})["message"]
+              if error and error[0] == "[" and error[-1] == "]":
+                error = "".join(eval(error))
+              else:
+                error = row["message"]
+            elif endmatch:
+              ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
+              result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits)
     if result is None:
-      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module)
+      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits)
     return result
 
   def __str__(self):
