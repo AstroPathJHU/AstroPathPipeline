@@ -187,10 +187,10 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     self.xmlfolders = xmlfolders
 
   def sampledefswithfilters(self, **kwargs):
-    for samp in self.sampledefs(**kwargs):
+    for samp in self.sampledefs():
       if not samp: continue
       try:
-        yield samp, [filter(self, samp) for filter in self.slideidfilters]
+        yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
       except Exception: #don't log KeyboardInterrupt here
         with self.getlogger(samp):
           raise
@@ -239,7 +239,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
 
   def sampleswithfilters(self, **kwargs):
     for sample in self.samples(**kwargs):
-      yield sample, [filter(self, sample) for filter in self.samplefilters]
+      yield sample, [filter(self, sample, **kwargs) for filter in self.samplefilters]
 
   def filteredsamples(self, **kwargs):
     for sample, filters in self.sampleswithfilters(**kwargs):
@@ -282,7 +282,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     result = []
-    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning):
+    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning, **kwargs):
       if all(filters):
         result.append(self.processsample(sample, **kwargs))
       elif printnotrunning:
@@ -342,7 +342,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       kwargs["uselogfiles"] = False
     regex = dct.pop("sampleregex")
     if regex is not None:
-      kwargs["slideidfilters"].append(SampleFilter(lambda self, sample: regex.match(sample.SlideID), f"SlideID matches {regex.pattern}", f"SlideID doesn't match {regex.pattern}"))
+      kwargs["slideidfilters"].append(SampleFilter(lambda self, sample, **kwargs: regex.match(sample.SlideID), f"SlideID matches {regex.pattern}", f"SlideID doesn't match {regex.pattern}"))
     return kwargs
 
 class Im3Cohort(Cohort, Im3ArgumentParser):
@@ -646,7 +646,7 @@ class WorkflowCohort(Cohort):
     def filter(runstatus, dependencyrunstatuses):
       if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
         runstatus = True
-      if require_commit is not None:
+      if runstatus and require_commit is not None:
         if runstatus.gitcommit is None:
           raise ValueError("previous runstatus has gitcommit of None, check the log")
         if not require_commit.isancestor(runstatus.gitcommit):
@@ -678,9 +678,9 @@ class WorkflowCohort(Cohort):
       else:
         assert False
 
-    def slideidfilter(self, sample):
+    def slideidfilter(self, sample, **kwargs):
       return filter(
-        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs),
+        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
           for dependency in self.sampleclass.workflowdependencyclasses()
@@ -688,11 +688,11 @@ class WorkflowCohort(Cohort):
       )
     kwargs["slideidfilters"].append(SampleFilter(slideidfilter, None, None))
 
-    def samplefilter(self, sample):
+    def samplefilter(self, sample, **kwargs):
       return filter(
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
+          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs, **kwargs)
           for dependency, SlideID in sample.workflowdependencies()
         ],
       )

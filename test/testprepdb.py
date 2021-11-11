@@ -163,6 +163,10 @@ class TestPrepDb(TestBaseSaveOutput):
              PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff_{platform}.jpg") as targetimg:
           np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
+      logs = (
+        dbloadroot/"logfiles"/"prepdb.log",
+        dbloadroot/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
+      )
       for log in logs:
         checkwindowsnewlines(log)
     except:
