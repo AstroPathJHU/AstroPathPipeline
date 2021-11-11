@@ -10,7 +10,7 @@ class GitCommand(abc.ABC):
     self.repo = repo
   def __call__(self, *args, **kwargs):
     nogit = self.run_nogit(*args, **kwargs)
-    if not have_git:
+    if have_git:
       withgit = self.run_git(*args, **kwargs)
       if nogit != withgit:
         raise ValueError(f"Outputs don't match:\n{nogit}\n{withgit}")
