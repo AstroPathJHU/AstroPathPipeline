@@ -56,7 +56,6 @@ class TestPrepDb(TestBaseSaveOutput):
           reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";")
           for row in reader:
             match = startregex.match(row["message"])
-            commit = thisrepo.getcommit(match.group("commit") or match.group("version"))
             istag = not bool(match.group("commit"))
             if match: break
           else:
