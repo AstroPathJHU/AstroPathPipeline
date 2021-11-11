@@ -1,4 +1,4 @@
-import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, sys
+import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, re, sys
 from astropath.shared.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
 from astropath.shared.logging import getlogger
 from astropath.shared.overlap import Overlap
@@ -47,11 +47,12 @@ class TestPrepDb(TestBaseSaveOutput):
 
         filename = logfolder/f"{SlideID}-prepdb.log"
         assert stack.enter_context(job_lock.JobLock(filename))
-        with getlogger(root=testroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="geom", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1):
-          pass
+        filename.unlink()
+        with getlogger(root=testroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="prepdb", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1) as logger:
+          logger.info("testing")
         with open(filename) as f:
           f, f2 = itertools.tee(f)
-          startregex = PrepDbSample.logstartregex()
+          startregex = re.compile(PrepDbSample.logstartregex())
           reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";")
           for row in reader:
             match = startregex.match(row["message"])
@@ -60,7 +61,7 @@ class TestPrepDb(TestBaseSaveOutput):
             if match: break
           else:
             assert False
-          contents = f2.read()
+          contents = "".join(f2)
 
         usecommit = next(iter(self.testrequirecommit.parents))
         if istag:
@@ -71,7 +72,7 @@ class TestPrepDb(TestBaseSaveOutput):
         with open(filename, "w"):
           filename.write(contents)
     except:
-      self.close()
+      stack.close()
       raise
 
   def tearDown(self):
