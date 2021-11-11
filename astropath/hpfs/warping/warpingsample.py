@@ -2,7 +2,8 @@
 import sys, numpy as np
 from reikna.fft import FFT
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import cd, get_GPU_thread
+from ...utilities.gpu import get_GPU_thread
+from ...utilities.miscfileio import cd
 from ...utilities.tableio import readtable, writetable
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample

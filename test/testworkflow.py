@@ -1,6 +1,6 @@
 import os, pathlib
 
-from astropath.utilities.misc import checkwindowsnewlines
+from astropath.utilities.miscfileio import checkwindowsnewlines
 from astropath.shared.workflow import Workflow
 
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput

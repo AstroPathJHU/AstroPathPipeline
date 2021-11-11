@@ -2,7 +2,7 @@
 """
 
 import abc, collections, methodtools, numpy as np
-from ..misc import floattoint
+from ..miscmath import floattoint
 from ..tableio import TableReader
 
 currentmodule = None

@@ -1,7 +1,7 @@
 import argparse, collections, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
-from ..utilities.misc import floattoint
+from ..utilities.miscmath import floattoint
 from ..utilities.tableio import readtable, writetable
 from .csvclasses import Annotation, Region, Vertex
 from .logging import dummylogger, printlogger

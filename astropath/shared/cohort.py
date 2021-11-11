@@ -2,6 +2,7 @@ import abc, datetime, job_lock, logging, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
+from ..utilities.version.git import thisrepo
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
@@ -186,10 +187,10 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     self.xmlfolders = xmlfolders
 
   def sampledefswithfilters(self, **kwargs):
-    for samp in self.sampledefs(**kwargs):
+    for samp in self.sampledefs():
       if not samp: continue
       try:
-        yield samp, [filter(self, samp) for filter in self.slideidfilters]
+        yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
       except Exception: #don't log KeyboardInterrupt here
         with self.getlogger(samp):
           raise
@@ -238,7 +239,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
 
   def sampleswithfilters(self, **kwargs):
     for sample in self.samples(**kwargs):
-      yield sample, [filter(self, sample) for filter in self.samplefilters]
+      yield sample, [filter(self, sample, **kwargs) for filter in self.samplefilters]
 
   def filteredsamples(self, **kwargs):
     for sample, filters in self.sampleswithfilters(**kwargs):
@@ -281,7 +282,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     result = []
-    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning):
+    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning, **kwargs):
       if all(filters):
         result.append(self.processsample(sample, **kwargs))
       elif printnotrunning:
@@ -341,7 +342,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       kwargs["uselogfiles"] = False
     regex = dct.pop("sampleregex")
     if regex is not None:
-      kwargs["slideidfilters"].append(SampleFilter(lambda self, sample: regex.match(sample.SlideID), f"SlideID matches {regex.pattern}", f"SlideID doesn't match {regex.pattern}"))
+      kwargs["slideidfilters"].append(SampleFilter(lambda self, sample, **kwargs: regex.match(sample.SlideID), f"SlideID matches {regex.pattern}", f"SlideID doesn't match {regex.pattern}"))
     return kwargs
 
 class Im3Cohort(Cohort, Im3ArgumentParser):
@@ -620,6 +621,7 @@ class WorkflowCohort(Cohort):
     g.add_argument("--rerun-error", type=re.compile, action="append", dest="rerun_errors", help="rerun only samples with an error that matches this regex")
     g.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
     p.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
+    p.add_argument("--require-commit", type=thisrepo.getcommit, help="rerun samples that already finished with an AstroPath pipeline version earlier than this commit")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
     return p
@@ -636,10 +638,19 @@ class WorkflowCohort(Cohort):
     dependencies = parsed_args_dict.pop("dependencies")
     skip_finished = parsed_args_dict.pop("skip_finished")
     rerun_errors = parsed_args_dict.pop("rerun_errors")
+    require_commit = parsed_args_dict.pop("require_commit")
+
+    if require_commit is not None and not require_commit.isancestor(thisrepo.currentcommit):
+      raise ValueError(f"Trying to require commit {require_commit}, but that is not an ancestor of the current commit {thisrepo.currentcommit}")
 
     def filter(runstatus, dependencyrunstatuses):
       if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
         runstatus = True
+      if runstatus and require_commit is not None:
+        if runstatus.gitcommit is None:
+          raise ValueError("previous runstatus has gitcommit of None, check the log")
+        if not require_commit.isancestor(runstatus.gitcommit):
+          runstatus = False
 
       if not skip_finished and not dependencies:
         return FilterResult(True, "this filter is not run")
@@ -667,9 +678,9 @@ class WorkflowCohort(Cohort):
       else:
         assert False
 
-    def slideidfilter(self, sample):
+    def slideidfilter(self, sample, **kwargs):
       return filter(
-        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs),
+        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
           for dependency in self.sampleclass.workflowdependencyclasses()
@@ -677,11 +688,11 @@ class WorkflowCohort(Cohort):
       )
     kwargs["slideidfilters"].append(SampleFilter(slideidfilter, None, None))
 
-    def samplefilter(self, sample):
+    def samplefilter(self, sample, **kwargs):
       return filter(
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
+          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs, **kwargs)
           for dependency, SlideID in sample.workflowdependencies()
         ],
       )

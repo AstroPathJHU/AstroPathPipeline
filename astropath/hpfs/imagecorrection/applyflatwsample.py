@@ -2,7 +2,7 @@
 from ...shared.argumentparser import SelectLayersArgumentParser, WorkingDirArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample
 from ...utilities.img_file_io import write_image_to_file
-from ...utilities.misc import cd
+from ...utilities.miscfileio import cd
 from ...utilities.config import CONST as UNIV_CONST
 
 class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, 

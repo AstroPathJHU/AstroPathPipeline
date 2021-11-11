@@ -1,7 +1,8 @@
 import methodtools, numpy as np
 from ...shared.sample import ReadRectanglesDbload
 from ...utilities import units
-from ...utilities.misc import floattoint, PILmaximagepixels
+from ...utilities.miscimage import PILmaximagepixels
+from ...utilities.miscmath import floattoint
 from ..align.field import Field
 
 class ZoomSampleBase(ReadRectanglesDbload):

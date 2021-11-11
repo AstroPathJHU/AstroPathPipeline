@@ -1,7 +1,7 @@
 #imports
 import numpy as np
 import matplotlib.pyplot as plt
-from ...utilities.misc import save_figure_in_dir
+from ...utilities.miscplotting import save_figure_in_dir
 from .warp import CameraWarp
 
 def principal_point_plot(all_results,save_stem=None,save_dir=None) :

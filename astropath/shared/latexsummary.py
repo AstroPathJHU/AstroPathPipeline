@@ -1,6 +1,6 @@
 #imports 
 import os, pathlib, subprocess
-from ..utilities.misc import cd
+from ..utilities.miscfileio import cd
 
 class LatexSummaryBase :
     """
