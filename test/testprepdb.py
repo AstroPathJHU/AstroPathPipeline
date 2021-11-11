@@ -57,20 +57,28 @@ class TestPrepDb(TestBaseSaveOutput):
           for row in reader:
             match = startregex.match(row["message"])
             commit = thisrepo.getcommit(match.group("commit") or match.group("version"))
-            istag = bool(match.group("commit"))
+            istag = not bool(match.group("commit"))
             if match: break
           else:
             assert False
           contents = "".join(f2)
 
-        usecommit = next(iter(self.testrequirecommit.parents))
+        usecommit = self.testrequirecommit.parents[0]
         if istag:
-          contents = contents.replace(commit, f"{commit}.dev0+g{usecommit}")
+          contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}")
         else:
-          contents = contents.replace(commit, str(usecommit))
+          contents = contents.replace(match.group("commit"), usecommit.shorthash(8))
 
-        with open(filename, "w"):
-          filename.write(contents)
+        with open(filename, "w") as f:
+          f.write(contents)
+
+        dbloadfolder = testroot/SlideID/"dbload"
+        dbloadfolder.mkdir(exist_ok=True, parents=True)
+        for filename in "batch.csv", "exposures.csv", "overlap.csv", "rect.csv", "constants.csv", "qptiff.csv", "qptiff.jpg", "annotations.csv", "regions.csv", "vertices.csv", "globals.csv":
+          if self.skipannotations(SlideID) and filename in ("regions.csv", "annotations.csv", "vertices.csv"): continue
+          if self.skipqptiff(SlideID) and filename in ("constants.csv", "qptiff.csv", "qptiff.jpg"): continue
+          if SlideID == "M21_1" and filename == "globals.csv": continue
+          (dbloadfolder/f"{SlideID}_{filename}").touch()
     except:
       stack.close()
       raise
@@ -79,21 +87,30 @@ class TestPrepDb(TestBaseSaveOutput):
     super().tearDown()
     self.__stack.close()
 
+  @classmethod
+  def skipannotations(cls, SlideID):
+    return {
+      "M206": False,
+      "M21_1": False,
+      "YZ71": True,
+      "ZW2": False
+    }[SlideID]
+  @classmethod
+  def skipqptiff(cls, SlideID):
+    return {
+      "M206": False,
+      "M21_1": False,
+      "YZ71": False,
+      "ZW2": True,
+    }[SlideID]
 
-  def testPrepDb(self, SlideID="M21_1", units="safe", skipannotations=False, skipqptiff=False):
+  def testPrepDb(self, SlideID="M21_1", units="safe"):
     dbloadroot = thisfolder/"test_for_jenkins"/"prepdb"
 
-    logs = (
-      dbloadroot/"logfiles"/"prepdb.log",
-      dbloadroot/SlideID/"logfiles"/f"{SlideID}-prepdb.log",
-    )
-    for log in logs:
-      try:
-        log.unlink()
-      except FileNotFoundError:
-        pass
+    skipannotations = self.skipannotations(SlideID)
+    skipqptiff = self.skipqptiff(SlideID)
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rename-annotation", "Good tisue", "Good tissue", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rename-annotation", "Good tisue", "Good tissue", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)]
     if skipannotations:
       args.append("--skip-annotations")
     if skipqptiff:
@@ -101,8 +118,8 @@ class TestPrepDb(TestBaseSaveOutput):
 
     try:
       sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID], dbloadroot=dbloadroot, logroot=dbloadroot)
-      PrepDbCohort.runfromargumentparser(args)
-      assert not sample.csv("rect").exists()
+      PrepDbCohort.runfromargumentparser(args) #this should not run anything
+      with open(sample.csv("rect")) as f: assert not f.read().strip()
       PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit)])
 
       rectangles = None
@@ -160,7 +177,7 @@ class TestPrepDb(TestBaseSaveOutput):
   def testPrepDbPolaris(self, **kwargs):
     from .data.YZ71.im3.Scan3.assembleqptiff import assembleqptiff
     assembleqptiff()
-    self.testPrepDb(SlideID="YZ71", skipannotations=True, **kwargs)
+    self.testPrepDb(SlideID="YZ71", **kwargs)
   def testPrepDbPolarisFastUnits(self):
     self.testPrepDbPolaris(units="fast")
 
@@ -174,4 +191,4 @@ class TestPrepDb(TestBaseSaveOutput):
       self.testPrepDb(SlideID="M206", units="fast_microns")
 
   def testPrepDBZW2(self):
-    self.testPrepDb(SlideID="ZW2", units="fast_microns", skipqptiff=True)
+    self.testPrepDb(SlideID="ZW2", units="fast_microns")

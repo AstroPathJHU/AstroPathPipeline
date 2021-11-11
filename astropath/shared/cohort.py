@@ -646,8 +646,11 @@ class WorkflowCohort(Cohort):
     def filter(runstatus, dependencyrunstatuses):
       if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
         runstatus = True
-      if require_commit is not None and not require_commit.isancestor(runstatus.gitcommit):
-        runstatus = False
+      if require_commit is not None:
+        if runstatus.gitcommit is None:
+          raise ValueError("previous runstatus has gitcommit of None, check the log")
+        if not require_commit.isancestor(runstatus.gitcommit):
+          runstatus = False
 
       if not skip_finished and not dependencies:
         return FilterResult(True, "this filter is not run")

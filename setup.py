@@ -16,7 +16,7 @@ class build_commits_csv(setuptools.Command):
         hash, parents, tags = line.split("\t")
         parents = parents.split()
         tags = tags.replace(",", "").replace("->", "").split()
-        writer.writerow({"hash": hash, "parents": parents, "tags": tags})
+        writer.writerow({"hash": hash, "parents": " ".join(parents), "tags": " ".join(tags)})
 
 class build_py(setuptools.command.build_py.build_py):
   def run(self):

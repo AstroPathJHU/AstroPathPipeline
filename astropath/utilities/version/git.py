@@ -1,6 +1,6 @@
 import abc, io, methodtools, pathlib, subprocess
 from .version import astropathversionmatch, have_git
-from ..dataclasses import MetaDataAnnotation, MyDataClassFrozen
+from ..dataclasses import MetaDataAnnotation, MyDataClass
 from ..tableio import readtable, writetable
 
 here = pathlib.Path(__file__).parent
@@ -78,20 +78,19 @@ class GitRepo:
       result, = {_ for _ in self if commit == _}
       return result
 
+  @property
   def currentcommit(self):
     return self.getcommit(astropathversionmatch.group("commit"))
 
-class GitCommit(MyDataClassFrozen):
+class GitCommit(MyDataClass):
   hash: str
   @property
   def parents(self):
-    return frozenset(self.repo.getcommit(p) for p in self.__parents)
+    return tuple(self.repo.getcommit(p) for p in self.__parents)
   @parents.setter
   def parents(self, parents):
-    attrname = "_GitCommit__parents"
-    if hasattr(self, attrname): raise AttributeError("Frozen class")
-    object.__setattr__(self, attrname, parents)
-  parents: frozenset = MetaDataAnnotation(parents, writefunction=lambda x: " ".join(sorted(_.hash for _ in x)), readfunction=lambda x: frozenset(x.split()), usedefault=False)
+    self.__parents = parents
+  parents: tuple = MetaDataAnnotation(parents, writefunction=lambda x: " ".join(_.hash for _ in x), readfunction=lambda x: tuple(x.split()), usedefault=False)
   tags: frozenset = MetaDataAnnotation(writefunction=lambda x: " ".join(sorted(x)), readfunction=lambda x: frozenset(_ for _ in x.split() if _ != "->"))
   repo: GitRepo = MetaDataAnnotation(includeintable=False)
 
@@ -113,8 +112,10 @@ class GitCommit(MyDataClassFrozen):
     tohandle = {self}
     while tohandle:
       result |= tohandle
-      tohandle = frozenset.union(*(_.parents for _ in tohandle)) - result
+      tohandle = frozenset.union(*(frozenset(_.parents) for _ in tohandle)) - result
     return frozenset(result)
+  def shorthash(self, length=8):
+    return self.hash[:length]
   @methodtools.lru_cache()
   def isancestor(self, other):
     other = self.repo.getcommit(other)
