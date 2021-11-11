@@ -118,6 +118,7 @@ class TestPrepDb(TestBaseSaveOutput):
     try:
       sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID], dbloadroot=dbloadroot, logroot=dbloadroot)
       PrepDbCohort.runfromargumentparser(args) #this should not run anything
+      PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit.parents[0])]) #this should not run anything either
       with open(sample.csv("rect")) as f: assert not f.read().strip()
       PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit)])
 
