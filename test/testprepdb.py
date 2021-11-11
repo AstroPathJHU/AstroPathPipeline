@@ -50,7 +50,7 @@ class TestPrepDb(TestBaseSaveOutput):
         filename.unlink()
         with getlogger(root=testroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="prepdb", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1) as logger:
           logger.info("testing")
-        with open(filename) as f:
+        with open(filename, newline="") as f:
           f, f2 = itertools.tee(f)
           startregex = re.compile(PrepDbSample.logstartregex())
           reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";")
@@ -68,7 +68,7 @@ class TestPrepDb(TestBaseSaveOutput):
         else:
           contents = contents.replace(match.group("commit"), usecommit.shorthash(8))
 
-        with open(filename, "w") as f:
+        with open(filename, "w", newline="") as f:
           f.write(contents)
 
         dbloadfolder = testroot/SlideID/"dbload"
