@@ -390,6 +390,7 @@ def checkannotations(args=None):
   else:
     args.imagefolder = args.badimagefolder
   del args.badimagefolder
+  logger = printlogger("annotations")
   with units.setup_context("fast"):
-    XMLPolygonAnnotationReader(**args.__dict__, logger=printlogger("annotations")).getXMLpolygonannotations()
-  print(f"{args.xmlfile} looks good!")
+    XMLPolygonAnnotationReader(**args.__dict__, logger=logger).getXMLpolygonannotations()
+  logger.info(f"{args.xmlfile} looks good!")

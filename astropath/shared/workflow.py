@@ -15,7 +15,7 @@ class Workflow(RunFromArgumentParserBase):
   Run the full AstroPath slide processing workflow.
   """
 
-  cohorts = PrepDbCohort, AlignCohort, ZoomCohort, DeepZoomCohort, StitchAstroPathTissueMaskCohort, AnnoWarpCohortAstroPathTissueMask, GeomCohort, GeomCellCohort, CsvScanCohort
+  cohorts = PrepDbCohort, AlignCohort, StitchAstroPathTissueMaskCohort, ZoomCohort, DeepZoomCohort, AnnoWarpCohortAstroPathTissueMask, GeomCohort, GeomCellCohort, CsvScanCohort
 
   _istmpclass = False
   @classmethod
@@ -36,7 +36,6 @@ class Workflow(RunFromArgumentParserBase):
   def runfromparsedargs(cls, parsed_args):
     for cohort in cls.cohorts:
       p = cohort.makeargumentparser(_forworkflow=True)
-      print(cohort)
       cohort.runfromparsedargs(
         argparse.Namespace(**{
           k: v for k, v in parsed_args.__dict__.items()

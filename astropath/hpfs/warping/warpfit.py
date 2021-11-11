@@ -70,7 +70,8 @@ class WarpFit :
         #make the iteration counter
         self.minfunc_calls=0
         #silence the WarpingSample logger so we don't get a ton of output each time the images are aligned
-        self.__warpsample.logger.setLevel(logging.WARN)
+        with self.__warpsample.logger as logger :
+            logger.setLevel(logging.WARN)
         #do the global minimization
         minimization_start_time = time.time()
         de_result = self.__run_differential_evolution(max_iters)

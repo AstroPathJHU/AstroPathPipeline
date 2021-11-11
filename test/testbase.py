@@ -108,15 +108,25 @@ class TestBaseCopyInput(abc.ABC, unittest.TestCase):
   def setUpClass(cls):
     super().setUpClass()
     for copyfrom, copytofolder in cls.filestocopy():
+      if isinstance(copytofolder, tuple):
+        copytofolder, copyto = copytofolder
+        copyto = copytofolder/copyto
+      else:
+        copyto = copytofolder
       copytofolder.mkdir(exist_ok=True, parents=True)
-      shutil.copy(copyfrom, copytofolder)
+      shutil.copy(copyfrom, copyto)
 
   @classmethod
   def tearDownClass(cls):
     super().tearDownClass()
     if cls.removecopiedinput():
       for copyfrom, copytofolder in cls.filestocopy():
+        if isinstance(copytofolder, tuple):
+          folder, name = copytofolder
+          copyto = folder/name
+        else:
+          copyto = copytofolder/copyfrom.name
         try:
-          (copytofolder/copyfrom.name).unlink()
+          copyto.unlink()
         except FileNotFoundError:
           pass

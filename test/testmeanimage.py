@@ -28,7 +28,7 @@ class TestMeanImage(TestBaseSaveOutput) :
 
     @property
     def meanimage_dir(self) :
-        return folder/'data'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
+        return folder/'test_for_jenkins'/'mean_image'/'root'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
 
     @property
     def masking_dir(self) :
@@ -68,11 +68,14 @@ class TestMeanImage(TestBaseSaveOutput) :
                 '--njobs',str(n_threads),
                 '--sampleregex',SlideID,
                 '--maskroot',os.fspath(folder/'test_for_jenkins'/'mean_image'),
+                '--workingdir',os.fspath(self.meanimage_dir),
                 '--selectrectangles'
                 ]
         for rn in rectangle_ns_with_raw_files :
             args.append(str(rn))
         args.append('--allow-local-edits')
+        args.append('--ignore-dependencies')
+        args.append('--rerun-finished')
         MeanImageCohort.runfromargumentparser(args=args)
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'meanimage'
@@ -116,4 +119,7 @@ class TestMeanImage(TestBaseSaveOutput) :
             if misd.is_dir() :
                 shutil.rmtree(misd)
             shutil.rmtree(self.masking_dir)
+            mid = folder/'test_for_jenkins'/'mean_image'
+            if mid.is_dir() :
+                shutil.rmtree(mid)
 

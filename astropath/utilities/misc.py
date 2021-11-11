@@ -1,5 +1,5 @@
-import collections, contextlib, csv, cv2, itertools, matplotlib.pyplot as plt, more_itertools, numba as nb, numpy as np, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, uncertainties as unc, uncertainties.umath as umath
-import reikna as rk
+import collections, contextlib, csv, cv2, itertools, more_itertools, os, pathlib, PIL.Image, re, scipy.stats, subprocess, sys, pyopencl
+import matplotlib.pyplot as plt, numba as nb, numpy as np, uncertainties as unc, uncertainties.umath as umath, reikna as rk
 if sys.platform != "cygwin": import psutil
 
 def covariance_matrix(*args, **kwargs):
@@ -11,7 +11,7 @@ def covariance_matrix(*args, **kwargs):
   result = np.array(unc.covariance_matrix(*args, **kwargs))
   return (result + result.T) / 2
 
-def pullhist(array, *, binning=None, verbose=True, label="", stdinlabel=True, quantileforstats=1, **kwargs):
+def pullhist(array, *, binning=None, label="", stdinlabel=True, quantileforstats=1, logger=None, **kwargs):
   """
   Make a histogram of uncertainties.nominal_values(array) / uncertainties.std_dev(array)
   """
@@ -24,10 +24,10 @@ def pullhist(array, *, binning=None, verbose=True, label="", stdinlabel=True, qu
   if stdinlabel:
     if label: label += ": "
     label += rf"$\text{{std dev}} = {np.std(pulls):.02f}$"
-  if verbose:
-    print(f"mean of middle {100*quantileforstats}%:   ", unc.ufloat(np.mean(pulls), scipy.stats.sem(pulls)))
-    print(f"std dev of middle {100*quantileforstats}%:", unc.ufloat(np.std(pulls), np.std(pulls) / np.sqrt(2*len(pulls)-2)))
-    print("n outliers: ", outliers)
+  if logger is not None:
+    logger.info(f"mean of middle {100*quantileforstats}%:    {unc.ufloat(np.mean(pulls), scipy.stats.sem(pulls))}")
+    logger.info(f"std dev of middle {100*quantileforstats}%: {unc.ufloat(np.std(pulls), np.std(pulls) / np.sqrt(2*len(pulls)-2))}")
+    logger.info(f"n outliers: {outliers}")
   return plt.hist(pulls, bins=binning, label=label, **kwargs)
 
 @contextlib.contextmanager
@@ -408,14 +408,25 @@ def sorted_eig(*args, **kwargs):
   order = np.argsort(val)[::-1]
   return val[order], vec[:,order]
 
-def get_GPU_thread(interactive) :
+def get_GPU_thread(interactive,logger) :
   """
   Create and return a Reikna Thread object to use for running some computations on the GPU
+  If the Thread can't be created, a globa warning is logged and None is returned
+
   interactive : if True (and some GPU is available), user will be given the option to choose a device 
+  logger : used to log a warning if the GPU thread can't be created
   """
   api = rk.cluda.ocl_api()
   #return a thread from the API
-  return api.Thread.create(interactive=interactive)
+  try :
+    thread = api.Thread.create(interactive=interactive)
+    return thread
+  except pyopencl._cl.LogicError :
+    warnmsg = 'WARNING: A GPU Thread could not be created using PyOpenCL and Reikna. '
+    warnmsg+= 'Please make sure an OpenCL-compatible GPU is available and that the OpenCL driver for it is installed. '
+    warnmsg+= 'GPU computation will be disabled. Rerun with "--noGPU" to remove this warning.'
+    logger.warningglobal(warnmsg)
+    return None
 
 @contextlib.contextmanager
 def field_size_limit_context(limit):
@@ -484,6 +495,15 @@ def array_to_vips_image(array):
     height=height,
     bands=bands,
   )
+
+def vips_sinh(image):
+  try:
+    #https://github.com/libvips/pyvips/pull/282
+    return image.sinh()
+  except AttributeError:
+    exp = image.exp()
+    minusexp = 1/exp
+    return (exp - minusexp) / 2
 
 def affinetransformation(scale=None, rotation=None, shear=None, translation=None):
   """

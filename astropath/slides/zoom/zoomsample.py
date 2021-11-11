@@ -1,34 +1,14 @@
 import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
 
 from ...shared.argumentparser import SelectLayersArgumentParser
-from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
-from ...utilities import units
-from ...utilities.misc import floattoint, memmapcontext, PILmaximagepixels, vips_image_to_array
+from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
+from ...utilities.misc import floattoint, memmapcontext, vips_image_to_array
 from ..align.alignsample import AlignSample
-from ..align.field import Field, FieldReadComponentTiffMultiLayer
+from ..align.field import FieldReadComponentTiffMultiLayer
+from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample
+from .zoomsamplebase import ZoomSampleBase
 
-class ZoomSampleBase(ReadRectanglesDbload):
-  """
-  Base class for any sample that does zooming and makes
-  a wsi sized image
-  """
-  rectanglecsv = "fields"
-  rectangletype = Field
-  def __init__(self, *args, zoomtilesize=16384, **kwargs):
-    self.__tilesize = zoomtilesize
-    super().__init__(*args, **kwargs)
-  multilayer = True
-  @property
-  def zoomtilesize(self): return self.__tilesize
-  @methodtools.lru_cache()
-  @property
-  def ntiles(self):
-    maxxy = np.max([units.nominal_values(field.pxvec)+field.shape for field in self.rectangles], axis=0)
-    return floattoint(-((-maxxy) // (self.zoomtilesize*self.onepixel)).astype(float))
-  def PILmaximagepixels(self):
-    return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
-
-class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, SelectLayersArgumentParser):
+class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, SelectLayersArgumentParser):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
@@ -54,12 +34,14 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
   @classmethod
   def logmodule(self): return "zoom"
 
-  def zoom_wsi_fast(self, fmax=50, usememmap=False):
+  def zoom_wsi_fast(self, *, fmax=50, tissuemeanintensity=100., usememmap=False):
     """
     Assemble the wsi images either in memory (usememmap=False)
     or in a memmap in a temp directory (usememmap=True)
 
-    fmax (default: 50) is a scaling factor for the image.
+    fmax: initial scaling factor when loading the image
+    tissuemeanintensity (default: ): the image is rescaled so that the
+    average intensity in tissue regions is this number
     """
     try:
       import pyvips
@@ -149,6 +131,11 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
               floattoint(float(newlocalx1/onepixel), **kw):floattoint(float(newlocalx2/onepixel), **kw),
             ]
 
+      #rescale the image intensity
+      with self.using_tissuemask() as mask:
+        meanintensity = np.mean(bigimage[:,:,0][mask])
+        bigimage = (bigimage * (tissuemeanintensity / meanintensity)).clip(0, 255).astype(np.uint8)
+
       #save the wsi
       self.wsifolder.mkdir(parents=True, exist_ok=True)
       for i, layer in enumerate(self.layers):
@@ -167,14 +154,14 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
   @methodtools.lru_cache()
   @staticmethod
-  def _colormatrix():
+  def _colormatrix(*, dtype):
     here = pathlib.Path(__file__).parent
     with open(here/"color_matrix.txt") as f:
       matrix = re.search(r"(?<=\[).*(?=\])", f.read(), re.DOTALL).group(0)
-    return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")])
+    return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")], dtype=dtype)
 
   @property
-  def colormatrix(self): return self._colormatrix()[tuple(np.array(self.layers)-1), :]
+  def colormatrix(self): return self._colormatrix(dtype=np.float16)[tuple(np.array(self.layers)-1), :]
 
   @property
   def needtifflayers(self):
@@ -190,6 +177,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       self.logger.info(f"{filename.name} already exists")
       return
 
+    inputlayers = layers
     self.logger.info(f"saving {filename.name}")
     scale = 2**(self.ztiff-self.zmax)
     if scale == 1:
@@ -200,8 +188,14 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
     if self.tifflayers == "color":
       self.logger.info("  normalizing")
-      layerarrays = np.array([vips_image_to_array(layer) for layer in layers], dtype=np.float16)
-      layerarrays = layerarrays / np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
+      layerarrays = np.zeros(dtype=np.float16, shape=(len(layers),)+tuple(floattoint(self.ntiles * self.zoomtilesize * scale)[::-1]))
+      import pyvips
+      pyvips.cache_set_max(0)
+      for i, layer in enumerate(layers):
+        self.logger.debug(f"    layer {i+1} / {len(layers)}")
+        layerarrays[i] = vips_image_to_array(layer)
+        layers[i] = inputlayers[i] = None
+      layerarrays /= np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
       layerarrays = 180 * np.sinh(1.5 * layerarrays)
       self.logger.info("  multiplying by color matrix")
       img = np.tensordot(layerarrays, self.colormatrix, [[0], [0]])
@@ -217,7 +211,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       self.logger.info("  saving")
       tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
 
-  def zoom_memory(self, fmax=50):
+  def zoom_memory(self, *, fmax=50, tissuemeanintensity=100.):
     """
     Run zoom by saving one big tile at a time
     (afterwards you can call wsi_vips to save the wsi)
@@ -227,6 +221,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     nrectangles = len(self.rectangles)
     ntiles = np.product(self.ntiles)
     self.bigfolder.mkdir(parents=True, exist_ok=True)
+    meanintensitynumerator = meanintensitydenominator = 0
 
     class Tile(contextlib.ExitStack):
       """
@@ -275,7 +270,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
     #the initial ExitStack is so that we call __exit__ on all the tiles,
     #even if there's an exception while processing one of the earlier ones.
 
-    with contextlib.ExitStack() as stack:
+    with self.using_tissuemask() as mask, contextlib.ExitStack() as stack:
       tiles = [
         stack.enter_context(
           Tile(
@@ -285,8 +280,20 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
         for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))
       ]
 
+      wsilayer1 = self.wsifilename(1)
+      if wsilayer1.exists():
+        with self.PILmaximagepixels(), PIL.Image.open(wsilayer1) as img:
+          img = np.asarray(img)
+          meanintensitynumerator += np.sum(img[mask])
+          meanintensitydenominator += np.count_nonzero(mask)
+
       for tilen, tile in enumerate(tiles, start=1):
         with tile:
+          tilemask = mask[
+            floattoint(float(tile.primaryymin/self.onepixel)):floattoint(float(tile.primaryymax/self.onepixel)),
+            floattoint(float(tile.primaryxmin/self.onepixel)):floattoint(float(tile.primaryxmax/self.onepixel)),
+          ]
+
           for layer in self.layers:
             if self.wsifilename(layer).exists(): continue
             filename = self.bigfilename(layer, tile.tilex, tile.tiley)
@@ -296,6 +303,12 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
                 break
           else:
             self.logger.info(f"  {self.bigfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
+            if not wsilayer1.exists():
+              filename = self.bigfilename(1, tile.tilex, tile.tiley)
+              with PIL.Image.open(filename) as img:
+                img = np.asarray(img)
+                meanintensitynumerator += np.sum(img[tilemask])
+                meanintensitydenominator += np.count_nonzero(tilemask)
             continue
 
           #tileimage is initialized to None so that we don't have
@@ -393,6 +406,11 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
           :,
         ]
         if not np.any(slc): continue
+        #increment the numerator and denominator of the
+        #mean tissue intensity
+        meanintensitynumerator += np.sum(slc[:,:,0][tilemask])
+        meanintensitydenominator += np.count_nonzero(tilemask)
+
         #save the tile images
         for layer in self.layers:
           filename = self.bigfilename(layer, tile.tilex, tile.tiley)
@@ -405,7 +423,9 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
             image = PIL.Image.fromarray(slc[:, :, layer-1])
             image.save(filename, "PNG")
 
-  def wsi_vips(self):
+    return tissuemeanintensity / (meanintensitynumerator / meanintensitydenominator)
+
+  def wsi_vips(self, scaleby):
     """
     Call vips to assemble the big images into the wsi
     """
@@ -432,7 +452,7 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
       for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
         bigfilename = self.bigfilename(layer, tilex, tiley)
         if bigfilename.exists():
-          images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)))
+          images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)).linear(scaleby, 0))
           removefilenames.append(bigfilename)
         else:
           if blank is None:
@@ -452,9 +472,9 @@ class ZoomSample(ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectan
 
     self.makewsitiff(fortiff)
 
-  def zoom_wsi_memory(self, fmax=50):
-    self.zoom_memory(fmax=fmax)
-    self.wsi_vips()
+  def zoom_wsi_memory(self, fmax=50, tissuemeanintensity=100.):
+    scaleby = self.zoom_memory(fmax=fmax, tissuemeanintensity=tissuemeanintensity)
+    self.wsi_vips(scaleby=scaleby)
 
   def zoom_wsi(self, *args, mode="vips", **kwargs):
     self.logger.info(f"zoom running in {mode} mode")

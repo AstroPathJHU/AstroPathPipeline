@@ -38,8 +38,8 @@ class TestGeomCell(TestBaseSaveOutput):
           try:
             self.assertGreater(row.poly.area, -s.onepixel**2)
           except:
-            print(row)
-            print(row.poly.areas)
+            s.printlogger.error(row)
+            s.printlogger.error(row.poly.areas)
             raise
     except:
       self.saveoutput()

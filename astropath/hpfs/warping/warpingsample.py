@@ -48,7 +48,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
             self.gputhread = gputhread
             self.gpufftdict = gpufftdict
         else :
-            self.gputhread = get_GPU_thread(sys.platform=='darwin') if useGPU else None
+            self.gputhread = get_GPU_thread(sys.platform=='darwin',self.logger) if useGPU else None
             self.gpufftdict = None if self.gputhread is None else {}
         #give the sample a placeholder octets variable
         self.__octets = None

@@ -23,8 +23,13 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     super().__init__(*args, **kwargs)
 
     self.__nentered = 0
-    self.__using_qptiff_context = self.enter_context(contextlib.ExitStack())
+    self.__using_qptiff_context = None
     self.__qptiff = None
+
+  def __enter__(self):
+    result = super().__enter__()
+    self.__using_qptiff_context = self.enter_context(contextlib.ExitStack())
+    return result
 
   @contextlib.contextmanager
   def using_qptiff(self):
@@ -77,8 +82,13 @@ class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
     super().__init__(*args, **kwargs)
 
     self.__nentered = 0
-    self.__using_wsi_context = self.enter_context(contextlib.ExitStack())
+    self.__using_wsi_context = None
     self.__wsi = None
+
+  def __enter__(self):
+    result = super().__enter__()
+    self.__using_wsi_context = self.enter_context(contextlib.ExitStack())
+    return result
 
   @contextlib.contextmanager
   def using_wsi(self, layer):
@@ -259,8 +269,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonRead
     qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//zoomfactor))
     firstresult = computeshift((qptiffzoom, wsizoom), usemaxmovementcut=False)
 
-    initialdx = floattoint(float(np.rint(firstresult.dx.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel)), rtol=1e-4)
-    initialdy = floattoint(float(np.rint(firstresult.dy.n * zoomfactor / (self.tilesize/self.oneimpixel)) * (self.tilesize/self.oneimpixel)), rtol=1e-4)
+    initialdx = floattoint(float(np.rint(firstresult.dx.n * zoomfactor / (self.tilesize/self.oneimpixel)) * np.rint(self.tilesize/self.oneimpixel)), rtol=1e-4)
+    initialdy = floattoint(float(np.rint(firstresult.dy.n * zoomfactor / (self.tilesize/self.oneimpixel)) * np.rint(self.tilesize/self.oneimpixel)), rtol=1e-4)
 
     if initialdx or initialdy:
       self.logger.warningglobal(f"found a relative shift of {firstresult.dx*zoomfactor, firstresult.dy*zoomfactor} pixels between the qptiff and wsi")
@@ -1134,7 +1144,7 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     the index of the tile in [x, y]
     """
-    return floattoint((self.xvec / self.tilesize).astype(float), rtol=.1)
+    return floattoint((self.xvec / self.tilesize).astype(float), atol=.1)
 
   @property
   def unshifted(self):

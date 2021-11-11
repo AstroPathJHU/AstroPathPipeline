@@ -1,8 +1,9 @@
-import abc, argparse, pathlib, re
+import abc, argparse, logging, pathlib, re
 from ..utilities.tableio import TableReader
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
 from .annotationpolygonxmlreader import add_rename_annotation_argument
+from .logging import printlogger
 from .workflowdependency import ThingWithRoots
 
 class MRODebuggingMetaClass(abc.ABCMeta):
@@ -11,22 +12,23 @@ class MRODebuggingMetaClass(abc.ABCMeta):
       return super().__new__(cls, name, bases, dct, **kwargs)
     except TypeError as e:
       if "Cannot create a consistent" in str(e):
-        print("========================")
-        print(f"MROs of bases of {name}:")
+        logger = printlogger("mro")
+        logger.critical("========================")
+        logger.critical(f"MROs of bases of {name}:")
         for base in bases:
-          print("------------------------")
+          logger.critical("------------------------")
           for c in base.__mro__:
-            print(c.__name__)
-        print("************************")
-        print("filtered for the bad ones:")
+            logger.critical(c.__name__)
+        logger.critical("************************")
+        logger.critical("filtered for the bad ones:")
         for base in bases:
           bad = [c for c in base.__mro__ if re.search(rf"\b{c.__name__}\b", str(e))]
           if len(bad) < 2: continue
-          print("------------------------")
-          print(base.__name__)
+          logger.critical("------------------------")
+          logger.critical(base.__name__)
           for c in bad:
-            print(c.__name__)
-        print("========================")
+            logger.critical(c.__name__)
+        logger.critical("========================")
       raise
 
 class RunFromArgumentParserBase(ThingWithRoots, TableReader, metaclass=MRODebuggingMetaClass):
@@ -165,6 +167,7 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
     g.add_argument("--logroot", type=pathlib.Path, help="root location where the log files are stored (default: same as root).")
     g.add_argument("--no-log", action="store_true", help="do not write to log files.")
     p.add_argument("--skip-start-finish", action="store_true", help="do not write the START: and FINISH: lines to the log (this should only be used if external code writes those lines).")
+    p.add_argument("--print-threshold", choices=("all", "info", "warning", "error", "critical", "none"), default="all", help="minimum level of log messages that should be printed to stderr (default: all)")
     g = p.add_mutually_exclusive_group()
     g.add_argument("--no-dev-version", help="refuse to run unless the package version is tagged.", action="store_const", const="tag", dest="version_requirement")
     g.add_argument("--allow-dev-version", help="ok to run even if the package is at a dev version (default if using a log file).", action="store_const", const="commit", dest="version_requirement")
@@ -180,6 +183,14 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
       "logroot": dct.pop("logroot"),
       "uselogfiles": not dct.pop("no_log"),
       "skipstartfinish": dct.pop("skip_start_finish"),
+      "printthreshold": {
+        "all": logging.NOTSET-100,
+        "info": logging.INFO-1,
+        "warning": logging.WARNING,
+        "error": logging.ERROR,
+        "critical": logging.CRITICAL,
+        "none": logging.CRITICAL+100,
+      }[dct.pop("print_threshold")],
     }
     if initkwargs["logroot"] is None: initkwargs["logroot"] = initkwargs["root"]
     return initkwargs
