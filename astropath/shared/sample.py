@@ -335,9 +335,9 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
       elif np.allclose(units.microns(result[:3], power=[0, 1, 1], pscale=result[0]), units.microns(v[:3], power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
         continue
       elif np.allclose(units.microns(result[:3], power=[0, 1, 1], pscale=result[0]), units.microns(v[:3], power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
-        if warnfunction != self.logger.warningglobal: warnfunction = self.logger.warning
+        if warnfunction != self.logger.warningglobalonenter: warnfunction = self.logger.warningonenter
       else:
-        warnfunction = self.logger.warningglobal
+        warnfunction = self.logger.warningglobalonenter
 
     if warnfunction is not None:
       fmt = "{:30} {:30} {:30} {:30}"
