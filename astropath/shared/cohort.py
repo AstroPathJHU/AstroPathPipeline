@@ -679,12 +679,12 @@ class WorkflowCohort(Cohort):
 
       elif dependencies and not skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} "+str(dependencyrunstatus).replace('\n', ' '))
         return FilterResult(True, "all dependencies already ran", cleanup=cleanup)
 
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} "+str(dependencyrunstatus).replace('\n', ' '))
           if runstatus and runstatus.started < dependencyrunstatus.ended:
             runstatus.started = runstatus.ended = False #it's as if this step hasn't run
             cleanup = True
