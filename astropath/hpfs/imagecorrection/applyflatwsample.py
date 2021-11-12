@@ -26,6 +26,9 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
             if self.layers==range(1,self.nlayers+1) :
                 #then the files should overwrite the raw files
                 self.__workingdir = self.__class__.automatic_output_dir(self.SlideID,self.shardedim3root)
+        #if a working directory was given, make sure the actual files go in a subdirectory named after the slide
+        elif self.__workingdir.name!=self.SlideID :
+            self.__workingdir = self.__workingdir/self.SlideID
         if self.__workingdir is None :
             errmsg = f'ERROR: failed to figure out where to put output from workingdir={workingdir} and '
             errmsg+= f'layers={self.layers}'
