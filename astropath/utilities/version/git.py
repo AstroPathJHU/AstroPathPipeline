@@ -5,12 +5,14 @@ from ..tableio import readtable, writetable
 
 here = pathlib.Path(__file__).parent
 
+_XCHECK_GIT = False
+
 class GitCommand(abc.ABC):
   def __init__(self, repo):
     self.repo = repo
   def __call__(self, *args, **kwargs):
     nogit = self.run_nogit(*args, **kwargs)
-    if have_git:
+    if _XCHECK_GIT and have_git:
       withgit = self.run_git(*args, **kwargs)
       if nogit != withgit:
         raise ValueError(f"Outputs don't match:\n{nogit}\n{withgit}")
