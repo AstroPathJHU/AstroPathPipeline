@@ -660,7 +660,6 @@ class WorkflowCohort(Cohort):
             raise ValueError("previous runstatus has gitcommit of None, check the log")
           if not require_commit.isancestor(runstatus.gitcommit):
             runstatus.started = runstatus.ended = False
-            cleanup = True
         if not runstatus.started:  #log doesn't exist at all
           cleanup = True
         if runstatus.failedincleanup:
