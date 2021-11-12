@@ -1,4 +1,4 @@
-import more_itertools, os, pathlib
+import logging, more_itertools, os, pathlib
 
 from astropath.slides.geomcell.geomcellcohort import GeomCellCohort
 from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
@@ -11,16 +11,25 @@ class TestGeomCell(TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/filename.name
-      for SlideID in ("M206",)
-      for filename in (thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom").iterdir()
+      *(
+        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/filename.name
+        for SlideID in ("M206",)
+        for filename in (thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom").iterdir()
+      ),
+      thisfolder/"test_for_jenkins"/"geomcell"/"logfiles"/"geomcell.log",
+      *(
+        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"logfiles"/f"{SlideID}-geomcell.log"
+        for SlideID in ("M206",)
+      ),
     ]
 
   def testGeomCell(self, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     geomroot = thisfolder/"test_for_jenkins"/"geomcell"
-    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--njobs", "2"]
-    s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, selectrectangles=[1])
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--logroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--njobs", "2"]
+    s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, logroot=geomroot, selectrectangles=[1], printthreshold=logging.CRITICAL+1, reraiseexceptions=False, uselogfiles=True)
+    with s.logger:
+      raise ValueError
 
     filename = s.rectangles[0].geomloadcsv
     filename.parent.mkdir(exist_ok=True, parents=True)
