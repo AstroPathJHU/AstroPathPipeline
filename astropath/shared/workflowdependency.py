@@ -45,6 +45,22 @@ class WorkflowDependency(ThingWithRoots):
     """
     return self.getmissingoutputfiles(**self.workflowkwargs)
 
+  @property
+  def workinprogressfiles(self):
+    """
+    Files that are saved from one run to the next so that we can
+    resume where we left off.  These are removed by cleanup()
+    """
+    return []
+
+  def cleanup(self):
+    workinprogressfiles = [_ for _ in self.workinprogressfiles if _.exists()]
+    if not workinprogressfiles: return
+    self.logger.info("Cleaning up files from previous runs")
+    for filename in self.workinprogressfiles:
+      filename.unlink(missing_ok=True)
+    self.logger.info("Finished cleaning up")
+
   @classmethod
   @abc.abstractmethod
   def getlogfile(cls, *, logroot, **workflowkwargs):
@@ -155,7 +171,7 @@ class SampleRunStatus:
   missingfiles: files that are supposed to be in the output, but are missing
   gitcommit: the commit at which it was run
   """
-  def __init__(self, *, module, started, ended, error=None, previousrun=None, missingfiles=(), gitcommit=None, localedits=False):
+  def __init__(self, *, module, started, ended, error=None, previousrun=None, missingfiles=(), gitcommit=None, localedits=False, failedincleanup=False):
     self.module = module
     self.started = started
     self.ended = ended
@@ -164,6 +180,7 @@ class SampleRunStatus:
     self.missingfiles = missingfiles
     self.gitcommit = gitcommit
     self.localedits = localedits
+    self.failedincleanup = failedincleanup
   def __bool__(self):
     """
     True if the sample started and ended with no error and all output files are present
@@ -193,6 +210,7 @@ class SampleRunStatus:
     error = None
     gitcommit = None
     localedits = False
+    failedincleanup = False
     with contextlib.ExitStack() as stack:
       stack.enter_context(field_size_limit_context(1000000))
       try:
@@ -228,11 +246,15 @@ class SampleRunStatus:
                 error = "".join(eval(error))
               else:
                 error = row["message"]
+            elif "Cleaning up files" in row["message"]:
+              failedincleanup = True
+            elif "Finished cleaning up" in row["message"]:
+              failedincleanup = False
             elif endmatch:
               ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
-              result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits)
+              result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, failedincleanup=failedincleanup)
     if result is None:
-      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits)
+      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, failedincleanup=failedincleanup)
     return result
 
   def __str__(self):

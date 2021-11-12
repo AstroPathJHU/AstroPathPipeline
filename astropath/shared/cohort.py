@@ -142,11 +142,12 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
       return cohort
 
 class FilterResult:
-  def __init__(self, result, message=None):
+  def __init__(self, result, message=None, cleanup=False):
     if isinstance(result, FilterResult):
-      result, message = result.result, result.message
+      result, message, cleanup = result.result, result.message, result.cleanup
     self.result = result
     self.message = message
+    self.cleanup = cleanup
 
   def __bool__(self):
     return bool(self.result)
@@ -195,7 +196,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
         with self.getlogger(samp):
           raise
 
-  def filteredsampledefs(self, *, printnotrunning=False, **kwargs):
+  def filteredsampledefswithfilters(self, *, printnotrunning=False, **kwargs):
     """
     Iterate over the sample's sampledef.csv file.
     It yields all the good samples (as defined by the isGood column)
@@ -203,13 +204,17 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     """
     for samp, filters in self.sampledefswithfilters(**kwargs):
       if all(filters):
-        yield samp
+        yield samp, filters
       elif printnotrunning:
         logger = self.printlogger(samp)
         logger.info(f"Not running {samp.SlideID}:")
         for filter in filters:
           if not filter:
             logger.info(filter.message)
+
+  def filteredsampledefs(self, **kwargs):
+    for samp, filters in filteredsampledefswithfilters(**kwargs):
+      yield samp
 
   def allsamples(self, **kwargs) :
     for samp in self.sampledefs(**kwargs):
@@ -224,22 +229,22 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
         with self.getlogger(samp):
           raise
 
-  def samples(self, **kwargs):
-    for samp in self.filteredsampledefs(**kwargs):
+  def sampleswithfilters(self, **kwargs):
+    for samp, filters in self.filteredsampledefswithfilters(**kwargs):
       try:
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
           raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
-        yield sample
+        yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
         with self.getlogger(samp):
           raise
 
-  def sampleswithfilters(self, **kwargs):
-    for sample in self.samples(**kwargs):
-      yield sample, [filter(self, sample, **kwargs) for filter in self.samplefilters]
+  def samples(self, **kwargs):
+    for sample, filters in self.sampleswithfilters(**kwargs):
+      yield sample
 
   def filteredsamples(self, **kwargs):
     for sample, filters in self.sampleswithfilters(**kwargs):
@@ -277,14 +282,14 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   def workflowkwargs(self):
     return self.rootkwargs
 
-  def run(self, *, printnotrunning=True, **kwargs):
+  def run(self, *, printnotrunning=True, cleanup=False, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     result = []
     for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning, **kwargs):
       if all(filters):
-        result.append(self.processsample(sample, **kwargs))
+        result.append(self.processsample(sample, cleanup=cleanup or any(_.cleanup for _ in filters), **kwargs))
       elif printnotrunning:
         logger = self.printlogger(sample)
         logger.info(f"Not running {sample.SlideID}:")
@@ -293,8 +298,10 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
             logger.info(filter.message)
     return result
 
-  def processsample(self, sample, **kwargs):
+  def processsample(self, sample, *, cleanup=False, **kwargs):
     with sample:
+      if cleanup:
+        sample.cleanup()
       return self.runsample(sample, **kwargs)
 
   def dryrun(self, **kwargs):
@@ -644,35 +651,47 @@ class WorkflowCohort(Cohort):
       raise ValueError(f"Trying to require commit {require_commit}, but that is not an ancestor of the current commit {thisrepo.currentcommit}")
 
     def filter(runstatus, dependencyrunstatuses):
-      if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
-        runstatus = True
-      if runstatus and require_commit is not None:
-        if runstatus.gitcommit is None:
-          raise ValueError("previous runstatus has gitcommit of None, check the log")
-        if not require_commit.isancestor(runstatus.gitcommit):
-          runstatus = False
+      if skip_finished:
+        cleanup = False
+        if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
+          runstatus.error = None
+        if runstatus and require_commit is not None:
+          if runstatus.gitcommit is None:
+            raise ValueError("previous runstatus has gitcommit of None, check the log")
+          if not require_commit.isancestor(runstatus.gitcommit):
+            runstatus = False
+            cleanup = True
+        if not runstatus.started:  #log doesn't exist at all
+          cleanup = True
+        if runstatus.failedincleanup:
+          cleanup = True
+      else:
+        #if we're rerunning, then we also want to clean up partially run files
+        cleanup = True
 
       if not skip_finished and not dependencies:
-        return FilterResult(True, "this filter is not run")
+        return FilterResult(True, "this filter is not run", cleanup=cleanup)
 
       elif skip_finished and not dependencies:
         if not runstatus:
-          return FilterResult(True, "sample did not already run")
+          r = FilterResult(True, "sample did not already run", cleanup=cleanup)
+          return FilterResult(True, "sample did not already run", cleanup=cleanup)
         else:
           return FilterResult(False, "sample already ran")
 
       elif dependencies and not skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
           if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
-        return FilterResult(True, "all dependencies already ran")
+        return FilterResult(True, "all dependencies already ran", cleanup=cleanup)
 
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
           if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
           if runstatus and runstatus.started < dependencyrunstatus.ended:
             runstatus = False #it's as if this step hasn't run
+            cleanup = True
         if not runstatus:
-          return FilterResult(True, "all dependencies already ran, sample has not run since then")
+          return FilterResult(True, "all dependencies already ran, sample has not run since then", cleanup=cleanup)
         else:
           return FilterResult(False, "sample already ran")
       else:

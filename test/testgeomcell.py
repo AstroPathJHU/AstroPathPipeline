@@ -19,10 +19,17 @@ class TestGeomCell(TestBaseSaveOutput):
   def testGeomCell(self, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     geomroot = thisfolder/"test_for_jenkins"/"geomcell"
-    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--rerun-finished", "--rerun-finished", "--njobs", "2"]
-    GeomCellCohort.runfromargumentparser(args=args)
-
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--njobs", "2"]
     s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, selectrectangles=[1])
+
+    filename = s.rectangles[0].geomloadcsv
+    filename.parent.mkdir(exist_ok=True, parents=True)
+    filename.touch()
+    GeomCellCohort.runfromargumentparser(args=args)
+    with open(s.rectangles[0].geomloadcsv) as f:
+      assert not f.read().strip()
+    s.samplelog.unlink()  #triggers cleanup
+    GeomCellCohort.runfromargumentparser(args=args)
 
     try:
       for filename, reffilename in more_itertools.zip_equal(
