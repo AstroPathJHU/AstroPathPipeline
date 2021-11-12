@@ -122,5 +122,7 @@ class GitCommit(MyDataClass):
     return self in other.recursiveparents
   def __hash__(self):
     return hash(self.hash)
+  def __repr__(self):
+    return f"{type(self).__name__}(hash={self.hash!r}, parents={self.__parents!r}, tags={self.tags!r}, repo={self.repo!r})"
 
 thisrepo = GitRepo(here.parent.parent.parent)
