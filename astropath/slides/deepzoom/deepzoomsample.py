@@ -1,12 +1,12 @@
 import collections, errno, functools, jxmlease, numpy as np, os, pathlib, PIL, re, shutil
 
-from ...shared.argumentparser import SelectLayersArgumentParser
+from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield, readtable, writetable
 from ..zoom.zoomsample import ZoomSample
 
-class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, SelectLayersArgumentParser):
+class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   The deepzoom step takes the whole slide image and produces an image pyramid
   of different zoom levels.
@@ -274,11 +274,20 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
     self.writezoomlist()
 
-  run = deepzoom
+  def run(self, *, cleanup=False, **kwargs):
+    if cleanup: self.cleanup()
+    self.deepzoom(**kwargs)
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
       *(self.wsifilename(layer) for layer in self.layers),
+    ]
+
+  @property
+  def workinprogressfiles(self):
+    return [
+      *self.deepzoomfolder.glob("L*_files/Z*/*.png"),
+      *self.deepzoomfolder.glob("L*.dzi"),
     ]
 
   @property

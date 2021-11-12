@@ -4,6 +4,7 @@ site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-in
 here = pathlib.Path(__file__).parent
 
 class build_commits_csv(setuptools.Command):
+  user_options = []
   def initialize_options(self): pass
   def finalize_options(self): pass
 
