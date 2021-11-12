@@ -492,3 +492,17 @@ class ParallelArgumentParser(RunFromArgumentParser):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "njobs": parsed_args_dict.pop("njobs"),
     }
+
+class CleanupArgumentParser(RunFromArgumentParser):
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--cleanup", action="store_true", help="clean up files from previous partial runs")
+    return p
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "cleanup": parsed_args_dict.pop("cleanup"),
+    }

@@ -1,6 +1,6 @@
 import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
 
-from ...shared.argumentparser import SelectLayersArgumentParser
+from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.miscfileio import memmapcontext
 from ...utilities.miscimage import vips_image_to_array
@@ -10,7 +10,7 @@ from ..align.field import FieldReadComponentTiffMultiLayer
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample
 from .zoomsamplebase import ZoomSampleBase
 
-class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, SelectLayersArgumentParser):
+class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
@@ -489,7 +489,9 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     else:
       raise ValueError(f"Bad mode {mode}")
 
-  run = zoom_wsi
+  def run(self, *, cleanup=False, **kwargs):
+    if cleanup: self.cleanup()
+    self.zoom_wsi(**kwargs)
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
@@ -500,6 +502,14 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   @property
   def workflowkwargs(self):
     return {"layers": self.layers, "tifflayers": self.tifflayers, **super().workflowkwargs}
+
+  @property
+  def workinprogressfiles(self):
+    return [
+      *(self.bigfolder.glob("*.png")),
+      *(self.wsifolder.glob("*.png")),
+      *(self.wsifolder.glob("*.tiff")),
+    ]
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, **otherrootkwargs):

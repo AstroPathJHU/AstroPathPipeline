@@ -5,12 +5,14 @@ from ..tableio import readtable, writetable
 
 here = pathlib.Path(__file__).parent
 
+_XCHECK_GIT = False
+
 class GitCommand(abc.ABC):
   def __init__(self, repo):
     self.repo = repo
   def __call__(self, *args, **kwargs):
     nogit = self.run_nogit(*args, **kwargs)
-    if have_git:
+    if _XCHECK_GIT and have_git:
       withgit = self.run_git(*args, **kwargs)
       if nogit != withgit:
         raise ValueError(f"Outputs don't match:\n{nogit}\n{withgit}")
@@ -75,7 +77,17 @@ class GitRepo:
     try:
       return self.commitdict[commit]
     except KeyError:
-      result, = {_ for _ in self if commit == _}
+      results = {_ for _ in self if commit == _}
+      try:
+        result, = results
+      except ValueError:
+        if not results:
+          message = f"Couldn't find a commit matching {commit}."
+          if not have_git:
+            message += " Maybe try running python setup.py build_commits_csv"
+          raise ValueError(message)
+        else:
+          raise ValueError(f"Found multiple commits matching {commit}: " + ", ".join(str(_) for _ in results))
       return result
 
   @property
@@ -122,5 +134,7 @@ class GitCommit(MyDataClass):
     return self in other.recursiveparents
   def __hash__(self):
     return hash(self.hash)
+  def __repr__(self):
+    return f"{type(self).__name__}(hash={self.hash!r}, parents={self.__parents!r}, tags={self.tags!r}, repo={self.repo!r})"
 
 thisrepo = GitRepo(here.parent.parent.parent)
