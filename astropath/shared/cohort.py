@@ -213,7 +213,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
             logger.info(filter.message)
 
   def filteredsampledefs(self, **kwargs):
-    for samp, filters in filteredsampledefswithfilters(**kwargs):
+    for samp, filters in self.filteredsampledefswithfilters(**kwargs):
       yield samp
 
   def allsamples(self, **kwargs) :
@@ -659,7 +659,7 @@ class WorkflowCohort(Cohort):
           if runstatus.gitcommit is None:
             raise ValueError("previous runstatus has gitcommit of None, check the log")
           if not require_commit.isancestor(runstatus.gitcommit):
-            runstatus = False
+            runstatus.started = runstatus.ended = False
             cleanup = True
         if not runstatus.started:  #log doesn't exist at all
           cleanup = True
@@ -674,7 +674,6 @@ class WorkflowCohort(Cohort):
 
       elif skip_finished and not dependencies:
         if not runstatus:
-          r = FilterResult(True, "sample did not already run", cleanup=cleanup)
           return FilterResult(True, "sample did not already run", cleanup=cleanup)
         else:
           return FilterResult(False, "sample already ran")
@@ -688,7 +687,7 @@ class WorkflowCohort(Cohort):
         for dependencyrunstatus in dependencyrunstatuses:
           if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
           if runstatus and runstatus.started < dependencyrunstatus.ended:
-            runstatus = False #it's as if this step hasn't run
+            runstatus.started = runstatus.ended = False #it's as if this step hasn't run
             cleanup = True
         if not runstatus:
           return FilterResult(True, "all dependencies already ran, sample has not run since then", cleanup=cleanup)

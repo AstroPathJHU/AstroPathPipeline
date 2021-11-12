@@ -489,7 +489,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     else:
       raise ValueError(f"Bad mode {mode}")
 
-  def run(self, *, cleanup=False, **kwargs)
+  def run(self, *, cleanup=False, **kwargs):
     if cleanup: self.cleanup()
     self.zoom_wsi(**kwargs)
 

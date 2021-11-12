@@ -274,7 +274,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
     self.writezoomlist()
 
-  def run(self, *, cleanup=False, **kwargs)
+  def run(self, *, cleanup=False, **kwargs):
     if cleanup: self.cleanup()
     self.deepzoom(**kwargs)
 
