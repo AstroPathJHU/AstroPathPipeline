@@ -77,7 +77,17 @@ class GitRepo:
     try:
       return self.commitdict[commit]
     except KeyError:
-      result, = {_ for _ in self if commit == _}
+      results = {_ for _ in self if commit == _}
+      try:
+        result, = results
+      except ValueError:
+        if not results:
+          message = f"Couldn't find a commit matching {commit}."
+          if not have_git:
+            message += " Maybe try running python setup.py build_commits_csv"
+          raise ValueError(message)
+        else:
+          raise ValueError(f"Found multiple commits matching {commit}: " + ", ".join(str(_) for _ in results))
       return result
 
   @property
