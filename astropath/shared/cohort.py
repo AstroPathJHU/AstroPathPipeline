@@ -733,7 +733,7 @@ class WorkflowCohort(Cohort):
       if status: return
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       logger = self.printlogger(sample)
-      logger.info(f"{sample.SlideID} {status}")
+      logger.info(f"{sample.SlideID} " + str(status).replace("\n", " "))
     else:
       with sample.joblock() as lock:
         if not lock: return
