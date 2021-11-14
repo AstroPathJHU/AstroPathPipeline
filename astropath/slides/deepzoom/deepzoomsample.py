@@ -3,6 +3,7 @@ import collections, errno, functools, jxmlease, numpy as np, os, pathlib, PIL, r
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
+from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.tableio import pathfield, readtable, writetable
 from ..zoom.zoomsample import ZoomSample
 
@@ -106,9 +107,9 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
       self.logger.info("removing %d empty files with file size %d", len(files), size)
       for nbad, filename in enumerate(files, start=nbad+1):
         try:
-          filename.unlink()
+          rm_missing_ok(filename)
         except OSError:
-          filename.unlink() #retry in case of network errors
+          rm_missing_ok(filename) #retry in case of network errors
 
     ngood = nfiles - nbad
     self.logger.info("there are %d remaining non-empty files", ngood)

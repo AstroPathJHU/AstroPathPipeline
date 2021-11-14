@@ -13,6 +13,15 @@ def cd(dir):
   finally:
     os.chdir(cdminus)
 
+def rm_missing_ok(path):
+  if sys.version_info >= (3, 8):
+    return path.unlink(missing_ok=True)
+  else:
+    try:
+      return path.unlink()
+    except FileNotFoundError:
+      pass
+
 def is_relative_to(path1, path2):
   """
   Like pathlib.Path.is_relative_to but backported to older python versions
