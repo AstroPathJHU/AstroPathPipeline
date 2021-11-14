@@ -337,6 +337,13 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
   def workflowdependencyclasses(cls):
     return [PrepDbSample] + super().workflowdependencyclasses()
 
+  @property
+  def workflowkwargs(self) :
+    return {
+      **super().workflowkwargs,
+      "skipannotations": True,  #don't need prepdb annotations output
+    }
+
 class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
   """
   An alignment set that does not rely on the dbload folder and cannot write the output.
