@@ -679,12 +679,12 @@ class WorkflowCohort(Cohort):
 
       elif dependencies and not skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} "+str(dependencyrunstatus).replace('\n', ' '))
         return FilterResult(True, "all dependencies already ran", cleanup=cleanup)
 
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} "+str(dependencyrunstatus).replace('\n', ' '))
           if runstatus and runstatus.started < dependencyrunstatus.ended:
             runstatus.started = runstatus.ended = False #it's as if this step hasn't run
             cleanup = True
@@ -733,7 +733,7 @@ class WorkflowCohort(Cohort):
       if status: return
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       logger = self.printlogger(sample)
-      logger.info(f"{sample.SlideID} {status}")
+      logger.info(f"{sample.SlideID} " + str(status).replace("\n", " "))
     else:
       with sample.joblock() as lock:
         if not lock: return

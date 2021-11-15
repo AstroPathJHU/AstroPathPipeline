@@ -47,7 +47,7 @@ class GitRepo:
     self.cwd = cwd
 
     if have_git:
-      committable = io.StringIO("hash,parents,tags\n"+subprocess.run(["git", "log", "--all", "--pretty=%H\t%P\t%D", "--no-abbrev-commit"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="ascii").stdout.replace(",", "").replace("\t", ","))
+      committable = io.StringIO("hash,parents,tags\n"+subprocess.run(["git", "log", "--all", "--pretty=%H\t%P\t%D", "--no-abbrev-commit"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="ascii", check=True, cwd=self.cwd).stdout.replace(",", "").replace("\t", ","))
     else:
       committable = here/"commits.csv"
 

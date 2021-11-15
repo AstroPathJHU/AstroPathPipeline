@@ -2,7 +2,7 @@ import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, nu
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
-from ...utilities.miscfileio import memmapcontext
+from ...utilities.miscfileio import memmapcontext, rm_missing_ok
 from ...utilities.miscimage import vips_image_to_array
 from ...utilities.miscmath import floattoint
 from ..align.alignsample import AlignSample
@@ -468,7 +468,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         fortiff.append(output)
 
       for big in removefilenames:
-        big.unlink()
+        rm_missing_ok(big)
 
     shutil.rmtree(self.bigfolder)
 

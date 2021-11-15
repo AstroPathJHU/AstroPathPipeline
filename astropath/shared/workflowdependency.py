@@ -1,5 +1,5 @@
 import abc, contextlib, csv, datetime, more_itertools, re
-from ..utilities.miscfileio import field_size_limit_context
+from ..utilities.miscfileio import field_size_limit_context, rm_missing_ok
 from ..utilities.version.git import thisrepo
 from .logging import MyLogger
 
@@ -58,7 +58,7 @@ class WorkflowDependency(ThingWithRoots):
     if not workinprogressfiles: return
     self.logger.info("Cleaning up files from previous runs")
     for filename in self.workinprogressfiles:
-      filename.unlink(missing_ok=True)
+      rm_missing_ok(filename)
     self.logger.info("Finished cleaning up")
 
   @classmethod
