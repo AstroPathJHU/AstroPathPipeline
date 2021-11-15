@@ -284,6 +284,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def istoothin(self, polygon):
     area = polygon.area
     perimeter = polygon.perimeter
+    if area == perimeter == 0: return True
     return area / perimeter <= .8 * self.onepixel
 
   @property
