@@ -43,6 +43,7 @@ class queue : sharedtools{
             $this.buildqueue()
         } else {
             $this.('check'+$this.module)()
+            $this.updateCSVFiles()
         }
         #
     }
@@ -99,13 +100,55 @@ class queue : sharedtools{
      ------------------------------------------
      Usage: $this.updateCSVFiles()
     ----------------------------------------- #>
-    [void]updateCSVFiles($mainqueue, $localqueue){
+    [void]updateCSVFiles(){
         
-        $local = $this.opencsvfile($localqueue, ',', @('Path','Specimen','Antibody','Algorithm','Processing', 'Timestamp'))
-        $main = $this.opencsvfile($mainqueue, ',', @('Path','Specimen','Antibody','Algorithm','Processing', 'Timestamp'))
+        $localqueuelocation = '\\bki08\h$\testing\upkeep_and_progress\inForm_queue.csv'
+        $mainqueuelocation = '\\bki08\h$\testing\astropath_processing\across_project_queues\vminform-queue - Prototype.csv'
+        $localqueue = $this.GetContent($localqueuelocation)
+        $mainqueue = $this.GetContent($mainqueuelocation)
+        #
+        $localcopy = ''
+        foreach($row in $localqueue){
+            $array = $row.ToString().split(',')
+            $array = $array -replace '\s', ''
+            $localcopy += $array
 
-        
-        return
+        }
+
+        foreach($row in $mainqueue){
+            $array = $row.ToString().split(',')
+            $array = $array -replace '\s', ''
+            if (!($array[0] -match 'T'+$this.project.PadLeft(3,'0'))){continue}
+            $projectid = $array[0].substring(4).trim('0')
+
+
+        }
+
+        #
+        #$this.informvers = '2.4.8'
+        #
+        #$queue_path = $this.mpath + '\across_project_queues'
+        #$this.queue_file = $queue_path + '\' + $this.module + '-queue.csv'
+        #$queue_data = $this.getcontent($this.queue_file)
+        #
+        #$current_queue_data = @()
+        #
+        # find rows without "processing started"
+        #
+        #foreach($row in $queue_data) {
+        #    $array = $row.ToString().Split(",")
+        #    $array = $array -replace '\s',''
+        #    if($array[3]){
+        #        if($array -match "Processing"){ Continue } else { 
+        #            $current_queue_data += $row
+        #            }
+        #        } 
+        #}
+        #
+        #$this.originaltasks = $current_queue_data
+        #$this.cleanedtasks = $this.originaltasks -replace ('\s','')
+        #$this.cleanedtasks = $this.cleanedtasks | ForEach {$_.Split(',')[0..3] -join(',')}
+        #
     }
     <# -----------------------------------------
      defNotCompletedSlides
