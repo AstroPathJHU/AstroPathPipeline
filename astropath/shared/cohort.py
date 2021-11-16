@@ -1,4 +1,4 @@
-import abc, datetime, job_lock, logging, pathlib, re
+import abc, contextlib2, datetime, job_lock, logging, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
@@ -187,13 +187,13 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     self.samplefilters = samplefilters
     self.xmlfolders = xmlfolders
 
-  def sampledefswithfilters(self, **kwargs):
+  def sampledefswithfilters(self, *, logerrors=True, **kwargs):
     for samp in self.sampledefs():
       if not samp: continue
       try:
         yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
       except Exception: #don't log KeyboardInterrupt here
-        with self.getlogger(samp):
+        with self.getlogger(samp) if logerrors else contextlib2.nullcontext():
           raise
 
   def filteredsampledefswithfilters(self, *, printnotrunning=False, **kwargs):
@@ -216,8 +216,8 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     for samp, filters in self.filteredsampledefswithfilters(**kwargs):
       yield samp
 
-  def allsamples(self, **kwargs) :
-    for samp in self.sampledefs(**kwargs):
+  def allsamples(self, *, logerrors=True, **kwargs) :
+    for samp in self.sampledefs(logerrors=logerrors, **kwargs):
       try:
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
@@ -226,11 +226,11 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
-        with self.getlogger(samp):
+        with self.getlogger(samp) if logerrors else contextlib2.nullcontext():
           raise
 
-  def sampleswithfilters(self, **kwargs):
-    for samp, filters in self.filteredsampledefswithfilters(**kwargs):
+  def sampleswithfilters(self, *, logerrors=True, **kwargs):
+    for samp, filters in self.filteredsampledefswithfilters(logerrors=logerrors, **kwargs):
       try:
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
@@ -239,7 +239,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
-        with self.getlogger(samp):
+        with self.getlogger(samp) if logerrors else contextlib2.nullcontext():
           raise
 
   def samples(self, **kwargs):
@@ -282,12 +282,12 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   def workflowkwargs(self):
     return self.rootkwargs
 
-  def run(self, *, printnotrunning=True, cleanup=False, **kwargs):
+  def run(self, *, printnotrunning=True, cleanup=False, loginiterrors=True, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     result = []
-    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning, **kwargs):
+    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning, logerrors=loginiterrors, **kwargs):
       if all(filters):
         result.append(self.processsample(sample, cleanup=cleanup or any(_.cleanup for _ in filters), **kwargs))
       elif printnotrunning:
@@ -757,3 +757,6 @@ class WorkflowCohort(Cohort):
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
 
           return result
+
+  def run(self, *, print_errors, **kwargs):
+    return super().run(print_errors=print_errors, loginiterrors=not print_errors, **kwargs)
