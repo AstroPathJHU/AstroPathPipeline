@@ -1,4 +1,4 @@
-import abc, datetime, job_lock, logging, pathlib, re
+import abc, contextlib, datetime, job_lock, logging, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
@@ -26,7 +26,7 @@ class CohortBase(ThingWithRoots):
     self.skipstartfinish = skipstartfinish
     self.printthreshold = printthreshold
 
-  def sampledefs(self):
+  def sampledefs(self, **kwargs):
     from .samplemetadata import SampleDef
     return readtable(self.sampledefroot/"sampledef.csv", SampleDef)
   @property
@@ -193,7 +193,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       try:
         yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
       except Exception: #don't log KeyboardInterrupt here
-        with self.getlogger(samp):
+        with self.handlesampledeffiltererror(samp, **kwargs):
           raise
 
   def filteredsampledefswithfilters(self, *, printnotrunning=False, **kwargs):
@@ -226,7 +226,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
-        with self.getlogger(samp):
+        with self.handlesampleiniterror(samp, **kwargs):
           raise
 
   def sampleswithfilters(self, **kwargs):
@@ -235,12 +235,25 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
           raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+      except Exception:
+        #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
+        with self.handlesampleiniterror(samp, **kwargs):
+          raise
+      try:
         yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
-        with self.getlogger(samp):
+        with self.handlesamplefiltererror(samp, **kwargs):
           raise
+
+  def handlesampledeffiltererror(self, samp, **kwargs):
+    return self.getlogger(samp)
+  def handlesampleiniterror(self, samp, **kwargs):
+    return self.getlogger(samp)
+  def handlesamplefiltererror(self, samp, **kwargs):
+    return self.getlogger(samp)
 
   def samples(self, **kwargs):
     for sample, filters in self.sampleswithfilters(**kwargs):
@@ -757,3 +770,37 @@ class WorkflowCohort(Cohort):
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
 
           return result
+
+  @contextlib.contextmanager
+  def handlesampledeffiltererror(self, samp, *, print_errors, **kwargs):
+    if print_errors:
+      try:
+        yield
+      except Exception as e:
+        self.printlogger(samp).info(f"{samp.SlideID} gave an error in a sampledef filter: "+str(e).replace("\n", " "))
+    else:
+      with super().handlesampledeffiltererror(samp, **kwargs):
+        yield
+
+  @contextlib.contextmanager
+  def handlesampleiniterror(self, samp, *, print_errors, **kwargs):
+    if print_errors:
+      try:
+        yield
+      except Exception as e:
+        self.printlogger(samp).info(f"{samp.SlideID} gave an error in __init__: "+str(e).replace("\n", " "))
+    else:
+      with super().handlesampleiniterror(samp, **kwargs):
+        yield
+
+  @contextlib.contextmanager
+  def handlesamplefiltererror(self, samp, *, print_errors, **kwargs):
+    if print_errors:
+      try:
+        yield
+      except Exception as e:
+        self.printlogger(samp).info(f"{samp.SlideID} gave an error in a sample filter: "+str(e).replace("\n", " "))
+    else:
+      with super().handlesamplefiltererror(samp, **kwargs):
+        yield
+
