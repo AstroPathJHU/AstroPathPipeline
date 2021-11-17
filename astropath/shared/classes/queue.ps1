@@ -101,54 +101,61 @@ class queue : sharedtools{
      Usage: $this.updateCSVFiles()
     ----------------------------------------- #>
     [void]updateCSVFiles(){
-        
+        #$mainqueuepath = $this.mpath + '\across_project_queues'
+        #$this.queue_file = $mainqueuepath + '\' + $this.module + '-queue.csv'
+        #$locaqueuepath = 
+        #$mainqueue = $this.OpenCSVFile($this.queue_file)
+        #
         $localqueuelocation = '\\bki08\h$\testing\upkeep_and_progress\inForm_queue.csv'
         $mainqueuelocation = '\\bki08\h$\testing\astropath_processing\across_project_queues\vminform-queue - Prototype.csv'
-        $localqueue = $this.GetContent($localqueuelocation)
-        $mainqueue = $this.GetContent($mainqueuelocation)
+        $localqueue = $this.OpenCSVFile($localqueuelocation)
+        $mainqueue = $this.OpenCSVFile($mainqueuelocation)
         #
-        $localcopy = ''
+        $out = $mainqueue -match ('T' + $this.project.PadLeft(3,'0'))
+        foreach($row in $out){
+            $row.TaskID = $row.taskid.substring(4).trim('0')
+            if ($row.TaskID -notin $localqueue.TaskID) {
+                $localqueue += $row | select -Property TaskID, Specimen, Antibody, Algorithm
+            }
+            $localrow = $localqueue | Where-Object -FilterScript {$_.TaskID -eq $row.TaskID}
+            if ($localrow -notmatch ($row | select -Property TaskID, Specimen, Antibody, Algorithm)) {
+                $addedrow = New-Object System.Object
+                $newid = $localqueue.Length + 1
+                $addedrow | Add-Member -NotePropertyName TaskID -NotePropertyValue $newid
+                $addedrow | Add-Member -NotePropertyName Specimen -NotePropertyValue $localrow.Specimen
+                $addedrow | Add-Member -NotePropertyName Antibody -NotePropertyValue $localrow.Antibody
+                $addedrow | Add-Member -NotePropertyName Algorithm -NotePropertyValue $localrow.Algorithm
+                $localqueue += $addedrow
+                #
+                $localrow.Specimen = $row.Specimen
+                $localrow.Antibody = $row.Antibody
+                $localrow.Algorithm = $row.Algorithm
+            }
+        }
+        #
         foreach($row in $localqueue){
-            $array = $row.ToString().split(',')
-            $array = $array -replace '\s', ''
-            $localcopy += $array
-
+            if ($row.TaskID -notin $out.TaskID -and $row.Algorithm -ne '') {
+                $adjustedrow = New-Object System.Object
+                $adjustedrow | Add-Member -NotePropertyName TaskID -NotePropertyValue $row.TaskID
+                $adjustedrow | Add-Member -NotePropertyName Specimen -NotePropertyValue $row.Specimen
+                $adjustedrow | Add-Member -NotePropertyName Antibody -NotePropertyValue $row.Antibody
+                $adjustedrow | Add-Member -NotePropertyName Algorithm -NotePropertyValue $row.Algorithm
+                $adjustedrow | Add-Member -NotePropertyName ProcessingLocation -NotePropertyValue ''
+                $adjustedrow | Add-Member -NotePropertyName StartDate -NotePropertyValue ''
+                $mainqueue += $adjustedrow
+            }
         }
-
+        #
         foreach($row in $mainqueue){
-            $array = $row.ToString().split(',')
-            $array = $array -replace '\s', ''
-            if (!($array[0] -match 'T'+$this.project.PadLeft(3,'0'))){continue}
-            $projectid = $array[0].substring(4).trim('0')
-
-
+            if ($row.TaskID -notmatch 'T') {
+                $row.TaskID = 'T' + $this.project.PadLeft(3,'0') + ($row.TaskID.ToString()).PadLeft(5,'0')
+            }
         }
-
         #
-        #$this.informvers = '2.4.8'
-        #
-        #$queue_path = $this.mpath + '\across_project_queues'
-        #$this.queue_file = $queue_path + '\' + $this.module + '-queue.csv'
-        #$queue_data = $this.getcontent($this.queue_file)
-        #
-        #$current_queue_data = @()
-        #
-        # find rows without "processing started"
-        #
-        #foreach($row in $queue_data) {
-        #    $array = $row.ToString().Split(",")
-        #    $array = $array -replace '\s',''
-        #    if($array[3]){
-        #        if($array -match "Processing"){ Continue } else { 
-        #            $current_queue_data += $row
-        #            }
-        #        } 
-        #}
-        #
-        #$this.originaltasks = $current_queue_data
-        #$this.cleanedtasks = $this.originaltasks -replace ('\s','')
-        #$this.cleanedtasks = $this.cleanedtasks | ForEach {$_.Split(',')[0..3] -join(',')}
-        #
+        $updatedlocal = ($localqueue | ConvertTo-Csv -NoTypeInformation) -join "`n"
+        $updatedmain = ($mainqueue | ConvertTo-Csv -NoTypeInformation) -join "`n"
+        $this.SetFile($updatedlocal)
+        $this.SetFile($updatedmain)
     }
     <# -----------------------------------------
      defNotCompletedSlides
