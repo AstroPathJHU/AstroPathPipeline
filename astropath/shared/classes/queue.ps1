@@ -102,9 +102,13 @@ class queue : sharedtools{
     ----------------------------------------- #>
     [void]updateCSVFiles(){
         #$mainqueuepath = $this.mpath + '\across_project_queues'
-        #$this.queue_file = $mainqueuepath + '\' + $this.module + '-queue.csv'
-        #$locaqueuepath = 
-        #$mainqueue = $this.OpenCSVFile($this.queue_file)
+        #$mainqueuefile = $mainqueuepath + '\' + $this.module + '-queue.csv'
+        #$cohortinfo = $this.ImportCohortsInfo($this.mpath)
+        #$localqueuepath = $cohortinfo.Dpath + '\' + $cohortinfo.Dname + '\upkeep_and_progress'
+        #$localqueuefile = $localqueuepath + '\inForm_queue.csv' 
+        #
+        #$mainqueue = $this.OpenCSVFile($mainqueuefile)
+        #$localqueue = $this.OpenCSVFile($localqueuefile)
         #
         $localqueuelocation = '\\bki08\h$\testing\upkeep_and_progress\inForm_queue.csv'
         $mainqueuelocation = '\\bki08\h$\testing\astropath_processing\across_project_queues\vminform-queue - Prototype.csv'
