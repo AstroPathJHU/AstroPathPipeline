@@ -513,9 +513,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, **otherrootkwargs):
-    with open(informdataroot/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
-      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-        nlayers = int(node.xml_attrs["dim"])
+    nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs")
     if layers is None:
       layers = range(1, nlayers+1)
     result = [

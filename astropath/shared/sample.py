@@ -289,15 +289,24 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
       else:
         raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
+  @classmethod
+  def getnlayersunmixed(cls, componenttiffsfolder):
+    filenames = [componenttiffsfolder/"batch_procedure.ifp", componenttiffsfolder/"batch_procedure.ifr"]
+    try:
+      filename = next(_ for _ in filenames if _.exists())
+    except StopIteration:
+      raise FileNotFoundError("Didn't find any batch procedure files: " + ", ".join(str(_) for _ in filenames))
+    with open(filename, "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+        return int(node.xml_attrs["dim"])
+
   @methodtools.lru_cache()
   @property
   def nlayersunmixed(self):
     """
     Find the number of component tiff layers from the xml metadata
     """
-    with open(self.componenttiffsfolder/"batch_procedure.ifp", "rb") as f:
-      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-        return int(node.xml_attrs["dim"])
+    return self.getnlayersunmixed(self.componenttiffsfolder)
 
   def _getimageinfos(self):
     """
