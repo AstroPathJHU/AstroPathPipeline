@@ -307,7 +307,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
             self.logger.info(f"  {self.bigfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
             if not wsilayer1.exists():
               filename = self.bigfilename(1, tile.tilex, tile.tiley)
-              with PIL.Image.open(filename) as img:
+              with self.PILmaximagepixels(), PIL.Image.open(filename) as img:
                 img = np.asarray(img)
                 meanintensitynumerator += np.sum(img[tilemask])
                 meanintensitydenominator += np.count_nonzero(tilemask)
