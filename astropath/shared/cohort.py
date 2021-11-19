@@ -668,7 +668,7 @@ class WorkflowCohort(Cohort):
         cleanup = False
         if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
           runstatus.error = None
-        if runstatus and require_commit is not None:
+        if runstatus.started and require_commit is not None:
           if runstatus.gitcommit is None:
             raise ValueError("previous runstatus has gitcommit of None, check the log")
           if not require_commit.isancestor(runstatus.gitcommit):
