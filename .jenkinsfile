@@ -159,7 +159,7 @@ pipeline {
             }
 			stage('test meanimage powershell') {
 			  steps {
-			    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimagepowershell'
+			    powershell returnStatus: true, script: '.\\test\\testmeanimagepowershell.ps1'
 			  }
 			}
           }
