@@ -3,7 +3,7 @@ import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, nu
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.miscfileio import memmapcontext, rm_missing_ok
-from ...utilities.miscimage import vips_image_to_array
+from ...utilities.miscimage import vips_image_to_array, vips_sinh
 from ...utilities.miscmath import floattoint
 from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiffMultiLayer
@@ -190,6 +190,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
     if self.tifflayers == "color":
       self.logger.info("  normalizing")
+      layers = [180 * vips_sinh(layer / layer.max() * 1.5) for layer in layers]
       layerarrays = np.zeros(dtype=np.float16, shape=(len(layers),)+tuple(floattoint(self.ntiles * self.zoomtilesize * scale)[::-1]))
       import pyvips
       pyvips.cache_set_max(0)
@@ -197,8 +198,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         self.logger.debug(f"    layer {i+1} / {len(layers)}")
         layerarrays[i] = vips_image_to_array(layer)
         layers[i] = inputlayers[i] = None
-      layerarrays /= np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
-      layerarrays = 180 * np.sinh(1.5 * layerarrays)
       self.logger.info("  multiplying by color matrix")
       img = np.tensordot(layerarrays, self.colormatrix, [[0], [0]])
       img = img.clip(0, 255)

@@ -83,10 +83,32 @@ def array_to_vips_image(array):
   )
 
 def vips_sinh(image):
+  """
+  >>> i = array_to_vips_image(np.arange(25, dtype=float).reshape(5, 5) / 10)
+  >>> vips_image_to_array(vips_sinh(i))
+  array([[0.        , 0.10016675, 0.201336  , 0.30452029, 0.41075233],
+         [0.52109531, 0.63665358, 0.7585837 , 0.88810598, 1.02651673],
+         [1.17520119, 1.33564747, 1.50946136, 1.69838244, 1.9043015 ],
+         [2.12927946, 2.37556795, 2.64563193, 2.94217429, 3.26816291],
+         [3.62686041, 4.02185674, 4.45710517, 4.93696181, 5.46622921]])
+  """
+  try:
+    import pyvips
+  except ImportError:
+    raise ImportError("Please pip install pyvips to use this functionality")
+
   try:
     #https://github.com/libvips/pyvips/pull/282
     return image.sinh()
   except AttributeError:
-    exp = image.exp()
-    minusexp = 1/exp
-    return (exp - minusexp) / 2
+    fallback = True
+  except pyvips.error.Error as e:
+    if 'VipsOperation: class "sinh" not found' in str(e):
+      fallback = True
+    else:
+      raise
+
+  assert fallback
+  exp = image.exp()
+  minusexp = 1/exp
+  return (exp - minusexp) / 2
