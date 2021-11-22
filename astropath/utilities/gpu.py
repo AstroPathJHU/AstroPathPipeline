@@ -1,3 +1,5 @@
+from .optionalimports import pyopencl, reikna as rk
+
 def get_GPU_thread(interactive,logger) :
   """
   Create and return a Reikna Thread object to use for running some computations on the GPU
@@ -6,11 +8,6 @@ def get_GPU_thread(interactive,logger) :
   interactive : if True (and some GPU is available), user will be given the option to choose a device 
   logger : used to log a warning if the GPU thread can't be created
   """
-  try:
-    import pyopencl, reikna as rk
-  except ImportError:
-    raise ImportError("Please pip install pyopencl reikna to use this feature")
-
   api = rk.cluda.ocl_api()
   #return a thread from the API
   try :

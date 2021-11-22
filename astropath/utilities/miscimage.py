@@ -1,4 +1,5 @@
 import collections, contextlib, numpy as np, PIL.Image
+from .optionalimports import pyvips
 
 class PILmaximagepixels(contextlib.AbstractContextManager):
   """
@@ -63,11 +64,6 @@ def array_to_vips_image(array):
   """
   https://libvips.github.io/pyvips/intro.html#numpy-and-pil
   """
-  try:
-    import pyvips
-  except ImportError:
-    raise ImportError("Please pip install pyvips to use this functionality")
-
   if len(array.shape) == 2:
     height, width = array.shape
     bands = 1
@@ -92,11 +88,6 @@ def vips_sinh(image):
          [2.12927946, 2.37556795, 2.64563193, 2.94217429, 3.26816291],
          [3.62686041, 4.02185674, 4.45710517, 4.93696181, 5.46622921]])
   """
-  try:
-    import pyvips
-  except ImportError:
-    raise ImportError("Please pip install pyvips to use this functionality")
-
   try:
     #https://github.com/libvips/pyvips/pull/282
     return image.sinh()

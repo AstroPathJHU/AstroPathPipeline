@@ -4,6 +4,7 @@ from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgument
 from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscfileio import rm_missing_ok
+from ...utilities.optionalimports import pyvips
 from ...utilities.tableio import pathfield, readtable, writetable
 from ..zoom.zoomsample import ZoomSample
 
@@ -39,10 +40,6 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     Use vips to create the image pyramid.  This is an out of the box
     functionality of vips.
     """
-    try:
-      import pyvips
-    except ImportError:
-      raise ImportError("Please pip install pyvips to use this functionality")
     self.logger.info("running vips for layer %d", layer)
     filename = self.wsifilename(layer)
 

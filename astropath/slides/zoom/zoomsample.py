@@ -5,6 +5,7 @@ from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, W
 from ...utilities.miscfileio import memmapcontext, rm_missing_ok
 from ...utilities.miscimage import vips_image_to_array, vips_sinh
 from ...utilities.miscmath import floattoint
+from ...utilities.optionalimports import pyvips
 from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample
@@ -45,10 +46,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     tissuemeanintensity (default: ): the image is rescaled so that the
     average intensity in tissue regions is this number
     """
-    try:
-      import pyvips
-    except ImportError:
-      raise ImportError("Please pip install pyvips to use this functionality")
 
     onepixel = self.onepixel
     self.logger.info("allocating memory for the global array")
@@ -192,7 +189,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       self.logger.info("  normalizing")
       layers = [180 * vips_sinh(layer / layer.max() * 1.5) for layer in layers]
       layerarrays = np.zeros(dtype=np.float16, shape=(len(layers),)+tuple(floattoint(self.ntiles * self.zoomtilesize * scale)[::-1]))
-      import pyvips
       pyvips.cache_set_max(0)
       for i, layer in enumerate(layers):
         self.logger.debug(f"    layer {i+1} / {len(layers)}")
@@ -430,11 +426,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     """
     Call vips to assemble the big images into the wsi
     """
-    try:
-      import pyvips
-    except ImportError:
-      raise ImportError("Please pip install pyvips to use this functionality")
-
     fortiff = []
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
