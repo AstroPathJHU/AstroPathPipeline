@@ -1,3 +1,5 @@
+import importlib
+
 class OptionalImport:
   """
   Helper class to import optional modules when needed,
@@ -12,11 +14,11 @@ class OptionalImport:
   def doimport(self):
     if self.__module is not None: return
     try:
-      self.__module = __import__(self.moduletoimport)
+      self.__module = importlib.import_module(self.moduletoimport)
     except ImportError:
       raise ImportError(f"Please pip install {self.pipinstall} to use this feature")
     self.initmodule()
-    self.doimport = lambda self: None
+    self.doimport = lambda: None
 
   def initmodule(self):
     pass
