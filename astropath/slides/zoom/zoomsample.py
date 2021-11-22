@@ -191,7 +191,8 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       #https://github.com/libvips/pyvips/issues/287
       #layers = np.asarray(layers, dtype=object)
       layerarray = np.zeros(len(layers), dtype=object)
-      layerarray[:] = layers
+      for i, layer in enumerate(layers):
+        layerarray[i] = layer
       layers = layerarray
 
       pyvips.cache_set_max(0)
