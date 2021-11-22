@@ -1,4 +1,4 @@
-import abc, contextlib, cvxpy as cp, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import Region, Vertex
@@ -9,6 +9,7 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscmath import covariance_matrix, floattoint
+from ...utilities.optionalimports import cvxpy as cp
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift

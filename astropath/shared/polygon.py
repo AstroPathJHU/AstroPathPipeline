@@ -1,8 +1,9 @@
 import dataclassy, itertools, matplotlib.patches, methodtools, numba as nb, numbers, numpy as np, skimage.draw
 from numba.core.errors import TypingError
 from ..utilities import units
-from ..utilities.miscmath import floattoint
 from ..utilities.dataclasses import MetaDataAnnotation
+from ..utilities.miscmath import floattoint
+from ..utilities.optionalimports import ogr
 from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithPscale
 
 class InvalidPolygonError(Exception):
@@ -554,23 +555,6 @@ def polygonfield(**metadata):
     **metadata,
   }
   return MetaDataAnnotation(Polygon, **metadata)
-
-class _OgrImport:
-  """
-  Helper class to import ogr when needed, but allow using the other
-  features of this module even if gdal is not installed
-  """
-  def __getattr__(self, attr):
-    global ogr
-    try:
-      from osgeo import ogr
-    except ImportError:
-      raise ValueError("Please pip install gdal to use this feature")
-    else:
-      ogr.UseExceptions()
-      return getattr(ogr, attr)
-
-ogr = _OgrImport()
 
 def __polygonarea(vertexarray):
   size = len(vertexarray)
