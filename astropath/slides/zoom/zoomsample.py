@@ -3,7 +3,7 @@ import contextlib, cv2, datetime, itertools, job_lock, methodtools, numpy as np,
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.miscfileio import memmapcontext, rm_missing_ok
-from ...utilities.miscimage import vips_image_to_array, vips_sinh
+from ...utilities.miscimage import vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
 from ...utilities.optionalimports import pyvips
 from ..align.alignsample import AlignSample
@@ -176,7 +176,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       self.logger.info(f"{filename.name} already exists")
       return
 
-    inputlayers = layers
     self.logger.info(f"saving {filename.name}")
     scale = 2**(self.ztiff-self.zmax)
     if scale == 1:
@@ -191,9 +190,11 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       pyvips.cache_set_max(0)
       self.logger.info("  multiplying by color matrix")
       img = np.tensordot(layers, self.colormatrix, [[0], [0]])
-      img = img.cast(vips_format_dtype(np.uint8)) #clips at 255
+      img = [layer.cast(vips_format_dtype(np.uint8)) for layer in img] #clips at 255
+      r, g, b = img
+      img = r.join(g, "vertical").join(b, "vertical")
       self.logger.info("  saving")
-      img.tiffsave(os.fspath(filename))
+      img.tiffsave(os.fspath(filename), page_height=layers[0].height)
     else:
       assert len(layers) == len(self.tifflayers)
       tiffoutput = layers[0]
