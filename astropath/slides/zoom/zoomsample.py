@@ -188,18 +188,12 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     if self.tifflayers == "color":
       self.logger.info("  normalizing")
       layers = [180 * vips_sinh(layer / layer.max() * 1.5) for layer in layers]
-      layerarrays = np.zeros(dtype=np.float16, shape=(len(layers),)+tuple(floattoint(self.ntiles * self.zoomtilesize * scale)[::-1]))
       pyvips.cache_set_max(0)
-      for i, layer in enumerate(layers):
-        self.logger.debug(f"    layer {i+1} / {len(layers)}")
-        layerarrays[i] = vips_image_to_array(layer)
-        layers[i] = inputlayers[i] = None
       self.logger.info("  multiplying by color matrix")
-      img = np.tensordot(layerarrays, self.colormatrix, [[0], [0]])
-      img = img.clip(0, 255)
-      pilimage = PIL.Image.fromarray(img.astype(np.uint8))
+      img = np.tensordot(layers, self.colormatrix, [[0], [0]])
+      img = img.cast(vips_format_dtype(np.uint8)) #clips at 255
       self.logger.info("  saving")
-      pilimage.save(filename)
+      img.tiffsave(os.fspath(filename))
     else:
       assert len(layers) == len(self.tifflayers)
       tiffoutput = layers[0]
