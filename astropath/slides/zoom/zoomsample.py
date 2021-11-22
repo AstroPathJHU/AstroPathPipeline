@@ -1,4 +1,4 @@
-import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
+import contextlib, cv2, datetime, itertools, job_lock, methodtools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase

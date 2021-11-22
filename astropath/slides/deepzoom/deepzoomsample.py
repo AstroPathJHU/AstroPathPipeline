@@ -1,4 +1,4 @@
-import collections, errno, functools, jxmlease, numpy as np, os, pathlib, PIL, re, shutil
+import collections, errno, functools, numpy as np, os, pathlib, PIL, re, shutil
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
