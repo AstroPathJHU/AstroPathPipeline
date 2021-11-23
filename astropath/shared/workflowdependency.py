@@ -179,6 +179,7 @@ class SampleRunStatus(MyDataClass):
                   was run)
   """
   module: str
+  SlideID: str
   started: datetime.datetime
   ended: datetime.datetime
   error: str
@@ -228,7 +229,7 @@ class SampleRunStatus(MyDataClass):
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:
-        return cls(started=None, ended=None, missingfiles=missingfiles, module=module, gitcommit=None, lastattemptedcleanup=None, lastcleanstart=None, localedits=False, error=None, previousrun=None)
+        return cls(started=None, ended=None, missingfiles=missingfiles, module=module, gitcommit=None, lastattemptedcleanup=None, lastcleanstart=None, localedits=False, error=None, previousrun=None, SlideID=SlideID)
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
@@ -242,7 +243,7 @@ class SampleRunStatus(MyDataClass):
 
             if startmatch:
               if started is not None:
-                result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart)
+                result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart, SlideID=SlideID)
 
               started = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
               error = None
@@ -272,10 +273,10 @@ class SampleRunStatus(MyDataClass):
               lastcleanstart = None #gets assigned to self in __post_init__
             elif endmatch:
               ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
-              result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart)
+              result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart, SlideID=SlideID)
               started = None
     if result is None:
-      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart)
+      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart, SlideID=SlideID)
     return result
 
   def __str__(self):
