@@ -1,13 +1,16 @@
-import logging, more_itertools, os, pathlib
+import csv, itertools, logging, more_itertools, os, pathlib, re
 
 from astropath.slides.geomcell.geomcellcohort import GeomCellCohort
 from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
+from astropath.utilities.version.git import thisrepo
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
 class TestGeomCell(TestBaseSaveOutput):
+  testrequirecommit = thisrepo.getcommit("cf271f3a")
+
   @property
   def outputfilenames(self):
     return [
@@ -30,15 +33,49 @@ class TestGeomCell(TestBaseSaveOutput):
     s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, logroot=geomroot, selectrectangles=[1], printthreshold=logging.CRITICAL+1, reraiseexceptions=False, uselogfiles=True)
     with s.logger:
       raise ValueError
+    geomloadcsv = s.rectangles[0].geomloadcsv
+    geomloadcsv.parent.mkdir(exist_ok=True, parents=True)
+    geomloadcsv.touch()
+    with s.logger:
+      s.cleanup()
+      raise ValueError
 
-    filename = s.rectangles[0].geomloadcsv
-    filename.parent.mkdir(exist_ok=True, parents=True)
-    filename.touch()
+    filename = s.logger.samplelog
+    with open(filename, newline="") as f:
+      f, f2 = itertools.tee(f)
+      startregex = re.compile(s.logstartregex())
+      reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";")
+      for row in reader:
+        match = startregex.match(row["message"])
+        istag = not bool(match.group("commit"))
+        if match: break
+      else:
+        assert False
+      contents = "".join(f2)
+
+    usecommit = self.testrequirecommit.parents[0]
+    if istag:
+      contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}", 2)
+    else:
+      contents = contents.replace(match.group("commit"), usecommit.shorthash(8), 2)
+
+    with open(filename, "w", newline="") as f:
+      f.write(contents)
+
+    geomloadcsv.touch()
+    #should not run anything because the csv already exists
     GeomCellCohort.runfromargumentparser(args=args)
+    #this shouldn't run anything either because the last cleanup was with the current commit
+    GeomCellCohort.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
     with open(s.rectangles[0].geomloadcsv) as f:
       assert not f.read().strip()
-    s.samplelog.unlink()  #triggers cleanup
-    GeomCellCohort.runfromargumentparser(args=args)
+
+    contents = contents.replace("Finished cleaning up", "")
+    with open(filename, "w", newline="") as f:
+      f.write(contents)
+    #now there's no log message indicating a successful cleanup, so the last cleanup
+    #was the first run of the log, which is testrequirecommit.parents[0]
+    GeomCellCohort.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
 
     try:
       for filename, reffilename in more_itertools.zip_equal(

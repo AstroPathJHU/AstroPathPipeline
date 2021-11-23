@@ -115,6 +115,18 @@ class GitCommit(MyDataClass):
       return self.hash == other.hash
     if self.hash == other: return True
     return self.hash == self.repo.rev_parse(other)
+  def __lt__(self, other):
+    if not isinstance(other, GitCommit): return NotImplemented
+    return self.isancestor(other) and self != other
+  def __le__(self, other):
+    if not isinstance(other, GitCommit): return NotImplemented
+    return self.isancestor(other)
+  def __gt__(self, other):
+    if not isinstance(other, GitCommit): return NotImplemented
+    return other < self
+  def __ge__(self, other):
+    if not isinstance(other, GitCommit): return NotImplemented
+    return other <= self
   def __str__(self):
     return self.hash
   @methodtools.lru_cache()

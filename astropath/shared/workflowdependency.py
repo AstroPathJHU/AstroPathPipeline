@@ -1,6 +1,7 @@
 import abc, contextlib, csv, datetime, more_itertools, re
+from ..utilities.dataclasses import MyDataClass
 from ..utilities.miscfileio import field_size_limit_context, rm_missing_ok
-from ..utilities.version.git import thisrepo
+from ..utilities.version.git import GitCommit, thisrepo
 from .logging import MyLogger
 
 class ThingWithRoots(abc.ABC):
@@ -161,7 +162,7 @@ def makeexternaldependency(name, startregex, endregex):
 
 ShredXML = makeexternaldependency("ShredXML", "shredxml started", "shredxml finished")
 
-class SampleRunStatus:
+class SampleRunStatus(MyDataClass):
   """
   Stores information about if a sample ran successfully.
   started: did it start running?
@@ -170,17 +171,27 @@ class SampleRunStatus:
   previousrun: SampleRunStatus for the previous run of this sample, if any
   missingfiles: files that are supposed to be in the output, but are missing
   gitcommit: the commit at which it was run
+  localedits: were there local edits when it was run?
+  lastattemptedcleanup: SampleRunStatus for the last time this sample tried
+                        to clean up (whether it succeeded or not)
+  lastcleanstart: SampleRunStatus for the last time this sample started fresh
+                  (either the first run in the log or the last time cleanup()
+                  was run)
   """
-  def __init__(self, *, module, started, ended, error=None, previousrun=None, missingfiles=(), gitcommit=None, localedits=False, failedincleanup=False):
-    self.module = module
-    self.started = started
-    self.ended = ended
-    self.error = error
-    self.previousrun = previousrun
-    self.missingfiles = missingfiles
-    self.gitcommit = gitcommit
-    self.localedits = localedits
-    self.failedincleanup = failedincleanup
+  module: str
+  started: datetime.datetime
+  ended: datetime.datetime
+  error: str
+  previousrun: "SampleRunStatus"
+  missingfiles: list
+  gitcommit: GitCommit
+  localedits: bool
+  lastattemptedcleanup: "SampleRunStatus"
+  lastcleanstart: "SampleRunStatus"
+
+  def __post_init__(self):
+    if self.lastattemptedcleanup is None: self.lastattemptedcleanup = self
+    if self.lastcleanstart is None: self.lastcleanstart = self
   def __bool__(self):
     """
     True if the sample started and ended with no error and all output files are present
@@ -210,13 +221,14 @@ class SampleRunStatus:
     error = None
     gitcommit = None
     localedits = False
-    failedincleanup = False
+    lastattemptedcleanup = None
+    lastcleanstart = None
     with contextlib.ExitStack() as stack:
       stack.enter_context(field_size_limit_context(1000000))
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:
-        return cls(started=None, ended=None, missingfiles=missingfiles, module=module)
+        return cls(started=None, ended=None, missingfiles=missingfiles, module=module, gitcommit=None, lastattemptedcleanup=None, lastcleanstart=None, localedits=False, error=None, previousrun=None)
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
@@ -227,12 +239,19 @@ class SampleRunStatus:
           else:
             startmatch = re.match(startregex, row["message"])
             endmatch = re.match(endregex, row["message"])
+
             if startmatch:
+              if started is not None:
+                result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart)
+
               started = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
               error = None
               ended = None
               previousrun = result
               result = None
+              if previousrun is not None:
+                lastcleanstart = previousrun.lastcleanstart
+
               try:
                 gitcommit = startmatch.group("commit")
                 if gitcommit is None: gitcommit = startmatch.group("version")
@@ -240,6 +259,7 @@ class SampleRunStatus:
                 localedits = bool(startmatch.group("date"))
               except IndexError:
                 gitcommit = None
+
             elif row["message"].startswith("ERROR:"):
               error = reader.peek(default={"message": ""})["message"]
               if error and error[0] == "[" and error[-1] == "]":
@@ -247,14 +267,15 @@ class SampleRunStatus:
               else:
                 error = row["message"]
             elif "Cleaning up files" in row["message"]:
-              failedincleanup = True
+              lastattemptedcleanup = None
             elif "Finished cleaning up" in row["message"]:
-              failedincleanup = False
+              lastcleanstart = None #gets assigned to self in __post_init__
             elif endmatch:
               ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
-              result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, failedincleanup=failedincleanup)
+              result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart)
+              started = None
     if result is None:
-      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, failedincleanup=failedincleanup)
+      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart)
     return result
 
   def __str__(self):
@@ -268,3 +289,37 @@ class SampleRunStatus:
     elif self.missingfiles:
       return "ran successfully but some output files are missing: " + ", ".join(str(_) for _ in self.missingfiles)
     assert False, self
+
+  def __lt__(self, other):
+    if isinstance(other, GitCommit):
+      return self.gitcommit < other
+    elif isinstance(other, SampleRunStatus):
+      return self.ended < other.started and self <= other.gitcommit
+    else:
+      return NotImplemented
+  def __le__(self, other):
+    if isinstance(other, GitCommit):
+      return self.gitcommit <= other
+    elif isinstance(other, SampleRunStatus):
+      return self == other or self < other
+    else:
+      return NotImplemented
+
+  def __gt__(self, other):
+    if isinstance(other, GitCommit):
+      return self.gitcommit > other
+    elif isinstance(other, SampleRunStatus):
+      return other < self
+    else:
+      return NotImplemented
+  def __ge__(self, other):
+    if isinstance(other, GitCommit):
+      return self.gitcommit >= other
+    elif isinstance(other, SampleRunStatus):
+      return other <= self
+    else:
+      return NotImplemented
+
+  @property
+  def failedincleanup(self):
+    return self.lastattemptedcleanup != self.lastcleanstart

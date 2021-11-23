@@ -671,7 +671,7 @@ class WorkflowCohort(Cohort):
         if runstatus.started and require_commit is not None:
           if runstatus.gitcommit is None:
             raise ValueError("previous runstatus has gitcommit of None, check the log")
-          if not require_commit.isancestor(runstatus.gitcommit):
+          if not require_commit <= runstatus.lastcleanstart:
             runstatus.started = runstatus.ended = False
         if not runstatus.started:  #log doesn't exist at all
           cleanup = True
@@ -698,7 +698,7 @@ class WorkflowCohort(Cohort):
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
           if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} "+str(dependencyrunstatus).replace('\n', ' '))
-          if runstatus and runstatus.started < dependencyrunstatus.ended:
+          if runstatus and not runstatus > dependencyrunstatus:
             runstatus.started = runstatus.ended = False #it's as if this step hasn't run
             cleanup = True
         if not runstatus:
