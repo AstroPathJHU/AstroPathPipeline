@@ -8,6 +8,8 @@ from .testbase import assertAlmostEqual, TestBaseSaveOutput
 thisfolder = pathlib.Path(__file__).parent
 
 class TestGeomCell(TestBaseSaveOutput):
+  testrequirecommit = thisrepo.getcommit("cf271f3a")
+
   @property
   def outputfilenames(self):
     return [
@@ -31,14 +33,35 @@ class TestGeomCell(TestBaseSaveOutput):
     with s.logger:
       raise ValueError
 
+    filename = s.logger.samplelog
+    with open(filename, newline="") as f:
+      f, f2 = itertools.tee(f)
+      startregex = re.compile(s.logstartregex())
+      reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";")
+      for row in reader:
+        match = startregex.match(row["message"])
+        istag = not bool(match.group("commit"))
+        if match: break
+      else:
+        assert False
+      contents = "".join(f2)
+
+    usecommit = self.testrequirecommit.parents[0]
+    if istag:
+      contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}")
+    else:
+      contents = contents.replace(match.group("commit"), usecommit.shorthash(8))
+
+    with open(filename, "w", newline="") as f:
+      f.write(contents)
+
     filename = s.rectangles[0].geomloadcsv
     filename.parent.mkdir(exist_ok=True, parents=True)
     filename.touch()
     GeomCellCohort.runfromargumentparser(args=args)
     with open(s.rectangles[0].geomloadcsv) as f:
       assert not f.read().strip()
-    s.samplelog.unlink()  #triggers cleanup
-    GeomCellCohort.runfromargumentparser(args=args)
+    GeomCellCohort.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
 
     try:
       for filename, reffilename in more_itertools.zip_equal(
