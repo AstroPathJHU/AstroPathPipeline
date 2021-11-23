@@ -33,6 +33,12 @@ class TestGeomCell(TestBaseSaveOutput):
     s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, logroot=geomroot, selectrectangles=[1], printthreshold=logging.CRITICAL+1, reraiseexceptions=False, uselogfiles=True)
     with s.logger:
       raise ValueError
+    geomloadcsv = s.rectangles[0].geomloadcsv
+    geomloadcsv.parent.mkdir(exist_ok=True, parents=True)
+    geomloadcsv.touch()
+    with s.logger:
+      s.cleanup()
+      raise ValueError
 
     filename = s.logger.samplelog
     with open(filename, newline="") as f:
@@ -49,19 +55,26 @@ class TestGeomCell(TestBaseSaveOutput):
 
     usecommit = self.testrequirecommit.parents[0]
     if istag:
-      contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}")
+      contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}", 2)
     else:
-      contents = contents.replace(match.group("commit"), usecommit.shorthash(8))
+      contents = contents.replace(match.group("commit"), usecommit.shorthash(8), 2)
 
     with open(filename, "w", newline="") as f:
       f.write(contents)
 
-    filename = s.rectangles[0].geomloadcsv
-    filename.parent.mkdir(exist_ok=True, parents=True)
-    filename.touch()
+    geomloadcsv.touch()
+    #should not run anything because the csv already exists
     GeomCellCohort.runfromargumentparser(args=args)
+    #this shouldn't run anything either because the last cleanup was with the current commit
+    GeomCellCohort.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
     with open(s.rectangles[0].geomloadcsv) as f:
       assert not f.read().strip()
+
+    contents = contents.replace("Finished cleaning up", "")
+    with open(filename, "w", newline="") as f:
+      f.write(contents)
+    #now there's no log message indicating a successful cleanup, so the last cleanup
+    #was the first run of the log, which is testrequirecommit.parents[0]
     GeomCellCohort.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
 
     try:
