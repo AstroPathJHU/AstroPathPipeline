@@ -1,6 +1,7 @@
 import abc, contextlib, csv, datetime, more_itertools, re
+from ..utilities.dataclasses import MyDataClass
 from ..utilities.miscfileio import field_size_limit_context, rm_missing_ok
-from ..utilities.version.git import thisrepo
+from ..utilities.version.git import GitCommit, thisrepo
 from .logging import MyLogger
 
 class ThingWithRoots(abc.ABC):
@@ -220,13 +221,14 @@ class SampleRunStatus(MyDataClass):
     error = None
     gitcommit = None
     localedits = False
+    lastattemptedcleanup = None
     lastcleanstart = None
     with contextlib.ExitStack() as stack:
       stack.enter_context(field_size_limit_context(1000000))
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:
-        return cls(started=None, ended=None, missingfiles=missingfiles, module=module)
+        return cls(started=None, ended=None, missingfiles=missingfiles, module=module, gitcommit=None, lastattemptedcleanup=None, lastcleanstart=None, localedits=False, error=None, previousrun=None)
       else:
         reader = more_itertools.peekable(csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";"))
         for row in reader:
@@ -240,7 +242,7 @@ class SampleRunStatus(MyDataClass):
 
             if startmatch:
               if started is not None:
-                result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastcleanstart=lastcleanstart)
+                result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart)
 
               started = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
               error = None
@@ -270,10 +272,10 @@ class SampleRunStatus(MyDataClass):
               lastcleanstart = None #gets assigned to self in __post_init__
             elif endmatch:
               ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
-              result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastcleanstart=lastcleanstart)
+              result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart)
               started = None
     if result is None:
-      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastcleanstart=lastcleanstart)
+      result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart)
     return result
 
   def __str__(self):

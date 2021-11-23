@@ -1,7 +1,8 @@
-import logging, more_itertools, os, pathlib
+import csv, itertools, logging, more_itertools, os, pathlib, re
 
 from astropath.slides.geomcell.geomcellcohort import GeomCellCohort
 from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
+from astropath.utilities.version.git import thisrepo
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
 
