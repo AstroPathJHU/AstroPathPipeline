@@ -82,6 +82,7 @@ class mylogger : sampledef {
     [string]formatter(
         ){
            $mydate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+           $this.message = $this.message -replace ';', '-'
            $msg = @($this.Project, $this.Cohort, $this.slideid, `
                 ($this.message+$this.messageappend), $mydate) -join ';'
            return  @($msg,"`r`n") -join ''

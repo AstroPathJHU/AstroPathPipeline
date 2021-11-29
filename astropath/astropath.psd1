@@ -70,7 +70,7 @@ PowerShellVersion = '3.0'
                       'hpfs\vminform\classes\vminform.ps1',
                       'hpfs\imagecorrection\classes\imagecorrection.ps1',
                       'hpfs\flatfield\classes\meanimage.ps1',
-                      'hpfs\flatfield\classes\batchmeanimagecomparison.ps1',
+                      'hpfs\flatfield\classes\batchmicomp.ps1',
                       'hpfs\flatfield\classes\batchflatfield.ps1',
                       'hpfs\segmaps\classes\segmaps.ps1',
                       'hpfs\shredxml\classes\shredxml.ps1',

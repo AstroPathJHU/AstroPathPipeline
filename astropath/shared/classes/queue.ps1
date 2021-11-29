@@ -15,6 +15,10 @@ class queue : sharedtools{
     [string]$informvers
     [string]$project
     #
+    queue($module){
+        $this.mpath = '\\bki04\astropath_processing'
+        $this.module = $module 
+    }
     queue($mpath, $module){
         $this.mpath = $mpath
         $this.module = $module 
@@ -338,16 +342,37 @@ class queue : sharedtools{
      ------------------------------------------
      Usage: $this.checkmeanimagecomparison(log, dependency)
     ----------------------------------------- #>
-    [int]checkmeanimagecomparison([mylogger]$log, $dependency){
+    [int]checkbatchmicomp([mylogger]$log, $dependency){
+        #
+        # if task is not a dependency and the version is
+        # not 0.0.1 then just checkout
+        #
+        if (
+            !$dependency -and
+             $log.vers -notmatch '0.0.1'
+            ){
+            return 1
+        }
         #
         if (!($this.checkmeanimage($log, $true) -eq 3)){
             return 1
         }
         #
-        try {
-            $cvers = $this.getversion($this.mpath, 'meanimagecomparison', $log.project)
-            #if slide is not in the meanimagecomparison file return 2
-        } catch {}
+        $log = [mylogger]::new($this.mpath, 'batchmicomp', $log.slideid)
+        $log.slidelog = $log.mainlog
+        if ($this.checklog($log, $true)){
+            return 2
+        }
+        #
+        # get the meanimagecomparison table  
+        # extract current dpath from root_dir_1
+        # check if slideID is in slideid 1
+        # do the same on root 2
+        # if slide not yet then return 2
+        #
+        # if (!$log.testmeanimagecomparison()){
+        #    return 2
+        #}
         #
         return 3
         #
@@ -369,14 +394,37 @@ class queue : sharedtools{
     ----------------------------------------- #>
     [int]checkbatchflatfield([mylogger]$log, $dependency){
         #
-        if (!($this.checkmeanimage($log, $true) -eq 3)){
+        # if task is not a dependency and the version is
+        # not 0.0.1 then just checkout
+        #
+        if (
+            !$dependency -and
+             $log.vers -notmatch '0.0.1'
+            ){
             return 1
         }
         #
         $log = [mylogger]::new($this.mpath, 'batchflatfield', $log.slideid)
-        $log.slidelog = $log.mainlog
-        if ($this.checklog($log, $true)){
-            return 2
+        #
+        # if the version is not 0.0.1 in batchflatfield, do meanimagecomparison
+        # instead
+        if ($log.vers -notmatch '0.0.1'){
+            #
+            if (!($this.checkbatchmicomp($log, $true) -eq 3)){
+                return 1
+            }
+            #
+        } else {
+            #
+            if (!($this.checkmeanimage($log, $true) -eq 3)){
+                return 1
+            }
+            #
+            $log.slidelog = $log.mainlog
+            if ($this.checklog($log, $true)){
+                return 2
+            }
+            #
         }
         #
         # version depedendent checks

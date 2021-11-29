@@ -90,24 +90,16 @@
     [switch]APVersionChecks($mpath, $module, $vers){
         #
         if (
-            ($module -contains  @('meanimagecomparison', 'warping')) -and 
-                $vers -eq '0.0.1'
+            ($module -contains  @('warping')) -and 
+                $vers -match '0.0.1'
             ){
             #
             Throw 'module not supported in this version (' + $vers + 
                 '): ' + $module
             #
-        } elseif (
-            $module -contains  @('batchflatfield') -and 
-                $vers -ne '0.0.1' 
-            ) {
-            #
-            Throw 'batchflatfield is run from the meanimagecomparison module ' +
-                'and is not initiated in powershell for version: ' + $vers    
-            #
         }
         #
-        if ($this.package -match 'astropath' -and $vers -eq '0.0.1'){
+        if ($this.package -match 'astropath' -and $vers -match '0.0.1'){
             return $true
         } else {
             return $false
@@ -179,7 +171,7 @@
     [switch]checkgitrepo(){
         if ($this.checkgitinstalled()){
             try {
-               $gitrepo = git -C $this.pypackagepath rev-parse --is-inside-work-tree
+               $gitrepo = git -C $this.pypackagepath() rev-parse --is-inside-work-tree
                return $true
             } catch {
                return $false
@@ -253,6 +245,7 @@
         #
         $server = $this.defServer()
         $drive = '\\'+$server+'\C$'
+        $condascripts = ''
         #
         $minicondapath = ($drive + '\ProgramData\Miniconda3')
         if (!(test-path $minicondapath )){
@@ -261,24 +254,85 @@
         }
         #
         try{
-            conda *>> NULL
+            conda activate
+            conda deactivate
         }catch{
-            if($_.Exception.Message -match "The term 'conda' is not"){
+            #
+            $myerror = $_.Exception.Message
+            if($myerror -match "The term 'conda' is not"){
                     #
-                    $str = ";C:\ProgramData\Miniconda3;" +
-                           "C:\ProgramData\Miniconda3\Library\mingw-w64\bin;" +
-                           "C:\ProgramData\Miniconda3\Library\usr\bin;" +
-                           "C:\ProgramData\Miniconda3\Library\bin;" +
-                           "C:\ProgramData\Miniconda3\Scripts;"+
-                           "C:\ProgramData\Miniconda3\bin;"
-                    $env:PATH += $str.replace('C:', $drive)
+                    $myenv = ($env:PATH -split ';')
                     #
-                    $str = ("C:\ProgramData\Miniconda3\Scripts\conda.exe").replace('C:', $drive)
-                    (& $str "shell.powershell" "hook") | Out-String | Invoke-Expression
+                    # if conda is on the path use that installation 
                     #
-                }
-             }
+                    if ($myenv -match 'Miniconda3'){
+                        $condainstalllocation = ($myenv -match 'Miniconda3')[0]
+                        $condascripts = $condainstalllocation + "\Scripts\conda.exe"
+                    } else {
+                        #
+                        # if conda is not already on the path attempt to 
+                        # check if it is installed on the parent system and
+                        # use that installation
+                        #
+                        $str = (";C:\ProgramData\Miniconda3;" +
+                               "C:\ProgramData\Miniconda3\Library\mingw-w64\bin;" +
+                               "C:\ProgramData\Miniconda3\Library\usr\bin;" +
+                               "C:\ProgramData\Miniconda3\Library\bin;" +
+                               "C:\ProgramData\Miniconda3\Scripts;"+
+                               "C:\ProgramData\Miniconda3\bin;").replace('C:', $drive)
+                        #
+                        $str2 = ($str -split ';').trim() -ne ''
+                        $str2 = $str2[0]
+                        if (!(test-path $str2)){
+                            Throw ("Conda install not found at " + $str2 + 
+                                ". Check that conda is installed on the C drive of the parent system " +
+                                " or add conda to the system path of each worker system.")
+                        }
+                        #
+                        $env:PATH += $str
+                        $condascripts = ("C:\ProgramData\Miniconda3\Scripts\conda.exe").replace('C:', $drive)
+                    }
+                    #
+                    (& $condascripts "shell.powershell" "hook") | Out-String | Invoke-Expression
+                    #
+                } else { Throw $myerror }
         }
+        <#
+        try{
+            conda activate
+            conda deactivate
+        } catch {
+            Throw "The term conda is not a valid command. " + 
+                "Check that conda is installed on the C drive of the system. " +
+                $condascripts + "-env:PATH:" + $env:PATH + " " + 
+                $_.ExceptionMessage
+        }
+        #>
+    }
+    <# ------------------------------------------
+    CheckMikTex
+    ------------------------------------------
+    check if miktex is installed and deliver
+    a warning to the console if it is not
+    ------------------------------------------ #>
+    [void]checkmitex(){
+        $myenv = ($env:PATH -split ';')
+        if ($myenv -notmatch 'MikTeX'){
+            Write-Host "WARNING: MikTex command does not exist on the current system!"
+        }
+    }
+    <# ------------------------------------------
+    Checkmatlab
+    ------------------------------------------
+    check if matlab is installed and deliver
+    a warning to the console if it is not
+    ------------------------------------------ #>
+    [void]checkmatlab(){
+        $myenv = ($env:PATH -split ';')
+        if ($myenv -notmatch 'matlab'){
+            Write-Host "WARNING: matlab command does not exist on the current system! v0.0.1 software not supported w/o matlab."
+        }        
+    }
      <# -----------------------------------------
      CheckpyEnvir
      Check if py\<packagename>workflow conda environment
@@ -311,14 +365,14 @@
         $this.checkconda()
         $this.createdirs($this.pyinstalllocation())
         conda create -y -p $this.pyenv() python=3.8 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR CREATED"))
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR CREATED `r`n"))
         conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED"))
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
         conda install -y -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git `
               2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE"))
-        pip -q install $this.pypackagepath 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE"))
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE  `r`n"))
+        pip -q install $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
         conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
     }
     <# -----------------------------------------

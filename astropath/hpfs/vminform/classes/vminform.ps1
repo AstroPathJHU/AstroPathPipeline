@@ -322,18 +322,16 @@ Class informinput {
         $this.KillinFormProcess()
         #
         $sor = $this.informoutpath
-        $sor1 = $sor+'\*'
         #
         # remove legend file
         #
-        $sor2 = gci $sor1 -include "*legend.txt" | % {$_.FullName}
-        try {Remove-Item $sor2 -Force -EA SilentlyContinue} catch {}
+        $this.sample.removefile($sor, "*legend.txt")
         #
         # remove batch_procedure project and add the algorithm ##############validate##################
         #
-        $sor3 = gci $sor1 -include "*.ifr" | % {$_.FullName}
-        try {Remove-Item $sor3 -Force -EA SilentlyContinue} catch {}
-        XCOPY /q /y /z $this.algpath $sor 
+        $this.sample.removefile($sor, '*.ifr')
+        $this.sample.copy($this.algpath, $sor)
+        #
         $old_name = $sor + '\' + $this.alg
         $new_name = $sor + '\' + 'batch_procedure' + 
             $this.alg.Substring($this.alg.Length-4, 4)
@@ -342,22 +340,18 @@ Class informinput {
         $this.sample.removedir($this.abpath)
         #
         $logfile = $this.outpath+'\robolog.log'
-        $moutput = robocopy $sor $this.abpath `
-            *maps.tif *.txt *.ifr *.ifp *.log `
-            -r:3 -w:3 -np -mt:50 -log:$logfile
+        $filespec = @('maps.tif', '.txt', '.ifr', '.ifp', '.log')
+        $this.sample.copy($sor, $this.abpath, $filespec, 50, $logfile)
         #
-        $sor4 = gci $sor1 -include "*data.tif"
-        if ($sor4){
+        $componentimages = $this.sample.listfiles($sor, 'data.tif')
+        if ($componentimages){
             $cc = $this.sample.componentfolder()
-            if (test-path $cc) {
-                remove-item $cc -Force -Recurse -EA SilentlyContinue
-            }
-            $moutput = robocopy $sor $cc `
-            *data.tif *.ifr *.ifp *.log `
-            -r:3 -w:3 -np -mt:1 -log:$logfile
+            $this.sample.removedir($cc)
+            $filespec = @('data.tif', '.ifr', '.ifp', '.log')
+            $this.sample.copy($sor, $cc, $filespec, 1, $logfile)
         }
         #
-        Remove-Item $this.outpath -Recurse -Force -EA STOP
+        $this.sample.removedir($this.outpath)
         #
         $this.sample.info("Data transfer finished")
         #

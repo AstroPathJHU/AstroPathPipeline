@@ -51,7 +51,7 @@ class fileutils : generalutils {
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-           Throw $cnt + ' attempts failed reading ' `
+           Throw $cnt.ToString() + ' attempts failed reading ' `
                 + $fpath + '. Final message: ' + $err
         }
         #
@@ -104,7 +104,7 @@ class fileutils : generalutils {
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-           Throw $cnt + ' attempts failed reading ' `
+           Throw $cnt.ToString() + ' attempts failed reading ' `
                 + $fpath + '. Final message: ' + $err
         }
         #
@@ -152,7 +152,7 @@ class fileutils : generalutils {
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-           Throw $cnt + ' attempts failed reading ' `
+           Throw $cnt.ToString() + ' attempts failed reading ' `
                 + $fpath + '. Final message: ' + $err
         }
         #
@@ -229,7 +229,7 @@ class fileutils : generalutils {
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-            Throw $cnt + ' attempts failed writing ' +
+            Throw $cnt.ToString() + ' attempts failed writing ' +
                 $fstring + ' to ' + $fpath + '. Final message: ' + $err
         }
         #
@@ -273,7 +273,7 @@ class fileutils : generalutils {
             return $mxtx
         } catch [System.Threading.AbandonedMutexException] {
             $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
-            return $this.GrabMutex($mxtxid)
+            return $this.GrabMxtx($mxtxid)
         }
     }
     <# -----------------------------------------

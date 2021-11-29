@@ -16,20 +16,20 @@ $vers[string]: The version number of inform to use
 --------------------------------------------------------
 #>
 #
-Function batchmeanimagecomparison {
+Function batchmicomp {
      #
      param($task, $log)
      #
      # used for testing; when launched manually without launchmodule
      #
      if (!($PSBoundParameters.ContainsKey('log'))){ 
-        $log = [launchmodule]::new($task[$task.Count-1], 'batchmeanimagecomparison', $task) 
+        $log = [launchmodule]::new($task[$task.Count-1], 'batchmicomp', $task) 
         $e = 1
      } else {$e = 0}
      #
-     $inp = [batchmeanimagecomparison]::new($task, $log)
+     $inp = [batchmicomp]::new($task, $log)
      if ($e -ne 1){
-         $inp.RunBatchMeanImageComparison()
+         $inp.runbatchmicomp()
      } else{
         return $inp
      }

@@ -94,12 +94,14 @@ Class meanimage : moduletools {
         if (!$this.processvars[4]){
             return
         }
+        $this.sample.info("return data started")
         if ($this.vers -match '0.0.1'){
             $this.ReturnDataMatlab()
         }
         else{
             $this.ReturnDataPy()
         }
+        $this.sample.info("return data finished")
     }
     <# -----------------------------------------
      ReturnDataMatlab
@@ -137,7 +139,7 @@ Class meanimage : moduletools {
             #
 		    $des = $this.sample.im3folder() + '\meanimage'
             $sor = $this.processvars[0] +'\meanimage'
-            $this.sample($sor, $des, '*', 30)
+            $this.sample.copy($sor, $des, '*', 30)
             #
         }
     }

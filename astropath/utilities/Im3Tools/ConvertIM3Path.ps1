@@ -20,28 +20,6 @@ Usage:
     Im3ConvertPath -datapath -fwpath -sample -i
     Exports the new '.im3s' into the flatw directory
 #--------------------------------------------------------------------------------------------#>
-<#
-param ([Parameter(Position=0)][string] $root1 = '',
-       [Parameter(Position=1)][string] $root2 = '', 
-       [Parameter(Position=2)][string] $sample = '',
-       [Parameter()][switch]$i,
-       [Parameter()][switch]$s, 
-       [Parameter()][switch]$a,
-       [Parameter()][switch]$xml,
-       [Parameter()][switch]$d)
-#
-# check input parameters
-#
-if (
-    !($PSBoundParameters.ContainsKey('root1')) -OR 
-    !($PSBoundParameters.ContainsKey('root2')) -OR 
-    !($PSBoundParameters.ContainsKey('sample')) -OR
-    (!($i) -AND !($s))
-    ) {
-    Write-Host "Usage: ConvertIm3Path dataroot dest sample -s [-a -d -xml] `r"
-    Write-Host "Usage: ConvertIm3Path dataroot dest sample -i `r"; return
-    }
-#>
 function ConvertIm3Path{ 
     #
     param ([Parameter(Position=0)][string] $root1 = '',

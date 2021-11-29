@@ -5,11 +5,11 @@ Created By: Andrew Jorquera
 Last Edit: 10/27/2021
 --------------------------------------------------------
 #>
-class batchmeanimagecomparison : moduletools {
+class batchmicomp : moduletools {
     #
     [string]$project
     #
-    batchmeanimagecomparison([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    batchmicomp([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'
         $this.processloc = $this.sample.basepath + '\flatfield\' + $this.sample.batchID
         if (!(Test-Path $this.processloc)) {
@@ -22,8 +22,8 @@ class batchmeanimagecomparison : moduletools {
      ------------------------------------------
      Usage: $this.RunBatchMeanImageComparison()
     ----------------------------------------- #>
-    [void]RunBatchMeanImageComparison(){
-        $this.GetBatchMeanImageComparison()
+    [void]Runbatchmicomp(){
+        $this.Getbatchmicomp()
     }
     <# -----------------------------------------
      GetBatchMeanImageComparison
@@ -31,7 +31,7 @@ class batchmeanimagecomparison : moduletools {
      ------------------------------------------
      Usage: $this.GetBatchMeanImageComparison()
     ----------------------------------------- #>
-    [void]GetBatchMeanImageComparison(){
+    [void]Getbatchmicomp(){
         $taskname = 'batchmeanimagecomparison'
         #$dpath = $this.sample.basepath
         $dpath = '\\bki04\Clinical_Specimen'
