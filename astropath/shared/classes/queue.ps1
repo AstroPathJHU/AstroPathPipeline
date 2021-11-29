@@ -345,11 +345,11 @@ class queue : sharedtools{
     [int]checkbatchmicomp([mylogger]$log, $dependency){
         #
         # if task is not a dependency and the version is
-        # not 0.0.1 then just checkout
+        # 0.0.1 then just checkout
         #
         if (
             !$dependency -and
-             $log.vers -notmatch '0.0.1'
+             $log.vers -match '0.0.1'
             ){
             return 1
         }
