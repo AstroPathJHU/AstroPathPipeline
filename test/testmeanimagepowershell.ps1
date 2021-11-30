@@ -21,13 +21,6 @@ if (!(@(Test-Path $datpath))) {
     Write-Error 'Shred Dat Test Failed'
 }
 
-#Get Mean Image test
-$inp.GetMeanImage()
-$meanimagepath = $inp.processvars[0] + '\meanimage'
-if (!(@(Test-Path $meanimagedatpath))) {
-    Write-Error 'Get Mean Image Test Failed'
-}
-
 #Return Data test
 $inp.returndata()
 $returnpath = $inp.sample.im3folder() + '\meanimage'
