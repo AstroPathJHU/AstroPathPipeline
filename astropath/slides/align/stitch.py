@@ -5,6 +5,7 @@ from ...shared.rectangle import Rectangle, rectangledict, RectangleList
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ...utilities.miscmath import covariance_matrix, floattoint, weightedstd
+from ...utilities.optionalimports import cvxpy as cp
 from ...utilities.tableio import writetable
 from .field import Field, FieldOverlap
 
@@ -203,11 +204,6 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
   \end{pmatrix}
   \end{equation}
   """
-
-  try:
-    import cvxpy as cp
-  except ImportError:
-    raise ImportError("To stitch with cvxpy, you have to install cvxpy")
 
   pscale = {_.pscale for _ in itertools.chain(overlaps, rectangles)}
   if len(pscale) > 1: raise units.UnitsError("Inconsistent pscales")

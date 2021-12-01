@@ -1,10 +1,11 @@
-import contextlib, cv2, datetime, itertools, job_lock, jxmlease, methodtools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
+import contextlib, cv2, datetime, itertools, job_lock, methodtools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.miscfileio import memmapcontext, rm_missing_ok
-from ...utilities.miscimage import vips_image_to_array
+from ...utilities.miscimage import vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
+from ...utilities.optionalimports import pyvips
 from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample
@@ -45,10 +46,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     tissuemeanintensity (default: ): the image is rescaled so that the
     average intensity in tissue regions is this number
     """
-    try:
-      import pyvips
-    except ImportError:
-      raise ImportError("Please pip install pyvips to use this functionality")
 
     onepixel = self.onepixel
     self.logger.info("allocating memory for the global array")
@@ -179,7 +176,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       self.logger.info(f"{filename.name} already exists")
       return
 
-    inputlayers = layers
     self.logger.info(f"saving {filename.name}")
     scale = 2**(self.ztiff-self.zmax)
     if scale == 1:
@@ -190,21 +186,23 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
     if self.tifflayers == "color":
       self.logger.info("  normalizing")
-      layerarrays = np.zeros(dtype=np.float16, shape=(len(layers),)+tuple(floattoint(self.ntiles * self.zoomtilesize * scale)[::-1]))
-      import pyvips
-      pyvips.cache_set_max(0)
+
+      layers = [180 * vips_sinh(layer / layer.max() * 1.5) for layer in layers]
+      #https://github.com/libvips/pyvips/issues/287
+      #layers = np.asarray(layers, dtype=object)
+      layerarray = np.zeros(len(layers), dtype=object)
       for i, layer in enumerate(layers):
-        self.logger.debug(f"    layer {i+1} / {len(layers)}")
-        layerarrays[i] = vips_image_to_array(layer)
-        layers[i] = inputlayers[i] = None
-      layerarrays /= np.max(layerarrays, axis=(1, 2))[:, np.newaxis, np.newaxis]
-      layerarrays = 180 * np.sinh(1.5 * layerarrays)
+        layerarray[i] = layer
+      layers = layerarray
+
+      pyvips.cache_set_max(0)
       self.logger.info("  multiplying by color matrix")
-      img = np.tensordot(layerarrays, self.colormatrix, [[0], [0]])
-      img = img.clip(0, 255)
-      pilimage = PIL.Image.fromarray(img.astype(np.uint8))
+      img = np.tensordot(layers, self.colormatrix, [[0], [0]])
+      img = [layer.cast(vips_format_dtype(np.uint8)) for layer in img] #clips at 255
+      r, g, b = img
+      img = r.join(g, "vertical").join(b, "vertical")
       self.logger.info("  saving")
-      pilimage.save(filename)
+      img.tiffsave(os.fspath(filename), page_height=layers[0].height)
     else:
       assert len(layers) == len(self.tifflayers)
       tiffoutput = layers[0]
@@ -307,7 +305,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
             self.logger.info(f"  {self.bigfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
             if not wsilayer1.exists():
               filename = self.bigfilename(1, tile.tilex, tile.tiley)
-              with PIL.Image.open(filename) as img:
+              with self.PILmaximagepixels(), PIL.Image.open(filename) as img:
                 img = np.asarray(img)
                 meanintensitynumerator += np.sum(img[tilemask])
                 meanintensitydenominator += np.count_nonzero(tilemask)
@@ -431,11 +429,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     """
     Call vips to assemble the big images into the wsi
     """
-    try:
-      import pyvips
-    except ImportError:
-      raise ImportError("Please pip install pyvips to use this functionality")
-
     fortiff = []
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
@@ -513,9 +506,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, **otherrootkwargs):
-    with open(informdataroot/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
-      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-        nlayers = int(node.xml_attrs["dim"])
+    nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs")
     if layers is None:
       layers = range(1, nlayers+1)
     result = [

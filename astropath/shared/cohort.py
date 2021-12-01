@@ -1,4 +1,4 @@
-import abc, datetime, job_lock, logging, pathlib, re
+import abc, contextlib, datetime, job_lock, logging, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
@@ -26,7 +26,7 @@ class CohortBase(ThingWithRoots):
     self.skipstartfinish = skipstartfinish
     self.printthreshold = printthreshold
 
-  def sampledefs(self):
+  def sampledefs(self, **kwargs):
     from .samplemetadata import SampleDef
     return readtable(self.sampledefroot/"sampledef.csv", SampleDef)
   @property
@@ -193,7 +193,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       try:
         yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
       except Exception: #don't log KeyboardInterrupt here
-        with self.getlogger(samp):
+        with self.handlesampledeffiltererror(samp, **kwargs):
           raise
 
   def filteredsampledefswithfilters(self, *, printnotrunning=False, **kwargs):
@@ -226,7 +226,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
-        with self.getlogger(samp):
+        with self.handlesampleiniterror(samp, **kwargs):
           raise
 
   def sampleswithfilters(self, **kwargs):
@@ -235,12 +235,25 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
           raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
+      except Exception:
+        #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
+        with self.handlesampleiniterror(samp, **kwargs):
+          raise
+      try:
         yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
-        with self.getlogger(samp):
+        with self.handlesamplefiltererror(samp, **kwargs):
           raise
+
+  def handlesampledeffiltererror(self, samp, **kwargs):
+    return self.getlogger(samp)
+  def handlesampleiniterror(self, samp, **kwargs):
+    return self.getlogger(samp)
+  def handlesamplefiltererror(self, samp, **kwargs):
+    return self.getlogger(samp)
 
   def samples(self, **kwargs):
     for sample, filters in self.sampleswithfilters(**kwargs):
@@ -655,10 +668,10 @@ class WorkflowCohort(Cohort):
         cleanup = False
         if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
           runstatus.error = None
-        if runstatus and require_commit is not None:
+        if runstatus.started and require_commit is not None:
           if runstatus.gitcommit is None:
             raise ValueError("previous runstatus has gitcommit of None, check the log")
-          if not require_commit.isancestor(runstatus.gitcommit):
+          if not require_commit <= runstatus.lastcleanstart:
             runstatus.started = runstatus.ended = False
         if not runstatus.started:  #log doesn't exist at all
           cleanup = True
@@ -679,13 +692,13 @@ class WorkflowCohort(Cohort):
 
       elif dependencies and not skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} "+str(dependencyrunstatus).replace('\n', ' '))
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} for {dependencyrunstatus.SlideID} "+str(dependencyrunstatus).replace('\n', ' '))
         return FilterResult(True, "all dependencies already ran", cleanup=cleanup)
 
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} "+str(dependencyrunstatus).replace('\n', ' '))
-          if runstatus and runstatus.started < dependencyrunstatus.ended:
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} for {dependencyrunstatus.SlideID} "+str(dependencyrunstatus).replace('\n', ' '))
+          if runstatus and not runstatus > dependencyrunstatus:
             runstatus.started = runstatus.ended = False #it's as if this step hasn't run
             cleanup = True
         if not runstatus:
@@ -757,3 +770,37 @@ class WorkflowCohort(Cohort):
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
 
           return result
+
+  @contextlib.contextmanager
+  def handlesampledeffiltererror(self, samp, *, print_errors, **kwargs):
+    if print_errors:
+      try:
+        yield
+      except Exception as e:
+        self.printlogger(samp).info(f"{samp.SlideID} gave an error in a sampledef filter: "+str(e).replace("\n", " "))
+    else:
+      with super().handlesampledeffiltererror(samp, **kwargs):
+        yield
+
+  @contextlib.contextmanager
+  def handlesampleiniterror(self, samp, *, print_errors, **kwargs):
+    if print_errors:
+      try:
+        yield
+      except Exception as e:
+        self.printlogger(samp).info(f"{samp.SlideID} gave an error in __init__: "+str(e).replace("\n", " "))
+    else:
+      with super().handlesampleiniterror(samp, **kwargs):
+        yield
+
+  @contextlib.contextmanager
+  def handlesamplefiltererror(self, samp, *, print_errors, **kwargs):
+    if print_errors:
+      try:
+        yield
+      except Exception as e:
+        self.printlogger(samp).info(f"{samp.SlideID} gave an error in a sample filter: "+str(e).replace("\n", " "))
+    else:
+      with super().handlesamplefiltererror(samp, **kwargs):
+        yield
+

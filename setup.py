@@ -82,7 +82,6 @@ setupkwargs = dict(
   ],
   install_requires = [
     "contextlib2>=0.6.0; python_version < '3.7'",
-    "cvxpy",
     "dataclassy>=0.10.0",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
@@ -104,6 +103,7 @@ setupkwargs = dict(
     "uncertainties",
   ],
   extras_require = {
+    "cvxpy": ["cvxpy"],
     "gdal": ["gdal>=3.3.0"],
     "gpu": ["pyopencl", "reikna"],
     "test": ["beautifulsoup4", "flake8", "gitpython", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
