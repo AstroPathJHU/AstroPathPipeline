@@ -46,8 +46,8 @@ class BatchFlatfieldSample(WorkflowSample) :
         return [*super().inputfiles(**kwargs),
                 self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
     def run(self,version,flatfield,samplesprocessed,totalsamples) :
-        msg = f'Adding mean image and mask stack from {self.SlideID} to flatfield model version '
-        msg+= f'{version} ({len(samplesprocessed)+1} of {totalsamples})....'
+        msg = f'Adding mean image and mask stack from {self.SlideID} meanimage directory "{self.meanimagefolder}" '
+        msg+= f'to flatfield model version {version} ({len(samplesprocessed)+1} of {totalsamples})....'
         self.logger.info(msg)
         flatfield.add_batchflatfieldsample(self)
         samplesprocessed.append(self)
@@ -92,10 +92,9 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
     into a single flatfield model
     """
 
-    def __init__(self,*args,version,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,outdir,**kwargs) :
+    def __init__(self,*args,version,outdir,**kwargs) :
         super().__init__(*args,**kwargs)
         self.__version = version
-        self.__meanimage_dirname = meanimage_dirname
         self.__outdir = outdir
 
     def run(self, **kwargs):
