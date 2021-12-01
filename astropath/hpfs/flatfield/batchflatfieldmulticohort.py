@@ -1,4 +1,5 @@
 #imports
+from argparse import PARSER
 import pathlib, re
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.tableio import readtable
@@ -16,10 +17,16 @@ class BatchFlatfieldSample(WorkflowSample) :
     Small utility class to hold sample-dependent information for the batch flatfield run
     Just requires as input files the relevant output of the meanimage mode
     """
+
     multilayer = True
+
+    def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
+        super().__init__(*args,**kwargs)
+        self.__meanimage_dirname = meanimage_dirname
+
     @property
     def meanimagefolder(self) :
-        return self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME
+        return self.im3folder/self.__meanimage_dirname
     @property
     def meanimage(self) :
         return self.meanimagefolder/f'{self.SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
@@ -65,6 +72,16 @@ class BatchFlatfieldCohort(WorkflowCohort) :
 
     sampleclass = BatchFlatfieldSample
 
+    def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
+        super().__init__(*args,**kwargs) 
+        self.__meanimage_dirname = meanimage_dirname
+
+    @property
+    def initiatesamplekwargs(self) :
+        return {**super().initiatesamplekwargs,
+                'meanimage_dirname':self.__meanimage_dirname,
+            }
+
     @property
     def workflowkwargs(self) :
         return{**super().workflowkwargs,'skip_masking':False}
@@ -75,9 +92,10 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
     into a single flatfield model
     """
 
-    def __init__(self,*args,version,outdir,**kwargs) :
+    def __init__(self,*args,version,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,outdir,**kwargs) :
         super().__init__(*args,**kwargs)
         self.__version = version
+        self.__meanimage_dirname = meanimage_dirname
         self.__outdir = outdir
 
     def run(self, **kwargs):
@@ -130,6 +148,9 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         p.add_argument('--flatfield-model-file',type=pathlib.Path,
                         default=pathlib.Path('//bki04/astropath_processing/AstroPathFlatfieldModels.csv'),
                         help='path to a .csv file defining which slides should be used for the given version')
+        p.add_argument('--meanimage_dirname',default=UNIV_CONST.MEANIMAGE_DIRNAME,
+                       help='''The name of the meanimage directories to use 
+                                (useful if multiple meanimage versions have been created)''')
         p.add_argument('--outdir',type=pathlib.Path,default=pathlib.Path('//bki04/astropath_processing'),
                        help='''directory where the output will be placed (a "flatfield" directory will be created 
                                 inside outdir if one does not already exist)''')
@@ -160,6 +181,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'version': version,
+            'meanimage_dirname': parsed_args_dict.pop('meanimage_dirname'),
             'outdir': parsed_args_dict.pop('outdir'), 
         }
 
