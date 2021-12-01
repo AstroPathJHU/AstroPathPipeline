@@ -160,15 +160,15 @@ pipeline {
           }
         }
 		
-		stage('powershell') {
-		  stages {
-		    stage('test meanimage powershell') {
-			  steps {
-			    powershell script: ".\\test\\testmeanimagepowershell.ps1"
-			  }
-			}
-		  }
-		}
+        stage('powershell') {
+          stages {
+            stage('test meanimage powershell') {
+              steps {
+                powershell script: ".\\test\\testmeanimagepowershell.ps1"
+              }
+            }
+          }
+        }
 
         stage('flatfield cohorts') {
           stages {
