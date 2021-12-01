@@ -221,6 +221,7 @@ def meanimage_comparison_plot(slide_ids,values_to_plot,plot_title,figname,workin
     """
     make a single comparison plot of some type
     """
+    #slide_ids = [sid.replace('MP1_Mutliplex_JHU','*') for sid in slide_ids]
     #make the figure
     fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
     #figure out the scaled font sizes

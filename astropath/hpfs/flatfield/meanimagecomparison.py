@@ -236,7 +236,7 @@ class MeanImageComparison :
                                     "meanimage" subdirectories''')
         parser.add_argument('--plot', choices=['all','brightest','average','none'], default='average',
                             help='''Add one of these choices to save the plots of some individual layers, the average
-                                    over all of them (default), or no plots at all''')
+                                    over all of them/filter groups (default), or no plots at all''')
         parser.add_argument('--lines-after', type=split_csv_to_list, default='',
                             help="""Comma-separated list of slides to put separating lines after on the plot 
                                     (default is project/cohort/batch transitions, adding this argument will overwrite 
