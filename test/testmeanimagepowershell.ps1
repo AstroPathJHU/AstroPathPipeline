@@ -1,10 +1,16 @@
 ﻿#Set up testing environment
+Write-Output ('Starting Tests... Script Root = ' + $PSScriptRoot)
 $modulelocation = $PSScriptRoot + '\..\astropath'
 Import-Module $modulelocation
 $processing = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
 $datalocation = $PSScriptRoot + '\data'
+Write-Output (' Processing Location = ' + $PSScriptRoot)
+Write-Output ('Data Location = ' + $PSScriptRoot)
 $task = ('1', 'M21_1', $processing, $datalocation)
 $inp = meanimage $task
+
+Write-Output $inp
+exit 0
 
 #Download Files test
 $inp.DownloadFiles()
