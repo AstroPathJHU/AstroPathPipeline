@@ -96,7 +96,29 @@ class AnnotationNode(AnnotationNodeBase):
     if not self.__xmlnode["Regions"]: return []
     regions = self.__xmlnode["Regions"]["Region"]
     if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
-    return regions
+    return [AnnotationRegion(_) for _ in regions]
+
+class AnnotationRegionBase(abc.ABC):
+  @property
+  @abc.abstractmethod
+  def vertices(self): pass
+  @property
+  @abc.abstractmethod
+  def NegativeROA(self): pass
+  @property
+  @abc.abstractmethod
+  def Type(self): pass
+
+class AnnotationRegion(AnnotationRegionBase):
+  def __init__(self, xmlnode, **kwargs):
+    super().__init__(**kwargs)
+    self.__xmlnode = xmlnode
+  @property
+  def vertices(self): return self.__xmlnode["Vertices"]["V"]
+  @property
+  def NegativeROA(self): return bool(int(self.__xmlnode.get_xml_attr("NegativeROA")))
+  @property
+  def Type(self): return self.__xmlnode.get_xml_attr("Type")
 
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
@@ -263,7 +285,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         for region in regions:
           regioncounter = itertools.count(m)
           regionid = 1000*layer + m
-          vertices = region["Vertices"]["V"]
+          vertices = region.vertices
           if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
@@ -279,7 +301,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                 pscale=self.pscale,
               )
             )
-          isNeg = bool(int(region.get_xml_attr("NegativeROA")))
+          isNeg = region.NegativeROA
 
           polygon = SimplePolygon(vertices=regionvertices)
           valid = polygon.makevalid(round=True, imagescale=self.apscale)
@@ -347,7 +369,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                   layer=layer,
                   rid=m,
                   isNeg=isNeg ^ (polygon is not subpolygon.outerpolygon),
-                  type=region.get_xml_attr("Type"),
+                  type=region.Type,
                   nvert=len(regionvertices),
                   poly=None,
                   apscale=self.apscale,
