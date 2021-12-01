@@ -42,3 +42,6 @@ if ($inp.processvars[4]) {
 
 #Remove temporary processing directory
 $inp.sample.removedir($processing)
+
+#Exit
+exit 0
