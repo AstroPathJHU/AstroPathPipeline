@@ -73,7 +73,7 @@ class AnnotationNodeBase(abc.ABC):
   @abc.abstractmethod
   def regions(self): pass
 
-class AnnotationNode(AnnotationNodeBase):
+class AnnotationNodeXML(AnnotationNodeBase):
   def __init__(self, node, **kwargs):
     super().__init__(**kwargs)
     self.__xmlnode = node
@@ -96,7 +96,7 @@ class AnnotationNode(AnnotationNodeBase):
     if not self.__xmlnode["Regions"]: return []
     regions = self.__xmlnode["Regions"]["Region"]
     if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
-    return [AnnotationRegion(_) for _ in regions]
+    return [AnnotationRegionXML(_) for _ in regions]
 
 class AnnotationRegionBase(abc.ABC):
   @property
@@ -109,16 +109,35 @@ class AnnotationRegionBase(abc.ABC):
   @abc.abstractmethod
   def Type(self): pass
 
-class AnnotationRegion(AnnotationRegionBase):
+class AnnotationRegionXML(AnnotationRegionBase):
   def __init__(self, xmlnode, **kwargs):
     super().__init__(**kwargs)
     self.__xmlnode = xmlnode
   @property
-  def vertices(self): return self.__xmlnode["Vertices"]["V"]
+  def vertices(self):
+    vertices = self.__xmlnode["Vertices"]["V"]
+    if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
+    return [AnnotationVertexXML(_) for _ in vertices]
   @property
   def NegativeROA(self): return bool(int(self.__xmlnode.get_xml_attr("NegativeROA")))
   @property
   def Type(self): return self.__xmlnode.get_xml_attr("Type")
+
+class AnnotationVertexBase(abc.ABC):
+  @property
+  @abc.abstractmethod
+  def X(self): pass
+  @property
+  @abc.abstractmethod
+  def Y(self): pass
+class AnnotationVertexXML(AnnotationVertexBase):
+  def __init__(self, node, **kwargs):
+    super().__init__(**kwargs)
+    self.__xmlnode = node
+  @property
+  def X(self): return int(self.__xmlnode.get_xml_attr("X"))
+  @property
+  def Y(self): return int(self.__xmlnode.get_xml_attr("Y"))
 
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
@@ -182,7 +201,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   @property
   def annotationnodes(self):
     with open(self.xmlfile, "rb") as f:
-      return [AnnotationNode(node) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+      return [AnnotationNodeXML(node) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
 
   def getXMLpolygonannotations(self):
     annotations = []
@@ -286,11 +305,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           regioncounter = itertools.count(m)
           regionid = 1000*layer + m
           vertices = region.vertices
-          if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = int(vertex.get_xml_attr("X")) * self.oneappixel
-            y = int(vertex.get_xml_attr("Y")) * self.oneappixel
+            x = vertex.X * self.oneappixel
+            y = vertex.Y * self.oneappixel
             regionvertices.append(
               Vertex(
                 regionid=regionid,
