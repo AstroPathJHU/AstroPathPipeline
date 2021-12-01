@@ -73,6 +73,12 @@ class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgum
       if self.__using_mask_count == 0:
         del self.__mask
 
+  @methodtools.lru_cache()
+  @property
+  def maskpolygons(self):
+    with self.using_mask() as mask:
+      return findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, forgdal=True)
+
 class TissueMaskSample(MaskSample):
   """
   Base class for a sample that has a mask for tissue,
