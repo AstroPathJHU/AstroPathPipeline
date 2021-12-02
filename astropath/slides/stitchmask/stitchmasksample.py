@@ -1,9 +1,10 @@
-import abc, contextlib, numpy as np, pathlib
+import abc, contextlib, cv2, methodtools, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
-from ...shared.rectangle import MaskRectangle
+from ...shared.contours import findcontoursaspolygons
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
-from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...shared.image_masking.image_mask import ImageMask
+from ...shared.rectangle import MaskRectangle
+from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
