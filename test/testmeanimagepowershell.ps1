@@ -1,4 +1,6 @@
-﻿#Set up testing environment
+﻿$ErrorActionPreference = "Stop"
+
+#Set up testing environment
 Write-Output ('Starting Tests... Script Root = ' + $PSScriptRoot)
 $modulelocation = $PSScriptRoot + '\..\astropath'
 Import-Module $modulelocation

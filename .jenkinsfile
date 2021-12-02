@@ -162,7 +162,7 @@ pipeline {
 		
         stage('powershell meanimage') {
           steps {
-            powershell script: ".\\test\\testmeanimagepowershell.ps1"
+            powershell(returnStatus: true, script: './test/testmeanimagepowershell.ps1')
           }
         }
 
