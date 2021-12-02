@@ -2,7 +2,7 @@ import abc, contextlib, cv2, methodtools, numpy as np
 from ..contours import findcontoursaspolygons
 from .image_mask import ImageMask
 
-class MaskLoader(abc.ABC):
+class MaskLoader(contextlib.ExitStack, abc.ABC):
   """
   Base class for a mask that can be loaded from a file
   """

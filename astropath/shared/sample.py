@@ -19,7 +19,7 @@ from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMoreRoots):
+class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots):
   """
   Base class for all sample classes.
 
