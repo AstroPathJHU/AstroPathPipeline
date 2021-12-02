@@ -3,7 +3,9 @@ from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import readtable, writetable
+from ..utilities.units.dataclasses import distancefield, DataClassWithApscale
 from .csvclasses import Annotation, Region, Vertex
+from .image_masking.maskloader import MaskLoader
 from .logging import dummylogger, printlogger
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
@@ -73,10 +75,13 @@ class AnnotationNodeBase(abc.ABC):
   @abc.abstractmethod
   def regions(self): pass
 
-class AnnotationNodeXML(AnnotationNodeBase):
-  def __init__(self, node, **kwargs):
+class AnnotationNodeXML(AnnotationNodeBase, units.ThingWithApscale):
+  def __init__(self, node, *, apscale, **kwargs):
     super().__init__(**kwargs)
     self.__xmlnode = node
+    self.__apscale = apscale
+  @property
+  def apscale(self): return self.__apscale
   @property
   def rawname(self):
     return self.__xmlnode.get_xml_attr("Name")
@@ -96,7 +101,29 @@ class AnnotationNodeXML(AnnotationNodeBase):
     if not self.__xmlnode["Regions"]: return []
     regions = self.__xmlnode["Regions"]["Region"]
     if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
-    return [AnnotationRegionXML(_) for _ in regions]
+    return [AnnotationRegionXML(_, apscale=self.apscale) for _ in regions]
+
+class AnnotationNodeFromPolygons(AnnotationNodeBase):
+  def __init__(self, name, polygons, *, color, visible=True, **kwargs):
+    super().__init__(**kwargs)
+    self.__name = name
+    self.__polygons = polygons
+    self.__color = color
+    self.__visible = visible
+  @property
+  def rawname(self):
+    return self.__name
+
+  @property
+  def color(self):
+    return self.__color
+  @property
+  def visible(self):
+    return bool(self.__visible)
+
+  @property
+  def regions(self):
+    return [AnnotationRegionFromPolygon(p) for p in self.__polygons]
 
 class AnnotationRegionBase(abc.ABC):
   @property
@@ -109,19 +136,36 @@ class AnnotationRegionBase(abc.ABC):
   @abc.abstractmethod
   def Type(self): pass
 
-class AnnotationRegionXML(AnnotationRegionBase):
-  def __init__(self, xmlnode, **kwargs):
+class AnnotationRegionXML(AnnotationRegionBase, units.ThingWithApscale):
+  def __init__(self, xmlnode, *, apscale, **kwargs):
     super().__init__(**kwargs)
     self.__xmlnode = xmlnode
+    self.__apscale = apscale
+  @property
+  def apscale(self): return self.__apscale
+  @property
+  def vertices(self):
+    vertices = self.__xmlnode["Vertices"]["V"]
+    if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
+    return [AnnotationVertexXML(_, apscale=self.apscale) for _ in vertices]
+  @property
+  def NegativeROA(self): return bool(int(self.__xmlnode.get_xml_attr("NegativeROA")))
+  @property
+  def Type(self): return self.__xmlnode.get_xml_attr("Type")
+
+class AnnotationRegionFromPolygon(AnnotationRegionBase):
+  def __init__(self, polygon, **kwargs):
+    super().__init__(**kwargs)
+    self.__polygon = polygon
   @property
   def vertices(self):
     vertices = self.__xmlnode["Vertices"]["V"]
     if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
     return [AnnotationVertexXML(_) for _ in vertices]
   @property
-  def NegativeROA(self): return bool(int(self.__xmlnode.get_xml_attr("NegativeROA")))
+  def NegativeROA(self): return False
   @property
-  def Type(self): return self.__xmlnode.get_xml_attr("Type")
+  def Type(self): return "Polygon"
 
 class AnnotationVertexBase(abc.ABC):
   @property
@@ -130,14 +174,21 @@ class AnnotationVertexBase(abc.ABC):
   @property
   @abc.abstractmethod
   def Y(self): pass
-class AnnotationVertexXML(AnnotationVertexBase):
-  def __init__(self, node, **kwargs):
+class AnnotationVertexXML(AnnotationVertexBase, units.ThingWithApscale):
+  def __init__(self, node, *, apscale, **kwargs):
     super().__init__(**kwargs)
     self.__xmlnode = node
+    self.__apscale = apscale
   @property
-  def X(self): return int(self.__xmlnode.get_xml_attr("X"))
+  def apscale(self): return self.__apscale
   @property
-  def Y(self): return int(self.__xmlnode.get_xml_attr("Y"))
+  def X(self): return int(self.__xmlnode.get_xml_attr("X")) * self.oneappixel
+  @property
+  def Y(self): return int(self.__xmlnode.get_xml_attr("Y")) * self.oneappixel
+
+class AnnotationVertexFromPolygon(DataClassWithApscale):
+  X: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="apscale")
+  Y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="apscale")
 
 class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
@@ -201,7 +252,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   @property
   def annotationnodes(self):
     with open(self.xmlfile, "rb") as f:
-      return [AnnotationNodeXML(node) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+      return [AnnotationNodeXML(node, apscale=self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
 
   def getXMLpolygonannotations(self):
     annotations = []
@@ -307,8 +358,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           vertices = region.vertices
           regionvertices = []
           for k, vertex in enumerate(vertices, start=1):
-            x = vertex.X * self.oneappixel
-            y = vertex.Y * self.oneappixel
+            x = vertex.X
+            y = vertex.Y
             regionvertices.append(
               Vertex(
                 regionid=regionid,
@@ -404,6 +455,21 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
       raise ValueError("\n".join(errors))
 
     return annotations, allregions, allvertices
+
+class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, MaskLoader):
+  def __init__(self, *args, maskfilename, **kwargs):
+    self.__maskfilename = pathlib.Path(maskfilename)
+    super().__init__(*args, **kwargs)
+
+  @property
+  def maskfilename(self):
+    return self.__maskfilename
+
+  @property
+  def annotationnodes(self):
+    result = super().annotationnodes
+    result.append(AnnotationNodeFromPolygons("outline", self.maskpolygons, color=self.allowedannotation("outline").color))
+    return result
 
 def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):
   dbloadfolder = pathlib.Path(dbloadfolder)
