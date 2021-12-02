@@ -10,7 +10,7 @@ from ..utilities.img_file_io import get_raw_as_hwl, LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.version import astropathversionregex
 from .annotationxmlreader import AnnotationXMLReader
-from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
+from .annotationpolygonxmlreader import XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger
@@ -1333,12 +1333,18 @@ class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
     self.__reorderannotations = reorderannotations
     super().__init__(*args, **kwargs)
 
-  @methodtools.lru_cache()
-  def __getXMLpolygonannotations(self, *, pscale=None, apscale=None):
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms, reorderannotations=self.__reorderannotations).getXMLpolygonannotations()
+  polygonannotationreaderclass = XMLPolygonAnnotationReader
 
   @methodtools.lru_cache()
-  def getXMLpolygonannotations(self, *, pscale=None, apscale=None):
+  def __getXMLpolygonannotations(self, **kwargs):
+    return self.polygonannotationreaderclass(self.annotationspolygonsxmlfile, logger=self.logger, annotationsynonyms=self.__annotationsynonyms, reorderannotations=self.__reorderannotations, **kwargs).getXMLpolygonannotations()
+
+  @property
+  def getXMLpolygonannotationkwargs(self):
+    return {}
+
+  @methodtools.lru_cache()
+  def getXMLpolygonannotations(self, *, pscale=None, apscale=None, **kwargs):
     """
     Read the annotations, vertices, and regions from the xml file
     """
@@ -1346,7 +1352,14 @@ class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
     if apscale is None: apscale = self.apscale
     #use a nested lru_cache because otherwise it's sensitive to the order
     #of the kwargs (pscale=1, apscale=2 is not the same as apscale=2, pscale=1)
-    return self.__getXMLpolygonannotations(pscale=pscale, apscale=apscale)
+    kwargs = {k: v for k, v in sorted(kwargs.items())}
+    return self.__getXMLpolygonannotations(pscale=pscale, apscale=apscale, **self.getXMLpolygonannotationkwargs, **kwargs)
+
+class XMLPolygonReaderWithOutline(XMLPolygonReader):
+  polygonannotationreaderclass = XMLPolygonAnnotationReaderWithOutline
+  @property
+  def getXMLpolygonannotationkwargs(self):
+    return {**super().getXMLpolygonannotationkwargs, "maskfilename": self.maskfilename()}
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   """

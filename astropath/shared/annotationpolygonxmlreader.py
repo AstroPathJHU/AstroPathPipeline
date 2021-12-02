@@ -194,7 +194,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, saveallimages=False, imagefolder=None, imagefiletype="pdf", annotationsynonyms=None, reorderannotations=False):
+  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, saveallimages=False, imagefolder=None, imagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, **kwargs):
     self.xmlfile = pathlib.Path(xmlfile)
     self.__logger = logger
     self.__saveallimages = saveallimages
@@ -215,6 +215,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     self.__annotationsynonyms = annotationsynonyms
     self.__reorderannotations = reorderannotations
     self.allowedannotations #make sure there are no duplicate synonyms etc.
+    super().__init__(**kwargs)
   @property
   def pscale(self): return self.__pscale
   @property
@@ -461,7 +462,6 @@ class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, MaskLoad
     self.__maskfilename = pathlib.Path(maskfilename)
     super().__init__(*args, **kwargs)
 
-  @property
   def maskfilename(self):
     return self.__maskfilename
 
