@@ -123,7 +123,12 @@ class AnnotationNodeFromPolygons(AnnotationNodeBase):
 
   @property
   def regions(self):
-    return [AnnotationRegionFromPolygon(p) for p in self.__polygons]
+    result = []
+    for p in self.__polygons:
+      result += [
+        AnnotationRegionFromPolygon(p.outerpolygon),
+        *(AnnotationRegionFromPolygon(pp) for pp in p.subtractpolygons),
+      ]
 
 class AnnotationRegionBase(abc.ABC):
   @property
@@ -154,16 +159,16 @@ class AnnotationRegionXML(AnnotationRegionBase, units.ThingWithApscale):
   def Type(self): return self.__xmlnode.get_xml_attr("Type")
 
 class AnnotationRegionFromPolygon(AnnotationRegionBase):
-  def __init__(self, polygon, **kwargs):
+  def __init__(self, polygon, *, isNeg=False, **kwargs):
     super().__init__(**kwargs)
     self.__polygon = polygon
+    self.__isNeg = isNeg
   @property
   def vertices(self):
-    vertices = self.__xmlnode["Vertices"]["V"]
-    if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
-    return [AnnotationVertexXML(_) for _ in vertices]
+    assert not self.__polygon.subtractpolygons
+    return [AnnotationVertexFromPolygon(*v, apscale=self.apscale) for v in self.__polygon.outerpolygon.vertexarray]
   @property
-  def NegativeROA(self): return False
+  def NegativeROA(self): return self.__isNeg
   @property
   def Type(self): return "Polygon"
 
