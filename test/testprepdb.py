@@ -87,6 +87,13 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
     self.__stack.close()
 
   @classmethod
+  def setUpClass(cls):
+    from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
+    assembleqptiff()
+    super().setUpClass()
+
+
+  @classmethod
   def filestocopy(cls):
     oldfolder = thisfolder/"data"/"M206"
     newfolder = thisfolder/"test_for_jenkins"/"prepdb"/"M206"
@@ -203,8 +210,6 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
     self.testPrepDbPolaris(units="fast")
 
   def testPrepDbM206FastUnits(self):
-    from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
-    assembleqptiff()
     testroot = thisfolder/"test_for_jenkins"/"prepdb"
     xmlfile = testroot/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml"
     with open(xmlfile) as f:
