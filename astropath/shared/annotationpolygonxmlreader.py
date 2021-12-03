@@ -310,10 +310,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         node.usesubindex = False
 
     for layeridx, (annotationtype, annotationnodes) in zip(count, nodesbytype.items()):
-      targetannotations = set()
       try:
         targetannotation, = {node.annotation for node in annotationnodes}
-      except AttributeError as e:
+      except AttributeError:
         errors += [str(node.annotationerror) for node in annotationnodes if hasattr(node, "annotationerror")]
         continue
       subindices = [node.annotationsubindex for node in annotationnodes]

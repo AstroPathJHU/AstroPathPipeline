@@ -33,7 +33,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots):
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG):
     self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
