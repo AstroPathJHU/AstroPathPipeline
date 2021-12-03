@@ -191,6 +191,7 @@ class MyLogger:
     if self.nentered == 0:
       if exc_value is not None:
         errormessage = str(exc_value).replace(";", ",")
+        if not errormessage: errormessage = exc_type.__name__
         if "\n" in errormessage: errormessage = repr(errormessage)
         self.error(errormessage)
         self.info(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)).replace(";", ""))
