@@ -103,13 +103,13 @@ class TestPrepDb(TestBaseSaveOutput):
       "ZW2": True,
     }[SlideID]
 
-  def testPrepDb(self, SlideID="M21_1", units="safe"):
+  def testPrepDb(self, SlideID="M21_1", units="safe", moreargs=[]):
     dbloadroot = thisfolder/"test_for_jenkins"/"prepdb"
 
     skipannotations = self.skipannotations(SlideID)
     skipqptiff = self.skipqptiff(SlideID)
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rename-annotation", "Good tisue", "Good tissue", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)] + moreargs
     if skipannotations:
       args.append("--skip-annotations")
     if skipqptiff:
@@ -191,8 +191,8 @@ class TestPrepDb(TestBaseSaveOutput):
     xmlfile = thisfolder/"data"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml"
     with open(xmlfile) as f:
       contents = f.read()
-    with temporarilyreplace(xmlfile, contents.replace("Good tissue", "Good tisue")):
-      self.testPrepDb(SlideID="M206", units="fast_microns")
+    with temporarilyreplace(xmlfile, contents.replace("Tumor", "Good Tissue").replace("Good tissue", "Tumor")):
+      self.testPrepDb(SlideID="M206", units="fast_microns", moreargs=["--rename-annotation", "Good tissue", "Tumor", "--rename-annotation", "Tumor", "Good Tissue"])
 
   def testPrepDBZW2(self):
     self.testPrepDb(SlideID="ZW2", units="fast_microns")

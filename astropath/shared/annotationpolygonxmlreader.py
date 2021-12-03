@@ -239,13 +239,18 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   @property
   def allowedannotations(self):
     result = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
+    allsynonyms = {synonym.lower() for synonym in self.__annotationsynonyms}
+    for a in result:
+      if a.name.lower() not in allsynonyms:
+        a.synonyms.add(a.name.lower())
+
     for synonym, name in self.__annotationsynonyms.items():
       synonym = synonym.lower()
       name = name.lower()
-      if any(synonym in {a.name} | a.synonyms for a in result):
-        raise ValueError("Duplicate synonym: {synonym}")
+      if any(synonym in a.synonyms for a in result):
+        raise ValueError(f"Duplicate synonym: {synonym}")
       try:
-        a, = {a for a in result if name in {a.name} | a.synonyms}
+        a, = {a for a in result if name == a.name}
       except ValueError:
         raise ValueError(f"Unknown annotation for synonym: {name}")
       a.synonyms.add(synonym)
@@ -253,7 +258,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
   def allowedannotation(self, nameornumber, *, logwarning=True):
     try:
-      result, = {a for a in self.allowedannotations if nameornumber in {a.layer, a.name} | a.synonyms}
+      result, = {a for a in self.allowedannotations if nameornumber in {a.layer} | a.synonyms}
     except ValueError:
       typ = 'number' if isinstance(nameornumber, int) else 'name'
       raise ValueError(f"Unknown annotation {typ} {nameornumber}")
@@ -283,14 +288,15 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         nodes.remove(node)
     for node in nodes:
       try:
-        node.annotationtype = self.allowedannotation(node.annotationtype).name
-      except ValueError:
-        pass
+        node.annotation = self.allowedannotation(node.annotationtype)
+        node.annotationtype = node.annotation.name
+      except ValueError as e:
+        node.annotationerror = e
 
     def annotationorder(node):
       try:
-        return self.allowedannotation(node.annotationtype, logwarning=False).layer, node.annotationsubindex
-      except ValueError:
+        return node.annotation.layer, node.annotationsubindex
+      except AttributeError:
         return float("inf"), 0
     nodes.sort(key=annotationorder)
 
@@ -304,10 +310,11 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
         node.usesubindex = False
 
     for layeridx, (annotationtype, annotationnodes) in zip(count, nodesbytype.items()):
+      targetannotations = set()
       try:
-        targetannotation = self.allowedannotation(annotationtype)
-      except ValueError as e:
-        errors.append(str(e))
+        targetannotation, = {node.annotation for node in annotationnodes}
+      except AttributeError as e:
+        errors += [str(node.annotationerror) for node in annotationnodes if hasattr(node, "annotationerror")]
         continue
       subindices = [node.annotationsubindex for node in annotationnodes]
       if subindices != list(range(1, len(subindices)+1)):
