@@ -109,7 +109,7 @@ class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithApscale):
   def __init__(self, name, polygons, *, color, visible=True, **kwargs):
     super().__init__(**kwargs)
     self.__name = name
-    self.__polygons = polygons
+    self.__polygons = sorted(polygons, key=lambda x: tuple(x.outerpolygon.vertexarray[0]))
     self.__color = color
     self.__visible = visible
   @property
