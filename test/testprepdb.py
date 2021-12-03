@@ -8,11 +8,11 @@ from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities.miscfileio import checkwindowsnewlines
 from astropath.utilities.version.git import thisrepo
-from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-class TestPrepDb(TestBaseSaveOutput):
+class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
   testrequirecommit = thisrepo.getcommit("cf271f3a")
 
   @property
@@ -85,6 +85,23 @@ class TestPrepDb(TestBaseSaveOutput):
   def tearDown(self):
     super().tearDown()
     self.__stack.close()
+
+  @classmethod
+  def filestocopy(cls):
+    oldfolder = thisfolder/"data"/"M206"
+    newfolder = thisfolder/"test_for_jenkins"/"prepdb"/"M206"
+    oldim3 = oldfolder/"im3"
+    newim3 = newfolder/"im3"
+    for filename in ():
+      yield oldim3/filename, newim3
+    oldScan1 = oldim3/"Scan1"
+    newScan1 = newim3/"Scan1"
+    for filename in "M206_Scan1.annotations.polygons.xml", "M206_Scan1_annotations.xml", "M206_Scan1.qptiff":
+      yield oldScan1/filename, newScan1
+    oldMSI = oldScan1/"MSI"
+    newMSI = newScan1/"MSI"
+    for filename in oldMSI.glob("*.im3"):
+      yield filename, newMSI
 
   @classmethod
   def skipannotations(cls, SlideID):
@@ -188,11 +205,12 @@ class TestPrepDb(TestBaseSaveOutput):
   def testPrepDbM206FastUnits(self):
     from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
     assembleqptiff()
-    xmlfile = thisfolder/"data"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml"
+    testroot = thisfolder/"test_for_jenkins"/"prepdb"
+    xmlfile = testroot/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml"
     with open(xmlfile) as f:
       contents = f.read()
     with temporarilyreplace(xmlfile, contents.replace("Tumor", "Good Tissue").replace("Good tissue", "Tumor")):
-      self.testPrepDb(SlideID="M206", units="fast_microns", moreargs=["--rename-annotation", "Good tissue", "Tumor", "--rename-annotation", "Tumor", "Good Tissue"])
+      self.testPrepDb(SlideID="M206", units="fast_microns", moreargs=["--rename-annotation", "Good tissue", "Tumor", "--rename-annotation", "Tumor", "Good Tissue", "--im3root", os.fspath(testroot), "--xmlfolder", os.fspath(thisfolder/"data"/"M206"/"im3"/"xml")])
 
   def testPrepDBZW2(self):
     self.testPrepDb(SlideID="ZW2", units="fast_microns")
