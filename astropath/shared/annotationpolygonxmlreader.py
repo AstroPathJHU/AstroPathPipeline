@@ -129,7 +129,7 @@ class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithApscale):
     for p in self.__polygons:
       result += [
         AnnotationRegionFromPolygon(p.outerpolygon, apscale=self.apscale),
-        *(AnnotationRegionFromPolygon(pp, apscale=self.apscale) for pp in p.subtractpolygons),
+        *(AnnotationRegionFromPolygon(pp, apscale=self.apscale, isNeg=1) for pp in p.subtractpolygons),
       ]
     return result
 
