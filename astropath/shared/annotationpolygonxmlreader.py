@@ -265,7 +265,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     with open(self.annotationspolygonsxmlfile, "rb") as f:
       return [AnnotationNodeXML(node, apscale=self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
 
-  def getXMLpolygonannotations(self):
+  def getXMLpolygonannotations(self, *, pscale=None):
+    if pscale is None: pscale = self.pscale
+
     annotations = []
     allregions = []
     allvertices = []
@@ -330,7 +332,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
               sampleid=0,
               layer=layeridx,
               poly="poly",
-              pscale=self.pscale,
+              pscale=pscale,
               apscale=self.apscale,
             )
           )
@@ -356,7 +358,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             sampleid=0,
             layer=layer,
             poly="poly",
-            pscale=self.pscale,
+            pscale=pscale,
             apscale=self.apscale,
           )
         )
@@ -379,7 +381,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                 x=x,
                 y=y,
                 apscale=self.apscale,
-                pscale=self.pscale,
+                pscale=pscale,
               )
             )
           isNeg = region.NegativeROA
@@ -454,7 +456,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                   nvert=len(regionvertices),
                   poly=None,
                   apscale=self.apscale,
-                  pscale=self.pscale,
+                  pscale=pscale,
                 )
               )
 
