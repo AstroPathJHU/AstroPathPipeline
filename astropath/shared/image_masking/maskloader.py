@@ -57,6 +57,7 @@ class TissueMaskLoader(MaskLoader):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.__using_tissuemask_count = 0
+    self.__using_tissuemask_uint8_count = 0
 
   @abc.abstractmethod
   def tissuemask(self, mask):
@@ -77,8 +78,21 @@ class TissueMaskLoader(MaskLoader):
         if self.__using_tissuemask_count == 0:
           del self.__tissuemask
 
+  @contextlib.contextmanager
+  def using_tissuemask_uint8(self):
+    with contextlib.ExitStack() as stack:
+      if self.__using_tissuemask_uint8_count == 0:
+        self.__tissuemask_uint8 = stack.enter_context(self.using_tissuemask()).astype(np.uint8)
+      self.__using_tissuemask_uint8_count += 1
+      try:
+        yield self.__tissuemask_uint8
+      finally:
+        self.__using_tissuemask_uint8_count -= 1
+        if self.__using_tissuemask_uint8_count == 0:
+          del self.__tissuemask_uint8
+
   @methodtools.lru_cache()
   @property
   def tissuemaskpolygons(self):
-    with self.using_mask() as mask:
+    with self.using_tissuemask_uint8() as mask:
       return findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, forgdal=True)
