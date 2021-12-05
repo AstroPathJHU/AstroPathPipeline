@@ -1,4 +1,4 @@
-import abc, contextlib, numpy as np, pathlib
+import abc, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.image_masking.image_mask import ImageMask

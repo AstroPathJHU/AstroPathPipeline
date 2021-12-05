@@ -205,35 +205,29 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, xmlfile, *, pscale=None, apscale=None, logger=dummylogger, saveallimages=False, imagefolder=None, imagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, **kwargs):
-    self.xmlfile = pathlib.Path(xmlfile)
-    self.__logger = logger
-    self.__saveallimages = saveallimages
-    if imagefolder is not None: imagefolder = pathlib.Path(imagefolder)
-    self.__imagefolder = imagefolder
-    if pscale is None: pscale = 1
-    if apscale is None:
-      if self.__imagefolder is not None:
-        with QPTiff(self.qptifffilename) as fqptiff:
-          apscale = fqptiff.apscale
-      else:
-        apscale = 1
-    self.__imagefiletype = imagefiletype
-    self.__pscale = pscale
-    self.__apscale = apscale
+  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, **kwargs):
+    self.__saveallannotationimages = saveallannotationimages
+    if annotationimagefolder is not None: annotationimagefolder = pathlib.Path(annotationimagefolder)
+    self.__annotationimagefolder = annotationimagefolder
+    self.__annotationimagefiletype = annotationimagefiletype
     if annotationsynonyms is None:
       annotationsynonyms = {}
     self.__annotationsynonyms = annotationsynonyms
     self.__reorderannotations = reorderannotations
     self.allowedannotations #make sure there are no duplicate synonyms etc.
-    super().__init__(**kwargs)
+    super().__init__(*args, **kwargs)
+
   @property
-  def pscale(self): return self.__pscale
+  @abc.abstractmethod
+  def logger(self): pass
   @property
-  def apscale(self): return self.__apscale
+  def annotationimagefolder(self): return self.__annotationimagefolder
   @property
   def qptifffilename(self):
-    return self.xmlfile.with_suffix("").with_suffix("").with_suffix(".qptiff")
+    return self.annotationspolygonsxmlfile.with_suffix("").with_suffix("").with_suffix(".qptiff")
+  @property
+  @abc.abstractmethod
+  def annotationspolygonsxmlfile(self): pass
 
   @methodtools.lru_cache()
   @property
@@ -263,12 +257,12 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
       typ = 'number' if isinstance(nameornumber, int) else 'name'
       raise ValueError(f"Unknown annotation {typ} {nameornumber}")
     if logwarning and nameornumber not in {result.layer, result.name}:
-      self.__logger.warningglobal(f"renaming annotation {nameornumber} to {result.name}")
+      self.logger.warningglobal(f"renaming annotation {nameornumber} to {result.name}")
     return result
 
   @property
   def annotationnodes(self):
-    with open(self.xmlfile, "rb") as f:
+    with open(self.annotationspolygonsxmlfile, "rb") as f:
       return [AnnotationNodeXML(node, apscale=self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
 
   def getXMLpolygonannotations(self):
@@ -284,7 +278,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     for node in nodes[:]:
       if not node.regions:
         if node.annotationtype != "empty":
-          self.__logger.warningglobal(f"Annotation {node.annotationname} is empty, skipping it")
+          self.logger.warningglobal(f"Annotation {node.annotationname} is empty, skipping it")
         nodes.remove(node)
     for node in nodes:
       try:
@@ -352,7 +346,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
           name = annotationtype
           layer = layeridx
         if color != targetcolor:
-          self.__logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
+          self.logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
           color = targetcolor
         annotations.append(
           Annotation(
@@ -402,14 +396,14 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             maxlength, longestidx = max((maxlength, longestidx), (length, nlines))
             perimeter += length
 
-          saveimage = self.__saveallimages
+          saveimage = self.__saveallannotationimages
           badimage = False
           if (longestidx == 1 or longestidx == len(regionvertices)) and maxlength / (perimeter/nlines) > 30:
-            self.__logger.warningglobal(f"annotation polygon might not be closed: region id {regionid}")
+            self.logger.warningglobal(f"annotation polygon might not be closed: region id {regionid}")
             saveimage = True
             badimage = True
 
-          if saveimage and self.__imagefolder is not None:
+          if saveimage and self.__annotationimagefolder is not None:
             poly = SimplePolygon(vertices=regionvertices)
             with QPTiff(self.qptifffilename) as fqptiff:
               zoomlevel = fqptiff.zoomlevels[0]
@@ -438,7 +432,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
               boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
               ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
 
-            fig.savefig(self.__imagefolder/self.xmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__imagefiletype}").name)
+            fig.savefig(self.__annotationimagefolder/self.annotationspolygonsxmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__annotationimagefiletype}").name)
             plt.close(fig)
 
           for subpolygon in valid:
@@ -474,14 +468,32 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
     return annotations, allregions, allvertices
 
-class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoader):
-  def __init__(self, *args, maskfilename, **kwargs):
-    self.__maskfilename = pathlib.Path(maskfilename)
+class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
+  def __init__(self, polygonxmlfile, *args, pscale=None, apscale=None, logger=dummylogger, **kwargs):
+    self.__polygonxmlfile = polygonxmlfile
+    self.__logger = logger
     super().__init__(*args, **kwargs)
+    if pscale is None: pscale = 1
+    if apscale is None:
+      if self.annotationimagefolder is not None:
+        with QPTiff(self.qptifffilename) as fqptiff:
+          apscale = fqptiff.apscale
+      else:
+        apscale = 1
+    self.__pscale = pscale
+    self.__apscale = apscale
+  @property
+  def pscale(self): return self.__pscale
+  @property
+  def apscale(self): return self.__apscale
 
-  def maskfilename(self):
-    return self.__maskfilename
+  @property
+  def logger(self): return self.__logger
 
+  @property
+  def annotationspolygonsxmlfile(self): return self.__polygonxmlfile
+
+class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoader):
   @property
   def annotationnodes(self):
     result = super().annotationnodes
@@ -491,7 +503,7 @@ class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMa
 def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):
   dbloadfolder = pathlib.Path(dbloadfolder)
   dbloadfolder.mkdir(parents=True, exist_ok=True)
-  annotations, regions, vertices = XMLPolygonAnnotationReader(xmlfile, **kwargs).getXMLpolygonannotations()
+  annotations, regions, vertices = XMLPolygonAnnotationReaderStandalone(polygonxmlfile=xmlfile, **kwargs).getXMLpolygonannotations()
   if csvprefix is None:
     csvprefix = ""
   elif csvprefix.endswith("_"):
@@ -525,21 +537,21 @@ def main(args=None):
 
 def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
-  p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
+  p.add_argument("polygonxmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
   g = p.add_mutually_exclusive_group()
-  g.add_argument("--save-polygon-images", action="store_const", dest="imagefolder", const=pathlib.Path("."), help="save all annotation images to the current folder")
-  g.add_argument("--save-polygon-images-folder", type=pathlib.Path, dest="imagefolder", help="save all annotation images to the given directory")
-  g.add_argument("--save-bad-polygon-images", action="store_const", dest="badimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
-  g.add_argument("--save-bad-polygon-images-folder", type=pathlib.Path, dest="badimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
-  p.add_argument("--save-images-filetype", default="pdf", choices=("pdf", "png"), dest="imagefiletype", help="image format to save debug images")
+  g.add_argument("--save-polygon-images", action="store_const", dest="annotationimagefolder", const=pathlib.Path("."), help="save all annotation images to the current folder")
+  g.add_argument("--save-polygon-images-folder", type=pathlib.Path, dest="annotationimagefolder", help="save all annotation images to the given directory")
+  g.add_argument("--save-bad-polygon-images", action="store_const", dest="badannotationimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
+  g.add_argument("--save-bad-polygon-images-folder", type=pathlib.Path, dest="badannotationimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
+  p.add_argument("--save-images-filetype", default="pdf", choices=("pdf", "png"), dest="annotationimagefiletype", help="image format to save debug images")
   add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
-  if args.imagefolder is not None:
-    args.saveallimages = True
+  if args.annotationimagefolder is not None:
+    args.saveallannotationimages = True
   else:
-    args.imagefolder = args.badimagefolder
-  del args.badimagefolder
+    args.annotationimagefolder = args.badannotationimagefolder
+  del args.badannotationimagefolder
   logger = printlogger("annotations")
   with units.setup_context("fast"):
-    XMLPolygonAnnotationReader(**args.__dict__, logger=logger).getXMLpolygonannotations()
-  logger.info(f"{args.xmlfile} looks good!")
+    XMLPolygonAnnotationReaderStandalone(**args.__dict__, logger=logger).getXMLpolygonannotations()
+  logger.info(f"{args.polygonxmlfile} looks good!")

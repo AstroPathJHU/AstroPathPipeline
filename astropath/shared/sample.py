@@ -33,7 +33,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots):
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, **kwargs):
     self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
@@ -49,7 +49,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots):
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__nentered = 0
-    super().__init__()
+    super().__init__(**kwargs)
 
     if not self.scanfolder.exists():
       raise OSError(f"{self.scanfolder} does not exist")
@@ -1324,42 +1324,13 @@ class XMLLayoutReader(SampleBase):
         )
     return overlaps
 
-class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
+class XMLPolygonAnnotationReaderSample(SampleBase, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
   """
   Base class for any sample that reads the annotations from the XML metadata.
   """
-  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
-    self.__annotationsynonyms = annotationsynonyms
-    self.__reorderannotations = reorderannotations
-    super().__init__(*args, **kwargs)
 
-  polygonannotationreaderclass = XMLPolygonAnnotationReader
-
-  @methodtools.lru_cache()
-  def __getXMLpolygonannotations(self, **kwargs):
-    return self.polygonannotationreaderclass(self.annotationspolygonsxmlfile, logger=self.logger, annotationsynonyms=self.__annotationsynonyms, reorderannotations=self.__reorderannotations, **kwargs).getXMLpolygonannotations()
-
-  @property
-  def getXMLpolygonannotationkwargs(self):
-    return {}
-
-  @methodtools.lru_cache()
-  def getXMLpolygonannotations(self, *, pscale=None, apscale=None, **kwargs):
-    """
-    Read the annotations, vertices, and regions from the xml file
-    """
-    if pscale is None: pscale = self.pscale
-    if apscale is None: apscale = self.apscale
-    #use a nested lru_cache because otherwise it's sensitive to the order
-    #of the kwargs (pscale=1, apscale=2 is not the same as apscale=2, pscale=1)
-    kwargs = {k: v for k, v in sorted(kwargs.items())}
-    return self.__getXMLpolygonannotations(pscale=pscale, apscale=apscale, **self.getXMLpolygonannotationkwargs, **kwargs)
-
-class XMLPolygonReaderWithOutline(XMLPolygonReader):
-  polygonannotationreaderclass = XMLPolygonAnnotationReaderWithOutline
-  @property
-  def getXMLpolygonannotationkwargs(self):
-    return {**super().getXMLpolygonannotationkwargs, "maskfilename": self.maskfilename()}
+class XMLPolygonAnnotationReaderSampleWithOutline(XMLPolygonAnnotationReaderSample, XMLPolygonAnnotationReaderWithOutline):
+  pass
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   """
