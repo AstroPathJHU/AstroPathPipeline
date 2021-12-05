@@ -2,7 +2,7 @@ import abc, contextlib, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.image_masking.image_mask import ImageMask
-from ...shared.image_masking.maskloader import MaskLoader
+from ...shared.image_masking.maskloader import MaskLoader, TissueMaskLoader
 from ...shared.rectangle import MaskRectangle
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...utilities.img_file_io import im3writeraw
@@ -36,35 +36,13 @@ class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgum
     folder = self.maskfolder
     return folder/filename
 
-class TissueMaskSample(MaskSample):
+class TissueMaskSample(MaskSample, TissueMaskLoader):
   """
   Base class for a sample that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the
   main mask has multiple classifications, the tissue mask
   could be mask == 1)
   """
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.__using_tissuemask_count = 0
-
-  @abc.abstractmethod
-  def tissuemask(self, mask):
-    """
-    Get the tissue mask from the main mask
-    """
-
-  @contextlib.contextmanager
-  def using_tissuemask(self):
-    with contextlib.ExitStack() as stack:
-      if self.__using_tissuemask_count == 0:
-        self.__tissuemask = self.tissuemask(stack.enter_context(self.using_mask()))
-      self.__using_tissuemask_count += 1
-      try:
-        yield self.__tissuemask
-      finally:
-        self.__using_tissuemask_count -= 1
-        if self.__using_tissuemask_count == 0:
-          del self.__tissuemask
 
 class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
   """

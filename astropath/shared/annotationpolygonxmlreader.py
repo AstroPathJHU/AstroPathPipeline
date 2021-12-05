@@ -5,7 +5,7 @@ from ..utilities.miscmath import floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import distancefield, DataClassWithApscale
 from .csvclasses import Annotation, Region, Vertex
-from .image_masking.maskloader import MaskLoader
+from .image_masking.maskloader import TissueMaskLoader
 from .logging import dummylogger, printlogger
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
@@ -474,7 +474,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
     return annotations, allregions, allvertices
 
-class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, MaskLoader):
+class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoader):
   def __init__(self, *args, maskfilename, **kwargs):
     self.__maskfilename = pathlib.Path(maskfilename)
     super().__init__(*args, **kwargs)
@@ -485,7 +485,7 @@ class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, MaskLoad
   @property
   def annotationnodes(self):
     result = super().annotationnodes
-    result.append(AnnotationNodeFromPolygons("outline", self.maskpolygons, color=self.allowedannotation("outline").color, apscale=self.apscale))
+    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons, color=self.allowedannotation("outline").color, apscale=self.apscale))
     return result
 
 def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):

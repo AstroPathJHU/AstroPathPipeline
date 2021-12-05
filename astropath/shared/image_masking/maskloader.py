@@ -15,7 +15,7 @@ class MaskLoader(contextlib.ExitStack, abc.ABC):
 
   def readmask(self, **filekwargs):
     """
-    Read the mask for the sample and return it
+    Read the mask and return it
     """
     filename = self.maskfilename(**filekwargs)
 
@@ -47,8 +47,38 @@ class MaskLoader(contextlib.ExitStack, abc.ABC):
       if self.__using_mask_count == 0:
         del self.__mask
 
+class TissueMaskLoader(MaskLoader):
+  """
+  Base class for a MaskLoader that has a mask for tissue,
+  which can be obtained from the main mask. (e.g. if the
+  main mask has multiple classifications, the tissue mask
+  could be mask == 1)
+  """
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__using_tissuemask_count = 0
+
+  @abc.abstractmethod
+  def tissuemask(self, mask):
+    """
+    Get the tissue mask from the main mask
+    """
+
+  @contextlib.contextmanager
+  def using_tissuemask(self):
+    with contextlib.ExitStack() as stack:
+      if self.__using_tissuemask_count == 0:
+        self.__tissuemask = self.tissuemask(stack.enter_context(self.using_mask()))
+      self.__using_tissuemask_count += 1
+      try:
+        yield self.__tissuemask
+      finally:
+        self.__using_tissuemask_count -= 1
+        if self.__using_tissuemask_count == 0:
+          del self.__tissuemask
+
   @methodtools.lru_cache()
   @property
-  def maskpolygons(self):
+  def tissuemaskpolygons(self):
     with self.using_mask() as mask:
       return findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, forgdal=True)
