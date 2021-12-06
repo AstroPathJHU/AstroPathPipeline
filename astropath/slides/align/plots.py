@@ -3,7 +3,8 @@
 import matplotlib.cm, matplotlib.collections, matplotlib.colors, matplotlib.patches, matplotlib.pyplot as plt, more_itertools, mpl_toolkits.axes_grid1, networkx as nx, numpy as np, uncertainties.unumpy as unp
 from ...shared.logging import dummylogger
 from ...utilities import units
-from ...utilities.misc import floattoint, pullhist
+from ...utilities.miscmath import floattoint
+from ...utilities.miscplotting import pullhist
 
 def rectanglelayout(alignsample, *, xrange=None, yrange=None, primaryarea=True, figurekwargs={}, showplot=None, saveas=None):
   fig = plt.figure(**figurekwargs)

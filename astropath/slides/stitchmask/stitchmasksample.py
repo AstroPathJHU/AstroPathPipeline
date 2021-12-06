@@ -1,11 +1,12 @@
-import abc, contextlib, numpy as np, pathlib
+import abc, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
-from ...shared.rectangle import MaskRectangle
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
-from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...shared.image_masking.image_mask import ImageMask
+from ...shared.image_masking.maskloader import MaskLoader, TissueMaskLoader
+from ...shared.rectangle import MaskRectangle
+from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...utilities.img_file_io import im3writeraw
-from ...utilities.misc import floattoint
+from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiff
@@ -13,14 +14,10 @@ from ..zoom.zoomsamplebase import ZoomSampleBase
 
 class MaskField(Field, MaskRectangle): pass
 
-class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser):
+class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser, MaskLoader):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.__using_mask_count = 0
-
   @classmethod
   @abc.abstractmethod
   def maskfilestem(cls):
@@ -39,69 +36,13 @@ class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgum
     folder = self.maskfolder
     return folder/filename
 
-  def readmask(self, **filekwargs):
-    """
-    Read the mask for the sample and return it
-    """
-    filename = self.maskfilename(**filekwargs)
-
-    filetype = filename.suffix
-    if filetype == ".npz":
-      dct = np.load(filename)
-      return dct["mask"]
-    elif filetype == ".bin":
-      return ImageMask.unpack_tissue_mask(
-        filename, tuple((self.ntiles * self.zoomtilesize)[::-1])
-      )
-    else:
-      raise ValueError("Don't know how to deal with mask file type {filetype}")
-
-  @contextlib.contextmanager
-  def using_mask(self):
-    """
-    Context manager for using the mask.  When you enter it for the first time
-    it will load the mask. If you enter it again it won't have to load it again.
-    When all enters have a matching exit, it will remove it from memory.
-    """
-    if self.__using_mask_count == 0:
-      self.__mask = self.readmask()
-    self.__using_mask_count += 1
-    try:
-      yield self.__mask
-    finally:
-      self.__using_mask_count -= 1
-      if self.__using_mask_count == 0:
-        del self.__mask
-
-class TissueMaskSample(MaskSample):
+class TissueMaskSample(MaskSample, TissueMaskLoader):
   """
   Base class for a sample that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the
   main mask has multiple classifications, the tissue mask
   could be mask == 1)
   """
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.__using_tissuemask_count = 0
-
-  @abc.abstractmethod
-  def tissuemask(self, mask):
-    """
-    Get the tissue mask from the main mask
-    """
-
-  @contextlib.contextmanager
-  def using_tissuemask(self):
-    with contextlib.ExitStack() as stack:
-      if self.__using_tissuemask_count == 0:
-        self.__tissuemask = self.tissuemask(stack.enter_context(self.using_mask()))
-      self.__using_tissuemask_count += 1
-      try:
-        yield self.__tissuemask
-      finally:
-        self.__using_tissuemask_count -= 1
-        if self.__using_tissuemask_count == 0:
-          del self.__tissuemask
 
 class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
   """

@@ -1,6 +1,6 @@
 #imports 
 import os, pathlib, subprocess
-from ..utilities.misc import cd
+from ..utilities.miscfileio import cd, rm_missing_ok
 
 class LatexSummaryBase :
     """
@@ -57,8 +57,7 @@ class LatexSummaryBase :
                              self.__output_dir / self.__log_filename,
                             ]
                 for fp in to_remove :
-                    if fp.is_file() :
-                        fp.unlink()
+                    rm_missing_ok(fp)
                 (self.__output_dir / self.__tex_filename).rename((self.failed_compilation_tex_file_path / self.__tex_filename))
                 return 1
             if (self.__output_dir / self.__pdf_filename).is_file() :

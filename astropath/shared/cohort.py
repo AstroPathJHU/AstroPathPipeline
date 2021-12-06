@@ -1,7 +1,8 @@
-import abc, datetime, job_lock, logging, pathlib, re
+import abc, contextlib, datetime, job_lock, logging, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
+from ..utilities.version.git import thisrepo
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
 from .logging import getlogger
 from .rectangle import rectanglefilter
@@ -12,7 +13,7 @@ class CohortBase(ThingWithRoots):
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, **kwargs):
+  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.NOTSET-100, **kwargs):
     super().__init__(*args, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
@@ -25,7 +26,7 @@ class CohortBase(ThingWithRoots):
     self.skipstartfinish = skipstartfinish
     self.printthreshold = printthreshold
 
-  def sampledefs(self):
+  def sampledefs(self, **kwargs):
     from .samplemetadata import SampleDef
     return readtable(self.sampledefroot/"sampledef.csv", SampleDef)
   @property
@@ -141,11 +142,12 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
       return cohort
 
 class FilterResult:
-  def __init__(self, result, message=None):
+  def __init__(self, result, message=None, cleanup=False):
     if isinstance(result, FilterResult):
-      result, message = result.result, result.message
+      result, message, cleanup = result.result, result.message, result.cleanup
     self.result = result
     self.message = message
+    self.cleanup = cleanup
 
   def __bool__(self):
     return bool(self.result)
@@ -186,15 +188,15 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     self.xmlfolders = xmlfolders
 
   def sampledefswithfilters(self, **kwargs):
-    for samp in self.sampledefs(**kwargs):
+    for samp in self.sampledefs():
       if not samp: continue
       try:
-        yield samp, [filter(self, samp) for filter in self.slideidfilters]
+        yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
       except Exception: #don't log KeyboardInterrupt here
-        with self.getlogger(samp):
+        with self.handlesampledeffiltererror(samp, **kwargs):
           raise
 
-  def filteredsampledefs(self, *, printnotrunning=False, **kwargs):
+  def filteredsampledefswithfilters(self, *, printnotrunning=False, **kwargs):
     """
     Iterate over the sample's sampledef.csv file.
     It yields all the good samples (as defined by the isGood column)
@@ -202,13 +204,17 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     """
     for samp, filters in self.sampledefswithfilters(**kwargs):
       if all(filters):
-        yield samp
+        yield samp, filters
       elif printnotrunning:
         logger = self.printlogger(samp)
         logger.info(f"Not running {samp.SlideID}:")
         for filter in filters:
           if not filter:
             logger.info(filter.message)
+
+  def filteredsampledefs(self, **kwargs):
+    for samp, filters in self.filteredsampledefswithfilters(**kwargs):
+      yield samp
 
   def allsamples(self, **kwargs) :
     for samp in self.sampledefs(**kwargs):
@@ -220,25 +226,38 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
-        with self.getlogger(samp):
+        with self.handlesampleiniterror(samp, **kwargs):
           raise
 
-  def samples(self, **kwargs):
-    for samp in self.filteredsampledefs(**kwargs):
+  def sampleswithfilters(self, **kwargs):
+    for samp, filters in self.filteredsampledefswithfilters(**kwargs):
       try:
         sample = self.initiatesample(samp)
         if sample.logmodule() != self.logmodule():
           raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
-        yield sample
       except Exception:
         #enter the logger here to log exceptions in __init__ of the sample
         #but not KeyboardInterrupt
-        with self.getlogger(samp):
+        with self.handlesampleiniterror(samp, **kwargs):
+          raise
+      try:
+        yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
+      except Exception:
+        #enter the logger here to log exceptions in __init__ of the sample
+        #but not KeyboardInterrupt
+        with self.handlesamplefiltererror(samp, **kwargs):
           raise
 
-  def sampleswithfilters(self, **kwargs):
-    for sample in self.samples(**kwargs):
-      yield sample, [filter(self, sample) for filter in self.samplefilters]
+  def handlesampledeffiltererror(self, samp, **kwargs):
+    return self.getlogger(samp)
+  def handlesampleiniterror(self, samp, **kwargs):
+    return self.getlogger(samp)
+  def handlesamplefiltererror(self, samp, **kwargs):
+    return self.getlogger(samp)
+
+  def samples(self, **kwargs):
+    for sample, filters in self.sampleswithfilters(**kwargs):
+      yield sample
 
   def filteredsamples(self, **kwargs):
     for sample, filters in self.sampleswithfilters(**kwargs):
@@ -276,14 +295,14 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
   def workflowkwargs(self):
     return self.rootkwargs
 
-  def run(self, *, printnotrunning=True, **kwargs):
+  def run(self, *, printnotrunning=True, cleanup=False, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     result = []
-    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning):
+    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning, **kwargs):
       if all(filters):
-        result.append(self.processsample(sample, **kwargs))
+        result.append(self.processsample(sample, cleanup=cleanup or any(_.cleanup for _ in filters), **kwargs))
       elif printnotrunning:
         logger = self.printlogger(sample)
         logger.info(f"Not running {sample.SlideID}:")
@@ -292,8 +311,10 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
             logger.info(filter.message)
     return result
 
-  def processsample(self, sample, **kwargs):
+  def processsample(self, sample, *, cleanup=False, **kwargs):
     with sample:
+      if cleanup:
+        sample.cleanup()
       return self.runsample(sample, **kwargs)
 
   def dryrun(self, **kwargs):
@@ -341,7 +362,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
       kwargs["uselogfiles"] = False
     regex = dct.pop("sampleregex")
     if regex is not None:
-      kwargs["slideidfilters"].append(SampleFilter(lambda self, sample: regex.match(sample.SlideID), f"SlideID matches {regex.pattern}", f"SlideID doesn't match {regex.pattern}"))
+      kwargs["slideidfilters"].append(SampleFilter(lambda self, sample, **kwargs: regex.match(sample.SlideID), f"SlideID matches {regex.pattern}", f"SlideID doesn't match {regex.pattern}"))
     return kwargs
 
 class Im3Cohort(Cohort, Im3ArgumentParser):
@@ -620,6 +641,7 @@ class WorkflowCohort(Cohort):
     g.add_argument("--rerun-error", type=re.compile, action="append", dest="rerun_errors", help="rerun only samples with an error that matches this regex")
     g.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
     p.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
+    p.add_argument("--require-commit", type=thisrepo.getcommit, help="rerun samples that already finished with an AstroPath pipeline version earlier than this commit")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
     return p
@@ -636,40 +658,59 @@ class WorkflowCohort(Cohort):
     dependencies = parsed_args_dict.pop("dependencies")
     skip_finished = parsed_args_dict.pop("skip_finished")
     rerun_errors = parsed_args_dict.pop("rerun_errors")
+    require_commit = parsed_args_dict.pop("require_commit")
+
+    if require_commit is not None and not require_commit.isancestor(thisrepo.currentcommit):
+      raise ValueError(f"Trying to require commit {require_commit}, but that is not an ancestor of the current commit {thisrepo.currentcommit}")
 
     def filter(runstatus, dependencyrunstatuses):
-      if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
-        runstatus = True
+      if skip_finished:
+        cleanup = False
+        if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
+          runstatus.error = None
+        if runstatus.started and require_commit is not None:
+          if runstatus.gitcommit is None:
+            raise ValueError("previous runstatus has gitcommit of None, check the log")
+          if not require_commit <= runstatus.lastcleanstart:
+            runstatus.started = runstatus.ended = False
+        if not runstatus.started:  #log doesn't exist at all
+          cleanup = True
+        if runstatus.failedincleanup:
+          cleanup = True
+      else:
+        #if we're rerunning, then we also want to clean up partially run files
+        cleanup = True
 
       if not skip_finished and not dependencies:
-        return FilterResult(True, "this filter is not run")
+        return FilterResult(True, "this filter is not run", cleanup=cleanup)
 
       elif skip_finished and not dependencies:
         if not runstatus:
-          return FilterResult(True, "sample did not already run")
+          return FilterResult(True, "sample did not already run", cleanup=cleanup)
         else:
           return FilterResult(False, "sample already ran")
 
       elif dependencies and not skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
-        return FilterResult(True, "all dependencies already ran")
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} for {dependencyrunstatus.SlideID} "+str(dependencyrunstatus).replace('\n', ' '))
+        return FilterResult(True, "all dependencies already ran", cleanup=cleanup)
 
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
-          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} {str(dependencyrunstatus)}")
-          if runstatus and runstatus.started < dependencyrunstatus.ended:
-            runstatus = False #it's as if this step hasn't run
+          if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} for {dependencyrunstatus.SlideID} "+str(dependencyrunstatus).replace('\n', ' '))
+          if runstatus and not runstatus > dependencyrunstatus:
+            runstatus.started = runstatus.ended = False #it's as if this step hasn't run
+            cleanup = True
         if not runstatus:
-          return FilterResult(True, "all dependencies already ran, sample has not run since then")
+          return FilterResult(True, "all dependencies already ran, sample has not run since then", cleanup=cleanup)
         else:
           return FilterResult(False, "sample already ran")
       else:
         assert False
 
-    def slideidfilter(self, sample):
+    def slideidfilter(self, sample, **kwargs):
       return filter(
-        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs),
+        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
           for dependency in self.sampleclass.workflowdependencyclasses()
@@ -677,11 +718,11 @@ class WorkflowCohort(Cohort):
       )
     kwargs["slideidfilters"].append(SampleFilter(slideidfilter, None, None))
 
-    def samplefilter(self, sample):
+    def samplefilter(self, sample, **kwargs):
       return filter(
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs)
+          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs, **kwargs)
           for dependency, SlideID in sample.workflowdependencies()
         ],
       )
@@ -705,7 +746,7 @@ class WorkflowCohort(Cohort):
       if status: return
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       logger = self.printlogger(sample)
-      logger.info(f"{sample.SlideID} {status}")
+      logger.info(f"{sample.SlideID} " + str(status).replace("\n", " "))
     else:
       with sample.joblock() as lock:
         if not lock: return
@@ -729,3 +770,37 @@ class WorkflowCohort(Cohort):
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
 
           return result
+
+  @contextlib.contextmanager
+  def handlesampledeffiltererror(self, samp, *, print_errors, **kwargs):
+    if print_errors:
+      try:
+        yield
+      except Exception as e:
+        self.printlogger(samp).info(f"{samp.SlideID} gave an error in a sampledef filter: "+str(e).replace("\n", " "))
+    else:
+      with super().handlesampledeffiltererror(samp, **kwargs):
+        yield
+
+  @contextlib.contextmanager
+  def handlesampleiniterror(self, samp, *, print_errors, **kwargs):
+    if print_errors:
+      try:
+        yield
+      except Exception as e:
+        self.printlogger(samp).info(f"{samp.SlideID} gave an error in __init__: "+str(e).replace("\n", " "))
+    else:
+      with super().handlesampleiniterror(samp, **kwargs):
+        yield
+
+  @contextlib.contextmanager
+  def handlesamplefiltererror(self, samp, *, print_errors, **kwargs):
+    if print_errors:
+      try:
+        yield
+      except Exception as e:
+        self.printlogger(samp).info(f"{samp.SlideID} gave an error in a sample filter: "+str(e).replace("\n", " "))
+    else:
+      with super().handlesamplefiltererror(samp, **kwargs):
+        yield
+

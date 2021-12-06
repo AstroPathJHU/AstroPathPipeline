@@ -1,4 +1,4 @@
-from ...misc import covariance_matrix as dimensionless_covariance_matrix
+from ...miscmath import covariance_matrix as dimensionless_covariance_matrix
 from ..core import UnitsError
 
 import collections, itertools, numbers, numpy as np, uncertainties as unc

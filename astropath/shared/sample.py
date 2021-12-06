@@ -1,15 +1,16 @@
-import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
+import abc, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
 
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
 from ..hpfs.warping.utilities import WarpingSummary
 from ..utilities import units
-from ..utilities.misc import floattoint
+from ..utilities.config import CONST as UNIV_CONST
+from ..utilities.miscmath import floattoint
 from ..utilities.img_file_io import get_raw_as_hwl, LayerOffset
 from ..utilities.tableio import readtable, writetable
-from ..utilities.config import CONST as UNIV_CONST
+from ..utilities.version import astropathversionregex
 from .annotationxmlreader import AnnotationXMLReader
-from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
+from .annotationpolygonxmlreader import XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger
@@ -18,7 +19,7 @@ from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMoreRoots):
+class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots):
   """
   Base class for all sample classes.
 
@@ -32,7 +33,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, **kwargs):
     self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
@@ -48,7 +49,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__nentered = 0
-    super().__init__()
+    super().__init__(**kwargs)
 
     if not self.scanfolder.exists():
       raise OSError(f"{self.scanfolder} does not exist")
@@ -288,15 +289,24 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
       else:
         raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
+  @classmethod
+  def getnlayersunmixed(cls, componenttiffsfolder):
+    filenames = [componenttiffsfolder/"batch_procedure.ifp", componenttiffsfolder/"batch_procedure.ifr"]
+    try:
+      filename = next(_ for _ in filenames if _.exists())
+    except StopIteration:
+      raise FileNotFoundError("Didn't find any batch procedure files: " + ", ".join(str(_) for _ in filenames))
+    with open(filename, "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+        return int(node.xml_attrs["dim"])
+
   @methodtools.lru_cache()
   @property
   def nlayersunmixed(self):
     """
     Find the number of component tiff layers from the xml metadata
     """
-    with open(self.componenttiffsfolder/"batch_procedure.ifp", "rb") as f:
-      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-        return int(node.xml_attrs["dim"])
+    return self.getnlayersunmixed(self.componenttiffsfolder)
 
   def _getimageinfos(self):
     """
@@ -334,9 +344,9 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
       elif np.allclose(units.microns(result[:3], power=[0, 1, 1], pscale=result[0]), units.microns(v[:3], power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
         continue
       elif np.allclose(units.microns(result[:3], power=[0, 1, 1], pscale=result[0]), units.microns(v[:3], power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
-        if warnfunction != self.logger.warningglobal: warnfunction = self.logger.warning
+        if warnfunction != self.logger.warningglobalonenter: warnfunction = self.logger.warningonenter
       else:
-        warnfunction = self.logger.warningglobal
+        warnfunction = self.logger.warningglobalonenter
 
     if warnfunction is not None:
       fmt = "{:30} {:30} {:30} {:30}"
@@ -463,7 +473,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     return super().enter_context(*args, **kwargs)
 
   @classmethod
-  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} v[0-9a-f.devgd+]+$"
+  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} {astropathversionregex.pattern}$"
   @classmethod
   def logendregex(cls): return rf"end {cls.logmodule()}$|FINISH: {cls.logmodule()} v[0-9a-f.devgd+]+$"
 
@@ -1314,29 +1324,13 @@ class XMLLayoutReader(SampleBase):
         )
     return overlaps
 
-class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
+class XMLPolygonAnnotationReaderSample(SampleBase, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
   """
   Base class for any sample that reads the annotations from the XML metadata.
   """
-  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
-    self.__annotationsynonyms = annotationsynonyms
-    self.__reorderannotations = reorderannotations
-    super().__init__(*args, **kwargs)
 
-  @methodtools.lru_cache()
-  def __getXMLpolygonannotations(self, *, pscale=None, apscale=None):
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms, reorderannotations=self.__reorderannotations).getXMLpolygonannotations()
-
-  @methodtools.lru_cache()
-  def getXMLpolygonannotations(self, *, pscale=None, apscale=None):
-    """
-    Read the annotations, vertices, and regions from the xml file
-    """
-    if pscale is None: pscale = self.pscale
-    if apscale is None: apscale = self.apscale
-    #use a nested lru_cache because otherwise it's sensitive to the order
-    #of the kwargs (pscale=1, apscale=2 is not the same as apscale=2, pscale=1)
-    return self.__getXMLpolygonannotations(pscale=pscale, apscale=apscale)
+class XMLPolygonAnnotationReaderSampleWithOutline(XMLPolygonAnnotationReaderSample, XMLPolygonAnnotationReaderWithOutline):
+  pass
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   """

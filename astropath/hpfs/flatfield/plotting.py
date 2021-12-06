@@ -7,7 +7,7 @@ from matplotlib.patches import Rectangle
 from ...shared.image_masking.config import CONST as MASKING_CONST
 from ...shared.logging import printlogger
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import save_figure_in_dir
+from ...utilities.miscplotting import save_figure_in_dir
 from ...utilities.tableio import readtable
 from .utilities import RectangleThresholdTableEntry
 

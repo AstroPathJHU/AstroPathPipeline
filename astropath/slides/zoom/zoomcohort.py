@@ -1,7 +1,8 @@
+from ...shared.argumentparser import CleanupArgumentParser
 from ...shared.cohort import DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
 from .zoomsample import ZoomSample
 
-class ZoomCohort(DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort):
+class ZoomCohort(DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort, CleanupArgumentParser):
   __doc__ = ZoomSample.__doc__
 
   sampleclass = ZoomSample

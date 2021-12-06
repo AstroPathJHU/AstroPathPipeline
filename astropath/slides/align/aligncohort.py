@@ -31,6 +31,13 @@ class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohor
     }
     return kwargs
 
+  @property
+  def workflowkwargs(self) :
+    return {
+      **super().workflowkwargs,
+      "skipannotations": True,  #don't need prepdb annotations output
+    }
+
 def main(args=None):
   AlignCohort.runfromargumentparser(args)
 

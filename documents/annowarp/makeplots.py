@@ -1,5 +1,5 @@
 import argparse, numpy as np, pathlib, PIL, shutil, tempfile
-from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleInformTissueMask
+from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTissueMask
 from astropath.slides.annowarp.visualization import showannotation
 from astropath.shared.csvclasses import Region
 from astropath.utilities import units
@@ -22,9 +22,7 @@ def makeplots():
           shutil.copy(filename, dbloadroot/samp/"dbload")
     from ...test.testzoom import gunzipreference
     gunzipreference(samp)
-    with AnnoWarpSampleInformTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=dbloadroot, annotationsynonyms={"Good tisue": "Good tissue"}) as A:
-      #annotationsynonyms is in case of an unlucky collision in the jenkins tests
-      #where this runs at the same time as M206 in prepdb
+    with AnnoWarpSampleAstroPathTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=dbloadroot) as A:
       warpedregions = A.readtable(A.regionscsv, Region)
 
       with A.using_images() as (wsi, fqptiff):

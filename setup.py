@@ -1,10 +1,42 @@
-import setuptools, site
+import csv, pathlib, setuptools.command.build_py, setuptools.command.develop, site, subprocess
 
 site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
+here = pathlib.Path(__file__).parent
+
+class build_commits_csv(setuptools.Command):
+  user_options = []
+  def initialize_options(self): pass
+  def finalize_options(self): pass
+
+  def run(self):
+    with open(here/"astropath"/"utilities"/"version"/"commits.csv", "w", newline="") as f:
+      writer = csv.DictWriter(f, ["hash", "parents", "tags"], lineterminator='\r\n')
+      writer.writeheader()
+      for line in subprocess.run(["git", "log", "--all", "--pretty=%H\t%P\t%D", "--no-abbrev-commit"], cwd=here, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="ascii").stdout.split("\n"):
+        if not line.strip(): continue
+        hash, parents, tags = line.split("\t")
+        parents = parents.split()
+        tags = tags.replace(",", "").replace("->", "").split()
+        writer.writerow({"hash": hash, "parents": " ".join(parents), "tags": " ".join(tags)})
+
+class build_py(setuptools.command.build_py.build_py):
+  def run(self):
+    self.run_command("build_commits_csv")
+    super().run()
+
+class develop(setuptools.command.develop.develop):
+  def run(self):
+    self.run_command("build_commits_csv")
+    super().run()
 
 setupkwargs = dict(
   name = "astropath",
   packages = setuptools.find_packages(include=["astropath*"]),
+  cmdclass={
+    'build_commits_csv': build_commits_csv,
+    'build_py': build_py,
+    'develop': develop,
+  },
   entry_points = {
     "console_scripts": [
       "aligncohort=astropath.slides.align.aligncohort:main",
@@ -45,9 +77,11 @@ setupkwargs = dict(
       "zoomsample=astropath.slides.zoom.zoomsample:main",
     ],
   },
+  setup_requires = [
+    
+  ],
   install_requires = [
     "contextlib2>=0.6.0; python_version < '3.7'",
-    "cvxpy",
     "dataclassy>=0.10.0",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
@@ -60,8 +94,6 @@ setupkwargs = dict(
     "opencv-python",
     "openpyxl",
     "psutil;sys_platform!='cygwin'", #please note astropath is NOT been tested on cygwin
-    "pyopencl",
-    "reikna",
     "seaborn",
     "scikit-image>=0.17,<0.18", #see test/testmisc.py - we want polygon.numpyarray to return reproducible results, and skimage.draw.polygon's behavior changes between 0.17 and 0.18.  Want to support python 3.6 for now so we need to stick to 0.17.
     "scikit-learn>=0.17",
@@ -71,14 +103,17 @@ setupkwargs = dict(
     "uncertainties",
   ],
   extras_require = {
-    "test": ["beautifulsoup4", "flake8", "gitpython", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
+    "cvxpy": ["cvxpy"],
     "gdal": ["gdal>=3.3.0"],
+    "gpu": ["pyopencl", "reikna"],
+    "test": ["beautifulsoup4", "flake8", "gitpython", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
     "vips": ["pyvips"],
   },
   package_data = {
     "astropath": [
       "shared/master_annotation_list.csv",
       "slides/zoom/color_matrix.txt",
+      "utilities/version/commits.csv",
     ],
   },
 )

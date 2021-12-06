@@ -1,12 +1,14 @@
-import collections, errno, functools, jxmlease, numpy as np, os, pathlib, PIL, re, shutil
+import collections, errno, functools, numpy as np, os, pathlib, PIL, re, shutil
 
-from ...shared.argumentparser import SelectLayersArgumentParser
+from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
+from ...utilities.miscfileio import rm_missing_ok
+from ...utilities.optionalimports import pyvips
 from ...utilities.tableio import pathfield, readtable, writetable
 from ..zoom.zoomsample import ZoomSample
 
-class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, SelectLayersArgumentParser):
+class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   The deepzoom step takes the whole slide image and produces an image pyramid
   of different zoom levels.
@@ -38,10 +40,6 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     Use vips to create the image pyramid.  This is an out of the box
     functionality of vips.
     """
-    try:
-      import pyvips
-    except ImportError:
-      raise ImportError("Please pip install pyvips to use this functionality")
     self.logger.info("running vips for layer %d", layer)
     filename = self.wsifilename(layer)
 
@@ -106,9 +104,9 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
       self.logger.info("removing %d empty files with file size %d", len(files), size)
       for nbad, filename in enumerate(files, start=nbad+1):
         try:
-          filename.unlink()
+          rm_missing_ok(filename)
         except OSError:
-          filename.unlink() #retry in case of network errors
+          rm_missing_ok(filename) #retry in case of network errors
 
     ngood = nfiles - nbad
     self.logger.info("there are %d remaining non-empty files", ngood)
@@ -274,11 +272,20 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
     self.writezoomlist()
 
-  run = deepzoom
+  def run(self, *, cleanup=False, **kwargs):
+    if cleanup: self.cleanup()
+    self.deepzoom(**kwargs)
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
       *(self.wsifilename(layer) for layer in self.layers),
+    ]
+
+  @property
+  def workinprogressfiles(self):
+    return [
+      *self.deepzoomfolder.glob("L*_files/Z*/*.png"),
+      *self.deepzoomfolder.glob("L*.dzi"),
     ]
 
   @property
@@ -289,9 +296,8 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
   def getoutputfiles(cls, SlideID, *, root, informdataroot, deepzoomroot, layers, checkimages=False, **otherworkflowkwargs):
     zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
     if layers is None:
-      with open(informdataroot/SlideID/"inform_data"/"Component_Tiffs"/"batch_procedure.ifp", "rb") as f:
-        for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-          layers = range(1, int(node.xml_attrs["dim"])+1)
+      nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs")
+      layers = range(1, nlayers+1)
     result = [
       zoomlist,
       *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),

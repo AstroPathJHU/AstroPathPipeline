@@ -1,6 +1,6 @@
 import abc, dateutil, jxmlease, methodtools, numpy as np, pathlib
 from ..utilities import units
-from ..utilities.misc import floattoint
+from ..utilities.miscmath import floattoint
 from .csvclasses import ROIGlobals, ROIPerimeter
 from .rectangle import Rectangle
 
