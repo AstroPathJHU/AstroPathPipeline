@@ -1,6 +1,6 @@
 import more_itertools, numpy as np, os, pathlib, re
 
-from astropath.shared.csvclasses import Region
+from astropath.shared.csvclasses import Annotation, Region
 from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from astropath.slides.annowarp.detectbigshift import DetectBigShiftSample
 from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohortInformTissueMask
@@ -53,6 +53,8 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     referencestitchfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.stitchcsv.name
     verticesfilename = s.verticescsv
     referenceverticesfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.verticescsv.name
+    annotationsfilename = s.annotationscsv
+    referenceannotationsfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.annotationscsv.name
     regionsfilename = s.regionscsv
     referenceregionsfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.regionscsv.name
 
@@ -68,6 +70,11 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
     rows = s.readtable(stitchfilename, AnnoWarpStitchResultEntry, checkorder=True, checknewlines=True)
     targetrows = s.readtable(referencestitchfilename, AnnoWarpStitchResultEntry, checkorder=True, checknewlines=True)
+    for row, target in more_itertools.zip_equal(rows, targetrows):
+      assertAlmostEqual(row, target, rtol=1e-4)
+
+    rows = s.readtable(annotationsfilename, Annotation, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referenceannotationsfilename, Annotation, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 

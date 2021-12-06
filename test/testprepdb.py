@@ -8,11 +8,11 @@ from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities.miscfileio import checkwindowsnewlines
 from astropath.utilities.version.git import thisrepo
-from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-class TestPrepDb(TestBaseSaveOutput):
+class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
   testrequirecommit = thisrepo.getcommit("cf271f3a")
 
   @property
@@ -87,6 +87,30 @@ class TestPrepDb(TestBaseSaveOutput):
     self.__stack.close()
 
   @classmethod
+  def setUpClass(cls):
+    from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
+    assembleqptiff()
+    super().setUpClass()
+
+
+  @classmethod
+  def filestocopy(cls):
+    oldfolder = thisfolder/"data"/"M206"
+    newfolder = thisfolder/"test_for_jenkins"/"prepdb"/"M206"
+    oldim3 = oldfolder/"im3"
+    newim3 = newfolder/"im3"
+    for filename in ():
+      yield oldim3/filename, newim3
+    oldScan1 = oldim3/"Scan1"
+    newScan1 = newim3/"Scan1"
+    for filename in "M206_Scan1.annotations.polygons.xml", "M206_Scan1_annotations.xml", "M206_Scan1.qptiff":
+      yield oldScan1/filename, newScan1
+    oldMSI = oldScan1/"MSI"
+    newMSI = newScan1/"MSI"
+    for filename in oldMSI.glob("*.im3"):
+      yield filename, newMSI
+
+  @classmethod
   def skipannotations(cls, SlideID):
     return {
       "M206": False,
@@ -103,13 +127,13 @@ class TestPrepDb(TestBaseSaveOutput):
       "ZW2": True,
     }[SlideID]
 
-  def testPrepDb(self, SlideID="M21_1", units="safe"):
+  def testPrepDb(self, SlideID="M21_1", units="safe", moreargs=[]):
     dbloadroot = thisfolder/"test_for_jenkins"/"prepdb"
 
     skipannotations = self.skipannotations(SlideID)
     skipqptiff = self.skipqptiff(SlideID)
 
-    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--rename-annotation", "Good tisue", "Good tissue", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)]
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)] + moreargs
     if skipannotations:
       args.append("--skip-annotations")
     if skipqptiff:
@@ -186,13 +210,12 @@ class TestPrepDb(TestBaseSaveOutput):
     self.testPrepDbPolaris(units="fast")
 
   def testPrepDbM206FastUnits(self):
-    from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
-    assembleqptiff()
-    xmlfile = thisfolder/"data"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml"
+    testroot = thisfolder/"test_for_jenkins"/"prepdb"
+    xmlfile = testroot/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml"
     with open(xmlfile) as f:
       contents = f.read()
-    with temporarilyreplace(xmlfile, contents.replace("Good tissue", "Good tisue")):
-      self.testPrepDb(SlideID="M206", units="fast_microns")
+    with temporarilyreplace(xmlfile, contents.replace("Tumor", "Good Tissue").replace("Good tissue", "Tumor")):
+      self.testPrepDb(SlideID="M206", units="fast_microns", moreargs=["--rename-annotation", "Good tissue", "Tumor", "--rename-annotation", "Tumor", "Good Tissue", "--im3root", os.fspath(testroot), "--xmlfolder", os.fspath(thisfolder/"data"/"M206"/"im3"/"xml")])
 
   def testPrepDBZW2(self):
     self.testPrepDb(SlideID="ZW2", units="fast_microns")

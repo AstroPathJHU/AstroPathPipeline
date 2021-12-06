@@ -4,7 +4,7 @@ from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, S
 from ...shared.csvclasses import Region, Vertex
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
-from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample, XMLPolygonReader, ZoomFolderSampleBase
+from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ZoomFolderSampleBase
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
@@ -144,7 +144,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonReader, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -687,7 +687,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonRead
     """
     get the original vertices in qptiff coordinates
     """
-    return self.__getvertices(apscale=self.apscale, pscale=self.apscale)
+    return self.__getvertices(pscale=self.apscale)
 
   @methodtools.lru_cache()
   def __getwarpedvertices(self, *, apscale, pscale):
@@ -702,7 +702,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonRead
         vertex=v,
         wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=apscale))) / oneapmicron * onemicron // onepixel * onepixel,
         pscale=self.pscale,
-      ) for v in self.__getvertices(apscale=apscale, pscale=pscale)
+      ) for v in self.__getvertices()
     ]
 
   @property

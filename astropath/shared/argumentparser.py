@@ -1,4 +1,4 @@
-import abc, argparse, logging, pathlib, re
+import abc, argparse, contextlib, logging, pathlib, re
 from ..utilities.tableio import TableReader
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
@@ -31,7 +31,7 @@ class MRODebuggingMetaClass(abc.ABCMeta):
         logger.critical("========================")
       raise
 
-class RunFromArgumentParserBase(ThingWithRoots, TableReader, metaclass=MRODebuggingMetaClass):
+class RunFromArgumentParserBase(ThingWithRoots, TableReader, contextlib.ExitStack, metaclass=MRODebuggingMetaClass):
   @classmethod
   def argumentparserhelpmessage(cls):
     return cls.__doc__
