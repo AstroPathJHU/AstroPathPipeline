@@ -265,8 +265,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     with open(self.annotationspolygonsxmlfile, "rb") as f:
       return [AnnotationNodeXML(node, apscale=self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
 
+  @methodtools.lru_cache()
   def getXMLpolygonannotations(self, *, pscale=None):
-    if pscale is None: pscale = self.pscale
+    if pscale is None:
+      return self.getXMLpolygonannotations(pscale=self.pscale)
 
     annotations = []
     allregions = []
