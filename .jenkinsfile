@@ -163,7 +163,8 @@ pipeline {
         stage('powershell meanimage') {
           steps {
             echo 'starting the powershell tests'
-			powershell(script: "test/testmeanimagepowershell.ps1")
+			powershell(script: "Write-Host 'this first test works'")
+			powershell(script: "test/test.ps1")
           }
         }
 
