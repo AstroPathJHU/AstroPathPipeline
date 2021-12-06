@@ -163,7 +163,7 @@ pipeline {
         stage('powershell meanimage') {
           steps {
             echo 'starting the powershell tests'
-            powershell(returnStdout: true, returnStatus: true, script: " & '..\\test\\testmeanimagepowershell.ps1'")
+            powershell(returnStdout: true, returnStatus: true, script: "../test/testmeanimagepowershell.ps1")
           }
         }
 
