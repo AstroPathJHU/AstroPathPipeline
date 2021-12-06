@@ -163,7 +163,8 @@ pipeline {
         stage('powershell meanimage') {
           steps {
 			script {
-			  def msg = powershell(returnStdout: true, returnStatus: true, script: " & './test\\testmeanimagepowershell.ps1'")
+			  println "Starting powershell meanimage"
+			  def msg = powershell(returnStdout: true, returnStatus: true, script: " & '.\\test\\testmeanimagepowershell.ps1'")
 			  println msg
 			}
           }
