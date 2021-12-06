@@ -159,10 +159,10 @@ pipeline {
             }
           }
         }
-		
+
         stage('powershell meanimage') {
           steps {
-			powershell(returnStdout: true, returnStatus: true, script: " & '.\\test\\testmeanimagepowershell.ps1'")
+            powershell(returnStdout: true, returnStatus: true, script: " & '.\\test\\testmeanimagepowershell.ps1'")
           }
         }
 
