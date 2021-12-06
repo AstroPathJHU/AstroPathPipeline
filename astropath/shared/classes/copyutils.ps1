@@ -10,7 +10,7 @@ class copyutils{
     #
     copyutiles(){}
     #
-    [void]copy([string]$sor, [string]$des){ 
+    [void]copy([string]$sor, [string]$des){
         xcopy $sor, $des /q /y /z /j /v | Out-Null
     }
     #
@@ -30,6 +30,12 @@ class copyutils{
             $filespec = '*' + $filespec
             robocopy $sor $des $filespec -r:3 -w:3 -np -mt:$threads | out-null
         }
+        #
+
+        $sourcehash = Get-ChildItem -Path ($sor+'\*') -Recurse | Get-FileHash -Algorithm MD5
+        $destinationhash = Get-ChildItem -Path ($des+'\*') -Recurse | Get-FileHash -Algorithm MD5
+
+
     }
     #
 }
