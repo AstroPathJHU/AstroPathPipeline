@@ -64,12 +64,14 @@ class WorkflowDependency(ThingWithRoots):
     return self.getworkinprogressfiles(**self.workflowkwargs)
 
   def cleanup(self):
-    workinprogressfiles = [_ for _ in self.workinprogressfiles if _.exists()]
-    if not workinprogressfiles: return
-    self.logger.info("Cleaning up files from previous runs")
+    printed = False
     for filename in self.workinprogressfiles:
+      if not printed and _.exists():
+        self.logger.info("Cleaning up files from previous runs")
+        printed = True
       rm_missing_ok(filename)
-    self.logger.info("Finished cleaning up")
+    if printed:
+      self.logger.info("Finished cleaning up")
 
   @classmethod
   @abc.abstractmethod
@@ -98,7 +100,7 @@ class WorkflowDependency(ThingWithRoots):
       samplelog=cls.getlogfile(**workflowkwargs),
       module=cls.logmodule(),
       missingfiles=cls.getmissingoutputfiles(**workflowkwargs),
-      workinprogressfiles=[_ for _ in cls.getworkinprogressfiles(**workflowkwargs) if _.exists()],
+      workinprogressfiles=cls.getworkinprogressfiles(**workflowkwargs),
       startregex=cls.logstartregex(),
       endregex=cls.logendregex(),
     )
@@ -270,7 +272,7 @@ class SampleRunStatus(MyDataClass):
               if previousrun is not None:
                 lastcleanstart = previousrun.lastcleanstart
                 lastattemptedcleanup = previousrun.lastattemptedcleanup
-              if not len(workinprogressfiles):
+              if any(_.exists() for _ in workinprogressfiles):
                 lastcleanstart = lastattemptedcleanup = None
 
               try:
