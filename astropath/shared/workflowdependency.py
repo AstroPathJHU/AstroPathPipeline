@@ -46,13 +46,22 @@ class WorkflowDependency(ThingWithRoots):
     """
     return self.getmissingoutputfiles(**self.workflowkwargs)
 
+  @classmethod
+  @abc.abstractmethod
+  def getworkinprogressfiles(cls, **workflowkwargs):
+    """
+    Files that are saved from one run to the next so that we can
+    resume where we left off.  These are removed by cleanup()
+    """
+    return []
+
   @property
   def workinprogressfiles(self):
     """
     Files that are saved from one run to the next so that we can
     resume where we left off.  These are removed by cleanup()
     """
-    return []
+    return self.getworkinprogressfiles(**self.workflowkwargs)
 
   def cleanup(self):
     workinprogressfiles = [_ for _ in self.workinprogressfiles if _.exists()]
@@ -84,7 +93,15 @@ class WorkflowDependency(ThingWithRoots):
   @classmethod
   def getrunstatus(cls, *, SlideID, **workflowkwargs):
     workflowkwargs["SlideID"] = SlideID
-    return SampleRunStatus.fromlog(SlideID=SlideID, samplelog=cls.getlogfile(**workflowkwargs), module=cls.logmodule(), missingfiles=cls.getmissingoutputfiles(**workflowkwargs), startregex=cls.logstartregex(), endregex=cls.logendregex())
+    return SampleRunStatus.fromlog(
+      SlideID=SlideID,
+      samplelog=cls.getlogfile(**workflowkwargs),
+      module=cls.logmodule(),
+      missingfiles=cls.getmissingoutputfiles(**workflowkwargs),
+      workinprogressfiles=[_ for _ in cls.getworkinprogressfiles(**workflowkwargs) if _.exists()],
+      startregex=cls.logstartregex(),
+      endregex=cls.logendregex(),
+    )
 
   def runstatus(self, **kwargs):
     """
@@ -208,7 +225,7 @@ class SampleRunStatus(MyDataClass):
     return self.previousrun.nruns + 1
 
   @classmethod
-  def fromlog(cls, *, samplelog, SlideID, module, missingfiles, startregex, endregex):
+  def fromlog(cls, *, samplelog, SlideID, module, missingfiles, workinprogressfiles, startregex, endregex):
     """
     Create a SampleRunStatus object by reading the log file.
     samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log
@@ -252,6 +269,9 @@ class SampleRunStatus(MyDataClass):
               result = None
               if previousrun is not None:
                 lastcleanstart = previousrun.lastcleanstart
+                lastattemptedcleanup = previousrun.lastattemptedcleanup
+              if not len(workinprogressfiles):
+                lastcleanstart = lastattemptedcleanup = None
 
               try:
                 gitcommit = startmatch.group("commit")
@@ -300,6 +320,7 @@ class SampleRunStatus(MyDataClass):
       return NotImplemented
   def __le__(self, other):
     if isinstance(other, GitCommit):
+      if self.gitcommit is None: return True
       return self.gitcommit <= other
     elif isinstance(other, SampleRunStatus):
       return self == other or self < other

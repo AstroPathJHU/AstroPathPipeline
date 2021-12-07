@@ -496,12 +496,14 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   def workflowkwargs(self):
     return {"layers": self.layers, "tifflayers": self.tifflayers, **super().workflowkwargs}
 
-  @property
-  def workinprogressfiles(self):
+  @classmethod
+  def getworkinprogressfiles(cls, SlideID, *, zoomroot, **otherworkflowkwargs):
+    bigfolder = zoomroot/SlideID/"big"
+    wsifolder = zoomroot/SlideID/"wsi"
     return [
-      *(self.bigfolder.glob("*.png")),
-      *(self.wsifolder.glob("*.png")),
-      *(self.wsifolder.glob("*.tiff")),
+      *bigfolder.glob("*.png"),
+      *wsifolder.glob("*.png"),
+      *wsifolder.glob("*.tiff"),
     ]
 
   @classmethod
