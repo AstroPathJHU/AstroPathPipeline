@@ -66,7 +66,7 @@ class WorkflowDependency(ThingWithRoots):
   def cleanup(self):
     printed = False
     for filename in self.workinprogressfiles:
-      if not printed and _.exists():
+      if not printed and filename.exists():
         self.logger.info("Cleaning up files from previous runs")
         printed = True
       rm_missing_ok(filename)
