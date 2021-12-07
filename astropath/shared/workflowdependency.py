@@ -272,7 +272,7 @@ class SampleRunStatus(MyDataClass):
               if previousrun is not None:
                 lastcleanstart = previousrun.lastcleanstart
                 lastattemptedcleanup = previousrun.lastattemptedcleanup
-              if any(_.exists() for _ in workinprogressfiles):
+              if not any(_.exists() for _ in workinprogressfiles):
                 lastcleanstart = lastattemptedcleanup = None
 
               try:
