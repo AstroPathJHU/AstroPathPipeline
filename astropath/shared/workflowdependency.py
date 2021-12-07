@@ -47,7 +47,6 @@ class WorkflowDependency(ThingWithRoots):
     return self.getmissingoutputfiles(**self.workflowkwargs)
 
   @classmethod
-  @abc.abstractmethod
   def getworkinprogressfiles(cls, **workflowkwargs):
     """
     Files that are saved from one run to the next so that we can
