@@ -1246,7 +1246,7 @@ class XMLLayoutReader(SampleBase):
       expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}]{UNIV_CONST.IM3_EXT}"
       actual = r.file
       if expected != actual:
-        self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
+        self.logger.warningglobalonenter(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
       r.file = expected
 
   def fixduplicaterectangles(self, rectangles):
@@ -1262,7 +1262,7 @@ class XMLLayoutReader(SampleBase):
       for r2 in duplicates:
         if r2.file != r.file:
           raise ValueError(f"Multiple rectangles at {r.cxvec} with different filenames {', '.join(r3.file for r3 in [r]+duplicates)}")
-      self.logger.warningglobal(f"annotations.xml has the rectangle at {r.cxvec} with filename {r.file} {len(duplicates)+1} times")
+      self.logger.warningglobalonenter(f"annotations.xml has the rectangle at {r.cxvec} with filename {r.file} {len(duplicates)+1} times")
       for r2 in [r]+duplicates[:-1]:
         rectangles.remove(r2)
     for i, rectangle in enumerate(rectangles, start=1):
