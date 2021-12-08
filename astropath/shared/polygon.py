@@ -50,8 +50,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithApscale):
   """
   def __init__(self, outerpolygon, subtractpolygons):
     self.__outerpolygon = outerpolygon
-    self.__subtractpolygons = subtractpolygons
+    self.__subtractpolygons = sorted(subtractpolygons, key=lambda x: tuple(x.outerpolygon.vertexarray[0]))
     assert not outerpolygon.subtractpolygons
+    self.__outerpolygon = outerpolygon.outerpolygon
     pscales = {_.pscale for _ in [outerpolygon, *subtractpolygons]}
     pscales.discard(None)
     try:

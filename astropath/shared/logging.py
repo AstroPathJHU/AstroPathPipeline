@@ -13,8 +13,8 @@ class MyLogger:
   root: the Clinical_Specimen_* folder (or another folder if you want to log somewhere else)
   samp: the SampleDef object
   uselogfiles: should we write to log files (default: false)
-  threshold: minimum level of messages that should be logged (default: logging.DEBUG)
-  printthreshold: minimum level of messages that should be printed to stderr (default: logging.DEBUG)
+  threshold: minimum level of messages that should be logged (default: logging.NOTSET-100)
+  printthreshold: minimum level of messages that should be printed to stderr (default: logging.NOTSET-100)
   isglobal: is this a global log for the cohort? in that case samplelog is set to None and all the info goes in the mainlog
   mainlog: main log file, which gets errors and the most important warnings
            (default: root/logfiles/module.log)
@@ -50,7 +50,7 @@ class MyLogger:
     4) if sampledef.csv does not exist yet, you can provide an apidfile argument
        to getlogger and it will read the information from there
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.NOTSET-100, printthreshold=logging.NOTSET-100, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False):
     self.module = module
     self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
@@ -191,6 +191,7 @@ class MyLogger:
     if self.nentered == 0:
       if exc_value is not None:
         errormessage = str(exc_value).replace(";", ",")
+        if not errormessage: errormessage = exc_type.__name__
         if "\n" in errormessage: errormessage = repr(errormessage)
         self.error(errormessage)
         self.info(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)).replace(";", ""))
@@ -343,7 +344,7 @@ __notgiven = object()
 def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, moremainlogroots, reraiseexceptions, skipstartfinish):
   return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=moremainlogroots, reraiseexceptions=reraiseexceptions, skipstartfinish=skipstartfinish)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None):
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.NOTSET-100, printthreshold=logging.NOTSET-100, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None):
   from .samplemetadata import SampleDef
   if samp is not None:
     samp = SampleDef(root=root, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)
