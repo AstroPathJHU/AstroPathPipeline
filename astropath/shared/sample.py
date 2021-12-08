@@ -1369,6 +1369,10 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
     #set the flatfield/warping files from the arguments
     self.__flatfield_file = flatfield_file
     self.__warping_file = warping_file
+    if (correction_model_file is not None) and (self.__flatfield_file is not None or self.__warping_file is not None) :
+      warnmsg = f'WARNING: correction model file {correction_model_file} will be ignored because a flatfield and/or '
+      warnmsg+= 'warping file were given'
+      self.logger.warningonenter(warnmsg) 
     #if neither a flatfield nor a warping file were given, but a correction model file was, search for values defined there
     if self.__flatfield_file is None and self.__warping_file is None and correction_model_file is not None :
       if not correction_model_file.is_file() :
