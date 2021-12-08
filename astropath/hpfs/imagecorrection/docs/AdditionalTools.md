@@ -25,7 +25,7 @@ where `[njobs]` is the maximum number of parallel processes allowed to run at on
 
 See [here](../../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
 
-Running this routine also assumes that the file at `\\bki04\astropath_processing\AstroPathCorrectionModels.csv` contains exactly one entry for the `<SlideID>` sample listing the flatfield version and the name of a warping file to use in correcting the image contents as a [`CorrectionModelTableEntry` object](../utilities.py#L4-L11).
+Successfully running the command above requires that the file at `\\bki04\astropath_processing\AstroPathCorrectionModels.csv` contain exactly one entry for the `<SlideID>` sample listing the flatfield version and the name of a warping file to use in correcting the image contents as a [`CorrectionModelTableEntry` object](../utilities.py#L4-L11).
 
 Running the above command will produce:
 1. **corrected image files** that **overwrite** those in `<Dpath>\<Dname>\<SlideID>`
