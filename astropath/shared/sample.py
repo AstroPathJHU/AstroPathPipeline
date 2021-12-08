@@ -1385,7 +1385,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
         errmsg+= f'table at {correction_model_file} but there should be exactly one'
         raise RuntimeError(errmsg)
       #reset the warping file
-      self.__warping_file = this_slide_tes[0].WarpingFile
+      self.__warping_file = pathlib.Path(this_slide_tes[0].WarpingFile)
       #reset the flatfield file
       ff_filename = f'{FF_CONST.FLATFIELD_DIRNAME_STEM}_{this_slide_tes[0].FlatfieldVersion}.bin'
       self.__flatfield_file = FF_CONST.DEFAULT_FLATFIELD_MODEL_DIR/ff_filename

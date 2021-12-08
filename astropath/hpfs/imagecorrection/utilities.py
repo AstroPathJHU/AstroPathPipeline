@@ -4,9 +4,9 @@ from ...utilities.dataclasses import MyDataClass
 #dataclass to organize entries in the correction model .csv file
 class CorrectionModelTableEntry(MyDataClass) :
     SlideID : str
-    Project : str
-    Cohort  : str
-    BatchID : str
+    Project : int
+    Cohort  : int
+    BatchID : int
     FlatfieldVersion : str
     WarpingFile : str
     
