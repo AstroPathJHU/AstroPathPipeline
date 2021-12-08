@@ -4,6 +4,7 @@ from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, Workfl
 from ...utilities.img_file_io import write_image_to_file
 from ...utilities.miscfileio import cd
 from ...utilities.config import CONST as UNIV_CONST
+from .config import IMAGECORRECTION_CONST
 
 class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, 
                             WorkingDirArgumentParser, SelectLayersArgumentParser) :
@@ -142,6 +143,9 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
         to_return = super().initkwargsfromargumentparser(parsed_args_dict)
         to_return['filetype']='raw' # only ever run image correction on raw files
         to_return['skip_et_corrections']=True # never apply corrections for exposure time
+        # Give the correction model file by default
+        if to_return['correction_model_file'] is None :
+            to_return['correction_model_file']=IMAGECORRECTION_CONST.DEFAULT_CORRECTION_MODEL_FILEPATH
         return to_return
 
 #################### FILE-SCOPE FUNCTIONS ####################

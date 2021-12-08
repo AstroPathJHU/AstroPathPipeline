@@ -3,6 +3,7 @@ import abc, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, me
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
 from ..hpfs.warping.utilities import WarpingSummary
+from ..hpfs.imagecorrection.utilities import CorrectionModelTableEntry
 from ..utilities import units
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.miscmath import floattoint
@@ -1353,7 +1354,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
   Base class for any sample that will use corrections defined from input files
   """
 
-  def __init__(self,*args,et_offset_file,skip_et_corrections,flatfield_file,warping_file,**kwargs) :
+  def __init__(self,*args,et_offset_file,skip_et_corrections,flatfield_file,warping_file,correction_model_file,**kwargs) :
     super().__init__(*args,**kwargs)
     self.__et_offset_file = et_offset_file
     self.__skip_et_corrections = skip_et_corrections
@@ -1365,22 +1366,45 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
         errmsg+= 'for exposure time dark current offsets or rerun with --skip_exposure_time_corrections'
         raise ValueError(errmsg)
       self.__et_offset_file = self.fullxmlfile
+    #set the flatfield/warping files from the arguments
     self.__flatfield_file = flatfield_file
-    #if the flatfield file argument was given isn't a file, search the root/flatfield directory for a file of the same name
-    if (self.__flatfield_file is not None) and (not self.__flatfield_file.is_file()) :
-      other_filepath = self.root / UNIV_CONST.FLATFIELD_DIRNAME / self.__flatfield_file.name
-      if other_filepath.is_file() :
-        self.__flatfield_file = other_filepath
-      else :
-        raise ValueError(f'ERROR: flatfield file {self.__flatfield_file} does not exist!')
     self.__warping_file = warping_file
-    #if the warping file argument as given isn't a file, search the foot/warping directory for a file of the same name
+    #if neither a flatfield nor a warping file were given, but a correction model file was, search for values defined there
+    if self.__flatfield_file is None and self.__warping_file is None and correction_model_file is not None :
+      if not correction_model_file.is_file() :
+        raise ValueError(f'ERROR: correction model file {correction_model_file} does not exist!')
+      table_entries = readtable(correction_model_file,CorrectionModelTableEntry)
+      this_slide_tes = [te for te in table_entries if ( te.SlideID==self.SlideID and te.Project==self.Project and 
+                                                        te.Cohort==self.Cohort and te.BatchID==self.BatchID ) ]
+      if len(this_slide_tes)!=1 :
+        errmsg = f'ERROR: there are {len(this_slide_tes)} entries for slide {self.SlideID} in the correction model '
+        errmsg+= f'table at {correction_model_file} but there should be exactly one'
+        raise RuntimeError(errmsg)
+      #reset the warping file
+      self.__warping_file = this_slide_tes[0].WarpingFile
+      #reset the flatfield file
+      ff_filename = f'{FF_CONST.FLATFIELD_DIRNAME_STEM}_{this_slide_tes[0].FlatfieldVersion}.bin'
+      self.__flatfield_file = FF_CONST.DEFAULT_FLATFIELD_MODEL_DIR/ff_filename
+    # if the flatfield file argument given isn't a file, 
+    # search the astropath_processing/flatfield and root/flatfield directory for a file of the same name
+    if (self.__flatfield_file is not None) and (not self.__flatfield_file.is_file()) :
+      poss_roots = [self.root,UNIV_CONST.ASTROPATH_PROCESSING_DIR]
+      for rd in poss_roots :
+        other_filepath = rd / UNIV_CONST.FLATFIELD_DIRNAME / self.__flatfield_file.name
+        if other_filepath.is_file() :
+          self.__flatfield_file = other_filepath
+      if not self.__flatfield_file.is_file() :
+        raise ValueError(f'ERROR: flatfield file {self.__flatfield_file} does not exist!')
+    # if the warping file argument given isn't a file, 
+    # search the astropath_processing/warping and root/warping directories for a file of the same name
     if (self.__warping_file is not None) and (not self.__warping_file.is_file()) :
-      other_filepath = self.root / UNIV_CONST.WARPING_DIRNAME / self.__warping_file.name
-      if other_filepath.is_file() :
-        self.__warping_file = other_filepath
-      else :
-        raise ValueError(f'ERROR: warping file {self.__flatfield_file} does not exist!')
+      poss_roots = [self.root,UNIV_CONST.ASTROPATH_PROCESSING_DIR]
+      for rd in poss_roots :
+        other_filepath = rd / UNIV_CONST.WARPING_DIRNAME / self.__warping_file.name
+        if other_filepath.is_file() :
+          self.__warping_file = other_filepath
+      if not self.__warping_file.is_file() :
+        raise ValueError(f'ERROR: warping file {self.__warping_file} does not exist!')
 
   @property
   def et_offset_file(self) :

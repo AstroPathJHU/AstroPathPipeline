@@ -1,5 +1,4 @@
 #imports
-from argparse import PARSER
 import pathlib, re
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.tableio import readtable
@@ -8,7 +7,7 @@ from ...shared.sample import WorkflowSample
 from ...shared.cohort import WorkflowCohort
 from ...shared.multicohort import MultiCohortBase
 from .config import CONST
-from .utilities import ModelTableEntry
+from .utilities import FlatfieldModelTableEntry
 from .imagestack import Flatfield
 from .meanimagesample import MeanImageSample
 
@@ -145,12 +144,12 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         p.add_argument('--version',
                        help="version of the flatfield model that should be created from the given slides' meanimages")
         p.add_argument('--flatfield-model-file',type=pathlib.Path,
-                        default=pathlib.Path('//bki04/astropath_processing/AstroPathFlatfieldModels.csv'),
+                        default=CONST.DEFAULT_FLATFIELD_MODEL_FILEPATH,
                         help='path to a .csv file defining which slides should be used for the given version')
         p.add_argument('--meanimage_dirname',default=UNIV_CONST.MEANIMAGE_DIRNAME,
                        help='''The name of the meanimage directories to use 
                                 (useful if multiple meanimage versions have been created)''')
-        p.add_argument('--outdir',type=pathlib.Path,default=pathlib.Path('//bki04/astropath_processing'),
+        p.add_argument('--outdir',type=pathlib.Path,default=CONST.DEFAULT_FLATFIELD_MODEL_DIR.parent,
                        help='''directory where the output will be placed (a "flatfield" directory will be created 
                                 inside outdir if one does not already exist)''')
         return p
@@ -162,7 +161,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         if parsed_args_dict['sampleregex'] is None :
             if not flatfield_model_file.is_file() :
                 raise ValueError(f'ERROR: flatfield model file {flatfield_model_file} not found!')
-            all_model_table_entries = readtable(flatfield_model_file,ModelTableEntry)
+            all_model_table_entries = readtable(flatfield_model_file,FlatfieldModelTableEntry)
             model_table_entries = [te for te in all_model_table_entries if te.version==version]
             n_entries = len(model_table_entries)
             if n_entries<1 :

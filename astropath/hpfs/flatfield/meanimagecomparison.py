@@ -1,5 +1,5 @@
 #imports
-import os, pathlib, logging, re, platform
+import os, pathlib, logging, re
 from argparse import ArgumentParser
 import numpy as np
 from ...utilities.config import CONST as UNIV_CONST
@@ -8,7 +8,7 @@ from ...utilities.tableio import readtable,writetable
 from ...utilities.img_file_io import get_image_hwl_from_xml_file, get_raw_as_hwl
 from ...shared.samplemetadata import SampleDef
 from .config import CONST
-from .utilities import ModelTableEntry, ComparisonTableEntry, normalize_mean_image
+from .utilities import FlatfieldModelTableEntry, ComparisonTableEntry, normalize_mean_image
 from .plotting import meanimage_comparison_plot
 from .batchflatfieldmulticohort import BatchFlatfieldMultiCohort
 
@@ -187,11 +187,11 @@ class MeanImageComparison :
         all_lines = []
         #read anything already in the table
         if self.MODEL_TABLE_PATH.is_file() :
-            all_lines = readtable(self.MODEL_TABLE_PATH,ModelTableEntry)
+            all_lines = readtable(self.MODEL_TABLE_PATH,FlatfieldModelTableEntry)
         #add a line for every slide used
         for sid,mid in self.ordered_slide_tuples :
             sd = SampleDef(SlideID=sid,root=mid.parent.parent.parent)
-            all_lines.append(ModelTableEntry(version_tag,sd.Project,sd.Cohort,sd.BatchID,sd.SlideID))
+            all_lines.append(FlatfieldModelTableEntry(version_tag,sd.Project,sd.Cohort,sd.BatchID,sd.SlideID))
         #write out the table
         writetable(self.MODEL_TABLE_PATH,all_lines)
         #run batchflatfieldmulticohort if requested
@@ -208,7 +208,7 @@ class MeanImageComparison :
     MEANIMAGE_SUBDIR_NAME = UNIV_CONST.MEANIMAGE_DIRNAME
     FLATW_MEANIMAGE_SUBDIR_NAME = f'{UNIV_CONST.MEANIMAGE_DIRNAME}_from_fw_files'
     DATATABLE_NAME = 'meanimagecomparison_table.csv'
-    MODEL_TABLE_PATH = pathlib.Path('//bki04/astropath_processing/AstroPathFlatfieldModels.csv')
+    MODEL_TABLE_PATH = CONST.DEFAULT_FLATFIELD_MODEL_FILEPATH
 
     #################### CLASS METHODS ####################
 
@@ -222,10 +222,7 @@ class MeanImageComparison :
         # sampleregex: a regular expression matching all of the slide IDs that should be used
         parser.add_argument('--sampleregex', type=re.compile, help='only run on SlideIDs that match this regex')
         # workingdir: the directory the output should go in (with a default location)
-        if platform.system()=='Darwin' :
-            def_workingdir = '/Volumes/astropath_processing/meanimagecomparison'
-        else :
-            def_workingdir = '//bki04/astropath_processing/meanimagecomparison'
+        def_workingdir = UNIV_CONST.ASTROPATH_PROCESSING_DIR/'meanimagecomparison'
         parser.add_argument('--workingdir', type=pathlib.Path, default=def_workingdir,
                             help='Path to the working directory where results will be saved')
         #other optional arguments

@@ -19,14 +19,13 @@ This workflow is described in more detail [here](OverviewWorkflow.md#576-overvie
 # 5.7.5.2. Instructions to Apply Image Correction Standalone via Python Package
 The "applyflatw" portion of the code corrects raw ".Data.dat" files based on a given flatfield and warping model and writes out their contents, either overwriting the original raw image files, or as new ".fw" files. To run it for a single sample in the most common use case, enter the following command and arguments:
 
-`applyflatwsample <Dpath>\<Dname> <SlideID> --shardedim3root <Rpath> --flatfield-file [path_to_flatfield_bin_file] --warping-file [path_to_warping_summary_csv_file] --njobs [njobs]`
+`applyflatwsample <Dpath>\<Dname> <SlideID> --shardedim3root <Rpath> --njobs [njobs]`
 
-where:
-- `[path_to_flatfield_bin_file]` is the path to the ".bin" file specifying the flatfield corrections to apply, or the name of a file located in the `<Dpath>\<Dname>\Flatfield` directory
-- `[path_to_warping_summary_csv_file]` is the path to a .csv file detailing the warping model parameters as a [`WarpingSummary` object](../../warping/utilities.py#L43-L61). This file can have several `WarpingSummary` entries specifying different warping patterns to apply in differen raw image layers.
-- `[njobs]` is the maximum number of parallel processes allowed to run at once (many parallel processes can be used; each process corrects and writes out one file at a time)
+where `[njobs]` is the maximum number of parallel processes allowed to run at once (many parallel processes can be used; each process corrects and writes out one file at a time).
 
 See [here](../../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
+
+Running this routine also assumes that the file at `\\bki04\astropath_processing\AstroPathCorrectionModels.csv` contains exactly one entry for the `<SlideID>` sample listing the flatfield version and the name of a warping file to use in correcting the image contents as a [`CorrectionModelTableEntry` object](../utilities.py#L4-L11).
 
 Running the above command will produce:
 1. **corrected image files** that **overwrite** those in `<Dpath>\<Dname>\<SlideID>`
@@ -36,7 +35,7 @@ Running the above command will produce:
 Other options for how the correction should be done include:
 1. Putting the output in a different location: add the `--workingdir [workingdir_path]` argument where `[workingdir_path]` is the path to the directory where the output should go. In this case the file extension is ".fw" and not the original raw image file extension.
 1. Writing out corrected files for single image layers as well as multilayer images: add the `--layers [layers]` argument where `[layers]` is any number of arguments specifying which layer numbers to use (starting from 1). In the single image layer case, the corresponding output files are named ".fwxx" where "xx" is the two-digit layer number (i.e. ".fw01"). The special number -1 can also be given as an argument in `[layers]`, in which case the multilayer files will be written out in addition to any single layer files requested. Using this argument one could, for example, simultaneously write out the corrected multilayer .fw files and the corrected single layer .fw01 files. When using this argument, a `[workingdir_path]` must be specified.
-1. Skipping the flatfield and/or warping corrections: run without specifying the `--flatfield-file` and/or `--warping-file` arguments
+1. Using different flatfield and/or warping corrections than those defined in the file at ``\\bki04\astropath_processing\AstroPathCorrectionModels.csv``: run with the `--flatfield-file [path_to_flatfield_bin_file]` and/or `--warping-file [path_to_warping_summary_csv_file]` arguments, where `[path_to_flatfield_bin_file]` is the path to the ".bin" file specifying the flatfield corrections to apply, or the name of a file located in the `<Dpath>\<Dname>\flatfield` or `\\bki04\astropath_processing\flatfield` directories, and `[path_to_warping_summary_csv_file]` is the path to a .csv file detailing the warping model parameters as a [`WarpingSummary` object](../../warping/utilities.py#L43-L61), or the name of a file in the same format located in the `<Dpath>\<Dname>\warping` or `\\bki04\astropath_processing\warping` directories. This warping .csv file can have several `WarpingSummary` entries specifying different warping patterns to apply in different raw image layers. 
 
 The routine can be run for an entire cohort of samples at once using the following command:
 
