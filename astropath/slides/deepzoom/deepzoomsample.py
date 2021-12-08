@@ -1,4 +1,4 @@
-import collections, errno, functools, numpy as np, os, pathlib, PIL, re, shutil
+import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
@@ -284,10 +284,10 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
   @classmethod
   def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, **workflowkwargs):
     deepzoomfolder = deepzoomroot/SlideID
-    return [
-      *deepzoomfolder.glob("L*_files/Z*/*.png"),
-      *deepzoomfolder.glob("L*.dzi"),
-    ]
+    return itertools.chain(
+      deepzoomfolder.glob("L*_files/Z*/*.png"),
+      deepzoomfolder.glob("L*.dzi"),
+    )
 
   @property
   def workflowkwargs(self):
