@@ -178,9 +178,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots):
   @property
   def annotationsxmlfile(self):
     return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
-  @property
-  def annotationspolygonsxmlfile(self):
-    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".annotations.polygons.xml")
 
   def __getimageinfofromXMLfiles(self):
     """
@@ -1328,6 +1325,36 @@ class XMLPolygonAnnotationReaderSample(SampleBase, XMLPolygonAnnotationReader, X
   """
   Base class for any sample that reads the annotations from the XML metadata.
   """
+  def __init__(self, *args, annotationsxmlregex=None, **kwargs):
+    if annotationsxmlregex is not None: annotationsxmlregex = re.compile(annotationsxmlregex)
+    self.__annotationsxmlregex = annotationsxmlregex
+    super().__init__(*args, **kwargs)
+
+  @methodtools.lru_cache()
+  @property
+  def annotationspolygonsxmlfile(self):
+    candidates = [
+      filename
+      for filename in self.scanfolder.glob(f"*{self.SlideID}*annotations.polygons*.xml")
+      if self.__annotationsxmlregex is None or self.__annotationsxmlregex.match(filename.name)
+    ]
+    default = self.scanfolder/f"{self.SlideID}_{self.scanfolder.name}.annotations.polygons.xml"
+    try:
+      candidate, = candidates
+    except ValueError:
+      if candidates:
+        if self.__annotationsxmlregex is None:
+          raise IOError(f"Found multiple annotation xmls: " + ", ".join(_.name for _ in candidates) + ". Please provide an annotationsxmlregex to pick the one you want.")
+        else:
+          raise IOError(f"Found multiple annotation xmls matching {self.__annotationsxmlregex.pattern}: " + ", ".join(_.name for _ in candidates) + ".")
+      else:
+        if self.__annotationsxmlregex is None:
+          return default
+        else:
+          raise FileNotFoundError(f"Couldn't find any annotation xmls matching {self.__annotationsxmlregex.pattern}")
+    if candidate != default:
+      self.logger.warning(f"Using {candidate.name} for annotations")
+    return candidate
 
 class XMLPolygonAnnotationReaderSampleWithOutline(XMLPolygonAnnotationReaderSample, XMLPolygonAnnotationReaderWithOutline):
   pass
