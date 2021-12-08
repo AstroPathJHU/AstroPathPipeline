@@ -7,7 +7,7 @@ from ...shared.sample import WorkflowSample
 from ...shared.cohort import WorkflowCohort
 from ...shared.multicohort import MultiCohortBase
 from .config import CONST
-from .utilities import ModelTableEntry
+from .utilities import FlatfieldModelTableEntry
 from .imagestack import Flatfield
 from .meanimagesample import MeanImageSample
 
@@ -16,10 +16,16 @@ class BatchFlatfieldSample(WorkflowSample) :
     Small utility class to hold sample-dependent information for the batch flatfield run
     Just requires as input files the relevant output of the meanimage mode
     """
+
     multilayer = True
+
+    def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
+        super().__init__(*args,**kwargs)
+        self.__meanimage_dirname = meanimage_dirname
+
     @property
     def meanimagefolder(self) :
-        return self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME
+        return self.im3folder/self.__meanimage_dirname
     @property
     def meanimage(self) :
         return self.meanimagefolder/f'{self.SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
@@ -39,8 +45,8 @@ class BatchFlatfieldSample(WorkflowSample) :
         return [*super().inputfiles(**kwargs),
                 self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
     def run(self,version,flatfield,samplesprocessed,totalsamples) :
-        msg = f'Adding mean image and mask stack from {self.SlideID} to flatfield model version '
-        msg+= f'{version} ({len(samplesprocessed)+1} of {totalsamples})....'
+        msg = f'Adding mean image and mask stack from {self.SlideID} meanimage directory "{self.meanimagefolder}" '
+        msg+= f'to flatfield model version {version} ({len(samplesprocessed)+1} of {totalsamples})....'
         self.logger.info(msg)
         flatfield.add_batchflatfieldsample(self)
         samplesprocessed.append(self)
@@ -64,6 +70,16 @@ class BatchFlatfieldCohort(WorkflowCohort) :
     """
 
     sampleclass = BatchFlatfieldSample
+
+    def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
+        super().__init__(*args,**kwargs) 
+        self.__meanimage_dirname = meanimage_dirname
+
+    @property
+    def initiatesamplekwargs(self) :
+        return {**super().initiatesamplekwargs,
+                'meanimage_dirname':self.__meanimage_dirname,
+            }
 
     @property
     def workflowkwargs(self) :
@@ -128,36 +144,42 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
         p.add_argument('--version',
                        help="version of the flatfield model that should be created from the given slides' meanimages")
         p.add_argument('--flatfield-model-file',type=pathlib.Path,
-                        default=pathlib.Path('//bki04/astropath_processing/AstroPathFlatfieldModels.csv'),
+                        default=CONST.DEFAULT_FLATFIELD_MODEL_FILEPATH,
                         help='path to a .csv file defining which slides should be used for the given version')
-        p.add_argument('--outdir',type=pathlib.Path,default=pathlib.Path('//bki04/astropath_processing'),
+        p.add_argument('--meanimage_dirname',default=UNIV_CONST.MEANIMAGE_DIRNAME,
+                       help='''The name of the meanimage directories to use 
+                                (useful if multiple meanimage versions have been created)''')
+        p.add_argument('--outdir',type=pathlib.Path,default=CONST.DEFAULT_FLATFIELD_MODEL_DIR.parent,
                        help='''directory where the output will be placed (a "flatfield" directory will be created 
                                 inside outdir if one does not already exist)''')
         return p
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
-        #overwrite the sample regex to choose samples listed in the model file instead
-        flatfield_model_file = parsed_args_dict.pop('flatfield_model_file')
+        #use the sample regex to choose samples listed in the model file (if no sampleregex was given)
         version = parsed_args_dict.pop('version')
-        if not flatfield_model_file.is_file() :
-            raise ValueError(f'ERROR: flatfield model file {flatfield_model_file} not found!')
-        all_model_table_entries = readtable(flatfield_model_file,ModelTableEntry)
-        model_table_entries = [te for te in all_model_table_entries if te.version==version]
-        if len(model_table_entries)<1 :
-            errmsg=f'ERROR: {len(model_table_entries)} entries found in {flatfield_model_file} for version {version}!'
-            raise ValueError(errmsg)
-        slide_IDs = [te.SlideID for te in model_table_entries]
-        new_regex = '('
-        for sid in slide_IDs :
-            new_regex+=sid+r'\b|'
-        new_regex=new_regex[:-1]+')'
-        parsed_args_dict['sampleregex']=re.compile(new_regex)
+        flatfield_model_file = parsed_args_dict.pop('flatfield_model_file')
+        if parsed_args_dict['sampleregex'] is None :
+            if not flatfield_model_file.is_file() :
+                raise ValueError(f'ERROR: flatfield model file {flatfield_model_file} not found!')
+            all_model_table_entries = readtable(flatfield_model_file,FlatfieldModelTableEntry)
+            model_table_entries = [te for te in all_model_table_entries if te.version==version]
+            n_entries = len(model_table_entries)
+            if n_entries<1 :
+                errmsg=f'ERROR: {n_entries} entries found in {flatfield_model_file} for version {version}!'
+                raise ValueError(errmsg)
+            slide_IDs = [te.SlideID for te in model_table_entries]
+            new_regex = '('
+            for sid in slide_IDs :
+                new_regex+=sid+r'\b|'
+            new_regex=new_regex[:-1]+')'
+            parsed_args_dict['sampleregex']=re.compile(new_regex)
         #always rerun the samples, they don't produce any output
         parsed_args_dict['skip_finished']=False 
         #return the kwargs dict
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
             'version': version,
+            'meanimage_dirname': parsed_args_dict.pop('meanimage_dirname'),
             'outdir': parsed_args_dict.pop('outdir'), 
         }
 

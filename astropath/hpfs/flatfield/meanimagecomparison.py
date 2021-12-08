@@ -1,5 +1,5 @@
 #imports
-import os, pathlib, logging, re, platform
+import os, pathlib, logging, re
 from argparse import ArgumentParser
 import numpy as np
 from ...utilities.config import CONST as UNIV_CONST
@@ -8,7 +8,7 @@ from ...utilities.tableio import readtable,writetable
 from ...utilities.img_file_io import get_image_hwl_from_xml_file, get_raw_as_hwl
 from ...shared.samplemetadata import SampleDef
 from .config import CONST
-from .utilities import ModelTableEntry, ComparisonTableEntry, normalize_mean_image
+from .utilities import FlatfieldModelTableEntry, ComparisonTableEntry, normalize_mean_image
 from .plotting import meanimage_comparison_plot
 from .batchflatfieldmulticohort import BatchFlatfieldMultiCohort
 
@@ -138,27 +138,46 @@ class MeanImageComparison :
                                       self.lines_after,
                                       bounds)
         if to_plot=='average' :
-            #save a plot of the average over all considered layers
-            self.logger.debug('Saving plot of values averaged over all layers...')
-            average_values = np.zeros_like(self.dos_std_dev_values[:,:,0])
-            for i in range(len(slide_ids)) :
-                for j in range(len(slide_ids)) :
-                    num = 0; den = 0
-                    for li in range(self.dims[-1]) :
-                        if self.dos_std_dev_values[i,j,li]!=0. :
-                            num+=self.dos_std_dev_values[i,j,li]
-                            den+=1
-                    if den==0 :
-                        average_values[i,j]=0.
-                    else :
-                        average_values[i,j]=num/den
-            meanimage_comparison_plot(slide_ids,
-                                      average_values,
-                                      'mean image delta/sigma std. devs. (averaged over all layers)',
-                                      'meanimage_comparison_average_over_all_layers.png',
-                                      self.workingdir,
-                                      self.lines_after,
-                                      bounds)
+            #save a plot of the average over all considered layers and also over the filter groups individually
+            self.logger.debug('Saving plots of values averaged over all layers and within filter groups...')
+            layer_groups = None
+            if self.dims[-1]==35 :
+                layer_groups = UNIV_CONST.LAYER_GROUPS_35
+            elif self.dims[-1]==43 :
+                layer_groups = UNIV_CONST.LAYER_GROUPS_43
+            else :
+                raise RuntimeError(f'ERROR: no broadband filter groups defined for images with {self.dims[-1]} layers')
+            layer_groups = [(1,self.dims[-1])]+layer_groups
+            for ilg,lg in enumerate(layer_groups) :
+                average_values = np.zeros_like(self.dos_std_dev_values[:,:,0])
+                for i in range(len(slide_ids)) :
+                    for j in range(len(slide_ids)) :
+                        num = 0; den = 0
+                        for li in range(lg[0]-1,lg[1]) :
+                            if self.dos_std_dev_values[i,j,li]!=0. :
+                                num+=self.dos_std_dev_values[i,j,li]
+                                den+=1
+                        if den==0 :
+                            average_values[i,j]=0.
+                        else :
+                            average_values[i,j]=num/den
+                title = 'mean image delta/sigma std. devs. (averaged over '
+                filename = 'meanimage_comparison_average_over_'
+                if ilg==0 :
+                    title+='all'
+                    filename+='all'
+                else :
+                    title+=f'filter group {ilg}'
+                    filename+=f'filter_group_{ilg}'
+                title+=' layers)'
+                filename+='_layers.png'
+                meanimage_comparison_plot(slide_ids,
+                                          average_values,
+                                          title,
+                                          filename,
+                                          self.workingdir,
+                                          self.lines_after,
+                                          bounds)
 
     def save_model(self,root_dirs,version_tag,skip_creation) :
         """
@@ -168,11 +187,11 @@ class MeanImageComparison :
         all_lines = []
         #read anything already in the table
         if self.MODEL_TABLE_PATH.is_file() :
-            all_lines = readtable(self.MODEL_TABLE_PATH,ModelTableEntry)
+            all_lines = readtable(self.MODEL_TABLE_PATH,FlatfieldModelTableEntry)
         #add a line for every slide used
         for sid,mid in self.ordered_slide_tuples :
             sd = SampleDef(SlideID=sid,root=mid.parent.parent.parent)
-            all_lines.append(ModelTableEntry(version_tag,sd.Project,sd.Cohort,sd.BatchID,sd.SlideID))
+            all_lines.append(FlatfieldModelTableEntry(version_tag,sd.Project,sd.Cohort,sd.BatchID,sd.SlideID))
         #write out the table
         writetable(self.MODEL_TABLE_PATH,all_lines)
         #run batchflatfieldmulticohort if requested
@@ -189,7 +208,7 @@ class MeanImageComparison :
     MEANIMAGE_SUBDIR_NAME = UNIV_CONST.MEANIMAGE_DIRNAME
     FLATW_MEANIMAGE_SUBDIR_NAME = f'{UNIV_CONST.MEANIMAGE_DIRNAME}_from_fw_files'
     DATATABLE_NAME = 'meanimagecomparison_table.csv'
-    MODEL_TABLE_PATH = pathlib.Path('//bki04/astropath_processing/AstroPathFlatfieldModels.csv')
+    MODEL_TABLE_PATH = CONST.DEFAULT_FLATFIELD_MODEL_FILEPATH
 
     #################### CLASS METHODS ####################
 
@@ -203,10 +222,7 @@ class MeanImageComparison :
         # sampleregex: a regular expression matching all of the slide IDs that should be used
         parser.add_argument('--sampleregex', type=re.compile, help='only run on SlideIDs that match this regex')
         # workingdir: the directory the output should go in (with a default location)
-        if platform.system()=='Darwin' :
-            def_workingdir = '/Volumes/astropath_processing/meanimagecomparison'
-        else :
-            def_workingdir = '//bki04/astropath_processing/meanimagecomparison'
+        def_workingdir = UNIV_CONST.ASTROPATH_PROCESSING_DIR/'meanimagecomparison'
         parser.add_argument('--workingdir', type=pathlib.Path, default=def_workingdir,
                             help='Path to the working directory where results will be saved')
         #other optional arguments
@@ -217,7 +233,7 @@ class MeanImageComparison :
                                     "meanimage" subdirectories''')
         parser.add_argument('--plot', choices=['all','brightest','average','none'], default='average',
                             help='''Add one of these choices to save the plots of some individual layers, the average
-                                    over all of them (default), or no plots at all''')
+                                    over all of them/filter groups (default), or no plots at all''')
         parser.add_argument('--lines-after', type=split_csv_to_list, default='',
                             help="""Comma-separated list of slides to put separating lines after on the plot 
                                     (default is project/cohort/batch transitions, adding this argument will overwrite 

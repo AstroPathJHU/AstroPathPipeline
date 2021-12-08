@@ -27,11 +27,11 @@ class FieldLog(MyDataClass) :
     stacked_in_layers : str = ''
 
 #dataclass to organize entries in the flatfield model .csv file
-class ModelTableEntry(MyDataClass) :
+class FlatfieldModelTableEntry(MyDataClass) :
     version : str
-    Project : str
-    Cohort  : str
-    BatchID : str
+    Project : int
+    Cohort  : int
+    BatchID : int
     SlideID : str
 
 #dataclass to organize numerical entries in the datatable outputted by meanimagecomparison

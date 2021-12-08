@@ -70,15 +70,15 @@ class TestApplyFlatWCohort(TestBaseCopyInput, TestBaseSaveOutput) :
             for fp in (folder/'data'/'reference'/'applyflatw').glob('*') :
                 if fp.name.endswith('01') :
                     refa = get_raw_as_hw(fp,*(dims[:-1]),np.uint16)
-                    testa = get_raw_as_hw(folder/'test_for_jenkins'/'applyflatw'/'flatw'/fp.name,*(dims[:-1]),np.uint16)
+                    testa = get_raw_as_hw(folder/'test_for_jenkins'/'applyflatw'/'flatw'/slide_ID/fp.name,*(dims[:-1]),np.uint16)
                 else :
                     refa = get_raw_as_hwl(fp,*dims,np.uint16)
-                    testa = get_raw_as_hwl(folder/'test_for_jenkins'/'applyflatw'/'flatw'/fp.name,*dims,np.uint16)
+                    testa = get_raw_as_hwl(folder/'test_for_jenkins'/'applyflatw'/'flatw'/slide_ID/fp.name,*dims,np.uint16)
             np.testing.assert_allclose(testa,refa,rtol=1e-09)
         except :
             self.saveoutput()
             raise
-        else :
+        finally :
             self.removeoutput()
             shutil.rmtree(folder/'test_for_jenkins'/'applyflatw')
 

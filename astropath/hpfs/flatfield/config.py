@@ -1,3 +1,6 @@
+#imports
+from ...utilities.config import CONST as UNIV_CONST
+
 #class for shared constant variables
 class Const :
     @property
@@ -105,5 +108,11 @@ class Const :
     @property
     def APPLIED_FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
         return 'applied_flatfield_summary' #prepend for the name of the applied flatfield summary pdf file
+    @property
+    def DEFAULT_FLATFIELD_MODEL_FILEPATH(self) :
+        return UNIV_CONST.ASTROPATH_PROCESSING_DIR/'AstroPathFlatfieldModels.csv'
+    @property
+    def DEFAULT_FLATFIELD_MODEL_DIR(self) :
+        return UNIV_CONST.ASTROPATH_PROCESSING_DIR/self.FLATFIELD_DIRNAME_STEM
 
 CONST=Const()
