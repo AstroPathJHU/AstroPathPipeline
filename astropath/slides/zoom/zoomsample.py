@@ -187,6 +187,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     if self.tifflayers == "color":
       self.logger.info("  normalizing")
 
+      pyvips.cache_set_max(0)
       layers = [180 * vips_sinh(layer / layer.max() * 1.5) for layer in layers]
       #https://github.com/libvips/pyvips/issues/287
       #layers = np.asarray(layers, dtype=object)
@@ -195,7 +196,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         layerarray[i] = layer
       layers = layerarray
 
-      pyvips.cache_set_max(0)
       self.logger.info("  multiplying by color matrix")
       img = np.tensordot(layers, self.colormatrix, [[0], [0]])
       img = [layer.cast(vips_format_dtype(np.uint8)) for layer in img] #clips at 255
