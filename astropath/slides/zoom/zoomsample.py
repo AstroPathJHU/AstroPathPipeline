@@ -188,7 +188,8 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       self.logger.info("  normalizing")
 
       pyvips.cache_set_max(0)
-      layers = [180 * vips_sinh(layer / layer.max() * 1.5) for layer in layers]
+      scalefactors = [1.5 / layer.max() for layer in layers]
+      layers = [180 * vips_sinh(layer * scalefactor) for layer, scalefactor in more_itertools.zip_equal(layers, scalefactors)]
       #https://github.com/libvips/pyvips/issues/287
       #layers = np.asarray(layers, dtype=object)
       layerarray = np.zeros(len(layers), dtype=object)
