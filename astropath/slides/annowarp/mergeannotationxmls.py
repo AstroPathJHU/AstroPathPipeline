@@ -66,9 +66,9 @@ class MergeAnnotationXMLsSample(WorkflowSample, MergeAnnotationXMLsArgumentParse
         filename, = filenames
       except ValueError:
         if filenames:
-          raise FileNotFoundError(f"Didn't find any xmls matching {regex.pattern}")
+          raise IOError(f"Found multiple xmls matching {regex.pattern}: " + ", ".join(_.name for _ in filenames))
         else:
-          raise IOError(f"Found multiple xmls matching {regex.pattern}: " + {", ".join(_.name for _ in filenames)})
+          raise FileNotFoundError(f"Didn't find any xmls matching {regex.pattern}")
       result[annotation] = filename
     return result
 
