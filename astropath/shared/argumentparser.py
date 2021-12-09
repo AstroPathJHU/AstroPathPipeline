@@ -474,6 +474,7 @@ class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     add_rename_annotation_argument(p)
+    p.add_argument("--annotations-xml-regex", type=re.compile, help="use the annotations.polygons.xml that matches this regex (only needed if there are multiple, default .*)")
     return p
 
   @classmethod
@@ -482,6 +483,7 @@ class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "annotationsynonyms": parsed_args_dict.pop("annotationsynonyms"),
       "reorderannotations": parsed_args_dict.pop("reorderannotations"),
+      "annotationsxmlregex": parsed_args_dict.pop("annotations_xml_regex"),
     }
 
 class ParallelArgumentParser(RunFromArgumentParser):
