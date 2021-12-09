@@ -60,7 +60,7 @@ class WorkflowDependency(ThingWithRoots):
     Files that are saved from one run to the next so that we can
     resume where we left off.  These are removed by cleanup()
     """
-    return self.getworkinprogressfiles(**self.workflowkwargs)
+    return list(self.getworkinprogressfiles(**self.workflowkwargs))
 
   def cleanup(self):
     printed = False
@@ -98,8 +98,8 @@ class WorkflowDependency(ThingWithRoots):
       SlideID=SlideID,
       samplelog=cls.getlogfile(**workflowkwargs),
       module=cls.logmodule(),
-      missingfiles=cls.getmissingoutputfiles(**workflowkwargs),
-      workinprogressfiles=cls.getworkinprogressfiles(**workflowkwargs),
+      missingfiles=list(cls.getmissingoutputfiles(**workflowkwargs)),
+      workinprogressfiles=list(cls.getworkinprogressfiles(**workflowkwargs)),
       startregex=cls.logstartregex(),
       endregex=cls.logendregex(),
     )
