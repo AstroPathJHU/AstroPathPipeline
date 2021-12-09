@@ -715,9 +715,9 @@ class WorkflowCohort(Cohort):
 
     def slideidfilter(self, sample, **kwargs):
       return filter(
-        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs, **kwargs),
+        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
+          dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
           for dependency in self.sampleclass.workflowdependencyclasses()
         ],
       )
@@ -727,7 +727,7 @@ class WorkflowCohort(Cohort):
       return filter(
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs, **kwargs)
+          dependency.getrunstatus(SlideID=SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs)
           for dependency, SlideID in sample.workflowdependencies()
         ],
       )
@@ -771,7 +771,7 @@ class WorkflowCohort(Cohort):
           #we don't want to do anything if there's an error, because that
           #was already logged so no need to log it again and confuse the issue.
           if status.missingfiles and status.error is None:
-            status.ended = True #to get the missing files in the __str__
+            status.started = status.ended = True #to get the missing files in the __str__
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
 
           return result

@@ -1,6 +1,7 @@
 import abc, argparse, collections, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
+from ..utilities.misc import ArgParseAddToDict
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import distancefield, DataClassWithApscale
@@ -518,15 +519,8 @@ def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):
   writetable(dbloadfolder/f"{csvprefix}regions.csv", regions)
   writetable(dbloadfolder/f"{csvprefix}vertices.csv", vertices)
 
-class AddToDict(argparse.Action):
-  def __call__(self, parser, namespace, values, option_string=None):
-    k, v = values
-    dct = getattr(namespace, self.dest)
-    if dct is None: dct = {}; setattr(namespace, self.dest, dct)
-    dct[k] = v
-
 def add_rename_annotation_argument(argumentparser):
-  argumentparser.add_argument("--rename-annotation", nargs=2, action=AddToDict, dest="annotationsynonyms", metavar=("XMLNAME", "NEWNAME"), help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
+  argumentparser.add_argument("--rename-annotation", nargs=2, action=ArgParseAddToDict, dest="annotationsynonyms", metavar=("XMLNAME", "NEWNAME"), help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
   argumentparser.add_argument("--reorder-annotations", action="store_true", dest="reorderannotations", help="Reorder annotations if they are in the wrong order")
 
 def main(args=None):

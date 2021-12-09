@@ -76,6 +76,13 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots):
     return {"root", "logroot", "im3root", "informdataroot", *super().rootnames}
 
   @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "Scan": self.Scan,
+    }
+
+  @property
   def SampleID(self): return self.samp.SampleID
   @property
   def SlideID(self): return self.samp.SlideID
@@ -1333,11 +1340,11 @@ class XMLPolygonAnnotationReaderSample(SampleBase, XMLPolygonAnnotationReader, X
   @methodtools.lru_cache()
   @property
   def annotationspolygonsxmlfile(self):
-    candidates = [
+    candidates = {
       filename
       for filename in self.scanfolder.glob(f"*{self.SlideID}*annotations.polygons*.xml")
       if self.__annotationsxmlregex is None or self.__annotationsxmlregex.match(filename.name)
-    ]
+    }
     default = self.scanfolder/f"{self.SlideID}_{self.scanfolder.name}.annotations.polygons.xml"
     try:
       candidate, = candidates
