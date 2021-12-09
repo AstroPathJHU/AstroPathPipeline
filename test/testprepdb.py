@@ -95,8 +95,14 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
 
   @classmethod
   def filestocopy(cls):
-    oldfolder = thisfolder/"data"/"M206"
-    newfolder = thisfolder/"test_for_jenkins"/"prepdb"/"M206"
+    oldroot = thisfolder/"data"
+    newroot = thisfolder/"test_for_jenkins"/"prepdb"
+    for filename in "sampledef.csv",:
+      yield oldroot/filename, newroot
+    oldfolder = oldroot/"M206"
+    newfolder = newroot/"M206"
+    for filename in ():
+      yield oldfolder/filename, newfolder
     oldim3 = oldfolder/"im3"
     newim3 = newfolder/"im3"
     for filename in ():
@@ -177,8 +183,8 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
           if cls == Rectangle:
             rectangles = rows
-        except:
-          raise ValueError("Error in "+filename)
+        except Exception as e:
+          raise type(e)("Error in "+filename)
 
       platform = sys.platform
       if platform == "darwin": platform = "linux"
@@ -218,4 +224,13 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       self.testPrepDb(SlideID="M206", units="fast_microns", moreargs=["--rename-annotation", "Good tissue", "Tumor", "--rename-annotation", "Tumor", "Good Tissue", "--im3root", os.fspath(testroot), "--xmlfolder", os.fspath(thisfolder/"data"/"M206"/"im3"/"xml")])
 
   def testPrepDBZW2(self):
-    self.testPrepDb(SlideID="ZW2", units="fast_microns")
+    testroot = thisfolder/"test_for_jenkins"/"prepdb"
+    sampledef = testroot/"sampledef.csv"
+    with open(sampledef, newline="") as f:
+      contents = f.read()
+    newcontents = re.sub(r"(\s[0-9]+,ZW2.*)1(\s)", r"\g<1>0\g<2>", contents, re.MULTILINE)
+    self.assertNotEqual(newcontents, contents)
+    with temporarilyreplace(sampledef, newcontents):
+      with self.assertRaises(TypeError):
+        self.testPrepDb(SlideID="ZW2", units="fast_microns")
+      self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=["--include-bad-samples"])
