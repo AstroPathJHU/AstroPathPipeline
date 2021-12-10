@@ -189,7 +189,6 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
 
   def sampledefswithfilters(self, **kwargs):
     for samp in self.sampledefs():
-      if not samp: continue
       try:
         yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
       except Exception: #don't log KeyboardInterrupt here
@@ -317,14 +316,17 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
         sample.cleanup()
       return self.runsample(sample, **kwargs)
 
-  def dryrun(self, **kwargs):
+  def dryrun(self, *, cleanup=False, **kwargs):
     """
     Print which samples would be run if you run the cohort
     """
     for samp, filters in self.sampledefswithfilters():
       logger = self.printlogger(samp)
       if all(filters):
-        logger.info(f"{samp} would run")
+        if any(filter.cleanup for filter in filters):
+          logger.info(f"{samp} would cleanup and run")
+        else:
+          logger.info(f"{samp} would run")
       else:
         logger.info(f"{samp} would not run:")
         for filter in filters:
@@ -342,6 +344,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     """
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
+    p.add_argument("--include-bad-samples", action="store_true", help="include samples that have isGood set to False")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
     return p
 
@@ -360,6 +363,8 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     }
     if dct["dry_run"]:
       kwargs["uselogfiles"] = False
+    if not dct.pop("include_bad_samples"):
+      kwargs["slideidfilters"].append(SampleFilter(lambda self, sample, **kwargs: bool(sample), "Sample is good", "Sample is not good"))
     regex = dct.pop("sampleregex")
     if regex is not None:
       kwargs["slideidfilters"].append(SampleFilter(lambda self, sample, **kwargs: regex.match(sample.SlideID), f"SlideID matches {regex.pattern}", f"SlideID doesn't match {regex.pattern}"))
@@ -592,9 +597,10 @@ class ParallelCohort(Cohort, ParallelArgumentParser):
     }
 
 class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
-  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
+  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, annotationsxmlregex=None, **kwargs):
     self.__annotationsynonyms = annotationsynonyms
     self.__reorderannotations = reorderannotations
+    self.__annotationsxmlregex = annotationsxmlregex
     super().__init__(*args, **kwargs)
   @property
   def initiatesamplekwargs(self):
@@ -602,6 +608,7 @@ class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
       **super().initiatesamplekwargs,
       "annotationsynonyms": self.__annotationsynonyms,
       "reorderannotations": self.__reorderannotations,
+      "annotationsxmlregex": self.__annotationsxmlregex,
     }
 
 class CorrectedImageCohort(Im3Cohort,ImageCorrectionArgumentParser) :
@@ -700,7 +707,7 @@ class WorkflowCohort(Cohort):
       elif dependencies and skip_finished:
         for dependencyrunstatus in dependencyrunstatuses:
           if not dependencyrunstatus: return FilterResult(False, f"dependency {dependencyrunstatus.module} for {dependencyrunstatus.SlideID} "+str(dependencyrunstatus).replace('\n', ' '))
-          if runstatus and not runstatus > dependencyrunstatus:
+          if runstatus.started and not runstatus.lastcleanstart > dependencyrunstatus:
             runstatus.started = runstatus.ended = False #it's as if this step hasn't run
             cleanup = True
         if not runstatus:
@@ -712,9 +719,9 @@ class WorkflowCohort(Cohort):
 
     def slideidfilter(self, sample, **kwargs):
       return filter(
-        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs, **kwargs),
+        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=sample.SlideID, **self.workflowkwargs)
+          dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
           for dependency in self.sampleclass.workflowdependencyclasses()
         ],
       )
@@ -724,7 +731,7 @@ class WorkflowCohort(Cohort):
       return filter(
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=SlideID, **self.workflowkwargs, **kwargs)
+          dependency.getrunstatus(SlideID=SlideID, Scan=sample.samp.Scan, **self.workflowkwargs, **kwargs)
           for dependency, SlideID in sample.workflowdependencies()
         ],
       )
@@ -768,7 +775,7 @@ class WorkflowCohort(Cohort):
           #we don't want to do anything if there's an error, because that
           #was already logged so no need to log it again and confuse the issue.
           if status.missingfiles and status.error is None:
-            status.ended = True #to get the missing files in the __str__
+            status.started = status.ended = True #to get the missing files in the __str__
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
 
           return result

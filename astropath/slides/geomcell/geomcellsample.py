@@ -159,11 +159,10 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       *(r.imagefile for r in self.rectangles),
     ]
 
-  @property
-  def workinprogressfiles(self):
-    return [
-      *(self.geomfolder.glob("*.csv")),
-    ]
+  @classmethod
+  def getworkinprogressfiles(cls, SlideID, *, geomroot, **otherworkflowkwargs):
+    geomfolder = geomroot/SlideID/"geom"
+    return geomfolder.glob("*.csv")
 
   @property
   def workflowkwargs(self):
