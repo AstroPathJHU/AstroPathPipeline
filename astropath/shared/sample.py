@@ -687,6 +687,18 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     Default 0 for backwards compatibility
     """
     return self.constantsdict.get("margin", 0)
+  @property
+  def annotationsonwsi(self):
+    """
+    Are the annotations drawn on the wsi or the qptiff?
+    """
+    return bool(self.constantsdict.get("annotationsonwsi", 0))
+  @property
+  def shiftannotations(self):
+    """
+    Shift the annotations from the xml file by this amount
+    """
+    return np.array([self.constantsdict.get("shiftannotationsx", 0), self.constantsdict.get("shiftannotationsy", 0)])
 
 class MaskSampleBase(SampleBase, MaskArgumentParser):
   """

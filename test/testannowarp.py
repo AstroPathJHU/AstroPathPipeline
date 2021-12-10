@@ -1,7 +1,7 @@
 import more_itertools, numpy as np, os, pathlib, re
 
 from astropath.shared.csvclasses import Annotation, Region
-from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
+from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedQPTiffVertex
 from astropath.slides.annowarp.detectbigshift import DetectBigShiftSample
 from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohortInformTissueMask
 from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
@@ -78,8 +78,8 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = s.readtable(verticesfilename, WarpedVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize}, checkorder=True, checknewlines=True)
-    targetrows = s.readtable(referenceverticesfilename, WarpedVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize}, checkorder=True, checknewlines=True)
+    rows = s.readtable(verticesfilename, WarpedQPTiffVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize}, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referenceverticesfilename, WarpedQPTiffVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize}, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 

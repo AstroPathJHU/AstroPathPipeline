@@ -13,7 +13,7 @@ from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
 from ..align.stitch import AffineEntry
-from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
+from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedQPTiffVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
 from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSample
@@ -180,7 +180,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
           "rect": (Rectangle, "Rect"),
           "regions": (Region, "Regions"),
           "tumorGeometry": (Boundary, "TumorGeometry"),
-          "vertices": (WarpedVertex, "Vertices"),
+          "vertices": (WarpedQPTiffVertex, "Vertices"),
         }[match.group(1)]
         allrectangles = self.readcsv("rect", Rectangle)
         extrakwargs = {

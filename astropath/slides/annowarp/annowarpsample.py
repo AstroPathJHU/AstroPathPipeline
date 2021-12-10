@@ -698,7 +698,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     onemicron = self.onemicron
     onepixel = self.onepixel
     return [
-      WarpedVertex(
+      WarpedQPTiffVertex(
         vertex=v,
         wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=apscale))) / oneapmicron * onemicron // onepixel * onepixel,
         pscale=self.pscale,
@@ -817,13 +817,14 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     other kwargs are passed to stitch()
     """
     self.writeannotations()
-    if not readalignments:
-      self.align()
-      self.writealignments()
-    else:
-      self.readalignments()
-    self.stitch(**kwargs)
-    self.writestitchresult()
+    if not self.annotationsonwsi:
+      if not readalignments:
+        self.align()
+        self.writealignments()
+      else:
+        self.readalignments()
+      self.stitch(**kwargs)
+      self.writestitchresult()
     self.writevertices()
     self.writeregions()
 
@@ -1008,7 +1009,7 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
   def qptiffcoordinate(self):
     return self.xvec
 
-class WarpedVertex(QPTiffVertex):
+class WarpedVertexBase(Vertex):
   """
   A warped vertex, which includes info about the original
   and warped positions
@@ -1035,20 +1036,24 @@ class WarpedVertex(QPTiffVertex):
     """
     return np.array([self.wx, self.wy])
 
+  originalvertextype = Vertex
+
+  @property
+  def originalvertexkwargs(self):
+    return {
+      "regionid": self.regionid,
+      "vid": self.vid,
+      "xvec": self.xvec,
+      "apscale": self.apscale,
+      "pscale": self.pscale,
+    }
+
   @property
   def originalvertex(self):
     """
     The original vertex without the warped info
     """
-    return QPTiffVertex(
-      regionid=self.regionid,
-      vid=self.vid,
-      xvec=self.xvec,
-      apscale=self.apscale,
-      pscale=self.pscale,
-      bigtilesize=self.bigtilesize,
-      bigtileoffset=self.bigtileoffset,
-    )
+    return self.originalvertextype(**self.originalvertexkwargs)
 
   @property
   def finalvertex(self):
@@ -1062,6 +1067,16 @@ class WarpedVertex(QPTiffVertex):
       apscale=self.apscale,
       pscale=self.pscale,
     )
+
+class WarpedQPTiffVertex(WarpedVertexBase, QPTiffVertex):
+  originalvertextype = QPTiffVertex
+  @property
+  def originalvertexkwargs(self):
+    return {
+      **super().originalvertexkwargs,
+      "bigtilesize": self.bigtilesize,
+      "bigtileoffset": self.bigtileoffset,
+    }
 
 class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataClassWithImscale):
   """

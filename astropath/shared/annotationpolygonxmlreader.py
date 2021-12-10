@@ -278,6 +278,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     errors = []
 
     nodes = self.annotationnodes
+    shiftx, shifty = self.shiftannotations
 
     count = more_itertools.peekable(itertools.count(1))
     for node in nodes[:]:
