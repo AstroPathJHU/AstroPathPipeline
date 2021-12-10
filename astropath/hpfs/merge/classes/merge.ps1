@@ -2,7 +2,7 @@
 --------------------------------------------------------
 merge
 Created By: Andrew Jorquera
-Last Edit: 11/30/2021
+Last Edit: 12/10/2021
 --------------------------------------------------------
 Description
 Task to be launched remotely to ANY computer from ANYWHERE
@@ -39,16 +39,25 @@ Class merge : moduletools {
     [void]GetMerge(){
         $this.sample.info("started merge")
         $taskname = 'MaSS'
-        $matlabtask = ";MaSS('" + $this.sample.basepath + "', '" + 
+        $matlabtask = ";MaSS('" + $this.sample.informfolder() + "', '" + 
             $this.sample.slideid + "', '" + $this.sample.mergeconfigfile() + "', '" + 
             $this.sample.project.PadLeft(2,'0') + ";" + $this.sample.cohort.PadLeft(2, '0') + "');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask)
+        $inp.runmatlabtask($taskname, $matlabtask)
         #
         $taskname = 'CreateImageQAQC'
-        $matlabtask = ";CreateImageQAQC('" + $this.sample.basepath + "', '" + 
+        $matlabtask = ";CreateImageQAQC('" + $this.sample.informfolder() + "', '" + 
             $this.sample.slideid + "', '" + $this.sample.mergeconfigfile() + "', '" + 
             $this.sample.project.PadLeft(2,'0') + ";" + $this.sample.cohort.PadLeft(2, '0') + "');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished merge")
+    }
+    <# -----------------------------------------
+     silentcleanup
+     silentcleanup
+     ------------------------------------------
+     Usage: $this.silentcleanup()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
+        #
     }
 }
