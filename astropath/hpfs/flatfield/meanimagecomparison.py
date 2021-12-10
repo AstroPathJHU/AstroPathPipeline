@@ -19,13 +19,14 @@ class MeanImageComparison :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,root_dirs,sampleregex,workingdir,sort_by,use_flatw) :
+    def __init__(self,root_dirs,sampleregex,workingdir,sort_by,use_flatw,min_images_stacked) :
         """
         root_dirs:   list of paths to root directories for all samples that should be included/appended
         sampleregex: regular expression matching all slides that should be used
         workingdir:  path to directory that should hold output (may already hold some output that should be appended to)
         sort_by:     string indicating how slides should be ordered on the plot
         use_flatw:   True if meanimages from .fw files should be used instead of default meanimages (from raw files)
+        min_images_stacked: Skip any slides that stacked less than this number of images anywhere
         """
         #create the working directory
         self.workingdir = workingdir
@@ -36,7 +37,7 @@ class MeanImageComparison :
         #set the name of the meanimage subdirectory to search
         self.meanimage_subdir_name = self.FLATW_MEANIMAGE_SUBDIR_NAME if use_flatw else self.MEANIMAGE_SUBDIR_NAME
         #create a dictionary keyed by root directory paths, with values that are lists of slide IDs at those paths
-        self.slide_ids_by_rootdir = self.__get_slides_by_rootdir(root_dirs,sampleregex)
+        self.slide_ids_by_rootdir = self.__get_slides_by_rootdir(root_dirs,sampleregex,min_images_stacked)
         #get a list of all the slide IDs and their mean image filepaths, sorted in the order they'll be plotted
         #(also returns the list of slide IDs after which lines would go if sorted by project/cohort/batch)
         self.ordered_slide_tuples,self.lines_after = self.__get_sorted_slide_tuples(sort_by)
@@ -231,6 +232,8 @@ class MeanImageComparison :
         parser.add_argument('--flatw', action='store_true',
                             help='''Add this flag to use meanimages from "meanimage_from_fw_files" instead of 
                                     "meanimage" subdirectories''')
+        parser.add_argument('--min-images-stacked', type=int, default=1,
+                            help='Skip any slides that stacked less than this number of HPF images everywhere')
         parser.add_argument('--plot', choices=['all','brightest','average','none'], default='average',
                             help='''Add one of these choices to save the plots of some individual layers, the average
                                     over all of them/filter groups (default), or no plots at all''')
@@ -266,7 +269,7 @@ class MeanImageComparison :
         #get and parse the command-line arguments
         args = cls.get_args(args)
         #set up the Comparison
-        mic = cls(args.root,args.sampleregex,args.workingdir,args.sort_by,args.flatw)
+        mic = cls(args.root,args.sampleregex,args.workingdir,args.sort_by,args.flatw,args.min_images_stacked)
         #create (or append to) the datatable of comparison values
         mic.calculate_comparisons()
         #create any requested plots
@@ -294,7 +297,7 @@ class MeanImageComparison :
         logger.addHandler(file_handler)
         return logger
 
-    def __get_slides_by_rootdir(self,root_dirs,sampleregex) :
+    def __get_slides_by_rootdir(self,root_dirs,sampleregex,min_images_stacked) :
         """
         Return a dictionary whose keys are root directory paths and whose values are lists of slide IDs in them to use
         Also sets the dimensions of the images that will be used
@@ -358,10 +361,10 @@ class MeanImageComparison :
                             errmsg = f'ERROR: slide {sid} has dimensions {this_slide_dims},'
                             errmsg+= f' mismatched to {self.dims}'
                             raise RuntimeError(errmsg)
-                        mifp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
-                        mifp = mifp/f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
-                        semifp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
-                        semifp = semifp/f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                        midfp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
+                        mifp = midfp/f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                        semifp = midfp/f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                        msfp = midfp/f'{sid}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}'
                         if not mifp.is_file() :
                             self.logger.warning(f'WARNING: expected mean image {mifp} not found! ({sid} will be skipped!)')
                             continue
@@ -370,9 +373,13 @@ class MeanImageComparison :
                             warnmsg+= f' ({sid} will be skipped!)'
                             self.logger.warning(warnmsg)
                             continue
+                        if not msfp.is_file() :
+                            self.logger.warning(f'WARNING: expected mask stack {mifp} not found! ({sid} will be skipped!)')
+                            continue
                         mi   = get_raw_as_hwl(mifp,*(self.dims),np.float64)
                         semi = get_raw_as_hwl(semifp,*(self.dims),np.float64)
-                        if np.min(mi)==np.max(mi) or np.max(semi)==0. :
+                        ms   = get_raw_as_hwl(msfp,*(self.dims),np.uint64)
+                        if np.min(mi)==np.max(mi) or np.max(semi)==0. or np.min(ms)<min_images_stacked :
                             warnmsg = f'WARNING: slide {sid} will be skipped because not enough images were stacked!'
                             self.logger.warning(warnmsg)
                         else :
