@@ -372,7 +372,7 @@ class MeanImageComparison :
                         self.logger.warning(warnmsg)
                         continue
                     if not msfp.is_file() :
-                        self.logger.warning(f'WARNING: expected mask stack {mifp} not found! ({sid} will be skipped!)')
+                        self.logger.warning(f'WARNING: expected mask stack {msfp} not found! ({sid} will be skipped!)')
                         continue
                     mi=None; semi=None
                     if check_mi_and_semi :
