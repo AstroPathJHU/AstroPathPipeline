@@ -382,6 +382,8 @@ class MeanImageComparison :
                         if np.min(mi)==np.max(mi) or np.max(semi)==0. or np.min(ms)<min_images_stacked :
                             warnmsg = f'WARNING: slide {sid} will be skipped because not enough images were stacked!'
                             self.logger.warning(warnmsg)
+                            if sid in sids :
+                                sids.pop(sid)
                         else :
                             self.logger.debug(f'{sid} is valid and will be used')
                             sids.append(sid)
