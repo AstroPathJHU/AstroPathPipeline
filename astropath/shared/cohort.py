@@ -189,7 +189,6 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
 
   def sampledefswithfilters(self, **kwargs):
     for samp in self.sampledefs():
-      if not samp: continue
       try:
         yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
       except Exception: #don't log KeyboardInterrupt here
@@ -345,6 +344,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     """
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--debug", action="store_true", help="exit on errors, instead of logging them and continuing")
+    p.add_argument("--include-bad-samples", action="store_true", help="include samples that have isGood set to False")
     p.add_argument("--sampleregex", type=re.compile, help="only run on SlideIDs that match this regex")
     return p
 
@@ -363,6 +363,8 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     }
     if dct["dry_run"]:
       kwargs["uselogfiles"] = False
+    if not dct.pop("include_bad_samples"):
+      kwargs["slideidfilters"].append(SampleFilter(lambda self, sample, **kwargs: bool(sample), "Sample is good", "Sample is not good"))
     regex = dct.pop("sampleregex")
     if regex is not None:
       kwargs["slideidfilters"].append(SampleFilter(lambda self, sample, **kwargs: regex.match(sample.SlideID), f"SlideID matches {regex.pattern}", f"SlideID doesn't match {regex.pattern}"))
