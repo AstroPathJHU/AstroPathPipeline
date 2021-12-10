@@ -387,7 +387,8 @@ class MeanImageComparison :
                             sids.pop(sids.index(sid))
                     else :
                         self.logger.debug(f'{sid} is valid and will be used')
-                        sids.append(sid)
+                        if sid not in sids :
+                            sids.append(sid)
             slide_ids_by_rootdir[root_dir] = sids
         n_total_slides = sum([len(sids) for sids in slide_ids_by_rootdir.values()])
         if n_total_slides<2 :
