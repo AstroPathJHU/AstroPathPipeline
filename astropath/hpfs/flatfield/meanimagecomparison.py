@@ -350,6 +350,7 @@ class MeanImageComparison :
             sids = slide_ids_by_rootdir[root_dir] if root_dir in slide_ids_by_rootdir.keys() else []
             sids_to_check = [s.SlideID for s in samps]+sids
             for sid in sids_to_check :
+                check_mi_and_semi = sid not in sids
                 if (sampleregex is None) or (sampleregex.match(sid)) :
                     this_slide_dims = get_image_hwl_from_xml_file(root_dir,sid)
                     if self.dims is None :
@@ -373,17 +374,20 @@ class MeanImageComparison :
                     if not msfp.is_file() :
                         self.logger.warning(f'WARNING: expected mask stack {mifp} not found! ({sid} will be skipped!)')
                         continue
-                    mi   = get_raw_as_hwl(mifp,*(self.dims),np.float64)
-                    semi = get_raw_as_hwl(semifp,*(self.dims),np.float64)
+                    mi=None; semi=None
+                    if check_mi_and_semi :
+                        mi   = get_raw_as_hwl(mifp,*(self.dims),np.float64)
+                        semi = get_raw_as_hwl(semifp,*(self.dims),np.float64)
                     ms   = get_raw_as_hwl(msfp,*(self.dims),np.uint64)
-                    if np.min(mi)==np.max(mi) or np.max(semi)==0. or np.min(ms)<min_images_stacked :
+                    if ( (np.min(ms)<min_images_stacked) or 
+                         (check_mi_and_semi and (np.min(mi)==np.max(mi) or np.max(semi)==0.)) ) :
                         warnmsg = f'WARNING: slide {sid} will be skipped because not enough images were stacked!'
                         self.logger.warning(warnmsg)
                         if sid in sids :
-                            sids.pop(sid)
+                            sids.pop(sids.index(sid))
                     else :
                         self.logger.debug(f'{sid} is valid and will be used')
-                        sids.append(sids.index(sid))
+                        sids.append(sid)
             slide_ids_by_rootdir[root_dir] = sids
         n_total_slides = sum([len(sids) for sids in slide_ids_by_rootdir.values()])
         if n_total_slides<2 :
