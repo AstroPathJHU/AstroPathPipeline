@@ -133,7 +133,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       "ZW2": True,
     }[SlideID]
 
-  def testPrepDb(self, SlideID="M21_1", units="safe", moreargs=[]):
+  def testPrepDb(self, SlideID="M21_1", units="safe", moreargs=[], removeoutput=True):
     dbloadroot = thisfolder/"test_for_jenkins"/"prepdb"
 
     skipannotations = self.skipannotations(SlideID)
@@ -200,10 +200,12 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       for log in logs:
         checkwindowsnewlines(log)
     except:
-      self.saveoutput()
+      if removeoutput:
+        self.saveoutput()
       raise
     finally:
-      self.removeoutput()
+      if removeoutput:
+        self.removeoutput()
 
   def testPrepDbFastUnits(self, SlideID="M21_1"):
     self.testPrepDb(SlideID, units="fast")
@@ -230,7 +232,8 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       contents = f.read()
     newcontents = re.sub(r"(\s[0-9]+,ZW2.*)1(\s)", r"\g<1>0\g<2>", contents, re.MULTILINE)
     self.assertNotEqual(newcontents, contents)
+    moreargs = ["--sampledefroot", os.fspath(testroot)]
     with temporarilyreplace(sampledef, newcontents):
       with self.assertRaises(TypeError):
-        self.testPrepDb(SlideID="ZW2", units="fast_microns")
-      self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=["--include-bad-samples"])
+        self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=moreargs, removeoutput=False)
+      self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=moreargs + ["--include-bad-samples"])
