@@ -120,7 +120,7 @@ class MeanImageComparison :
         #reset the lines_after variable if it was externally supplied
         if lines_after!=[''] :
             self.lines_after = lines_after
-        elif lines_after==['none'] :
+        if self.lines_after==['none'] :
             self.lines_after = []
         #for each image layer requested, plot a grid of the delta/sigma comparisons
         if to_plot=='all' :
