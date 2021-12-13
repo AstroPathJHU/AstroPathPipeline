@@ -75,16 +75,14 @@ class MeanImageComparison :
                     continue
                 else :
                     #check if the requested values are available from the file that was read
-                    n_existing_entries = len([e for e in existing_entries 
-                                              if ((e.slide_ID_1==sid1 and e.slide_ID_2==sid2) or 
-                                                  (e.slide_ID_1==sid2 and e.slide_ID_2==sid1))])
-                    if n_existing_entries==self.dims[-1] :
+                    relevant_entries = [e for e in existing_entries 
+                                        if ((e.slide_ID_1==sid1 and e.slide_ID_2==sid2) or 
+                                            (e.slide_ID_1==sid2 and e.slide_ID_2==sid1))]
+                    if len(relevant_entries)==self.dims[-1] :
                         added=set()
-                        for entry in existing_entries :
-                            if ( (entry.slide_ID_1==sid1 and entry.slide_ID_2==sid2) or 
-                                 (entry.slide_ID_1==sid1 and entry.slide_ID_2==sid2) ) :
-                                self.dos_std_dev_values[is1,is2,entry.layer_n-1] = entry.delta_over_sigma_std_dev
-                                added.add(entry.layer_n)
+                        for entry in relevant_entries :
+                            self.dos_std_dev_values[is1,is2,entry.layer_n-1] = entry.delta_over_sigma_std_dev
+                            added.add(entry.layer_n)
                         if len(added)==self.dims[-1] :
                             msg = f'Std. devs. of delta/sigma for {sid1} vs {sid2} read from {self.datatable_path}'
                             self.logger.debug(msg)
