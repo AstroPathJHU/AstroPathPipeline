@@ -704,13 +704,17 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     onemicron = self.onemicron
     onepixel = self.onepixel
     if self.annotationsonwsi:
+      if np.any(self.shiftannotations):
+        self.logger.warning("shifting the annotations by {self.shiftannotations / onepixel} pixels")
       return [
         WarpedVertex(
           vertex=v,
-          wxvec=(v.xvec + self.shiftannotations) / oneannomicron * onemicron // onepixel * onepixel
+          wxvec=(v.xvec / oneannomicron * onemicron + self.shiftannotations) // onepixel * onepixel
         ) for v in self.__getvertices()
       ]
     else:
+      if np.any(self.shiftannotations):
+        raise ValueError("shiftannotations is meant for when the annotations are drawn on the wsi")
       return [
         WarpedQPTiffVertex(
           vertex=v,
