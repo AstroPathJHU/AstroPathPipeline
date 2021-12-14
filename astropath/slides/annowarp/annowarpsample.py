@@ -700,17 +700,21 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     """
     Create the new warped vertices
     """
+    oneannomicron = units.onemicron(pscale=annoscale)
+    onemicron = self.onemicron
+    onepixel = self.onepixel
     if self.annotationsonwsi:
-      pass
+      return [
+        WarpedVertex(
+          vertex=v,
+          wxvec=(v.xvec + self.shiftannotations) / oneannomicron * onemicron // onepixel * onepixel
+        ) for v in self.__getvertices()
+      ]
     else:
-      apscale = annoscale
-      oneapmicron = units.onemicron(pscale=apscale)
-      onemicron = self.onemicron
-      onepixel = self.onepixel
       return [
         WarpedQPTiffVertex(
           vertex=v,
-          wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=apscale))) / oneapmicron * onemicron // onepixel * onepixel,
+          wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=annoscale))) / oneannomicron * onemicron // onepixel * onepixel,
           pscale=self.pscale,
         ) for v in self.__getvertices()
       ]
@@ -1021,7 +1025,7 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
   @property
   def apscale(self): return self.annoscale
 
-class WarpedVertexBase(Vertex):
+class WarpedVertex(Vertex):
   """
   A warped vertex, which includes info about the original
   and warped positions
@@ -1080,7 +1084,7 @@ class WarpedVertexBase(Vertex):
       pscale=self.pscale,
     )
 
-class WarpedQPTiffVertex(WarpedVertexBase, QPTiffVertex):
+class WarpedQPTiffVertex(WarpedVertex, QPTiffVertex):
   originalvertextype = QPTiffVertex
   @property
   def originalvertexkwargs(self):
