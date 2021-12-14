@@ -1,10 +1,11 @@
 #imports
-from astropath.hpfs.imagecorrection.applyflatwcohort import ApplyFlatWCohort
-from astropath.utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, read_image_from_layer_files, write_image_to_file
-from astropath.utilities.config import CONST as UNIV_CONST
-from .testbase import TestBaseCopyInput, TestBaseSaveOutput
-import numpy as np
 import os, pathlib, shutil
+import numpy as np
+from astropath.utilities.config import CONST as UNIV_CONST
+from astropath.utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw
+from astropath.utilities.img_file_io import read_image_from_layer_files, write_image_to_file
+from astropath.hpfs.imagecorrection.applyflatwcohort import ApplyFlatWCohort
+from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
