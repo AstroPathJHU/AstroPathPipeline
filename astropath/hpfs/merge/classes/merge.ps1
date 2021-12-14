@@ -41,15 +41,17 @@ Class merge : moduletools {
         $taskname = 'MaSS'
         $matlabtask = ";MaSS('" + $this.sample.informfolder() + "', '" + 
             $this.sample.slideid + "', '" + $this.sample.mergeconfigfile() + "', '" + 
-            $this.sample.project.PadLeft(2,'0') + ";" + $this.sample.cohort.PadLeft(2, '0') + "');exit(0);"
-        $inp.runmatlabtask($taskname, $matlabtask)
+            $this.sample.project.PadLeft(2,'0') + ";" + $this.sample.cohort.PadLeft(2, '0') + ";');exit(0);"
+        $this.runmatlabtask($taskname, $matlabtask)
+        $this.sample.info("finished merge")
         #
+        $this.sample.info("started image QAQC")
         $taskname = 'CreateImageQAQC'
         $matlabtask = ";CreateImageQAQC('" + $this.sample.informfolder() + "', '" + 
             $this.sample.slideid + "', '" + $this.sample.mergeconfigfile() + "', '" + 
-            $this.sample.project.PadLeft(2,'0') + ";" + $this.sample.cohort.PadLeft(2, '0') + "');exit(0);"
+            $this.sample.project.PadLeft(2,'0') + ";" + $this.sample.cohort.PadLeft(2, '0') + ";');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask)
-        $this.sample.info("finished merge")
+        $this.sample.info("finished image QAQC")
     }
     <# -----------------------------------------
      silentcleanup
