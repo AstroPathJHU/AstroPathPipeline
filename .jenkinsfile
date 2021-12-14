@@ -162,11 +162,7 @@ pipeline {
 
         stage('powershell meanimage') {
           steps {
-            echo 'starting the powershell tests'
-            powershell '''
-              Write-Error 'Error!'
-            '''
-            powershell(script: 'test/test.ps1')
+            sh 'pwsh -File "./test/test.ps1"'
           }
         }
 
