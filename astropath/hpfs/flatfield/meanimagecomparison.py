@@ -1,7 +1,7 @@
 #imports
 import os, pathlib, logging, re
-from argparse import ArgumentParser
 import numpy as np
+from argparse import ArgumentParser
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import split_csv_to_list, split_csv_to_list_of_floats
 from ...utilities.tableio import readtable,writetable

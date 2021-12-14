@@ -1,9 +1,9 @@
 #imports 
-from .applyflatwsample import ApplyFlatWSample
 from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort
 from ...shared.cohort import WorkflowCohort, SelectLayersCohort
 from .config import IMAGECORRECTION_CONST
+from .applyflatwsample import ApplyFlatWSample
 
 class ApplyFlatWCohort(CorrectedImageCohort, SelectRectanglesCohort, ParallelCohort, WorkflowCohort, 
                             SelectLayersCohort, WorkingDirArgumentParser) :

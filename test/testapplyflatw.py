@@ -1,7 +1,6 @@
 #imports
 from astropath.hpfs.imagecorrection.applyflatwcohort import ApplyFlatWCohort
 from astropath.utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, read_image_from_layer_files, write_image_to_file
-from astropath.hpfs.flatfield.config import CONST as FF_CONST
 from astropath.utilities.config import CONST as UNIV_CONST
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 import numpy as np
