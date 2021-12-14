@@ -618,7 +618,7 @@ class DbloadSampleBase(SampleBase, DbloadArgumentParser):
     """
     return cv2.imread(os.fspath(self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)))
 
-class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale):
+class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale, units.ThingWithAnnoScale):
   """
   Base class for any sample that uses the csvs in the dbload folder
   after the folder has been set up.
@@ -693,6 +693,12 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     Are the annotations drawn on the wsi or the qptiff?
     """
     return bool(self.constantsdict.get("annotationsonwsi", 0))
+  @property
+  def annoscale(self):
+    """
+    Scale of the annotations
+    """
+    return self.constantsdict.get("annoscale", self.pscale / 2 if self.annotationsonwsi else self.apscale)
   @property
   def shiftannotations(self):
     """

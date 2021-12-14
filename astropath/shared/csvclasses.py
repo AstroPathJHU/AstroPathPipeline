@@ -3,7 +3,7 @@ from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import datefield, optionalfield, readtable
-from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, Polygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
@@ -157,7 +157,7 @@ class Annotation(DataClassWithPolygon):
   visible: bool = MetaDataAnnotation(readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
   poly: Polygon = polygonfield()
 
-class Vertex(DataClassWithPscale, DataClassWithApscale):
+class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
   """
   A vertex of a polygon.
 
@@ -173,8 +173,8 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
 
   regionid: int
   vid: int
-  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="apscale")
-  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="apscale")
+  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
+  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   pscale = None
 
   @property
@@ -183,7 +183,7 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
     return np.array([self.x, self.y])
 
   @classmethod
-  def transforminitargs(cls, *args, pscale=None, apscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
+  def transforminitargs(cls, *args, pscale=None, annoscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
     xveckwargs = {}
     vertexkwargs = {}
     im3xykwargs = {}
@@ -195,21 +195,21 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
         field: getattr(vertex, field)
         for field in dataclassy.fields(type(vertex))
       }
-      if apscale is None: apscale = vertex.apscale
-      if apscale != vertex.apscale: raise ValueError(f"Inconsistent apscales {apscale} {vertex.apscale}")
+      if annoscale is None: annoscale = vertex.annoscale
+      if annoscale != vertex.annoscale: raise ValueError(f"Inconsistent annoscales {annoscale} {vertex.annoscale}")
       if pscale is None: pscale = vertex.pscale
       if pscale != vertex.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {vertex.pscale}")
-      del vertexkwargs["pscale"], vertexkwargs["apscale"]
+      del vertexkwargs["pscale"], vertexkwargs["annoscale"]
     if im3x is not None:
-      im3xykwargs["x"] = units.convertpscale(im3x, pscale, apscale)
+      im3xykwargs["x"] = units.convertpscale(im3x, pscale, annoscale)
     if im3y is not None:
-      im3xykwargs["y"] = units.convertpscale(im3y, pscale, apscale)
+      im3xykwargs["y"] = units.convertpscale(im3y, pscale, annoscale)
     if im3xvec is not None:
-      im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, apscale)
+      im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, annoscale)
     return super().transforminitargs(
       *args,
       pscale=pscale,
-      apscale=apscale,
+      annoscale=annoscale,
       **kwargs,
       **xveckwargs,
       **vertexkwargs,
@@ -224,7 +224,7 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
     """
     if self.pscale is None:
       raise ValueError("Can't get im3 dimensions if you don't provide a pscale")
-    return units.convertpscale(self.xvec, self.apscale, self.pscale)
+    return units.convertpscale(self.xvec, self.annoscale, self.pscale)
   @property
   def im3x(self):
     """x in im3 coordinates"""

@@ -688,6 +688,12 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     get the original vertices in qptiff coordinates
     """
     return self.__getvertices(pscale=self.apscale)
+  @property
+  def annovertices(self):
+    """
+    get the original vertices in annotation coordinates
+    """
+    return self.__getvertices(pscale=self.annoscale)
 
   @methodtools.lru_cache()
   def __getwarpedvertices(self, *, apscale, pscale):
@@ -1044,7 +1050,7 @@ class WarpedVertexBase(Vertex):
       "regionid": self.regionid,
       "vid": self.vid,
       "xvec": self.xvec,
-      "apscale": self.apscale,
+      "annoscale": self.annoscale,
       "pscale": self.pscale,
     }
 
@@ -1064,7 +1070,7 @@ class WarpedVertexBase(Vertex):
       regionid=self.regionid,
       vid=self.vid,
       im3xvec=self.wxvec,
-      apscale=self.apscale,
+      annoscale=self.annoscale,
       pscale=self.pscale,
     )
 

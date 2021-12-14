@@ -96,6 +96,7 @@ class ThingWithScale(TableReader):
 class ThingWithPscale(ThingWithScale, scale="pscale"): pass
 class ThingWithQpscale(ThingWithScale, scale="qpscale"): pass
 class ThingWithApscale(ThingWithScale, scale="apscale"): pass
+class ThingWithAnnoScale(ThingWithScale, scale="annoscale"): pass
 class ThingWithImscale(ThingWithPscale, ThingWithApscale, scale="imscale"):
   @property
   def ipscale(self):
