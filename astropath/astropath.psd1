@@ -74,6 +74,7 @@ PowerShellVersion = '3.0'
                       'hpfs\flatfield\classes\batchflatfield.ps1',
                       'hpfs\segmaps\classes\segmaps.ps1',
                       'hpfs\shredxml\classes\shredxml.ps1',
+					  'hpfs\merge\classes\merge.ps1',
 		      'hpfs\warping\classes\warpoctets.ps1'
                       )
 

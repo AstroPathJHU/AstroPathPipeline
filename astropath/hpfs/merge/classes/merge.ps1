@@ -19,7 +19,7 @@ Usage: $a = [merge]::new($task, $sample)
 Class merge : moduletools {
     #
     merge([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
-        $this.funclocation = '"' + $PSScriptRoot + '\..\MaSS"'
+        $this.funclocation = '"' + $PSScriptRoot + '\..\funcs\MaSS"'
     }
     <# -----------------------------------------
      RunMerge
