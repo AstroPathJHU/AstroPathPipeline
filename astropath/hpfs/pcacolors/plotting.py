@@ -41,3 +41,6 @@ def plot_vector_components(pca) :
     ax.set_ylabel('PCA component vector',fontsize=13)
     ax.set_title('raw image layer components of PCA vectors',fontsize=14)
     plt.show()
+
+def stretch_layer(layer) :
+    return (layer-np.min(layer))/(np.max(layer)-np.min(layer))

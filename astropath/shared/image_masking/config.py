@@ -1,6 +1,6 @@
 #imports
-import numpy as np
 import cv2
+import numpy as np
 
 #class for shared constant variables
 class Const :
@@ -93,7 +93,7 @@ class Const :
         return 0.0525
     @property
     def BLUR_FLAG_STRING(self) :
-    	return 'blurred likely folded tissue or dust' #string to use for blurred areas in the labelled mask regions file
+        return 'blurred likely folded tissue or dust' #string to use for blurred areas in the labelled mask regions file
     @property
     def SATURATION_MIN_PIXELS(self) :
         return 4500 #minimum number of pixels required to flag saturation in images

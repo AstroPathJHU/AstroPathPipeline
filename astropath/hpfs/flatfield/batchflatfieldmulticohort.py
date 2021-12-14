@@ -134,7 +134,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
 
     @property
     def workingdir(self) :
-        return self.__outdir / UNIV_CONST.FLATFIELD_DIRNAME / f'{CONST.FLATFIELD_DIRNAME_STEM}_{self.__version}'
+        return self.__outdir / UNIV_CONST.FLATFIELD_DIRNAME / f'{UNIV_CONST.FLATFIELD_DIRNAME}_{self.__version}'
 
     #################### CLASS METHODS ####################
 

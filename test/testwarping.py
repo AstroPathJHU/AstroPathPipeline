@@ -1,10 +1,11 @@
 # a small script to test the results of some warps applied to a few images
 
 #imports
-from astropath.hpfs.warping.warp import PolyFieldWarp, CameraWarp
+import pathlib
+import numpy as np
 from astropath.utilities.config import CONST as UNIV_CONST
 #from astropath.utilities.img_file_io import write_image_to_file
-import pathlib, numpy as np
+from astropath.hpfs.warping.warp import PolyFieldWarp, CameraWarp
 
 #constants
 
