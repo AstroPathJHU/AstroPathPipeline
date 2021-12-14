@@ -191,19 +191,19 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     """
     The tile size as a Distance
     """
-    return units.convertpscale(self.__tilepixels*self.oneappixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__tilepixels*self.oneannopixel, self.apscale, self.imscale)
   @property
   def bigtilesize(self):
     """
     The big tile size (1400, 2100) as a distance
     """
-    return units.convertpscale(self.__bigtilepixels*self.oneappixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__bigtilepixels*self.oneannopixel, self.apscale, self.imscale)
   @property
   def bigtileoffset(self):
     """
     The big tile size (0, 1000) as a distance
     """
-    return units.convertpscale(self.__bigtileoffsetpixels*self.oneappixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__bigtileoffsetpixels*self.oneannopixel, self.apscale, self.imscale)
 
   def getimages(self, *, keep=False):
     """
@@ -671,8 +671,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     return [
       QPTiffVertex(
         vertex=v,
-        bigtilesize=units.convertpscale(self.bigtilesize, self.imscale, v.apscale),
-        bigtileoffset=units.convertpscale(self.bigtileoffset, self.imscale, v.apscale),
+        bigtilesize=units.convertpscale(self.bigtilesize, self.imscale, v.annoscale),
+        bigtileoffset=units.convertpscale(self.bigtileoffset, self.imscale, v.annoscale),
       ) for v in vertices
     ]
 
@@ -749,8 +749,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
         if newvertex.regionid != oldvertex.regionid:
           raise ValueError(f"found inconsistent regionids between regions.csv and vertices.csv: {newvertex.regionid} {oldvertex.regionid}")
         np.testing.assert_array_equal(
-          np.round((oldvertex.xvec / oldvertex.oneappixel).astype(float)),
-          np.round((newvertex.xvec / oldvertex.oneappixel).astype(float)),
+          np.round((oldvertex.xvec / oldvertex.oneannopixel).astype(float)),
+          np.round((newvertex.xvec / oldvertex.oneannopixel).astype(float)),
         )
         newvertices.append(newvertex.finalvertex)
       result.append(
