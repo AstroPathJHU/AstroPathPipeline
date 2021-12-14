@@ -75,5 +75,8 @@ Class segmaps : moduletools {
         $matlabtask = ";GetnoSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
         $this.sample.info("finished processing fields without segmentation data")
+        if (!$this.sample.testsegmentationfiles()){
+            Write-Error('Output files are not correct')
+        }
     }
 }

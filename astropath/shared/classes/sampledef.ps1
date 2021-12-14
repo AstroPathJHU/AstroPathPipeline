@@ -324,4 +324,28 @@ class sampledef : sharedtools{
         #
     }
     #
+    [switch]testsegmentationfiles(){
+        #
+        if (!(test-path $this.componentfolder())){
+            return $false
+        }
+        $comp = (gci ($this.componentfolder() + '\*') '*data.tif').Count
+        $seg = (gci ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
+        if (!($comp -eq $seg)){
+            return $false
+        }
+        return $true
+        #
+    }
+    #
+    [switch]testwarpoctets(){
+        #
+        $file = $this.basepath + '\warping\octets\' + $this.slideid + 'all-overlap-octets.csv'
+        if (!(test-path $file)){
+            return $false
+        }
+        #
+        return $true
+    }
+    #
 }

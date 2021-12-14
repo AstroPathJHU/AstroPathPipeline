@@ -78,6 +78,9 @@ Class warpoctets : moduletools {
         if ($this.processvars[4]){
             $this.sample.removedir($this.processloc)
         }
+        if (!$this.sample.testwarpoctets()){
+            Write-Error('Output files are not correct')
+        }
         #
     }
 }

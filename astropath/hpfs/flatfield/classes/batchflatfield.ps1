@@ -45,6 +45,9 @@ class batchflatfield : moduletools {
     [void]silentcleanup(){
         #
         $this.sample.removedir($this.processloc)
+        if (!$this.sample.testbatchflatfield()){
+            Write-Error('Output files are not correct')
+        }
         #
     }
 }
