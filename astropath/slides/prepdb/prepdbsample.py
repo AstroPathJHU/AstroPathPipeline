@@ -24,7 +24,6 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
     return {
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "skipannotations": parsed_args_dict.pop("skip_annotations"),
-      "annotationsonwsi": parsed_args_dict.pop("annotationsonwsi"),
       "_skipqptiff": parsed_args_dict.pop("skip_qptiff"),
     }
 
@@ -33,6 +32,7 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "margin": parsed_args_dict.pop("margin"),
+      "annotationsonwsi": parsed_args_dict.pop("annotationsonwsi"),
     }
 
 class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationReaderSample, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
@@ -301,7 +301,7 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
         name="annotationsonwsi",
         value=self.annotationsonwsi,
         unit="",
-        descriptions="annotations drawn on astropath image? (otherwise qptiff)",
+        description="annotations drawn on astropath image? (otherwise qptiff)",
         **pscales,
       ),
     ]

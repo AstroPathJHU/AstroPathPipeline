@@ -5,15 +5,17 @@ class PrepDbCohort(DbloadCohort, WorkflowCohort, XMLPolygonReaderCohort, PrepDbA
   sampleclass = PrepDbSample
   __doc__ = sampleclass.__doc__
 
-  def __init__(self, *args, margin, **kwargs):
+  def __init__(self, *args, margin, annotationsonwsi, **kwargs):
     super().__init__(*args, **kwargs)
     self.__margin = margin
+    self.__annotationsonwsi = annotationsonwsi
 
   @property
   def initiatesamplekwargs(self):
     return {
       **super().initiatesamplekwargs,
       "margin": self.__margin,
+      "annotationsonwsi": self.__annotationsonwsi,
     }
 
 def main(args=None):
