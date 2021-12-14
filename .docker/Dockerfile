@@ -420,4 +420,15 @@ ENV CLASSPATH="/usr/share/java/jackcess-1.1.14.jar:/usr/share/java/commons-loggi
 ENV PATH=/usr/local/texlive/bin/x86_64-linux:/home/astropath/.local/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
 
+# Install PowerShell From microsoft doc: https://docs.microsoft.com/en-us/powershell/scripting/install/install-ubuntu?view=powershell-7.2
+Run sudo apt update
+RUN sudo apt-get install -y wget apt-transport-https software-properties-common
+RUN wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+# Register the Microsoft repository GPG keys
+RUN sudo dpkg -i packages-microsoft-prod.deb
+# Update the list of packages after we added packages.microsoft.com
+RUN sudo apt-get update
+# Install PowerShell
+RUN sudo apt-get install -y powershell
+
 CMD ["/bin/bash"]
