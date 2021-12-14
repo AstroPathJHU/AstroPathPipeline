@@ -14,6 +14,9 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
     p.add_argument("--skip-annotations", action="store_true", help="do not check the annotations for validity and do not write the annotations, vertices, and regions csvs (they will be written later, in the annowarp step)")
     p.add_argument("--skip-qptiff", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--margin", type=int, help="minimum number of pixels between the tissue and the wsi edge", default=1024)
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
+    g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
     return p
 
   @classmethod
@@ -21,6 +24,7 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
     return {
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "skipannotations": parsed_args_dict.pop("skip_annotations"),
+      "annotationsonwsi": parsed_args_dict.pop("annotationsonwsi"),
       "_skipqptiff": parsed_args_dict.pop("skip_qptiff"),
     }
 
@@ -291,6 +295,13 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
         value=self.camerabinningy,
         unit="pixels",
         description="the number of adjacent pixels coadded",
+        **pscales,
+      ),
+      Constant(
+        name="annotationsonwsi",
+        value=self.annotationsonwsi,
+        unit="",
+        descriptions="annotations drawn on astropath image? (otherwise qptiff)",
         **pscales,
       ),
     ]

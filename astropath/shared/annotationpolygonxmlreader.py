@@ -206,7 +206,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, **kwargs):
+  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, annotationsonwsi=False, **kwargs):
+    self.__annotationsonwsi = annotationsonwsi
     self.__saveallannotationimages = saveallannotationimages
     if annotationimagefolder is not None: annotationimagefolder = pathlib.Path(annotationimagefolder)
     self.__annotationimagefolder = annotationimagefolder
@@ -223,6 +224,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
   def logger(self): pass
   @property
   def annotationimagefolder(self): return self.__annotationimagefolder
+  @property
+  def annotationsonwsi(self): return self.__annotationsonwsi
   @property
   def qptifffilename(self):
     return self.annotationspolygonsxmlfile.with_suffix("").with_suffix("").with_suffix(".qptiff")
@@ -410,25 +413,28 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
 
           if saveimage and self.__annotationimagefolder is not None:
             poly = SimplePolygon(vertices=regionvertices)
-            with QPTiff(self.qptifffilename) as fqptiff:
-              zoomlevel = fqptiff.zoomlevels[0]
-              qptiff = zoomlevel[0].asarray()
-              pixel = self.oneannopixel
-              xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
-              xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
-              xybuffer = (xymax - xymin) / 20
-              xymin -= xybuffer
-              xymax += xybuffer
-              (xmin, ymin), (xmax, ymax) = xymin, xymax
-              fig, ax = plt.subplots(1, 1)
-              plt.imshow(
-                qptiff[
-                  floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
-                  floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
-                ],
-                extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
-              )
-              ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.annoscale))
+            if self.annotationsonwsi:
+              raise ValueError("saving images is not implemented on wsi")
+            else:
+              with QPTiff(self.qptifffilename) as fqptiff:
+                zoomlevel = fqptiff.zoomlevels[0]
+                img = zoomlevel[0].asarray()
+            pixel = self.oneannopixel
+            xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
+            xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
+            xybuffer = (xymax - xymin) / 20
+            xymin -= xybuffer
+            xymax += xybuffer
+            (xmin, ymin), (xmax, ymax) = xymin, xymax
+            fig, ax = plt.subplots(1, 1)
+            plt.imshow(
+              qptiff[
+                floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
+                floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
+              ],
+              extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
+            )
+            ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.annoscale))
 
             if badimage:
               openvertex1 = poly.vertexarray[0]
@@ -529,6 +535,9 @@ def main(args=None):
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
   p.add_argument("--csvprefix", help="prefix to put in front of the csv file names")
   add_rename_annotation_argument(p)
+  g = p.add_mutually_exclusive_group()
+  g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
+  g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
     writeannotationcsvs(**args.__dict__, logger=printlogger("annotations"))
@@ -543,6 +552,9 @@ def checkannotations(args=None):
   g.add_argument("--save-bad-polygon-images-folder", type=pathlib.Path, dest="badannotationimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
   p.add_argument("--save-images-filetype", default="pdf", choices=("pdf", "png"), dest="annotationimagefiletype", help="image format to save debug images")
   add_rename_annotation_argument(p)
+  g = p.add_mutually_exclusive_group()
+  g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
+  g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
   args = p.parse_args(args=args)
   if args.annotationimagefolder is not None:
     args.saveallannotationimages = True
