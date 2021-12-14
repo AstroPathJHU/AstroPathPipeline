@@ -164,7 +164,9 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
   def apscale(self):
     if not self.qptifffilename.exists(): return 1
     return self.getqptiffcsv()[0].apscale
-
+  @property
+  def annoscale(self):
+    return self.pscale / 2 if self.annotationsonwsi else self.apscale
   @property
   def overlaps(self):
     return self.getoverlaps()
