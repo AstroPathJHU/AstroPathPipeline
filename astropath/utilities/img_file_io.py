@@ -1,10 +1,9 @@
 #imports
-from .dataclasses import MyDataClass
-from .miscfileio import cd
-from .config import CONST
-import numpy as np
-import xml.etree.ElementTree as et
 import pathlib, glob, cv2, logging
+import numpy as np, xml.etree.ElementTree as et
+from .config import CONST
+from .miscfileio import cd
+from .dataclasses import MyDataClass
 
 #global variables
 PARAMETER_XMLFILE_EXT = '.Parameters.xml'
@@ -31,14 +30,14 @@ def im3readraw(f,dtype=np.uint16) :
     content = np.memmap(fp,dtype=dtype,mode='r')
   return content
 
-#write an array of uint16s as an im3 file
+#write an array as an im3 file
 def im3writeraw(outname,a) :
   with open(outname,mode='wb') as fp : #write as binary
     a.tofile(fp)
 
 #read a raw image file and return it as an array of shape (height,width,n_layers)
 def get_raw_as_hwl(fpath,height,width,nlayers,dtype=np.uint16) :
-  #get the .raw file as a vector of uint16s
+  #get the .raw file as a vector
   try :
     img = im3readraw(fpath,dtype)
   except Exception as e :
@@ -56,7 +55,7 @@ def get_raw_as_hwl(fpath,height,width,nlayers,dtype=np.uint16) :
 
 #read a single-layer image and return it as an array of shape (height,width)
 def get_raw_as_hw(fpath,height,width,dtype=np.uint16) :
-  #get the file as a vector of uint16s
+  #get the file as a vector
   try :
     img = im3readraw(fpath,dtype)
   except Exception as e :

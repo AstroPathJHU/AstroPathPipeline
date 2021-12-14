@@ -1,3 +1,6 @@
+#imports
+import pathlib
+
 #class for shared constant variables
 class Const :
     #file extensions
@@ -33,6 +36,9 @@ class Const :
     @property
     def WARPING_DIRNAME(self) :
         return 'warping' #name of the directory holding warping model results for an entire cohort (directory with this name gets created in root)
+    @property
+    def ASTROPATH_PROCESSING_DIR(self) :
+        return pathlib.Path('//bki04/astropath_processing')
     #image information
     @property
     def N_CLIP(self) :

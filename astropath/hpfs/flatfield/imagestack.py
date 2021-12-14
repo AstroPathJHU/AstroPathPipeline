@@ -387,10 +387,10 @@ class Flatfield(ImageStack) :
         if not workingdirpath.is_dir() :
             workingdirpath.mkdir(parents=True)
         with cd(workingdirpath.parent) :
-            write_image_to_file(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin')
+            write_image_to_file(self.__flatfield_image,f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}.bin')
         with cd(workingdirpath) :
             write_image_to_file(self.__flatfield_image_err,
-                                f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty.bin')
+                                f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}_uncertainty.bin')
         #save the metadata summary and the field log
         if len(self.__metadata_summaries)>0 :
             with cd(workingdirpath) :
@@ -399,13 +399,13 @@ class Flatfield(ImageStack) :
             with cd(workingdirpath) :
                 writetable(f'{CONST.FIELDS_USED_CSV_FILENAME}',self.__field_logs)
         #make some plots of the image layers and the pixel intensities
-        plotdir_path = workingdirpath / f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_plots'
+        plotdir_path = workingdirpath / f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}_plots'
         plotdir_path.mkdir(exist_ok=True)
-        plot_image_layers(self.__flatfield_image,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}',plotdir_path)
+        plot_image_layers(self.__flatfield_image,f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}',plotdir_path)
         plot_image_layers(self.__flatfield_image_err,
-                          f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_uncertainty',plotdir_path)
+                          f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}_uncertainty',plotdir_path)
         if self.mask_stack is not None :
-            plot_image_layers(self.mask_stack,f'{CONST.FLATFIELD_DIRNAME_STEM}_{version}_mask_stack',plotdir_path)
+            plot_image_layers(self.mask_stack,f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}_mask_stack',plotdir_path)
         flatfield_image_pixel_intensity_plot(self.__flatfield_image,version,plotdir_path)
         #make the summary PDF
         latex_summary = FlatfieldLatexSummary(self.__flatfield_image,plotdir_path,version)

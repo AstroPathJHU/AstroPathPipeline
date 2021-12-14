@@ -1,3 +1,6 @@
+#imports
+from ...utilities.config import CONST as UNIV_CONST
+
 #class for shared constant variables
 class Const :
     @property
@@ -94,16 +97,16 @@ class Const :
         """
         return 100
     @property
-    def FLATFIELD_DIRNAME_STEM(self) :
-        """
-        prepend for name of the directory holding batch flatfield results (also used for some other image/plot names)
-        """
-        return 'flatfield'
-    @property
     def FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
         return 'flatfield_summary' #prepend for the name of the batch flatfield summary pdf file
     @property
     def APPLIED_FLATFIELD_SUMMARY_PDF_FILENAME_STEM(self) :
         return 'applied_flatfield_summary' #prepend for the name of the applied flatfield summary pdf file
+    @property
+    def DEFAULT_FLATFIELD_MODEL_FILEPATH(self) :
+        return UNIV_CONST.ASTROPATH_PROCESSING_DIR/'AstroPathFlatfieldModels.csv'
+    @property
+    def DEFAULT_FLATFIELD_MODEL_DIR(self) :
+        return UNIV_CONST.ASTROPATH_PROCESSING_DIR/UNIV_CONST.FLATFIELD_DIRNAME
 
 CONST=Const()

@@ -1,4 +1,4 @@
-import contextlib, cv2, datetime, itertools, job_lock, methodtools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
+import contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
@@ -187,7 +187,9 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     if self.tifflayers == "color":
       self.logger.info("  normalizing")
 
-      layers = [180 * vips_sinh(layer / layer.max() * 1.5) for layer in layers]
+      pyvips.cache_set_max(0)
+      scalefactors = [1.5 / layer.max() for layer in layers]
+      layers = [180 * vips_sinh(layer * scalefactor) for layer, scalefactor in more_itertools.zip_equal(layers, scalefactors)]
       #https://github.com/libvips/pyvips/issues/287
       #layers = np.asarray(layers, dtype=object)
       layerarray = np.zeros(len(layers), dtype=object)
@@ -195,7 +197,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         layerarray[i] = layer
       layers = layerarray
 
-      pyvips.cache_set_max(0)
       self.logger.info("  multiplying by color matrix")
       img = np.tensordot(layers, self.colormatrix, [[0], [0]])
       img = [layer.cast(vips_format_dtype(np.uint8)) for layer in img] #clips at 255
@@ -496,13 +497,15 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   def workflowkwargs(self):
     return {"layers": self.layers, "tifflayers": self.tifflayers, **super().workflowkwargs}
 
-  @property
-  def workinprogressfiles(self):
-    return [
-      *(self.bigfolder.glob("*.png")),
-      *(self.wsifolder.glob("*.png")),
-      *(self.wsifolder.glob("*.tiff")),
-    ]
+  @classmethod
+  def getworkinprogressfiles(cls, SlideID, *, zoomroot, **otherworkflowkwargs):
+    bigfolder = zoomroot/SlideID/"big"
+    wsifolder = zoomroot/SlideID/"wsi"
+    return itertools.chain(
+      bigfolder.glob("*.png"),
+      wsifolder.glob("*.png"),
+      wsifolder.glob("*.tiff"),
+    )
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, **otherrootkwargs):

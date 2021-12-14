@@ -1,4 +1,4 @@
-import collections, contextlib, itertools, more_itertools, re, sys
+import argparse, collections, contextlib, itertools, more_itertools, re, sys
 
 def split_csv_to_list(value) :
   """
@@ -120,3 +120,17 @@ class recursionlimit(contextlib.AbstractContextManager):
   def __updaterecursionlimit(cls):
     elements = set(cls.__recursionlimitcounter.elements()) | {cls.__defaultrecursionlimit}
     sys.setrecursionlimit(max(elements))
+
+class ArgParseAddToDict(argparse.Action):
+  def __call__(self, parser, namespace, values, option_string=None):
+    k, v = values
+    dct = getattr(namespace, self.dest)
+    if dct is None: dct = {}; setattr(namespace, self.dest, dct)
+    dct[k] = v
+
+class ArgParseAddRegexToDict(ArgParseAddToDict):
+  def __call__(self, parser, namespace, values, option_string=None):
+    k, v = values
+    v = re.compile(v)
+    values = k, v
+    return super().__call__(parser, namespace, values, option_string=None)

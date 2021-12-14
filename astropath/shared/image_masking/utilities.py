@@ -1,8 +1,8 @@
 #imports
-from .config import CONST
-from ...utilities.dataclasses import MyDataClass
-import numpy as np
 import cv2
+import numpy as np
+from ...utilities.dataclasses import MyDataClass
+from .config import CONST
 
 #mask region information helper class
 class LabelledMaskRegion(MyDataClass) :
