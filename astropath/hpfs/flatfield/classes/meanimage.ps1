@@ -166,7 +166,7 @@ Class meanimage : moduletools {
             $this.sample.removedir($this.processloc)
         }
         if (!$this.sample.testmeanimagefiles()){
-            Write-Error('Output files are not correct')
+            throw 'Output files are not correct'
         }
         #
     }

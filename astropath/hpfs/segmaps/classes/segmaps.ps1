@@ -76,7 +76,7 @@ Class segmaps : moduletools {
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
         $this.sample.info("finished processing fields without segmentation data")
         if (!$this.sample.testsegmentationfiles()){
-            Write-Error('Output files are not correct')
+            throw 'Output files are not correct'
         }
     }
 }

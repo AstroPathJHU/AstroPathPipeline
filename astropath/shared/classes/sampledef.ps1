@@ -326,10 +326,11 @@ class sampledef : sharedtools{
     #
     [switch]testsegmentationfiles(){
         #
-        if (!(test-path $this.componentfolder())){
+        $table = $this.phenotypefolder() + '\Results\Tables'
+        if (!(test-path $table + '\*csv')){
             return $false
         }
-        $comp = (gci ($this.componentfolder() + '\*') '*data.tif').Count
+        $comp = (gci ($table + '\*') '*csv').Count
         $seg = (gci ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
         if (!($comp -eq $seg)){
             return $false

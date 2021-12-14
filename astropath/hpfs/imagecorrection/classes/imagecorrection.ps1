@@ -141,7 +141,7 @@ Class imagecorrection : moduletools {
             $this.sample.copy($sor, $des, '.log')
             $this.sample.removedir($this.processloc)
             if (!$this.sample.testimagecorrectionfiles()){
-                Write-Error('Output files are not correct')
+                throw 'Output files are not correct'
             }
             #
         }
