@@ -696,27 +696,31 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     return self.__getvertices(pscale=self.annoscale)
 
   @methodtools.lru_cache()
-  def __getwarpedvertices(self, *, apscale, pscale):
+  def __getwarpedvertices(self, *, annoscale, pscale):
     """
     Create the new warped vertices
     """
-    oneapmicron = units.onemicron(pscale=apscale)
-    onemicron = self.onemicron
-    onepixel = self.onepixel
-    return [
-      WarpedQPTiffVertex(
-        vertex=v,
-        wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=apscale))) / oneapmicron * onemicron // onepixel * onepixel,
-        pscale=self.pscale,
-      ) for v in self.__getvertices()
-    ]
+    if self.annotationsonwsi:
+      pass
+    else:
+      apscale = annoscale
+      oneapmicron = units.onemicron(pscale=apscale)
+      onemicron = self.onemicron
+      onepixel = self.onepixel
+      return [
+        WarpedQPTiffVertex(
+          vertex=v,
+          wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=apscale))) / oneapmicron * onemicron // onepixel * onepixel,
+          pscale=self.pscale,
+        ) for v in self.__getvertices()
+      ]
 
   @property
   def warpedvertices(self):
     """
     Get the new warped vertices in im3 coordinates
     """
-    return self.__getwarpedvertices(apscale=self.apscale, pscale=self.pscale)
+    return self.__getwarpedvertices(annoscale=self.annoscale, pscale=self.pscale)
 
   @methodtools.lru_cache()
   def __getregions(self, **kwargs):
@@ -937,7 +941,7 @@ class AnnoWarpSampleAstroPathTissueMask(AnnoWarpSampleTissueMask, AstroPathTissu
     super().printcuts(*args, **kwargs)
     self.logger.info("      Using AstroPath mask to determine tissue regions")
 
-class QPTiffCoordinateBase(abc.ABC):
+class QPTiffCoordinateBase(units.ThingWithApscale):
   """
   Base class for any coordinate in the qptiff that works with the big tiles
   You can get the index of the big tile and the location within the big tile
@@ -1014,6 +1018,8 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
   @property
   def qptiffcoordinate(self):
     return self.xvec
+  @property
+  def apscale(self): return self.annoscale
 
 class WarpedVertexBase(Vertex):
   """
