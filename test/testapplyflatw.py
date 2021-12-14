@@ -41,9 +41,9 @@ class TestApplyFlatWCohort(TestBaseCopyInput, TestBaseSaveOutput) :
         super().setUp()
         self.__files_to_remove = []
         #Mock up a flatfield file to use for applying corrections
-        ff = read_image_from_layer_files(folder/'data'/'reference'/'batchflatfieldcohort'/f'{FF_CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin',*dims,np.float64)
-        write_image_to_file(ff,folder/'data'/'corrections'/f'{FF_CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin')
-        self.__files_to_remove.append(folder/'data'/'corrections'/f'{FF_CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin')
+        ff = read_image_from_layer_files(folder/'data'/'reference'/'batchflatfieldcohort'/f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}.bin',*dims,np.float64)
+        write_image_to_file(ff,folder/'data'/'corrections'/f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}.bin')
+        self.__files_to_remove.append(folder/'data'/'corrections'/f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}.bin')
         #Add a slide_ID dir in the fake root directory (will get removed with the rest of the test_for_jenkins directory)
         (folder/'test_for_jenkins'/'applyflatw'/'root'/slide_ID).mkdir(parents=True,exist_ok=True)
 
@@ -54,7 +54,7 @@ class TestApplyFlatWCohort(TestBaseCopyInput, TestBaseSaveOutput) :
                 '--im3root',os.fspath(folder/'data'),
                 '--sampleregex',slide_ID,
                 '--workingdir',os.fspath(folder/'test_for_jenkins'/'applyflatw'/'flatw'),
-                '--flatfield-file',os.fspath(folder/'data'/'corrections'/f'{FF_CONST.FLATFIELD_DIRNAME_STEM}_{version}.bin'),
+                '--flatfield-file',os.fspath(folder/'data'/'corrections'/f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}.bin'),
                 '--warping-file',os.fspath(warping_correction_filepath),
                 '--layers','-1','1',
                 '--njobs','1',

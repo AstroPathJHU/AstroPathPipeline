@@ -1435,7 +1435,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
         self.logger.warningonenter(warnmsg)
         self.__flatfield_file = None
       else :
-        ff_filename = f'{FF_CONST.FLATFIELD_DIRNAME_STEM}_{ff_version}.bin'
+        ff_filename = f'{UNIV_CONST.FLATFIELD_DIRNAME}_{ff_version}.bin'
         self.__flatfield_file = FF_CONST.DEFAULT_FLATFIELD_MODEL_DIR/ff_filename
     # if the flatfield file argument given isn't a file, 
     # search the astropath_processing/flatfield and root/flatfield directory for a file of the same name
