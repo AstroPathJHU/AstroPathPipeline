@@ -95,4 +95,4 @@ class TissueMaskLoader(MaskLoader):
   @property
   def tissuemaskpolygons(self):
     with self.using_tissuemask_uint8() as mask:
-      return findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, forgdal=True)
+      return findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, forgdal=True)

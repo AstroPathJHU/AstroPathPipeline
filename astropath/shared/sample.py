@@ -618,7 +618,7 @@ class DbloadSampleBase(SampleBase, DbloadArgumentParser):
     """
     return cv2.imread(os.fspath(self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)))
 
-class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale, units.ThingWithAnnoScale):
+class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale, units.ThingWithAnnoscale):
   """
   Base class for any sample that uses the csvs in the dbload folder
   after the folder has been set up.

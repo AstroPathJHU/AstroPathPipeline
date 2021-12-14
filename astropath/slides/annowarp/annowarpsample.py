@@ -763,8 +763,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
           type=region.type,
           nvert=region.nvert,
           pscale=region.pscale,
-          apscale=region.apscale,
-          poly=SimplePolygon(vertices=newvertices, pscale=region.pscale, apscale=region.apscale)
+          annoscale=region.annoscale,
+          poly=SimplePolygon(vertices=newvertices, pscale=region.pscale, annoscale=region.annoscale)
         ),
       )
     return result
