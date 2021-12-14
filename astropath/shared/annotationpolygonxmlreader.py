@@ -428,7 +428,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
             (xmin, ymin), (xmax, ymax) = xymin, xymax
             fig, ax = plt.subplots(1, 1)
             plt.imshow(
-              qptiff[
+              img[
                 floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
                 floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
               ],
