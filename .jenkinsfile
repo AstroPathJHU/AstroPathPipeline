@@ -15,6 +15,7 @@ pipeline {
   }
 
   environment {
+    RUNNING_ON_JENKINS = "1"
     JENKINS_NO_GPU = "1"
     JENKINS_PARALLEL = "1"
     HOME = "/home/astropath"
