@@ -21,6 +21,8 @@ if (!($PSBoundParameters.ContainsKey('modulepath'))) {
       $module = $modulepath + '/../astropath'
       Write-Host 'checking: ' $module
       #
+      # check for the module
+      #
       if (Get-Module -ListAvailable -Name $module) {
             Write-Host "Module exists"
             Write-Host Get-Module -ListAvailable -Name $module
@@ -28,14 +30,17 @@ if (!($PSBoundParameters.ContainsKey('modulepath'))) {
           Throw "Module does not exist"
       }
       #
-      try {
-           Import-Module $module -EA SilentlyContinue
-      } catch {
-          Throw "Module import failed"
-      }
+      # confirm installation
+      #
+      Import-Module $module -EA SilentlyContinue 
+      if($error){
+          Throw 'Module could not be imported'
+      } 
       #
     }
 }
+#
+# launch test and exit if no error found
 #
 $test = [testpsimport]::new($modulepath) 
 exit 0
