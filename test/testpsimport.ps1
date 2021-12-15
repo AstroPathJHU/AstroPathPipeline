@@ -8,7 +8,7 @@
  -------------------------------------------#>
  Class testpsimport {
     #
-    [void]testpsimport(){
+    testpsimport(){
       $module = $PSScriptRoot + '../astropath'
       Write-Host 'checking: ' $module
       if (Get-Module -ListAvailable -Name $module) {
