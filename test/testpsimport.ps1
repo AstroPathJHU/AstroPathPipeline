@@ -4,13 +4,13 @@
  Last Edit: 10.13.2020
  --------------------------------------------
  Description
- copy files fast with different methods
+ test if the module can be imported or not
  -------------------------------------------#>
  param ([Parameter(Position=0)][string] $modulepath = '')
 #
 # check input parameters
 #
-if (!($PSBoundParameters.ContainsKey('modulepath')) {
+if (!($PSBoundParameters.ContainsKey('modulepath'))) {
     Throw "Usage: testpsimport -modulepath"
 }
 #
@@ -21,8 +21,7 @@ if (!($PSBoundParameters.ContainsKey('modulepath')) {
       Write-Host 'checking: ' $module
       if (Get-Module -ListAvailable -Name $module) {
             Write-Host "Module exists"
-      } 
-      else {
+      } else {
           Throw "Module does not exist"
       }
     }
