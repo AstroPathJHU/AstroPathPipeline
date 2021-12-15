@@ -1,4 +1,4 @@
-import cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib, skimage
+import cv2, datetime, hashlib, jxmlease, more_itertools, numpy as np, os, pathlib, skimage
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
@@ -7,14 +7,15 @@ from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
+from astropath.slides.annowarp.mergeannotationxmls import MergeAnnotationXMLsCohort
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable, writetable
-from .testbase import assertAlmostEqual, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
-class TestMisc(TestBaseSaveOutput):
+class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
@@ -27,7 +28,12 @@ class TestMisc(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"misc"/"makesampledef"/"sampledef.csv",
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"sampledef.csv",
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"noheader.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml",
     ]
+  @classmethod
+  def filestocopy(cls):
+    yield thisfolder/"data"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml", thisfolder/"test_for_jenkins"/"misc"/"M206"/"im3"/"Scan1"
+
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
     islands = l.islands()
@@ -217,6 +223,28 @@ class TestMisc(TestBaseSaveOutput):
       ):
         for row, target in more_itertools.zip_equal(rows, sampledefs):
           assertAlmostEqual(row, target)
+    except:
+      self.saveoutput()
+      raise
+    else:
+      self.removeoutput()
+
+  def testMergeAnnotationXMLs(self):
+    root = thisfolder/"data"
+    im3root = thisfolder/"test_for_jenkins"/"misc"
+    SlideID = "M206"
+    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--sampleregex", SlideID, "--annotation", "good tissue", ".*[.]xml", "--skip-annotation", "tumor", "--debug", "--no-log"]
+
+    try:
+      MergeAnnotationXMLsCohort.runfromargumentparser(args)
+
+      with open(im3root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml", "rb") as f:
+        newxml = jxmlease.parse(f)
+      with open(root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml", "rb") as f:
+        oldxml = jxmlease.parse(f)
+      del oldxml["Annotations"]["Annotation"][1]
+      oldxml["Annotations"]["Annotation"], = oldxml["Annotations"]["Annotation"]
+      self.assertEqual(newxml, oldxml)
     except:
       self.saveoutput()
       raise

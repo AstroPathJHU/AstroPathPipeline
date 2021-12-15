@@ -62,8 +62,10 @@ class TestMeanImageComparison(TestBaseCopyInput,TestBaseSaveOutput) :
             ref_semia_3[:,:,ili] = ref_semia[:,:,li]
         ref_mias = [ref_mia,ref_mia_2,ref_mia_3]
         ref_semias = [ref_semia,ref_semia_2,ref_semia_3]
+        ref_ms = np.zeros(ref_mia.shape,dtype=np.uint64)+250
+        ref_mss = [ref_ms,ref_ms.copy(),ref_ms.copy()]
         #write/copy the files into the samples' meanimage directories
-        for sid,mia,semia in zip(slide_IDs,ref_mias,ref_semias) :
+        for sid,mia,semia,ms in zip(slide_IDs,ref_mias,ref_semias,ref_mss) :
             slide_mif = folder/'test_for_jenkins'/'meanimagecomparison'/'root'/sid/UNIV_CONST.IM3_DIR_NAME/'meanimage'
             if not slide_mif.is_dir() :
                 slide_mif.mkdir(parents=True)
@@ -71,6 +73,8 @@ class TestMeanImageComparison(TestBaseCopyInput,TestBaseSaveOutput) :
             self.__files_to_remove.append(slide_mif/f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
             write_image_to_file(semia,slide_mif/f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
             self.__files_to_remove.append(slide_mif/f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+            write_image_to_file(ms,slide_mif/f'{sid}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
+            self.__files_to_remove.append(slide_mif/f'{sid}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
 
     def test_meanimage_comparison(self) :
         #run meanimagecomparison selecting the three contrived samples

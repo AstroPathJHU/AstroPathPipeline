@@ -1,7 +1,8 @@
+from ...shared.argumentparser import CleanupArgumentParser
 from ...shared.cohort import DbloadCohort, GeomFolderCohort, ParallelCohort, SelectRectanglesCohort, WorkflowCohort
 from .geomcellsample import GeomCellSample
 
-class GeomCellCohort(DbloadCohort, GeomFolderCohort, ParallelCohort, SelectRectanglesCohort, WorkflowCohort):
+class GeomCellCohort(DbloadCohort, GeomFolderCohort, ParallelCohort, SelectRectanglesCohort, WorkflowCohort, CleanupArgumentParser):
   sampleclass = GeomCellSample
   __doc__ = sampleclass.__doc__
 

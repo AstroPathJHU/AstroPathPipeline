@@ -1,8 +1,8 @@
-import abc, contextlib, csv, dataclasses, dataclassy, datetime, job_lock, pathlib
+import abc, contextlib, contextlib2, csv, dataclasses, dataclassy, datetime, io, job_lock, pathlib
 
 from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
-from .misc import checkwindowsnewlines, field_size_limit_context, guesspathtype, mountedpathtopath, pathtomountedpath
+from .miscfileio import checkwindowsnewlines, field_size_limit_context, guesspathtype, mountedpathtopath, pathtomountedpath
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
   """
@@ -60,7 +60,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
   result = []
   if checknewlines:
     checkwindowsnewlines(filename)
-  with field_size_limit_context(fieldsizelimit), open(filename) as f:
+  with field_size_limit_context(fieldsizelimit), contextlib2.nullcontext(filename) if isinstance(filename, io.TextIOBase) else open(filename) as f:
     if header:
       fieldnames = None
     else:
@@ -100,7 +100,10 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
       if not filter(row): continue
 
-      result.append(Row(**row, **extrakwargs))
+      try:
+        result.append(Row(**row, **extrakwargs))
+      except TypeError:
+        raise ValueError(f"Row has bad syntax:\n{row}\n{extrakwargs}")
 
   return result
 

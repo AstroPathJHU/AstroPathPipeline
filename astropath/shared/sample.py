@@ -1,15 +1,17 @@
-import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
+import abc, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
 
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
 from ..hpfs.warping.utilities import WarpingSummary
+from ..hpfs.imagecorrection.utilities import CorrectionModelTableEntry
 from ..utilities import units
-from ..utilities.misc import floattoint
+from ..utilities.config import CONST as UNIV_CONST
+from ..utilities.miscmath import floattoint
 from ..utilities.img_file_io import get_raw_as_hwl, LayerOffset
 from ..utilities.tableio import readtable, writetable
-from ..utilities.config import CONST as UNIV_CONST
+from ..utilities.version import astropathversionregex
 from .annotationxmlreader import AnnotationXMLReader
-from .annotationpolygonxmlreader import XMLPolygonAnnotationReader
+from .annotationpolygonxmlreader import XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger
@@ -18,7 +20,7 @@ from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
 
-class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMoreRoots):
+class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots):
   """
   Base class for all sample classes.
 
@@ -32,7 +34,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.DEBUG, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, **kwargs):
     self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
@@ -48,7 +50,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__nentered = 0
-    super().__init__()
+    super().__init__(**kwargs)
 
     if not self.scanfolder.exists():
       raise OSError(f"{self.scanfolder} does not exist")
@@ -73,6 +75,13 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
   @property
   def rootnames(self):
     return {"root", "logroot", "im3root", "informdataroot", *super().rootnames}
+
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "Scan": self.Scan,
+    }
 
   @property
   def SampleID(self): return self.samp.SampleID
@@ -177,9 +186,6 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
   @property
   def annotationsxmlfile(self):
     return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
-  @property
-  def annotationspolygonsxmlfile(self):
-    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".annotations.polygons.xml")
 
   def __getimageinfofromXMLfiles(self):
     """
@@ -288,15 +294,24 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
       else:
         raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
+  @classmethod
+  def getnlayersunmixed(cls, componenttiffsfolder):
+    filenames = [componenttiffsfolder/"batch_procedure.ifp", componenttiffsfolder/"batch_procedure.ifr"]
+    try:
+      filename = next(_ for _ in filenames if _.exists())
+    except StopIteration:
+      raise FileNotFoundError("Didn't find any batch procedure files: " + ", ".join(str(_) for _ in filenames))
+    with open(filename, "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+        return int(node.xml_attrs["dim"])
+
   @methodtools.lru_cache()
   @property
   def nlayersunmixed(self):
     """
     Find the number of component tiff layers from the xml metadata
     """
-    with open(self.componenttiffsfolder/"batch_procedure.ifp", "rb") as f:
-      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-        return int(node.xml_attrs["dim"])
+    return self.getnlayersunmixed(self.componenttiffsfolder)
 
   def _getimageinfos(self):
     """
@@ -334,9 +349,9 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
       elif np.allclose(units.microns(result[:3], power=[0, 1, 1], pscale=result[0]), units.microns(v[:3], power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
         continue
       elif np.allclose(units.microns(result[:3], power=[0, 1, 1], pscale=result[0]), units.microns(v[:3], power=[0, 1, 1], pscale=v[0]), rtol=1e-6):
-        if warnfunction != self.logger.warningglobal: warnfunction = self.logger.warning
+        if warnfunction != self.logger.warningglobalonenter: warnfunction = self.logger.warningonenter
       else:
-        warnfunction = self.logger.warningglobal
+        warnfunction = self.logger.warningglobalonenter
 
     if warnfunction is not None:
       fmt = "{:30} {:30} {:30} {:30}"
@@ -463,7 +478,7 @@ class SampleBase(contextlib.ExitStack, units.ThingWithPscale, ArgumentParserMore
     return super().enter_context(*args, **kwargs)
 
   @classmethod
-  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} v[0-9a-f.devgd+]+$"
+  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} {astropathversionregex.pattern}$"
   @classmethod
   def logendregex(cls): return rf"end {cls.logmodule()}$|FINISH: {cls.logmodule()} v[0-9a-f.devgd+]+$"
 
@@ -1236,7 +1251,7 @@ class XMLLayoutReader(SampleBase):
       expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}]{UNIV_CONST.IM3_EXT}"
       actual = r.file
       if expected != actual:
-        self.logger.warningglobal(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
+        self.logger.warningglobalonenter(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
       r.file = expected
 
   def fixduplicaterectangles(self, rectangles):
@@ -1252,7 +1267,7 @@ class XMLLayoutReader(SampleBase):
       for r2 in duplicates:
         if r2.file != r.file:
           raise ValueError(f"Multiple rectangles at {r.cxvec} with different filenames {', '.join(r3.file for r3 in [r]+duplicates)}")
-      self.logger.warningglobal(f"annotations.xml has the rectangle at {r.cxvec} with filename {r.file} {len(duplicates)+1} times")
+      self.logger.warningglobalonenter(f"annotations.xml has the rectangle at {r.cxvec} with filename {r.file} {len(duplicates)+1} times")
       for r2 in [r]+duplicates[:-1]:
         rectangles.remove(r2)
     for i, rectangle in enumerate(rectangles, start=1):
@@ -1314,29 +1329,43 @@ class XMLLayoutReader(SampleBase):
         )
     return overlaps
 
-class XMLPolygonReader(SampleBase, XMLPolygonReaderArgumentParser):
+class XMLPolygonAnnotationReaderSample(SampleBase, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
   """
   Base class for any sample that reads the annotations from the XML metadata.
   """
-  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
-    self.__annotationsynonyms = annotationsynonyms
-    self.__reorderannotations = reorderannotations
+  def __init__(self, *args, annotationsxmlregex=None, **kwargs):
+    if annotationsxmlregex is not None: annotationsxmlregex = re.compile(annotationsxmlregex)
+    self.__annotationsxmlregex = annotationsxmlregex
     super().__init__(*args, **kwargs)
 
   @methodtools.lru_cache()
-  def __getXMLpolygonannotations(self, *, pscale=None, apscale=None):
-    return XMLPolygonAnnotationReader(self.annotationspolygonsxmlfile, pscale=pscale, apscale=apscale, logger=self.logger, annotationsynonyms=self.__annotationsynonyms, reorderannotations=self.__reorderannotations).getXMLpolygonannotations()
+  @property
+  def annotationspolygonsxmlfile(self):
+    candidates = {
+      filename
+      for filename in self.scanfolder.glob(f"*{self.SlideID}*annotations.polygons*.xml")
+      if self.__annotationsxmlregex is None or self.__annotationsxmlregex.match(filename.name)
+    }
+    default = self.scanfolder/f"{self.SlideID}_{self.scanfolder.name}.annotations.polygons.xml"
+    try:
+      candidate, = candidates
+    except ValueError:
+      if candidates:
+        if self.__annotationsxmlregex is None:
+          raise IOError("Found multiple annotation xmls: " + ", ".join(_.name for _ in candidates) + ". Please provide an annotationsxmlregex to pick the one you want.")
+        else:
+          raise IOError(f"Found multiple annotation xmls matching {self.__annotationsxmlregex.pattern}: " + ", ".join(_.name for _ in candidates) + ".")
+      else:
+        if self.__annotationsxmlregex is None:
+          return default
+        else:
+          raise FileNotFoundError(f"Couldn't find any annotation xmls matching {self.__annotationsxmlregex.pattern}")
+    if candidate != default:
+      self.logger.warning(f"Using {candidate.name} for annotations")
+    return candidate
 
-  @methodtools.lru_cache()
-  def getXMLpolygonannotations(self, *, pscale=None, apscale=None):
-    """
-    Read the annotations, vertices, and regions from the xml file
-    """
-    if pscale is None: pscale = self.pscale
-    if apscale is None: apscale = self.apscale
-    #use a nested lru_cache because otherwise it's sensitive to the order
-    #of the kwargs (pscale=1, apscale=2 is not the same as apscale=2, pscale=1)
-    return self.__getXMLpolygonannotations(pscale=pscale, apscale=apscale)
+class XMLPolygonAnnotationReaderSampleWithOutline(XMLPolygonAnnotationReaderSample, XMLPolygonAnnotationReaderWithOutline):
+  pass
 
 class ReadRectanglesFromXML(ReadRectanglesBase, XMLLayoutReader):
   """
@@ -1359,7 +1388,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
   Base class for any sample that will use corrections defined from input files
   """
 
-  def __init__(self,*args,et_offset_file,skip_et_corrections,flatfield_file,warping_file,**kwargs) :
+  def __init__(self,*args,et_offset_file,skip_et_corrections,flatfield_file,warping_file,correction_model_file,**kwargs) :
     super().__init__(*args,**kwargs)
     self.__et_offset_file = et_offset_file
     self.__skip_et_corrections = skip_et_corrections
@@ -1371,22 +1400,63 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
         errmsg+= 'for exposure time dark current offsets or rerun with --skip_exposure_time_corrections'
         raise ValueError(errmsg)
       self.__et_offset_file = self.fullxmlfile
+    #set the flatfield/warping files from the arguments
     self.__flatfield_file = flatfield_file
-    #if the flatfield file argument was given isn't a file, search the root/flatfield directory for a file of the same name
-    if (self.__flatfield_file is not None) and (not self.__flatfield_file.is_file()) :
-      other_filepath = self.root / UNIV_CONST.FLATFIELD_DIRNAME / self.__flatfield_file.name
-      if other_filepath.is_file() :
-        self.__flatfield_file = other_filepath
-      else :
-        raise ValueError(f'ERROR: flatfield file {self.__flatfield_file} does not exist!')
     self.__warping_file = warping_file
-    #if the warping file argument as given isn't a file, search the foot/warping directory for a file of the same name
-    if (self.__warping_file is not None) and (not self.__warping_file.is_file()) :
-      other_filepath = self.root / UNIV_CONST.WARPING_DIRNAME / self.__warping_file.name
-      if other_filepath.is_file() :
-        self.__warping_file = other_filepath
+    if (correction_model_file is not None) and (self.__flatfield_file is not None or self.__warping_file is not None) :
+      warnmsg = f'WARNING: correction model file {correction_model_file} will be ignored because a flatfield and/or '
+      warnmsg+= 'warping file were given'
+      self.logger.warningonenter(warnmsg) 
+    #if neither a flatfield nor a warping file were given, but a correction model file was, search for values defined there
+    if self.__flatfield_file is None and self.__warping_file is None and correction_model_file is not None :
+      if not correction_model_file.is_file() :
+        raise ValueError(f'ERROR: correction model file {correction_model_file} does not exist!')
+      table_entries = readtable(correction_model_file,CorrectionModelTableEntry)
+      this_slide_tes = [te for te in table_entries if ( te.SlideID==self.SlideID and te.Project==self.Project and 
+                                                        te.Cohort==self.Cohort and te.BatchID==self.BatchID ) ]
+      if len(this_slide_tes)!=1 :
+        errmsg = f'ERROR: there are {len(this_slide_tes)} entries for slide {self.SlideID} in the correction model '
+        errmsg+= f'table at {correction_model_file} but there should be exactly one'
+        raise RuntimeError(errmsg)
+      #reset the warping file
+      warping_filename = this_slide_tes[0].WarpingFile
+      if warping_filename.lower()=='none' :
+        warnmsg = f'WARNING: Warping file for {self.SlideID} in {correction_model_file} is {warping_filename}; '
+        warnmsg+= 'warping corrections WILL NOT be applied'
+        self.logger.warningonenter(warnmsg)
+        self.__warping_file = None
       else :
-        raise ValueError(f'ERROR: warping file {self.__flatfield_file} does not exist!')
+        self.__warping_file = pathlib.Path(warping_filename)
+      #reset the flatfield file
+      ff_version = this_slide_tes[0].FlatfieldVersion
+      if ff_version.lower()=='none' :
+        warnmsg = f'WARNING: Flatfield version for {self.SlideID} in {correction_model_file} is {ff_version}; '
+        warnmsg+= 'flatfield corrections WILL NOT be applied'
+        self.logger.warningonenter(warnmsg)
+        self.__flatfield_file = None
+      else :
+        ff_filename = f'{UNIV_CONST.FLATFIELD_DIRNAME}_{ff_version}.bin'
+        self.__flatfield_file = FF_CONST.DEFAULT_FLATFIELD_MODEL_DIR/ff_filename
+    # if the flatfield file argument given isn't a file, 
+    # search the astropath_processing/flatfield and root/flatfield directory for a file of the same name
+    if (self.__flatfield_file is not None) and (not self.__flatfield_file.is_file()) :
+      poss_roots = [self.root,UNIV_CONST.ASTROPATH_PROCESSING_DIR]
+      for rd in poss_roots :
+        other_filepath = rd / UNIV_CONST.FLATFIELD_DIRNAME / self.__flatfield_file.name
+        if other_filepath.is_file() :
+          self.__flatfield_file = other_filepath
+      if not self.__flatfield_file.is_file() :
+        raise ValueError(f'ERROR: flatfield file {self.__flatfield_file} does not exist!')
+    # if the warping file argument given isn't a file, 
+    # search the astropath_processing/warping and root/warping directories for a file of the same name
+    if (self.__warping_file is not None) and (not self.__warping_file.is_file()) :
+      poss_roots = [self.root,UNIV_CONST.ASTROPATH_PROCESSING_DIR]
+      for rd in poss_roots :
+        other_filepath = rd / UNIV_CONST.WARPING_DIRNAME / self.__warping_file.name
+        if other_filepath.is_file() :
+          self.__warping_file = other_filepath
+      if not self.__warping_file.is_file() :
+        raise ValueError(f'ERROR: warping file {self.__warping_file} does not exist!')
 
   @property
   def et_offset_file(self) :

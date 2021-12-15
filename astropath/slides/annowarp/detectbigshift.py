@@ -1,7 +1,7 @@
 import itertools, numpy as np, PIL, skimage.filters
 from ...shared.sample import ReadRectanglesDbloadIm3
 from ...utilities import units
-from ...utilities.misc import floattoint
+from ...utilities.miscmath import floattoint
 from ..align.computeshift import computeshift
 from .annowarpsample import QPTiffSample
 

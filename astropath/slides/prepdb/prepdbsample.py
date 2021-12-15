@@ -3,7 +3,7 @@ from ...shared.argumentparser import DbloadArgumentParser, XMLPolygonReaderArgum
 from ...shared.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
-from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader, XMLPolygonReader
+from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader, XMLPolygonAnnotationReaderSample
 from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 
@@ -31,7 +31,7 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
       "margin": parsed_args_dict.pop("margin"),
     }
 
-class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonReader, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
+class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationReaderSample, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   """
   The prepdb stage of the pipeline extracts metadata for a sample from the `.xml` files
   and writes it out to `.csv` files.

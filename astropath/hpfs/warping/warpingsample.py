@@ -1,8 +1,8 @@
 #imports
 import sys, numpy as np
-from reikna.fft import FFT
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import cd, get_GPU_thread
+from ...utilities.gpu import get_GPU_thread
+from ...utilities.miscfileio import cd
 from ...utilities.tableio import readtable, writetable
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample
@@ -226,6 +226,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         """
         if self.gputhread is None or self.gpufftdict is None :
             return overlap.align(alreadyalignedstrategy='overwrite')
+        from reikna.fft import FFT
         fft_shape = overlap.overlap_shape
         if fft_shape not in self.gpufftdict.keys() :
             gpu_im = np.ndarray(fft_shape,dtype=np.csingle)
