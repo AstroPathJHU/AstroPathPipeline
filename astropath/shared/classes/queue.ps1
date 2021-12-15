@@ -47,6 +47,7 @@ class queue : sharedtools{
             $this.buildqueue()
         } else {
             $this.('check'+$this.module)()
+            $this.updateCSVFiles()
         }
         #
     }
@@ -96,6 +97,73 @@ class queue : sharedtools{
         #
         $this.cleanedtasks = $slidearray
         #
+    }
+    <# -----------------------------------------
+     updateCSVFiles
+     update csv files
+     ------------------------------------------
+     Usage: $this.updateCSVFiles()
+    ----------------------------------------- #>
+    [void]updateCSVFiles(){
+        #$mainqueuepath = $this.mpath + '\across_project_queues'
+        #$mainqueuefile = $mainqueuepath + '\' + $this.module + '-queue.csv'
+        #$cohortinfo = $this.ImportCohortsInfo($this.mpath)
+        #$localqueuepath = $cohortinfo.Dpath + '\' + $cohortinfo.Dname + '\upkeep_and_progress'
+        #$localqueuefile = $localqueuepath + '\inForm_queue.csv' 
+        #
+        #$mainqueue = $this.OpenCSVFile($mainqueuefile)
+        #$localqueue = $this.OpenCSVFile($localqueuefile)
+        #
+        $localqueuelocation = '\\bki08\h$\testing\upkeep_and_progress\inForm_queue.csv'
+        $mainqueuelocation = '\\bki08\h$\testing\astropath_processing\across_project_queues\vminform-queue - Prototype.csv'
+        $localqueue = $this.OpenCSVFile($localqueuelocation)
+        $mainqueue = $this.OpenCSVFile($mainqueuelocation)
+        #
+        $out = $mainqueue -match ('T' + $this.project.PadLeft(3,'0'))
+        foreach($row in $out){
+            $row.TaskID = $row.taskid.substring(4).trim('0')
+            if ($row.TaskID -notin $localqueue.TaskID) {
+                $localqueue += $row | select -Property TaskID, Specimen, Antibody, Algorithm
+            }
+            $localrow = $localqueue | Where-Object -FilterScript {$_.TaskID -eq $row.TaskID}
+            if ($localrow -notmatch ($row | select -Property TaskID, Specimen, Antibody, Algorithm)) {
+                $addedrow = New-Object System.Object
+                $newid = $localqueue.Length + 1
+                $addedrow | Add-Member -NotePropertyName TaskID -NotePropertyValue $newid
+                $addedrow | Add-Member -NotePropertyName Specimen -NotePropertyValue $localrow.Specimen
+                $addedrow | Add-Member -NotePropertyName Antibody -NotePropertyValue $localrow.Antibody
+                $addedrow | Add-Member -NotePropertyName Algorithm -NotePropertyValue $localrow.Algorithm
+                $localqueue += $addedrow
+                #
+                $localrow.Specimen = $row.Specimen
+                $localrow.Antibody = $row.Antibody
+                $localrow.Algorithm = $row.Algorithm
+            }
+        }
+        #
+        foreach($row in $localqueue){
+            if ($row.TaskID -notin $out.TaskID -and $row.Algorithm -ne '') {
+                $adjustedrow = New-Object System.Object
+                $adjustedrow | Add-Member -NotePropertyName TaskID -NotePropertyValue $row.TaskID
+                $adjustedrow | Add-Member -NotePropertyName Specimen -NotePropertyValue $row.Specimen
+                $adjustedrow | Add-Member -NotePropertyName Antibody -NotePropertyValue $row.Antibody
+                $adjustedrow | Add-Member -NotePropertyName Algorithm -NotePropertyValue $row.Algorithm
+                $adjustedrow | Add-Member -NotePropertyName ProcessingLocation -NotePropertyValue ''
+                $adjustedrow | Add-Member -NotePropertyName StartDate -NotePropertyValue ''
+                $mainqueue += $adjustedrow
+            }
+        }
+        #
+        foreach($row in $mainqueue){
+            if ($row.TaskID -notmatch 'T') {
+                $row.TaskID = 'T' + $this.project.PadLeft(3,'0') + ($row.TaskID.ToString()).PadLeft(5,'0')
+            }
+        }
+        #
+        $updatedlocal = ($localqueue | ConvertTo-Csv -NoTypeInformation) -join "`n"
+        $updatedmain = ($mainqueue | ConvertTo-Csv -NoTypeInformation) -join "`n"
+        $this.SetFile($updatedlocal)
+        $this.SetFile($updatedmain)
     }
     <# -----------------------------------------
      defNotCompletedSlides
