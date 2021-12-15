@@ -94,7 +94,7 @@ def vips_sinh(image):
   except AttributeError:
     fallback = True
   except pyvips.error.Error as e:
-    if 'VipsOperation: class "sinh" not found' in str(e):
+    if 'VipsOperation: class "sinh" not found' in str(e) or "enum 'VipsOperationMath' has no member 'sinh'" in str(e):
       fallback = True
     else:
       raise
