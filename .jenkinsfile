@@ -31,7 +31,13 @@ pipeline {
         sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
       }
     }
-
+    
+    stage('powershell install') {
+      steps {
+        sh 'pwsh -File "./test/testpsimport.ps1"'
+      }
+    }
+    
     stage('run tests') {
       parallel {
         stage('console scripts and documents') {
@@ -158,12 +164,6 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
               }
             }
-          }
-        }
-
-        stage('powershell meanimage') {
-          steps {
-            sh 'pwsh -File "./test/test.ps1"'
           }
         }
 
