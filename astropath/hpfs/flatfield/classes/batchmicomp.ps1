@@ -12,9 +12,7 @@ class batchmicomp : moduletools {
     batchmicomp([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'
         $this.processloc = $this.sample.basepath + '\flatfield\' + $this.sample.batchID
-        if (!(Test-Path $this.processloc)) {
-            New-Item $this.processloc -ItemType 'directory' | Out-Null
-        }
+        $this.sample.createdirs($this.processloc)
     }
     <# -----------------------------------------
      RunBatchMeanImageComparison
@@ -32,14 +30,22 @@ class batchmicomp : moduletools {
      Usage: $this.GetBatchMeanImageComparison()
     ----------------------------------------- #>
     [void]Getbatchmicomp(){
-        $taskname = 'batchmeanimagecomparison'
-        #$dpath = $this.sample.basepath
-        $dpath = '\\bki04\Clinical_Specimen'
+        $taskname = 'batchmicomp'
+        $dpath = $this.sample.basepath
         $batchslides = $this.sample.batchslides.slideid -join '|'
         $pythontask = 'meanimagecomparison.exe ' + $dpath + " --sampleregex '" + $batchslides + "'" #+ "' --workingdir " + $this.processvars[0]
         $this.runpythontask($taskname, $pythontask)
-        if (Test-Path $this.processloc) {
-            Remove-Item $this.processloc -Force -Recurse -ea Stop
-        }
+        $this.silentcleanup()
+    }
+    <# -----------------------------------------
+     silentcleanup
+        silentcleanup
+     ------------------------------------------
+     Usage: $this.silentcleanup()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
+        #
+        $this.sample.removedir($this.processloc)
+        #
     }
 }

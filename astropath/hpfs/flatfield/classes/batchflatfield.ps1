@@ -37,10 +37,10 @@ class batchflatfield : moduletools {
         $this.silentcleanup()
     }
     <# -----------------------------------------
-     checkexternalerrors
-        checkexternalerrors
+     silentcleanup
+        silentcleanup
      ------------------------------------------
-     Usage: $this.checkexternalerrors()
+     Usage: $this.silentcleanup()
     ----------------------------------------- #>
     [void]silentcleanup(){
         #
