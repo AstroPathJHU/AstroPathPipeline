@@ -17,13 +17,23 @@ if (!($PSBoundParameters.ContainsKey('modulepath'))) {
  Class testpsimport {
     #
     testpsimport($modulepath){
+      #
       $module = $modulepath + '/../astropath'
       Write-Host 'checking: ' $module
+      #
       if (Get-Module -ListAvailable -Name $module) {
             Write-Host "Module exists"
+            Write-Host Get-Module -ListAvailable -Name $module
       } else {
           Throw "Module does not exist"
       }
+      #
+      try {
+           Import-Module $module -EA SilentlyContinue
+      } catch {
+          Throw "Module import failed"
+      }
+      #
     }
 }
 #
