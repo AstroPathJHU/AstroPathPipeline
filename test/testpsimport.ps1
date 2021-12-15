@@ -6,10 +6,18 @@
  Description
  copy files fast with different methods
  -------------------------------------------#>
+ param ([Parameter(Position=0)][string] $modulepath = '')
+#
+# check input parameters
+#
+if (!($PSBoundParameters.ContainsKey('modulepath')) {
+    Throw "Usage: testpsimport -modulepath"
+}
+#
  Class testpsimport {
     #
-    testpsimport(){
-      $module = $PSScriptRoot + '../astropath'
+    testpsimport($modulepath){
+      $module = $modulepath + '/../astropath'
       Write-Host 'checking: ' $module
       if (Get-Module -ListAvailable -Name $module) {
             Write-Host "Module exists"
@@ -20,5 +28,5 @@
     }
 }
 #
-$test = [testpsimport]::new() 
+$test = [testpsimport]::new($modulepath) 
 exit 0
