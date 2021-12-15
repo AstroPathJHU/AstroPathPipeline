@@ -21,3 +21,4 @@
 }
 #
 $test = [testpsimport]::new() 
+exit 0
