@@ -237,6 +237,7 @@ RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install type1cm
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install todonotes
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install enumitem
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install lineno
+RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install underscore
 
 from base as gdal
 
