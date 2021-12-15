@@ -1,7 +1,7 @@
 #imports
 import random, pathlib
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import cd
+from ...utilities.miscfileio import cd
 from ...utilities.tableio import writetable
 from ...shared.samplemetadata import MetadataSummary
 from ...shared.argumentparser import FileTypeArgumentParser

@@ -7,7 +7,7 @@ from matplotlib.patches import Rectangle
 from ...shared.image_masking.config import CONST as MASKING_CONST
 from ...shared.logging import printlogger
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import save_figure_in_dir
+from ...utilities.miscplotting import save_figure_in_dir
 from ...utilities.tableio import readtable
 from .utilities import RectangleThresholdTableEntry
 
@@ -221,13 +221,14 @@ def meanimage_comparison_plot(slide_ids,values_to_plot,plot_title,figname,workin
     """
     make a single comparison plot of some type
     """
+    #slide_ids = [sid.replace('MP1_Mutliplex_JHU','*') for sid in slide_ids]
     #make the figure
     fig,ax = plt.subplots(figsize=(1.*len(slide_ids),1.*len(slide_ids)))
     #figure out the scaled font sizes
     scaled_label_font_size = 10.*(1.+math.log10(len(slide_ids)/5.)) if len(slide_ids)>5 else 10.
     scaled_title_font_size = 10.*(1.+math.log2(len(slide_ids)/6.)) if len(slide_ids)>5 else 10.
     #add the grid to the plot
-    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1])
+    pos = ax.imshow(values_to_plot,vmin=bounds[0],vmax=bounds[1],cmap=plt.get_cmap('RdBu').reversed())
     #add other patches
     patches = []
     #black out any zero values in the plot
@@ -242,8 +243,8 @@ def meanimage_comparison_plot(slide_ids,values_to_plot,plot_title,figname,workin
                 errmsg=f'ERROR: requested to add a separator after slide {sid} but this slide will not be on the plot!'
                 raise RuntimeError(errmsg)
             sindex = slide_ids.index(sid)
-            patches.append(Rectangle((sindex+0.375,-0.5),0.25,len(slide_ids)+1,edgecolor='r',facecolor='r',fill=True))
-            patches.append(Rectangle((-0.5,sindex+0.375),len(slide_ids)+1,0.25,edgecolor='r',facecolor='r',fill=True))
+            patches.append(Rectangle((sindex+0.375,-0.5),0.25,len(slide_ids)+1,edgecolor='k',facecolor='k',fill=True))
+            patches.append(Rectangle((-0.5,sindex+0.375),len(slide_ids)+1,0.25,edgecolor='k',facecolor='k',fill=True))
     for patch in patches :
         ax.add_patch(patch)
     #adjust some stuff on the plots

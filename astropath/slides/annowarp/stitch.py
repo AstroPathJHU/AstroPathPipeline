@@ -1,7 +1,8 @@
-import abc, collections, cvxpy as cp, itertools, more_itertools, numpy as np, re
+import abc, collections, itertools, more_itertools, numpy as np, re
 
 from ...utilities import units
 from ...utilities.misc import dict_zip_equal
+from ...utilities.optionalimports import cvxpy as cp
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 

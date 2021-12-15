@@ -1,7 +1,6 @@
 #imports
-from ...utilities.misc import save_figure_in_dir
-import numpy as np
-import matplotlib.pyplot as plt
+import numpy as np, matplotlib.pyplot as plt
+from ...utilities.miscplotting import save_figure_in_dir
 
 def do_masking_plots_for_image(image_key,tissue_mask,plot_dict_lists,compressed_full_mask,savedir=None) :
     """

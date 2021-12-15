@@ -1,7 +1,8 @@
+from ...shared.argumentparser import CleanupArgumentParser
 from ...shared.cohort import DbloadCohort, DeepZoomCohort, SelectLayersCohort, WorkflowCohort, ZoomFolderCohort
 from .deepzoomsample import DeepZoomSample
 
-class DeepZoomCohort(DbloadCohort, DeepZoomCohort, SelectLayersCohort, WorkflowCohort, ZoomFolderCohort):
+class DeepZoomCohort(DbloadCohort, DeepZoomCohort, SelectLayersCohort, WorkflowCohort, ZoomFolderCohort, CleanupArgumentParser):
   sampleclass = DeepZoomSample
   __doc__ = sampleclass.__doc__
 
