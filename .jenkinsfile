@@ -32,7 +32,7 @@ pipeline {
       }
     }
     
-    stage('powershell install') {
+    stage('ps module install') {
       steps {
         sh 'pwsh -File "./test/testpsimport.ps1"'
       }
