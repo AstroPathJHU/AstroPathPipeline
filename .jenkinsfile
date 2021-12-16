@@ -157,11 +157,6 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
               }
             }
-			stage('test meanimage powershell') {
-			  steps {
-			    powershell returnStatus: true, script: '.\\test\\testmeanimagepowershell.ps1'
-			  }
-			}
           }
         }
 
