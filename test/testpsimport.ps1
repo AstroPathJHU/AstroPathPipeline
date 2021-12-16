@@ -13,8 +13,6 @@
       #
       $module = $PSScriptRoot + '/../astropath'
       Write-Host 'checking: ' $module
-      $files = gci $module
-      Write-Host $files
       #
       # check for the module
       #
