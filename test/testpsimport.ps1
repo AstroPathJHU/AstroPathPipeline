@@ -20,12 +20,15 @@ if (!($PSBoundParameters.ContainsKey('modulepath'))) {
       #
       $module = $modulepath + '/../astropath'
       Write-Host 'checking: ' $module
+      $files = gci $module
+      Write-Host $files
       #
       # check for the module
       #
-      if (Get-Module -ListAvailable -Name $module) {
+      $modules = Get-Module -ListAvailable -Name $module 
+      if ($modules) {
             Write-Host "Module exists"
-            Write-Host Get-Module -ListAvailable -Name $module
+            Write-Host $modules
       } else {
           Throw "Module does not exist"
       }
