@@ -23,6 +23,12 @@ pipeline {
   }
 
   stages {
+        
+    stage('ps module install') {
+      steps {
+        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1 -modulepath ${folder}'
+      }
+    }
     
     stage('pip install') {
       steps {
@@ -30,12 +36,6 @@ pipeline {
         sh 'pip install .[all]'
         sh '''echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
         sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
-      }
-    }
-    
-    stage('ps module install') {
-      steps {
-        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1 -modulepath ${folder}'
       }
     }
     
