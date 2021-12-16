@@ -21,6 +21,7 @@ Class meanimage : moduletools {
     meanimage([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
         $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
+        $this.cleanupbase()
     }
     <# -----------------------------------------
      RunMeanImage
@@ -167,6 +168,17 @@ Class meanimage : moduletools {
         if ($this.processvars[4]){
             $this.sample.removedir($this.processloc)
         }
+        #
+    }
+    <# -----------------------------------------
+     cleanupbase
+     remove old results
+     ------------------------------------------
+     Usage: $this.cleanupbase()
+    ----------------------------------------- #>
+    [void]cleanupbase(){
+        #
+        $this.sample.removedir($this.sample.meanimagefolder())
         #
     }
 }
