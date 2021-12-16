@@ -11,7 +11,7 @@
     #
     testpsimport(){
       #
-      $module = $PSScriptRoot + '/astropath'
+      $module = $PSScriptRoot + '/../astropath'
       Write-Host 'checking: ' $module
       $files = gci $module
       Write-Host $files
