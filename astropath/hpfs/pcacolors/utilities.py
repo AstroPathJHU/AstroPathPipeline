@@ -37,13 +37,20 @@ def get_median_im_compiled(im,n_regions,regions_im,pixels_to_use_ri) :
     xdim = im.shape[1]
     #for each interconnected region of nucleus pixels
     for ri in prange(1,n_regions) :
+        npix = 0
+        for iy in range(ydim) :
+            for ix in range(xdim) :
+                if pixels_to_use_ri[iy,ix]==ri :
+                    npix+=1
         for li in prange(nlayers) :
-            pixels = []
+            pixels = np.zeros((npix,),dtype=im.dtype)
+            ipix=0
             for iy in range(ydim) :
                 for ix in range(xdim) :
                     if pixels_to_use_ri[iy,ix]==ri :
-                        pixels.append(im[iy,ix,li])
-            mv = np.median(np.array(pixels))
+                        pixels[ipix]=im[iy,ix,li]
+                        ipix+=1
+            mv = np.median(pixels)
             for iy in range(ydim) :
                 for ix in range(xdim) :
                     if regions_im[iy,ix]==ri :
