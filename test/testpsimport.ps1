@@ -6,19 +6,12 @@
  Description
  test if the module can be imported or not
  -------------------------------------------#>
- param ([Parameter(Position=0)][string] $modulepath = '')
-#
-# check input parameters
-#
-if (!($PSBoundParameters.ContainsKey('modulepath'))) {
-    Throw "Usage: testpsimport -modulepath"
-}
 #
  Class testpsimport {
     #
-    testpsimport($modulepath){
+    testpsimport(){
       #
-      $module = $modulepath + '/../astropath'
+      $module = $PSScriptRoot + '/astropath'
       Write-Host 'checking: ' $module
       $files = gci $module
       Write-Host $files
@@ -45,5 +38,5 @@ if (!($PSBoundParameters.ContainsKey('modulepath'))) {
 #
 # launch test and exit if no error found
 #
-$test = [testpsimport]::new($modulepath) 
+$test = [testpsimport]::new() 
 exit 0
