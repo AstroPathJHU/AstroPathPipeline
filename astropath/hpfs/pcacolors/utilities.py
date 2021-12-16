@@ -42,6 +42,8 @@ def get_median_im_compiled(im,n_regions,regions_im,pixels_to_use_ri) :
             for ix in range(xdim) :
                 if pixels_to_use_ri[iy,ix]==ri :
                     npix+=1
+        if npix<=1 :
+            continue
         for li in prange(nlayers) :
             pixels = np.zeros((npix,),dtype=im.dtype)
             ipix=0
