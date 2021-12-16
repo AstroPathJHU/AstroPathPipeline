@@ -7,7 +7,7 @@
  methods used to build the queues and check 
  dependencies
  -------------------------------------------#>
-class queue : sharedtools{
+class queue : vminformqueue{
     #
     [Array]$originaltasks
     [Array]$cleanedtasks
@@ -47,7 +47,7 @@ class queue : sharedtools{
             $this.buildqueue()
         } else {
             $this.('check'+$this.module)()
-            $this.updateCSVFiles()
+            #$this.coalescevminformqueues()
         }
         #
     }
@@ -60,16 +60,10 @@ class queue : sharedtools{
     [void]buildqueue(){
         #
         $slides = $this.importslideids($this.mpath)
-        $project_dat = $this.ImportConfigInfo($this.mpath)
         #
         # select samples from the appropriate modules 
         #
-        if ($this.project -eq $null){
-            $projects = ($project_dat | 
-                Where-object {$_.($this.module) -match 'yes'}).Project
-        } else {
-            $projects = $this.project
-        }
+        $projects = $this.getapprojects()
         #
         $cleanedslides = $slides | 
             Where-Object {$projects -contains $_.Project}
@@ -98,73 +92,7 @@ class queue : sharedtools{
         $this.cleanedtasks = $slidearray
         #
     }
-    <# -----------------------------------------
-     updateCSVFiles
-     update csv files
-     ------------------------------------------
-     Usage: $this.updateCSVFiles()
-    ----------------------------------------- #>
-    [void]updateCSVFiles(){
-        #$mainqueuepath = $this.mpath + '\across_project_queues'
-        #$mainqueuefile = $mainqueuepath + '\' + $this.module + '-queue.csv'
-        #$cohortinfo = $this.ImportCohortsInfo($this.mpath)
-        #$localqueuepath = $cohortinfo.Dpath + '\' + $cohortinfo.Dname + '\upkeep_and_progress'
-        #$localqueuefile = $localqueuepath + '\inForm_queue.csv' 
-        #
-        #$mainqueue = $this.OpenCSVFile($mainqueuefile)
-        #$localqueue = $this.OpenCSVFile($localqueuefile)
-        #
-        $localqueuelocation = '\\bki08\h$\testing\upkeep_and_progress\inForm_queue.csv'
-        $mainqueuelocation = '\\bki08\h$\testing\astropath_processing\across_project_queues\vminform-queue - Prototype.csv'
-        $localqueue = $this.OpenCSVFile($localqueuelocation)
-        $mainqueue = $this.OpenCSVFile($mainqueuelocation)
-        #
-        $out = $mainqueue -match ('T' + $this.project.PadLeft(3,'0'))
-        foreach($row in $out){
-            $row.TaskID = $row.taskid.substring(4).trim('0')
-            if ($row.TaskID -notin $localqueue.TaskID) {
-                $localqueue += $row | select -Property TaskID, Specimen, Antibody, Algorithm
-            }
-            $localrow = $localqueue | Where-Object -FilterScript {$_.TaskID -eq $row.TaskID}
-            if ($localrow -notmatch ($row | select -Property TaskID, Specimen, Antibody, Algorithm)) {
-                $addedrow = New-Object System.Object
-                $newid = $localqueue.Length + 1
-                $addedrow | Add-Member -NotePropertyName TaskID -NotePropertyValue $newid
-                $addedrow | Add-Member -NotePropertyName Specimen -NotePropertyValue $localrow.Specimen
-                $addedrow | Add-Member -NotePropertyName Antibody -NotePropertyValue $localrow.Antibody
-                $addedrow | Add-Member -NotePropertyName Algorithm -NotePropertyValue $localrow.Algorithm
-                $localqueue += $addedrow
-                #
-                $localrow.Specimen = $row.Specimen
-                $localrow.Antibody = $row.Antibody
-                $localrow.Algorithm = $row.Algorithm
-            }
-        }
-        #
-        foreach($row in $localqueue){
-            if ($row.TaskID -notin $out.TaskID -and $row.Algorithm -ne '') {
-                $adjustedrow = New-Object System.Object
-                $adjustedrow | Add-Member -NotePropertyName TaskID -NotePropertyValue $row.TaskID
-                $adjustedrow | Add-Member -NotePropertyName Specimen -NotePropertyValue $row.Specimen
-                $adjustedrow | Add-Member -NotePropertyName Antibody -NotePropertyValue $row.Antibody
-                $adjustedrow | Add-Member -NotePropertyName Algorithm -NotePropertyValue $row.Algorithm
-                $adjustedrow | Add-Member -NotePropertyName ProcessingLocation -NotePropertyValue ''
-                $adjustedrow | Add-Member -NotePropertyName StartDate -NotePropertyValue ''
-                $mainqueue += $adjustedrow
-            }
-        }
-        #
-        foreach($row in $mainqueue){
-            if ($row.TaskID -notmatch 'T') {
-                $row.TaskID = 'T' + $this.project.PadLeft(3,'0') + ($row.TaskID.ToString()).PadLeft(5,'0')
-            }
-        }
-        #
-        $updatedlocal = ($localqueue | ConvertTo-Csv -NoTypeInformation) -join "`n"
-        $updatedmain = ($mainqueue | ConvertTo-Csv -NoTypeInformation) -join "`n"
-        $this.SetFile($updatedlocal)
-        $this.SetFile($updatedmain)
-    }
+
     <# -----------------------------------------
      defNotCompletedSlides
      For each slide, check the current module 
@@ -613,51 +541,4 @@ class queue : sharedtools{
         return $batchescomplete
     }
     #
-    [void]UpdateQueue($currenttask, $currentworker, $tasktomatch){
-        #
-        if ($this.module -ne 'vminform'){
-            return
-        }
-        #
-        $D = Get-Date
-        $currenttask2 = "$currenttask" + ",Processing: " + $currentworker.server + '-' + $currentworker.location + "," + $D
-        $mxtstring = 'Global\' + $this.queue_file.replace('\', '_') + '.LOCK'
-        #
-        # add escape to '\'
-        #
-        $rg = [regex]::escape($tasktomatch) + "$"
-        #
-        $cnt = 0
-        $Max = 120
-        #
-        do{
-           $mxtx = New-Object System.Threading.Mutex($false, $mxtstring)
-            try{
-                $imxtx = $mxtx.WaitOne(60 * 10)
-                if($imxtx){
-                    $Q = get-content -Path $this.queue_file
-                    $Q2 = $Q -replace $rg,$currenttask2
-                    Set-Content -Path $this.queue_file -Value $Q2
-                    $mxtx.releasemutex()
-                    break
-                } else{
-                    $cnt = $cnt + 1
-                    Start-Sleep -s 5
-                }
-            }catch{
-                $cnt = $cnt + 1
-                Start-Sleep -s 5
-                Continue
-            }
-        } while($cnt -lt $Max)
-        #
-        # if the script could not access the queue file after 10 mins of trying every 2 secs
-        # there is an issue and exit the script
-        #
-        if ($cnt -ge $Max){
-            $ErrorMessage = "Could not access "+$this.module+"-queue.csv"
-            Throw $ErrorMessage 
-        }
-        #
-    }
 }
