@@ -11,6 +11,17 @@ RUN adduser --disabled-password --gecos '' astropath && \
     adduser astropath sudo && \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
+# Install PowerShell From microsoft doc: https://docs.microsoft.com/en-us/powershell/scripting/install/install-ubuntu?view=powershell-7.2
+Run sudo apt update
+RUN sudo apt-get install -y wget apt-transport-https software-properties-common
+RUN wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+# Register the Microsoft repository GPG keys
+RUN sudo dpkg -i packages-microsoft-prod.deb
+# Update the list of packages after we added packages.microsoft.com
+RUN sudo apt-get update
+# Install PowerShell
+RUN sudo apt-get install -y powershell
+
 USER astropath
 
 #libvips stuff is from https://github.com/TailorBrands/docker-libvips/blob/f64952af6871fb963934b7454f7edf5b6738f4b8/8.6.1/Dockerfile
@@ -183,7 +194,7 @@ RUN cd /tmp && \
 from base as libvips
 
 ENV LIBVIPS_VERSION_MAJOR 8
-ENV LIBVIPS_VERSION_MINOR 6
+ENV LIBVIPS_VERSION_MINOR 12
 ENV LIBVIPS_VERSION_PATCH 1
 ENV LIBVIPS_VERSION $LIBVIPS_VERSION_MAJOR.$LIBVIPS_VERSION_MINOR.$LIBVIPS_VERSION_PATCH
 
@@ -226,6 +237,7 @@ RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install type1cm
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install todonotes
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install enumitem
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install lineno
+RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install underscore
 
 from base as gdal
 

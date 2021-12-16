@@ -1,10 +1,10 @@
-﻿Write-Host 'Starting Tests... Script Root =' $PSScriptRoot
+﻿Write-Output ('Starting Tests... Script Root = ' + $PSScriptRoot)
 $modulelocation = $PSScriptRoot + '\..\astropath'
 Import-Module $modulelocation
 $processing = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
 $datalocation = $PSScriptRoot + '\data'
-Write-Host ' Processing Location =' $PSScriptRoot
-Write-Host 'Data Location =' $PSScriptRoot
+Write-Output (' Processing Location = ' + $PSScriptRoot)
+Write-Output ('Data Location = ' + $PSScriptRoot)
 $task = ('1', 'M21_1', $processing, $datalocation)
 $inp = meanimage $task
 
@@ -25,14 +25,6 @@ $inp.ShredDat()
 $datpath = $inp.processvars[1] + '\' + $inp.sample.slideid + '\*.dat'
 if (!(@(Test-Path $datpath))) {
     Write-Error 'Shred Dat Test Failed'
-    exit 1
-}
-
-#Return Data test
-$inp.returndata()
-$returnpath = $inp.sample.im3folder() + '\meanimage'
-if (!(@(Test-Path $meanimagedatpath))) {
-    Write-Error 'Return Data Test Failed'
     exit 1
 }
 
