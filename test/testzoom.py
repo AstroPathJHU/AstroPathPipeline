@@ -131,8 +131,8 @@ class TestZoom(TestBaseSaveOutput):
       f.write(f"0;0;L1_1;FINISH: zoom {astropathversion};{now}\n")
     self.testZoomWsi(SlideID=SlideID, **kwargs)
 
-  def testExistingWsiFast(self, SlideID="L1_1", **kwargs):
-    self.testExistingWsi(SlideID, mode="fast", **kwargs)
+  def testExistingWSIFast(self, SlideID="L1_1", **kwargs):
+    self.testExistingWSI(SlideID, mode="fast", **kwargs)
 
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID
