@@ -1437,10 +1437,24 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
         errmsg+= f'table at {correction_model_file} but there should be exactly one'
         raise RuntimeError(errmsg)
       #reset the warping file
-      self.__warping_file = pathlib.Path(this_slide_tes[0].WarpingFile)
+      warping_filename = this_slide_tes[0].WarpingFile
+      if warping_filename.lower()=='none' :
+        warnmsg = f'WARNING: Warping file for {self.SlideID} in {correction_model_file} is {warping_filename}; '
+        warnmsg+= 'warping corrections WILL NOT be applied'
+        self.logger.warningonenter(warnmsg)
+        self.__warping_file = None
+      else :
+        self.__warping_file = pathlib.Path(warping_filename)
       #reset the flatfield file
-      ff_filename = f'{FF_CONST.FLATFIELD_DIRNAME_STEM}_{this_slide_tes[0].FlatfieldVersion}.bin'
-      self.__flatfield_file = FF_CONST.DEFAULT_FLATFIELD_MODEL_DIR/ff_filename
+      ff_version = this_slide_tes[0].FlatfieldVersion
+      if ff_version.lower()=='none' :
+        warnmsg = f'WARNING: Flatfield version for {self.SlideID} in {correction_model_file} is {ff_version}; '
+        warnmsg+= 'flatfield corrections WILL NOT be applied'
+        self.logger.warningonenter(warnmsg)
+        self.__flatfield_file = None
+      else :
+        ff_filename = f'{UNIV_CONST.FLATFIELD_DIRNAME}_{ff_version}.bin'
+        self.__flatfield_file = FF_CONST.DEFAULT_FLATFIELD_MODEL_DIR/ff_filename
     # if the flatfield file argument given isn't a file, 
     # search the astropath_processing/flatfield and root/flatfield directory for a file of the same name
     if (self.__flatfield_file is not None) and (not self.__flatfield_file.is_file()) :

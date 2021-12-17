@@ -15,6 +15,7 @@ pipeline {
   }
 
   environment {
+    RUNNING_ON_JENKINS = "1"
     JENKINS_NO_GPU = "1"
     JENKINS_PARALLEL = "1"
     HOME = "/home/astropath"
@@ -22,6 +23,13 @@ pipeline {
   }
 
   stages {
+        
+    stage('ps module install') {
+      steps {
+        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
+      }
+    }
+    
     stage('pip install') {
       steps {
         sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
@@ -30,15 +38,15 @@ pipeline {
         sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
       }
     }
-
+    
     stage('run tests') {
       parallel {
         stage('console scripts and documents') {
           steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmarkdownlinks'
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcaseinsensitivenames'
-            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
+            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
           }
         }
 

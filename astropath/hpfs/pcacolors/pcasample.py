@@ -1,9 +1,9 @@
 #imports
 import numpy as np
 from sklearn.decomposition import IncrementalPCA
-from astropath.utilities.img_file_io import smooth_image_worker
-from astropath.shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, MaskSampleBase
-from astropath.shared.image_masking.image_mask import ImageMask
+from ...utilities.img_file_io import smooth_image_worker
+from ...shared.image_masking.image_mask import ImageMask
+from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, MaskSampleBase
 
 class PCASample(ReadCorrectedRectanglesIm3MultiLayerFromXML,MaskSampleBase) :
     """

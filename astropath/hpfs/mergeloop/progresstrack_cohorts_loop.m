@@ -20,12 +20,15 @@ function progresstrack_cohorts_loop(main)
 %
 tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
     'ReadVariableNames', true);
-tbl2 = readtable([main, '\AstropathConfig.csv'], 'Delimiter' , ',',...
-    'ReadVariableNames', true);
-tbl3 = readtable([main, '\AstropathCohortsProgress.csv'], 'Delimiter' , ',',...
-    'ReadVariableNames', true);
 %
 for i1 = 1:height(tbl)
+    %
+    tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
+        'ReadVariableNames', true);
+    tbl2 = readtable([main, '\AstropathConfig.csv'], 'Delimiter' , ',',...
+        'ReadVariableNames', true);
+    tbl3 = readtable([main, '\AstropathCohortsProgress.csv'], 'Delimiter' , ',',...
+        'ReadVariableNames', true);
     %
     % Clinical_Specimen folder
     %

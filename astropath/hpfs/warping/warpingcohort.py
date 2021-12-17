@@ -5,9 +5,9 @@ from random import sample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
 from ...utilities.tableio import writetable, readtable
-from ...shared.argumentparser import WarpFitArgumentParser, WorkingDirArgumentParser
-from ...shared.argumentparser import GPUArgumentParser
+from ...shared.argumentparser import WarpFitArgumentParser, WorkingDirArgumentParser, GPUArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectLayersCohort, WorkflowCohort
+from ..imagecorrection.config import IMAGECORRECTION_CONST
 from .config import CONST
 from .utilities import OverlapOctet, WarpFitResult, WarpingSummary
 from .plotting import principal_point_plot, rad_warp_amt_plots, rad_warp_par_plots
@@ -115,7 +115,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         return self.__workingdir / f'final_pattern_fit_results_{self.__n_fit_3_octets}_layer_{self.__layer}.csv'
     @property
     def initiatesamplekwargs(self) :
-        return {**super().initiatesamplekwargs,
+        to_return = {**super().initiatesamplekwargs,
                 'filetype':'raw',
                 'layer': self.__layer,
                 'workingdir':self.__workingdir,
@@ -123,6 +123,10 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
                 'gputhread':self.gputhread,
                 'gpufftdict':self.gpufftdict,
                }
+        # Give the correction model file by default if not flatfield file was specified
+        if to_return['correction_model_file'] is None and to_return['flatfield_file'] is None :
+            to_return['correction_model_file']=IMAGECORRECTION_CONST.DEFAULT_CORRECTION_MODEL_FILEPATH
+        return to_return
     @property
     def workflowkwargs(self) :
         return{**super().workflowkwargs,'skip_masking':False,'workingdir':self.__workingdir}

@@ -1,7 +1,7 @@
 #imports
 import os, pathlib, logging, re
-from argparse import ArgumentParser
 import numpy as np
+from argparse import ArgumentParser
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import split_csv_to_list, split_csv_to_list_of_floats
 from ...utilities.tableio import readtable,writetable
@@ -19,13 +19,14 @@ class MeanImageComparison :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,root_dirs,sampleregex,workingdir,sort_by,use_flatw) :
+    def __init__(self,root_dirs,sampleregex,workingdir,sort_by,use_flatw,min_images_stacked) :
         """
         root_dirs:   list of paths to root directories for all samples that should be included/appended
         sampleregex: regular expression matching all slides that should be used
         workingdir:  path to directory that should hold output (may already hold some output that should be appended to)
         sort_by:     string indicating how slides should be ordered on the plot
         use_flatw:   True if meanimages from .fw files should be used instead of default meanimages (from raw files)
+        min_images_stacked: Skip any slides that stacked less than this number of images anywhere
         """
         #create the working directory
         self.workingdir = workingdir
@@ -36,7 +37,7 @@ class MeanImageComparison :
         #set the name of the meanimage subdirectory to search
         self.meanimage_subdir_name = self.FLATW_MEANIMAGE_SUBDIR_NAME if use_flatw else self.MEANIMAGE_SUBDIR_NAME
         #create a dictionary keyed by root directory paths, with values that are lists of slide IDs at those paths
-        self.slide_ids_by_rootdir = self.__get_slides_by_rootdir(root_dirs,sampleregex)
+        self.slide_ids_by_rootdir = self.__get_slides_by_rootdir(root_dirs,sampleregex,min_images_stacked)
         #get a list of all the slide IDs and their mean image filepaths, sorted in the order they'll be plotted
         #(also returns the list of slide IDs after which lines would go if sorted by project/cohort/batch)
         self.ordered_slide_tuples,self.lines_after = self.__get_sorted_slide_tuples(sort_by)
@@ -74,16 +75,14 @@ class MeanImageComparison :
                     continue
                 else :
                     #check if the requested values are available from the file that was read
-                    n_existing_entries = len([e for e in existing_entries 
-                                              if ((e.slide_ID_1==sid1 and e.slide_ID_2==sid2) or 
-                                                  (e.slide_ID_1==sid2 and e.slide_ID_2==sid1))])
-                    if n_existing_entries==self.dims[-1] :
+                    relevant_entries = [e for e in existing_entries 
+                                        if ((e.slide_ID_1==sid1 and e.slide_ID_2==sid2) or 
+                                            (e.slide_ID_1==sid2 and e.slide_ID_2==sid1))]
+                    if len(relevant_entries)==self.dims[-1] :
                         added=set()
-                        for entry in existing_entries :
-                            if ( (entry.slide_ID_1==sid1 and entry.slide_ID_2==sid2) or 
-                                 (entry.slide_ID_1==sid1 and entry.slide_ID_2==sid2) ) :
-                                self.dos_std_dev_values[is1,is2,entry.layer_n-1] = entry.delta_over_sigma_std_dev
-                                added.add(entry.layer_n)
+                        for entry in relevant_entries :
+                            self.dos_std_dev_values[is1,is2,entry.layer_n-1] = entry.delta_over_sigma_std_dev
+                            added.add(entry.layer_n)
                         if len(added)==self.dims[-1] :
                             msg = f'Std. devs. of delta/sigma for {sid1} vs {sid2} read from {self.datatable_path}'
                             self.logger.debug(msg)
@@ -121,6 +120,8 @@ class MeanImageComparison :
         #reset the lines_after variable if it was externally supplied
         if lines_after!=[''] :
             self.lines_after = lines_after
+        if self.lines_after==['none'] :
+            self.lines_after = []
         #for each image layer requested, plot a grid of the delta/sigma comparisons
         if to_plot=='all' :
             layers = list(range(1,self.dims[-1]+1))
@@ -231,6 +232,8 @@ class MeanImageComparison :
         parser.add_argument('--flatw', action='store_true',
                             help='''Add this flag to use meanimages from "meanimage_from_fw_files" instead of 
                                     "meanimage" subdirectories''')
+        parser.add_argument('--min-images-stacked', type=int, default=1,
+                            help='Skip any slides that stacked less than this number of HPF images everywhere')
         parser.add_argument('--plot', choices=['all','brightest','average','none'], default='average',
                             help='''Add one of these choices to save the plots of some individual layers, the average
                                     over all of them/filter groups (default), or no plots at all''')
@@ -266,7 +269,7 @@ class MeanImageComparison :
         #get and parse the command-line arguments
         args = cls.get_args(args)
         #set up the Comparison
-        mic = cls(args.root,args.sampleregex,args.workingdir,args.sort_by,args.flatw)
+        mic = cls(args.root,args.sampleregex,args.workingdir,args.sort_by,args.flatw,args.min_images_stacked)
         #create (or append to) the datatable of comparison values
         mic.calculate_comparisons()
         #create any requested plots
@@ -294,7 +297,7 @@ class MeanImageComparison :
         logger.addHandler(file_handler)
         return logger
 
-    def __get_slides_by_rootdir(self,root_dirs,sampleregex) :
+    def __get_slides_by_rootdir(self,root_dirs,sampleregex,min_images_stacked) :
         """
         Return a dictionary whose keys are root directory paths and whose values are lists of slide IDs in them to use
         Also sets the dimensions of the images that will be used
@@ -345,38 +348,46 @@ class MeanImageComparison :
         for root_dir in root_dirs :
             samps = readtable(pathlib.Path(root_dir)/'sampledef.csv',SampleDef)
             sids = slide_ids_by_rootdir[root_dir] if root_dir in slide_ids_by_rootdir.keys() else []
-            for s in samps :
-                sid = s.SlideID
-                if root_dir in slide_ids_by_rootdir.keys() and sid in slide_ids_by_rootdir[root_dir] :
-                    continue
-                if s.isGood==1 :
-                    if (sampleregex is None) or (sampleregex.match(sid)) :
-                        this_slide_dims = get_image_hwl_from_xml_file(root_dir,sid)
-                        if self.dims is None :
-                            self.dims = this_slide_dims
-                        elif this_slide_dims!=self.dims :
-                            errmsg = f'ERROR: slide {sid} has dimensions {this_slide_dims},'
-                            errmsg+= f' mismatched to {self.dims}'
-                            raise RuntimeError(errmsg)
-                        mifp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
-                        mifp = mifp/f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
-                        semifp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
-                        semifp = semifp/f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
-                        if not mifp.is_file() :
-                            self.logger.warning(f'WARNING: expected mean image {mifp} not found! ({sid} will be skipped!)')
-                            continue
-                        if not semifp.is_file() :
-                            warnmsg = f'WARNING: expected std. err. of mean image {semifp} not found!'
-                            warnmsg+= f' ({sid} will be skipped!)'
-                            self.logger.warning(warnmsg)
-                            continue
+            sids_to_check = [s.SlideID for s in samps]+sids
+            for sid in sids_to_check :
+                check_mi_and_semi = sid not in sids
+                if (sampleregex is None) or (sampleregex.match(sid)) :
+                    this_slide_dims = get_image_hwl_from_xml_file(root_dir,sid)
+                    if self.dims is None :
+                        self.dims = this_slide_dims
+                    elif this_slide_dims!=self.dims :
+                        errmsg = f'ERROR: slide {sid} has dimensions {this_slide_dims},'
+                        errmsg+= f' mismatched to {self.dims}'
+                        raise RuntimeError(errmsg)
+                    midfp = root_dir/sid/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
+                    mifp = midfp/f'{sid}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                    semifp = midfp/f'{sid}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
+                    msfp = midfp/f'{sid}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}'
+                    if not mifp.is_file() :
+                        self.logger.warning(f'WARNING: expected mean image {mifp} not found! ({sid} will be skipped!)')
+                        continue
+                    if not semifp.is_file() :
+                        warnmsg = f'WARNING: expected std. err. of mean image {semifp} not found!'
+                        warnmsg+= f' ({sid} will be skipped!)'
+                        self.logger.warning(warnmsg)
+                        continue
+                    if not msfp.is_file() :
+                        self.logger.warning(f'WARNING: expected mask stack {msfp} not found! ({sid} will be skipped!)')
+                        continue
+                    mi=None; semi=None
+                    if check_mi_and_semi :
                         mi   = get_raw_as_hwl(mifp,*(self.dims),np.float64)
                         semi = get_raw_as_hwl(semifp,*(self.dims),np.float64)
-                        if np.min(mi)==np.max(mi) or np.max(semi)==0. :
-                            warnmsg = f'WARNING: slide {sid} will be skipped because not enough images were stacked!'
-                            self.logger.warning(warnmsg)
-                        else :
-                            self.logger.debug(f'{sid} is valid and will be used')
+                    ms   = get_raw_as_hwl(msfp,*(self.dims),np.uint64)
+                    if ( (np.min(ms)<min_images_stacked) or 
+                         (check_mi_and_semi and (np.min(mi)==np.max(mi) or np.max(semi)==0.)) ) :
+                        warnmsg = f'WARNING: slide {sid} will be skipped because not enough images were stacked!'
+                        self.logger.warning(warnmsg)
+                        if sid in sids :
+                            sids.pop(sids.index(sid))
+                    else :
+                        self.logger.debug(f'{sid} is valid and will be used')
+                        if sid not in sids :
                             sids.append(sid)
             slide_ids_by_rootdir[root_dir] = sids
         n_total_slides = sum([len(sids) for sids in slide_ids_by_rootdir.values()])

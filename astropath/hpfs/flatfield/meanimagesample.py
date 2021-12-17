@@ -1,24 +1,24 @@
 #imports
-from .imagestack import MeanImage
-from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms
-from .plotting import plot_background_thresholds_by_layer, plot_flagged_HPF_locations
-from .latexsummary import ThresholdingLatexSummary, MaskingLatexSummary
-from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image
-from .utilities import RectangleThresholdTableEntry, FieldLog, ThresholdTableEntry
-from .config import CONST
-from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
-from ...shared.image_masking.utilities import LabelledMaskRegion
-from ...shared.image_masking.config import CONST as MASK_CONST
-from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
-from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase
-from ...shared.sample import WorkflowSample, ParallelSample
-from ...shared.samplemetadata import MetadataSummary
-from ...shared.overlap import Overlap
+import pathlib, methodtools, random
+import numpy as np
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.miscfileio import cd
 from ...utilities.tableio import readtable, writetable
-import numpy as np
-import pathlib, methodtools, random
+from ...shared.samplemetadata import MetadataSummary
+from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
+from ...shared.image_masking.config import CONST as MASK_CONST
+from ...shared.image_masking.utilities import LabelledMaskRegion
+from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
+from ...shared.overlap import Overlap
+from ...shared.sample import WorkflowSample, ParallelSample
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase
+from .config import CONST
+from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image
+from .utilities import RectangleThresholdTableEntry, FieldLog, ThresholdTableEntry
+from .latexsummary import ThresholdingLatexSummary, MaskingLatexSummary
+from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms
+from .plotting import plot_background_thresholds_by_layer, plot_flagged_HPF_locations
+from .imagestack import MeanImage
 
 class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase, 
                           ParallelSample, FileTypeArgumentParser, WorkingDirArgumentParser) :

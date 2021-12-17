@@ -1,8 +1,9 @@
 #imports
-from .utilities import calculate_statistics_for_image
-from .config import CONST
-from ...shared.latexsummary import LatexSummaryWithPlotdir, LatexSummaryForSlideWithPlotdir, LatexDataTable
 import numpy as np
+from ...utilities.config import CONST as UNIV_CONST
+from ...shared.latexsummary import LatexSummaryWithPlotdir, LatexSummaryForSlideWithPlotdir, LatexDataTable
+from .config import CONST
+from .utilities import calculate_statistics_for_image
 
 class ThresholdingLatexSummary(LatexSummaryForSlideWithPlotdir) :
     """
@@ -315,7 +316,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         figlabel = 'fig:flatfield_image_layers'
         lines.append(f'Figure~\\ref{{{figlabel}}} shows the flatfield correction factors found for each image layer.\n')
         lines.append('\n')
-        pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
+        pattern = f'{UNIV_CONST.FLATFIELD_DIRNAME}'
         if self.__version is not None :
             pattern+= f'_{self.__version}_'
         pattern+='layer_*.png'
@@ -330,7 +331,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         figlabel = 'fig:flatfield_uncertainty_image_layers'
         lines.append(f'Figure~\\ref{{{figlabel}}} shows the uncertainties on the flatfield correction factors.\n')
         lines.append('\n')
-        pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
+        pattern = f'{UNIV_CONST.FLATFIELD_DIRNAME}'
         if self.__version is not None :
             pattern+= f'_{self.__version}_'
         pattern+='uncertainty_layer_*.png'
@@ -347,7 +348,7 @@ class FlatfieldLatexSummary(LatexSummaryWithPlotdir) :
         l+= 'correction factors. These plots help show how many total images contribute to the measurements made.'
         lines.append(l+'\n')
         lines.append('\n')
-        pattern = f'{CONST.FLATFIELD_DIRNAME_STEM}'
+        pattern = f'{UNIV_CONST.FLATFIELD_DIRNAME}'
         if self.__version is not None :
             pattern+= f'_{self.__version}_'
         pattern+='mask_stack_layer_*.png'
