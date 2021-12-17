@@ -7,10 +7,7 @@
      ------------------------------------------
      Usage: MergePSCustomObject(d1, d2, property)
     ----------------------------------------- #>
-    [PSCustomObject]MergeCustomObject([PSCustomObject]$d1,
-              [PSCustomObject]$d2, 
-              [string]$property = ''
-              ){
+    [PSCustomObject]MergeCustomObject([PSCustomObject]$d1, [PSCustomObject]$d2, [string]$property = ''){
         #
         # get new columns
         #
@@ -143,5 +140,60 @@
         if (!(test-path $dir)){
             new-item $dir -itemtype "directory" -EA STOP | Out-NULL
         }
+    }
+    #
+    [void]CreateNewDirs($dir){
+        #
+        $this.removedir($dir)
+        #
+        if (!(test-path $dir)){
+            new-item $dir -itemtype "directory" -EA STOP | Out-NULL
+        }
+        #
+    }
+    #
+    [void]CreateFile($fpath){
+        if (!(test-path $fpath)){
+            New-Item -path $fpath -itemtype file -Force -EA Stop | Out-Null
+        }
+    }
+    #
+    [void]removedir([string]$dir){
+        #
+        if (test-path $dir){
+            gci $dir -Recurse | Remove-Item -force -Confirm:$false -recurse
+            remove-item $dir -force -Confirm:$false -Recurse
+        }
+        #
+    }
+    #
+    [void]removefile([string]$file){
+        #
+        if (test-path $file){
+            remove-item $file -force -Confirm:$false -ea Continue
+        }
+        #
+    }
+    #
+    [void]removefile([string]$folder, [string] $filespec){
+        #
+        $filespec = '*' + $filespec
+        $files = gci ($folder+'\*') -Include  $filespec -Recurse 
+        if ($files ){ Remove-Item $files -force -recurse -Confirm:$false}
+        #
+    }
+    <# ------------------------------------------
+    CheckPath
+    ------------------------------------------
+    check if a path exists
+    ------------------------------------------ #>
+    [switch]CheckPath([string]$p){
+        #
+        if (test-path $p){
+            return $true
+        } else {
+            return $false
+        }
+        #
     }
 }
