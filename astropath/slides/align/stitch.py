@@ -332,7 +332,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
   @methodtools.lru_cache()
   @property
-  def fields(self):
+  def __fields_and_shift(self):
     """
     Create the field objects from the rectangles and stitch result
     """
@@ -617,6 +617,13 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
     return result
 
+  @property
+  def fields(self):
+    return self.__fields_and_shift[0]
+  @property
+  def globalshift(self):
+    return self.__fields_and_shift[1]
+
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
     """
     Write the affine, fields, and fieldoverlaps csvs
@@ -644,6 +651,11 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
             matrixentry=entry,
             description="a"+rowcoordinate+columncoordinate
           )
+        )
+    for coordinate, shift in zip("xy", self.shift):
+      n += 1
+      affine.append(
+        AffineNominalEntry(
         )
 
     for entry1, entry2 in itertools.combinations_with_replacement(affine[:], 2):
