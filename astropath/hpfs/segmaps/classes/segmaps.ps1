@@ -32,6 +32,7 @@ Class segmaps : moduletools {
         $this.cleanup()
         $this.GetaSeg()
         $this.GetnoSeg()
+        $this.datavalidation()
     }
     <# -----------------------------------------
      cleanup
@@ -50,7 +51,7 @@ Class segmaps : moduletools {
         $this.sample.info("cleanup finished")
         #
     }
-   <# -----------------------------------------
+    <# -----------------------------------------
      GetaSeg
         Get the seg maps
      ------------------------------------------
@@ -63,7 +64,7 @@ Class segmaps : moduletools {
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
         $this.sample.info("finished processing segmentation maps")
     }
-   <# -----------------------------------------
+    <# -----------------------------------------
      GetnoSeg
         Get the component data
      ------------------------------------------
@@ -75,6 +76,14 @@ Class segmaps : moduletools {
         $matlabtask = ";GetnoSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
         $this.sample.info("finished processing fields without segmentation data")
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
         if (!$this.sample.testsegmentationfiles()){
             throw 'Output files are not correct'
         }

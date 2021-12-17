@@ -20,6 +20,7 @@ class batchflatfield : moduletools {
     ----------------------------------------- #>
     [void]RunBatchFlatfield(){
         $this.GetBatchFlatfield()
+        $this.datavalidation()
     }
     <# -----------------------------------------
      GetBatchFlatField
@@ -45,9 +46,17 @@ class batchflatfield : moduletools {
     [void]silentcleanup(){
         #
         $this.sample.removedir($this.processloc)
+        #
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
         if (!$this.sample.testbatchflatfield()){
             throw 'Output files are not correct'
         }
-        #
     }
 }

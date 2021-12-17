@@ -40,6 +40,7 @@ Class imagecorrection : moduletools {
         $this.InjectDat()
         $this.ExtractLayer(1)
         $this.cleanup()
+        $this.datavalidation()
     }
     <# -----------------------------------------
      TestPaths
@@ -140,11 +141,19 @@ Class imagecorrection : moduletools {
             #
             $this.sample.copy($sor, $des, '.log')
             $this.sample.removedir($this.processloc)
-            if (!$this.sample.testimagecorrectionfiles()){
-                throw 'Output files are not correct'
-            }
             #
         }
         #
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
+        if (!$this.sample.testimagecorrectionfiles()){
+            throw 'Output files are not correct'
+        }
     }
 }

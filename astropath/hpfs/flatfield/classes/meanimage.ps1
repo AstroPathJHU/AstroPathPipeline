@@ -34,6 +34,7 @@ Class meanimage : moduletools {
         $this.GetMeanImage()
         $this.returndata()
         $this.cleanup()
+        $this.datavalidation()
     }
    <# -----------------------------------------
      GetMeanImage
@@ -165,9 +166,17 @@ Class meanimage : moduletools {
         if ($this.processvars[4]){
             $this.sample.removedir($this.processloc)
         }
+        #
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
         if (!$this.sample.testmeanimagefiles()){
             throw 'Output files are not correct'
         }
-        #
     }
 }

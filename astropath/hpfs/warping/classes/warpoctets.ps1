@@ -33,6 +33,7 @@ Class warpoctets : moduletools {
         $this.ShredDat()
         $this.GetWarpOctets()
         $this.cleanup()
+        $this.datavalidation()
     }
    <# -----------------------------------------
      GetWarpOctets
@@ -78,9 +79,17 @@ Class warpoctets : moduletools {
         if ($this.processvars[4]){
             $this.sample.removedir($this.processloc)
         }
+        #
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
         if (!$this.sample.testwarpoctets()){
             throw 'Output files are not correct'
         }
-        #
     }
 }
