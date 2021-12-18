@@ -51,7 +51,7 @@ class fileutils : generalutils {
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-           Throw $cnt + ' attempts failed reading ' `
+           Throw $cnt.ToString() + ' attempts failed reading ' `
                 + $fpath + '. Final message: ' + $err
         }
         #
@@ -104,7 +104,7 @@ class fileutils : generalutils {
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-           Throw $cnt + ' attempts failed reading ' `
+           Throw $cnt.ToString() + ' attempts failed reading ' `
                 + $fpath + '. Final message: ' + $err
         }
         #
@@ -152,7 +152,7 @@ class fileutils : generalutils {
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-           Throw $cnt + ' attempts failed reading ' `
+           Throw $cnt.ToString() + ' attempts failed reading ' `
                 + $fpath + '. Final message: ' + $err
         }
         #
@@ -168,7 +168,7 @@ class fileutils : generalutils {
      ------------------------------------------
      Usage: $this.PopFile(fpath)
     ----------------------------------------- #>
-    [void]PopFile([string] $fpath = '',[Object] $fstring){
+    [void]PopFile([string] $fpath, [array] $fstring){
         #
         $this.HandleWriteFile($fpath, $fstring, 'Pop')
         #
@@ -182,7 +182,7 @@ class fileutils : generalutils {
      ------------------------------------------
      Usage: $this.SetFile(fpath)
     ----------------------------------------- #>
-    [void]SetFile([string] $fpath = '',[string] $fstring){
+    [void]SetFile([string] $fpath,[array] $fstring){
         #
         $this.HandleWriteFile($fpath, $fstring, 'Set')
         #
@@ -200,7 +200,7 @@ class fileutils : generalutils {
      ------------------------------------------
      Usage: $this.HandleReadFile(fpath, fstring, opt)
     ----------------------------------------- #>
-    [void]HandleWriteFile([string] $fpath = '',[string] $fstring, [string] $opt){
+    [void]HandleWriteFile([string] $fpath,[array] $fstring, [string] $opt){
         #
         $cnt = 0
         $e = 1
@@ -229,7 +229,7 @@ class fileutils : generalutils {
         # after 10 minutes return an error indicator
         #
         if ($cnt -ge $Max){
-            Throw $cnt + ' attempts failed writing ' +
+            Throw $cnt.ToString() + ' attempts failed writing ' +
                 $fstring + ' to ' + $fpath + '. Final message: ' + $err
         }
         #
@@ -246,7 +246,7 @@ class fileutils : generalutils {
      ------------------------------------------
      Usage: $this.WriteFile(fpath, fstring, opt)
     ----------------------------------------- #>
-     [void]WriteFile([string] $fpath = '',[string] $fstring, [string] $opt){
+     [void]WriteFile([string]$fpath,[array]$fstring, [string]$opt){
         if ($opt -eq 'Set'){
             Set-Content -Path $fpath -Value $fstring -NoNewline -EA Stop
         } elseif ($opt -eq 'Pop') {
@@ -273,7 +273,7 @@ class fileutils : generalutils {
             return $mxtx
         } catch [System.Threading.AbandonedMutexException] {
             $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
-            return $this.GrabMutex($mxtxid)
+            return $this.GrabMxtx($mxtxid)
         }
     }
     <# -----------------------------------------

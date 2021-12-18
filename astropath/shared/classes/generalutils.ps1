@@ -161,8 +161,8 @@
     [void]removedir([string]$dir){
         #
         if (test-path $dir){
-            gci $dir -Recurse | Remove-Item -force -recurse
-            remove-item $dir -force
+            gci $dir -Recurse | Remove-Item -force -Confirm:$false -recurse
+            remove-item $dir -force -Confirm:$false -Recurse
         }
         #
     }
@@ -170,7 +170,7 @@
     [void]removefile([string]$file){
         #
         if (test-path $file){
-            remove-item $file -force -ea Continue
+            remove-item $file -force -Confirm:$false -ea Continue
         }
         #
     }
@@ -179,7 +179,21 @@
         #
         $filespec = '*' + $filespec
         $files = gci ($folder+'\*') -Include  $filespec -Recurse 
-        if ($files ){ Remove-Item -force -recurse }
+        if ($files ){ Remove-Item $files -force -recurse -Confirm:$false}
+        #
+    }
+    <# ------------------------------------------
+    CheckPath
+    ------------------------------------------
+    check if a path exists
+    ------------------------------------------ #>
+    [switch]CheckPath([string]$p){
+        #
+        if (test-path $p){
+            return $true
+        } else {
+            return $false
+        }
         #
     }
 }

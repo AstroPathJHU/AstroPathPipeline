@@ -7,7 +7,7 @@
  methods used to build the queues and check 
  dependencies
  -------------------------------------------#>
-class queue : sharedtools{
+class queue : vminformqueue{
     #
     [Array]$originaltasks
     [Array]$cleanedtasks
@@ -15,6 +15,10 @@ class queue : sharedtools{
     [string]$informvers
     [string]$project
     #
+    queue($module){
+        $this.mpath = '\\bki04\astropath_processing'
+        $this.module = $module 
+    }
     queue($mpath, $module){
         $this.mpath = $mpath
         $this.module = $module 
@@ -43,6 +47,7 @@ class queue : sharedtools{
             $this.buildqueue()
         } else {
             $this.('check'+$this.module)()
+            #$this.coalescevminformqueues()
         }
         #
     }
@@ -55,16 +60,10 @@ class queue : sharedtools{
     [void]buildqueue(){
         #
         $slides = $this.importslideids($this.mpath)
-        $project_dat = $this.ImportConfigInfo($this.mpath)
         #
         # select samples from the appropriate modules 
         #
-        if ($this.project -eq $null){
-            $projects = ($project_dat | 
-                Where-object {$_.($this.module) -match 'yes'}).Project
-        } else {
-            $projects = $this.project
-        }
+        $projects = $this.getapprojects()
         #
         $cleanedslides = $slides | 
             Where-Object {$projects -contains $_.Project}
@@ -93,6 +92,7 @@ class queue : sharedtools{
         $this.cleanedtasks = $slidearray
         #
     }
+
     <# -----------------------------------------
      defNotCompletedSlides
      For each slide, check the current module 
@@ -338,16 +338,37 @@ class queue : sharedtools{
      ------------------------------------------
      Usage: $this.checkmeanimagecomparison(log, dependency)
     ----------------------------------------- #>
-    [int]checkmeanimagecomparison([mylogger]$log, $dependency){
+    [int]checkbatchmicomp([mylogger]$log, $dependency){
+        #
+        # if task is not a dependency and the version is
+        # 0.0.1 then just checkout
+        #
+        if (
+            !$dependency -and
+             $log.vers -match '0.0.1'
+            ){
+            return 1
+        }
         #
         if (!($this.checkmeanimage($log, $true) -eq 3)){
             return 1
         }
         #
-        try {
-            $cvers = $this.getversion($this.mpath, 'meanimagecomparison', $log.project)
-            #if slide is not in the meanimagecomparison file return 2
-        } catch {}
+        $log = [mylogger]::new($this.mpath, 'batchmicomp', $log.slideid)
+        $log.slidelog = $log.mainlog
+        if ($this.checklog($log, $true)){
+            return 2
+        }
+        #
+        # get the meanimagecomparison table  
+        # extract current dpath from root_dir_1
+        # check if slideID is in slideid 1
+        # do the same on root 2
+        # if slide not yet then return 2
+        #
+        # if (!$log.testmeanimagecomparison()){
+        #    return 2
+        #}
         #
         return 3
         #
@@ -369,14 +390,37 @@ class queue : sharedtools{
     ----------------------------------------- #>
     [int]checkbatchflatfield([mylogger]$log, $dependency){
         #
-        if (!($this.checkmeanimage($log, $true) -eq 3)){
+        # if task is not a dependency and the version is
+        # not 0.0.1 then just checkout
+        #
+        if (
+            !$dependency -and
+             $log.vers -notmatch '0.0.1'
+            ){
             return 1
         }
         #
         $log = [mylogger]::new($this.mpath, 'batchflatfield', $log.slideid)
-        $log.slidelog = $log.mainlog
-        if ($this.checklog($log, $true)){
-            return 2
+        #
+        # if the version is not 0.0.1 in batchflatfield, do meanimagecomparison
+        # instead
+        if ($log.vers -notmatch '0.0.1'){
+            #
+            if (!($this.checkbatchmicomp($log, $true) -eq 3)){
+                return 1
+            }
+            #
+        } else {
+            #
+            if (!($this.checkmeanimage($log, $true) -eq 3)){
+                return 1
+            }
+            #
+            $log.slidelog = $log.mainlog
+            if ($this.checklog($log, $true)){
+                return 2
+            }
+            #
         }
         #
         # version depedendent checks
@@ -497,51 +541,4 @@ class queue : sharedtools{
         return $batchescomplete
     }
     #
-    [void]UpdateQueue($currenttask, $currentworker, $tasktomatch){
-        #
-        if ($this.module -ne 'vminform'){
-            return
-        }
-        #
-        $D = Get-Date
-        $currenttask2 = "$currenttask" + ",Processing: " + $currentworker.server + '-' + $currentworker.location + "," + $D
-        $mxtstring = 'Global\' + $this.queue_file.replace('\', '_') + '.LOCK'
-        #
-        # add escape to '\'
-        #
-        $rg = [regex]::escape($tasktomatch) + "$"
-        #
-        $cnt = 0
-        $Max = 120
-        #
-        do{
-           $mxtx = New-Object System.Threading.Mutex($false, $mxtstring)
-            try{
-                $imxtx = $mxtx.WaitOne(60 * 10)
-                if($imxtx){
-                    $Q = get-content -Path $this.queue_file
-                    $Q2 = $Q -replace $rg,$currenttask2
-                    Set-Content -Path $this.queue_file -Value $Q2
-                    $mxtx.releasemutex()
-                    break
-                } else{
-                    $cnt = $cnt + 1
-                    Start-Sleep -s 5
-                }
-            }catch{
-                $cnt = $cnt + 1
-                Start-Sleep -s 5
-                Continue
-            }
-        } while($cnt -lt $Max)
-        #
-        # if the script could not access the queue file after 10 mins of trying every 2 secs
-        # there is an issue and exit the script
-        #
-        if ($cnt -ge $Max){
-            $ErrorMessage = "Could not access "+$this.module+"-queue.csv"
-            Throw $ErrorMessage 
-        }
-        #
-    }
 }

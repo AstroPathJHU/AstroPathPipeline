@@ -109,13 +109,19 @@ class Dispatcher : queue{
     #
     [void]GetRunningJobs(){
         #
-        $this.running = @(Get-Job | Where-Object { $_.State -eq 'Running' -and $_.Name -match $this.module})
+        $this.running = @(Get-Job | 
+            Where-Object { $_.State -eq 'Running' -and $_.Name -match $this.module})
         if ($this.running){
             $this.running.Name | FOREACH {
                $CC = $_
-               $this.workers = $this.workers | where-object {(($_.server, $_.location, $_.module) -join('-')) -ne  $CC}
+               $this.workers = $this.workers | 
+                where-object {(($_.server, $_.location, $_.module) -join('-')) -ne  $CC}
             }
         }
+        #
+        # should also check that I can grab the logging file. 
+        # if there is another orphaned job still running. 
+        # Alternatively I should solve the orphaned job issue
         #
     }
     #
@@ -229,15 +235,14 @@ class Dispatcher : queue{
                 #
                 # write new os errors to the console
                 #
+                $taskid = ($_.Name, $_.PSBeginTime, $_.PSEndTime) -join '-'
                 $output = $this.getcontent($this.workerloglocation+$_.Name+'.log') 
-                if ($output -and $output[$output.count-1] -notmatch $_.Name) {
-                    $errors = $output -match $_.Name
-                    $idx = [array]::IndexOf($output, ($output -match $j.Name).last)
-                    $newerror = $output[$idx..($output.count-1)]
-                    $errortaskid = ($_.Name, $_.PSBeginTime, $_.PSEndTime) -join '-'
-                    write-host $errortaskid
+                if ($output -and $output[$output.count-1] -notmatch [regex]::escape($_.Name)) {
+                    $matches = $output -match [regex]::escape($_.Name)
+                    $idx = [array]::IndexOf($output, $matches[-1])
+                    $newerror = $output[($idx+1)..($output.count-1)]
+                    write-host $taskid
                     Write-host $newerror
-                    $this.popfile(($this.workerloglocation+$_.Name + '.log'), $errortaskid)
                 }
             }
         }

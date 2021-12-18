@@ -63,7 +63,7 @@
         #
         $defpath = $mpath + '\AstropathAPIDdef.csv'
         #
-        $slide_ids = $this.opencsvfile( $defpath)
+        $slide_ids = $this.opencsvfile($defpath)
         return $slide_ids
         #
      }
@@ -82,9 +82,68 @@
         #
         $defpath = $mpath + '\AstroPathFlatfieldModels.csv'
         #
-        $slide_ids = $this.opencsvfile( $defpath)
+        $slide_ids = $this.opencsvfile($defpath)
         return $slide_ids
         #
      }
-     #
+    <# -----------------------------------------
+     GetAPProjects
+     Select the projects from the import config
+     info 
+     ------------------------------------------
+     Input: 
+        -mpath: main path for the astropath processing
+         which contains all necessary processing files
+     ------------------------------------------
+     Usage: GetAPProjects(mpath, module, project)
+     Usage: GetAPProjects()
+    ----------------------------------------- #>
+    [PSCustomObject]GetAPProjects([string] $mpath, [string] $module, [string] $project){
+        #
+        $project_dat = $this.ImportConfigInfo($mpath)
+        #
+        if ($project -eq $null){
+            $projects = ($project_dat | 
+                Where-object {$_.($module) -match 'yes'}).Project
+        } else {
+            $projects = $project
+        }
+        return $projects
+        #
+     }
+    #
+    [PSCustomObject]GetAPProjects(){
+        #
+        $project_dat = $this.ImportConfigInfo($this.mpath)
+        #
+        if ($this.project -eq $null){
+            $projects = ($project_dat | 
+                Where-object {$_.($this.module) -match 'yes'}).Project
+        } else {
+            $projects = $this.project
+        }
+        return $projects
+        #
+     } 
+    <# -----------------------------------------
+     GetProjectCohortInfo
+     Select the cohort info for a particular project
+     ------------------------------------------
+     Input: 
+        -mpath: main path for the astropath processing
+         which contains all necessary processing files
+     ------------------------------------------
+     Usage: GetAPProjects(mpath, module, project)
+     Usage: GetAPProjects()
+    ----------------------------------------- #>
+    [PSCustomObject]GetProjectCohortInfo([string] $mpath, [string] $project){
+        #
+        $project_dat = $this.ImportCohortsInfo($mpath)
+        #
+        $cleaned_project_dat = $project_dat | 
+                Where-Object {$project -contains $_.Project}
+        #
+        return $cleaned_project_dat
+        #
+     }         
 }

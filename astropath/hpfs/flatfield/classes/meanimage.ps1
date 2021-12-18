@@ -21,6 +21,7 @@ Class meanimage : moduletools {
     meanimage([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
         $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
+        $this.cleanupbase()
     }
     <# -----------------------------------------
      RunMeanImage
@@ -94,12 +95,14 @@ Class meanimage : moduletools {
         if (!$this.processvars[4]){
             return
         }
+        $this.sample.info("return data started")
         if ($this.vers -match '0.0.1'){
             $this.ReturnDataMatlab()
         }
         else{
             $this.ReturnDataPy()
         }
+        $this.sample.info("return data finished")
     }
     <# -----------------------------------------
      ReturnDataMatlab
@@ -137,7 +140,7 @@ Class meanimage : moduletools {
             #
 		    $des = $this.sample.im3folder() + '\meanimage'
             $sor = $this.processvars[0] +'\meanimage'
-            $this.sample($sor, $des, '*', 30)
+            $this.sample.copy($sor, $des, '*', 30)
             #
         }
     }
@@ -165,6 +168,17 @@ Class meanimage : moduletools {
         if ($this.processvars[4]){
             $this.sample.removedir($this.processloc)
         }
+        #
+    }
+    <# -----------------------------------------
+     cleanupbase
+     remove old results
+     ------------------------------------------
+     Usage: $this.cleanupbase()
+    ----------------------------------------- #>
+    [void]cleanupbase(){
+        #
+        $this.sample.removedir($this.sample.meanimagefolder())
         #
     }
 }

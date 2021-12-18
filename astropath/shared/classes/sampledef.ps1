@@ -253,16 +253,18 @@ class sampledef : sharedtools{
     [switch]testxmlfiles(){
         #
         $xml = $this.xmlfolder()
-        $im3s = (gci ($this.Scanfolder() + '\MSI\*') *im3).Count + 2
+        $im3s = gci ($this.Scanfolder() + '\MSI\*') *im3
+        $im3n = ($im3s).Count + 2
         #
         if (!(test-path $xml)){
             return $false
         }
         #
-        # check files = im3s
+        # check xml files = im3s
         #
-        $files = (gci ($xml + '\*') '*xml').Count
-        if (!($im3s -eq $files)){
+        $xmls = gci ($xml + '\*') '*xml'
+        $files = ($xmls).Count
+        if (!($im3n -eq $files)){
             return $false
         }
         #

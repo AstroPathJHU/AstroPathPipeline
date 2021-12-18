@@ -81,7 +81,8 @@ for i1 = 1:length(batches)
         [err_val, m] = check_merge_columns(m, i1);
         %
         m = add_af(m, mnames);
-        m.Colors = [];
+        [mycol, err_val] = convert_colors(m, err_val);
+        m.Colors = mycol.hex;
         %
         if err_val ~= 0
             continue
