@@ -150,6 +150,8 @@ class copyutils{
                 Where-Object -FilterScript {$_.SideIndicator -eq '<='}
         #
         # copy files that failed
+        # call checksum on the particular file to make sure the 
+        # second go round went properly, fail on the 5th try.
         #
         if ($comparison -ne $null) {
             foreach ($file in $comparison) {

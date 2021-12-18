@@ -61,7 +61,7 @@ for i1 = 1:height(tbl)
     cohort = table2array(tbl3(tbl3.Project == project,'Cohort'));
     logstring = sprintf('%d;%d;', project, cohort);
     machine = tbl3(tbl3.Project == project,'Machine');
-    version = tbl2(tbl2.Project == project,'mergeloopversion');
+    version = table2array(tbl2(tbl2.Project == project,'mergeloopversion'));
     %
     progresstrack_samples_loop(main, wd, machine, version, logstring);
     %
