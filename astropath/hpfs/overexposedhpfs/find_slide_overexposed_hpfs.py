@@ -1,13 +1,15 @@
 #imports
-from astropath.slides.align.alignsample import AlignSampleComponentTiffFromXML
-from astropath.utilities.tableio import writetable
-from astropath.utilities import units
-from astropath.utilities.dataclasses import MyDataClass
-from astropath.utilities.misc import cd, save_figure_in_dir
-from astropath.utilities.config import CONST as UNIV_CONST
-from argparse import ArgumentParser
-import numpy as np, matplotlib.pyplot as plt
 import logging, os
+import numpy as np, matplotlib.pyplot as plt
+from argparse import ArgumentParser
+from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.dataclasses import MyDataClass
+from ...utilities.miscfileio import cd
+from ...utilities.tableio import writetable
+from ...utilities.miscplotting import save_figure_in_dir
+from ...utilities import units
+from ...slides.align.alignsample import AlignSampleComponentTiffFromXML
+
 units.setup('fast')
 
 #constants
@@ -203,8 +205,8 @@ def findOverexposedHPFs(rd,sid,workingdir) :
                                                         rects[n]['rel_diff_dev']))
     logger.info(f'Found {len(overexposed_hpf_infos)} total overexposed HPFs in {sid}')
     if len(overexposed_hpf_infos)>0 :
-	    with cd(workingdir) :
-	        writetable(f'{sid}_overexposed_HPFs.csv',overexposed_hpf_infos)
+        with cd(workingdir) :
+            writetable(f'{sid}_overexposed_HPFs.csv',overexposed_hpf_infos)
     #make and write out the plot of all the rectangles
     with cd(workingdir) :
         plotRectangleInfo(sid,rects)

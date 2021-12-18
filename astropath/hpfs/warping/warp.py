@@ -1,11 +1,10 @@
 #imports
 import pathlib, math, cv2, functools, methodtools, more_itertools
-import numpy as np, seaborn as sns
-import matplotlib.pyplot as plt
-from ...shared.logging import printlogger
+import numpy as np, seaborn as sns, matplotlib.pyplot as plt
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, write_image_to_file
-from ...utilities.misc import save_figure_in_dir
+from ...utilities.miscplotting import save_figure_in_dir
+from ...shared.logging import printlogger
 from .utilities import correct_image_layer_with_warp_fields
 from .config import CONST
 
@@ -115,7 +114,7 @@ class Warp :
         for i in range(data.shape[0]) :
             for j in range(data.shape[1]) :
                 if math.floor(i/square_pixels)%2==math.floor(j/square_pixels)%2 :
-                    data[i,j]=1
+                    data[i][j]=1
         return data
 
 class PolyFieldWarp(Warp) :

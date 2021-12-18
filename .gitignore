@@ -9,6 +9,7 @@
 *.o
 *.so
 *.egg-info
+/build
 
 # Packages #
 ############

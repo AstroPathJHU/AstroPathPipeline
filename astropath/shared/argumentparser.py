@@ -1,4 +1,4 @@
-import abc, argparse, logging, pathlib, re
+import abc, argparse, contextlib, logging, pathlib, re
 from ..utilities.tableio import TableReader
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
@@ -31,7 +31,7 @@ class MRODebuggingMetaClass(abc.ABCMeta):
         logger.critical("========================")
       raise
 
-class RunFromArgumentParserBase(ThingWithRoots, TableReader, metaclass=MRODebuggingMetaClass):
+class RunFromArgumentParserBase(ThingWithRoots, TableReader, contextlib.ExitStack, metaclass=MRODebuggingMetaClass):
   @classmethod
   def argumentparserhelpmessage(cls):
     return cls.__doc__
@@ -306,11 +306,15 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
     p.add_argument('--flatfield-file', type=pathlib.Path,
                     help='''Path to the flatfield .bin file, or name of the file in root/flatfield, containing the 
                             correction factors to apply 
-                            [default=None skips flatfield corrections].''')
+                            [default=None skips flatfield corrections if no correction-model-file is given].''')
     p.add_argument('--warping-file', type=pathlib.Path,
                     help='''Path to the warping summary .csv file, or name of the file in root/warping, defining the 
                             parameters of the warping pattern to apply 
-                            [default=None skips warping corrections].''')
+                            [default=None skips warping corrections if no correction-model-file is given].''')
+    p.add_argument('--correction-model-file', type=pathlib.Path,
+                    help='''Path to the file defining flatfield versions and warping files to use for correcting 
+                            raw images in this sample/cohort. NOTE: This file is only used to apply corrections 
+                            if NEITHER the --flatfield_file NOR --warping_file are given.''')
     return p
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
@@ -319,7 +323,8 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
       'et_offset_file': parsed_args_dict.pop('exposure_time_offset_file'),
       'skip_et_corrections':parsed_args_dict.pop('skip_exposure_time_corrections'),
       'flatfield_file': parsed_args_dict.pop('flatfield_file'),
-      'warping_file': parsed_args_dict.pop('warping_file')
+      'warping_file': parsed_args_dict.pop('warping_file'),
+      'correction_model_file': parsed_args_dict.pop('correction_model_file'),
     }
 
 class WarpFitArgumentParser(RunFromArgumentParser) :
@@ -469,6 +474,7 @@ class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     add_rename_annotation_argument(p)
+    p.add_argument("--annotations-xml-regex", type=re.compile, help="use the annotations.polygons.xml that matches this regex (only needed if there are multiple, default .*)")
     return p
 
   @classmethod
@@ -477,6 +483,7 @@ class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "annotationsynonyms": parsed_args_dict.pop("annotationsynonyms"),
       "reorderannotations": parsed_args_dict.pop("reorderannotations"),
+      "annotationsxmlregex": parsed_args_dict.pop("annotations_xml_regex"),
     }
 
 class ParallelArgumentParser(RunFromArgumentParser):
@@ -491,4 +498,18 @@ class ParallelArgumentParser(RunFromArgumentParser):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "njobs": parsed_args_dict.pop("njobs"),
+    }
+
+class CleanupArgumentParser(RunFromArgumentParser):
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--cleanup", action="store_true", help="clean up files from previous partial runs")
+    return p
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "cleanup": parsed_args_dict.pop("cleanup"),
     }

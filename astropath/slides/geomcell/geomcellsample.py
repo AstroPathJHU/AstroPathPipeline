@@ -1,5 +1,6 @@
 import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...utilities.config import CONST as UNIV_CONST
+from ...shared.argumentparser import CleanupArgumentParser
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
@@ -20,7 +21,7 @@ class GeomLoadField(Field, GeomLoadRectangle):
 class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample):
+class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample, CleanupArgumentParser):
   @property
   def segmentationorder(self):
     return sorted(
@@ -105,7 +106,9 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       for i, field in enumerate(self.rectangles, start=1):
         self.rungeomcellfield(i, field, **kwargs)
 
-  run = rungeomcell
+  def run(self, *, cleanup=False, **kwargs):
+    if cleanup: self.cleanup()
+    self.rungeomcell(**kwargs)
 
   @staticmethod
   def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, apscale, unitsargs):
@@ -155,6 +158,11 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       self.csv("fields"),
       *(r.imagefile for r in self.rectangles),
     ]
+
+  @classmethod
+  def getworkinprogressfiles(cls, SlideID, *, geomroot, **otherworkflowkwargs):
+    geomfolder = geomroot/SlideID/"geom"
+    return geomfolder.glob("*.csv")
 
   @property
   def workflowkwargs(self):
@@ -275,6 +283,7 @@ class PolygonFinder(ThingWithPscale, ThingWithApscale):
   def istoothin(self, polygon):
     area = polygon.area
     perimeter = polygon.perimeter
+    if area == perimeter == 0: return True
     return area / perimeter <= .8 * self.onepixel
 
   @property

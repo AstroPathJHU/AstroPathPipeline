@@ -181,9 +181,11 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
   sampleclass = CsvScanSample
   __doc__ = sampleclass.__doc__
 
-  def samples(self, **kwargs):
-    yield from super().samples(**kwargs)
-    yield self.globalcsv()
+  def sampleswithfilters(self, **kwargs):
+    yield from super().sampleswithfilters(**kwargs)
+    globalcsv = self.globalcsv()
+    filters = [filter(self, globalcsv, **kwargs) for filter in self.samplefilters]
+    yield self.globalcsv(), filters
 
   def runsample(self, sample, **kwargs):
     return sample.runcsvscan(**kwargs)

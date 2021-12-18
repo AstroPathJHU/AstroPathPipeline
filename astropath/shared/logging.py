@@ -1,4 +1,4 @@
-import collections, contextlib, datetime, functools, job_lock, logging, os, pathlib, traceback
+import collections, contextlib, datetime, functools, job_lock, logging, os, pathlib, sys, time, traceback
 
 class MyLogger:
   r"""
@@ -13,8 +13,8 @@ class MyLogger:
   root: the Clinical_Specimen_* folder (or another folder if you want to log somewhere else)
   samp: the SampleDef object
   uselogfiles: should we write to log files (default: false)
-  threshold: minimum level of messages that should be logged (default: logging.DEBUG)
-  printthreshold: minimum level of messages that should be printed to stderr (default: logging.DEBUG)
+  threshold: minimum level of messages that should be logged (default: logging.NOTSET-100)
+  printthreshold: minimum level of messages that should be printed to stderr (default: logging.NOTSET-100)
   isglobal: is this a global log for the cohort? in that case samplelog is set to None and all the info goes in the mainlog
   mainlog: main log file, which gets errors and the most important warnings
            (default: root/logfiles/module.log)
@@ -50,7 +50,7 @@ class MyLogger:
     4) if sampledef.csv does not exist yet, you can provide an apidfile argument
        to getlogger and it will read the information from there
   """
-  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False):
+  def __init__(self, module, root, samp, *, uselogfiles=False, threshold=logging.NOTSET-100, printthreshold=logging.NOTSET-100, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False):
     self.module = module
     self.root = pathlib.Path(root) if root is not None else root
     self.samp = samp
@@ -129,7 +129,7 @@ class MyLogger:
       if self.uselogfiles:
         for mainlog in self.mainlogs:
           mainlog.parent.mkdir(exist_ok=True, parents=True)
-          mainhandler = MyFileHandler(mainlog)
+          mainhandler = FileHandlerWrapper(mainlog)
           mainhandler.setFormatter(self.formatter)
           mainhandler.addFilter(self.filter)
           mainhandler.setLevel(logging.INFO if self.isglobal else logging.WARNING+1)
@@ -137,7 +137,7 @@ class MyLogger:
 
         if not self.isglobal:
           self.samplelog.parent.mkdir(exist_ok=True, parents=True)
-          samplehandler = MyFileHandler(self.samplelog)
+          samplehandler = FileHandlerWrapper(self.samplelog)
           samplehandler.setFormatter(self.formatter)
           samplehandler.addFilter(self.filter)
           samplehandler.setLevel(logging.INFO)
@@ -145,7 +145,7 @@ class MyLogger:
 
         if self.imagelog is not None :
           self.imagelog.parent.mkdir(exist_ok=True, parents=True)
-          imagehandler = MyFileHandler(self.imagelog)
+          imagehandler = FileHandlerWrapper(self.imagelog)
           imagehandler.setFormatter(self.formatter)
           imagehandler.addFilter(self.filter)
           imagehandler.setLevel(logging.INFO-1)
@@ -191,6 +191,7 @@ class MyLogger:
     if self.nentered == 0:
       if exc_value is not None:
         errormessage = str(exc_value).replace(";", ",")
+        if not errormessage: errormessage = exc_type.__name__
         if "\n" in errormessage: errormessage = repr(errormessage)
         self.error(errormessage)
         self.info(repr(traceback.format_exception(exc_type, exc_value, exc_traceback)).replace(";", ""))
@@ -247,7 +248,7 @@ class MyLogger:
     self.__logonenter.append(("critical", args, kwargs))
     self.processlogonenterqueue()
 
-class MyFileHandler:
+class FileHandlerWrapper:
   """
   Allows the same file to be used by multiple loggers
   without conflicting with each other
@@ -259,18 +260,7 @@ class MyFileHandler:
     self.__filename = pathlib.Path(filename)
     self.__lockfilename = self.__filename.with_suffix(self.__filename.suffix+".lock")
     if filename not in self.__handlers:
-      handler = self.__handlers[filename] = logging.FileHandler(filename, delay=True)
-      kwargs = {"newline": "", "mode": handler.mode, "encoding": handler.encoding}
-      try:
-        kwargs["errors"] = handler.errors
-      except AttributeError: #python < 3.9
-        pass
-      newfile = open(filename, **kwargs)
-      try:
-        handler.setStream(newfile)
-      except AttributeError: #python < 3.7
-        handler.stream = newfile
-      handler.terminator = "\r\n"
+      self.__handlers[filename] = MyFileHandler(filename, delay=True)
     self.__handler = self.__handlers[filename]
     self.__counts[filename] += 1
     self.__formatter = self.__handler.formatter
@@ -301,17 +291,52 @@ class MyFileHandler:
     self.__handler.setLevel(self.__level)
     self.__handler.filters = self.__filters
     with job_lock.JobLockAndWait(self.__lockfilename, 1, corruptfiletimeout=datetime.timedelta(minutes=10), task=f"logging to {self.__filename}"):
-      def trylog(): self.__handler.handle(record)
-      try:
-        trylog()
-      except OSError:
-        try:
-          trylog()
-        except OSError:
-          trylog()
+      self.__handler.handle(record)
 
   def __repr__(self):
     return f"{type(self).__name__}({self.__filename})"
+
+class MyFileHandler(logging.FileHandler):
+  terminator = "\r\n"
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__emit_iteration = 0
+    try:
+      self._builtin_open
+    except AttributeError:  #python < 3.10
+      self._builtin_open = open
+  def emit(self, record, *, iteration=0):
+    self.__emit_iteration = iteration
+    return super().emit(record)
+  def handleError(self, record):
+    iteration = self.__emit_iteration
+
+    t, v, tb = sys.exc_info()
+    if iteration >= 3 or not issubclass(t, OSError):
+      raise v
+
+    #close the file and try again (emit() will reopen it)
+    try:
+      self.close()
+    except Exception:
+      self.stream = None
+
+    time.sleep(2)
+
+    self.emit(record, iteration=iteration+1)
+
+  def _open(self):
+    """
+    From https://github.com/python/cpython/blob/bcb236c19e4ddf5ccf0fc45ab541eabf1f757a64/Lib/logging/__init__.py#L1191-L1198
+    with fixed newline
+    """
+    open_func = self._builtin_open
+    kwargs = {"newline": "", "mode": self.mode, "encoding": self.encoding}
+    try:
+      kwargs["errors"] = self.errors
+    except AttributeError:  #python < 3.9
+      pass
+    return open_func(self.baseFilename, **kwargs)
 
 __notgiven = object()
 
@@ -319,7 +344,7 @@ __notgiven = object()
 def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, moremainlogroots, reraiseexceptions, skipstartfinish):
   return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=moremainlogroots, reraiseexceptions=reraiseexceptions, skipstartfinish=skipstartfinish)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.DEBUG, printthreshold=logging.DEBUG, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None):
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.NOTSET-100, printthreshold=logging.NOTSET-100, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None):
   from .samplemetadata import SampleDef
   if samp is not None:
     samp = SampleDef(root=root, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)

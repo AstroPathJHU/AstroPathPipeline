@@ -1,7 +1,7 @@
 #imports
-from .meanimagesample import MeanImageSample
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort
+from .meanimagesample import MeanImageSample
 
 class MeanImageCohort(CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, 
                       WorkflowCohort, WorkingDirArgumentParser, FileTypeArgumentParser) :

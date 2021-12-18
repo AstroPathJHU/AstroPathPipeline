@@ -7,7 +7,7 @@ from ...slides.annowarp.annowarpsample import WSISample
 from ...slides.stitchmask.stitchmasksample import AstroPathTissueMaskSample
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation
-from ...utilities.misc import affinetransformation, covariance_matrix, floattoint
+from ...utilities.miscmath import affinetransformation, covariance_matrix, floattoint
 from ...utilities.units import ThingWithPscale
 from ...utilities.units.dataclasses import DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, makedataclasswithpscale
 
