@@ -239,6 +239,15 @@ def _pscale(distance):
   if isinstance(distance, (numbers.Number, unc.core.AffineScalarFunc)) or not distance: return None
   return distance._pscale
 
+def ufloat(nominal, std_dev):
+  sum = nominal + std_dev #check that the pscales and powers match
+  pscale = _pscale(sum)
+  power = _power(sum)
+  nominalpixels = __pixels(nominal, power=power, pscale=pscale)
+  stddevpixels = __pixels(std_dev, power=power, pscale=pscale)
+  pixels = unc.ufloat(nominalpixels, stddevpixels)
+  return Distance(pixels=pixels, pscale=pscale, power=power)
+
 def nominal_value(distance):
   if isinstance(distance, numbers.Number): return distance
   return distance.nominal_value
