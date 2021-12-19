@@ -137,7 +137,7 @@ class TestZoom(TestBaseSaveOutput):
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID
   for filename in folder.glob("*/*.gz"):
-    with job_lock.JobLockAndWait(filename.with_suffix(".lock"), task=f"gunzipping {filename}"):
+    with job_lock.JobLockAndWait(filename.with_suffix(".lock"), task=f"gunzipping {filename}", delay=10):
       newfilename = filename.with_suffix("")
       if newfilename.exists(): continue
       with gzip.open(filename) as f, open(newfilename, "wb") as newf:
