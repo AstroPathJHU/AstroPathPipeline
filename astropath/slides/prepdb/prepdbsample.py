@@ -17,7 +17,7 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
     g = p.add_mutually_exclusive_group()
     g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
     g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
-    p.add_argument("--shift-annotations", nargs=2, type=float)
+    p.add_argument("--annotation-position", nargs=2, type=float)
     return p
 
   @classmethod
@@ -34,7 +34,7 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "margin": parsed_args_dict.pop("margin"),
       "annotationsonwsi": parsed_args_dict.pop("annotationsonwsi"),
-      "shiftannotations": parsed_args_dict.pop("shift_annotations"),
+      "annotationposition": parsed_args_dict.pop("annotation_position"),
     }
 
 class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationReaderSample, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
@@ -44,11 +44,11 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
   For more information, see README.md in this folder.
   """
 
-  def __init__(self, *args, nclip=8, margin=1024, shiftannotations=(0, 0), **kwargs):
+  def __init__(self, *args, nclip=8, margin=1024, annotationposition=(0, 0), **kwargs):
     super().__init__(*args, **kwargs)
     self.__margin = margin
     self.__nclip = nclip
-    self.__shiftannotations = np.array(shiftannotations)
+    self.__annotationposition = np.array(annotationposition)
 
   @classmethod
   def logmodule(self): return "prepdb"
@@ -58,7 +58,7 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
   @property
   def margin(self): return self.__margin * self.onepixel
   @property
-  def shiftannotations(self): return self.__shiftannotations * self.onepixel
+  def annotationposition(self): return self.__annotationposition * self.onepixel
 
   @methodtools.lru_cache()
   def getbatch(self):
@@ -313,15 +313,15 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
     if self.annotationsonwsi:
       constants += [
         Constant(
-          name="shiftannotationsx",
-          value=self.shiftannotations[0],
+          name="annotationxposition",
+          value=self.annotationposition[0],
           unit="pixels",
           description="x shift of annotations with respect to the coordinate system they were drawn on",
           **pscales,
         ),
         Constant(
-          name="shiftannotationsy",
-          value=self.shiftannotations[1],
+          name="annotationyposition",
+          value=self.annotationposition[1],
           unit="pixels",
           description="y shift of annotations with respect to the coordinate system they were drawn on",
           **pscales,

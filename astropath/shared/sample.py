@@ -700,11 +700,18 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     """
     return self.constantsdict.get("annoscale", self.pscale / 2 if self.annotationsonwsi else self.apscale)
   @property
-  def shiftannotations(self):
+  def annotationposition(self):
     """
-    Shift the annotations from the xml file by this amount
+    Position of the annotations in the xml file (only if annotationsonwsi is True)
     """
-    return np.array([self.constantsdict.get("shiftannotationsx", 0), self.constantsdict.get("shiftannotationsy", 0)])
+    x = self.constantsdict.get("annotationxposition", None)
+    y = self.constantsdict.get("annotationyposition", None)
+    if x is not None and y is not None:
+      return np.array([x, y])
+    elif x is y is None:
+      return None
+    else:
+      raise ValueError("constants.csv has one of annotationxposition and annotationyposition but not both")
 
 class MaskSampleBase(SampleBase, MaskArgumentParser):
   """

@@ -704,8 +704,14 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     onemicron = self.onemicron
     onepixel = self.onepixel
     if self.annotationsonwsi:
-      if np.any(self.shiftannotations):
-        self.logger.warning("shifting the annotations by {self.shiftannotations / onepixel} pixels")
+      if self.annotationposition is None:
+        shiftannotations = 0
+      else:
+        affines = self.readcsv("affine")
+        dct = {affine.description: affine.value for affine in affines}
+        shiftannotations = [affine["shiftx"], affine["shifty"]]
+        if np.any(shiftannotations):
+          self.logger.warning("shifting the annotations by {self.shiftannotations / onepixel} pixels")
       return [
         WarpedVertex(
           vertex=v,

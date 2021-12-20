@@ -5,11 +5,11 @@ class PrepDbCohort(DbloadCohort, WorkflowCohort, XMLPolygonReaderCohort, PrepDbA
   sampleclass = PrepDbSample
   __doc__ = sampleclass.__doc__
 
-  def __init__(self, *args, margin, annotationsonwsi, shiftannotations, **kwargs):
+  def __init__(self, *args, margin, annotationsonwsi, annotationposition, **kwargs):
     super().__init__(*args, **kwargs)
     self.__margin = margin
     self.__annotationsonwsi = annotationsonwsi
-    self.__shiftannotations = shiftannotations
+    self.__annotationposition = annotationposition
 
   @property
   def initiatesamplekwargs(self):
@@ -17,7 +17,7 @@ class PrepDbCohort(DbloadCohort, WorkflowCohort, XMLPolygonReaderCohort, PrepDbA
       **super().initiatesamplekwargs,
       "margin": self.__margin,
       "annotationsonwsi": self.__annotationsonwsi,
-      "shiftannotations": self.__shiftannotations,
+      "annotationposition": self.__annotationposition,
     }
 
 def main(args=None):
