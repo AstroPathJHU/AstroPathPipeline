@@ -11,20 +11,33 @@ class MergeAnnotationXMLsArgumentParser(RunFromArgumentParser):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--annotation", nargs=2, action=ArgParseAddRegexToDict, metavar=("ANNOTATION", "FILENAME_REGEX"), default={}, help="take annotation with this name from the annotation file that matches the regex", dest="annotationselectiondict")
     p.add_argument("--skip-annotation", action="append", metavar="ANNOTATION", default=[], help="skip this annotation if it exists in an xml file")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
+    g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
+    p.add_argument("--annotation-position", nargs=2, type=float)
     return p
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
+    if parsed_args_dict["annotation_position"] is not None and not parsed_args_dict["annotationsonwsi"]:
+      raise ValueError("--annotation-position is only valid for --annotations-on-wsi")
+    if parsed_args_dict["annotation_position"] is None and parsed_args_dict["annotationsonwsi"]:
+      raise ValueError("--annotation-position is required for --annotations-on-wsi")
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "annotationselectiondict": parsed_args_dict.pop("annotationselectiondict"),
       "skipannotations": parsed_args_dict.pop("skip_annotation"),
+      "annotationsonwsi": parsed_args_dict.pop("annotationsonwsi"),
+      "annotationposition": parsed_args_dict.pop("annotation_position"),
     }
 
-class MergeAnnotationXMLsSample(WorkflowSample, MergeAnnotationXMLsArgumentParser):
-  def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
+class MergeAnnotationXMLsSample(DbloadSample, WorkflowSample, MergeAnnotationXMLsArgumentParser):
+  def __init__(self, *args, annotationselectiondict, skipannotations, annotationsonwsi, annotationposition, **kwargs):
     self.__annotationselectiondict = annotationselectiondict
     self.__skipannotations = skipannotations
+    self.__annotationsonwsi = annotationsonwsi
+    if annotationposition is not None: annotationposition = np.array(annotationposition)
+    self.__annotationposition = annotationposition
     super().__init__(*args, **kwargs)
     duplicates = frozenset(self.__annotationselectiondict) & frozenset(self.__skipannotations)
     if duplicates:
@@ -101,6 +114,29 @@ class MergeAnnotationXMLsSample(WorkflowSample, MergeAnnotationXMLsArgumentParse
       result = jxmlease.XMLDictNode({"Annotations": jxmlease.XMLDictNode({"Annotation": jxmlease.XMLListNode(annotations)})})
       with open(self.xmloutput, "w") as f:
         f.write(result.emit_xml())
+
+    constants = self.readcsv("constants")
+    originalconstants = constants[:]
+    relevantconstantnames = {"annotationsonwsi", "annotationxposition", "annotationyposition"}
+    constants = [constant for constant in constants if constant.name not in relevantconstantnames]
+    if self.annotationsonwsi:
+      newconstants = [
+        Constant(
+          name="annotationsonwsi",
+          value=self.annotationsonwsi,
+        ),
+        Constant(
+          name="annotationxposition",
+          value=self.annotationposition[0],
+        ),
+        Constant(
+          name="annotationyposition",
+          value=self.annotationposition[1],
+        ),
+      ]
+      assert not {_.name for _ in newconstants} ^ relevantconstantnames
+      constants += newconstants
+    self.writecsv("constants", constants)
 
   def run(self, **kwargs):
     return self.mergexmls(**kwargs)
