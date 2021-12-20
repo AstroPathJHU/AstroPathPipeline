@@ -7,7 +7,8 @@ class Dispatcher : queue{
     [array]$running
     [array]$workers
     [PSCredential]$cred
-    [string]$workerloglocation = '\\'+$env:ComputerName+'\c$\users\public\astropath\'
+    [string]$workerloglocation = '\\' + $env:ComputerName +
+        '\c$\users\public\astropath\'
     #
     Dispatcher($mpath, $module, $cred):base($mpath, $module){
         #
@@ -33,6 +34,8 @@ class Dispatcher : queue{
     [void]Run(){
         #
         while(1){
+            Write-Host "." -ForegroundColor Yellow
+            Write-Host " Checking for tasks" -ForegroundColor Yellow
             $this.checknew()
             $this.InitializeWorkerlist()
             $this.GetRunningJobs()
@@ -50,8 +53,6 @@ class Dispatcher : queue{
         Write-Host "Starting the AstroPath Pipeline" -ForegroundColor Yellow
         Write-Host ("Module: " + $this.module) -ForegroundColor Yellow
         Write-Host ("Username: " + $this.cred.UserName) -ForegroundColor Yellow
-        $this.defCodeRoot()
-        $this.initepy()
     }
     #
     # initializing the python environment
@@ -60,7 +61,6 @@ class Dispatcher : queue{
     [void]initepy(){
         Write-Host "Initializing\updating the conda environment" -ForegroundColor Yellow
         $this.checkconda()
-        $this.checkpyapenvir('U')
     }
     #
     # checks for new tasks to process
@@ -70,9 +70,12 @@ class Dispatcher : queue{
         while (1){
             $this.ExtractQueue()
             if (!($this.cleanedtasks)){
-                Write-Host "No new samples to process." -ForegroundColor Yellow
+                Write-Host " No new samples to process." -ForegroundColor Yellow
+                Write-Host " Sleeping for 10 minutes." -ForegroundColor Yellow
                 Start-Sleep -s (10 * 60)
+                Write-Host " Checking for tasks" -ForegroundColor Yellow
             } else {
+                Write-Host " Tasks Found" -ForegroundColor Yellow
                 break
             }
         }
@@ -91,7 +94,6 @@ class Dispatcher : queue{
                              Where-Object {$_.module -eq $this.module}
         
         #
-        Write-Host "." -ForegroundColor Yellow
         Write-Host " Starting-Task-Distribution" -ForegroundColor Yellow
         write-host " Current Computers for Processing:" -ForegroundColor Yellow
         write-host " " ($this.workers | 
@@ -107,13 +109,19 @@ class Dispatcher : queue{
     #
     [void]GetRunningJobs(){
         #
-        $this.running = @(Get-Job | Where-Object { $_.State -eq 'Running' -and $_.Name -match $this.module})
+        $this.running = @(Get-Job | 
+            Where-Object { $_.State -eq 'Running' -and $_.Name -match $this.module})
         if ($this.running){
             $this.running.Name | FOREACH {
                $CC = $_
-               $this.workers = $this.workers | where-object {(($_.server, $_.location, $_.module) -join('-')) -ne  $CC}
+               $this.workers = $this.workers | 
+                where-object {(($_.server, $_.location, $_.module) -join('-')) -ne  $CC}
             }
         }
+        #
+        # should also check that I can grab the logging file. 
+        # if there is another orphaned job still running. 
+        # Alternatively I should solve the orphaned job issue
         #
     }
     #
@@ -147,13 +155,15 @@ class Dispatcher : queue{
             $myscriptblock = {
                 param($username, $password, $currentworkerip, $workertaskfile)
                 psexec -i -nobanner -accepteula -u $username -p $password \\$currentworkerip `
-                    powershell -noprofile -executionpolicy bypass -command "$workertaskfile" 
+                    powershell -noprofile -executionpolicy bypass -command "$workertaskfile" `
+                    *>> ($workertaskfile -replace '.ps1', '-job.log')
             }
         } else {
             $myscriptblock = {
                 param($username, $password, $currentworkerip, $workertaskfile)
                 psexec -nobanner -accepteula -u $username -p $password \\$currentworkerip `
-                    powershell -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" 
+                    powershell -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" `
+                    *>> ($workertaskfile -replace '.ps1', '-job.log')
             }
         }
         #
@@ -197,7 +207,7 @@ class Dispatcher : queue{
             $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
             $currenttaskinput = ($currenttask, $currentworkerstring) -join ',' -replace ',','-'
         }
-        $currenttasktowrite = ("&{Import-Module ", $this.coderoot, ";LaunchModule -mpath:", `
+        $currenttasktowrite = ("&{Import-Module ", $this.coderoot(), ";LaunchModule -mpath:", `
                              $this.mpath, " -module:", $this.module, " -stringin:", `
                              $currenttaskinput, " } *>> '", $workerlogfile, "'") -join ''
         #
@@ -221,8 +231,20 @@ class Dispatcher : queue{
         $donejobs = Get-Job | Where-Object { $_.State -eq 'Completed'  -and $_.Name -match $this.module}
         if ($donejobs){
             $donejobs | Remove-Job
-            $donejobs | ForEach {Get-Content ($this.workerloglocation+$_.Name+'.log')}
-            $donejobs | ForEach {Remove-Item ($this.workerloglocation+$_.Name+'.log') -force -ea SilentlyContinue}
+            $donejobs | ForEach {
+                #
+                # write new os errors to the console
+                #
+                $taskid = ($_.Name, $_.PSBeginTime, $_.PSEndTime) -join '-'
+                $output = $this.getcontent($this.workerloglocation+$_.Name+'.log') 
+                if ($output -and $output[$output.count-1] -notmatch [regex]::escape($_.Name)) {
+                    $matches = $output -match [regex]::escape($_.Name)
+                    $idx = [array]::IndexOf($output, $matches[-1])
+                    $newerror = $output[($idx+1)..($output.count-1)]
+                    write-host $taskid
+                    Write-host $newerror
+                }
+            }
         }
         #
     }

@@ -78,10 +78,11 @@ def array_to_vips_image(array):
     bands=bands,
   )
 
-def vips_sinh(image):
+def vips_sinh(image, *, allowfallback=True):
   """
+  >>> import os
   >>> i = array_to_vips_image(np.arange(25, dtype=float).reshape(5, 5) / 10)
-  >>> vips_image_to_array(vips_sinh(i))
+  >>> vips_image_to_array(vips_sinh(i, allowfallback=not bool(int(os.environ.get("RUNNING_ON_JENKINS", 0)))))
   array([[0.        , 0.10016675, 0.201336  , 0.30452029, 0.41075233],
          [0.52109531, 0.63665358, 0.7585837 , 0.88810598, 1.02651673],
          [1.17520119, 1.33564747, 1.50946136, 1.69838244, 1.9043015 ],
@@ -92,9 +93,11 @@ def vips_sinh(image):
     #https://github.com/libvips/pyvips/pull/282
     return image.sinh()
   except AttributeError:
+    if not allowfallback: raise
     fallback = True
   except pyvips.error.Error as e:
-    if 'VipsOperation: class "sinh" not found' in str(e):
+    if not allowfallback: raise
+    if 'VipsOperation: class "sinh" not found' in str(e) or "enum 'VipsOperationMath' has no member 'sinh'" in str(e):
       fallback = True
     else:
       raise
