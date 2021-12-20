@@ -1,7 +1,8 @@
-import collections, contextlib, jxmlease, methodtools, re
+import collections, contextlib, jxmlease, methodtools, numpy as np, re
 from ...shared.argumentparser import RunFromArgumentParser
-from ...shared.sample import WorkflowSample
-from ...shared.cohort import WorkflowCohort
+from ...shared.cohort import DbloadCohort, WorkflowCohort
+from ...shared.csvclasses import Constant
+from ...shared.sample import DbloadSample, WorkflowSample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import ArgParseAddRegexToDict
 
@@ -115,7 +116,7 @@ class MergeAnnotationXMLsSample(DbloadSample, WorkflowSample, MergeAnnotationXML
       with open(self.xmloutput, "w") as f:
         f.write(result.emit_xml())
 
-    constants = self.readcsv("constants")
+    constants = self.readcsv("constants", Constant)
     originalconstants = constants[:]
     relevantconstantnames = {"annotationsonwsi", "annotationxposition", "annotationyposition"}
     constants = [constant for constant in constants if constant.name not in relevantconstantnames]
@@ -136,7 +137,8 @@ class MergeAnnotationXMLsSample(DbloadSample, WorkflowSample, MergeAnnotationXML
       ]
       assert not {_.name for _ in newconstants} ^ relevantconstantnames
       constants += newconstants
-    self.writecsv("constants", constants)
+    if constants != originalconstants:
+      self.writecsv("constants", constants)
 
   def run(self, **kwargs):
     return self.mergexmls(**kwargs)
@@ -145,11 +147,13 @@ class MergeAnnotationXMLsSample(DbloadSample, WorkflowSample, MergeAnnotationXML
   def workflowdependencyclasses(cls):
     return []
 
-class MergeAnnotationXMLsCohort(WorkflowCohort, MergeAnnotationXMLsArgumentParser):
+class MergeAnnotationXMLsCohort(DbloadCohort, WorkflowCohort, MergeAnnotationXMLsArgumentParser):
   sampleclass = MergeAnnotationXMLsSample
-  def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
+  def __init__(self, *args, annotationselectiondict, skipannotations, annotationsonwsi, annotationposition, **kwargs):
     self.__annotationselectiondict = annotationselectiondict
     self.__skipannotations = skipannotations
+    self.__annotationsonwsi = annotationsonwsi
+    self.__annotationposition = annotationposition
     super().__init__(*args, **kwargs)
 
   @property
@@ -158,6 +162,8 @@ class MergeAnnotationXMLsCohort(WorkflowCohort, MergeAnnotationXMLsArgumentParse
       **super().initiatesamplekwargs,
       "annotationselectiondict": self.__annotationselectiondict,
       "skipannotations": self.__skipannotations,
+      "annotationsonwsi": self.__annotationsonwsi,
+      "annotationposition": self.__annotationposition,
     }
 
 def samplemain(*args, **kwargs):

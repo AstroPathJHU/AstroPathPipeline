@@ -709,7 +709,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       else:
         affines = self.readcsv("affine")
         dct = {affine.description: affine.value for affine in affines}
-        shiftannotations = [affine["shiftx"], affine["shifty"]]
+        shiftannotations = [dct["shiftx"], dct["shifty"]]
         if np.any(shiftannotations):
           self.logger.warning("shifting the annotations by {self.shiftannotations / onepixel} pixels")
       return [
