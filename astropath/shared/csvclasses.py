@@ -82,6 +82,56 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
     else:
       assert False, (type(string), string)
 
+  @classmethod
+  def transforminitargs(cls, name, value, unit=None, description=None, **kwargs):
+    if unit is None:
+      unit = {
+        "fwidth": "pixels",
+        "fheight": "pixels",
+        "flayers": "",
+        "locx": "microns",
+        "locy": "microns",
+        "locz": "microns",
+        "xposition": "microns",
+        "yposition": "microns",
+        "qpscale": "pixels/micron",
+        "apscale": "pixels/micron",
+        "pscale": "pixels/micron",
+        "nclip": "pixels",
+        "margin": "pixels",
+        "resolutionbits": "",
+        "gainfactor": "",
+        "binningx": "pixels",
+        "binningy": "pixels",
+        "annotationsonwsi": "",
+        "annotationxposition": "pixels",
+        "annotationyposition": "pixels",
+      }[name]
+    if description is None:
+      description = {
+        "fwidth": "field width",
+        "fheight": "field height",
+        "flayers": "field depth",
+        "locx": "xlocation",
+        "locy": "ylocation",
+        "locz": "zlocation",
+        "xposition": "slide x offset",
+        "yposition": "slide y offset",
+        "qpscale": "scale of the QPTIFF image",
+        "apscale": "scale of the QPTIFF image used for annotation",
+        "pscale": "scale of the HPF images",
+        "nclip": "pixels to clip off the edge after warping",
+        "margin": "minimum margin between the tissue and the wsi edge",
+        "resolutionbits": "number of significant bits in the im3 files",
+        "gainfactor": "the gain of the A/D amplifier for the im3 files",
+        "binningx": "the number of adjacent pixels coadded",
+        "binningy": "the number of adjacent pixels coadded",
+        "annotationsonwsi": "annotations drawn on astropath image? (otherwise qptiff)",
+        "annotationxposition": "x offset of the WSI image used to draw the annotations",
+        "annotationyposition": "y offset of the WSI image used to draw the annotations",
+      }[name]
+    return super().transforminitargs(name=name, value=value, unit=unit, description=description, **kwargs)
+
   name: str
   value: units.Distance = distancefield(
     secondfunction=__intorfloat,

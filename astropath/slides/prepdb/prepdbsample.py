@@ -17,7 +17,7 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
     g = p.add_mutually_exclusive_group()
     g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
     g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
-    p.add_argument("--annotation-position", nargs=2, type=float)
+    p.add_argument("--annotation-position", nargs=2, type=float, help="position of the annotations on the wsi")
     return p
 
   @classmethod
@@ -30,6 +30,8 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
+    if parsed_args_dict["annotation_position"] is not None and not parsed_args_dict["annotationsonwsi"]:
+      raise ValueError("--annotation-position is only valid for --annotations-on-wsi")
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "margin": parsed_args_dict.pop("margin"),
@@ -44,11 +46,12 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
   For more information, see README.md in this folder.
   """
 
-  def __init__(self, *args, nclip=8, margin=1024, annotationposition=(0, 0), **kwargs):
+  def __init__(self, *args, nclip=8, margin=1024, annotationposition=None, **kwargs):
     super().__init__(*args, **kwargs)
     self.__margin = margin
     self.__nclip = nclip
-    self.__annotationposition = np.array(annotationposition)
+    if annotationposition is not None: annotationposition = np.array(annotationposition)
+    self.__annotationposition = annotationposition
 
   @classmethod
   def logmodule(self): return "prepdb"
@@ -58,7 +61,9 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
   @property
   def margin(self): return self.__margin * self.onepixel
   @property
-  def annotationposition(self): return self.__annotationposition * self.onepixel
+  def annotationposition(self):
+    if self.__annotationposition is None: return None
+    return self.__annotationposition * self.onepixel
 
   @methodtools.lru_cache()
   def getbatch(self):
@@ -186,144 +191,104 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
       Constant(
         name='fwidth',
         value=self.fwidth,
-        unit='pixels',
-        description='field width',
         **pscales,
       ),
       Constant(
         name='fheight',
         value=self.fheight,
-        unit='pixels',
-        description='field height',
         **pscales,
       ),
       Constant(
         name='flayers',
         value=self.flayers,
-        unit='',
-        description='field depth',
         **pscales,
       ),
       Constant(
         name='locx',
         value=self.samplelocation[0],
-        unit='microns',
-        description='xlocation',
         **pscales,
       ),
       Constant(
         name='locy',
         value=self.samplelocation[1],
-        unit='microns',
-        description='ylocation',
         **pscales,
       ),
       Constant(
         name='locz',
         value=self.samplelocation[2],
-        unit='microns',
-        description='zlocation',
         **pscales,
       ),
       Constant(
         name='xposition',
         value=units.convertpscale(self.xposition, self.qpscale, self.pscale),
-        unit='microns',
-        description='slide x offset',
         **pscales,
       ),
       Constant(
         name='yposition',
         value=units.convertpscale(self.yposition, self.qpscale, self.pscale),
-        unit='microns',
-        description='slide y offset',
         **pscales,
       ),
       Constant(
         name='qpscale',
         value=self.qpscale,
-        unit='pixels/micron',
-        description='scale of the QPTIFF image',
         **pscales,
       ),
       Constant(
         name='apscale',
         value=self.apscale,
-        unit='pixels/micron',
-        description='scale of the QPTIFF image used for annotation',
         **pscales,
       ),
       Constant(
         name='pscale',
         value=self.pscale,
-        unit='pixels/micron',
-        description='scale of the HPF images',
         **pscales,
       ),
       Constant(
         name='nclip',
         value=self.nclip,
-        unit='pixels',
-        description='pixels to clip off the edge after warping',
         **pscales,
       ),
       Constant(
         name='margin',
         value=self.margin,
-        unit='pixels',
-        description='minimum margin between the tissue and the wsi edge',
         **pscales,
       ),
       Constant(
         name="resolutionbits",
         value=self.resolutionbits,
-        unit="",
-        description="number of significant bits in the im3 files",
         **pscales,
       ),
       Constant(
         name="gainfactor",
         value=self.gainfactor,
-        unit="",
-        description="the gain of the A/D amplifier for the im3 files",
         **pscales,
       ),
       Constant(
         name="binningx",
         value=self.camerabinningx,
-        unit="pixels",
-        description="the number of adjacent pixels coadded",
         **pscales,
       ),
       Constant(
         name="binningy",
         value=self.camerabinningy,
-        unit="pixels",
-        description="the number of adjacent pixels coadded",
         **pscales,
       ),
       Constant(
         name="annotationsonwsi",
         value=self.annotationsonwsi,
-        unit="",
-        description="annotations drawn on astropath image? (otherwise qptiff)",
         **pscales,
       ),
     ]
-    if self.annotationsonwsi:
+    if self.annotationsonwsi and self.annotationposition is not None:
       constants += [
         Constant(
           name="annotationxposition",
           value=self.annotationposition[0],
-          unit="pixels",
-          description="x shift of annotations with respect to the coordinate system they were drawn on",
           **pscales,
         ),
         Constant(
           name="annotationyposition",
           value=self.annotationposition[1],
-          unit="pixels",
-          description="y shift of annotations with respect to the coordinate system they were drawn on",
           **pscales,
         ),
       ]
