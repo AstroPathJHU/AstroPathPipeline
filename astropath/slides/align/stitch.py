@@ -838,7 +838,16 @@ class StitchResultOverlapCovariances(StitchResultBase):
 
     Tcovariance[iTyy,iTyy] = dct["cov_ayy_ayy"]
 
+    shiftx = dct.get("shiftx", 0)
+    shifty = dct.get("shifty", 0)
+    assert not any("cov_" in _ and "shift" in _ for _ in dct)
+
     self.__T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape((2, 2))
+    self.__initialshift = np.array((shiftx, shifty))
+
+  @property
+  def globalshift(self):
+    return self.__initialshift + super().globalshift
 
 class ReadStitchResult(StitchResultOverlapCovariances):
   """
@@ -920,6 +929,8 @@ class AffineCovarianceEntry(AffineEntry):
   def transforminitargs(cls, *, entry1, entry2, **kwargs):
     if entry1 is entry2:
       value = entry1.matrixentry.s**2
+    elif entry1.matrixentry.s == 0 or entry2.matrixentry.s == 0:
+      value = 0
     else:
       value = covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0,1]
 
