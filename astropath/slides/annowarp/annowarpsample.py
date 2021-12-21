@@ -17,6 +17,7 @@ from ..align.field import Field
 from ..align.overlap import AlignmentComparison
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
+from .mergeannotationxmls import AnnotationInfoWriterArgumentParser, AnnotationInfoWriterSample
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class QPTiffSample(SampleBase, units.ThingWithImscale):
@@ -113,7 +114,7 @@ class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
         self.__wsi = None
         self.__using_wsi_context.close()
 
-class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
+class AnnoWarpArgumentParserBase(AnnotationInfoWriterArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
   defaulttilepixels = 100
 
   @classmethod
@@ -178,7 +179,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
 
     self.__images = None
 
-    self.readannotationinfo(check=True)
+    self.readannotationinfo(check_compatibility=True)
 
   @contextlib.contextmanager
   def using_images(self):
@@ -706,23 +707,22 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     onemicron = self.onemicron
     onepixel = self.onepixel
     if self.annotationsonwsi:
+      affines = self.readcsv("affine")
+      dct = {affine.description: affine.value for affine in affines}
+      myposition = np.array([dct["shiftx"], dct["shifty"]])
       if self.annotationposition is None:
-        shiftannotations = 0
-      else:
-        affines = self.readcsv("affine")
-        dct = {affine.description: affine.value for affine in affines}
-        shiftannotations = [dct["shiftx"], dct["shifty"]]
-        if np.any(shiftannotations):
-          self.logger.warning("shifting the annotations by {shiftannotations / onepixel} pixels")
+        self.annotationposition = myposition
+        self.writeannotationinfo()
+      shiftannotations = myposition - self.annotationposition
+      if np.any(shiftannotations):
+        self.logger.warning("shifting the annotations by {shiftannotations / onepixel} pixels")
       return [
         WarpedVertex(
           vertex=v,
-          wxvec=(v.xvec / oneannomicron * onemicron + self.shiftannotations) // onepixel * onepixel
+          wxvec=(v.xvec / oneannomicron * onemicron + shiftannotations) // onepixel * onepixel
         ) for v in self.__getvertices()
       ]
     else:
-      if np.any(self.shiftannotations):
-        raise ValueError("shiftannotations is meant for when the annotations are drawn on the wsi")
       return [
         WarpedQPTiffVertex(
           vertex=v,
@@ -842,7 +842,6 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
                     otherwise actually do the alignment
     other kwargs are passed to stitch()
     """
-    self.writeannotationinfo()
     self.writeannotations()
     if not self.annotationsonwsi:
       if not readalignments:

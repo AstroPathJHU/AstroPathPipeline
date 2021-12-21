@@ -1,6 +1,6 @@
 import more_itertools, numpy as np, os, pathlib, re
 
-from astropath.shared.csvclasses import Annotation, Region
+from astropath.shared.csvclasses import Annotation, Constant, Region
 from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedQPTiffVertex
 from astropath.slides.annowarp.detectbigshift import DetectBigShiftSample
 from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohortInformTissueMask
@@ -47,6 +47,8 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
   def testAlignment(self, SlideID="M206"):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=True)
 
+    annotationinfofilename = s.csv("annotationinfo")
+    referenceannotationinfofilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.csv("annotationinfo").name
     alignmentfilename = s.alignmentcsv
     referencealignmentfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
     stitchfilename = s.stitchcsv
@@ -62,6 +64,11 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
     if not s.runstatus():
       raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus()}")
+
+    rows = s.readtable(annotationinfofilename, Constant, extrakwargs={"pscale": s.pscale, "apscale": s.apscale, "qpscale": s.qpscale}, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referenceannotationinfofilename, Constant, extrakwargs={"pscale": s.pscale, "apscale": s.apscale, "qpscale": s.qpscale}, checkorder=True, checknewlines=True)
+    for row, target in more_itertools.zip_equal(rows, targetrows):
+      assertAlmostEqual(row, target, rtol=1e-5)
 
     rows = s.readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
     targetrows = s.readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
