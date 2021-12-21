@@ -555,14 +555,14 @@ class WorkflowSample(SampleBase, WorkflowDependencySlideID):
 
   @classmethod
   @abc.abstractmethod
-  def workflowdependencyclasses(cls):
+  def workflowdependencyclasses(cls, **kwargs):
     """
     Previous steps that this step depends on
     """
     return []
 
-  def workflowdependencies(self):
-    return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses()]
+  def workflowdependencies(self, **kwargs):
+    return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses(**kwargs)]
 
   def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)

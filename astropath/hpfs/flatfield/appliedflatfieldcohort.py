@@ -74,8 +74,8 @@ class AppliedFlatfieldSample(MeanImageSampleBase,WorkflowSample) :
     def logmodule(cls) : 
         return "appliedflatfield"
     @classmethod
-    def workflowdependencyclasses(cls):
-        return super().workflowdependencyclasses()
+    def workflowdependencyclasses(cls, **kwargs):
+        return super().workflowdependencyclasses(**kwargs)
 
 class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgumentParser) :
     """

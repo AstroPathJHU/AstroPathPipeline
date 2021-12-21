@@ -876,8 +876,8 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     ]
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return [ZoomSample] + super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [ZoomSample] + super().workflowdependencyclasses(**kwargs)
 
   @property
   def workflowkwargs(self):
@@ -940,8 +940,8 @@ class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample)
   """
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return [StitchInformMaskSample] + super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [StitchInformMaskSample] + super().workflowdependencyclasses(**kwargs)
   def printcuts(self, *args, **kwargs):
     super().printcuts(*args, **kwargs)
     self.logger.info("      Using Inform mask to determine tissue regions")
@@ -953,8 +953,8 @@ class AnnoWarpSampleAstroPathTissueMask(AnnoWarpSampleTissueMask, AstroPathTissu
   """
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return [StitchAstroPathTissueMaskSample] + super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [StitchAstroPathTissueMaskSample] + super().workflowdependencyclasses(**kwargs)
   def printcuts(self, *args, **kwargs):
     super().printcuts(*args, **kwargs)
     self.logger.info("      Using AstroPath mask to determine tissue regions")

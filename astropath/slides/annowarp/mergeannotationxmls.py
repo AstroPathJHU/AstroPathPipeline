@@ -240,7 +240,7 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSample, WorkflowSample, Merg
     return self.mergexmls(**kwargs)
 
   @classmethod
-  def workflowdependencyclasses(cls):
+  def workflowdependencyclasses(cls, **kwargs):
     return []
 
 class MergeAnnotationXMLsCohort(AnnotationInfoWriterCohort, WorkflowCohort, MergeAnnotationXMLsArgumentParser):

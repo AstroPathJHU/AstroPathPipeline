@@ -242,8 +242,8 @@ class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, 
     return super().inputfiles(**kwargs)
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return [AnnoWarpSampleInformTissueMask, GeomCellSample, GeomSample] + super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [AnnoWarpSampleInformTissueMask, GeomCellSample, GeomSample] + super().workflowdependencyclasses(**kwargs)
 
   run = runcsvscan
 

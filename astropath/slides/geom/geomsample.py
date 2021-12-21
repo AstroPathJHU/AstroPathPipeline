@@ -107,8 +107,8 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
     ]
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return [AlignSample] + super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [AlignSample] + super().workflowdependencyclasses(**kwargs)
 
 class Boundary(DataClassWithPolygon):
   """

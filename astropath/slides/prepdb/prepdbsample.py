@@ -372,8 +372,8 @@ class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
     ] if not skipannotations else [])
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return super().workflowdependencyclasses(**kwargs)
 
   @classmethod
   def logstartregex(cls):

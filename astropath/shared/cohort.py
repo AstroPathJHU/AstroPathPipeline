@@ -722,7 +722,7 @@ class WorkflowCohort(Cohort):
         runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
-          for dependency in self.sampleclass.workflowdependencyclasses()
+          for dependency in self.sampleclass.workflowdependencyclasses(**self.workflowkwargs)
         ],
       )
     kwargs["slideidfilters"].append(SampleFilter(slideidfilter, None, None))
@@ -732,7 +732,7 @@ class WorkflowCohort(Cohort):
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=SlideID, Scan=sample.samp.Scan, **self.workflowkwargs, **kwargs)
-          for dependency, SlideID in sample.workflowdependencies()
+          for dependency, SlideID in sample.workflowdependencies(**self.workflowkwargs)
         ],
       )
     kwargs["samplefilters"].append(SampleFilter(samplefilter, None, None))
