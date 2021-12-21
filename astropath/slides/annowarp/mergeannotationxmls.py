@@ -63,11 +63,21 @@ class AnnotationInfoReaderSample(DbloadSample, units.ThingWithAnnoscale):
         raise ValueError(f"annotationsonwsi from constructor {self.__annotationsonwsi} doesn't match the one from readannotationinfo {annotationsonwsi}")
       if annotationposition is not None is not self.__annotationposition != annotationposition:
         raise ValueError(f"annotationposition from constructor {self.__annotationposition} doesn't match the one from readannotationinfo {annotationposition}")
-    if annotationsonwsi is None: raise ValueError("No annotationsonwsi given or found in annotationinfo.csv")
+
+    if annotationsonwsi is None:
+      annotationsonwsi = self.__annotationsonwsi
+    if annotationsonwsi is None:
+      raise ValueError("No annotationsonwsi given or found in annotationinfo.csv")
+
     if annotationsonwsi:
-      if annotationposition is None: raise ValueError("No annotationposition given or found in annotationinfo.csv")
+      if annotationposition is None:
+        if annotationposition is None:
+          annotationposition = self.__annotationposition
+        raise ValueError("No annotationposition given or found in annotationinfo.csv")
+
     if not annotationsonwsi and annotationposition is not None:
       raise ValueError("annotationposition is meant for when the annotations are drawn on the wsi")
+
     self.__annotationsonwsi = annotationsonwsi
     self.__annotationposition = annotationposition
 

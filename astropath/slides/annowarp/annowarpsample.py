@@ -115,6 +115,7 @@ class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
         self.__using_wsi_context.close()
 
 class AnnoWarpArgumentParserBase(AnnotationInfoWriterArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
+  require_annotations_on_wsi_or_qptiff_argument = True
   defaulttilepixels = 100
 
   @classmethod
@@ -712,7 +713,6 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
       myposition = np.array([dct["shiftx"], dct["shifty"]])
       if self.annotationposition is None:
         self.annotationposition = myposition
-        self.writeannotationinfo()
       shiftannotations = myposition - self.annotationposition
       if np.any(shiftannotations):
         self.logger.warning("shifting the annotations by {shiftannotations / onepixel} pixels")
@@ -853,6 +853,8 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
       self.writestitchresult()
     self.writevertices()
     self.writeregions()
+    #this has to come after writevertices
+    self.writeannotationinfo()
 
   run = runannowarp
 
