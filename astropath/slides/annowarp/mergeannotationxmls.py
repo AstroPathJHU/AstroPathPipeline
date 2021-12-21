@@ -12,7 +12,7 @@ class MergeAnnotationXMLsArgumentParser(RunFromArgumentParser):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--annotation", nargs=2, action=ArgParseAddRegexToDict, metavar=("ANNOTATION", "FILENAME_REGEX"), default={}, help="take annotation with this name from the annotation file that matches the regex", dest="annotationselectiondict")
     p.add_argument("--skip-annotation", action="append", metavar="ANNOTATION", default=[], help="skip this annotation if it exists in an xml file")
-    g = p.add_mutually_exclusive_group()
+    g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
     g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
     p.add_argument("--annotation-position", nargs=2, type=float)
