@@ -120,10 +120,10 @@ class Boundary(DataClassWithPolygon):
   """
   @classmethod
   def transforminitargs(cls, *args, pscale, **kwargs):
+    if "annoscale" not in kwargs: kwargs["annoscale"] = pscale
     return super().transforminitargs(
       *args,
       pscale=pscale,
-      annoscale=pscale,
       **kwargs,
     )
   n: int

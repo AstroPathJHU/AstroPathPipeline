@@ -198,10 +198,10 @@ class CellGeomLoad(DataClassWithPolygon):
     if box is not None:
       boxkwargs["x"], boxkwargs["y"] = box[0]
       boxkwargs["w"], boxkwargs["h"] = box[1] - box[0]
+    if "annoscale" not in kwargs: kwargs["annoscale"] = pscale
     return super().transforminitargs(
       *args,
       pscale=pscale,
-      annoscale=pscale,
       **kwargs,
       **boxkwargs,
     )
