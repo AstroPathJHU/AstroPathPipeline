@@ -144,7 +144,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -177,6 +177,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
 
     self.__images = None
+
+    self.readannotationinfo(check=True)
 
   @contextlib.contextmanager
   def using_images(self):
@@ -840,6 +842,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
                     otherwise actually do the alignment
     other kwargs are passed to stitch()
     """
+    self.writeannotationinfo()
     self.writeannotations()
     if not self.annotationsonwsi:
       if not readalignments:

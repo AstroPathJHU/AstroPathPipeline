@@ -618,7 +618,7 @@ class DbloadSampleBase(SampleBase, DbloadArgumentParser):
     """
     return cv2.imread(os.fspath(self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)))
 
-class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale, units.ThingWithAnnoscale):
+class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApscale):
   """
   Base class for any sample that uses the csvs in the dbload folder
   after the folder has been set up.
@@ -687,31 +687,6 @@ class DbloadSample(DbloadSampleBase, units.ThingWithQpscale, units.ThingWithApsc
     Default 0 for backwards compatibility
     """
     return self.constantsdict.get("margin", 0)
-  @property
-  def annotationsonwsi(self):
-    """
-    Are the annotations drawn on the wsi or the qptiff?
-    """
-    return bool(self.constantsdict.get("annotationsonwsi", 0))
-  @property
-  def annoscale(self):
-    """
-    Scale of the annotations
-    """
-    return self.constantsdict.get("annoscale", self.pscale / 2 if self.annotationsonwsi else self.apscale)
-  @property
-  def annotationposition(self):
-    """
-    Position of the annotations in the xml file (only if annotationsonwsi is True)
-    """
-    x = self.constantsdict.get("annotationxposition", None)
-    y = self.constantsdict.get("annotationyposition", None)
-    if x is not None and y is not None:
-      return np.array([x, y])
-    elif x is y is None:
-      return None
-    else:
-      raise ValueError("constants.csv has one of annotationxposition and annotationyposition but not both")
 
 class MaskSampleBase(SampleBase, MaskArgumentParser):
   """

@@ -1,17 +1,17 @@
 import cv2, datetime, hashlib, jxmlease, more_itertools, numpy as np, os, pathlib, skimage
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
-from astropath.shared.csvclasses import Annotation, Region, Vertex
+from astropath.shared.csvclasses import Annotation, Constant, Region, Vertex
 from astropath.shared.logging import printlogger
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
-from astropath.slides.annowarp.mergeannotationxmls import MergeAnnotationXMLsCohort
+from astropath.slides.annowarp.mergeannotationxmls import MergeAnnotationXMLsCohort, MergeAnnotationXMLsSample
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable, writetable
-from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -29,10 +29,12 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"sampledef.csv",
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"noheader.csv",
       thisfolder/"test_for_jenkins"/"misc"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml",
+      thisfolder/"test_for_jenkins"/"misc"/"M206"/"dbload"/"M206_annotationinfo.csv",
     ]
   @classmethod
   def filestocopy(cls):
     yield thisfolder/"data"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml", thisfolder/"test_for_jenkins"/"misc"/"M206"/"im3"/"Scan1"
+    yield thisfolder/"data"/"M206"/"dbload"/"M206_constants.csv", thisfolder/"test_for_jenkins"/"misc"/"M206"/"dbload"
 
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
@@ -231,12 +233,18 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testMergeAnnotationXMLs(self):
     root = thisfolder/"data"
-    im3root = thisfolder/"test_for_jenkins"/"misc"
+    dbloadroot = im3root = thisfolder/"test_for_jenkins"/"misc"
     SlideID = "M206"
-    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--sampleregex", SlideID, "--annotation", "good tissue", ".*[.]xml", "--skip-annotation", "tumor", "--debug", "--no-log"]
+    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--sampleregex", SlideID, "--annotation", "good tissue", ".*[.]xml", "--skip-annotation", "tumor", "--debug", "--no-log", "--annotations-on-qptiff"]
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=im3root, samp=SlideID, annotationselectiondict={}, skipannotations=set())
 
     try:
       MergeAnnotationXMLsCohort.runfromargumentparser(args)
+
+      new = s.csv("annotationinfo")
+      reffolder = root/"reference"/"misc"/"mergeannotationxmls"/SlideID/"dbload"
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "apscale", "qpscale")}
+      compare_two_csv_files(new.parent, reffolder, new.name, Constant, extrakwargs=extrakwargs)
 
       with open(im3root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml", "rb") as f:
         newxml = jxmlease.parse(f)

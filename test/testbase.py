@@ -23,9 +23,9 @@ def assertAlmostEqual(a, b, **kwargs):
     return np.testing.assert_equal(a, b)
 
 #compare two .csv files with the given paths and holding lines of the given datatype 
-def compare_two_csv_files(filedir,reffiledir,filename,dataclass,checkorder=True,checknewlines=True,rtol=1e-5) :
-  rows = readtable(filedir/filename, dataclass, checkorder=checkorder, checknewlines=checknewlines)
-  targetrows = readtable(reffiledir/filename, dataclass, checkorder=checkorder, checknewlines=checknewlines)
+def compare_two_csv_files(filedir,reffiledir,filename,dataclass,checkorder=True,checknewlines=True,rtol=1e-5,extrakwargs={}) :
+  rows = readtable(filedir/filename, dataclass, checkorder=checkorder, checknewlines=checknewlines, extrakwargs=extrakwargs)
+  targetrows = readtable(reffiledir/filename, dataclass, checkorder=checkorder, checknewlines=checknewlines, extrakwargs=extrakwargs)
   for row, target in more_itertools.zip_equal(rows, targetrows):
     assertAlmostEqual(row, target, rtol=rtol)
 

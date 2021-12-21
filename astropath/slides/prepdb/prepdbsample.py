@@ -14,10 +14,6 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
     p.add_argument("--skip-annotations", action="store_true", help="do not check the annotations for validity and do not write the annotations, vertices, and regions csvs (they will be written later, in the annowarp step)")
     p.add_argument("--skip-qptiff", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--margin", type=int, help="minimum number of pixels between the tissue and the wsi edge", default=1024)
-    g = p.add_mutually_exclusive_group()
-    g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
-    g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
-    p.add_argument("--annotation-position", nargs=2, type=float, help="position of the annotations on the wsi")
     return p
 
   @classmethod
@@ -30,13 +26,9 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    if parsed_args_dict["annotation_position"] is not None and not parsed_args_dict["annotationsonwsi"]:
-      raise ValueError("--annotation-position is only valid for --annotations-on-wsi")
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "margin": parsed_args_dict.pop("margin"),
-      "annotationsonwsi": parsed_args_dict.pop("annotationsonwsi"),
-      "annotationposition": parsed_args_dict.pop("annotation_position"),
     }
 
 class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationReaderSample, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
@@ -46,12 +38,10 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
   For more information, see README.md in this folder.
   """
 
-  def __init__(self, *args, nclip=8, margin=1024, annotationposition=None, **kwargs):
+  def __init__(self, *args, nclip=8, margin=1024, **kwargs):
     super().__init__(*args, **kwargs)
     self.__margin = margin
     self.__nclip = nclip
-    if annotationposition is not None: annotationposition = np.array(annotationposition)
-    self.__annotationposition = annotationposition
 
   @classmethod
   def logmodule(self): return "prepdb"
@@ -60,10 +50,6 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
   def nclip(self): return self.__nclip * self.onepixel
   @property
   def margin(self): return self.__margin * self.onepixel
-  @property
-  def annotationposition(self):
-    if self.__annotationposition is None: return None
-    return self.__annotationposition * self.onepixel
 
   @methodtools.lru_cache()
   def getbatch(self):
@@ -273,25 +259,7 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
         value=self.camerabinningy,
         **pscales,
       ),
-      Constant(
-        name="annotationsonwsi",
-        value=self.annotationsonwsi,
-        **pscales,
-      ),
     ]
-    if self.annotationsonwsi and self.annotationposition is not None:
-      constants += [
-        Constant(
-          name="annotationxposition",
-          value=self.annotationposition[0],
-          **pscales,
-        ),
-        Constant(
-          name="annotationyposition",
-          value=self.annotationposition[1],
-          **pscales,
-        ),
-      ]
     return constants
 
 class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
