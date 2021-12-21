@@ -47,9 +47,9 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
       my2 = (field.my2//self.onepixel)*self.onepixel
       Px = mx1, mx2, mx2, mx1
       Py = my1, my1, my2, my2
-      fieldvertices = [Vertex(regionid=None, vid=i, im3x=x, im3y=y, annoscale=self.annoscale, pscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
+      fieldvertices = [Vertex(regionid=None, vid=i, im3x=x, im3y=y, pscale=self.pscale, annoscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
       fieldpolygon = SimplePolygon(vertices=fieldvertices, pscale=self.pscale)
-      boundaries.append(Boundary(n=n, k=1, poly=fieldpolygon, pscale=self.pscale, annoscale=self.annoscale))
+      boundaries.append(Boundary(n=n, k=1, poly=fieldpolygon, pscale=self.pscale))
     return boundaries
 
   @methodtools.lru_cache()
@@ -65,9 +65,9 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
       with field.using_image() as im:
         zeros = im == 0
         if not np.any(zeros): continue
-        polygons = findcontoursaspolygons(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, shiftby=units.nominal_values(field.pxvec), forgdal=True)
+        polygons = findcontoursaspolygons(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, shiftby=units.nominal_values(field.pxvec), forgdal=True)
         for k, polygon in enumerate(polygons, start=1):
-          boundaries.append(Boundary(n=n, k=k, poly=polygon, pscale=self.pscale, annoscale=self.annoscale))
+          boundaries.append(Boundary(n=n, k=k, poly=polygon, pscale=self.pscale))
     return boundaries
 
   @property
@@ -118,6 +118,14 @@ class Boundary(DataClassWithPolygon):
   k: index of the boundary within the HPF
   poly: gdal polygon string for the boundary
   """
+  @classmethod
+  def transforminitargs(cls, *args, pscale, **kwargs):
+    return super().transforminitargs(
+      *args,
+      pscale=pscale,
+      annoscale=pscale,
+      **kwargs,
+    )
   n: int
   k: int
   poly: Polygon = polygonfield()

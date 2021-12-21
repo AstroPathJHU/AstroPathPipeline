@@ -10,7 +10,7 @@ from ...shared.sample import DbloadSample, GeomSampleBase, ParallelSample, ReadR
 from ...utilities import units
 from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
-from ...utilities.units import ThingWithAnnoscale, ThingWithPscale
+from ...utilities.units import ThingWithPscale
 from ...utilities.units.dataclasses import distancefield
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadComponentTiffMultiLayer
@@ -91,7 +91,6 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
       "celltypes": [self.celltype(imlayernumber) for imlayernumber in self.layers],
       "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layers],
       "pscale": self.pscale,
-      "annoscale": self.annoscale,
       "unitsargs": units.currentargs(),
     })
     if self.njobs is None or self.njobs > 1:
@@ -111,7 +110,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
     self.rungeomcell(**kwargs)
 
   @staticmethod
-  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, annoscale, unitsargs):
+  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, unitsargs):
     with units.setup_context(*unitsargs), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
       if not lock: return
       if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): return
@@ -130,7 +129,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
               continue
             celllabel = cellproperties.label
             if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-            polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=pscale, annoscale=annoscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+            polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=pxvec, mxbox=field.mxbox, pscale=pscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
             if polygon is None: continue
             if polygon.area < minarea: continue
 
@@ -146,7 +145,6 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
                 box=box,
                 poly=polygon,
                 pscale=pscale,
-                annoscale=annoscale,
               )
             )
 
@@ -195,21 +193,23 @@ class CellGeomLoad(DataClassWithPolygon):
   poly: Polygon = polygonfield()
 
   @classmethod
-  def transforminitargs(cls, *args, box=None, **kwargs):
+  def transforminitargs(cls, *args, pscale, box=None, **kwargs):
     boxkwargs = {}
     if box is not None:
       boxkwargs["x"], boxkwargs["y"] = box[0]
       boxkwargs["w"], boxkwargs["h"] = box[1] - box[0]
     return super().transforminitargs(
       *args,
+      pscale=pscale,
+      annoscale=pscale,
       **kwargs,
       **boxkwargs,
     )
 
 
 
-class PolygonFinder(ThingWithPscale, ThingWithAnnoscale):
-  def __init__(self, image, celllabel, *, ismembrane, bbox, pscale, annoscale, pxvec, mxbox, _debugdraw=False, _debugdrawonerror=False, repair=True, logger=dummylogger, loginfo=""):
+class PolygonFinder(ThingWithPscale):
+  def __init__(self, image, celllabel, *, ismembrane, bbox, pscale, pxvec, mxbox, _debugdraw=False, _debugdrawonerror=False, repair=True, logger=dummylogger, loginfo=""):
     self.image = image
     self.celllabel = celllabel
     self.ismembrane = ismembrane
@@ -217,7 +217,6 @@ class PolygonFinder(ThingWithPscale, ThingWithAnnoscale):
     self.logger = logger
     self.loginfo = loginfo
     self.__pscale = pscale
-    self.__annoscale = annoscale
     self.pxvec = pxvec
     self.mxbox = mxbox
     self._debugdraw = _debugdraw
@@ -226,8 +225,6 @@ class PolygonFinder(ThingWithPscale, ThingWithAnnoscale):
 
   @property
   def pscale(self): return self.__pscale
-  @property
-  def annoscale(self): return self.__annoscale
 
   def findpolygon(self):
     polygon = None
@@ -275,7 +272,7 @@ class PolygonFinder(ThingWithPscale, ThingWithAnnoscale):
     if not np.any(cellmask): return []
     top, left, bottom, right = self.adjustedbbox
     shiftby = self.pxvec + np.array([left, top]) * self.onepixel
-    polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, shiftby=shiftby, fill=True)
+    polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, shiftby=shiftby, fill=True)
     if len(polygons) > 1:
       polygons.sort(key=lambda x: x.area, reverse=True)
     return polygons
