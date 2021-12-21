@@ -603,6 +603,12 @@ class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
     self.__annotationsxmlregex = annotationsxmlregex
     super().__init__(*args, **kwargs)
   @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "annotationsxmlregex": self.__annotationsxmlregex,
+    }
+  @property
   def initiatesamplekwargs(self):
     return {
       **super().initiatesamplekwargs,
@@ -722,7 +728,7 @@ class WorkflowCohort(Cohort):
         runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
-          for dependency in self.sampleclass.workflowdependencyclasses(**self.workflowkwargs)
+          for dependency in self.sampleclass.workflowdependencyclasses(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
         ],
       )
     kwargs["slideidfilters"].append(SampleFilter(slideidfilter, None, None))
@@ -731,8 +737,8 @@ class WorkflowCohort(Cohort):
       return filter(
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=SlideID, Scan=sample.samp.Scan, **self.workflowkwargs, **kwargs)
-          for dependency, SlideID in sample.workflowdependencies(**self.workflowkwargs)
+          dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.samp.Scan, **self.workflowkwargs, **kwargs)
+          for dependency, SlideID in sample.workflowdependencies(SlideID=sample.SlideID, Scan=sample.samp.Scan, **self.workflowkwargs)
         ],
       )
     kwargs["samplefilters"].append(SampleFilter(samplefilter, None, None))

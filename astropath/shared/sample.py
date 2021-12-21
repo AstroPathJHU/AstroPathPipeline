@@ -1338,6 +1338,13 @@ class XMLPolygonAnnotationReaderSample(SampleBase, XMLPolygonAnnotationReader, X
     self.__annotationsxmlregex = annotationsxmlregex
     super().__init__(*args, **kwargs)
 
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "annotationsxmlregex": self.__annotationsxmlregex,
+    }
+
   @methodtools.lru_cache()
   @property
   def annotationspolygonsxmlfile(self):

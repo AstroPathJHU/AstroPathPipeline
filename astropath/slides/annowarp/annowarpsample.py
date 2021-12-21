@@ -17,7 +17,7 @@ from ..align.field import Field
 from ..align.overlap import AlignmentComparison
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
-from .mergeannotationxmls import AnnotationInfoWriterArgumentParser, AnnotationInfoWriterSample
+from .mergeannotationxmls import AnnotationInfoWriterArgumentParser, AnnotationInfoWriterSample, MergeAnnotationXMLsSample
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class QPTiffSample(SampleBase, units.ThingWithImscale):
@@ -877,7 +877,18 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [ZoomSample] + super().workflowdependencyclasses(**kwargs)
+    annotationsxmlregex = kwargs["annotationsxmlregex"]
+    im3root = kwargs["im3root"]
+    Scan = kwargs["Scan"]
+    SlideID = kwargs["SlideID"]
+    result = [ZoomSample] + super().workflowdependencyclasses(**kwargs)
+    xmls = [
+      _ for _ in (im3root/f"Scan{Scan}").glob("*{self.SlideID}*annotations.polygons*.xml")
+      if annotationsxmlregex is None or re.match(annotationsxmlregex, _)
+    ]
+    if any("merged" in _.name for _ in xmls):
+      result.append(MergeAnnotationXMLsSample)
+    return result    
 
   @property
   def workflowkwargs(self):
