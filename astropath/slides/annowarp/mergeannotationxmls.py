@@ -31,7 +31,7 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
       "annotationposition": parsed_args_dict.pop("annotation_position"),
     }
 
-class AnnotationInfoWriterSample(DbloadSample, AnnotationInfoWriterArgumentParser, units.ThingWithAnnoscale):
+class AnnotationInfoReaderSample(DbloadSample, units.ThingWithAnnoscale):
   def __init__(self, *args, annotationsonwsi=None, annotationposition=None, **kwargs):
     self.__annotationsonwsi = annotationsonwsi
     if annotationposition is not None: annotationposition = np.array(annotationposition)
@@ -71,6 +71,21 @@ class AnnotationInfoWriterSample(DbloadSample, AnnotationInfoWriterArgumentParse
     self.__annotationsonwsi = annotationsonwsi
     self.__annotationposition = annotationposition
 
+  @property
+  def annotationsonwsi(self): return self.__annotationsonwsi
+  @property
+  def annotationposition(self): return self.__annotationposition
+  @annotationposition.setter
+  def annotationposition(self, annotationposition): self.__annotationposition = annotationposition
+  @property
+  def annoscale(self):
+    """
+    Scale of the annotations
+    """
+    return self.constantsdict.get("annoscale", self.pscale / 2 if self.annotationsonwsi else self.apscale)
+
+
+class AnnotationInfoWriterSample(AnnotationInfoReaderSample, AnnotationInfoWriterArgumentParser):
   def writeannotationinfo(self):
     pscales = {"pscale": self.pscale, "apscale": self.apscale, "qpscale": self.qpscale}
     annotationinfo = [
@@ -94,17 +109,6 @@ class AnnotationInfoWriterSample(DbloadSample, AnnotationInfoWriterArgumentParse
         ),
       ]
     self.writecsv("annotationinfo", annotationinfo)
-
-  @property
-  def annotationsonwsi(self): return self.__annotationsonwsi
-  @property
-  def annotationposition(self): return self.__annotationposition
-  @property
-  def annoscale(self):
-    """
-    Scale of the annotations
-    """
-    return self.constantsdict.get("annoscale", self.pscale / 2 if self.annotationsonwsi else self.apscale)
 
 class AnnotationInfoWriterCohort(DbloadCohort, AnnotationInfoWriterArgumentParser):
   def __init__(self, *args, annotationsonwsi, annotationposition, **kwargs):
