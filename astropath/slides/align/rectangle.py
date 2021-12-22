@@ -1,8 +1,8 @@
 import collections, contextlib, cv2, more_itertools, numpy as np, sklearn.decomposition
 try:
-  from contextlib import nullcontext
-except ImportError:
-  from contextlib2 import nullcontext
+  contextlib.nullcontext
+except AttributeError
+  import contextlib2 as contextlib
 
 from ...shared.logging import dummylogger
 from ...shared.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleWithImageBase, RectangleReadIm3MultiLayer
@@ -84,7 +84,7 @@ class AlignmentRectangleBase(RectangleWithImageBase):
     return self.__meanimagetransformation.meanimage
 
   def using_image_before_flatfield(self):
-    if self.__meanimagetransformation is None: return nullcontext()
+    if self.__meanimagetransformation is None: return contextlib.nullcontext()
     return self.using_image(self.__meanimagetransformationindex)
   @property
   def image_before_flatfield(self):
@@ -173,7 +173,7 @@ class RectanglePCAByBroadbandFilter(RectangleFromOtherRectangle):
     self.__pcabroadbandtransformation.setbroadbandfilters(broadbandfilters=self.originalrectangle.broadbandfilters)
 
   def setrectanglelist(self, rectanglelist): pass
-  def using_image_before_flatfield(self): return nullcontext()
+  def using_image_before_flatfield(self): return contextlib.nullcontext()
   @property
   def layers(self):
     return self.originalrectangle.layers
