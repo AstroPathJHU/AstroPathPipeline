@@ -1,7 +1,7 @@
 import collections, contextlib, cv2, more_itertools, numpy as np, sklearn.decomposition
 try:
   contextlib.nullcontext
-except AttributeError
+except AttributeError:
   import contextlib2 as contextlib
 
 from ...shared.logging import dummylogger

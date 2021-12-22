@@ -1,7 +1,7 @@
 import abc, contextlib, csv, dataclasses, dataclassy, datetime, io, job_lock, pathlib
 try:
   contextlib.nullcontext
-except AttributeError
+except AttributeError:
   import contextlib2 as contextlib
 
 from ..shared.logging import dummylogger
