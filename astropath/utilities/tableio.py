@@ -126,6 +126,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   printevery: print after writing multiples of this many rows
   logger:     logger object for printevery
   header:     write the header row (default: True)
+  append:     append to an existing file instead of writing a new one
 
   Example:
     >>> import pathlib, tempfile

@@ -131,8 +131,8 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
     def workflowkwargs(self) :
         return{**super().workflowkwargs,'skip_masking':False,'workingdir':self.__workingdir}
     @classmethod
-    def workflowdependencyclasses(cls):
-        return [MeanImageSample]+super().workflowdependencyclasses()
+    def workflowdependencyclasses(cls, **kwargs):
+        return [MeanImageSample]+super().workflowdependencyclasses(**kwargs)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

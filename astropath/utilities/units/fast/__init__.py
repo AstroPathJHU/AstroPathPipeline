@@ -1,5 +1,5 @@
 import numpy as np
-from uncertainties import correlated_values, covariance_matrix, nominal_value, std_dev
+from uncertainties import correlated_values, covariance_matrix, nominal_value, std_dev, ufloat
 from uncertainties.unumpy import nominal_values, std_devs
 
 def setup(baseunit):
@@ -39,5 +39,5 @@ def asdimensionless(distance): return distance
 
 __all__ = [
   "convertpscale", "correlated_distances", "Distance", "distances",
-  "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
+  "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs", "ufloat",
 ]

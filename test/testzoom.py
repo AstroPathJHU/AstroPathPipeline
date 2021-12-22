@@ -1,4 +1,4 @@
-import datetime, gzip, more_itertools, numpy as np, os, pathlib, PIL.Image, shutil, tifffile
+import datetime, gzip, job_lock, more_itertools, numpy as np, os, pathlib, PIL.Image, shutil, tifffile
 from astropath.shared.logging import MyLogger
 from astropath.utilities.version import astropathversion
 from astropath.slides.stitchmask.stitchmasksample import StitchAstroPathTissueMaskSample, StitchInformMaskSample
@@ -137,7 +137,8 @@ class TestZoom(TestBaseSaveOutput):
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID
   for filename in folder.glob("*/*.gz"):
-    newfilename = filename.with_suffix("")
-    if newfilename.exists(): continue
-    with gzip.open(filename) as f, open(newfilename, "wb") as newf:
-      newf.write(f.read())
+    with job_lock.JobLockAndWait(filename.with_suffix(".lock"), task=f"gunzipping {filename}", delay=10):
+      newfilename = filename.with_suffix("")
+      if newfilename.exists(): continue
+      with gzip.open(filename) as f, open(newfilename, "wb") as newf:
+        newf.write(f.read())
