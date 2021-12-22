@@ -508,7 +508,7 @@ class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMa
   @property
   def annotationnodes(self):
     result = super().annotationnodes
-    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons, color=self.allowedannotation("outline").color, annoscale=self.annoscale))
+    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.annoscale))
     return result
 
 def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):
