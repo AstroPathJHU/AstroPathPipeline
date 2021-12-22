@@ -737,7 +737,7 @@ class WorkflowCohort(Cohort):
       return filter(
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.samp.Scan, **self.workflowkwargs, **kwargs)
+          dependency.getrunstatus(SlideID=SlideID, Scan=sample.samp.Scan, **self.workflowkwargs, **kwargs)
           for dependency, SlideID in sample.workflowdependencies(SlideID=sample.SlideID, Scan=sample.samp.Scan, **self.workflowkwargs)
         ],
       )
