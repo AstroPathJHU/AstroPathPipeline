@@ -23,8 +23,6 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     if parsed_args_dict["annotation_position"] is not None and not parsed_args_dict["annotationsonwsi"]:
       raise ValueError("--annotation-position is only valid for --annotations-on-wsi")
-    if parsed_args_dict["annotation_position"] is None and parsed_args_dict["annotationsonwsi"]:
-      raise ValueError("--annotation-position is required for --annotations-on-wsi")
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "annotationsonwsi": parsed_args_dict.pop("annotationsonwsi"),
