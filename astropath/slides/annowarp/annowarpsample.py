@@ -1,4 +1,4 @@
-import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, re, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import Region, Vertex
@@ -884,7 +884,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     SlideID = kwargs["SlideID"]
     result = [ZoomSample] + super().workflowdependencyclasses(**kwargs)
     xmls = [
-      _ for _ in (im3root/f"Scan{Scan}").glob("*{self.SlideID}*annotations.polygons*.xml")
+      _ for _ in (im3root/f"Scan{Scan}").glob(f"*{SlideID}*annotations.polygons*.xml")
       if annotationsxmlregex is None or re.match(annotationsxmlregex, _)
     ]
     if any("merged" in _.name for _ in xmls):
