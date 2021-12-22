@@ -281,13 +281,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         for tilex, tiley in itertools.product(range(self.ntiles[0]), range(self.ntiles[1]))
       ]
 
-      wsilayer1 = self.wsifilename(1)
-      if wsilayer1.exists():
-        with self.PILmaximagepixels(), PIL.Image.open(wsilayer1) as img:
-          img = np.asarray(img)
-          meanintensitynumerator += np.sum(img[mask])
-          meanintensitydenominator += np.count_nonzero(mask)
-
       for tilen, tile in enumerate(tiles, start=1):
         with tile:
           tilemask = mask[
@@ -296,7 +289,8 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
           ]
 
           for layer in self.layers:
-            if self.wsifilename(layer).exists(): continue
+            if self.wsifilename(layer).exists() and layer != 1: continue
+            if all(self.wsifilename(l).exists() for l in self.layers): continue
             filename = self.bigfilename(layer, tile.tilex, tile.tiley)
             with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
               assert lock
@@ -304,12 +298,11 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
                 break
           else:
             self.logger.info(f"  {self.bigfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
-            if not wsilayer1.exists():
-              filename = self.bigfilename(1, tile.tilex, tile.tiley)
-              with self.PILmaximagepixels(), PIL.Image.open(filename) as img:
-                img = np.asarray(img)
-                meanintensitynumerator += np.sum(img[tilemask])
-                meanintensitydenominator += np.count_nonzero(tilemask)
+            filename = self.bigfilename(1, tile.tilex, tile.tiley)
+            with self.PILmaximagepixels(), PIL.Image.open(filename) as img:
+              img = np.asarray(img)
+              meanintensitynumerator += np.sum(img[tilemask])
+              meanintensitydenominator += np.count_nonzero(tilemask)
             continue
 
           #tileimage is initialized to None so that we don't have
@@ -414,9 +407,13 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
         #save the tile images
         for layer in self.layers:
+          wsifilename = self.wsifilename(layer)
           filename = self.bigfilename(layer, tile.tilex, tile.tiley)
           with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
             assert lock
+            if wsifilename.exists():
+              self.logger.info(f"  {wsifilename.name} was already created")
+              continue
             if filename.exists():
               self.logger.info(f"  {filename.name} was already created")
               continue
