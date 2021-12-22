@@ -15,6 +15,7 @@ from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.computeshift import computeshift
 from ..align.field import Field
 from ..align.overlap import AlignmentComparison
+from ..align.stitch import AffineEntry
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .mergeannotationxmls import AnnotationInfoWriterArgumentParser, AnnotationInfoWriterSample, MergeAnnotationXMLsSample
@@ -708,7 +709,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     onemicron = self.onemicron
     onepixel = self.onepixel
     if self.annotationsonwsi:
-      affines = self.readcsv("affine")
+      affines = self.readcsv("affine", AffineEntry)
       dct = {affine.description: affine.value for affine in affines}
       myposition = np.array([dct["shiftx"], dct["shifty"]])
       if self.annotationposition is None:
