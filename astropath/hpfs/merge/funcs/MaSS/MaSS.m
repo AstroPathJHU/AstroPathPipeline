@@ -70,12 +70,25 @@
 %%
 function [err_val] = MaSS(wd, sname, MergeConfig, logstring)
 %
-version = '0.01.001';
 if nargin < 4
     logstring = '';
+    version = '0.01.001';
+else
+    l = strsplit(logstring, '-');
+    if length(l) == 1
+        version = '0.01.001';
+        logstring = l{1};
+    else 
+        version = l{2};
+        logstring = l{1};
+    end
 end
 %
-imall = 0;
+if strcmp(version,'0.0.2')
+    imall = 1;
+else 
+    imall = 0;
+end 
 %
 err_val = mywritetolog(wd, sname, logstring, '', 1, version);
 e_code = err_handl(wd, sname, logstring, [], err_val);

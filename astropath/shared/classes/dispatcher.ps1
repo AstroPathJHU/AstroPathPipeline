@@ -244,6 +244,8 @@ class Dispatcher : queue{
                     write-host $taskid
                     Write-host $newerror
                 }
+                [string]$logline = @($taskid,"`r`n") -join ''
+                $this.popfile(($this.workerloglocation+$_.Name+'.log'), $logline)
             }
         }
         #

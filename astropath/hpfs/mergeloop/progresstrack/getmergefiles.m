@@ -16,7 +16,8 @@ function [MergeTbls, MergeTblsDate, Rfd] = ...
     MergeTbls = [];
     dRfd = [];
     %
-    logstring = [logstring,'-',version];
+    logstring = strcat(logstring,'-',version);
+    logstring = logstring{1};
     %
     % if Results folder does not exist but there are enough inform files to
     % generate output then run merge function

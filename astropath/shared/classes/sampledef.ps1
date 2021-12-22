@@ -52,7 +52,7 @@ class sampledef : sharedtools{
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdef($slideid, $slides)
-        $this.DefRoot($mpath)
+        $this.defbase($mpath)
     }
     #
     Batch(
@@ -61,7 +61,7 @@ class sampledef : sharedtools{
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdefbatch($batchid, $slides)
-        $this.DefRoot($mpath)
+        $this.defbase($mpath)
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
@@ -109,7 +109,7 @@ class sampledef : sharedtools{
         #
     }
     #
-    [void]DefRoot([string]$mpath){
+    [void]defbase([string]$mpath){
         $this.mpath = $mpath
         $project_dat = $this.importcohortsinfo($this.mpath)
         $project_dat = $project_dat | 
