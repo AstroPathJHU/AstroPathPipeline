@@ -36,6 +36,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     return [
       thisfolder/"test_for_jenkins"/"annowarp"/"logfiles"/"annowarp.log",
     ] + sum(([
+      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annotationinfo.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annotations.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
