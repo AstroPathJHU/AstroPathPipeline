@@ -786,6 +786,11 @@ class WorkflowCohort(Cohort):
 
           return result
 
+  def run(self, *, print_errors=False, printnotrunning=None, **kwargs):
+    if printnotrunning is None and print_errors:
+      kwargs["printnotrunning"] = True
+    return super().run(print_errors=print_errors, **kwargs)
+
   @contextlib.contextmanager
   def handlesampledeffiltererror(self, samp, *, print_errors, **kwargs):
     if print_errors:
