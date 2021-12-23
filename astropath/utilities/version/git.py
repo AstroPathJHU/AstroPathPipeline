@@ -75,13 +75,13 @@ class GitRepo:
   def rev_parse(self): return GitRevParse(self)
 
   @methodtools.lru_cache()
-  def getcommit(self, commit, *, __retry=True):
+  def getcommit(self, commit, *, _retry=True):
     try:
       return self.commitdict[commit]
     except KeyError:
-      if __retry:
+      if _retry:
         self.initrepo()
-        return self.getcommit(commit, __retry=False)
+        return self.getcommit(commit, _retry=False)
       results = {_ for _ in self if commit == _}
       try:
         result, = results
