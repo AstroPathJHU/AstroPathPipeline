@@ -105,7 +105,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
           polygons.append(poly)
         else:
           raise ValueError(f"Unknown component from MakeValid: {component}")
-      polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid) for p in polygons]
+      polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, isfromxml=self.isfromxml) for p in polygons]
       if round: polygons = [p.round(imagescale=imagescale) for p in polygons]
       polygons = sum((p.makevalid(round=round, imagescale=imagescale) for p in polygons), [])
       polygons.sort(key=lambda x: x.area, reverse=True)
@@ -316,6 +316,15 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
   def round(self, **kwargs):
     return Polygon(outerpolygon=self.outerpolygon.round(**kwargs), subtractpolygons=[p.round(**kwargs) for p in self.subtractpolygons])
 
+  @property
+  def isfromxml(self):
+    isfromxmls = {self.outerpolygon.isfromxml, *(_.isfromxml for _ in self.subtractpolygons)}
+    try:
+      result, = isfromxmls
+    except ValueError:
+      raise ValueError(f"Inconsistent isfromxmls {isfromxmls}")
+    return result
+
 class SimplePolygon(Polygon):
   """
   Represents a polygon as a list of vertices in a way that works
@@ -328,13 +337,14 @@ class SimplePolygon(Polygon):
   annoscale: annoscale of the polygon
   """
 
-  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, annoscale=None, power=1, regionid=None, requirevalidity=False):
+  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, annoscale=None, power=1, regionid=None, requirevalidity=False, isfromxml=None):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
 
     annoscale = {annoscale}
     pscale = {pscale}
     regionid = {regionid}
+    isfromxml = {isfromxml}
 
     if vertexarray is not None is vertices:
       vertexarray = np.array(vertexarray)
@@ -344,6 +354,7 @@ class SimplePolygon(Polygon):
       annoscale |= {v.annoscale for v in vertices}
       pscale |= {v.pscale for v in vertices}
       regionid |= {v.regionid for v in vertices}
+      isfromxml |= {v.isfromxml for v in vertices}
     else:
       raise TypeError("Have to provide exactly one of vertices or vertexarray")
 
@@ -361,6 +372,11 @@ class SimplePolygon(Polygon):
     if len(regionid) > 1: raise ValueError(f"Inconsistent regionids {regionid}")
     elif not regionid: regionid = {None}
     self.__regionid, = regionid
+
+    isfromxml.discard(None)
+    if len(isfromxml) > 1: raise ValueError(f"Inconsistent isfromxmls {isfromxml}")
+    elif not isfromxml: isfromxml = {False}
+    self.__isfromxml, = isfromxml
 
     self.__vertices = vertices
     self.__vertexarray = np.array(vertexarray)
@@ -399,6 +415,9 @@ class SimplePolygon(Polygon):
     if self.__vertices is not None:
       for v in self.__vertices:
         v.regionid = regionid
+  @property
+  def isfromxml(self):
+    return self.__isfromxml
 
   @property
   def vertexarray(self): return self.__vertexarray
@@ -407,7 +426,7 @@ class SimplePolygon(Polygon):
     if self.__vertices is None:
       from .csvclasses import Vertex
       self.__vertices = [
-        Vertex(x=x, y=y, vid=i, regionid=self.regionid, annoscale=self.annoscale, pscale=self.pscale)
+        Vertex(x=x, y=y, vid=i, regionid=self.regionid, annoscale=self.annoscale, pscale=self.pscale, isfromxml=self.isfromxml)
         for i, (x, y) in enumerate(self.vertexarray, start=1)
       ]
     return self.__vertices
@@ -422,7 +441,7 @@ class SimplePolygon(Polygon):
     if imagescale is None: imagescale = self.pscale
     onepixel = units.convertpscale(units.onepixel(imagescale), imagescale, self.annoscale)
     vertexarray = (self.vertexarray+1e-10*onepixel) // onepixel * onepixel
-    return SimplePolygon(vertexarray=vertexarray, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid)
+    return SimplePolygon(vertexarray=vertexarray, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, isfromxml=self.isfromxml)
 
   def gdallinearring(self, *, imagescale=None, round=False, _rounded=False):
     """
