@@ -81,6 +81,10 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
   @abc.abstractmethod
   def regions(self): pass
 
+  @property
+  @abc.abstractmethod
+  def isfromxml(self): pass
+
 class AnnotationNodeXML(AnnotationNodeBase):
   def __init__(self, node, **kwargs):
     super().__init__(**kwargs)
@@ -105,6 +109,9 @@ class AnnotationNodeXML(AnnotationNodeBase):
     regions = self.__xmlnode["Regions"]["Region"]
     if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
     return [AnnotationRegionXML(_, annoscale=self.annoscale) for _ in regions]
+
+  @property
+  def isfromxml(self): return True
 
 class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithAnnoscale):
   def __init__(self, name, polygons, *, color, visible=True, **kwargs):
@@ -133,6 +140,9 @@ class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithAnnoscale):
         *(AnnotationRegionFromPolygon(pp, annoscale=self.annoscale, isNeg=1) for pp in p.subtractpolygons),
       ]
     return result
+
+  @property
+  def isfromxml(self): return False
 
 class AnnotationRegionBase(units.ThingWithAnnoscale):
   def __init__(self, *args, annoscale, **kwargs):
@@ -388,6 +398,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
                 y=y,
                 annoscale=self.annoscale,
                 pscale=pscale,
+                isfromxml=node.isfromxml,
               )
             )
           isNeg = region.NegativeROA

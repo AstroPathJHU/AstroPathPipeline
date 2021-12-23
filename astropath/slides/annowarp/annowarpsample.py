@@ -717,12 +717,16 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
       shiftannotations = myposition - self.annotationposition
       if np.any(shiftannotations):
         self.logger.warning("shifting the annotations by {shiftannotations / onepixel} pixels")
-      return [
-        WarpedVertex(
-          vertex=v,
-          wxvec=(v.xvec / oneannomicron * onemicron + shiftannotations) // onepixel * onepixel
-        ) for v in self.__getvertices()
-      ]
+
+      result = []
+      for v in self.__getvertices():
+        result.append(
+          WarpedVertex(
+            vertex=v,
+            wxvec=(v.xvec / oneannomicron * onemicron + shiftannotations * bool(v.isfromxml)) // onepixel * onepixel
+          ) for v in self.__getvertices()
+        )
+      return result
     else:
       return [
         WarpedQPTiffVertex(
