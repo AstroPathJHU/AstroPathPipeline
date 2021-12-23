@@ -716,7 +716,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
         self.annotationposition = myposition
       shiftannotations = myposition - self.annotationposition
       if np.any(shiftannotations):
-        self.logger.warning("shifting the annotations by {shiftannotations / onepixel} pixels")
+        self.logger.warning(f"shifting the annotations by {shiftannotations / onepixel} pixels")
 
       result = []
       for v in self.__getvertices():
