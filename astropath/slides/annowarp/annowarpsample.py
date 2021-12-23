@@ -724,7 +724,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
           WarpedVertex(
             vertex=v,
             wxvec=(v.xvec / oneannomicron * onemicron + shiftannotations * bool(v.isfromxml)) // onepixel * onepixel
-          ) for v in self.__getvertices()
+          )
         )
       return result
     else:
