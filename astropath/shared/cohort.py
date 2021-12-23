@@ -239,13 +239,14 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
         #but not KeyboardInterrupt
         with self.handlesampleiniterror(samp, **kwargs):
           raise
-      try:
-        yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
-      except Exception:
-        #enter the logger here to log exceptions in __init__ of the sample
-        #but not KeyboardInterrupt
-        with self.handlesamplefiltererror(samp, **kwargs):
-          raise
+      else:
+        try:
+          yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
+        except Exception:
+          #enter the logger here to log exceptions in __init__ of the sample
+          #but not KeyboardInterrupt
+          with self.handlesamplefiltererror(samp, **kwargs):
+            raise
 
   def handlesampledeffiltererror(self, samp, **kwargs):
     return self.getlogger(samp)
