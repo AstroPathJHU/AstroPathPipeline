@@ -472,7 +472,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
 
           for subpolygon in valid:
             subsubpolygons = (p for p in [subpolygon.outerpolygon] + subpolygon.subtractpolygons if not (node.areacutoff is not None and polygon.area < node.areacutoff))
-            for polygon, m in zip(subpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
+            for polygon, m in zip(subsubpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
               if node.areacutoff is not None and polygon.area < node.areacutoff: continue
               regionid = 1000*layer + m
               polygon.regionid = regionid
