@@ -85,6 +85,10 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
   @abc.abstractmethod
   def isfromxml(self): pass
 
+  @property
+  @abc.abstractmethod
+  def areacutoff(self): pass
+
 class AnnotationNodeXML(AnnotationNodeBase):
   def __init__(self, node, **kwargs):
     super().__init__(**kwargs)
@@ -113,13 +117,18 @@ class AnnotationNodeXML(AnnotationNodeBase):
   @property
   def isfromxml(self): return True
 
+  @property
+  def areacutoff(self):
+    return None #when it's manually drawn, want to keep whatever there is
+
 class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithAnnoscale):
-  def __init__(self, name, polygons, *, color, visible=True, **kwargs):
+  def __init__(self, name, polygons, *, color, areacutoff, visible=True, **kwargs):
     super().__init__(**kwargs)
     self.__name = name
     self.__polygons = sorted(polygons, key=lambda x: tuple(x.outerpolygon.vertexarray[0]))
     self.__color = color
     self.__visible = visible
+    self.__areacutoff = areacutoff
   @property
   def rawname(self):
     return self.__name
@@ -143,6 +152,10 @@ class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithAnnoscale):
 
   @property
   def isfromxml(self): return False
+
+  @property
+  def areacutoff(self):
+    return self.__areacutoff
 
 class AnnotationRegionBase(units.ThingWithAnnoscale):
   def __init__(self, *args, annoscale, **kwargs):
@@ -459,6 +472,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
 
           for subpolygon in valid:
             for polygon, m in zip([subpolygon.outerpolygon] + subpolygon.subtractpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
+              if node.areacutoff is not None and polygon.area < node.areacutoff: continue
               regionid = 1000*layer + m
               polygon.regionid = regionid
               regionvertices = polygon.outerpolygon.vertices
@@ -519,7 +533,7 @@ class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMa
   @property
   def annotationnodes(self):
     result = super().annotationnodes
-    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.annoscale))
+    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.annoscale, areacutoff=self.tissuemaskpolygonareacutoff()))
     return result
 
 def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):

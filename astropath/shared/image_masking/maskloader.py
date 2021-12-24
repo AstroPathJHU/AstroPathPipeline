@@ -114,7 +114,7 @@ class TissueMaskLoader(MaskLoader):
           del self.__tissuemask_zoomed[zoomfactor]
 
   @methodtools.lru_cache()
-  def __tissuemaskpolygons(self, *, zoomfactor):
+  def __tissuemaskpolygons_and_area_cutoff(self, *, zoomfactor):
     with self.using_tissuemask_zoomed(zoomfactor) as mask:
       notmask = ~mask
       filled = scipy.ndimage.binary_fill_holes(mask)
@@ -122,13 +122,14 @@ class TissueMaskLoader(MaskLoader):
       labels = range(1, nlabels+1)
       areas = {label: np.count_nonzero(labeled==label) for label in labels}
       totalarea = sum(areas.values())
+      areacutoff = 0.001 * totalarea
       labels = sorted(labels, key=areas.get, reverse=True)
       for idx, label in reversed(list(enumerate(labels))):
         area = areas[label]
         if idx >= 100: #only keep 100 labels maximum
           mask[labeled==label] = 0
           continue
-        elif area < 0.001 * totalarea: #drop the tiny ones
+        elif area < areacutoff: #drop the tiny ones
           mask[labeled==label] = 0
           continue
 
@@ -145,7 +146,9 @@ class TissueMaskLoader(MaskLoader):
 
       mask = mask.astype(np.uint8)
       polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, imagescale=self.pscale/zoomfactor, forgdal=True)
-      return polygons
+      return polygons, areacutoff * zoomfactor**2
 
   def tissuemaskpolygons(self, *, zoomfactor=16):
-    return self.__tissuemaskpolygons(zoomfactor=zoomfactor)
+    return self.__tissuemaskpolygons_and_area_cutoff(zoomfactor=zoomfactor)[0]
+  def tissuemaskpolygonareacutoff(self, *, zoomfactor=16):
+    return self.__tissuemaskpolygons_and_area_cutoff(zoomfactor=zoomfactor)[1]
