@@ -167,15 +167,20 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
   def testSampleDef(self):
     self.maxDiff = None
     s1 = SampleDef(samp="M21_1", root=thisfolder/"data")
-    s2 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv", Scan=s1.Scan, SampleID=s1.SampleID)
-    s3 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv", root=thisfolder/"data")
+    s2 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv", SampleID=s1.SampleID)
+    s3 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef_oldformat.csv", Scan=s1.Scan, SampleID=s1.SampleID)
+    s4 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef_oldformat.csv", root=thisfolder/"data")
     APID, = {APID for APID in readtable(thisfolder/"data"/"AstropathAPIDdef.csv", APIDDef) if APID.SlideID == "M21_1"}
-    s4 = SampleDef(samp=APID, Scan=s1.Scan, SampleID=s1.SampleID)
-    s5 = SampleDef(samp=APID, root=thisfolder/"data")
+    s5 = SampleDef(samp=APID, SampleID=s1.SampleID)
+    APID, = {APID for APID in readtable(thisfolder/"data"/"AstropathAPIDdef_oldformat.csv", APIDDef) if APID.SlideID == "M21_1"}
+    s6 = SampleDef(samp=APID, Scan=s1.Scan, SampleID=s1.SampleID)
+    s7 = SampleDef(samp=APID, root=thisfolder/"data")
     self.assertEqual(s1, s2)
     self.assertEqual(s1, s3)
     self.assertEqual(s1, s4)
     self.assertEqual(s1, s5)
+    self.assertEqual(s1, s6)
+    self.assertEqual(s1, s7)
 
   def testMakeSampleDef(self):
     self.maxDiff = None
