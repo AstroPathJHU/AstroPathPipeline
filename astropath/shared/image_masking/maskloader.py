@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, methodtools, numpy as np
+import abc, collections, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.transform
 from ..contours import findcontoursaspolygons
 from .image_mask import ImageMask
 
@@ -56,8 +56,12 @@ class TissueMaskLoader(MaskLoader):
   """
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
+
     self.__using_tissuemask_count = 0
     self.__using_tissuemask_uint8_count = 0
+    self.__using_tissuemask_zoomed_count = collections.defaultdict(lambda: 0)
+
+    self.__tissuemask_zoomed = {}
 
   @abc.abstractmethod
   def tissuemask(self, mask):
@@ -91,8 +95,57 @@ class TissueMaskLoader(MaskLoader):
         if self.__using_tissuemask_uint8_count == 0:
           del self.__tissuemask_uint8
 
+  @contextlib.contextmanager
+  def using_tissuemask_zoomed(self, zoomfactor):
+    if zoomfactor == 1:
+      with self.using_tissuemask() as mask:
+        yield mask
+      return
+
+    with contextlib.ExitStack() as stack:
+      if self.__using_tissuemask_zoomed_count[zoomfactor] == 0:
+        self.__tissuemask_zoomed[zoomfactor] = (skimage.transform.downscale_local_mean(stack.enter_context(self.using_tissuemask()), (zoomfactor, zoomfactor)) > 0.5)
+      self.__using_tissuemask_zoomed_count[zoomfactor] += 1
+      try:
+        yield self.__tissuemask_zoomed[zoomfactor]
+      finally:
+        self.__using_tissuemask_zoomed_count[zoomfactor] -= 1
+        if self.__using_tissuemask_zoomed_count[zoomfactor] == 0:
+          del self.__tissuemask_zoomed[zoomfactor]
+
   @methodtools.lru_cache()
-  @property
-  def tissuemaskpolygons(self):
-    with self.using_tissuemask_uint8() as mask:
-      return findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, forgdal=True)
+  def __tissuemaskpolygons(self, *, zoomfactor):
+    with self.using_tissuemask_zoomed(zoomfactor) as mask:
+      notmask = ~mask
+      filled = scipy.ndimage.binary_fill_holes(mask)
+      labeled, nlabels = scipy.ndimage.label(filled, structure=[[0,1,0],[1,1,1],[0,1,0]])
+      labels = range(1, nlabels+1)
+      areas = {label: np.count_nonzero(labeled==label) for label in labels}
+      totalarea = sum(areas.values())
+      labels = sorted(labels, key=areas.get, reverse=True)
+      for idx, label in reversed(list(enumerate(labels))):
+        area = areas[label]
+        if idx >= 100: #only keep 100 labels maximum
+          mask[labeled==label] = 0
+          continue
+        elif area < 0.001 * totalarea: #drop the tiny ones
+          mask[labeled==label] = 0
+          continue
+
+        #now we have a large region
+        #fill in the tiny holes
+        holes = (labeled == label) & notmask
+        labeledholes, nholelabels = scipy.ndimage.label(holes)
+        holelabels = range(1, nholelabels+1)
+        for holelabel in holelabels:
+          hole = labeledholes == holelabel
+          holearea = np.count_nonzero(hole)
+          if holearea / area < 0.0025:
+            mask[hole] = True
+
+      mask = mask.astype(np.uint8)
+      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, imagescale=self.pscale/zoomfactor, forgdal=True)
+      return polygons
+
+  def tissuemaskpolygons(self, *, zoomfactor=16):
+    return self.__tissuemaskpolygons(zoomfactor=zoomfactor)

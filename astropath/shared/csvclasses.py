@@ -226,6 +226,7 @@ class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
   x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   pscale = None
+  isfromxml: bool = MetaDataAnnotation(False, includeintable=False)
 
   @property
   def xvec(self):

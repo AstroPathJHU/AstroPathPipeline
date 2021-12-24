@@ -45,7 +45,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/f"{SlideID}-annowarp.log",
     ] for SlideID in ("M206",)), [])
 
-  def testAlignment(self, SlideID="M206"):
+  def compareoutput(self, SlideID):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=True, annotationsonwsi=False)
 
     annotationinfofilename = s.csv("annotationinfo")
@@ -60,11 +60,6 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     referenceannotationsfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.annotationscsv.name
     regionsfilename = s.regionscsv
     referenceregionsfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.regionscsv.name
-
-    AnnoWarpSampleInformTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--allow-local-edits", "--annotations-on-qptiff"])
-
-    if not s.runstatus():
-      raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus()}")
 
     rows = s.readtable(annotationinfofilename, Constant, extrakwargs={"pscale": s.pscale, "apscale": s.apscale, "qpscale": s.qpscale}, checkorder=True, checknewlines=True)
     targetrows = s.readtable(referenceannotationinfofilename, Constant, extrakwargs={"pscale": s.pscale, "apscale": s.apscale, "qpscale": s.qpscale}, checkorder=True, checknewlines=True)
@@ -96,6 +91,23 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
       self.assertGreater(row.poly.area, 0)
+
+  def testAlignment(self, SlideID="M206"):
+    with units.setup_context("safe"):
+      s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=True, annotationsonwsi=False)
+
+      try:
+        AnnoWarpSampleInformTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--allow-local-edits", "--annotations-on-qptiff"])
+
+        if not s.runstatus():
+          raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus()}")
+
+        self.compareoutput(SlideID)
+      except:
+        self.saveoutput()
+        raise
+      else:
+        self.removeoutput()
 
   def testReadingWritingAlignments(self, SlideID="M206"):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", annotationsonwsi=False)
@@ -134,7 +146,14 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     logroot = thisfolder/"test_for_jenkins"/"annowarp"
     maskroot = thisfolder/"data"/"reference"/"stitchmask"
     args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot), "--ignore-dependencies", "--rerun-finished", "--annotations-on-qptiff"]
-    AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
+    try:
+      AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
+      self.compareoutput(SlideID)
+    except:
+      self.compareoutput()
+      raise
+    else:
+      self.removeoutput()
 
   def testCohortFastUnits(self, SlideID="M206"):
     self.testCohort(SlideID=SlideID, units="fast")
