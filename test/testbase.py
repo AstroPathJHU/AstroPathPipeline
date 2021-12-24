@@ -59,7 +59,12 @@ def temporarilyreplace(filepath, temporarycontents):
     finally:
       shutil.move(tmppath, filepath)
 
-class TestBaseSaveOutput(abc.ABC, unittest.TestCase):
+class TestBase(abc.ABC, unittest.TestCase):
+  def setUp(self):
+    self.maxDiff = None
+    super().setUp()
+
+class TestBaseSaveOutput(TestBase):
   @classmethod
   def setUpClass(cls):
     cls.__output = contextlib.ExitStack()
@@ -85,18 +90,18 @@ class TestBaseSaveOutput(abc.ABC, unittest.TestCase):
         pass
 
   def setUp(self):
-    self.maxDiff = None
+    super().setUp()
     self.removeoutput()
 
   def tearDown(self):
-    pass
+    super().tearDown()
 
   @classmethod
   def tearDownClass(cls):
     cls.__output.__exit__(None, None, None)
     super().tearDownClass()
 
-class TestBaseCopyInput(abc.ABC, unittest.TestCase):
+class TestBaseCopyInput(TestBase):
   @classmethod
   def removecopiedinput(cls): return True
 
