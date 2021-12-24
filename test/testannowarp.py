@@ -150,7 +150,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
       self.compareoutput(SlideID)
     except:
-      self.compareoutput()
+      self.saveoutput()
       raise
     else:
       self.removeoutput()

@@ -1,4 +1,5 @@
 import abc, collections, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.transform
+from ...utilities import units
 from ..contours import findcontoursaspolygons
 from .image_mask import ImageMask
 
@@ -47,7 +48,7 @@ class MaskLoader(contextlib.ExitStack, abc.ABC):
       if self.__using_mask_count == 0:
         del self.__mask
 
-class TissueMaskLoader(MaskLoader):
+class TissueMaskLoader(units.ThingWithPscale, units.ThingWithAnnoscale, MaskLoader):
   """
   Base class for a MaskLoader that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the
@@ -116,6 +117,7 @@ class TissueMaskLoader(MaskLoader):
   @methodtools.lru_cache()
   def __tissuemaskpolygons_and_area_cutoff(self, *, zoomfactor):
     with self.using_tissuemask_zoomed(zoomfactor) as mask:
+      imagescale = self.pscale/zoomfactor
       notmask = ~mask
       filled = scipy.ndimage.binary_fill_holes(mask)
       labeled, nlabels = scipy.ndimage.label(filled, structure=[[0,1,0],[1,1,1],[0,1,0]])
@@ -145,8 +147,9 @@ class TissueMaskLoader(MaskLoader):
             mask[hole] = True
 
       mask = mask.astype(np.uint8)
-      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, imagescale=self.pscale/zoomfactor, forgdal=True)
-      return polygons, areacutoff * zoomfactor**2
+      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, imagescale=imagescale, forgdal=True)
+      areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.pscale, power=2)
+      return polygons, areacutoff
 
   def tissuemaskpolygons(self, *, zoomfactor=16):
     return self.__tissuemaskpolygons_and_area_cutoff(zoomfactor=zoomfactor)[0]
