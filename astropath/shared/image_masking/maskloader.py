@@ -48,7 +48,7 @@ class MaskLoader(contextlib.ExitStack, abc.ABC):
       if self.__using_mask_count == 0:
         del self.__mask
 
-class TissueMaskLoader(units.ThingWithPscale, units.ThingWithAnnoscale, MaskLoader):
+class TissueMaskLoader(units.ThingWithPscale, MaskLoader):
   """
   Base class for a MaskLoader that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the
@@ -114,6 +114,7 @@ class TissueMaskLoader(units.ThingWithPscale, units.ThingWithAnnoscale, MaskLoad
         if self.__using_tissuemask_zoomed_count[zoomfactor] == 0:
           del self.__tissuemask_zoomed[zoomfactor]
 
+class TissueMaskLoaderWithPolygons(TissueMaskLoader, units.ThingWithAnnoscale):
   @methodtools.lru_cache()
   def __tissuemaskpolygons_and_area_cutoff(self, *, zoomfactor):
     with self.using_tissuemask_zoomed(zoomfactor) as mask:
