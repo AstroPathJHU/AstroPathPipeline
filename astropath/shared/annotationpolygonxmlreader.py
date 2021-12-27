@@ -470,10 +470,12 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
             fig.savefig(self.__annotationimagefolder/self.annotationspolygonsxmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__annotationimagefiletype}").name)
             plt.close(fig)
 
+          areacutoff = node.areacutoff
+          if areacutoff is not None: areacutoff = units.convertpscale(areacutoff, self.annoscale, pscale, power=2)
           for subpolygon in valid:
-            subsubpolygons = (p for p in [subpolygon.outerpolygon] + subpolygon.subtractpolygons if not (node.areacutoff is not None and polygon.area < node.areacutoff))
+            subsubpolygons = (p for p in [subpolygon.outerpolygon] + subpolygon.subtractpolygons if not (areacutoff is not None and polygon.area < areacutoff))
             for polygon, m in zip(subsubpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
-              if node.areacutoff is not None and polygon.area < node.areacutoff: continue
+              if node.areacutoff is not None and polygon.area < areacutoff: continue
               regionid = 1000*layer + m
               polygon.regionid = regionid
               regionvertices = polygon.outerpolygon.vertices

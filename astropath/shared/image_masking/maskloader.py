@@ -149,7 +149,7 @@ class TissueMaskLoaderWithPolygons(TissueMaskLoader, units.ThingWithAnnoscale):
 
       mask = mask.astype(np.uint8)
       polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, imagescale=imagescale, forgdal=True)
-      areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.pscale, power=2)
+      areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.annoscale, power=2)
       return polygons, areacutoff
 
   def tissuemaskpolygons(self, *, zoomfactor=16):
