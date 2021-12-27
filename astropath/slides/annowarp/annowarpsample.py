@@ -2,6 +2,7 @@ import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, 
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import Region, Vertex
+from ...shared.image_masking.maskloader import TissueMaskLoaderWithPolygons
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
 from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ZoomFolderSampleBase
@@ -917,7 +918,7 @@ class AnnoWarpArgumentParserTissueMask(AnnoWarpArgumentParserBase, DbloadArgumen
     return kwargs
 
 
-class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflowSampleBase, AnnoWarpArgumentParserTissueMask):
+class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflowSampleBase, TissueMaskLoaderWithPolygons, AnnoWarpArgumentParserTissueMask):
   """
   Use a tissue mask to determine which tiles to use for alignment
 

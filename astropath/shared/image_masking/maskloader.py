@@ -1,4 +1,5 @@
 import abc, collections, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.transform
+from ...utilities import units
 from ..contours import findcontoursaspolygons
 from .image_mask import ImageMask
 
@@ -47,7 +48,7 @@ class MaskLoader(contextlib.ExitStack, abc.ABC):
       if self.__using_mask_count == 0:
         del self.__mask
 
-class TissueMaskLoader(MaskLoader):
+class TissueMaskLoader(units.ThingWithPscale, MaskLoader):
   """
   Base class for a MaskLoader that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the
@@ -113,22 +114,25 @@ class TissueMaskLoader(MaskLoader):
         if self.__using_tissuemask_zoomed_count[zoomfactor] == 0:
           del self.__tissuemask_zoomed[zoomfactor]
 
+class TissueMaskLoaderWithPolygons(TissueMaskLoader, units.ThingWithAnnoscale):
   @methodtools.lru_cache()
-  def __tissuemaskpolygons(self, *, zoomfactor):
+  def __tissuemaskpolygons_and_area_cutoff(self, *, zoomfactor):
     with self.using_tissuemask_zoomed(zoomfactor) as mask:
+      imagescale = self.pscale/zoomfactor
       notmask = ~mask
       filled = scipy.ndimage.binary_fill_holes(mask)
       labeled, nlabels = scipy.ndimage.label(filled, structure=[[0,1,0],[1,1,1],[0,1,0]])
       labels = range(1, nlabels+1)
       areas = {label: np.count_nonzero(labeled==label) for label in labels}
       totalarea = sum(areas.values())
+      areacutoff = 0.001 * totalarea
       labels = sorted(labels, key=areas.get, reverse=True)
       for idx, label in reversed(list(enumerate(labels))):
         area = areas[label]
         if idx >= 100: #only keep 100 labels maximum
           mask[labeled==label] = 0
           continue
-        elif area < 0.001 * totalarea: #drop the tiny ones
+        elif area < areacutoff: #drop the tiny ones
           mask[labeled==label] = 0
           continue
 
@@ -144,8 +148,11 @@ class TissueMaskLoader(MaskLoader):
             mask[hole] = True
 
       mask = mask.astype(np.uint8)
-      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, imagescale=self.pscale/zoomfactor, forgdal=True)
-      return polygons
+      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, imagescale=imagescale, forgdal=True)
+      areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.annoscale, power=2)
+      return polygons, areacutoff
 
   def tissuemaskpolygons(self, *, zoomfactor=16):
-    return self.__tissuemaskpolygons(zoomfactor=zoomfactor)
+    return self.__tissuemaskpolygons_and_area_cutoff(zoomfactor=zoomfactor)[0]
+  def tissuemaskpolygonareacutoff(self, *, zoomfactor=16):
+    return self.__tissuemaskpolygons_and_area_cutoff(zoomfactor=zoomfactor)[1]
