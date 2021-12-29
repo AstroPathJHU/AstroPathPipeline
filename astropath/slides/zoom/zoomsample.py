@@ -1,8 +1,8 @@
-import contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
+import contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, skimage.transform
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
-from ...utilities.miscfileio import memmapcontext, rm_missing_ok
+from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing_ok
 from ...utilities.miscimage import vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
 from ...utilities.optionalimports import pyvips
@@ -461,7 +461,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       for big in removefilenames:
         rm_missing_ok(big)
 
-    shutil.rmtree(self.bigfolder)
+    rmtree_missing_ok(self.bigfolder)
 
     self.makewsitiff(fortiff)
 
