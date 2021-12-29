@@ -410,6 +410,15 @@ class queue : vminformqueue{
                 return 1
             }
             #
+            $ids = $this.ImportCorrectionModels($this.main)
+            if ($ids.slideid -notcontains $log.slideid){
+                return 2
+            }
+            #
+            if (!$log.testpybatchflatfield()){
+                return 2
+            }
+            #
         } else {
             #
             if (!($this.checkmeanimage($log, $true) -eq 3)){
@@ -421,16 +430,43 @@ class queue : vminformqueue{
                 return 2
             }
             #
+            if (!$log.testbatchflatfield()){
+                return 2
+            }
+            #
         }
         #
-        # version depedendent checks
+        return 3
         #
-        if (!$log.testbatchflatfield()){
-            if ($log.vers -match '0.0.1'){
-                return 2
-            } else {
-                return 1
-            }
+    }
+    <# -----------------------------------------
+     checkwarpoctets
+     check that the meanimage module has completed
+     and all products exist
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkmeanimage(log, dependency)
+    ----------------------------------------- #>
+    [int]checkwarpoctets([mylogger]$log, $dependency){
+        #
+        if (!($this.checkbatchflatfield($log, $true) -eq 3)){
+            return 1
+        }
+        #
+        $log = [mylogger]::new($this.mpath, 'warpoctets', $log.slideid)
+        if ($this.checklog($log, $true)){
+            return 2
+        }
+        #
+        if (!$log.testwarpoctets()){
+            return 2
         }
         #
         return 3
