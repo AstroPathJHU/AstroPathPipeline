@@ -22,6 +22,12 @@ def rm_missing_ok(path):
     except FileNotFoundError:
       pass
 
+def rmtree_missing_ok(path, **kwargs):
+  try:
+    shutil.rmtree(path, **kwargs)
+  except FileNotFoundError:
+    pass
+
 def is_relative_to(path1, path2):
   """
   Like pathlib.Path.is_relative_to but backported to older python versions
