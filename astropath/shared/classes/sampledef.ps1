@@ -52,7 +52,7 @@ class sampledef : sharedtools{
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdef($slideid, $slides)
-        $this.DefRoot($mpath)
+        $this.defbase($mpath)
     }
     #
     Batch(
@@ -61,7 +61,7 @@ class sampledef : sharedtools{
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdefbatch($batchid, $slides)
-        $this.DefRoot($mpath)
+        $this.defbase($mpath)
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
@@ -109,7 +109,7 @@ class sampledef : sharedtools{
         #
     }
     #
-    [void]DefRoot([string]$mpath){
+    [void]defbase([string]$mpath){
         $this.mpath = $mpath
         $project_dat = $this.importcohortsinfo($this.mpath)
         $project_dat = $project_dat | 
@@ -167,6 +167,12 @@ class sampledef : sharedtools{
         $path = $this.basepath +'\flatfield\flatfield_BatchID_' + 
             $this.BatchID + '.bin'
         return $path
+    }
+    #
+    [string]pybatchflatfield(){
+        $ids = $this.ImportCorrectionModels($this.main)
+        $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
+        return $file
     }
     #
     [string]CheckSumsfile(){
@@ -250,6 +256,16 @@ class sampledef : sharedtools{
         return $true
     }
     #
+    [switch]testpybatchflatfield(){
+        #
+        $flatfield = $this.main + '\warping\' + $this.pybatchflatfield() + '.bin'
+        if (!(test-path $flatfield)){
+            return $false
+        }
+        #
+        return $true
+    }
+    #
     [switch]testxmlfiles(){
         #
         $xml = $this.xmlfolder()
@@ -321,6 +337,13 @@ class sampledef : sharedtools{
                 return $false
             }
         }
+        #
+        return $true
+        #
+    }
+    #
+    [switch]testwarpoctets(){
+        #
         #
         return $true
         #
