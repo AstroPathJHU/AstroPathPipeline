@@ -45,11 +45,9 @@ Class warpoctets : moduletools {
         $taskname = 'warpoctets'
         $dpath = $this.sample.basepath
         $rpath = $this.processvars[1]
-        $flatfield = $this.sample.flatfieldfolder() + '\flatfield_BatchID_' + $this.sample.BatchID + '.bin'
         $this.pythonmodulename = 'warpingcohort'
         $pythontask = $this.pythonmodulename, $dpath, `
          '--shardedim3root',  $rpath, `
-         '--flatfield-file',  $flatfield, `
          '--octets-only --noGPU --allow-local-edits' -join ' '
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished warp octets")

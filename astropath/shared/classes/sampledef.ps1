@@ -169,6 +169,12 @@ class sampledef : sharedtools{
         return $path
     }
     #
+    [string]pybatchflatfield(){
+        $ids = $this.ImportCorrectionModels($this.main)
+        $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
+        return $file
+    }
+    #
     [string]CheckSumsfile(){
         $path = $this.Scanfolder() + '\CheckSums.txt'
         return $path
@@ -250,6 +256,16 @@ class sampledef : sharedtools{
         return $true
     }
     #
+    [switch]testpybatchflatfield(){
+        #
+        $flatfield = $this.main + '\warping\' + $this.pybatchflatfield() + '.bin'
+        if (!(test-path $flatfield)){
+            return $false
+        }
+        #
+        return $true
+    }
+    #
     [switch]testxmlfiles(){
         #
         $xml = $this.xmlfolder()
@@ -321,6 +337,13 @@ class sampledef : sharedtools{
                 return $false
             }
         }
+        #
+        return $true
+        #
+    }
+    #
+    [switch]testwarpoctets(){
+        #
         #
         return $true
         #

@@ -145,5 +145,26 @@
         #
         return $cleaned_project_dat
         #
-     }         
+     }
+    <# -----------------------------------------
+     ImportCorrectionModels
+     open the AstroPathCorrectionModels info for the astropath
+     processing pipeline with error checking from 
+     the AstroPathCorrectionModels.csv in the mpath location
+     ------------------------------------------
+     Input: 
+        -mpath: main path for the astropath processing
+         which contains all necessary processing files
+     ------------------------------------------
+     Usage: ImportCohortsInfo(mpath)
+    ----------------------------------------- #>
+    [PSCustomObject]ImportCorrectionModels([string] $mpath){
+        #
+        $config_csv_file = $mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $config_data = $this.opencsvfile($config_csv_file)
+        #
+        return $config_data
+        #
+    }         
 }
