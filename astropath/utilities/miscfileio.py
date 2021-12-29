@@ -1,4 +1,4 @@
-import contextlib, csv, numpy as np, os, pathlib, re, subprocess, sys
+import contextlib, csv, numpy as np, os, pathlib, re, shutil, subprocess, sys
 if sys.platform != "cygwin": import psutil
 
 @contextlib.contextmanager
