@@ -546,6 +546,10 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     try:
       #solve the linear equation
       result = units.np.linalg.solve(2*A, -b)
+      #get the covariance matrix
+      delta2nllfor1sigma = 1
+      covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
+      result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
     except np.linalg.LinAlgError:
       #if the fit fails, try again with a looser selection
       if _choosetiles == "bigislands":
@@ -557,11 +561,6 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
         allkwargs["_choosetiles"] = "all"
         return self.stitch_nocvxpy(**allkwargs)
       raise
-
-    #get the covariance matrix
-    delta2nllfor1sigma = 1
-    covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
-    result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
 
     #initialize the stitch result object
     stitchresult = stitchresultcls(result, A=A, b=b, c=c, pscale=self.pscale, apscale=self.apscale)
