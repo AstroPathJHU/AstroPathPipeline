@@ -533,8 +533,8 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
     def logmodule(cls) : 
         return "meanimage"
     @classmethod
-    def workflowdependencyclasses(cls):
-        return super().workflowdependencyclasses()
+    def workflowdependencyclasses(cls, **kwargs):
+        return super().workflowdependencyclasses(**kwargs)
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

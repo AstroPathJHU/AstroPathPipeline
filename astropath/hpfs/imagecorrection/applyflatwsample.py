@@ -136,8 +136,8 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
     def logmodule(cls) : 
         return "applyflatw"
     @classmethod
-    def workflowdependencyclasses(cls):
-        return super().workflowdependencyclasses()
+    def workflowdependencyclasses(cls, **kwargs):
+        return super().workflowdependencyclasses(**kwargs)
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         to_return = super().initkwargsfromargumentparser(parsed_args_dict)

@@ -3,10 +3,11 @@ from ...shared.logging import dummylogger
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.rectangle import Rectangle, rectangledict, RectangleList
 from ...utilities import units
-from ...utilities.dataclasses import MetaDataAnnotation, MyDataClass
+from ...utilities.dataclasses import MetaDataAnnotation
 from ...utilities.miscmath import covariance_matrix, floattoint, weightedstd
 from ...utilities.optionalimports import cvxpy as cp
 from ...utilities.tableio import writetable
+from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .field import Field, FieldOverlap
 
 def stitch(*, usecvxpy=False, **kwargs):
@@ -332,7 +333,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
   @methodtools.lru_cache()
   @property
-  def fields(self):
+  def __fields_and_shift(self):
     """
     Create the field objects from the rectangles and stitch result
     """
@@ -614,8 +615,16 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         f.pxvec -= (minx, miny)
         f.primaryregionx -= minx
         f.primaryregiony -= miny
+    shift = -minx, -miny
 
-    return result
+    return result, shift
+
+  @property
+  def fields(self):
+    return self.__fields_and_shift[0]
+  @property
+  def globalshift(self):
+    return self.__fields_and_shift[1]
 
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
     """
@@ -642,13 +651,25 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           AffineNominalEntry(
             n=n,
             matrixentry=entry,
-            description="a"+rowcoordinate+columncoordinate
+            description="a"+rowcoordinate+columncoordinate,
+            pscale=self.pscale,
           )
         )
+    for coordinate, shift in zip("xy", self.globalshift):
+      n += 1
+      affine.append(
+        AffineNominalEntry(
+          n=n,
+          matrixentry=shift,
+          description="shift"+coordinate,
+          pscale=self.pscale,
+        )
+      )
 
     for entry1, entry2 in itertools.combinations_with_replacement(affine[:], 2):
       n += 1
-      affine.append(AffineCovarianceEntry(n=n, entry1=entry1, entry2=entry2))
+      entry = AffineCovarianceEntry(n=n, entry1=entry1, entry2=entry2)
+      if entry: affine.append(entry)
     writetable(affinefilename, affine, rowclass=AffineEntry, **kwargs)
 
     writetable(fieldoverlapfilename, self.fieldoverlaps, **kwargs)
@@ -817,7 +838,16 @@ class StitchResultOverlapCovariances(StitchResultBase):
 
     Tcovariance[iTyy,iTyy] = dct["cov_ayy_ayy"]
 
+    shiftx = dct.get("shiftx", 0)
+    shifty = dct.get("shifty", 0)
+    assert not any("cov_" in _ and "shift" in _ for _ in dct)
+
     self.__T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape((2, 2))
+    self.__initialshift = np.array((shiftx, shifty))
+
+  @property
+  def globalshift(self):
+    return self.__initialshift + super().globalshift
 
 class ReadStitchResult(StitchResultOverlapCovariances):
   """
@@ -861,7 +891,7 @@ class StitchResultCvxpy(CalculatedStitchResult):
     self.xvar = x
     self.Tvar = T
 
-class AffineEntry(MyDataClass):
+class AffineEntry(DataClassWithPscale):
   """
   Entry in the affine matrix or in its covariance matrix
 
@@ -870,7 +900,10 @@ class AffineEntry(MyDataClass):
   description: description of the entry
   """
   n: int
-  value: float = MetaDataAnnotation(writefunction=float)
+  value: units.Distance = distancefield(
+    pixelsormicrons="pixels",
+    power=lambda self: self.description.count("shift"),
+  )
   description: str
 
 class AffineNominalEntry(AffineEntry):
@@ -881,6 +914,8 @@ class AffineNominalEntry(AffineEntry):
 
   @classmethod
   def transforminitargs(cls, *, matrixentry, **kwargs):
+    if units.std_dev(matrixentry) == 0:
+      matrixentry = units.ufloat(matrixentry, 0)
     return super().transforminitargs(value=matrixentry.n, matrixentry=matrixentry, **kwargs)
 
 class AffineCovarianceEntry(AffineEntry):
@@ -894,6 +929,18 @@ class AffineCovarianceEntry(AffineEntry):
   def transforminitargs(cls, *, entry1, entry2, **kwargs):
     if entry1 is entry2:
       value = entry1.matrixentry.s**2
+    elif entry1.matrixentry.s == 0 or entry2.matrixentry.s == 0:
+      value = 0
     else:
       value = covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0,1]
-    return super().transforminitargs(value=value, description = "cov_"+entry1.description+"_"+entry2.description, entry1=entry1, entry2=entry2, **kwargs)
+
+    morekwargs = {}
+    pscales = {entry1.pscale, entry2.pscale}
+    pscales.discard(None)
+    if pscales and "pscale" not in kwargs:
+      morekwargs["pscale"], = pscales
+
+    return super().transforminitargs(value=value, description = "cov_"+entry1.description+"_"+entry2.description, entry1=entry1, entry2=entry2, **kwargs, **morekwargs)
+
+  def __bool__(self):
+    return bool(self.value)

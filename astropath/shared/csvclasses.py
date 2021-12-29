@@ -3,7 +3,7 @@ from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import datefield, optionalfield, readtable
-from ..utilities.units.dataclasses import DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, Polygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
@@ -82,6 +82,56 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
     else:
       assert False, (type(string), string)
 
+  @classmethod
+  def transforminitargs(cls, name, value, unit=None, description=None, **kwargs):
+    if unit is None:
+      unit = {
+        "fwidth": "pixels",
+        "fheight": "pixels",
+        "flayers": "",
+        "locx": "microns",
+        "locy": "microns",
+        "locz": "microns",
+        "xposition": "microns",
+        "yposition": "microns",
+        "qpscale": "pixels/micron",
+        "apscale": "pixels/micron",
+        "pscale": "pixels/micron",
+        "nclip": "pixels",
+        "margin": "pixels",
+        "resolutionbits": "",
+        "gainfactor": "",
+        "binningx": "pixels",
+        "binningy": "pixels",
+        "annotationsonwsi": "",
+        "annotationxposition": "pixels",
+        "annotationyposition": "pixels",
+      }[name]
+    if description is None:
+      description = {
+        "fwidth": "field width",
+        "fheight": "field height",
+        "flayers": "field depth",
+        "locx": "xlocation",
+        "locy": "ylocation",
+        "locz": "zlocation",
+        "xposition": "slide x offset",
+        "yposition": "slide y offset",
+        "qpscale": "scale of the QPTIFF image",
+        "apscale": "scale of the QPTIFF image used for annotation",
+        "pscale": "scale of the HPF images",
+        "nclip": "pixels to clip off the edge after warping",
+        "margin": "minimum margin between the tissue and the wsi edge",
+        "resolutionbits": "number of significant bits in the im3 files",
+        "gainfactor": "the gain of the A/D amplifier for the im3 files",
+        "binningx": "the number of adjacent pixels coadded",
+        "binningy": "the number of adjacent pixels coadded",
+        "annotationsonwsi": "annotations drawn on astropath image? (otherwise qptiff)",
+        "annotationxposition": "x offset of the WSI image used to draw the annotations",
+        "annotationyposition": "y offset of the WSI image used to draw the annotations",
+      }[name]
+    return super().transforminitargs(name=name, value=value, unit=unit, description=description, **kwargs)
+
   name: str
   value: units.Distance = distancefield(
     secondfunction=__intorfloat,
@@ -157,7 +207,7 @@ class Annotation(DataClassWithPolygon):
   visible: bool = MetaDataAnnotation(readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
   poly: Polygon = polygonfield()
 
-class Vertex(DataClassWithPscale, DataClassWithApscale):
+class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
   """
   A vertex of a polygon.
 
@@ -173,9 +223,10 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
 
   regionid: int
   vid: int
-  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="apscale")
-  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="apscale")
+  x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
+  y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   pscale = None
+  isfromxml: bool = MetaDataAnnotation(False, includeintable=False)
 
   @property
   def xvec(self):
@@ -183,7 +234,7 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
     return np.array([self.x, self.y])
 
   @classmethod
-  def transforminitargs(cls, *args, pscale=None, apscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
+  def transforminitargs(cls, *args, pscale=None, annoscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
     xveckwargs = {}
     vertexkwargs = {}
     im3xykwargs = {}
@@ -195,21 +246,21 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
         field: getattr(vertex, field)
         for field in dataclassy.fields(type(vertex))
       }
-      if apscale is None: apscale = vertex.apscale
-      if apscale != vertex.apscale: raise ValueError(f"Inconsistent apscales {apscale} {vertex.apscale}")
+      if annoscale is None: annoscale = vertex.annoscale
+      if annoscale != vertex.annoscale: raise ValueError(f"Inconsistent annoscales {annoscale} {vertex.annoscale}")
       if pscale is None: pscale = vertex.pscale
       if pscale != vertex.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {vertex.pscale}")
-      del vertexkwargs["pscale"], vertexkwargs["apscale"]
+      del vertexkwargs["pscale"], vertexkwargs["annoscale"]
     if im3x is not None:
-      im3xykwargs["x"] = units.convertpscale(im3x, pscale, apscale)
+      im3xykwargs["x"] = units.convertpscale(im3x, pscale, annoscale)
     if im3y is not None:
-      im3xykwargs["y"] = units.convertpscale(im3y, pscale, apscale)
+      im3xykwargs["y"] = units.convertpscale(im3y, pscale, annoscale)
     if im3xvec is not None:
-      im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, apscale)
+      im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, annoscale)
     return super().transforminitargs(
       *args,
       pscale=pscale,
-      apscale=apscale,
+      annoscale=annoscale,
       **kwargs,
       **xveckwargs,
       **vertexkwargs,
@@ -224,7 +275,7 @@ class Vertex(DataClassWithPscale, DataClassWithApscale):
     """
     if self.pscale is None:
       raise ValueError("Can't get im3 dimensions if you don't provide a pscale")
-    return units.convertpscale(self.xvec, self.apscale, self.pscale)
+    return units.convertpscale(self.xvec, self.annoscale, self.pscale)
   @property
   def im3x(self):
     """x in im3 coordinates"""

@@ -1,4 +1,8 @@
-import abc, contextlib, contextlib2, csv, dataclasses, dataclassy, datetime, io, job_lock, pathlib
+import abc, contextlib, csv, dataclasses, dataclassy, datetime, io, job_lock, pathlib
+try:
+  contextlib.nullcontext
+except AttributeError:
+  import contextlib2 as contextlib
 
 from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
@@ -60,7 +64,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
   result = []
   if checknewlines:
     checkwindowsnewlines(filename)
-  with field_size_limit_context(fieldsizelimit), contextlib2.nullcontext(filename) if isinstance(filename, io.TextIOBase) else open(filename) as f:
+  with field_size_limit_context(fieldsizelimit), contextlib.nullcontext(filename) if isinstance(filename, io.TextIOBase) else open(filename) as f:
     if header:
       fieldnames = None
     else:
@@ -122,6 +126,7 @@ def writetable(filename, rows, *, rowclass=None, retry=False, printevery=float("
   printevery: print after writing multiples of this many rows
   logger:     logger object for printevery
   header:     write the header row (default: True)
+  append:     append to an existing file instead of writing a new one
 
   Example:
     >>> import pathlib, tempfile

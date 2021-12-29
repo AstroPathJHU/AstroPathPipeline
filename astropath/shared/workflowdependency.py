@@ -134,7 +134,7 @@ class WorkflowDependency(ThingWithRoots):
     pass
 
   @abc.abstractmethod
-  def workflowdependencies(self):
+  def workflowdependencies(self, **kwargs):
     return []
 
 class WorkflowDependencySlideID(WorkflowDependency):

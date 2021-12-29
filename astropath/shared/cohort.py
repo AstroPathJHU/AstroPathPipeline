@@ -239,13 +239,14 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
         #but not KeyboardInterrupt
         with self.handlesampleiniterror(samp, **kwargs):
           raise
-      try:
-        yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
-      except Exception:
-        #enter the logger here to log exceptions in __init__ of the sample
-        #but not KeyboardInterrupt
-        with self.handlesamplefiltererror(samp, **kwargs):
-          raise
+      else:
+        try:
+          yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
+        except Exception:
+          #enter the logger here to log exceptions in __init__ of the sample
+          #but not KeyboardInterrupt
+          with self.handlesamplefiltererror(samp, **kwargs):
+            raise
 
   def handlesampledeffiltererror(self, samp, **kwargs):
     return self.getlogger(samp)
@@ -603,6 +604,12 @@ class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
     self.__annotationsxmlregex = annotationsxmlregex
     super().__init__(*args, **kwargs)
   @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "annotationsxmlregex": self.__annotationsxmlregex,
+    }
+  @property
   def initiatesamplekwargs(self):
     return {
       **super().initiatesamplekwargs,
@@ -722,7 +729,7 @@ class WorkflowCohort(Cohort):
         runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
-          for dependency in self.sampleclass.workflowdependencyclasses()
+          for dependency in self.sampleclass.workflowdependencyclasses(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
         ],
       )
     kwargs["slideidfilters"].append(SampleFilter(slideidfilter, None, None))
@@ -732,7 +739,7 @@ class WorkflowCohort(Cohort):
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=SlideID, Scan=sample.samp.Scan, **self.workflowkwargs, **kwargs)
-          for dependency, SlideID in sample.workflowdependencies()
+          for dependency, SlideID in sample.workflowdependencies(SlideID=sample.SlideID, Scan=sample.samp.Scan, **self.workflowkwargs)
         ],
       )
     kwargs["samplefilters"].append(SampleFilter(samplefilter, None, None))
@@ -779,6 +786,11 @@ class WorkflowCohort(Cohort):
             raise RuntimeError(f"{sample.logger.SlideID} {status}")
 
           return result
+
+  def run(self, *, print_errors=False, printnotrunning=None, **kwargs):
+    if printnotrunning is None and print_errors:
+      kwargs["printnotrunning"] = False
+    return super().run(print_errors=print_errors, **kwargs)
 
   @contextlib.contextmanager
   def handlesampledeffiltererror(self, samp, *, print_errors, **kwargs):
