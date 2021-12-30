@@ -686,7 +686,7 @@ class WorkflowCohort(Cohort):
           runstatus.error = None
         if runstatus.started and require_commit is not None:
           if runstatus.gitcommit is None:
-            raise ValueError("previous runstatus has gitcommit of None, check the log")
+            runstatus.started = runstatus.ended = False
           if not require_commit <= runstatus.lastcleanstart:
             runstatus.started = runstatus.ended = False
         if not runstatus.started:  #log doesn't exist at all
