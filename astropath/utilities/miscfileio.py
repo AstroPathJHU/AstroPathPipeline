@@ -1,4 +1,4 @@
-import contextlib, csv, numpy as np, os, pathlib, re, subprocess, sys
+import contextlib, csv, numpy as np, os, pathlib, re, shutil, subprocess, sys
 if sys.platform != "cygwin": import psutil
 
 @contextlib.contextmanager
@@ -21,6 +21,12 @@ def rm_missing_ok(path):
       return path.unlink()
     except FileNotFoundError:
       pass
+
+def rmtree_missing_ok(path, **kwargs):
+  try:
+    shutil.rmtree(path, **kwargs)
+  except FileNotFoundError:
+    pass
 
 def is_relative_to(path1, path2):
   """
