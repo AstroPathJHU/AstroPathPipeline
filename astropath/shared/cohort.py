@@ -687,7 +687,7 @@ class WorkflowCohort(Cohort):
         if runstatus.started and require_commit is not None:
           if runstatus.gitcommit is None:
             runstatus.started = runstatus.ended = False
-          if not require_commit <= runstatus.lastcleanstart:
+          elif not require_commit <= runstatus.lastcleanstart:
             runstatus.started = runstatus.ended = False
         if not runstatus.started:  #log doesn't exist at all
           cleanup = True
