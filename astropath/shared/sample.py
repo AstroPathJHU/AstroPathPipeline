@@ -38,7 +38,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots):
     self.__root = pathlib.Path(root)
     self.samp = SampleDef(root=root, samp=samp)
     if not (self.root/self.SlideID).exists():
-      raise IOError(f"{self.root/self.SlideID} does not exist")
+      raise FileNotFoundError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
     self.__logroot = pathlib.Path(logroot)
     if im3root is None: im3root = root

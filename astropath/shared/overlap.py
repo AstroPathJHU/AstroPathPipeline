@@ -83,7 +83,7 @@ class Overlap(DataClassWithPscale):
     """
     return np.array([self.x2, self.y2])
 
-class OverlapCollection(abc.ABC):
+class OverlapCollection(units.ThingWithPscale):
   """
   Base class for a group of overlaps.
   """
@@ -178,6 +178,11 @@ class OverlapList(list, OverlapCollection):
   """
   @property
   def overlaps(self): return self
+
+  @property
+  def pscale(self):
+    result, = {o.pscale for o in self.overlaps}
+    return result
 
 class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
   """

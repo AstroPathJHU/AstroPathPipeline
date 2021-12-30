@@ -399,19 +399,12 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           primaryregions[gc].append(m*len(average)+b_right)
         else:
           #can't fit a line because there are only at most 2 rows/columns, so do an approximation
-          allcs = {gc: sorted({self.rectangles[self.rectangledict[n]].cxvec[i] for n in island}) for gc, island in enumerate(islands, start=1)}
-          mindiff = min(itertools.chain(*(np.diff(islandcs) for islandcs in allcs.values())))
-          divideby = 1
-          while mindiff / divideby > shape[i]:
-            divideby += 1
-          mindiff /= divideby
-
           if len(primaryregions[gc]) == 1:
-            primaryregions[gc].insert(0, primaryregions[gc][0] - mindiff)
-            primaryregions[gc].append(primaryregions[gc][1] + mindiff)
+            primaryregions[gc].insert(0, primaryregions[gc][0] - self.hpfoffset[i])
+            primaryregions[gc].append(primaryregions[gc][1] + self.hpfoffset[i])
           else: #len(primaryregions[gc]) == 0
-            primaryregions[gc].append(average[0] + (shape[i] - mindiff) / 2)
-            primaryregions[gc].append(average[0] + (shape[i] + mindiff) / 2)
+            primaryregions[gc].append(average[0] + (shape[i] - self.hpfoffset[i]) / 2)
+            primaryregions[gc].append(average[0] + (shape[i] + self.hpfoffset[i]) / 2)
 
     mx1 = {}
     mx2 = {}

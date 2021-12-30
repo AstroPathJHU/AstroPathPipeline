@@ -1,4 +1,4 @@
-import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
+import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.miscfileio import memmapcontext
@@ -673,7 +673,7 @@ class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
     image, = super().getimage().transpose(2, 0, 1)
     return image
 
-class RectangleCollection(abc.ABC):
+class RectangleCollection(units.ThingWithPscale):
   """
   Base class for a group of rectangles.
   You can get a rectangledict from it, which allows indexing rectangles
@@ -697,12 +697,45 @@ class RectangleCollection(abc.ABC):
     """
     return {r.n for r in self.rectangles}
 
+  @methodtools.lru_cache()
+  @property
+  def hpfoffset(self):
+    """
+    The distance in x and y between adjacent HPFs
+    """
+    rectxvecs = np.round(np.array([rect.xvec for rect in self.rectangles])/self.onepixel, 5) * self.onepixel
+
+    result = np.zeros(2, dtype=object)
+    for idx in 0, 1:
+      otheridx = 1-idx
+
+      c = collections.Counter()
+
+      for xvec1 in rectxvecs:
+        mindiff = None
+        for xvec2 in rectxvecs[rectxvecs[:, otheridx] == xvec1[otheridx]]:
+          thisdiff = (xvec2 - xvec1)[idx]
+          if thisdiff > 0 and (mindiff is None or thisdiff < mindiff):
+            mindiff = thisdiff
+        if mindiff is not None:
+          c[mindiff] += 1
+
+      (result[idx], _), = c.most_common(1)
+
+    return result
+
 class RectangleList(list, RectangleCollection):
   """
   A list of rectangles.  You can get rectangledict and rectangleindices from it.
   """
   @property
   def rectangles(self): return self
+
+  @methodtools.lru_cache()
+  @property
+  def pscale(self):
+    result, = {rect.pscale for rect in self.rectangles}
+    return result
 
 def rectangledict(rectangles):
   """
