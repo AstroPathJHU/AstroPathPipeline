@@ -1,4 +1,4 @@
-import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, tifffile, traceback, warnings
+import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.miscfileio import memmapcontext

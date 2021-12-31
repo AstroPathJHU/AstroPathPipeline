@@ -1,4 +1,4 @@
-import abc, networkx as nx, numpy as np, pathlib
+import abc, methodtools, networkx as nx, numpy as np, pathlib
 
 from ..utilities import units
 from ..utilities.tableio import readtable
@@ -216,13 +216,18 @@ class RectangleOverlapList(RectangleOverlapCollection):
   Contains a list of rectangles and a list of overlaps.
   """
   def __init__(self, rectangles, overlaps):
-    self.__rectangles = rectangles
-    self.__overlaps = overlaps
+    self.__rectangles = RectangleList(rectangles)
+    self.__overlaps = OverlapList(overlaps)
 
   @property
   def rectangles(self): return self.__rectangles
   @property
   def overlaps(self): return self.__overlaps
+  @methodtools.lru_cache()
+  @property
+  def pscale(self):
+    result, = {self.rectangles.pscale, self.overlaps.pscale}
+    return result
 
 def rectangleoverlaplist_fromcsvs(dbloadfolder, *, layer, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, rectangletype=Rectangle, overlaptype=Overlap):
   """
