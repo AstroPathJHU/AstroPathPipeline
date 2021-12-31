@@ -192,12 +192,12 @@ class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
   has metadata for the nodes and also includes rectangles that
   aren't in an overlap.
   """
-  def overlapgraph(self, *args, onlyingrid=False, skipoverlaps=None, **kwargs):
+  def overlapgraph(self, *args, gridatol=None, skipoverlaps=None, **kwargs):
     if skipoverlaps is None: skipoverlaps = []
-    if onlyingrid:
+    if gridatol is not None:
       for overlap in self.overlaps:
         offset = overlap.x1vec - overlap.x2vec
-        if not all((offset == 0) | units.np.isclose(abs(offset), self.hpfoffset)):
+        if not np.all(units.np.isclose(offset, 0, atol=gridatol) | units.np.isclose(abs(offset), self.hpfoffset, atol=gridatol)):
           skipoverlaps.append(overlap)
     g = super().overlapgraph(*args, skipoverlaps=skipoverlaps, **kwargs)
     for r in self.rectangles:

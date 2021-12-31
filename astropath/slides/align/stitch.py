@@ -286,6 +286,12 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
   @methodtools.lru_cache()
   @property
+  def gridatol(self):
+    shape = np.min([_.shape for _ in self.rectangles], axis=0)
+    return shape / 10
+
+  @methodtools.lru_cache()
+  @property
   def pscale(self):
     pscale, = {_.pscale for _ in itertools.chain(self.rectangles, self.overlaps)}
     return pscale
@@ -338,14 +344,16 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     Create the field objects from the rectangles and stitch result
     """
     result = RectangleList()
-    gridislands = list(self.islands(useexitstatus=True, onlyingrid=True))
-    alignedislands = list(self.islands(useexitstatus=True, onlyingrid=False))
+    gridislands = list(self.islands(useexitstatus=True, gridatol=self.gridatol))
+    alignedislands = list(self.islands(useexitstatus=True, gridatol=None))
     onepixel = self.onepixel
     gxdict = collections.defaultdict(dict)
     gydict = collections.defaultdict(dict)
     primaryregionsx = {}
     primaryregionsy = {}
     isorphan = {}
+    adjustcx = {}
+    adjustcy = {}
 
     shape = {tuple(r.shape) for r in self.rectangles}
     if len(shape) > 1:
@@ -356,13 +364,23 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       rectangles = [self.rectangles[self.rectangledict[n]] for n in island]
       isorphan[gc] = len(island) == 1 and island in alignedislands
 
-      for i, (primaryregions, gdict) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict))):
-        #find the gx and gy that correspond to cx and cy
+      for i, (primaryregions, gdict, adjustc) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict), (adjustcx, adjustcy))):
+        #find the gx and gy that correspond to each nominal x and y
         average = []
-        cs = sorted({r.cxvec[i] for r in rectangles})
+
+        gridatol = self.gridatol[i]
+        allcs = sorted({r.xvec[i] for r in rectangles})
+        adjustc.update({c: c for c in allcs})
+        for c1, c2 in more_itertools.pairwise(allcs):
+          if c2-c1 <= gridatol:
+            adjustc[c2] = adjustc[c1]
+            if c2 - adjustc[c2] > gridatol:
+              raise ValueError(f"HPFs are offset from the grid by more than the tolerance {c2} {adjustc[c2]}, please check")
+        cs = sorted(set(adjustc.values()))
+
         for g, c in enumerate(cs, start=1):
           gdict[gc][c] = g
-          theserectangles = [r for r in rectangles if r.cxvec[i] == c]
+          theserectangles = [r for r in rectangles if adjustc[r.xvec[i]] == c]
           average.append(np.mean(units.nominal_values([self.x(r)[i] for r in theserectangles])))
 
         #find mx1, my1, mx2, my2
@@ -419,8 +437,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       for rid in island:
         r = self.rectangles[self.rectangledict[rid]]
 
-        gx = gxdict[i][r.cx]
-        gy = gydict[i][r.cy]
+        gx = gxdict[i][adjustcx[r.x]]
+        gy = gydict[i][adjustcy[r.y]]
 
         mx1[rid] = primaryregionsx[i][gx-1]
         mx2[rid] = primaryregionsx[i][gx]
@@ -583,8 +601,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           break
       else:
         assert False
-      gx = gxdict[gc][rectangle.cx]
-      gy = gydict[gc][rectangle.cy]
+      gx = gxdict[gc][adjustcx[rectangle.x]]
+      gy = gydict[gc][adjustcy[rectangle.y]]
       pxvec = self.x(rectangle) - self.origin
       minpxvec = np.min([minpxvec, units.nominal_values(pxvec)], axis=0)
       result.append(
