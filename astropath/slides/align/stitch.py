@@ -352,8 +352,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     primaryregionsx = {}
     primaryregionsy = {}
     isorphan = {}
-    adjustcx = {}
-    adjustcy = {}
+    adjustcx = collections.defaultdict(dict)
+    adjustcy = collections.defaultdict(dict)
 
     shape = {tuple(r.shape) for r in self.rectangles}
     if len(shape) > 1:
@@ -364,7 +364,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       rectangles = [self.rectangles[self.rectangledict[n]] for n in island]
       isorphan[gc] = len(island) == 1 and island in alignedislands
 
-      for i, (primaryregions, gdict, adjustc) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict), (adjustcx, adjustcy))):
+      for i, (primaryregions, gdict, adjustc) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict), (adjustcx[gc], adjustcy[gc]))):
         #find the gx and gy that correspond to each nominal x and y
         average = []
 
@@ -437,8 +437,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       for rid in island:
         r = self.rectangles[self.rectangledict[rid]]
 
-        gx = gxdict[i][adjustcx[r.x]]
-        gy = gydict[i][adjustcy[r.y]]
+        gx = gxdict[i][adjustcx[i][r.x]]
+        gy = gydict[i][adjustcy[i][r.y]]
 
         mx1[rid] = primaryregionsx[i][gx-1]
         mx2[rid] = primaryregionsx[i][gx]
@@ -601,8 +601,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           break
       else:
         assert False
-      gx = gxdict[gc][adjustcx[rectangle.x]]
-      gy = gydict[gc][adjustcy[rectangle.y]]
+      gx = gxdict[gc][adjustcx[gc][rectangle.x]]
+      gy = gydict[gc][adjustcy[gc][rectangle.y]]
       pxvec = self.x(rectangle) - self.origin
       minpxvec = np.min([minpxvec, units.nominal_values(pxvec)], axis=0)
       result.append(
