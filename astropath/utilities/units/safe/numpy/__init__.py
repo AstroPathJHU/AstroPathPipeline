@@ -5,10 +5,7 @@ from . import fft, linalg, testing
 
 @np.vectorize
 def isclose(distance1, distance2, rtol=1e-5, atol=0, *args, **kwargs):
-  if None is not _power(distance1)[()] != _power(distance2)[()] is not None:
-    raise UnitsError(f"Trying to compare distances with different powers\n{distance1}\n{distance2}")
-  if None is not _pscale(distance1)[()] != _pscale(distance2)[()] is not None:
-    raise UnitsError(f"Trying to compare distances with different pscales\n{distance1}\n{distance2}")
+  if distance1 == distance2: return True #automatically asserts pscale and power equality
 
   pscale = _pscale(distance1)
   if pscale is None: pscale = _pscale(distance2)
