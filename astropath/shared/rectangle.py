@@ -705,7 +705,7 @@ class RectangleCollection(units.ThingWithPscale):
     """
     rectxvecs = np.round(np.array([rect.xvec for rect in self.rectangles])/self.onepixel, 5) * self.onepixel
 
-    result = np.zeros(2, dtype=object)
+    result = np.zeros(2, dtype=units.unitdtype)
     for idx in 0, 1:
       otheridx = 1-idx
 

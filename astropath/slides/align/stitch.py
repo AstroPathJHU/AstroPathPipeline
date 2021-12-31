@@ -338,7 +338,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     Create the field objects from the rectangles and stitch result
     """
     result = RectangleList()
-    islands = list(self.islands(useexitstatus=True))
+    gridislands = list(self.islands(useexitstatus=True, onlyingrid=True))
+    alignedislands = list(self.islands(useexitstatus=True, onlyingrid=False))
     onepixel = self.onepixel
     gxdict = collections.defaultdict(dict)
     gydict = collections.defaultdict(dict)
@@ -350,7 +351,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       raise ValueError("Some rectangles have different shapes")
     shape = shape.pop()
 
-    for gc, island in enumerate(islands, start=1):
+    for gc, island in enumerate(gridislands, start=1):
       rectangles = [self.rectangles[self.rectangledict[n]] for n in island]
 
       for i, (primaryregions, gdict) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict))):
@@ -412,7 +413,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     my2 = {}
 
     #set gx, gy, mx1, my1, mx2, my2 for the HPFs
-    for i, island in enumerate(islands, start=1):
+    for i, island in enumerate(gridislands, start=1):
       for rid in island:
         r = self.rectangles[self.rectangledict[rid]]
 
@@ -453,7 +454,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
             raise ValueError(f"{rid}: py+h = {pxvec[1]+r.h}, my2 = {my2[rid]}")
 
     #see if the primary regions of any HPFs in different islands overlap
-    for (i1, island1), (i2, island2) in itertools.combinations(enumerate(islands, start=1), r=2):
+    for (i1, island1), (i2, island2) in itertools.combinations(enumerate(gridislands, start=1), r=2):
       if len(island1) == 1 or len(island2) == 1: continue #orphans are excluded
 
       #first see if the islands overlap
@@ -572,10 +573,10 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           ):
             raise ValueError(f"Primary regions for fields {rid1} and {rid2} still overlap")
 
-    #if there are any HPFs that are in the wrong quadrant (negative px or py), adjust the whole slide
     minpxvec = [np.inf * onepixel, np.inf * onepixel]
+
     for rectangle in self.rectangles:
-      for gc, island in enumerate(islands, start=1):
+      for gc, island in enumerate(gridislands, start=1):
         if rectangle.n in island:
           break
       else:
@@ -584,11 +585,12 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       gy = gydict[gc][rectangle.cy]
       pxvec = self.x(rectangle) - self.origin
       minpxvec = np.min([minpxvec, units.nominal_values(pxvec)], axis=0)
+      isorphan = len(island) == 1 and island in alignedislands
       result.append(
         Field(
           rectangle=rectangle,
           ixvec=floattoint(np.round((rectangle.xvec / onepixel).astype(float))) * onepixel,
-          gc=0 if len(island) == 1 else gc,
+          gc=0 if isorphan else gc,
           pxvec=pxvec,
           gxvec=(gx, gy),
           primaryregionx=np.array([mx1[rectangle.n], mx2[rectangle.n]]) - self.origin[0],
@@ -597,6 +599,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         )
       )
 
+    #if there are any HPFs that are in the wrong quadrant (negative px or py), adjust the whole slide
     minx, miny = np.floor((minpxvec - self.margin)/(100*onepixel))*100*onepixel
     if minx > 0: minx = 0
     if miny > 0: miny = 0

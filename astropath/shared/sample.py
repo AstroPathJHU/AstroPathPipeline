@@ -1309,8 +1309,7 @@ class XMLLayoutReader(SampleBase):
     overlaps = []
     for r1, r2 in itertools.product(self.rectangles, repeat=2):
       if r1 is r2: continue
-      offset = r1.xvec - r2.xvec
-      if np.all((offset == 0) | units.np.isclose(offset, self.hpfoffset)):
+      if np.all(abs(r1.cxvec - r2.cxvec) < r1.shape):
         tag = int(np.sign(r1.cx-r2.cx)) + 3*int(np.sign(r1.cy-r2.cy)) + 5
         overlaps.append(
           overlaptype(

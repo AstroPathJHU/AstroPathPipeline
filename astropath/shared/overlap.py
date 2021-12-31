@@ -91,7 +91,7 @@ class OverlapCollection(units.ThingWithPscale):
   @abc.abstractmethod
   def overlaps(self): pass
 
-  def overlapgraph(self, useexitstatus=False):
+  def overlapgraph(self, useexitstatus=False, skipoverlaps=None):
     """
     Get a networkx graph object.
     It has a node for each rectangle id and an edge for
@@ -101,9 +101,11 @@ class OverlapCollection(units.ThingWithPscale):
     have been aligned), it will only include overlaps with an exit
     status of 0.
     """
+    if skipoverlaps is None: skipoverlaps = []
     g = nx.DiGraph()
     for o in self.overlaps:
       if useexitstatus and o.result.exit: continue
+      if o in skipoverlaps: continue
       g.add_edge(o.p1, o.p2, overlap=o)
 
     return g
@@ -128,7 +130,7 @@ class OverlapCollection(units.ThingWithPscale):
     """
     return list(nx.strongly_connected_components(self.overlapgraph(*args, **kwargs)))
 
-  def overlapsforrectangle(self,rectangle_n,*args,**kwargs):
+  def overlapsforrectangle(self, rectangle_n, *args, **kwargs):
     """
     Return the overlaps for a given rectangle as graph edges
 
@@ -190,7 +192,13 @@ class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
   has metadata for the nodes and also includes rectangles that
   aren't in an overlap.
   """
-  def overlapgraph(self, *args, **kwargs):
+  def overlapgraph(self, *args, onlyingrid=False, skipoverlaps=None, **kwargs):
+    if skipoverlaps is None: skipoverlaps = []
+    if onlyingrid:
+      for overlap in self.overlaps:
+        offset = overlap.x1vec - overlap.x2vec
+        if not all((offset == 0) | units.np.isclose(abs(offset), self.hpfoffset)):
+          skipoverlaps.append(overlap)
     g = super().overlapgraph(*args, **kwargs)
     for r in self.rectangles:
       g.add_node(r.n, rectangle=r)
