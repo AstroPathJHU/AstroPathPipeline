@@ -199,7 +199,7 @@ class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
         offset = overlap.x1vec - overlap.x2vec
         if not all((offset == 0) | units.np.isclose(abs(offset), self.hpfoffset)):
           skipoverlaps.append(overlap)
-    g = super().overlapgraph(*args, **kwargs)
+    g = super().overlapgraph(*args, skipoverlaps=skipoverlaps, **kwargs)
     for r in self.rectangles:
       g.add_node(r.n, rectangle=r)
     return g

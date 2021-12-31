@@ -345,6 +345,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     gydict = collections.defaultdict(dict)
     primaryregionsx = {}
     primaryregionsy = {}
+    isorphan = {}
 
     shape = {tuple(r.shape) for r in self.rectangles}
     if len(shape) > 1:
@@ -353,6 +354,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
     for gc, island in enumerate(gridislands, start=1):
       rectangles = [self.rectangles[self.rectangledict[n]] for n in island]
+      isorphan[gc] = len(island) == 1 and island in alignedislands
 
       for i, (primaryregions, gdict) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict))):
         #find the gx and gy that correspond to cx and cy
@@ -455,7 +457,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
     #see if the primary regions of any HPFs in different islands overlap
     for (i1, island1), (i2, island2) in itertools.combinations(enumerate(gridislands, start=1), r=2):
-      if len(island1) == 1 or len(island2) == 1: continue #orphans are excluded
+      if isorphan[i1] or isorphan[i2]: continue #orphans are excluded
 
       #first see if the islands overlap
       x11 = min(primaryregionsx[i1])
@@ -585,12 +587,11 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
       gy = gydict[gc][rectangle.cy]
       pxvec = self.x(rectangle) - self.origin
       minpxvec = np.min([minpxvec, units.nominal_values(pxvec)], axis=0)
-      isorphan = len(island) == 1 and island in alignedislands
       result.append(
         Field(
           rectangle=rectangle,
           ixvec=floattoint(np.round((rectangle.xvec / onepixel).astype(float))) * onepixel,
-          gc=0 if isorphan else gc,
+          gc=0 if isorphan[gc] else gc,
           pxvec=pxvec,
           gxvec=(gx, gy),
           primaryregionx=np.array([mx1[rectangle.n], mx2[rectangle.n]]) - self.origin[0],
