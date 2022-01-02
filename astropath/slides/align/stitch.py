@@ -532,7 +532,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
               ys = yy11, yy22
               riday, ridby = rid1, rid2
             if xs is ys is None:
-              raise ValueError(f"Primary regions for fields {rid1} and {rid2} have too big of an overlap")
+              raise ValueError(f"Primary regions for fields {rid1} and {rid2} have too big of an overlap:\nfield {rid1}: mx = ({xx11}, {xx12}), my = ({yy11}, {yy12})\nfield {rid2}: mx = ({xx21}, {xx22}), my = ({yy21}, {yy22})")
 
             if xs is not None and ys is not None:
               cornerstoadjust[xs, ys].append((ridax, ridbx, riday, ridby))
