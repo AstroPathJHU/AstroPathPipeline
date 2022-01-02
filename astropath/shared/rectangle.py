@@ -720,7 +720,14 @@ class RectangleCollection(units.ThingWithPscale):
         if mindiff is not None:
           c[mindiff] += 1
 
-      (result[idx], _), = c.most_common(1)
+      mostcommon = c.most_common()
+      result[idx], mostndiffs = mostcommon[0]
+      for diff, ndiffs in mostcommon:
+        if ndiffs == mostndiffs:
+          if diff < result[idx]:
+            result[idx] = diff
+        else:
+          break
 
     return result
 
