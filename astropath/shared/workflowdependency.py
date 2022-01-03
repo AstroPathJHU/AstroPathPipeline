@@ -2,7 +2,7 @@ import abc, contextlib, csv, datetime, more_itertools, re
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.miscfileio import field_size_limit_context, rm_missing_ok
 from ..utilities.version.git import GitCommit, thisrepo
-from .logging import MyLogger
+from .logging import MyLogger, ThingWithLogger
 
 class ThingWithRoots(abc.ABC):
   @property
@@ -12,7 +12,7 @@ class ThingWithRoots(abc.ABC):
   def rootkwargs(self):
     return {name: getattr(self, name) for name in self.rootnames}
 
-class WorkflowDependency(ThingWithRoots):
+class WorkflowDependency(ThingWithRoots, ThingWithLogger):
   @property
   def workflowkwargs(self):
     return self.rootkwargs
@@ -125,10 +125,6 @@ class WorkflowDependency(ThingWithRoots):
   def run(self):
     pass
 
-  @property
-  @abc.abstractmethod
-  def logger(self):
-    pass
   @abc.abstractmethod
   def joblock(self):
     pass
