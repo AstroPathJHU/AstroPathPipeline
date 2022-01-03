@@ -2,7 +2,7 @@ import abc, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.image_masking.image_mask import ImageMask
-from ...shared.image_masking.maskloader import MaskLoader, TissueMaskLoaderWithPolygons
+from ...shared.image_masking.maskloader import MaskLoader, TissueMaskLoader, TissueMaskLoaderWithPolygons
 from ...shared.logging import ThingWithLogger
 from ...shared.rectangle import MaskRectangle
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
@@ -37,7 +37,15 @@ class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgum
     folder = self.maskfolder
     return folder/filename
 
-class TissueMaskSample(MaskSample, TissueMaskLoaderWithPolygons):
+class TissueMaskSample(MaskSample, TissueMaskLoader):
+  """
+  Base class for a sample that has a mask for tissue,
+  which can be obtained from the main mask. (e.g. if the
+  main mask has multiple classifications, the tissue mask
+  could be mask == 1)
+  """
+
+class TissueMaskSampleWithPolygons(TissueMaskSample, TissueMaskLoaderWithPolygons):
   """
   Base class for a sample that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the

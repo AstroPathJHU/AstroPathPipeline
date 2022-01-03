@@ -2,8 +2,6 @@ import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, 
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import Region, Vertex
-from ...shared.image_masking.maskloader import TissueMaskLoaderWithPolygons
-from ...shared.logging import ThingWithLogger
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
 from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ZoomFolderSampleBase
@@ -18,7 +16,7 @@ from ..align.computeshift import computeshift
 from ..align.field import Field
 from ..align.overlap import AlignmentComparison
 from ..align.stitch import AffineEntry
-from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, TissueMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample
+from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample, TissueMaskSampleWithPolygons
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .mergeannotationxmls import AnnotationInfoWriterArgumentParser, AnnotationInfoWriterSample, MergeAnnotationXMLsSample
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
@@ -918,7 +916,7 @@ class AnnoWarpArgumentParserTissueMask(AnnoWarpArgumentParserBase, DbloadArgumen
     return kwargs
 
 
-class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSample, MaskWorkflowSampleBase, AnnoWarpArgumentParserTissueMask):
+class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSampleWithPolygons, MaskWorkflowSampleBase, AnnoWarpArgumentParserTissueMask):
   """
   Use a tissue mask to determine which tiles to use for alignment
 
