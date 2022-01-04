@@ -222,7 +222,14 @@ class SampleRunStatus(MyDataClass):
     return self.previousrun.nruns + 1
 
   @classmethod
-  def fromlog(cls, *, samplelog, SlideID, module, missingfiles, workinprogressfiles, startregex, endregex):
+  def fromlog(cls, **kwargs):
+    try:
+      return cls._fromlog(**kwargs)
+    except Exception as e:
+      return e
+
+  @classmethod
+  def _fromlog(cls, *, samplelog, SlideID, module, missingfiles, workinprogressfiles, startregex, endregex):
     """
     Create a SampleRunStatus object by reading the log file.
     samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log

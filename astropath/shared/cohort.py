@@ -321,7 +321,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     """
     Print which samples would be run if you run the cohort
     """
-    for samp, filters in self.sampledefswithfilters():
+    for samp, filters in self.sampledefswithfilters(**kwargs):
       logger = self.printlogger(samp)
       if all(filters):
         if any(filter.cleanup for filter in filters):
@@ -680,6 +680,12 @@ class WorkflowCohort(Cohort):
       raise ValueError(f"Trying to require commit {require_commit}, but that is not an ancestor of the current commit {thisrepo.currentcommit}")
 
     def filter(runstatus, dependencyrunstatuses):
+      if isinstance(runstatus, Exception):
+        return FilterResult(False, f"runstatus gave an error: {runstatus}", cleanup=False)
+      for dep in dependencyrunstatuses:
+        if isinstance(dep, Exception):
+          return FilterResult(False, f"dependency runstatus gave an error: {dep}", cleanup=False)
+
       if skip_finished:
         cleanup = False
         if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
