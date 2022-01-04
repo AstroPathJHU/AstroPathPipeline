@@ -167,6 +167,12 @@ pipeline {
             }
           }
         }
+		
+        stage('ps meanimage') {
+          steps {
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
+          }
+        }
 
         stage('flatfield cohorts') {
           stages {
