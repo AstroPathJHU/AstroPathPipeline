@@ -11,13 +11,25 @@
 Class testpsmeanimage {
     #
     testpsmeanimage(){
-      #
-      $module = $PSScriptRoot + '/../astropath'
-      Import-Module $module -EA SilentlyContinue 
-      if($error){
-          Throw 'Module could not be imported'
-      }
-      #
+        #
+        # Setup Testing
+        #
+        $module = $PSScriptRoot + '/../astropath'
+        Import-Module $module -EA SilentlyContinue 
+        if($error){
+            Throw 'Module could not be imported'
+        }
+        $processing = $PSScriptRoot + '/test_for_jenkins/testing_meanimage'
+        $datalocation = $PSScriptRoot + '/data'
+        $task = ('1', 'M21_1', $processing, $datalocation)
+        $inp = meanimage $task
+        #
+        # Run Tests
+        #
+        $this.DownloadFilesTest()
+        #$this.ShredDatTest()
+        #$this.ReturnDataTest()
+        #$this.CleanupTest()
     }
     #
     [void]DownloadFilesTest(){
@@ -48,7 +60,7 @@ Class testpsmeanimage {
         }
     }
     #
-    [void]ReturnDataTest(){
+    [void]CleanupTest(){
         $this.cleanup()
         if ($this.processvars[4]) {
             if (@(Test-Path $this.processvars[0])) {
@@ -57,32 +69,12 @@ Class testpsmeanimage {
             }
         }
     }
-    #
+}
 #
 # launch test and exit if no error found
 #
 $test = [testpsmeanimage]::new()
-$test.DownloadFilesTest()
 exit 0
-
-
-
-Write-Host 'Starting Tests... Script Root =' $PSScriptRoot
-$modulelocation = $PSScriptRoot + '\..\astropath'
-Import-Module $modulelocation
-$processing = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
-$datalocation = $PSScriptRoot + '\data'
-Write-Host ' Processing Location =' $PSScriptRoot
-Write-Host 'Data Location =' $PSScriptRoot
-$task = ('1', 'M21_1', $processing, $datalocation)
-$inp = meanimage $task
-
-Write-Output $inp
-exit 0
-
 
 #Remove temporary processing directory
-$inp.sample.removedir($processing)
-
-#Exit
-exit 0
+#$inp.sample.removedir($processing)
