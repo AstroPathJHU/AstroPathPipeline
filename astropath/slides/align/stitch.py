@@ -516,23 +516,25 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           ):
             self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} overlap, adjusting them")
 
-            threshold = 100*onepixel
+            threshold = self.hpfoffset / 10
+            if len(island1) <= 2 or len(island2) <= 2:
+              threshold = self.hpfoffset / 4
             xs = ys = None
             ridax = ridbx = riday = ridby = None
-            if abs(xx21 - xx12) <= threshold:
+            if abs(xx21 - xx12) <= threshold[0]:
               xs = xx12, xx21
               ridax, ridbx = rid2, rid1
-            elif abs(xx11 - xx22) <= threshold:
+            elif abs(xx11 - xx22) <= threshold[0]:
               xs = xx11, xx22
               ridax, ridbx = rid1, rid2
-            if abs(yy21 - yy12) <= threshold:
+            if abs(yy21 - yy12) <= threshold[1]:
               ys = yy12, yy21
               riday, ridby = rid2, rid1
-            elif abs(yy11 - yy22) <= threshold:
+            elif abs(yy11 - yy22) <= threshold[1]:
               ys = yy11, yy22
               riday, ridby = rid1, rid2
             if xs is ys is None:
-              raise ValueError(f"Primary regions for fields {rid1} and {rid2} have too big of an overlap:\nfield {rid1}: mx = ({xx11}, {xx12}), my = ({yy11}, {yy12})\nfield {rid2}: mx = ({xx21}, {xx22}), my = ({yy21}, {yy22})")
+              raise ValueError(f"Primary regions for fields {rid1} and {rid2} have too big of an overlap:\nfield {rid1}: mx = ({xx11}, {xx21}), my = ({yy11}, {yy21})\nfield {rid2}: mx = ({xx12}, {xx22}), my = ({yy12}, {yy22})")
 
             if xs is not None and ys is not None:
               cornerstoadjust[xs, ys].append((ridax, ridbx, riday, ridby))
