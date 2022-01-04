@@ -21,7 +21,7 @@ class copyutils{
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des){
         xcopy $sor, $des /q /y /z /j /v | Out-Null
-        # $this.verifyChecksum($sor, $des, '*', 0)
+        $this.verifyChecksum($sor, $des, '*', 0)
     }
     <# -----------------------------------------
      copy
@@ -42,7 +42,7 @@ class copyutils{
             $filespec = $filespec | foreach-object {'*' + $_}
             robocopy $sor $des $filespec -r:3 -w:3 -np -E -mt:1 | out-null
         }
-       # $this.verifyChecksum($sor, $des, $filespec, 0)
+        $this.verifyChecksum($sor, $des, $filespec, 0)
     }
     <# -----------------------------------------
      copy
@@ -65,7 +65,7 @@ class copyutils{
             $filespec = $filespec | foreach-object {'*' + $_}
             robocopy $sor $des $filespec -r:3 -w:3 -np -E -mt:$threads | out-null
         }
-       # $this.verifyChecksum($sor, $des, $filespec, 0)
+        $this.verifyChecksum($sor, $des, $filespec, 0)
     }
     <# -----------------------------------------
      copy
@@ -89,7 +89,7 @@ class copyutils{
            $filespec = $filespec | foreach-object {'*' + $_}
            $output = robocopy $sor $des $filespec -r:3 -w:3 -np -E -mt:$threads -log:$logfile
         }
-        # $this.verifyChecksum($sor, $des, $filespec, 0)
+        $this.verifyChecksum($sor, $des, $filespec, 0)
     }
     <# -----------------------------------------
      listfiles
@@ -109,6 +109,9 @@ class copyutils{
         } else {
             $filespec = $filespec | foreach-object {'*' + $_}
             $files = gci $sor -Include  $filespec -Recurse
+        }
+        if ($files -eq $null) {
+            $files = @()
         }
         return $files
     }
@@ -132,15 +135,23 @@ class copyutils{
         if ((Get-Item $sor) -is [System.IO.DirectoryInfo]){
             $sourcefiles = $this.listfiles($sor, $filespec)
             $desfiles = $this.listfiles($des, $filespec)
+            $sourcehash = $sourcefiles | Get-FileHash -Algorithm MD5
+            $destinationhash = $desfiles | Get-FileHash -Algorithm MD5
         } else {
             $sourcefiles = $sor
-            $desfiles = $des + '/' + ($sor -split '//')[-1]
+            $desfiles = $des + '\' + ($sor -split '\\')[-1]
+            $sourcehash = Get-FileHash $sourcefiles -Algorithm MD5
+            $destinationhash = Get-FileHash $desfiles -Algorithm MD5
         }
         #
-        # compute hashes
+        # catch empty folders
         #
-        $sourcehash = $sourcefiles | Get-FileHash -Algorithm MD5
-        $destinationhash = $desfiles | Get-FileHash -Algorithm MD5
+        if ($sourcehash -eq $null) {
+            $sourcehash = @()
+        }
+        if ($destinationhash -eq $null) {
+            $destinationhash = @()
+        }
         #
         # compare hashes
         #
