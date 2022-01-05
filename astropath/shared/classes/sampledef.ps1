@@ -342,11 +342,29 @@ class sampledef : sharedtools{
         #
     }
     #
-    [switch]testwarpoctets(){
+    [switch]testsegmentationfiles(){
         #
-        #
+        $table = $this.phenotypefolder() + '\Results\Tables'
+        if (!(test-path $table + '\*csv')){
+            return $false
+        }
+        $comp = (gci ($table + '\*') '*csv').Count
+        $seg = (gci ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
+        if (!($comp -eq $seg)){
+            return $false
+        }
         return $true
         #
+    }
+    #
+    [switch]testwarpoctets(){
+        #
+        $file = $this.basepath + '\warping\octets\' + $this.slideid + 'all-overlap-octets.csv'
+        if (!(test-path $file)){
+            return $false
+        }
+        #
+        return $true
     }
     #
 }
