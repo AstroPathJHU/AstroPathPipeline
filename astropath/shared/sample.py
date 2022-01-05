@@ -1428,7 +1428,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
       #reset the warping file
       warping_filename = this_slide_tes[0].WarpingFile
       if warping_filename.lower()=='none' :
-        warnmsg = f'WARNING: Warping file for {self.SlideID} in {correction_model_file} is {warping_filename}; '
+        warnmsg = f'WARNING: Warping file for {self.SlideID} in {correction_model_file} is {warping_filename}, '
         warnmsg+= 'warping corrections WILL NOT be applied'
         self.logger.warningonenter(warnmsg)
         self.__warping_file = None
@@ -1437,7 +1437,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
       #reset the flatfield file
       ff_version = this_slide_tes[0].FlatfieldVersion
       if ff_version.lower()=='none' :
-        warnmsg = f'WARNING: Flatfield version for {self.SlideID} in {correction_model_file} is {ff_version}; '
+        warnmsg = f'WARNING: Flatfield version for {self.SlideID} in {correction_model_file} is {ff_version}, '
         warnmsg+= 'flatfield corrections WILL NOT be applied'
         self.logger.warningonenter(warnmsg)
         self.__flatfield_file = None
