@@ -410,7 +410,7 @@ class queue : vminformqueue{
                 return 1
             }
             #
-            $ids = $this.ImportCorrectionModels($this.main)
+            $ids = $this.ImportCorrectionModels($this.mpath)
             if ($ids.slideid -notcontains $log.slideid){
                 return 2
             }

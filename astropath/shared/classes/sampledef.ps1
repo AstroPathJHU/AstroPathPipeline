@@ -170,7 +170,7 @@ class sampledef : sharedtools{
     }
     #
     [string]pybatchflatfield(){
-        $ids = $this.ImportCorrectionModels($this.main)
+        $ids = $this.ImportCorrectionModels($this.mpath)
         $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
         return $file
     }
@@ -258,7 +258,7 @@ class sampledef : sharedtools{
     #
     [switch]testpybatchflatfield(){
         #
-        $flatfield = $this.main + '\warping\' + $this.pybatchflatfield() + '.bin'
+        $flatfield = $this.mpath + '\flatfield\flatfield_' + $this.pybatchflatfield() + '.bin'
         if (!(test-path $flatfield)){
             return $false
         }
