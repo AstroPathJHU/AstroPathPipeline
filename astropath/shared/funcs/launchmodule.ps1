@@ -18,4 +18,6 @@
         $m = [launchmodule]::new($mpath, $module, $slideid, $arrayin)
     }        
     #
+    return $m
+    #
 }
