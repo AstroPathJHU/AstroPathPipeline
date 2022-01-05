@@ -730,7 +730,13 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
       return [
         WarpedQPTiffVertex(
           vertex=v,
-          wxvec=(v.xvec + units.nominal_values(self.__stitchresult.dxvec(v, apscale=annoscale))) / oneannomicron * onemicron // onepixel * onepixel,
+          wxvec=(
+            v.xvec + (
+              units.nominal_values(self.__stitchresult.dxvec(v, apscale=annoscale))
+              if v.isfromxml
+              else 0
+            )
+          ) / oneannomicron * onemicron // onepixel * onepixel,
           pscale=self.pscale,
         ) for v in self.__getvertices()
       ]
