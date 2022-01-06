@@ -1,6 +1,6 @@
 import collections, contextlib, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.registration, skimage.transform, uncertainties as unc, uncertainties.umath as umath, uncertainties.unumpy as unp
 
-from ...shared.logging import dummylogger, MultiLogger
+from ...shared.logging import dummylogger, MultiLogger, ThingWithLogger
 from ...slides.align.computeshift import computeshift, OptimizeResult, shiftimg
 from ...slides.align.overlap import AlignmentComparison
 from ...slides.annowarp.annowarpsample import WSISample
@@ -31,7 +31,7 @@ class CrossRegistrationSample(WSISample, AstroPathTissueMaskSample, ThingWithZoo
   @property
   def zoomedscale(self): return self.__zoomedscale
 
-class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale):
+class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale, ThingWithLogger):
   def __init__(self, *args, root1, samp1, zoomroot1, root2, samp2, zoomroot2, tilepixels=256, zoomfactor=8, mintissuefraction=0.2, dbloadroot1=None, dbloadroot2=None, logroot1=None, logroot2=None, maskroot1=None, maskroot2=None, maskfilesuffix1=None, maskfilesuffix2=None, uselogfiles=True, **kwargs):
     self.__zoomfactor = zoomfactor
     self.samples = (

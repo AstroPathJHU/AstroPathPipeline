@@ -6,8 +6,8 @@ from ..utilities.miscmath import floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import distancefield, DataClassWithAnnoscale
 from .csvclasses import Annotation, Region, Vertex
-from .image_masking.maskloader import TissueMaskLoader
-from .logging import dummylogger, printlogger
+from .image_masking.maskloader import TissueMaskLoaderWithPolygons
+from .logging import dummylogger, printlogger, ThingWithLogger
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
 
@@ -225,7 +225,7 @@ class AnnotationVertexFromPolygon(DataClassWithAnnoscale):
   X: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="annoscale")
   Y: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="annoscale")
 
-class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale):
+class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale, ThingWithLogger):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
@@ -242,9 +242,6 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
     self.allowedannotations #make sure there are no duplicate synonyms etc.
     super().__init__(*args, **kwargs)
 
-  @property
-  @abc.abstractmethod
-  def logger(self): pass
   @property
   def annotationimagefolder(self): return self.__annotationimagefolder
   @property
@@ -532,7 +529,7 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
   @property
   def annotationspolygonsxmlfile(self): return self.__polygonxmlfile
 
-class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoader):
+class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoaderWithPolygons):
   @property
   def annotationnodes(self):
     result = super().annotationnodes

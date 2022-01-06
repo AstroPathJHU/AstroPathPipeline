@@ -6,6 +6,7 @@ from astropath.shared.logging import printlogger
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
+from astropath.slides.align.alignsample import AlignSample
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.slides.annowarp.mergeannotationxmls import MergeAnnotationXMLsCohort, MergeAnnotationXMLsSample
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
@@ -263,3 +264,15 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       raise
     else:
       self.removeoutput()
+
+  def testHPFOffset(self, SlideID="M21_1"):
+    root = thisfolder/"data"
+    shardedim3root = thisfolder/"data"/"flatw"
+    for SlideID in "M21_1", "YZ71":
+      with self.subTest(SlideID=SlideID):
+        s = AlignSample(samp=SlideID, root=root, shardedim3root=shardedim3root, uselogfiles=False)
+        target = np.array({
+          "M21_1": [535.2, 400],
+          "YZ71": [744.8, 558.4],
+        }[SlideID]) * s.onemicron
+        assertAlmostEqual(s.hpfoffset, target)

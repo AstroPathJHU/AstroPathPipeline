@@ -4,16 +4,15 @@ from ..core import _power, _pscale, distances, pixels
 from . import fft, linalg, testing
 
 @np.vectorize
-def isclose(distance1, distance2, *args, **kwargs):
-  try:
-    np.testing.assert_array_equal(_power(distance1), _power(distance2))
-  except AssertionError:
-    raise UnitsError(f"Trying to compare distances with different powers\n{distance1}\n{distance2}")
-  try:
-    np.testing.assert_array_equal(_pscale(distance1), _pscale(distance2))
-  except AssertionError:
-    raise UnitsError(f"Trying to compare distances with different pscales\n{distance1}\n{distance2}")
-  return np.isclose(pixels(distance1, pscale=_pscale(distance1), power=_power(distance1)), pixels(distance2, pscale=_pscale(distance2), power=_power(distance2)), *args, **kwargs)
+def isclose(distance1, distance2, rtol=1e-5, atol=0, *args, **kwargs):
+  if distance1 == distance2: return True #automatically asserts pscale and power equality
+
+  pscale = _pscale(distance1)
+  if pscale is None: pscale = _pscale(distance2)
+  power = _power(distance1)
+  if power is None: power = _power(distance2)
+
+  return np.isclose(pixels(distance1, pscale=pscale, power=power), pixels(distance2, pscale=pscale, power=power), *args, rtol=rtol, atol=pixels(atol, pscale=pscale, power=power), **kwargs)
 
 def allclose(*args, **kwargs):
   return np.all(isclose(*args, **kwargs))
