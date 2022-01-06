@@ -334,8 +334,8 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     ]
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return [PrepDbSample] + super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [PrepDbSample] + super().workflowdependencyclasses(**kwargs)
 
   @property
   def workflowkwargs(self) :

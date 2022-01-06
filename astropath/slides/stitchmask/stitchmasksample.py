@@ -166,8 +166,8 @@ class StitchMaskSample(WriteMaskSampleBase):
     return mask
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return [AlignSample] + super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [AlignSample] + super().workflowdependencyclasses(**kwargs)
 
 class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadComponentTiff, InformMaskSample):
   """

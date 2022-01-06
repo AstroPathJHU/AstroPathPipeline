@@ -164,7 +164,9 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
   def apscale(self):
     if not self.qptifffilename.exists(): return 1
     return self.getqptiffcsv()[0].apscale
-
+  @property
+  def annoscale(self):
+    return self.pscale / 2 if self.annotationsonwsi else self.apscale
   @property
   def overlaps(self):
     return self.getoverlaps()
@@ -175,120 +177,86 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
       Constant(
         name='fwidth',
         value=self.fwidth,
-        unit='pixels',
-        description='field width',
         **pscales,
       ),
       Constant(
         name='fheight',
         value=self.fheight,
-        unit='pixels',
-        description='field height',
         **pscales,
       ),
       Constant(
         name='flayers',
         value=self.flayers,
-        unit='',
-        description='field depth',
         **pscales,
       ),
       Constant(
         name='locx',
         value=self.samplelocation[0],
-        unit='microns',
-        description='xlocation',
         **pscales,
       ),
       Constant(
         name='locy',
         value=self.samplelocation[1],
-        unit='microns',
-        description='ylocation',
         **pscales,
       ),
       Constant(
         name='locz',
         value=self.samplelocation[2],
-        unit='microns',
-        description='zlocation',
         **pscales,
       ),
       Constant(
         name='xposition',
         value=units.convertpscale(self.xposition, self.qpscale, self.pscale),
-        unit='microns',
-        description='slide x offset',
         **pscales,
       ),
       Constant(
         name='yposition',
         value=units.convertpscale(self.yposition, self.qpscale, self.pscale),
-        unit='microns',
-        description='slide y offset',
         **pscales,
       ),
       Constant(
         name='qpscale',
         value=self.qpscale,
-        unit='pixels/micron',
-        description='scale of the QPTIFF image',
         **pscales,
       ),
       Constant(
         name='apscale',
         value=self.apscale,
-        unit='pixels/micron',
-        description='scale of the QPTIFF image used for annotation',
         **pscales,
       ),
       Constant(
         name='pscale',
         value=self.pscale,
-        unit='pixels/micron',
-        description='scale of the HPF images',
         **pscales,
       ),
       Constant(
         name='nclip',
         value=self.nclip,
-        unit='pixels',
-        description='pixels to clip off the edge after warping',
         **pscales,
       ),
       Constant(
         name='margin',
         value=self.margin,
-        unit='pixels',
-        description='minimum margin between the tissue and the wsi edge',
         **pscales,
       ),
       Constant(
         name="resolutionbits",
         value=self.resolutionbits,
-        unit="",
-        description="number of significant bits in the im3 files",
         **pscales,
       ),
       Constant(
         name="gainfactor",
         value=self.gainfactor,
-        unit="",
-        description="the gain of the A/D amplifier for the im3 files",
         **pscales,
       ),
       Constant(
         name="binningx",
         value=self.camerabinningx,
-        unit="pixels",
-        description="the number of adjacent pixels coadded",
         **pscales,
       ),
       Constant(
         name="binningy",
         value=self.camerabinningy,
-        unit="pixels",
-        description="the number of adjacent pixels coadded",
         **pscales,
       ),
     ]
@@ -404,8 +372,8 @@ class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
     ] if not skipannotations else [])
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return super().workflowdependencyclasses(**kwargs)
 
   @classmethod
   def logstartregex(cls):

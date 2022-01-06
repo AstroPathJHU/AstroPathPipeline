@@ -45,7 +45,9 @@ class GitRevParse(GitCommand):
 class GitRepo:
   def __init__(self, cwd):
     self.cwd = cwd
+    self.initrepo()
 
+  def initrepo(self):
     if have_git:
       committable = io.StringIO("hash,parents,tags\n"+subprocess.run(["git", "log", "--all", "--pretty=%H\t%P\t%D", "--no-abbrev-commit"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="ascii", check=True, cwd=self.cwd).stdout.replace(",", "").replace("\t", ","))
     else:
@@ -73,10 +75,13 @@ class GitRepo:
   def rev_parse(self): return GitRevParse(self)
 
   @methodtools.lru_cache()
-  def getcommit(self, commit):
+  def getcommit(self, commit, *, _retry=True):
     try:
       return self.commitdict[commit]
     except KeyError:
+      if _retry:
+        self.initrepo()
+        return self.getcommit(commit, _retry=False)
       results = {_ for _ in self if commit == _}
       try:
         result, = results

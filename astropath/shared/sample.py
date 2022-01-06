@@ -555,14 +555,14 @@ class WorkflowSample(SampleBase, WorkflowDependencySlideID):
 
   @classmethod
   @abc.abstractmethod
-  def workflowdependencyclasses(cls):
+  def workflowdependencyclasses(cls, **kwargs):
     """
     Previous steps that this step depends on
     """
     return []
 
-  def workflowdependencies(self):
-    return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses()]
+  def workflowdependencies(self, **kwargs):
+    return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses(**kwargs)]
 
   def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
     return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
@@ -1338,6 +1338,13 @@ class XMLPolygonAnnotationReaderSample(SampleBase, XMLPolygonAnnotationReader, X
     self.__annotationsxmlregex = annotationsxmlregex
     super().__init__(*args, **kwargs)
 
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "annotationsxmlregex": self.__annotationsxmlregex,
+    }
+
   @methodtools.lru_cache()
   @property
   def annotationspolygonsxmlfile(self):
@@ -1421,7 +1428,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
       #reset the warping file
       warping_filename = this_slide_tes[0].WarpingFile
       if warping_filename.lower()=='none' :
-        warnmsg = f'WARNING: Warping file for {self.SlideID} in {correction_model_file} is {warping_filename}; '
+        warnmsg = f'WARNING: Warping file for {self.SlideID} in {correction_model_file} is {warping_filename}, '
         warnmsg+= 'warping corrections WILL NOT be applied'
         self.logger.warningonenter(warnmsg)
         self.__warping_file = None
@@ -1430,7 +1437,7 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
       #reset the flatfield file
       ff_version = this_slide_tes[0].FlatfieldVersion
       if ff_version.lower()=='none' :
-        warnmsg = f'WARNING: Flatfield version for {self.SlideID} in {correction_model_file} is {ff_version}; '
+        warnmsg = f'WARNING: Flatfield version for {self.SlideID} in {correction_model_file} is {ff_version}, '
         warnmsg+= 'flatfield corrections WILL NOT be applied'
         self.logger.warningonenter(warnmsg)
         self.__flatfield_file = None

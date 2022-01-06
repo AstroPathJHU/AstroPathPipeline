@@ -2,13 +2,15 @@ import cv2, more_itertools
 from .polygon import SimplePolygon
 from ..utilities import units
 
-def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, forgdal=False, **kwargs):
+def findcontoursaspolygons(*args, pscale, annoscale, imagescale=None, shiftby=0, fill=False, forgdal=False, **kwargs):
   """
   Find the contours in a binary image, like cv2.findContours,
   but returns a list of Polygon objects.
 
   pscale: im3 pixel/micron scale
-  apscale: qptiff pixel/micron scale
+  annoscale: annotation pixel/micron scale
+  imagescale: scale of the image you're converting to polygons
+              (default: pscale)
   shiftby: shift all the vertices by this vector (default: [0, 0])
   fill: fill holes in the polygon? (default: False)
         this is useful when the binary array just has 1 along the perimeter
@@ -22,22 +24,23 @@ def findcontoursaspolygons(*args, pscale, apscale, shiftby=0, fill=False, forgda
   positional arguments and other keyword arguments are passed
   directly to cv2.findContours
   """
+  if imagescale is None: imagescale = pscale
   contours, (hierarchy,) = cv2.findContours(*args, **kwargs)
   innerpolygons = [[] for c in contours]
   polygons = [None for c in contours]
   toplevelpolygons = []
-  onepixel = units.onepixel(pscale)
+  oneimagepixel = units.onepixel(imagescale)
   for i, (contour, (next, previous, child, parent)) in reversed(list(enumerate(more_itertools.zip_equal(contours, hierarchy)))):
     assert contour.shape[1:] == (1, 2), contour.shape
     vertices = units.convertpscale(
       [
         [x, y]
-        for ((x, y),) in contour*onepixel+shiftby
+        for ((x, y),) in contour*oneimagepixel+shiftby
       ],
-      pscale,
-      apscale,
+      imagescale,
+      annoscale,
     )
-    polygon = SimplePolygon(vertexarray=vertices, pscale=pscale, apscale=apscale)
+    polygon = SimplePolygon(vertexarray=vertices, pscale=pscale, annoscale=annoscale)
     for p in innerpolygons[i]:
       polygon -= p
     polygons[i] = polygon

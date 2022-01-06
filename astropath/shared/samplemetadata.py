@@ -37,7 +37,7 @@ class SampleDef(MyDataClassFrozen):
         for dup in duplicates:
           if kwargs[dup] is None:
             kwargs[dup] = newkwargs[dup]
-          if kwargs[dup] == newkwargs[dup]:
+          if kwargs[dup] == newkwargs[dup] or newkwargs[dup] is None:
             del newkwargs[dup]
         duplicates = set(newkwargs.keys()) & set(kwargs.keys())
         if duplicates:
@@ -65,6 +65,8 @@ class SampleDef(MyDataClassFrozen):
             kwargs["Cohort"] = row.Cohort
           if "Project" not in kwargs:
             kwargs["Project"] = row.Project
+          if "Scan" not in kwargs and row.Scan is not None:
+            kwargs["Scan"] = row.Scan
           if "BatchID" not in kwargs:
             kwargs["BatchID"] = row.BatchID
           if "isGood" not in kwargs:
@@ -93,8 +95,14 @@ class APIDDef(MyDataClassFrozen):
   SampleName: str
   Project: int
   Cohort: int
-  BatchID: int
-  isGood: bool
+  Scan: int = None
+  BatchID: int = None
+  isGood: bool = None
+
+  def __post_init__(self, **kwargs):
+    if self.BatchID is None: raise ValueError("Have to provide BatchID")
+    if self.isGood is None: raise ValueError("Have to provide isGood")
+    return super().__post_init__(**kwargs)
 
 class MetadataSummary(MyDataClassFrozen):
   """

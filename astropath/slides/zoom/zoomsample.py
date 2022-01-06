@@ -1,8 +1,8 @@
-import contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, shutil, skimage.transform
+import contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, skimage.transform
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
-from ...utilities.miscfileio import memmapcontext, rm_missing_ok
+from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing_ok
 from ...utilities.miscimage import vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
 from ...utilities.optionalimports import pyvips
@@ -217,6 +217,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     Run zoom by saving one big tile at a time
     (afterwards you can call wsi_vips to save the wsi)
     """
+    if all(self.wsifilename(l).exists() for l in self.layers): return None
     onepixel = self.onepixel
     buffer = -(-self.rectangles[0].shape // onepixel).astype(int) * onepixel
     nrectangles = len(self.rectangles)
@@ -290,7 +291,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
           for layer in self.layers:
             if self.wsifilename(layer).exists() and layer != 1: continue
-            if all(self.wsifilename(l).exists() for l in self.layers): continue
             filename = self.bigfilename(layer, tile.tilex, tile.tiley)
             with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
               assert lock
@@ -461,7 +461,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       for big in removefilenames:
         rm_missing_ok(big)
 
-    shutil.rmtree(self.bigfolder)
+    rmtree_missing_ok(self.bigfolder)
 
     self.makewsitiff(fortiff)
 
@@ -526,8 +526,8 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     return result
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return [AlignSample] + super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [AlignSample] + super().workflowdependencyclasses(**kwargs)
 
 def main(args=None):
   ZoomSample.runfromargumentparser(args)

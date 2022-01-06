@@ -1,7 +1,7 @@
 import dataclassy, functools, methodtools, numbers, numpy as np
 from ..dataclasses import MetaDataAnnotation, MyDataClass, MyDataClassFrozen
 from ..miscmath import floattoint
-from .core import ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
+from .core import ThingWithAnnoscale, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def __setup(mode):
   global currentmode, microns, pixels, _pscale, safe, UnitsError
@@ -172,6 +172,7 @@ def makedataclasswithpscale(classname, pscalename, thingwithpscalecls):
 DataClassWithPscale, DataClassWithPscaleFrozen = makedataclasswithpscale("DataClassWithPscale", "pscale", ThingWithPscale)
 DataClassWithQpscale, DataClassWithQpscaleFrozen = makedataclasswithpscale("DataClassWithQpscale", "qpscale", ThingWithQpscale)
 DataClassWithApscale, DataClassWithApscaleFrozen = makedataclasswithpscale("DataClassWithApscale", "apscale", ThingWithApscale)
+DataClassWithAnnoscale, DataClassWithAnnoscaleFrozen = makedataclasswithpscale("DataClassWithAnnoscale", "annoscale", ThingWithAnnoscale)
 class DataClassWithImscale(DataClassWithPscale, DataClassWithApscale, ThingWithImscale):
   @classmethod
   def otherpscales(cls):
