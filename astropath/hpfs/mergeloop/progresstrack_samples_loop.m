@@ -133,7 +133,7 @@ end
 %
 % fill out the progress table
 %
-ss.Machine(1:length(samplenamesout)) = repmat({machine},length(samplenamesout),1);
+ss.Machine(1:length(samplenamesout)) = repmat(machine,length(samplenamesout),1);
 ss.Main_Path(1:length(samplenamesout)) = repmat({wd},length(samplenamesout),1);
 ss.Sample(1:length(samplenamesout)) = samplenamesout';
 ss.Batch(1:length(BatchID)) = BatchID';
