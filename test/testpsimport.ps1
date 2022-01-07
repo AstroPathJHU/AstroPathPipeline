@@ -26,7 +26,10 @@
       #
       # confirm installation
       #
-      Import-Module $module -EA SilentlyContinue 
+      Import-Module $module -EA SilentlyContinue
+      $mxtxid = 'Global\' + $module.replace('\', '_') + '.LOCK'
+      $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
+      $mxtx.ReleaseMutex()
       if($error){
           Throw 'Module could not be imported'
       } 
