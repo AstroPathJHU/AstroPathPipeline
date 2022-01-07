@@ -125,7 +125,7 @@ class fileutils : generalutils {
         $data = $this.OpencsvFile($fpath)
         $e = 1
         #
-        while ($e -lt 6 -Or !($data)){
+        while ($e -lt 6 -AND !($data)){
             $data = $this.OpencsvFile($fpath)
             if ($data){
                 $e = 6
