@@ -391,7 +391,9 @@
         try{
             $this.checkconda()
             conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
             pip -q install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
             conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
         } catch {
             $this.createpyenvir()

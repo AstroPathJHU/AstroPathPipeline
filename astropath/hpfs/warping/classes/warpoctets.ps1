@@ -49,7 +49,9 @@ Class warpoctets : moduletools {
         $this.pythonmodulename = 'warpingcohort'
         $pythontask = $this.pythonmodulename, $dpath, `
          '--shardedim3root',  $rpath, `
-         '--octets-only --noGPU --allow-local-edits' -join ' '
+         '--sampleregex',  $this.sample.slideid, `
+         '--flatfield-file',  $this.pybatchflatfieldfullpath(), `
+         '--octets-only --noGPU --allow-local-edits --skip-start-finish' -join ' '
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished warp octets")
     }
