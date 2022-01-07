@@ -4,11 +4,11 @@ from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from ..utilities.version.git import thisrepo
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
-from .logging import getlogger
+from .logging import getlogger, ThingWithLogger
 from .rectangle import rectanglefilter
 from .workflowdependency import ThingWithRoots, WorkflowDependency
 
-class CohortBase(ThingWithRoots):
+class CohortBase(ThingWithRoots, ThingWithLogger):
   """
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
@@ -321,7 +321,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     """
     Print which samples would be run if you run the cohort
     """
-    for samp, filters in self.sampledefswithfilters():
+    for samp, filters in self.sampledefswithfilters(**kwargs):
       logger = self.printlogger(samp)
       if all(filters):
         if any(filter.cleanup for filter in filters):
@@ -680,14 +680,20 @@ class WorkflowCohort(Cohort):
       raise ValueError(f"Trying to require commit {require_commit}, but that is not an ancestor of the current commit {thisrepo.currentcommit}")
 
     def filter(runstatus, dependencyrunstatuses):
+      if isinstance(runstatus, Exception):
+        return FilterResult(False, f"runstatus gave an error: {runstatus}", cleanup=False)
+      for dep in dependencyrunstatuses:
+        if isinstance(dep, Exception):
+          return FilterResult(False, f"dependency runstatus gave an error: {dep}", cleanup=False)
+
       if skip_finished:
         cleanup = False
         if rerun_errors and runstatus.error is not None and not any(errorregex.search(runstatus.error) for errorregex in rerun_errors):
           runstatus.error = None
         if runstatus.started and require_commit is not None:
           if runstatus.gitcommit is None:
-            raise ValueError("previous runstatus has gitcommit of None, check the log")
-          if not require_commit <= runstatus.lastcleanstart:
+            runstatus.started = runstatus.ended = False
+          elif not require_commit <= runstatus.lastcleanstart:
             runstatus.started = runstatus.ended = False
         if not runstatus.started:  #log doesn't exist at all
           cleanup = True

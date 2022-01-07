@@ -1,4 +1,4 @@
-import dataclassy, itertools, matplotlib.patches, methodtools, numba as nb, numbers, numpy as np, skimage.draw
+import dataclassy, itertools, matplotlib.patches, methodtools, numba as nb, numbers, numpy as np, rdp, skimage.draw
 from numba.core.errors import TypingError
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation
@@ -325,6 +325,12 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
       raise ValueError(f"Inconsistent isfromxmls {isfromxmls}")
     return result
 
+  def smooth_rdp(self, epsilon):
+    """
+    Smooth the polygon using the Ramer-Douglas-Peucker algorithm
+    """
+    return Polygon(outerpolygon=self.outerpolygon.smooth_rdp(epsilon=epsilon), subtractpolygons=[p.smooth_rdp(epsilon=epsilon) for p in self.subtractpolygons])
+
 class SimplePolygon(Polygon):
   """
   Represents a polygon as a list of vertices in a way that works
@@ -492,6 +498,14 @@ class SimplePolygon(Polygon):
 
   def __repr__(self, *, round=True):
     return f"PolygonFromGdal(pixels={str(self.gdalpolygon(round=round))!r}, pscale={self.pscale}, annoscale={self.annoscale})"
+
+  def smooth_rdp(self, epsilon):
+    """
+    Smooth the polygon using the Ramer-Douglas-Peucker algorithm
+    """
+    vertices = self.vertexarray
+    newvertices = rdp.rdp(vertices, epsilon=epsilon)
+    return SimplePolygon(vertexarray=newvertices, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, isfromxml=self.isfromxml)
 
 def PolygonFromGdal(*, pixels=None, microns=None, pscale, annoscale, **kwargs):
   """
