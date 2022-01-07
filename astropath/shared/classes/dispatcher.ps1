@@ -234,7 +234,12 @@ class Dispatcher : queue{
         # create a logging object and check the
         # log for a finishing message
         #
-        $log = [mylogger]::new($this.mpath, $this.module, $ID[1])
+        try{
+            $log = [mylogger]::new($this.mpath, $this.module, $ID[1])
+        } catch {
+            Write-Host $_.Exception.Message
+            return
+        }
         #
         if ($this.module -match 'batch'){
             $log.slidelog = $log.mainlog

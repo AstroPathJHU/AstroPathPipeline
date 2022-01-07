@@ -69,7 +69,7 @@ class sampledef : sharedtools{
                 Where-Object -FilterScript {$_.SlideID -eq $slideid.trim()}
         #
         if (!$slide){
-            Throw 'Not a valid slideid'
+            Throw ($slideid.trim() + ' is not a valid slideid. Check the APID tables and\or confirm the SlideID.')
         }
         $this.slideid = $slide.SlideID.trim()
         $this.project = $slide.Project

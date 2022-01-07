@@ -16,11 +16,11 @@
         #
         $cohort_csv_file = $mpath + '\AstropathCohortsProgress.csv'
         #
-        $project_data = $this.OpencsvFile($cohort_csv_file)
+        $project_data = $this.OpencsvFileConfirm($cohort_csv_file)
         #
         $paths_csv_file = $mpath + '\AstropathPaths.csv'
         #
-        $paths_data = $this.opencsvfile($paths_csv_file)
+        $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
         #
         $project_data = $this.MergeCustomObject( $project_data, $paths_data, 'Project')
         #
@@ -43,7 +43,7 @@
         #
         $config_csv_file = $mpath + '\AstropathConfig.csv'
         #
-        $config_data = $this.opencsvfile($config_csv_file)
+        $config_data = $this.OpencsvFileConfirm($config_csv_file)
         #
         return $config_data
         #

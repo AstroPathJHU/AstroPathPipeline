@@ -65,8 +65,14 @@
     [string]GetVersion($mpath, $module, $project){
         #
         $configfile = $this.ImportConfigInfo($mpath)
-        $vers = ($configfile | 
-            Where-Object {$_.Project -eq $project}).($module+'version')
+        #
+        $projectconfig = $configfile | 
+            Where-Object {$_.Project -eq $project}
+        if (!$projectconfig){
+            Throw ('Project not found for project number: '  + $project)
+        }    
+        #
+        $vers = $projectconfig.($module+'version')    
         if (!$vers){
             Throw 'No version number found'
         }

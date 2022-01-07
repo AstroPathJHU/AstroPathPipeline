@@ -112,6 +112,36 @@ class fileutils : generalutils {
         #
     }
     <# -----------------------------------------
+     OpencsvfileConfirm
+     Open a csv file with confirmation of data
+     ------------------------------------------
+     Input: 
+        -fpath[string]: file path to read in
+     ------------------------------------------
+     Usage: $this.OpencsvfileConfirm(fpath)
+    ----------------------------------------- #>
+    [PSCustomObject]OpenCSVFileConfirm([string] $fpath){
+        #
+        $data = $this.OpencsvFile($fpath)
+        $e = 1
+        #
+        while ($e -lt 6 -Or !($data)){
+            $data = $this.OpencsvFile($fpath)
+            if ($data){
+                $e = 6
+            }
+            $e += 1
+            Start-Sleep -s 3
+        }
+        #
+        if (!$data){
+            Throw ('File is empty, input expected: ' + $fpath)
+        }
+        #
+        return $data
+        #
+    }
+    <# -----------------------------------------
      GetContent
      open a file with error checking where each
      row is in a separate line
