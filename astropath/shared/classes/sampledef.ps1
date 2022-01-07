@@ -175,6 +175,11 @@ class sampledef : sharedtools{
         return $file
     }
     #
+    [string]pybatchflatfieldfullpath(){
+          $flatfield = $this.mpath + '\flatfield\flatfield_' + $this.pybatchflatfield() + '.bin'
+          return $flatfield
+    }
+    #
     [string]CheckSumsfile(){
         $path = $this.Scanfolder() + '\CheckSums.txt'
         return $path
@@ -258,8 +263,7 @@ class sampledef : sharedtools{
     #
     [switch]testpybatchflatfield(){
         #
-        $flatfield = $this.mpath + '\flatfield\flatfield_' + $this.pybatchflatfield() + '.bin'
-        if (!(test-path $flatfield)){
+        if (!(test-path $this.pybatchflatfieldfullpath())){
             return $false
         }
         #
