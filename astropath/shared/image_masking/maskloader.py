@@ -122,11 +122,21 @@ class TissueMaskLoaderWithPolygons(TissueMaskLoader, units.ThingWithAnnoscale, T
     self.logger.debug("  loading mask")
     with self.using_tissuemask_zoomed(zoomfactor) as mask:
       imagescale = self.pscale/zoomfactor
-      notmask = ~mask
-      filled = scipy.ndimage.binary_fill_holes(mask)
+      self.logger.debug("  cropping the mask to regions that contain tissue")
+      xindices, yindices = np.where(mask)
+      minx = np.min(xindices)
+      maxx = np.max(xindices)
+      miny = np.min(yindices)
+      maxy = np.max(yindices)
+      croppedmask = mask[minx:maxx+1, miny:maxy+1]
+      self.logger.debug("  creating negative mask")
+      notmask = ~croppedmask
+      self.logger.debug("  filling holes to find outer regions")
+      filled = scipy.ndimage.binary_fill_holes(croppedmask)
       self.logger.debug("  finding outer regions")
       labeled, nlabels = scipy.ndimage.label(filled, structure=[[0,1,0],[1,1,1],[0,1,0]])
       labels = range(1, nlabels+1)
+      self.logger.debug("  finding areas of outer regions")
       areas = {label: np.count_nonzero(labeled==label) for label in labels}
       totalarea = sum(areas.values())
       areacutoff = 0.001 * totalarea
@@ -136,7 +146,7 @@ class TissueMaskLoaderWithPolygons(TissueMaskLoader, units.ThingWithAnnoscale, T
         area = areas[label]
         if idx >= 100 or area < areacutoff: #drop the tiny labels, and only keep 100 labels maximum
           self.logger.debug(f"  too small (rank {idx+1}, area {area}) --> skip it")
-          mask[labeled==label] = 0
+          croppedmask[labeled==label] = 0
           continue
 
         #now we have a large region
@@ -149,7 +159,7 @@ class TissueMaskLoaderWithPolygons(TissueMaskLoader, units.ThingWithAnnoscale, T
           hole = labeledholes == holelabel
           holearea = np.count_nonzero(hole)
           if holearea / area < 0.0025:
-            mask[hole] = True
+            croppedmask[hole] = True
 
       self.logger.debug("converting to gdal")
       mask = mask.astype(np.uint8)
