@@ -16,9 +16,9 @@ Class testpsmeanimage {
         #
         $module = $PSScriptRoot + '/../astropath'
         Import-Module $module -EA SilentlyContinue
-        #$mxtxid = 'Global\' + $module.replace('\', '_') + '.LOCK'
-        #$mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
-        #$mxtx.ReleaseMutex()
+        $mxtxid = 'Global\' + $module.replace('\', '_') + '.LOCK'
+        $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
+        $mxtx.ReleaseMutex()
         if($error){
             Throw 'Module could not be imported'
         }
