@@ -1,4 +1,4 @@
-import abc, networkx as nx, numpy as np, pathlib
+import abc, methodtools, networkx as nx, numpy as np, pathlib
 
 from ..utilities import units
 from ..utilities.tableio import readtable
@@ -83,7 +83,7 @@ class Overlap(DataClassWithPscale):
     """
     return np.array([self.x2, self.y2])
 
-class OverlapCollection(abc.ABC):
+class OverlapCollection(units.ThingWithPscale):
   """
   Base class for a group of overlaps.
   """
@@ -91,7 +91,7 @@ class OverlapCollection(abc.ABC):
   @abc.abstractmethod
   def overlaps(self): pass
 
-  def overlapgraph(self, useexitstatus=False):
+  def overlapgraph(self, useexitstatus=False, skipoverlaps=None):
     """
     Get a networkx graph object.
     It has a node for each rectangle id and an edge for
@@ -101,9 +101,11 @@ class OverlapCollection(abc.ABC):
     have been aligned), it will only include overlaps with an exit
     status of 0.
     """
+    if skipoverlaps is None: skipoverlaps = []
     g = nx.DiGraph()
     for o in self.overlaps:
       if useexitstatus and o.result.exit: continue
+      if o in skipoverlaps: continue
       g.add_edge(o.p1, o.p2, overlap=o)
 
     return g
@@ -128,7 +130,7 @@ class OverlapCollection(abc.ABC):
     """
     return list(nx.strongly_connected_components(self.overlapgraph(*args, **kwargs)))
 
-  def overlapsforrectangle(self,rectangle_n,*args,**kwargs):
+  def overlapsforrectangle(self, rectangle_n, *args, **kwargs):
     """
     Return the overlaps for a given rectangle as graph edges
 
@@ -179,14 +181,25 @@ class OverlapList(list, OverlapCollection):
   @property
   def overlaps(self): return self
 
+  @property
+  def pscale(self):
+    result, = {o.pscale for o in self.overlaps}
+    return result
+
 class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
   """
   A collection of both rectangles and overlaps.  The overlapgraph
   has metadata for the nodes and also includes rectangles that
   aren't in an overlap.
   """
-  def overlapgraph(self, *args, **kwargs):
-    g = super().overlapgraph(*args, **kwargs)
+  def overlapgraph(self, *args, gridatol=None, skipoverlaps=None, **kwargs):
+    if skipoverlaps is None: skipoverlaps = []
+    if gridatol is not None:
+      for overlap in self.overlaps:
+        offset = overlap.x1vec - overlap.x2vec
+        if not np.all(units.np.isclose(offset, 0, atol=gridatol) | units.np.isclose(abs(offset), self.hpfoffset, atol=gridatol)):
+          skipoverlaps.append(overlap)
+    g = super().overlapgraph(*args, skipoverlaps=skipoverlaps, **kwargs)
     for r in self.rectangles:
       g.add_node(r.n, rectangle=r)
     return g
@@ -203,13 +216,18 @@ class RectangleOverlapList(RectangleOverlapCollection):
   Contains a list of rectangles and a list of overlaps.
   """
   def __init__(self, rectangles, overlaps):
-    self.__rectangles = rectangles
-    self.__overlaps = overlaps
+    self.__rectangles = RectangleList(rectangles)
+    self.__overlaps = OverlapList(overlaps)
 
   @property
   def rectangles(self): return self.__rectangles
   @property
   def overlaps(self): return self.__overlaps
+  @methodtools.lru_cache()
+  @property
+  def pscale(self):
+    result, = {self.rectangles.pscale, self.overlaps.pscale}
+    return result
 
 def rectangleoverlaplist_fromcsvs(dbloadfolder, *, layer, selectrectangles=None, selectoverlaps=None, onlyrectanglesinoverlaps=False, rectangletype=Rectangle, overlaptype=Overlap):
   """

@@ -96,6 +96,7 @@ setupkwargs = dict(
     "opencv-python",
     "openpyxl",
     "psutil;sys_platform!='cygwin'", #please note astropath is NOT been tested on cygwin
+    "rdp",
     "seaborn",
     "scikit-image>=0.17,<0.18", #see test/testmisc.py - we want polygon.numpyarray to return reproducible results, and skimage.draw.polygon's behavior changes between 0.17 and 0.18.  Want to support python 3.6 for now so we need to stick to 0.17.
     "scikit-learn>=0.17",

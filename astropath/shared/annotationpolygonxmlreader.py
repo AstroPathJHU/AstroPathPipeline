@@ -4,10 +4,10 @@ from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.misc import ArgParseAddToDict
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import readtable, writetable
-from ..utilities.units.dataclasses import distancefield, DataClassWithApscale
+from ..utilities.units.dataclasses import distancefield, DataClassWithAnnoscale
 from .csvclasses import Annotation, Region, Vertex
-from .image_masking.maskloader import TissueMaskLoader
-from .logging import dummylogger, printlogger
+from .image_masking.maskloader import TissueMaskLoaderWithPolygons
+from .logging import dummylogger, printlogger, ThingWithLogger
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
 
@@ -17,15 +17,15 @@ class AllowedAnnotation(MyDataClassFrozen):
   color: str
   synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
 
-class AnnotationNodeBase(units.ThingWithApscale):
-  def __init__(self, *args, apscale, **kwargs):
+class AnnotationNodeBase(units.ThingWithAnnoscale):
+  def __init__(self, *args, annoscale, **kwargs):
     super().__init__(*args, **kwargs)
     self.usesubindex = None
     self.__newannotationtype = None
-    self.__apscale = apscale
+    self.__annoscale = annoscale
   @property
-  def apscale(self):
-    return self.__apscale
+  def annoscale(self):
+    return self.__annoscale
   @property
   def usesubindex(self): return self.__usesubindex
   @usesubindex.setter
@@ -81,6 +81,14 @@ class AnnotationNodeBase(units.ThingWithApscale):
   @abc.abstractmethod
   def regions(self): pass
 
+  @property
+  @abc.abstractmethod
+  def isfromxml(self): pass
+
+  @property
+  @abc.abstractmethod
+  def areacutoff(self): pass
+
 class AnnotationNodeXML(AnnotationNodeBase):
   def __init__(self, node, **kwargs):
     super().__init__(**kwargs)
@@ -104,15 +112,23 @@ class AnnotationNodeXML(AnnotationNodeBase):
     if not self.__xmlnode["Regions"]: return []
     regions = self.__xmlnode["Regions"]["Region"]
     if isinstance(regions, jxmlease.XMLDictNode): regions = regions,
-    return [AnnotationRegionXML(_, apscale=self.apscale) for _ in regions]
+    return [AnnotationRegionXML(_, annoscale=self.annoscale) for _ in regions]
 
-class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithApscale):
-  def __init__(self, name, polygons, *, color, visible=True, **kwargs):
+  @property
+  def isfromxml(self): return True
+
+  @property
+  def areacutoff(self):
+    return None #when it's manually drawn, want to keep whatever there is
+
+class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithAnnoscale):
+  def __init__(self, name, polygons, *, color, areacutoff, visible=True, **kwargs):
     super().__init__(**kwargs)
     self.__name = name
     self.__polygons = sorted(polygons, key=lambda x: tuple(x.outerpolygon.vertexarray[0]))
     self.__color = color
     self.__visible = visible
+    self.__areacutoff = areacutoff
   @property
   def rawname(self):
     return self.__name
@@ -129,18 +145,25 @@ class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithApscale):
     result = []
     for p in self.__polygons:
       result += [
-        AnnotationRegionFromPolygon(p.outerpolygon, apscale=self.apscale),
-        *(AnnotationRegionFromPolygon(pp, apscale=self.apscale, isNeg=1) for pp in p.subtractpolygons),
+        AnnotationRegionFromPolygon(p.outerpolygon, annoscale=self.annoscale),
+        *(AnnotationRegionFromPolygon(pp, annoscale=self.annoscale, isNeg=1) for pp in p.subtractpolygons),
       ]
     return result
 
-class AnnotationRegionBase(units.ThingWithApscale):
-  def __init__(self, *args, apscale, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.__apscale = apscale
   @property
-  def apscale(self):
-    return self.__apscale
+  def isfromxml(self): return False
+
+  @property
+  def areacutoff(self):
+    return self.__areacutoff
+
+class AnnotationRegionBase(units.ThingWithAnnoscale):
+  def __init__(self, *args, annoscale, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__annoscale = annoscale
+  @property
+  def annoscale(self):
+    return self.__annoscale
   @property
   @abc.abstractmethod
   def vertices(self): pass
@@ -159,27 +182,27 @@ class AnnotationRegionXML(AnnotationRegionBase):
   def vertices(self):
     vertices = self.__xmlnode["Vertices"]["V"]
     if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
-    return [AnnotationVertexXML(_, apscale=self.apscale) for _ in vertices]
+    return [AnnotationVertexXML(_, annoscale=self.annoscale) for _ in vertices]
   @property
   def NegativeROA(self): return bool(int(self.__xmlnode.get_xml_attr("NegativeROA")))
   @property
   def Type(self): return self.__xmlnode.get_xml_attr("Type")
 
-class AnnotationRegionFromPolygon(AnnotationRegionBase, units.ThingWithApscale):
+class AnnotationRegionFromPolygon(AnnotationRegionBase, units.ThingWithAnnoscale):
   def __init__(self, polygon, *, isNeg=False, **kwargs):
     super().__init__(**kwargs)
-    self.__polygon = polygon.round(imagescale=self.apscale)
+    self.__polygon = polygon.round(imagescale=self.annoscale)
     self.__isNeg = isNeg
   @property
   def vertices(self):
     assert not self.__polygon.subtractpolygons
-    return [AnnotationVertexFromPolygon(X=x, Y=y, apscale=self.apscale) for x, y in self.__polygon.outerpolygon.vertexarray]
+    return [AnnotationVertexFromPolygon(X=x, Y=y, annoscale=self.annoscale) for x, y in self.__polygon.outerpolygon.vertexarray]
   @property
   def NegativeROA(self): return self.__isNeg
   @property
   def Type(self): return "Polygon"
 
-class AnnotationVertexBase(units.ThingWithApscale):
+class AnnotationVertexBase(units.ThingWithAnnoscale):
   @property
   @abc.abstractmethod
   def X(self): pass
@@ -187,26 +210,27 @@ class AnnotationVertexBase(units.ThingWithApscale):
   @abc.abstractmethod
   def Y(self): pass
 class AnnotationVertexXML(AnnotationVertexBase):
-  def __init__(self, node, *, apscale, **kwargs):
+  def __init__(self, node, *, annoscale, **kwargs):
     super().__init__(**kwargs)
     self.__xmlnode = node
-    self.__apscale = apscale
+    self.__annoscale = annoscale
   @property
-  def apscale(self): return self.__apscale
+  def annoscale(self): return self.__annoscale
   @property
-  def X(self): return int(self.__xmlnode.get_xml_attr("X")) * self.oneappixel
+  def X(self): return int(self.__xmlnode.get_xml_attr("X")) * self.oneannopixel
   @property
-  def Y(self): return int(self.__xmlnode.get_xml_attr("Y")) * self.oneappixel
+  def Y(self): return int(self.__xmlnode.get_xml_attr("Y")) * self.oneannopixel
 
-class AnnotationVertexFromPolygon(DataClassWithApscale):
-  X: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="apscale")
-  Y: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="apscale")
+class AnnotationVertexFromPolygon(DataClassWithAnnoscale):
+  X: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="annoscale")
+  Y: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="annoscale")
 
-class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
+class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale, ThingWithLogger):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, **kwargs):
+  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, annotationsonwsi=False, **kwargs):
+    self.__annotationsonwsi = annotationsonwsi
     self.__saveallannotationimages = saveallannotationimages
     if annotationimagefolder is not None: annotationimagefolder = pathlib.Path(annotationimagefolder)
     self.__annotationimagefolder = annotationimagefolder
@@ -219,10 +243,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     super().__init__(*args, **kwargs)
 
   @property
-  @abc.abstractmethod
-  def logger(self): pass
-  @property
   def annotationimagefolder(self): return self.__annotationimagefolder
+  @property
+  def annotationsonwsi(self): return self.__annotationsonwsi
   @property
   def qptifffilename(self):
     return self.annotationspolygonsxmlfile.with_suffix("").with_suffix("").with_suffix(".qptiff")
@@ -264,7 +287,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
   @property
   def annotationnodes(self):
     with open(self.annotationspolygonsxmlfile, "rb") as f:
-      return [AnnotationNodeXML(node, apscale=self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+      return [AnnotationNodeXML(node, annoscale=self.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self, *, pscale=None):
@@ -336,7 +359,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
               layer=layeridx,
               poly="poly",
               pscale=pscale,
-              apscale=self.apscale,
+              annoscale=self.annoscale,
             )
           )
           layeridx = next(count)
@@ -362,7 +385,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             layer=layer,
             poly="poly",
             pscale=pscale,
-            apscale=self.apscale,
+            annoscale=self.annoscale,
           )
         )
 
@@ -383,14 +406,15 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                 vid=k,
                 x=x,
                 y=y,
-                apscale=self.apscale,
+                annoscale=self.annoscale,
                 pscale=pscale,
+                isfromxml=node.isfromxml,
               )
             )
           isNeg = region.NegativeROA
 
           polygon = SimplePolygon(vertices=regionvertices)
-          valid = polygon.makevalid(round=True, imagescale=self.apscale)
+          valid = polygon.makevalid(round=True, imagescale=self.annoscale)
 
           perimeter = 0
           maxlength = 0
@@ -410,25 +434,28 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
 
           if saveimage and self.__annotationimagefolder is not None:
             poly = SimplePolygon(vertices=regionvertices)
-            with QPTiff(self.qptifffilename) as fqptiff:
-              zoomlevel = fqptiff.zoomlevels[0]
-              qptiff = zoomlevel[0].asarray()
-              pixel = self.oneappixel
-              xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
-              xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
-              xybuffer = (xymax - xymin) / 20
-              xymin -= xybuffer
-              xymax += xybuffer
-              (xmin, ymin), (xmax, ymax) = xymin, xymax
-              fig, ax = plt.subplots(1, 1)
-              plt.imshow(
-                qptiff[
-                  floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
-                  floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
-                ],
-                extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
-              )
-              ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.apscale))
+            if self.annotationsonwsi:
+              raise ValueError("saving images is not implemented on wsi")
+            else:
+              with QPTiff(self.qptifffilename) as fqptiff:
+                zoomlevel = fqptiff.zoomlevels[0]
+                img = zoomlevel[0].asarray()
+            pixel = self.oneannopixel
+            xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
+            xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
+            xybuffer = (xymax - xymin) / 20
+            xymin -= xybuffer
+            xymax += xybuffer
+            (xmin, ymin), (xmax, ymax) = xymin, xymax
+            fig, ax = plt.subplots(1, 1)
+            plt.imshow(
+              img[
+                floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
+                floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
+              ],
+              extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
+            )
+            ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.annoscale))
 
             if badimage:
               openvertex1 = poly.vertexarray[0]
@@ -440,8 +467,12 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
             fig.savefig(self.__annotationimagefolder/self.annotationspolygonsxmlfile.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__annotationimagefiletype}").name)
             plt.close(fig)
 
+          areacutoff = node.areacutoff
+          if areacutoff is not None: areacutoff = units.convertpscale(areacutoff, self.annoscale, pscale, power=2)
           for subpolygon in valid:
-            for polygon, m in zip([subpolygon.outerpolygon] + subpolygon.subtractpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
+            subsubpolygons = (p for p in [subpolygon.outerpolygon] + subpolygon.subtractpolygons if not (areacutoff is not None and polygon.area < areacutoff))
+            for polygon, m in zip(subsubpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
+              if node.areacutoff is not None and polygon.area < areacutoff: continue
               regionid = 1000*layer + m
               polygon.regionid = regionid
               regionvertices = polygon.outerpolygon.vertices
@@ -458,7 +489,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
                   type=region.Type,
                   nvert=len(regionvertices),
                   poly=None,
-                  apscale=self.apscale,
+                  annoscale=self.annoscale,
                   pscale=pscale,
                 )
               )
@@ -474,23 +505,23 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale):
     return annotations, allregions, allvertices
 
 class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
-  def __init__(self, polygonxmlfile, *args, pscale=None, apscale=None, logger=dummylogger, **kwargs):
+  def __init__(self, polygonxmlfile, *args, pscale=None, annoscale=None, logger=dummylogger, **kwargs):
     self.__polygonxmlfile = polygonxmlfile
     self.__logger = logger
     super().__init__(*args, **kwargs)
     if pscale is None: pscale = 1
-    if apscale is None:
+    if annoscale is None:
       if self.annotationimagefolder is not None:
         with QPTiff(self.qptifffilename) as fqptiff:
-          apscale = fqptiff.apscale
+          annoscale = fqptiff.annoscale
       else:
-        apscale = 1
+        annoscale = 1
     self.__pscale = pscale
-    self.__apscale = apscale
+    self.__annoscale = annoscale
   @property
   def pscale(self): return self.__pscale
   @property
-  def apscale(self): return self.__apscale
+  def annoscale(self): return self.__annoscale
 
   @property
   def logger(self): return self.__logger
@@ -498,11 +529,11 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
   @property
   def annotationspolygonsxmlfile(self): return self.__polygonxmlfile
 
-class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoader):
+class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoaderWithPolygons):
   @property
   def annotationnodes(self):
     result = super().annotationnodes
-    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons, color=self.allowedannotation("outline").color, apscale=self.apscale))
+    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.annoscale, areacutoff=self.tissuemaskpolygonareacutoff()))
     return result
 
 def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):
@@ -529,6 +560,9 @@ def main(args=None):
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
   p.add_argument("--csvprefix", help="prefix to put in front of the csv file names")
   add_rename_annotation_argument(p)
+  g = p.add_mutually_exclusive_group()
+  g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
+  g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
     writeannotationcsvs(**args.__dict__, logger=printlogger("annotations"))
@@ -543,6 +577,9 @@ def checkannotations(args=None):
   g.add_argument("--save-bad-polygon-images-folder", type=pathlib.Path, dest="badannotationimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
   p.add_argument("--save-images-filetype", default="pdf", choices=("pdf", "png"), dest="annotationimagefiletype", help="image format to save debug images")
   add_rename_annotation_argument(p)
+  g = p.add_mutually_exclusive_group()
+  g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
+  g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
   args = p.parse_args(args=args)
   if args.annotationimagefolder is not None:
     args.saveallannotationimages = True

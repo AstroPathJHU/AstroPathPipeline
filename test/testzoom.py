@@ -1,4 +1,6 @@
-import gzip, more_itertools, numpy as np, os, pathlib, PIL.Image, shutil, tifffile
+import datetime, gzip, job_lock, more_itertools, numpy as np, os, pathlib, PIL.Image, shutil, tifffile
+from astropath.shared.logging import MyLogger
+from astropath.utilities.version import astropathversion
 from astropath.slides.stitchmask.stitchmasksample import StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
@@ -72,7 +74,7 @@ class TestZoom(TestBaseSaveOutput):
     selectrectangles = self.selectrectangles(SlideID)
     layers = self.layers(SlideID)
     maskroot = None
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode, "--allow-local-edits", "--ignore-dependencies"]
     if selectrectangles is not None:
       args += ["--selectrectangles", *(str(_) for _ in selectrectangles)]
     if layers is not None:
@@ -119,14 +121,24 @@ class TestZoom(TestBaseSaveOutput):
     reffolder = thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"
     testfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"
     testfolder.mkdir(exist_ok=True, parents=True)
-    for filename in reffolder.glob("*.png"):
-      shutil.copy(filename, testfolder)
+    for filename in "L1_1-Z9-L1-wsi.png",:
+      shutil.copy(reffolder/filename, testfolder)
+    logfile = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"logfiles"/f"{SlideID}-zoom.log"
+    logfile.parent.mkdir(exist_ok=True, parents=True)
+    with open(logfile, "w", newline="\r\n") as f:
+      now = datetime.datetime.now().strftime(MyLogger.dateformat)
+      f.write(f"0;0;L1_1;START: zoom {astropathversion};{now}\n")
+      f.write(f"0;0;L1_1;FINISH: zoom {astropathversion};{now}\n")
     self.testZoomWsi(SlideID=SlideID, **kwargs)
+
+  def testExistingWSIFast(self, SlideID="L1_1", **kwargs):
+    self.testExistingWSI(SlideID, mode="fast", **kwargs)
 
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID
   for filename in folder.glob("*/*.gz"):
-    newfilename = filename.with_suffix("")
-    if newfilename.exists(): continue
-    with gzip.open(filename) as f, open(newfilename, "wb") as newf:
-      newf.write(f.read())
+    with job_lock.JobLockAndWait(filename.with_suffix(".lock"), task=f"gunzipping {filename}", delay=10):
+      newfilename = filename.with_suffix("")
+      if newfilename.exists(): continue
+      with gzip.open(filename) as f, open(newfilename, "wb") as newf:
+        newf.write(f.read())

@@ -53,7 +53,7 @@ processes one or the other might be faster.
 
 import contextlib
 from . import core, dataclasses, drawing
-from .core import Distance, onemicron, onepixel, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, ThingWithScale, UnitsError
+from .core import Distance, onemicron, onepixel, ThingWithAnnoscale, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, ThingWithScale, UnitsError
 
 def setup(mode, baseunit=None):
   """
@@ -66,7 +66,7 @@ def setup(mode, baseunit=None):
 
   global convertpscale, currentmodule, currentbaseunit
   global correlated_distances, distances
-  global asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
+  global asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs, ufloat
   global currentmode, unitdtype
   global np, scipy
 
@@ -75,7 +75,7 @@ def setup(mode, baseunit=None):
       if baseunit is not None: raise ValueError("Provided baseunit for safe units")
       from . import safe as currentmodule
       from .safe import convertpscale, correlated_distances, distances
-      from .safe import asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
+      from .safe import asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs, ufloat
       from .safe import numpy as np, scipy
       unitdtype = object
     elif mode == "fast":
@@ -83,7 +83,7 @@ def setup(mode, baseunit=None):
       if baseunit is None: baseunit = "pixels"
       currentmodule.setup(baseunit)
       from .fast import convertpscale, correlated_distances, distances
-      from .fast import asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs
+      from .fast import asdimensionless, covariance_matrix, microns, nominal_value, nominal_values, pixels, std_dev, std_devs, ufloat
       import numpy as np, scipy
       unitdtype = float
     else:
@@ -116,8 +116,8 @@ def setup_context(mode, baseunit=None):
     setup(*bkp)
 
 __all__ = [
-  "convertpscale", "correlated_distances", "Distance", "distances", "onemicron", "onepixel", "ThingWithApscale", "ThingWithImscale", "ThingWithPscale", "ThingWithQpscale", "ThingWithScale", "UnitsError",
-  "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs",
+  "convertpscale", "correlated_distances", "Distance", "distances", "onemicron", "onepixel", "ThingWithAnnoscale", "ThingWithApscale", "ThingWithImscale", "ThingWithPscale", "ThingWithQpscale", "ThingWithScale", "UnitsError",
+  "asdimensionless", "covariance_matrix", "microns", "nominal_value", "nominal_values", "pixels", "std_dev", "std_devs", "ufloat",
   "dataclasses", "drawing", "fft", "linalg", "testing",
   "setup", "setup_context",
   "np", "scipy"

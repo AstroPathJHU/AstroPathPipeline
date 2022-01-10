@@ -3,10 +3,11 @@ from ...shared.logging import dummylogger
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.rectangle import Rectangle, rectangledict, RectangleList
 from ...utilities import units
-from ...utilities.dataclasses import MetaDataAnnotation, MyDataClass
+from ...utilities.dataclasses import MetaDataAnnotation
 from ...utilities.miscmath import covariance_matrix, floattoint, weightedstd
 from ...utilities.optionalimports import cvxpy as cp
 from ...utilities.tableio import writetable
+from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .field import Field, FieldOverlap
 
 def stitch(*, usecvxpy=False, **kwargs):
@@ -285,6 +286,12 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
   @methodtools.lru_cache()
   @property
+  def gridatol(self):
+    shape = np.min([_.shape for _ in self.rectangles], axis=0)
+    return shape / 10
+
+  @methodtools.lru_cache()
+  @property
   def pscale(self):
     pscale, = {_.pscale for _ in itertools.chain(self.rectangles, self.overlaps)}
     return pscale
@@ -332,33 +339,48 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
   @methodtools.lru_cache()
   @property
-  def fields(self):
+  def __fields_and_shift(self):
     """
     Create the field objects from the rectangles and stitch result
     """
     result = RectangleList()
-    islands = list(self.islands(useexitstatus=True))
+    gridislands = list(self.islands(useexitstatus=True, gridatol=self.gridatol))
+    alignedislands = list(self.islands(useexitstatus=True, gridatol=None))
     onepixel = self.onepixel
     gxdict = collections.defaultdict(dict)
     gydict = collections.defaultdict(dict)
     primaryregionsx = {}
     primaryregionsy = {}
+    isorphan = {}
+    adjustcx = collections.defaultdict(dict)
+    adjustcy = collections.defaultdict(dict)
 
     shape = {tuple(r.shape) for r in self.rectangles}
     if len(shape) > 1:
       raise ValueError("Some rectangles have different shapes")
     shape = shape.pop()
 
-    for gc, island in enumerate(islands, start=1):
+    for gc, island in enumerate(gridislands, start=1):
       rectangles = [self.rectangles[self.rectangledict[n]] for n in island]
+      isorphan[gc] = len(island) == 1 and island in alignedislands
 
-      for i, (primaryregions, gdict) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict))):
-        #find the gx and gy that correspond to cx and cy
+      for i, (primaryregions, gdict, adjustc) in enumerate(zip((primaryregionsx, primaryregionsy), (gxdict, gydict), (adjustcx[gc], adjustcy[gc]))):
+        #find the gx and gy that correspond to each nominal x and y
         average = []
-        cs = sorted({r.cxvec[i] for r in rectangles})
+
+        gridatol = self.gridatol[i]
+        allcs = sorted({r.xvec[i] for r in rectangles})
+        adjustc.update({c: c for c in allcs})
+        for c1, c2 in more_itertools.pairwise(allcs):
+          if c2-c1 <= gridatol:
+            adjustc[c2] = adjustc[c1]
+            if c2 - adjustc[c2] > gridatol:
+              raise ValueError(f"HPFs are offset from the grid by more than the tolerance {c2} {adjustc[c2]}, please check")
+        cs = sorted(set(adjustc.values()))
+
         for g, c in enumerate(cs, start=1):
           gdict[gc][c] = g
-          theserectangles = [r for r in rectangles if r.cxvec[i] == c]
+          theserectangles = [r for r in rectangles if adjustc[r.xvec[i]] == c]
           average.append(np.mean(units.nominal_values([self.x(r)[i] for r in theserectangles])))
 
         #find mx1, my1, mx2, my2
@@ -398,19 +420,12 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           primaryregions[gc].append(m*len(average)+b_right)
         else:
           #can't fit a line because there are only at most 2 rows/columns, so do an approximation
-          allcs = {gc: sorted({self.rectangles[self.rectangledict[n]].cxvec[i] for n in island}) for gc, island in enumerate(islands, start=1)}
-          mindiff = min(itertools.chain(*(np.diff(islandcs) for islandcs in allcs.values())))
-          divideby = 1
-          while mindiff / divideby > shape[i]:
-            divideby += 1
-          mindiff /= divideby
-
           if len(primaryregions[gc]) == 1:
-            primaryregions[gc].insert(0, primaryregions[gc][0] - mindiff)
-            primaryregions[gc].append(primaryregions[gc][1] + mindiff)
+            primaryregions[gc].insert(0, primaryregions[gc][0] - self.hpfoffset[i])
+            primaryregions[gc].append(primaryregions[gc][1] + self.hpfoffset[i])
           else: #len(primaryregions[gc]) == 0
-            primaryregions[gc].append(average[0] + (shape[i] - mindiff) / 2)
-            primaryregions[gc].append(average[0] + (shape[i] + mindiff) / 2)
+            primaryregions[gc].append(average[0] + (shape[i] - self.hpfoffset[i]) / 2)
+            primaryregions[gc].append(average[0] + (shape[i] + self.hpfoffset[i]) / 2)
 
     mx1 = {}
     mx2 = {}
@@ -418,12 +433,12 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     my2 = {}
 
     #set gx, gy, mx1, my1, mx2, my2 for the HPFs
-    for i, island in enumerate(islands, start=1):
+    for i, island in enumerate(gridislands, start=1):
       for rid in island:
         r = self.rectangles[self.rectangledict[rid]]
 
-        gx = gxdict[i][r.cx]
-        gy = gydict[i][r.cy]
+        gx = gxdict[i][adjustcx[i][r.x]]
+        gy = gydict[i][adjustcy[i][r.y]]
 
         mx1[rid] = primaryregionsx[i][gx-1]
         mx2[rid] = primaryregionsx[i][gx]
@@ -459,8 +474,8 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
             raise ValueError(f"{rid}: py+h = {pxvec[1]+r.h}, my2 = {my2[rid]}")
 
     #see if the primary regions of any HPFs in different islands overlap
-    for (i1, island1), (i2, island2) in itertools.combinations(enumerate(islands, start=1), r=2):
-      if len(island1) == 1 or len(island2) == 1: continue #orphans are excluded
+    for (i1, island1), (i2, island2) in itertools.combinations(enumerate(gridislands, start=1), r=2):
+      if isorphan[i1] or isorphan[i2]: continue #orphans are excluded
 
       #first see if the islands overlap
       x11 = min(primaryregionsx[i1])
@@ -501,23 +516,25 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           ):
             self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} overlap, adjusting them")
 
-            threshold = 100*onepixel
+            threshold = self.hpfoffset / 10
+            if len(island1) <= 2 or len(island2) <= 2:
+              threshold = self.hpfoffset / 4
             xs = ys = None
             ridax = ridbx = riday = ridby = None
-            if abs(xx21 - xx12) <= threshold:
+            if abs(xx21 - xx12) <= threshold[0]:
               xs = xx12, xx21
               ridax, ridbx = rid2, rid1
-            elif abs(xx11 - xx22) <= threshold:
+            elif abs(xx11 - xx22) <= threshold[0]:
               xs = xx11, xx22
               ridax, ridbx = rid1, rid2
-            if abs(yy21 - yy12) <= threshold:
+            if abs(yy21 - yy12) <= threshold[1]:
               ys = yy12, yy21
               riday, ridby = rid2, rid1
-            elif abs(yy11 - yy22) <= threshold:
+            elif abs(yy11 - yy22) <= threshold[1]:
               ys = yy11, yy22
               riday, ridby = rid1, rid2
             if xs is ys is None:
-              raise ValueError(f"Primary regions for fields {rid1} and {rid2} have too big of an overlap")
+              raise ValueError(f"Primary regions for fields {rid1} and {rid2} have too big of an overlap:\nfield {rid1}: mx = ({xx11}, {xx21}), my = ({yy11}, {yy21})\nfield {rid2}: mx = ({xx12}, {xx22}), my = ({yy12}, {yy22})")
 
             if xs is not None and ys is not None:
               cornerstoadjust[xs, ys].append((ridax, ridbx, riday, ridby))
@@ -578,23 +595,23 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           ):
             raise ValueError(f"Primary regions for fields {rid1} and {rid2} still overlap")
 
-    #if there are any HPFs that are in the wrong quadrant (negative px or py), adjust the whole slide
     minpxvec = [np.inf * onepixel, np.inf * onepixel]
+
     for rectangle in self.rectangles:
-      for gc, island in enumerate(islands, start=1):
+      for gc, island in enumerate(gridislands, start=1):
         if rectangle.n in island:
           break
       else:
         assert False
-      gx = gxdict[gc][rectangle.cx]
-      gy = gydict[gc][rectangle.cy]
+      gx = gxdict[gc][adjustcx[gc][rectangle.x]]
+      gy = gydict[gc][adjustcy[gc][rectangle.y]]
       pxvec = self.x(rectangle) - self.origin
       minpxvec = np.min([minpxvec, units.nominal_values(pxvec)], axis=0)
       result.append(
         Field(
           rectangle=rectangle,
           ixvec=floattoint(np.round((rectangle.xvec / onepixel).astype(float))) * onepixel,
-          gc=0 if len(island) == 1 else gc,
+          gc=0 if isorphan[gc] else gc,
           pxvec=pxvec,
           gxvec=(gx, gy),
           primaryregionx=np.array([mx1[rectangle.n], mx2[rectangle.n]]) - self.origin[0],
@@ -603,6 +620,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         )
       )
 
+    #if there are any HPFs that are in the wrong quadrant (negative px or py), adjust the whole slide
     minx, miny = np.floor((minpxvec - self.margin)/(100*onepixel))*100*onepixel
     if minx > 0: minx = 0
     if miny > 0: miny = 0
@@ -614,8 +632,16 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         f.pxvec -= (minx, miny)
         f.primaryregionx -= minx
         f.primaryregiony -= miny
+    shift = -minx, -miny
 
-    return result
+    return result, shift
+
+  @property
+  def fields(self):
+    return self.__fields_and_shift[0]
+  @property
+  def globalshift(self):
+    return self.__fields_and_shift[1]
 
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
     """
@@ -642,13 +668,25 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           AffineNominalEntry(
             n=n,
             matrixentry=entry,
-            description="a"+rowcoordinate+columncoordinate
+            description="a"+rowcoordinate+columncoordinate,
+            pscale=self.pscale,
           )
         )
+    for coordinate, shift in zip("xy", self.globalshift):
+      n += 1
+      affine.append(
+        AffineNominalEntry(
+          n=n,
+          matrixentry=shift,
+          description="shift"+coordinate,
+          pscale=self.pscale,
+        )
+      )
 
     for entry1, entry2 in itertools.combinations_with_replacement(affine[:], 2):
       n += 1
-      affine.append(AffineCovarianceEntry(n=n, entry1=entry1, entry2=entry2))
+      entry = AffineCovarianceEntry(n=n, entry1=entry1, entry2=entry2)
+      if entry: affine.append(entry)
     writetable(affinefilename, affine, rowclass=AffineEntry, **kwargs)
 
     writetable(fieldoverlapfilename, self.fieldoverlaps, **kwargs)
@@ -817,7 +855,16 @@ class StitchResultOverlapCovariances(StitchResultBase):
 
     Tcovariance[iTyy,iTyy] = dct["cov_ayy_ayy"]
 
+    shiftx = dct.get("shiftx", 0)
+    shifty = dct.get("shifty", 0)
+    assert not any("cov_" in _ and "shift" in _ for _ in dct)
+
     self.__T = np.array(unc.correlated_values(Tnominal, Tcovariance)).reshape((2, 2))
+    self.__initialshift = np.array((shiftx, shifty))
+
+  @property
+  def globalshift(self):
+    return self.__initialshift + super().globalshift
 
 class ReadStitchResult(StitchResultOverlapCovariances):
   """
@@ -861,7 +908,7 @@ class StitchResultCvxpy(CalculatedStitchResult):
     self.xvar = x
     self.Tvar = T
 
-class AffineEntry(MyDataClass):
+class AffineEntry(DataClassWithPscale):
   """
   Entry in the affine matrix or in its covariance matrix
 
@@ -870,7 +917,10 @@ class AffineEntry(MyDataClass):
   description: description of the entry
   """
   n: int
-  value: float = MetaDataAnnotation(writefunction=float)
+  value: units.Distance = distancefield(
+    pixelsormicrons="pixels",
+    power=lambda self: self.description.count("shift"),
+  )
   description: str
 
 class AffineNominalEntry(AffineEntry):
@@ -881,6 +931,8 @@ class AffineNominalEntry(AffineEntry):
 
   @classmethod
   def transforminitargs(cls, *, matrixentry, **kwargs):
+    if units.std_dev(matrixentry) == 0:
+      matrixentry = units.ufloat(matrixentry, 0)
     return super().transforminitargs(value=matrixentry.n, matrixentry=matrixentry, **kwargs)
 
 class AffineCovarianceEntry(AffineEntry):
@@ -894,6 +946,18 @@ class AffineCovarianceEntry(AffineEntry):
   def transforminitargs(cls, *, entry1, entry2, **kwargs):
     if entry1 is entry2:
       value = entry1.matrixentry.s**2
+    elif entry1.matrixentry.s == 0 or entry2.matrixentry.s == 0:
+      value = 0
     else:
       value = covariance_matrix([entry1.matrixentry, entry2.matrixentry])[0,1]
-    return super().transforminitargs(value=value, description = "cov_"+entry1.description+"_"+entry2.description, entry1=entry1, entry2=entry2, **kwargs)
+
+    morekwargs = {}
+    pscales = {entry1.pscale, entry2.pscale}
+    pscales.discard(None)
+    if pscales and "pscale" not in kwargs:
+      morekwargs["pscale"], = pscales
+
+    return super().transforminitargs(value=value, description = "cov_"+entry1.description+"_"+entry2.description, entry1=entry1, entry2=entry2, **kwargs, **morekwargs)
+
+  def __bool__(self):
+    return bool(self.value)

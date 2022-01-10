@@ -1,11 +1,140 @@
-import collections, contextlib, jxmlease, methodtools, re
-from ...shared.argumentparser import RunFromArgumentParser
-from ...shared.sample import WorkflowSample
-from ...shared.cohort import WorkflowCohort
+import collections, contextlib, jxmlease, methodtools, numpy as np, re
+from ...shared.argumentparser import DbloadArgumentParser
+from ...shared.cohort import DbloadCohort, WorkflowCohort
+from ...shared.csvclasses import Constant
+from ...shared.sample import DbloadSample, WorkflowSample
+from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import ArgParseAddRegexToDict
 
-class MergeAnnotationXMLsArgumentParser(RunFromArgumentParser):
+class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
+  require_annotations_on_wsi_or_qptiff_argument = False
+
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    g = p.add_mutually_exclusive_group(required=cls.require_annotations_on_wsi_or_qptiff_argument)
+    g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
+    g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
+    p.add_argument("--annotation-position", nargs=2, type=float)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    if parsed_args_dict["annotation_position"] is not None and not parsed_args_dict["annotationsonwsi"]:
+      raise ValueError("--annotation-position is only valid for --annotations-on-wsi")
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "annotationsonwsi": parsed_args_dict.pop("annotationsonwsi"),
+      "annotationposition": parsed_args_dict.pop("annotation_position"),
+    }
+
+class AnnotationInfoReaderSample(DbloadSample, units.ThingWithAnnoscale):
+  def __init__(self, *args, annotationsonwsi=None, annotationposition=None, **kwargs):
+    self.__annotationsonwsi = annotationsonwsi
+    if annotationposition is not None: annotationposition = np.array(annotationposition)
+    self.__annotationposition = annotationposition
+    super().__init__(*args, **kwargs)
+
+  def readannotationinfo(self, *, check_compatibility=True):
+    try:
+      annotationinfo = self.readcsv("annotationinfo", Constant)
+    except FileNotFoundError:
+      dct = {}
+    else:
+      dct = {_.name: _.value for _ in annotationinfo}
+
+    annotationsonwsi = dct.pop("annotationsonwsi", None)
+    if annotationsonwsi is not None: annotationsonwsi = bool(annotationsonwsi)
+    annotationxposition = dct.pop("annotationxposition", None)
+    annotationyposition = dct.pop("annotationyposition", None)
+    if dct:
+      raise ValueError(f"Unknown fields {', '.join(dct)} in annotationinfo.csv")
+    if annotationxposition is not None is not annotationyposition:
+      annotationposition = np.array([annotationxposition, annotationyposition])
+    elif annotationxposition is annotationyposition is None:
+      annotationposition = None
+    else:
+      raise ValueError("One of annotationxposition and annotationyposition is present in annotationinfo.csv, but not both")      
+    if check_compatibility:
+      if annotationsonwsi is not None is not self.__annotationsonwsi != annotationsonwsi:
+        raise ValueError(f"annotationsonwsi from constructor {self.__annotationsonwsi} doesn't match the one from readannotationinfo {annotationsonwsi}")
+      if annotationposition is not None is not self.__annotationposition != annotationposition:
+        raise ValueError(f"annotationposition from constructor {self.__annotationposition} doesn't match the one from readannotationinfo {annotationposition}")
+
+    if annotationsonwsi is None:
+      annotationsonwsi = self.__annotationsonwsi
+    if annotationsonwsi is None:
+      raise ValueError("No annotationsonwsi given or found in annotationinfo.csv")
+
+    if annotationsonwsi:
+      if annotationposition is None:
+        if annotationposition is None:
+          annotationposition = self.__annotationposition
+        raise ValueError("No annotationposition given or found in annotationinfo.csv")
+
+    if not annotationsonwsi and annotationposition is not None:
+      raise ValueError("annotationposition is meant for when the annotations are drawn on the wsi")
+
+    self.__annotationsonwsi = annotationsonwsi
+    self.__annotationposition = annotationposition
+
+  @property
+  def annotationsonwsi(self): return self.__annotationsonwsi
+  @property
+  def annotationposition(self): return self.__annotationposition
+  @annotationposition.setter
+  def annotationposition(self, annotationposition): self.__annotationposition = annotationposition
+  @property
+  def annoscale(self):
+    """
+    Scale of the annotations
+    """
+    return self.constantsdict.get("annoscale", self.pscale / 2 if self.annotationsonwsi else self.apscale)
+
+
+class AnnotationInfoWriterSample(AnnotationInfoReaderSample, AnnotationInfoWriterArgumentParser):
+  def writeannotationinfo(self):
+    pscales = {"pscale": self.pscale, "apscale": self.apscale, "qpscale": self.qpscale}
+    annotationinfo = [
+      Constant(
+        name="annotationsonwsi",
+        value=self.annotationsonwsi,
+        **pscales,
+      ),
+    ]
+    if self.annotationsonwsi:
+      annotationinfo += [
+        Constant(
+          name="annotationxposition",
+          value=self.annotationposition[0],
+          **pscales,
+        ),
+        Constant(
+          name="annotationyposition",
+          value=self.annotationposition[1],
+          **pscales,
+        ),
+      ]
+    self.writecsv("annotationinfo", annotationinfo)
+
+class AnnotationInfoWriterCohort(DbloadCohort, AnnotationInfoWriterArgumentParser):
+  def __init__(self, *args, annotationsonwsi, annotationposition, **kwargs):
+    self.__annotationsonwsi = annotationsonwsi
+    self.__annotationposition = annotationposition
+    super().__init__(*args, **kwargs)
+
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "annotationsonwsi": self.__annotationsonwsi,
+      "annotationposition": self.__annotationposition,
+    }
+
+class MergeAnnotationXMLsArgumentParser(AnnotationInfoWriterArgumentParser):
+  require_annotations_on_wsi_or_qptiff_argument = True
+
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
@@ -21,7 +150,7 @@ class MergeAnnotationXMLsArgumentParser(RunFromArgumentParser):
       "skipannotations": parsed_args_dict.pop("skip_annotation"),
     }
 
-class MergeAnnotationXMLsSample(WorkflowSample, MergeAnnotationXMLsArgumentParser):
+class MergeAnnotationXMLsSample(AnnotationInfoWriterSample, WorkflowSample, MergeAnnotationXMLsArgumentParser):
   def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
     self.__annotationselectiondict = annotationselectiondict
     self.__skipannotations = skipannotations
@@ -35,9 +164,10 @@ class MergeAnnotationXMLsSample(WorkflowSample, MergeAnnotationXMLsArgumentParse
     return self.scanfolder/f"{self.SlideID}_Scan{self.Scan}.annotations.polygons.merged.xml"
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, im3root, Scan, **otherworkflowkwargs):
+  def getoutputfiles(cls, SlideID, *, dbloadroot, im3root, Scan, **otherworkflowkwargs):
     return [
-      im3root/SlideID/UNIV_CONST.IM3_DIR_NAME/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}.annotations.polygons.merged.xml"
+      im3root/SlideID/UNIV_CONST.IM3_DIR_NAME/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}.annotations.polygons.merged.xml",
+      dbloadroot/SlideID/"dbload"/f"{SlideID}_annotationinfo.csv",
     ]
   def inputfiles(self, **kwargs):
     return []
@@ -102,14 +232,16 @@ class MergeAnnotationXMLsSample(WorkflowSample, MergeAnnotationXMLsArgumentParse
       with open(self.xmloutput, "w") as f:
         f.write(result.emit_xml())
 
+    self.writeannotationinfo()
+
   def run(self, **kwargs):
     return self.mergexmls(**kwargs)
 
   @classmethod
-  def workflowdependencyclasses(cls):
+  def workflowdependencyclasses(cls, **kwargs):
     return []
 
-class MergeAnnotationXMLsCohort(WorkflowCohort, MergeAnnotationXMLsArgumentParser):
+class MergeAnnotationXMLsCohort(AnnotationInfoWriterCohort, WorkflowCohort, MergeAnnotationXMLsArgumentParser):
   sampleclass = MergeAnnotationXMLsSample
   def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
     self.__annotationselectiondict = annotationselectiondict

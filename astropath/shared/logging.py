@@ -1,4 +1,4 @@
-import collections, contextlib, datetime, functools, job_lock, logging, os, pathlib, sys, time, traceback
+import abc, collections, contextlib, datetime, functools, job_lock, logging, os, pathlib, sys, time, traceback
 
 class MyLogger:
   r"""
@@ -383,3 +383,8 @@ class MultiLogger(contextlib.ExitStack):
     if self.__entermessage is not None:
       self.critical(self.__entermessage)
     return self
+
+class ThingWithLogger(abc.ABC):
+  @property
+  @abc.abstractmethod
+  def logger(self): pass

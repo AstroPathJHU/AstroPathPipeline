@@ -393,7 +393,7 @@ ARG GITHUB_TOKEN
 #add python packages
 RUN sudo pip3 install --upgrade pip
 
-ENV ASTROPATH_DEPENDENCY_COMMIT 76737685c7702450b7cf28de992cc882b5434a97
+ENV ASTROPATH_DEPENDENCY_COMMIT b5eb330aa275791af1b764b19e4e494893b91273
 
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \

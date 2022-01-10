@@ -1,4 +1,4 @@
-import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, re, sys
+import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, re
 from astropath.shared.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
 from astropath.shared.logging import getlogger
 from astropath.shared.overlap import Overlap
@@ -22,7 +22,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"dbload"/filename.name
       for SlideID in SlideIDs
       for ext in ("csv", "jpg")
-      for filename in (thisfolder/"data"/"reference"/"prepdb"/SlideID).glob(f"*.{ext}")
+      for filename in (thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload").glob(f"*.{ext}")
     ] + [ #this file is not compared to reference because it's huge
       thisfolder/"test_for_jenkins"/"prepdb"/"ZW2"/"dbload"/"ZW2_exposures.csv",
     ] + [
@@ -178,7 +178,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
         sample.logger.info(f"comparing {filename}")
         try:
           rows = sample.readtable(dbloadroot/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
-          targetrows = sample.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          targetrows = sample.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
           for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
           if cls == Rectangle:
@@ -186,12 +186,14 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
         except Exception as e:
           raise type(e)("Error in "+filename)
 
-      platform = sys.platform
-      if platform == "darwin": platform = "linux"
-      if not skipqptiff and platform != "win32":
-        with PIL.Image.open(dbloadroot/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img, \
-             PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/f"{SlideID}_qptiff_{platform}.jpg") as targetimg:
-          np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+      if not skipqptiff:
+        with PIL.Image.open(dbloadroot/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img:
+          try:
+            with PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/f"{SlideID}_qptiff_1.jpg") as targetimg:
+              np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+          except AssertionError:
+            with PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/f"{SlideID}_qptiff_2.jpg") as targetimg:
+              np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
 
       logs = (
         dbloadroot/"logfiles"/"prepdb.log",

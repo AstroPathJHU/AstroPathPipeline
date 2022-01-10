@@ -5,7 +5,7 @@ from ...utilities.miscfileio import cd
 from ...utilities.tableio import readtable, writetable
 from ...utilities.img_file_io import get_image_hwl_from_xml_file,get_raw_as_hwl, smooth_image_worker
 from ...utilities.img_file_io import smooth_image_with_uncertainty_worker, write_image_to_file
-from ...shared.logging import dummylogger
+from ...shared.logging import dummylogger, ThingWithLogger
 from ...shared.samplemetadata import MetadataSummary
 from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.image_masking.image_mask import ImageMask
@@ -14,7 +14,7 @@ from .utilities import FieldLog
 from .plotting import plot_image_layers, flatfield_image_pixel_intensity_plot, corrected_mean_image_PI_and_IV_plots
 from .latexsummary import MeanImageLatexSummary, FlatfieldLatexSummary, AppliedFlatfieldLatexSummary
 
-class ImageStack :
+class ImageStack(ThingWithLogger) :
     """
     Class to handle stacks of images, possibly with masks
     Can be used for making meanimages and flatfield models in a variety of ways

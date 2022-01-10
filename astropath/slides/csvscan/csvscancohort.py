@@ -174,7 +174,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
       "Project": self.Project,
     }
 
-  def workflowdependencies(self):
+  def workflowdependencies(self, **kwargs):
     return [(CsvScanSample, sampledef.SlideID) for sampledef in self.sampledefs() if sampledef]
 
 class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, RunCsvScanBase):

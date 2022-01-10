@@ -1,8 +1,10 @@
-import abc, contextlib, cv2, methodtools, numpy as np
+import abc, collections, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.transform
+from ...utilities import units
 from ..contours import findcontoursaspolygons
+from ..logging import ThingWithLogger
 from .image_mask import ImageMask
 
-class MaskLoader(contextlib.ExitStack, abc.ABC):
+class MaskLoader(contextlib.ExitStack):
   """
   Base class for a mask that can be loaded from a file
   """
@@ -47,7 +49,7 @@ class MaskLoader(contextlib.ExitStack, abc.ABC):
       if self.__using_mask_count == 0:
         del self.__mask
 
-class TissueMaskLoader(MaskLoader):
+class TissueMaskLoader(units.ThingWithPscale, MaskLoader):
   """
   Base class for a MaskLoader that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the
@@ -56,8 +58,12 @@ class TissueMaskLoader(MaskLoader):
   """
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
+
     self.__using_tissuemask_count = 0
     self.__using_tissuemask_uint8_count = 0
+    self.__using_tissuemask_zoomed_count = collections.defaultdict(lambda: 0)
+
+    self.__tissuemask_zoomed = {}
 
   @abc.abstractmethod
   def tissuemask(self, mask):
@@ -91,8 +97,83 @@ class TissueMaskLoader(MaskLoader):
         if self.__using_tissuemask_uint8_count == 0:
           del self.__tissuemask_uint8
 
+  @contextlib.contextmanager
+  def using_tissuemask_zoomed(self, zoomfactor):
+    if zoomfactor == 1:
+      with self.using_tissuemask() as mask:
+        yield mask
+      return
+
+    with contextlib.ExitStack() as stack:
+      if self.__using_tissuemask_zoomed_count[zoomfactor] == 0:
+        self.__tissuemask_zoomed[zoomfactor] = (skimage.transform.downscale_local_mean(stack.enter_context(self.using_tissuemask()), (zoomfactor, zoomfactor)) > 0.5)
+      self.__using_tissuemask_zoomed_count[zoomfactor] += 1
+      try:
+        yield self.__tissuemask_zoomed[zoomfactor]
+      finally:
+        self.__using_tissuemask_zoomed_count[zoomfactor] -= 1
+        if self.__using_tissuemask_zoomed_count[zoomfactor] == 0:
+          del self.__tissuemask_zoomed[zoomfactor]
+
+class TissueMaskLoaderWithPolygons(TissueMaskLoader, units.ThingWithAnnoscale, ThingWithLogger, contextlib.ExitStack):
   @methodtools.lru_cache()
-  @property
-  def tissuemaskpolygons(self):
-    with self.using_tissuemask_uint8() as mask:
-      return findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, apscale=self.apscale, forgdal=True)
+  def __tissuemaskpolygons_and_area_cutoff(self, *, zoomfactor, epsilon):
+    self.logger.debug("finding tissue mask as polygons")
+    self.logger.debug("  loading mask")
+    with self.using_tissuemask_zoomed(zoomfactor) as mask:
+      imagescale = self.pscale/zoomfactor
+      notmask = ~mask
+      filled = scipy.ndimage.binary_fill_holes(mask)
+      self.logger.debug("  finding outer regions")
+      labeled, nlabels = scipy.ndimage.label(filled, structure=[[0,1,0],[1,1,1],[0,1,0]])
+      labels = range(1, nlabels+1)
+      areas = {label: np.count_nonzero(labeled==label) for label in labels}
+      totalarea = sum(areas.values())
+      areacutoff = 0.001 * totalarea
+      labels = sorted(labels, key=areas.get, reverse=True)
+      for idx, label in list(enumerate(labels)):
+        self.logger.debug(f"  looking at outer region {idx+1} / {nlabels}")
+        area = areas[label]
+        if idx >= 100 or area < areacutoff: #drop the tiny labels, and only keep 100 labels maximum
+          self.logger.debug(f"  too small (rank {idx+1}, area {area}) --> skip it")
+          mask[labeled==label] = 0
+          continue
+
+        #now we have a large region
+        #fill in the tiny holes
+        self.logger.debug("  filling in the tiny holes")
+        holes = (labeled == label) & notmask
+        labeledholes, nholelabels = scipy.ndimage.label(holes)
+        holelabels = range(1, nholelabels+1)
+        for holelabel in holelabels:
+          hole = labeledholes == holelabel
+          holearea = np.count_nonzero(hole)
+          if holearea / area < 0.0025:
+            mask[hole] = True
+
+      self.logger.debug("converting to gdal")
+      mask = mask.astype(np.uint8)
+      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, imagescale=imagescale, forgdal=True)
+      areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.annoscale, power=2)
+
+      self.logger.debug("smoothing")
+      epsilon = units.convertpscale(epsilon, self.pscale, self.annoscale)
+      polygons = [p.smooth_rdp(epsilon=epsilon) for p in polygons]
+
+      return polygons, areacutoff
+
+  def tissuemaskpolygons(self, *, zoomfactor=1, epsilon=None):
+    """
+    Get the outline of the tissue mask as gdal polygons.
+
+    zoomfactor: zoom in by this amount for calculating the polygons
+                (however the results can be off by zoomfactor*1 pixel)
+                default: 1 (no zoom)
+    epsilon: Smooth the polygon with the Ramer-Douglas-Peucker algorithm
+             with this epsilon (default: 2 pixels)
+    """
+    if epsilon is None: epsilon = 2*self.onepixel
+    return self.__tissuemaskpolygons_and_area_cutoff(zoomfactor=zoomfactor, epsilon=epsilon)[0]
+  def tissuemaskpolygonareacutoff(self, *, zoomfactor=1, epsilon=None):
+    if epsilon is None: epsilon = 2*self.onepixel
+    return self.__tissuemaskpolygons_and_area_cutoff(zoomfactor=zoomfactor, epsilon=epsilon)[1]

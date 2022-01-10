@@ -60,8 +60,8 @@ class BatchFlatfieldSample(WorkflowSample) :
     def logmodule(cls) : 
         return "batchflatfield"
     @classmethod
-    def workflowdependencyclasses(cls):
-        return [*super().workflowdependencyclasses(),MeanImageSample]
+    def workflowdependencyclasses(cls, **kwargs):
+        return [*super().workflowdependencyclasses(**kwargs),MeanImageSample]
 
 class BatchFlatfieldCohort(WorkflowCohort) :
     """

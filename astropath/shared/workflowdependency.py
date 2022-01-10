@@ -2,7 +2,7 @@ import abc, contextlib, csv, datetime, more_itertools, re
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.miscfileio import field_size_limit_context, rm_missing_ok
 from ..utilities.version.git import GitCommit, thisrepo
-from .logging import MyLogger
+from .logging import MyLogger, ThingWithLogger
 
 class ThingWithRoots(abc.ABC):
   @property
@@ -12,7 +12,7 @@ class ThingWithRoots(abc.ABC):
   def rootkwargs(self):
     return {name: getattr(self, name) for name in self.rootnames}
 
-class WorkflowDependency(ThingWithRoots):
+class WorkflowDependency(ThingWithRoots, ThingWithLogger):
   @property
   def workflowkwargs(self):
     return self.rootkwargs
@@ -125,16 +125,12 @@ class WorkflowDependency(ThingWithRoots):
   def run(self):
     pass
 
-  @property
-  @abc.abstractmethod
-  def logger(self):
-    pass
   @abc.abstractmethod
   def joblock(self):
     pass
 
   @abc.abstractmethod
-  def workflowdependencies(self):
+  def workflowdependencies(self, **kwargs):
     return []
 
 class WorkflowDependencySlideID(WorkflowDependency):
@@ -226,7 +222,14 @@ class SampleRunStatus(MyDataClass):
     return self.previousrun.nruns + 1
 
   @classmethod
-  def fromlog(cls, *, samplelog, SlideID, module, missingfiles, workinprogressfiles, startregex, endregex):
+  def fromlog(cls, **kwargs):
+    try:
+      return cls._fromlog(**kwargs)
+    except Exception as e:
+      return e
+
+  @classmethod
+  def _fromlog(cls, *, samplelog, SlideID, module, missingfiles, workinprogressfiles, startregex, endregex):
     """
     Create a SampleRunStatus object by reading the log file.
     samplelog: from CohortFolder/SlideID/logfiles/SlideID-module.log

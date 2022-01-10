@@ -2,7 +2,8 @@ import abc, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.image_masking.image_mask import ImageMask
-from ...shared.image_masking.maskloader import MaskLoader, TissueMaskLoader
+from ...shared.image_masking.maskloader import MaskLoader, TissueMaskLoader, TissueMaskLoaderWithPolygons
+from ...shared.logging import ThingWithLogger
 from ...shared.rectangle import MaskRectangle
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
 from ...utilities.img_file_io import im3writeraw
@@ -14,7 +15,7 @@ from ..zoom.zoomsamplebase import ZoomSampleBase
 
 class MaskField(Field, MaskRectangle): pass
 
-class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser, MaskLoader):
+class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser, MaskLoader, ThingWithLogger):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
@@ -37,6 +38,14 @@ class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgum
     return folder/filename
 
 class TissueMaskSample(MaskSample, TissueMaskLoader):
+  """
+  Base class for a sample that has a mask for tissue,
+  which can be obtained from the main mask. (e.g. if the
+  main mask has multiple classifications, the tissue mask
+  could be mask == 1)
+  """
+
+class TissueMaskSampleWithPolygons(TissueMaskSample, TissueMaskLoaderWithPolygons):
   """
   Base class for a sample that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the
@@ -166,8 +175,8 @@ class StitchMaskSample(WriteMaskSampleBase):
     return mask
 
   @classmethod
-  def workflowdependencyclasses(cls):
-    return [AlignSample] + super().workflowdependencyclasses()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [AlignSample] + super().workflowdependencyclasses(**kwargs)
 
 class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadComponentTiff, InformMaskSample):
   """
