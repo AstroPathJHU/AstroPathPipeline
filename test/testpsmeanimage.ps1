@@ -17,7 +17,8 @@ Class testpsmeanimage {
         $module = $PSScriptRoot + '/../astropath'
         Import-Module $module -EA SilentlyContinue
         try {
-            $mxtxid = 'Global\' + $module.replace('\', '_') + '.LOCK'
+            #$mxtxid = 'Global\' + $module.replace('\', '_') + '.LOCK'
+            $mxtxid = 'TestLock.LOCK'
             $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false',$mxtxid
             $mxtx.ReleaseMutex()
         } catch {
