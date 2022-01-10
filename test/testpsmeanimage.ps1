@@ -10,6 +10,8 @@
 #
 Class testpsmeanimage {
     #
+    [meanimage]$inp
+    #
     testpsmeanimage(){
         #
         # Setup Testing
@@ -31,7 +33,7 @@ Class testpsmeanimage {
         $processing = $PSScriptRoot + '/test_for_jenkins/testing_meanimage'
         $datalocation = $PSScriptRoot + '/data'
         $task = ('1', 'M21_1', $processing, $datalocation)
-        $inp = meanimage $task
+        $this.inp = meanimage $task
         #
         # Run Tests
         #
@@ -43,46 +45,42 @@ Class testpsmeanimage {
     #
     [void]DownloadFilesTest(){
         Write-Host 'Starting Download Files Test'
-        $this.DownloadFiles()
-        $xmlpath = $this.processvars[1] + '/' + $this.sample.slideid + '/*.xml'
+        $this.inp.DownloadFiles()
+        $xmlpath = $this.inp.processvars[1] + '/' + $this.inp.sample.slideid + '/*.xml'
         Write-Host 'xml path: ' $xmlpath
-        $im3path = $this.processvars[2] + '/../Scan1/MSI/*.im3'
+        $im3path = $this.inp.processvars[2] + '/../Scan1/MSI/*.im3'
         if (!(@(Test-Path $xmlpath) -and @(Test-Path $im3path))) {
-            Write-Error 'Download Files Test Failed'
-            exit 1
+            Throw 'Download Files Test Failed'
         }
         Write-Host 'Passed Download Files Test'
     }
     #
     [void]ShredDatTest(){
         Write-Host 'Starting Shred Dat Test'
-        $this.ShredDat()
-        $datpath = $this.processvars[1] + '/' + $this.sample.slideid + '/*.dat'
+        $this.inp.ShredDat()
+        $datpath = $this.inp.processvars[1] + '/' + $this.inp.sample.slideid + '/*.dat'
         if (!(@(Test-Path $datpath))) {
-            Write-Error 'Shred Dat Test Failed'
-            exit 1
+            Throw 'Shred Dat Test Failed'
         }
         Write-Host 'Passed Shred Dat Test'
     }
     #
     [void]ReturnDataTest(){
         Write-Host 'Starting Return Data Test'
-        $this.returndata()
-        $returnpath = $this.sample.im3folder() + '\meanimage'
+        $this.inp.returndata()
+        $returnpath = $this.inp.sample.im3folder() + '\meanimage'
         if (!(@(Test-Path $returnpath))) {
-            Write-Error 'Return Data Test Failed'
-            exit 1
+            Throw 'Return Data Test Failed'
         }
         Write-Host 'Passed Return Data Test'
     }
     #
     [void]CleanupTest(){
         Write-Host 'Starting Cleanup Test'
-        $this.cleanup()
-        if ($this.processvars[4]) {
-            if (@(Test-Path $this.processvars[0])) {
-                Write-Error 'Cleanup Test Failed'
-                exit 1
+        $this.inp.cleanup()
+        if ($this.inp.processvars[4]) {
+            if (@(Test-Path $this.inp.processvars[0])) {
+                Throw 'Cleanup Test Failed'
             }
         }
         Write-Host 'Passed Cleanup Test'
