@@ -52,7 +52,7 @@ class sampledef : sharedtools{
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdef($slideid, $slides)
-        $this.DefRoot($mpath)
+        $this.defbase($mpath)
     }
     #
     Batch(
@@ -61,7 +61,7 @@ class sampledef : sharedtools{
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdefbatch($batchid, $slides)
-        $this.DefRoot($mpath)
+        $this.defbase($mpath)
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
@@ -69,7 +69,7 @@ class sampledef : sharedtools{
                 Where-Object -FilterScript {$_.SlideID -eq $slideid.trim()}
         #
         if (!$slide){
-            Throw 'Not a valid slideid'
+            Throw ($slideid.trim() + ' is not a valid slideid. Check the APID tables and\or confirm the SlideID.')
         }
         $this.slideid = $slide.SlideID.trim()
         $this.project = $slide.Project
@@ -109,7 +109,7 @@ class sampledef : sharedtools{
         #
     }
     #
-    [void]DefRoot([string]$mpath){
+    [void]defbase([string]$mpath){
         $this.mpath = $mpath
         $project_dat = $this.importcohortsinfo($this.mpath)
         $project_dat = $project_dat | 
@@ -167,6 +167,17 @@ class sampledef : sharedtools{
         $path = $this.basepath +'\flatfield\flatfield_BatchID_' + 
             $this.BatchID + '.bin'
         return $path
+    }
+    #
+    [string]pybatchflatfield(){
+        $ids = $this.ImportCorrectionModels($this.mpath)
+        $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
+        return $file
+    }
+    #
+    [string]pybatchflatfieldfullpath(){
+          $flatfield = $this.mpath + '\flatfield\flatfield_' + $this.pybatchflatfield() + '.bin'
+          return $flatfield
     }
     #
     [string]CheckSumsfile(){
@@ -250,6 +261,15 @@ class sampledef : sharedtools{
         return $true
     }
     #
+    [switch]testpybatchflatfield(){
+        #
+        if (!(test-path $this.pybatchflatfieldfullpath())){
+            return $false
+        }
+        #
+        return $true
+    }
+    #
     [switch]testxmlfiles(){
         #
         $xml = $this.xmlfolder()
@@ -324,6 +344,31 @@ class sampledef : sharedtools{
         #
         return $true
         #
+    }
+    #
+    [switch]testsegmentationfiles(){
+        #
+        $table = $this.phenotypefolder() + '\Results\Tables'
+        if (!(test-path $table + '\*csv')){
+            return $false
+        }
+        $comp = (gci ($table + '\*') '*csv').Count
+        $seg = (gci ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
+        if (!($comp -eq $seg)){
+            return $false
+        }
+        return $true
+        #
+    }
+    #
+    [switch]testwarpoctets(){
+        #
+        $file = $this.basepath + '\warping\octets\' + $this.slideid + 'all-overlap-octets.csv'
+        if (!(test-path $file)){
+            return $false
+        }
+        #
+        return $true
     }
     #
 }

@@ -33,6 +33,7 @@ Class warpoctets : moduletools {
         $this.ShredDat()
         $this.GetWarpOctets()
         $this.cleanup()
+        $this.datavalidation()
     }
    <# -----------------------------------------
      GetWarpOctets
@@ -45,12 +46,12 @@ Class warpoctets : moduletools {
         $taskname = 'warpoctets'
         $dpath = $this.sample.basepath
         $rpath = $this.processvars[1]
-        $flatfield = $this.sample.flatfieldfolder() + '\flatfield_BatchID_' + $this.sample.BatchID + '.bin'
         $this.pythonmodulename = 'warpingcohort'
         $pythontask = $this.pythonmodulename, $dpath, `
          '--shardedim3root',  $rpath, `
-         '--flatfield-file',  $flatfield, `
-         '--octets-only --noGPU --allow-local-edits' -join ' '
+         '--sampleregex',  $this.sample.slideid, `
+         '--flatfield-file',  $this.pybatchflatfieldfullpath(), `
+         '--octets-only --noGPU --allow-local-edits --skip-start-finish' -join ' '
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished warp octets")
     }
@@ -79,5 +80,16 @@ Class warpoctets : moduletools {
             $this.sample.removedir($this.processloc)
         }
         #
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
+        if (!$this.sample.testwarpoctets()){
+            throw 'Output files are not correct'
+        }
     }
 }

@@ -35,6 +35,7 @@ Class meanimage : moduletools {
         $this.GetMeanImage()
         $this.returndata()
         $this.cleanup()
+        $this.datavalidation()
     }
    <# -----------------------------------------
      GetMeanImage
@@ -180,5 +181,16 @@ Class meanimage : moduletools {
         #
         $this.sample.removedir($this.sample.meanimagefolder())
         #
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
+        if (!$this.sample.testmeanimagefiles()){
+            throw 'Output files are not correct'
+        }
     }
 }

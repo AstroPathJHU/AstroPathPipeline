@@ -65,8 +65,14 @@
     [string]GetVersion($mpath, $module, $project){
         #
         $configfile = $this.ImportConfigInfo($mpath)
-        $vers = ($configfile | 
-            Where-Object {$_.Project -eq $project}).($module+'version')
+        #
+        $projectconfig = $configfile | 
+            Where-Object {$_.Project -eq $project}
+        if (!$projectconfig){
+            Throw ('Project not found for project number: '  + $project)
+        }    
+        #
+        $vers = $projectconfig.($module+'version')    
         if (!$vers){
             Throw 'No version number found'
         }
@@ -385,7 +391,9 @@
         try{
             $this.checkconda()
             conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
             pip -q install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
             conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
         } catch {
             $this.createpyenvir()

@@ -37,11 +37,14 @@ class launchmodule : mylogger{
         $this.start($this.module)
         #
         try {
-            $( & $this.module $this.val $this)   
+            $( & $this.module $this.val $this)  
+            Write-Output 1
         } catch {
             $this.error($_.Exception.Message)
+            Write-Output 0
         } finally { # end messages
             $this.finish($this.module)
+            
         }
         #
     }
