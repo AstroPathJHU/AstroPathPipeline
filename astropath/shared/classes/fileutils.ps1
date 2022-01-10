@@ -26,7 +26,7 @@ class fileutils : generalutils {
         $e = 1
         $err = ''
         $Max = 120
-        $mxtxid = 'Global\' + $fpath.replace('\', '_') + '.LOCK'
+        $mxtxid = 'Global' + $fpath.replace('\', '_') + '.LOCK'
         #
         $Q = New-Object -TypeName psobject
         #
@@ -76,7 +76,7 @@ class fileutils : generalutils {
         $e = 1
         $err = ''
         $Max = 120
-        $mxtxid = 'Global\' + $fpath.replace('\', '_') + '.LOCK'
+        $mxtxid = 'Global' + $fpath.replace('\', '_') + '.LOCK'
         #
         $Q = New-Object -TypeName psobject
         #
@@ -127,7 +127,7 @@ class fileutils : generalutils {
         $e = 1
         $err = ''
         $Max = 120
-        $mxtxid = 'Global\' + $fpath.replace('\', '_') + '.LOCK'
+        $mxtxid = 'Global' + $fpath.replace('\', '_') + '.LOCK'
         #
         $Q = New-Object -TypeName psobject
         #
@@ -206,7 +206,7 @@ class fileutils : generalutils {
         $e = 1
         $err = ''
         $Max = 120
-        $mxtxid = 'Global\' + $fpath.replace('\', '_') + '.LOCK'
+        $mxtxid = 'Global' + $fpath.replace('\', '_') + '.LOCK'
         #
         do{
            #
