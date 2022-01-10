@@ -7,7 +7,7 @@
 %%% are ready to be moved forward this function will call the necessary functions
 %% --------------------------------------------------------------
 %%
-function [] = progresstrack_samples_loop(main, wd, machine, logstring)
+function [] = progresstrack_samples_loop(main, wd, machine, version, logstring)
 %
 %start by getting all the folder names
 %
@@ -108,7 +108,7 @@ for i1 = 1:height(ss)
     %
     [MergeTbls, MergeTblsDate{i1}, Rfd] = getmergefiles(...
         sname, informpath, trackinform, tmpfd,...
-        difallfd,expectedTablesnum, MergeConfig, logstring);
+        difallfd,expectedTablesnum, MergeConfig, version, logstring);
     if ~isempty(MergeTbls)
         MergeTblsa = strsplit(MergeTbls,'of');
         actual_merged_tables{i1} = str2double(MergeTblsa{1});
@@ -133,7 +133,7 @@ end
 %
 % fill out the progress table
 %
-ss.Machine(1:length(samplenamesout)) = repmat({machine},length(samplenamesout),1);
+ss.Machine(1:length(samplenamesout)) = repmat(machine,length(samplenamesout),1);
 ss.Main_Path(1:length(samplenamesout)) = repmat({wd},length(samplenamesout),1);
 ss.Sample(1:length(samplenamesout)) = samplenamesout';
 ss.Batch(1:length(BatchID)) = BatchID';

@@ -10,11 +10,14 @@
 %%
 function [MergeTbls, MergeTblsDate, Rfd] = ...
     getmergefiles(sname, informpath,trackinform, tmpfd,...
-    difallfd,expectedTablesnum, MergeConfig, logstring)     
+    difallfd,expectedTablesnum, MergeConfig, version, logstring)     
     %
     MergeTblsDate = [];
     MergeTbls = [];
     dRfd = [];
+    %
+    logstring = strcat(logstring,'-',version);
+    logstring = logstring{1};
     %
     % if Results folder does not exist but there are enough inform files to
     % generate output then run merge function

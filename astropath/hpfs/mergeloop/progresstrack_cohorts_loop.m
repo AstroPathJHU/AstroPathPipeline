@@ -45,13 +45,13 @@ for i1 = 1:height(tbl)
     tbl2(tbl2.Project == project,'Space_TB') = {TB};
     %
     try
-        writetable(tbl2,[main, '\AstropathConfig.csv'])
+       % writetable(tbl2,[main, '\AstropathConfig.csv'])
     catch
     end
     %
     % run progress tracker unless process string is No from paths file
     %
-    gostr = tbl2(tbl2.Project == project,'Process_Merge');
+    gostr = tbl2(tbl2.Project == project,'mergeloop');
     gostr = table2array(gostr);
     gostr = gostr{1};
     if strcmpi(gostr,'No')
@@ -60,9 +60,10 @@ for i1 = 1:height(tbl)
     %
     cohort = table2array(tbl3(tbl3.Project == project,'Cohort'));
     logstring = sprintf('%d;%d;', project, cohort);
-    machine = tbl3(tbl3.Project == project,'Machine');
+    version = table2array(tbl2(tbl2.Project == project,'mergeloopversion'));
+    machine = table2array(tbl3(tbl3.Project == project,'Machine'));
     %
-    progresstrack_samples_loop(main, wd, machine, logstring);
+    progresstrack_samples_loop(main, wd, machine, version, logstring);
     %
     % fill main inForm queue
     %
