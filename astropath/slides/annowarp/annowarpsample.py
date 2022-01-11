@@ -692,22 +692,25 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     get the original vertices in qptiff coordinates
     """
     return self.__getvertices(pscale=self.apscale)
-  @property
-  def annovertices(self):
-    """
-    get the original vertices in annotation coordinates
-    """
-    return self.__getvertices(pscale=self.annoscale)
 
   @methodtools.lru_cache()
-  def __getwarpedvertices(self, *, annoscale, pscale):
+  def __getwarpedvertices(self, *, pscale):
     """
     Create the new warped vertices
     """
-    oneannomicron = units.onemicron(pscale=annoscale)
+    pscale = self.pscale
     onemicron = self.onemicron
     onepixel = self.onepixel
-    if self.annotationsonwsi:
+
+    annotationsonwsi = any(a.isonwsi for a in self.annotations)
+    annotationstoshift = any(a.isonwsi and a.isfromxml for a in self.annotations)
+    annotationsonqptiff = any(a.isonqptiff for a in self.annotations)
+    annotationstowarp = any(a.isonqptiff and a.isfromxml for a in self.annotations)
+
+    if annotationsonwsi:
+      onezoomedinmicron = units.onemicron(pscale=pscale/2)
+
+    if annotationstoshift:
       affines = self.readcsv("affine", AffineEntry)
       dct = {affine.description: affine.value for affine in affines}
       myposition = np.array([dct["shiftx"], dct["shifty"]])
@@ -715,38 +718,48 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
         self.annotationposition = myposition
       shiftannotations = myposition - self.annotationposition
       if np.any(shiftannotations):
-        self.logger.warning(f"shifting the annotations by {shiftannotations / onepixel} pixels")
+        self.logger.warning(f"shifting the annotations drawn on the wsi by {shiftannotations / onepixel} pixels")
 
-      result = []
-      for v in self.__getvertices():
+    if annotationsonqptiff:
+      apscale = self.apscale
+      oneapmicron = units.onemicron(pscale=apscale)
+
+    if annotationstowarp:
+      stitchresult = self.__stitchresult
+
+    result = []
+    for v in self.__getvertices():
+      if v.isonwsi:
+        wxvec = v.xvec / onezoomedinmicron * onemicron
+        if v.isfromxml:
+          wxvec += shiftannotations
+        wxvec = wxvec // onepixel * onepixel
         result.append(
           WarpedVertex(
             vertex=v,
-            wxvec=(v.xvec / oneannomicron * onemicron + shiftannotations * bool(v.isfromxml)) // onepixel * onepixel
+            wxvec=wxvec,
           )
         )
-      return result
-    else:
-      return [
-        WarpedQPTiffVertex(
-          vertex=v,
-          wxvec=(
-            v.xvec + (
-              units.nominal_values(self.__stitchresult.dxvec(v, apscale=annoscale))
-              if v.isfromxml
-              else 0
-            )
-          ) / oneannomicron * onemicron // onepixel * onepixel,
-          pscale=self.pscale,
-        ) for v in self.__getvertices()
-      ]
+      else:
+        wxvec = v.xvec
+        if v.isfromxml:
+          wxvec += units.nominal_values(stitchresult.dxvec(v, apscale=apscale))
+        wxvec = wxvec / oneapmicron * onemicron // onepixel * onepixel
+        result.append(
+          WarpedQPTiffVertex(
+            vertex=v,
+            wxvec=wxvec,
+            pscale=pscale,
+          )
+        )
+    return result
 
   @property
   def warpedvertices(self):
     """
     Get the new warped vertices in im3 coordinates
     """
-    return self.__getwarpedvertices(annoscale=self.annoscale, pscale=self.pscale)
+    return self.__getwarpedvertices(pscale=self.pscale)
 
   @methodtools.lru_cache()
   def __getregions(self, **kwargs):
@@ -827,7 +840,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     """
     self.logger.info("writing vertices")
     if filename is None: filename = self.verticescsv
-    writetable(filename, self.warpedvertices)
+    writetable(filename, self.warpedvertices, rowclass=WarpedVertex, printevery=1, logger=self.logger)
 
   @property
   def regionscsv(self):
@@ -853,7 +866,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     other kwargs are passed to stitch()
     """
     self.writeannotations()
-    if not self.annotationsonwsi:
+    if any(a.isonwsi for a in self.annotations):
       if not readalignments:
         self.align()
         self.writealignments()

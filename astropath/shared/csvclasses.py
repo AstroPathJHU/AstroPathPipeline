@@ -4,7 +4,7 @@ from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import boolasintfield, datefield, optionalfield, readtable
 from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
-from .polygon import DataClassWithPolygon, Polygon, polygonfield
+from .polygon import DataClassWithPolygon, DataClassWithPolygonFrozen, Polygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
   """
@@ -189,7 +189,7 @@ class RectangleFile(DataClassWithPscaleFrozen):
   def cxvec(self):
     return np.array([self.cx, self.cy])
 
-class Annotation(DataClassWithPolygon):
+class Annotation(DataClassWithPolygonFrozen):
   """
   An annotation from a pathologist.
 
@@ -206,6 +206,11 @@ class Annotation(DataClassWithPolygon):
   color: str
   visible: bool = boolasintfield()
   poly: Polygon = polygonfield()
+  isonwsi: bool = boolasintfield(False)
+  isfromxml: bool = boolasintfield(True)
+
+  @property
+  def isonqptiff(self): return not self.isonwsi
 
 class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
   """
@@ -226,12 +231,18 @@ class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
   x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   pscale = None
-  isfromxml: bool = MetaDataAnnotation(False, includeintable=False)
+  annotation: Annotation = MetaDataAnnotation(None, includeintable=False)
 
   @property
   def xvec(self):
     """[x, y] as a numpy array"""
     return np.array([self.x, self.y])
+  @property
+  def isfromxml(self):
+    return self.annotation.isfromxml
+  @property
+  def isonwsi(self):
+    return self.annotation.isonwsi
 
   @classmethod
   def transforminitargs(cls, *args, pscale=None, annoscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
