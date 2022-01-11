@@ -23,9 +23,8 @@ Class testpsmeanimage {
         $datalocation = $PSScriptRoot + '/data/astropath_processing'
         #
         Write-Host 'DataLocation: ' $datalocation
-        #New-Item C:\Users\ajorque1\Desktop\Test.csv -value ("Project,Dpath,Dname,Spath,Cpath,FWpath`n0," + '\data' + ",astropath_processing,tme1\Vectra3,bki03\Compressed_Clinical_Specimens,bki08\h$\flatw_testing")
         
-        $test = [queue]::new($datalocation, 'meanimage')
+        $test = queue $datalocation 'meanimage'
         $slides = $test.importslideids($datalocation)
         Write-Host $slides
         #
