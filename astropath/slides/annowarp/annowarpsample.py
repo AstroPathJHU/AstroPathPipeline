@@ -733,7 +733,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
         wxvec = v.xvec / onezoomedinmicron * onemicron
         if v.isfromxml:
           wxvec += shiftannotations
-        wxvec = wxvec // onepixel * onepixel
+        wxvec = (wxvec + .000001 * onepixel) // onepixel * onepixel
         result.append(
           WarpedVertex(
             vertex=v,
