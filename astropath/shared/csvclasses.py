@@ -2,7 +2,7 @@ import csv, dataclassy, datetime, numbers, numpy as np
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
-from ..utilities.tableio import datefield, optionalfield, readtable
+from ..utilities.tableio import boolasintfield, datefield, optionalfield, readtable
 from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, Polygon, polygonfield
 
@@ -204,7 +204,7 @@ class Annotation(DataClassWithPolygon):
   layer: int
   name: str
   color: str
-  visible: bool = MetaDataAnnotation(readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
+  visible: bool = boolasintfield()
   poly: Polygon = polygonfield()
 
 class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
