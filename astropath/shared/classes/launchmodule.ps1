@@ -38,10 +38,10 @@ class launchmodule : mylogger{
         #
         try {
             $( & $this.module $this.val $this)  
-            Write-Output 1
+            Write-Output 0
         } catch {
             $this.error($_.Exception.Message)
-            Write-Output 0
+            Write-Output 1
         } finally { # end messages
             $this.finish($this.module)
             

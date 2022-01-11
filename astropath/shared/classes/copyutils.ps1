@@ -36,13 +36,14 @@ class copyutils{
      Usage: copy(sor, des, filespec)
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des, [array]$filespec){
+        $filespeco = $filespec
         if ($filespec -match '\*'){
             robocopy $sor $des -r:3 -w:3 -np -E -mt:1 | out-null
         } else {
             $filespec = $filespec | foreach-object {'*' + $_}
             robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:1 | out-null
         }
-        $this.verifyChecksum($sor, $des, $filespec, 0)
+        $this.verifyChecksum($sor, $des, $filespeco, 0)
     }
     <# -----------------------------------------
      copy
@@ -59,13 +60,14 @@ class copyutils{
      Usage: copy(sor, des, filespec, threads)
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des, [array]$filespec, [int]$threads){
+        $filespeco = $filespec
         if ($filespec -match '\*'){
             robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads | out-null
         } else {
             $filespec = $filespec | foreach-object {'*' + $_}
             robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads | out-null
         }
-        $this.verifyChecksum($sor, $des, $filespec, 0)
+        $this.verifyChecksum($sor, $des, $filespeco, 0)
     }
     <# -----------------------------------------
      copy
@@ -83,13 +85,14 @@ class copyutils{
      Usage: copy(sor, des, filespec, threads, logfile)
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des, [array]$filespec, [int]$threads, [string]$logfile){
+        $filespeco = $filespec
         if ($filespec -match '\*'){
            $output = robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads -log:$logfile
         } else {
            $filespec = $filespec | foreach-object {'*' + $_}
            $output = robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads -log:$logfile
         }
-        $this.verifyChecksum($sor, $des, $filespec, 0)
+        $this.verifyChecksum($sor, $des, $filespeco, 0)
     }
     <# -----------------------------------------
      listfiles

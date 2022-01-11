@@ -1,38 +1,47 @@
 ﻿##
 # launch a queue for a provide module with a provided mpath and credentials
 #
-class Dispatcher : queue{
+class Dispatcher : DispatcherTools {
     #
-    [switch]$new
     [array]$running
     [array]$workers
-    [PSCredential]$cred
-    [string]$workerloglocation = '\\' + $env:ComputerName +
-        '\c$\users\public\astropath\'
     #
-    Dispatcher($mpath, $module, $cred):base($mpath, $module){
+    Dispatcher($mpath, $module, $cred) : base($mpath, $module, $cred){
         #
         $this.init($cred)
         $this.Run()
         #
     }
     #
-    Dispatcher($mpath, $module, $project, $cred):base($mpath, $module, $project){
+    Dispatcher($mpath, $module, $project, $cred) : base($mpath, $module, $project, $cred){
         #
         $this.init($cred)
         $this.Run()
         #
     }
     #
-    Dispatcher($mpath, $module, $project, $slideid, $cred):base($mpath, $module, $project, $slideid){
+    Dispatcher($mpath, $module, $project, $slideid, $cred) : base($mpath, $module, $project, $slideid, $cred){
         #
         $this.init($cred)
         $this.Run()
+        #
+    }
+    #
+    Dispatcher($mpath, $module, $project, $slideid, $test, $cred) : base($mpath, $module, $project, $slideid, $test, $cred){
+        #
+        $this.init($cred)
         #
     }
     <# -----------------------------------------
      Run
-     actuall runs the bulk of the code
+     runs the bulk of the code
+     1. initializes the worker list
+     2. get running jobs
+     3. check for new tasks
+     4. distribute tasks
+     5. wait for tasks to finish
+     6. check for new tasks
+     7. repeat
      ------------------------------------------
      Usage: $this.Run()
     ----------------------------------------- #>
@@ -48,51 +57,6 @@ class Dispatcher : queue{
             $this.WaitTask()
             $this.checknew()
         }
-        #
-    }
-    #
-    # initialize the code
-    #
-    [void]init($cred){
-        $this.cred = $cred
-        Write-Host "Starting the AstroPath Pipeline" -ForegroundColor Yellow
-        Write-Host ("Module: " + $this.module) -ForegroundColor Yellow
-        Write-Host ("Username: " + $this.cred.UserName) -ForegroundColor Yellow
-    }
-    <# -----------------------------------------
-     initepy
-     checks that conda is installed and a functional
-     command
-     ------------------------------------------
-     Usage: $this.initepy()
-    ----------------------------------------- #>
-    [void]initepy(){
-        Write-Host "Initializing\updating the conda environment" -ForegroundColor Yellow
-        $this.checkconda()
-    }
-    <# -----------------------------------------
-     CheckNew
-     Checks for new tasks and rebuilds the worker
-     list
-     ------------------------------------------
-     Usage: $this.CheckNew()
-    ----------------------------------------- #>
-    [void]CheckNew(){
-        #
-        while (1){
-            $this.ExtractQueue()
-            if (!($this.cleanedtasks)){
-                Write-Host " No new samples to process." -ForegroundColor Yellow
-                Write-Host " Sleeping for 10 minutes." -ForegroundColor Yellow
-                Start-Sleep -s (10 * 60)
-                Write-Host " Checking for tasks" -ForegroundColor Yellow
-            } else {
-                Write-Host " Tasks Found" -ForegroundColor Yellow
-                break
-            }
-        }
-        #
-        $this.CheckCompletedWorkers()
         #
     }
     <# -----------------------------------------
@@ -113,10 +77,10 @@ class Dispatcher : queue{
         Write-Host " Starting-Task-Distribution" -ForegroundColor Yellow
         write-host " Current Computers for Processing:" -ForegroundColor Yellow
         write-host " " ($this.workers | 
-                        Format-Table  @{Name="module";Expression = { $_.module }; Alignment="center" },
-                                      @{Name="server";Expression = { $_.server }; Alignment="center" },
-                                      @{Name="location";Expression = { $_.location }; Alignment="center" } |
-                        Out-String).Trim() -ForegroundColor Yellow
+            Format-Table  @{Name="module";Expression = { $_.module }; Alignment="center" },
+                            @{Name="server";Expression = { $_.server }; Alignment="center" },
+                            @{Name="location";Expression = { $_.location }; Alignment="center" } |
+            Out-String).Trim() -ForegroundColor Yellow
         Write-Host "  ." -ForegroundColor Yellow
         #
     }
@@ -162,8 +126,8 @@ class Dispatcher : queue{
             #
             $currentjob = $_
             $jobname = $this.defjobname($currentjob)
-            $workertasklog = $this.workerloglocation+$jobname+'-taskfile-job.log'
-            $workertaskfile = $this.workerloglocation+$jobname+'-taskfile.ps1'
+            $workertasklog = $this.workertasklog($jobname)
+            $workertaskfile = $this.workertaskfile($jobname)
             #
             if (test-path $workertasklog){
                 $fileInfo = New-Object System.IO.FileInfo $workertasklog
@@ -174,37 +138,18 @@ class Dispatcher : queue{
                     $fileStream = $fileInfo.Open([System.IO.FileMode]::Open)
                     $fileStream.Dispose()
                     $this.removefile($workertasklog)
-                    $this.CheckTaskLog($workertaskfile, 'ERROR')
+                    $this.CheckTaskLog($jobname, 'ERROR')
                     $this.removefile($workertaskfile)
+                    #
                 }catch {
                     #
-                    # start a new job monitoring this file with the same job name 
-                    #
-                    $myscriptblock = {
-                        param($workertaskfile)
-                        while (1) {
-                            try { 
-                                $fileInfo = New-Object System.IO.FileInfo $workertaskfile
-                                $fileStream = $fileInfo.Open([System.IO.FileMode]::Open)
-                                $fileStream.Dispose()
-                                break
-                            } catch {
-                                Start-Sleep -s (10 * 60)
-                            }
-                        }
-                    }
-                    #
-                    $myparameters = @{
-                        ScriptBlock = $myscriptblock
-                        ArgumentList = $workertaskfile
-                        name = $jobname
-                    }
-                    Start-Job @myparameters
+                    $this.StartOrphanMonitor($jobname)
                     #
                     # remove the worker from the list 
                     #
                     $workerstouse = $workerstouse | 
-                        Where-Object {($_.server -ne $currentjob.server -or $_.location -ne $currentjob.location)}
+                        Where-Object {($_.server -ne $currentjob.server `
+                            -or $_.location -ne $currentjob.location)}
                 }
            }
         }
@@ -212,47 +157,30 @@ class Dispatcher : queue{
         $this.workers = $workerstouse
         #
     }
-    <# -----------------------------------------
-     CheckTaskLog
-     Check the task specific logs for start 
-     messages with no stops
+   <# -----------------------------------------
+     CheckNew
+     Checks for new tasks and rebuilds the worker
+     list
      ------------------------------------------
-     Usage: $this.CheckTaskLog()
+     Usage: $this.CheckNew()
     ----------------------------------------- #>
-    [void]CheckTaskLog($workertaskfile, $level){
+    [void]CheckNew(){
         #
-        # open the workertaskfile
-        #
-        $task = $this.getcontent($workertaskfile)
-        #
-        # parse out necessary information
-        #
-        $ID = ($task -split '-stringin:')[2]
-        $ID = ($ID -split '} 2')[0]
-        $ID = $ID -split '-'
-        #
-        # create a logging object and check the
-        # log for a finishing message
-        #
-        try{
-            $log = [mylogger]::new($this.mpath, $this.module, $ID[1])
-        } catch {
-            Write-Host $_.Exception.Message
-            return
-        }
-        #
-        if ($this.module -match 'batch'){
-            $log.slidelog = $log.mainlog
-        }
-        #
-        if(!($this.checklog($log, $false))){
-            if ($level -match 'ERROR'){
-                 $log.error('Task did not seem to complete correctly, check results')
-            } elseif ($level -match 'WARNING'){
-                 $log.warning('Task did not seem to complete correctly, check results')
+        while (1){
+            $this.ExtractQueue()
+            if (!($this.cleanedtasks)){
+                Write-Host " No new samples to process." -ForegroundColor Yellow
+                Write-Host " Sleeping for 10 minutes." -ForegroundColor Yellow
+                Start-Sleep -s (10 * 60)
+                Write-Host " Checking for tasks" -ForegroundColor Yellow
+            } else {
+                Write-Host " Tasks Found" -ForegroundColor Yellow
+                break
             }
-            $log.finish($this.module)
         }
+        #
+        $this.CheckCompletedWorkers()
+        #
     }
     <# -----------------------------------------
      DistributeTasks
@@ -268,7 +196,8 @@ class Dispatcher : queue{
             $tasktomatch, $this.originaltasks = $this.originaltasks
             $currenttask, $this.cleanedtasks = $this.cleanedtasks
             #
-            Write-Host "  Launching Task on:" $currentworker.server $currentworker.location -ForegroundColor Yellow
+            Write-Host "  Launching Task on:" $currentworker.server $currentworker.location `
+                    -ForegroundColor Yellow
             Write-Host "    "$currenttask -ForegroundColor Yellow
             #
             $this.launchtask($currenttask, $currentworker)
@@ -277,19 +206,18 @@ class Dispatcher : queue{
         }
         #
     }
-    #
-    [array]GetCreds(){
-        $username = $this.cred.UserName
-        $password = $this.cred.GetNetworkCredential().Password
-        return @($username, $password)
-    }
-    #
+    <# -----------------------------------------
+     LaunchTask
+     Launch a task on a current worker
+     ------------------------------------------
+     Usage: $this.LaunchTask()
+    ----------------------------------------- #>
     [void]LaunchTask($currenttask, $currentworker){
         #
         $creds = $this.GetCreds()       
         $currentworkerip = $this.defcurrentworkerip($currentworker)
         $jobname = $this.defjobname($currentworker)
-        $workertaskfile = $this.PrepareWorkerFiles($currenttask, $jobname, $currentworker)
+        $this.PrepareWorkerFiles($currenttask, $jobname, $currentworker)
         #
         if ($currentworker.location -match 'VM'){
             $myscriptblock = {
@@ -309,84 +237,23 @@ class Dispatcher : queue{
         #
         $myparameters = @{
             ScriptBlock = $myscriptblock
-            ArgumentList = $creds[0], $creds[1], $currentworkerip, $workertaskfile
+            ArgumentList = $creds[0], $creds[1], $currentworkerip, $this.workertaskfile($jobname)
             name = $jobname
             }
-        Start-Job @myparameters
         #
+        Start-Job @myparameters
         $taskid = ($jobname, (Get-Date)) -join '-'
         [string]$logline = @("START: ", $taskid,"`r`n") -join ''
-        $this.popfile(($this.workerloglocation+$jobname+'.log'), $logline)
+        $this.popfile($this.workerlogfile($jobname), $logline)
         #
     }
-    #
-    [string]DefCurrentWorkerip($currentworker){
-        #
-        if ($currentworker.location -match 'VM'){
-            $currentworkerip = ($currentworker.location -replace '_', '').tolower()
-        } else {
-            $currentworkerip = $currentworker.server
-        }
-        return $currentworkerip
-        #
-    }
-    #
-    [string]DefJobName($currentworker){
-         $jobname = ($currentworker.server, $currentworker.location, $this.module) -join '-'     
-         return $jobname
-    }
-    #
-    [string]PrepareWorkerFiles($currenttask, $jobname, $currentworker){
-        #
-        if (!(test-path $this.workerloglocation)){
-            new-item $this.workerloglocation -itemtype "directory" -EA STOP | Out-NULL
-        }
-        #
-        $workertaskfile = $this.workerloglocation+$jobname+'-taskfile.ps1'
-        $workerlogfile = $this.workerloglocation+$jobname+'.log'
-        #
-        if ($this.module -match 'vminform'){
-            $currenttaskinput = ($currenttask, $this.informvers) -join ',' -replace ',','-'
-        } else {
-            $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
-            $currenttaskinput = ($currenttask, $currentworkerstring) -join ',' -replace ',','-'
-        }
-        #
-        $this.buildtaskfile($workertaskfile, $currenttaskinput, $workerlogfile)
-        return $workertaskfile
-        #
-    }
-    #
-    [void]buildtaskfile($workertaskfile, $currenttaskinput, $workerlogfile){
-        #
-        $currenttasktowrite = (' Import-Module "', $this.coderoot(), '"
-                        $output = & {LaunchModule -mpath:"', `
-                        $this.mpath, '" -module:"', $this.module, '" -stringin:"', `
-                        $currenttaskinput,'"} 2>&1
-                        $tool = [sharedtools]::new()
-                    if ($output -ne 0){ 
-                        #
-                        $count = 1
-                        #
-                        $output | Foreach-object {
-                            $tool.popfile("',$workerlogfile,'", ("ERROR: " + $count))
-                            $tool.popfile("',$workerlogfile,'", ("  " + $_.Exception.Message))
-                            $s = $_.ScriptStackTrace.replace("at", "`t at")
-                            $tool.popfile("',$workerlogfile,'", $s)
-                            $count += 1
-                        }
-                        #
-                    } else {
-                        $tool.popfile("',$workerlogfile,'", "Completed Successfully")
-                    }') -join ''
-        #
-        $this.SetFile($workertaskfile, $currenttasktowrite)
-        #
-    }
+
     #
     [void]WaitTask(){
         #
-        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'  -and $_.Name -match $this.module}).id
+        $run = @(Get-Job | 
+            Where-Object { $_.State -eq 'Running'  `
+                -and $_.Name -match $this.module}).id
         if (!$this.workers -and $run){
             Wait-Job -id $run -Any
         }
@@ -396,50 +263,19 @@ class Dispatcher : queue{
     #
     [void]CheckCompletedWorkers(){
         #
-        $donejobs = Get-Job | Where-Object { $_.State -eq 'Completed'  -and $_.Name -match $this.module}
+        $donejobs = Get-Job | 
+            Where-Object { $_.State -eq 'Completed'  `
+                -and $_.Name -match $this.module}
+        #
         if ($donejobs){
             $donejobs | Remove-Job
             $donejobs | ForEach {
                 #
-                # first check the psexec log
-                #
-                $psexeclog = $this.workerloglocation+$_.Name+'-taskfile-job.log'
-                $workertaskfile = $this.workerloglocation+$_.Name+'-taskfile.ps1'
-                $psexectask = $this.getcontent($psexeclog)
-                #
-                if ($psexectask -match 'PsExec could not start powershell'){
-                    Write-Host 'task could not be started on the remote machine, check psexec input'
-                    Write-Host $psexectask
-                    $this.CheckTaskLog($workertaskfile, 'ERROR')
-                } elseif ($psexectask -match 'error code 1'){
-                    Write-Host 'powershell task did not exit successfully, might be a syntax error'
-                    Write-Host $psexectask
-                    $this.CheckTaskLog($workertaskfile, 'ERROR')
-                }
-                #
-                $this.removefile($psexeclog)
-                #
-                # write new os errors to the console and add finishing line to os log
-                #
-                $taskid = ($_.Name, $_.PSBeginTime, $_.PSEndTime) -join '-'
-                $output = $this.getcontent($this.workerloglocation+$_.Name+'.log') 
-                #
-                if ($output -and $output[$output.count-1] -notmatch [regex]::escape($_.Name)) {
-                    $matches = $output -match [regex]::escape($_.Name)
-                    $idx = [array]::IndexOf($output, $matches[-1])
-                    $newerror = $output[($idx+1)..($output.count-1)]
-                    write-host $taskid
-                    Write-host $newerror
-                }
-                #
-                $this.CheckTaskLog($workertaskfile, 'WARNING')
-                $this.removefile($workertaskfile)
-                [string]$logline = @("FINISH: ", $taskid,"`r`n") -join ''
-                $this.popfile(($this.workerloglocation+$_.Name+'.log'), $logline)
+                $this.checkpsexeclog($_.Name)
+                $this.checkworkerlog($_)
                 #
             }
         }
         #
     }
-    #
 }
