@@ -23,6 +23,7 @@ Class testpsmeanimage {
         $datalocation = $PSScriptRoot + '/data/astropath_processing'
         #
         Write-Host 'DataLocation: ' $datalocation
+        Write-Host (gci $datalocation)
         
         $test = queue $datalocation 'meanimage'
         $slides = $test.importslideids($datalocation)
