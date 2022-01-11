@@ -840,7 +840,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     """
     self.logger.info("writing vertices")
     if filename is None: filename = self.verticescsv
-    writetable(filename, self.warpedvertices, rowclass=WarpedVertex, printevery=1, logger=self.logger)
+    writetable(filename, self.warpedvertices, rowclass=WarpedVertex)
 
   @property
   def regionscsv(self):
