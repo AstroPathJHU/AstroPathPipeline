@@ -20,9 +20,9 @@ Class testpsmeanimage {
             Throw 'Module could not be imported'
         }
         $processing = $PSScriptRoot + '/test_for_jenkins/testing_meanimage'
-        $datalocation = $PSScriptRoot + '/data'
+        $datalocation = $PSScriptRoot + '/data/astropath_processing'
         #
-        Write-Host 'DataLocation: ' + $datalocation
+        Write-Host 'DataLocation: ' $datalocation
         #New-Item C:\Users\ajorque1\Desktop\Test.csv -value ("Project,Dpath,Dname,Spath,Cpath,FWpath`n0," + '\data' + ",astropath_processing,tme1\Vectra3,bki03\Compressed_Clinical_Specimens,bki08\h$\flatw_testing")
 
         
