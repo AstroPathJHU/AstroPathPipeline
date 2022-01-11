@@ -162,8 +162,8 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
         (f"{SlideID}_qptiff.csv", QPTiffCsv, {}),
         (f"{SlideID}_rect.csv", Rectangle, {}),
         (f"{SlideID}_overlap.csv", Overlap, {"nclip": sample.nclip}),
-        (f"{SlideID}_vertices.csv", Vertex, {}),
-        (f"{SlideID}_regions.csv", Region, {}),
+        (f"{SlideID}_vertices.csv", Vertex, {"annoscale": sample.apscale}),
+        (f"{SlideID}_regions.csv", Region, {"annoscale": sample.apscale}),
       ):
         if filename == "M21_1_globals.csv": continue
         if filename == "ZW2_exposures.csv": continue #that file is huge and unnecessary

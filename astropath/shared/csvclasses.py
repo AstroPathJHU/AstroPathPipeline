@@ -3,7 +3,7 @@ from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import boolasintfield, datefield, optionalfield, readtable
-from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithApscaleFrozen, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, DataClassWithPolygonFrozen, Polygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
@@ -189,7 +189,7 @@ class RectangleFile(DataClassWithPscaleFrozen):
   def cxvec(self):
     return np.array([self.cx, self.cy])
 
-class Annotation(DataClassWithPolygonFrozen):
+class Annotation(DataClassWithPolygonFrozen, DataClassWithApscaleFrozen):
   """
   An annotation from a pathologist.
 
@@ -211,6 +211,16 @@ class Annotation(DataClassWithPolygonFrozen):
 
   @property
   def isonqptiff(self): return not self.isonwsi
+
+  @classmethod
+  def transforminitargs(cls, *args, **kwargs):
+    args, kwargs = super().transforminitargs(*args, **kwargs)
+    if "annoscale" not in kwargs:
+      isonwsi = kwargs.get("isonwsi", cls.__defaults__["isonwsi"])
+      pscale = kwargs["pscale"]
+      apscale = kwargs["apscale"]
+      kwargs["annoscale"] = pscale/2 if isonwsi else apscale
+    return args, kwargs
 
 class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
   """

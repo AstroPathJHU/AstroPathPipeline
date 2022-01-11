@@ -359,7 +359,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
               layer=layeridx,
               poly="poly",
               pscale=pscale,
-              annoscale=nodes[0].annoscale,
+              apscale=self.apscale,
               isonwsi=self.annotationsonwsi,
             )
           )
@@ -385,7 +385,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
           layer=layer,
           poly="poly",
           pscale=pscale,
-          annoscale=node.annoscale,
+          apscale=self.apscale,
           isonwsi=self.annotationsonwsi or not node.isfromxml,
           isfromxml=node.isfromxml,
         )
