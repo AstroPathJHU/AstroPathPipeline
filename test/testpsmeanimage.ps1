@@ -16,20 +16,17 @@ Class testpsmeanimage {
         #
         $module = $PSScriptRoot + '/../astropath'
         Import-Module $module -EA SilentlyContinue
-        try {
-            #$mxtxid = 'Global\' + $module.replace('\', '_') + '.LOCK'
-            $mxtxid = 'TestLock.LOCK'
-            $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false',$mxtxid
-            $mxtx.ReleaseMutex()
-        } catch {
-            Write-Host 'Mutex Error'
-            exit 1
-        }
         if($error){
             Throw 'Module could not be imported'
         }
         $processing = $PSScriptRoot + '/test_for_jenkins/testing_meanimage'
         $datalocation = $PSScriptRoot + '/data'
+        #
+        Write-Host 'DataLocation: ' + $datalocation
+        #New-Item C:\Users\ajorque1\Desktop\Test.csv -value ("Project,Dpath,Dname,Spath,Cpath,FWpath`n0," + '\data' + ",astropath_processing,tme1\Vectra3,bki03\Compressed_Clinical_Specimens,bki08\h$\flatw_testing")
+
+        
+        #
         $task = ('1', 'M21_1', $processing, $datalocation)
         $inp = meanimage $task
         #
