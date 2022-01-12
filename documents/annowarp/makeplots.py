@@ -3,6 +3,7 @@ from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTiss
 from astropath.slides.annowarp.visualization import showannotation
 from astropath.shared.csvclasses import Region
 from astropath.utilities import units
+from ...test.testzoom import TestZoom
 
 here = pathlib.Path(__file__).parent
 data = here/".."/".."/"test"/"data"
@@ -13,6 +14,7 @@ prepdbroot = here/".."/".."/"test"/"data"/"reference"/"prepdb"
 samp = "M206"
 
 def makeplots():
+  TestZoom.hackM206mask()
   with tempfile.TemporaryDirectory() as dbloadroot:
     dbloadroot = pathlib.Path(dbloadroot)
     (dbloadroot/samp/"dbload").mkdir(parents=True)
