@@ -1066,8 +1066,6 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
   @property
   def qptiffcoordinate(self):
     return self.xvec
-  @property
-  def apscale(self): return self.annoscale
 
 class WarpedVertex(Vertex):
   """
