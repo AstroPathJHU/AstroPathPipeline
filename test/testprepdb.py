@@ -152,6 +152,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       with open(sample.csv("rect")) as f: assert not f.read().strip()
       PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit)])
 
+      annotations = None
       rectangles = None
       for filename, cls, extrakwargs in (
         (f"{SlideID}_annotations.csv", Annotation, {}),
