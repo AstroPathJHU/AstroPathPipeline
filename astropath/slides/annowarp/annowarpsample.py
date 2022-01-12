@@ -712,8 +712,8 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
           if a.position is None:
             a.position = myposition
           a.shiftannotation = myposition - a.position
-          if np.any(shiftannotations):
-            self.logger.warning(f"shifting annotation {a.name} by {shiftannotations / onepixel} pixels")
+          if np.any(a.shiftannotation):
+            self.logger.warning(f"shifting annotation {a.name} by {a.shiftannotation / onepixel} pixels")
 
     if annotationsonqptiff:
       apscale = self.apscale
@@ -728,7 +728,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
         wxvec = v.xvec
         if v.isfromxml:
           wxvec = wxvec / onezoomedinmicron * onemicron
-          wxvec += shiftannotations
+          wxvec += v.annotation.shiftannotation
         wxvec = (wxvec + .000001 * onepixel) // onepixel * onepixel
         result.append(
           WarpedVertex(

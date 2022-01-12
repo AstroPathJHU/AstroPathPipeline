@@ -226,7 +226,7 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
 
   @property
   def position(self):
-    return np.array([xposition, yposition], dtype=units.unitdtype)
+    return np.array([self.xposition, self.yposition], dtype=units.unitdtype)
   @position.setter
   def position(self, position):
     self.xposition, self.yposition = position

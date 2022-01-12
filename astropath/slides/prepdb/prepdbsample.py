@@ -89,6 +89,8 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
   def regions(self): return self.getXMLpolygonannotations()[1]
   @property
   def vertices(self): return self.getXMLpolygonannotations()[2]
+  @property
+  def annotationscsv(self): return self.csv("annotations")
 
   @property
   def jpgfilename(self): return self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)

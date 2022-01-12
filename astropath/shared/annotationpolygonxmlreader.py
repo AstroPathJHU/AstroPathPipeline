@@ -576,6 +576,9 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
   @property
   def annotationspolygonsxmlfile(self): return self.__polygonxmlfile
 
+  @property
+  def annotationscsv(self): raise NotImplementedError
+
 class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoaderWithPolygons):
   @property
   def annotationnodes(self):

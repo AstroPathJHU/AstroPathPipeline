@@ -1,6 +1,6 @@
 import more_itertools, numpy as np, os, pathlib, re
 
-from astropath.shared.csvclasses import Annotation, Constant, Region
+from astropath.shared.csvclasses import Annotation, Region
 from astropath.slides.annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedQPTiffVertex
 from astropath.slides.annowarp.detectbigshift import DetectBigShiftSample
 from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohortInformTissueMask
