@@ -130,16 +130,19 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       folder = thisfolder/"test_for_jenkins"/"misc"
       s = PrepDbSample(thisfolder/"data", SlideID)
       writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
+      extrakwargs = {}
       for filename, cls in (
         (f"{SlideID}_annotations.csv", Annotation),
         (f"{SlideID}_vertices.csv", Vertex),
         (f"{SlideID}_regions.csv", Region),
       ):
         try:
-          rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True)
-          targetrows = s.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True)
+          rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          targetrows = s.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
           for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+          if cls == Annotation:
+            extrakwargs["annotations"] = rows
         except:
           raise ValueError("Error in "+filename)
     except:
