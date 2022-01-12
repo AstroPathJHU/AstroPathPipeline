@@ -708,9 +708,10 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     annotationstowarp = any(a.isonqptiff and a.isfromxml for a in self.annotations)
 
     if annotationsonwsi:
-      onezoomedinmicron = units.onemicron(pscale=pscale/2)
+      pass
 
     if annotationstoshift:
+      onezoomedinmicron = units.onemicron(pscale=pscale/2)
       affines = self.readcsv("affine", AffineEntry)
       dct = {affine.description: affine.value for affine in affines}
       myposition = np.array([dct["shiftx"], dct["shifty"]])
@@ -730,8 +731,9 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     result = []
     for v in self.__getvertices():
       if v.isonwsi:
-        wxvec = v.xvec / onezoomedinmicron * onemicron
+        wxvec = v.xvec
         if v.isfromxml:
+          wxvec = wxvec / onezoomedinmicron * onemicron
           wxvec += shiftannotations
         wxvec = (wxvec + .000001 * onepixel) // onepixel * onepixel
         result.append(

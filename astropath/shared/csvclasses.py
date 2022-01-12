@@ -217,9 +217,15 @@ class Annotation(DataClassWithPolygonFrozen, DataClassWithApscaleFrozen):
     args, kwargs = super().transforminitargs(*args, **kwargs)
     if "annoscale" not in kwargs:
       isonwsi = kwargs.get("isonwsi", cls.__defaults__["isonwsi"])
+      isfromxml = kwargs.get("isfromxml", cls.__defaults__["isfromxml"])
       pscale = kwargs["pscale"]
       apscale = kwargs["apscale"]
-      kwargs["annoscale"] = pscale/2 if isonwsi else apscale
+      if not isfromxml:
+        kwargs["annoscale"] = pscale
+      elif isonwsi:
+        kwargs["annoscale"] = pscale/2
+      else:
+        kwargs["annoscale"] = apscale
     return args, kwargs
 
 class Vertex(DataClassWithPscale, DataClassWithAnnoscale):

@@ -163,11 +163,10 @@ class TissueMaskLoaderWithPolygons(TissueMaskLoader, ThingWithLogger, contextlib
 
       self.logger.debug("converting to gdal")
       mask = mask.astype(np.uint8)
-      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale/2, imagescale=imagescale, forgdal=True)
-      areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.pscale/2, power=2)
+      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, imagescale=imagescale, forgdal=True)
+      areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.pscale, power=2)
 
       self.logger.debug("smoothing")
-      epsilon = units.convertpscale(epsilon, self.pscale, self.pscale/2)
       polygons = [p.smooth_rdp(epsilon=epsilon) for p in polygons]
 
       return polygons, areacutoff
