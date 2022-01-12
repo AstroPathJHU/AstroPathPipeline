@@ -29,7 +29,7 @@ Class testpsmeanimage {
         #$slides = $test.importslideids($datalocation)
         #Write-Host $slides
         #
-        $task = ('1', 'M21_1', $processing, $mpath)
+        $task = ('0', 'M21_1', $processing, $mpath)
         $inp = meanimage $task
 
         #
