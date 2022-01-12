@@ -755,7 +755,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     """
     Get the new warped vertices in im3 coordinates
     """
-    return self.__getwarpedvertices(pscale=self.pscale)
+    return self.__getwarpedvertices()
 
   @methodtools.lru_cache()
   def __getregions(self, **kwargs):
