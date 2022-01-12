@@ -36,7 +36,6 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     return [
       thisfolder/"test_for_jenkins"/"annowarp"/"logfiles"/"annowarp.log",
     ] + sum(([
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annotationinfo.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annotations.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
@@ -48,8 +47,6 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
   def compareoutput(self, SlideID):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=True, annotationsonwsi=False)
 
-    annotationinfofilename = s.csv("annotationinfo")
-    referenceannotationinfofilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.csv("annotationinfo").name
     alignmentfilename = s.alignmentcsv
     referencealignmentfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
     stitchfilename = s.stitchcsv
@@ -60,11 +57,6 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     referenceannotationsfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.annotationscsv.name
     regionsfilename = s.regionscsv
     referenceregionsfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.regionscsv.name
-
-    rows = s.readtable(annotationinfofilename, Constant, extrakwargs={"pscale": s.pscale, "apscale": s.apscale, "qpscale": s.qpscale}, checkorder=True, checknewlines=True)
-    targetrows = s.readtable(referenceannotationinfofilename, Constant, extrakwargs={"pscale": s.pscale, "apscale": s.apscale, "qpscale": s.qpscale}, checkorder=True, checknewlines=True)
-    for row, target in more_itertools.zip_equal(rows, targetrows):
-      assertAlmostEqual(row, target, rtol=1e-5)
 
     rows = s.readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
     targetrows = s.readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)

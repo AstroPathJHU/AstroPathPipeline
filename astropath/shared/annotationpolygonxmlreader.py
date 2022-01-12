@@ -229,8 +229,11 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, annotationsonwsi=False, **kwargs):
+  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, annotationsonwsi=False, annotationposition=None, readcsvannotations=False, **kwargs):
     self.__annotationsonwsi = annotationsonwsi
+    self.__annotationposition = annotationposition
+    self.__readcsvannotations = readcsvannotations
+
     self.__saveallannotationimages = saveallannotationimages
     if annotationimagefolder is not None: annotationimagefolder = pathlib.Path(annotationimagefolder)
     self.__annotationimagefolder = annotationimagefolder
@@ -289,6 +292,12 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     with open(self.annotationspolygonsxmlfile, "rb") as f:
       return [AnnotationNodeXML(node, annoscale=self.pscale/2 if self.annotationsonwsi else self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
 
+  def readcsvannotations(self):
+    return self.readtable(self.annotationscsv, Annotation, filter=lambda row: row["name"] != "empty")
+  @property
+  @abc.abstractmethod
+  def annotationscsv(self): pass
+
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self, *, pscale=None):
     if pscale is None:
@@ -297,6 +306,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     annotations = []
     allregions = []
     allvertices = []
+    if self.__readcsvannotations:
+      csvannotations = iter(self.readcsvannotations())
 
     errors = []
 
@@ -360,7 +371,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
               poly="poly",
               pscale=pscale,
               apscale=self.apscale,
-              isonwsi=self.annotationsonwsi,
+              isonwsi=False,
+              isfromxml=False,
+              xposition=None,
+              yposition=None,
             )
           )
           layeridx = next(count)
@@ -377,6 +391,32 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
         if color != targetcolor:
           self.logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
           color = targetcolor
+
+        if self.__readcsvannotations:
+          csvannotation = next(csvannotations)
+
+        if not node.isfromxml:
+          isonwsi = True
+          isfromxml = False
+        else:
+          isfromxml = True
+          if self.__readcsvannotations:
+            isonwsi = csvannotation.isonwsi
+          else:
+            isonwsi = self.annotationsonwsi
+
+        if not isonwsi:
+          xposition = yposition = None
+        elif isfromxml:
+          xposition = yposition = 0
+        elif self.__annotationposition is not None:
+          xposition, yposition = self.__annotationposition
+        elif self.__readcsvannotations:
+          xposition = csvannotation.xposition
+          yposition = csvannotation.yposition
+        else:
+          xposition = yposition = None
+
         annotation = Annotation(
           color=color,
           visible=visible,
@@ -386,9 +426,14 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
           poly="poly",
           pscale=pscale,
           apscale=self.apscale,
-          isonwsi=self.annotationsonwsi or not node.isfromxml,
-          isfromxml=node.isfromxml,
+          isonwsi=isonwsi,
+          isfromxml=isfromxml,
+          xposition=xposition,
+          yposition=yposition,
         )
+        if self.__readcsvannotations:
+          if annotation != csvannotation:
+            raise ValueError(f"Annotations inconsistent with csv:\ncsv: {csvannotation}\nxml: {annotation}")
         annotations.append(annotation)
 
         regions = node.regions

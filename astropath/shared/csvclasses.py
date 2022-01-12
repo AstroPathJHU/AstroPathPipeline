@@ -3,8 +3,8 @@ from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import boolasintfield, datefield, optionalfield, readtable
-from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithApscale, DataClassWithApscaleFrozen, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
-from .polygon import DataClassWithPolygon, DataClassWithPolygonFrozen, Polygon, polygonfield
+from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
+from .polygon import DataClassWithPolygon, Polygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
   """
@@ -103,9 +103,6 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
         "gainfactor": "",
         "binningx": "pixels",
         "binningy": "pixels",
-        "annotationsonwsi": "",
-        "annotationxposition": "pixels",
-        "annotationyposition": "pixels",
       }[name]
     if description is None:
       description = {
@@ -126,9 +123,6 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
         "gainfactor": "the gain of the A/D amplifier for the im3 files",
         "binningx": "the number of adjacent pixels coadded",
         "binningy": "the number of adjacent pixels coadded",
-        "annotationsonwsi": "annotations drawn on astropath image? (otherwise qptiff)",
-        "annotationxposition": "x offset of the WSI image used to draw the annotations",
-        "annotationyposition": "y offset of the WSI image used to draw the annotations",
       }[name]
     return super().transforminitargs(name=name, value=value, unit=unit, description=description, **kwargs)
 
@@ -189,7 +183,7 @@ class RectangleFile(DataClassWithPscaleFrozen):
   def cxvec(self):
     return np.array([self.cx, self.cy])
 
-class Annotation(DataClassWithPolygonFrozen, DataClassWithApscaleFrozen):
+class Annotation(DataClassWithPolygon, DataClassWithApscale):
   """
   An annotation from a pathologist.
 
@@ -208,6 +202,8 @@ class Annotation(DataClassWithPolygonFrozen, DataClassWithApscaleFrozen):
   poly: Polygon = polygonfield()
   isonwsi: bool = boolasintfield(False)
   isfromxml: bool = boolasintfield(True)
+  xposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
+  yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
 
   @property
   def isonqptiff(self): return not self.isonwsi
@@ -228,6 +224,13 @@ class Annotation(DataClassWithPolygonFrozen, DataClassWithApscaleFrozen):
         kwargs["annoscale"] = apscale
     return args, kwargs
 
+  @property
+  def position(self):
+    return np.array([xposition, yposition], dtype=units.unitdtype)
+  @position.setter
+  def position(self, position):
+    self.xposition, self.yposition = position
+
 class DataClassWithAnnotation(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
   annotation: Annotation = MetaDataAnnotation(None, includeintable=False)
   @classmethod
@@ -236,7 +239,7 @@ class DataClassWithAnnotation(DataClassWithPscale, DataClassWithApscale, DataCla
       raise TypeError("Provided both annotation and annotations")
 
     if annotations is not None:
-      annotation, = {annotation for annotation in annotations if annotation.layer == kwargs["regionid"] // 1000}
+      annotation, = (annotation for annotation in annotations if annotation.layer == kwargs["regionid"] // 1000)
 
     if annotation is not None:
       if annoscale is None: annoscale = annotation.annoscale
@@ -435,15 +438,15 @@ class PhenotypedCell(MyDataClass):
   MeanNucleus650: float
   MeanNucleus690: float
   MeanNucleus780: float
-  MeanMembraneDAPI: float = optionalfield(float)
-  MeanMembrane480: float = optionalfield(float)
-  MeanMembrane520: float = optionalfield(float)
-  MeanMembrane540: float = optionalfield(float)
-  MeanMembrane570: float = optionalfield(float)
-  MeanMembrane620: float = optionalfield(float)
-  MeanMembrane650: float = optionalfield(float)
-  MeanMembrane690: float = optionalfield(float)
-  MeanMembrane780: float = optionalfield(float)
+  MeanMembraneDAPI: float = optionalfield(readfunction=float)
+  MeanMembrane480: float = optionalfield(readfunction=float)
+  MeanMembrane520: float = optionalfield(readfunction=float)
+  MeanMembrane540: float = optionalfield(readfunction=float)
+  MeanMembrane570: float = optionalfield(readfunction=float)
+  MeanMembrane620: float = optionalfield(readfunction=float)
+  MeanMembrane650: float = optionalfield(readfunction=float)
+  MeanMembrane690: float = optionalfield(readfunction=float)
+  MeanMembrane780: float = optionalfield(readfunction=float)
   MeanEntireCellDAPI: float
   MeanEntireCell480: float
   MeanEntireCell520: float
@@ -453,15 +456,15 @@ class PhenotypedCell(MyDataClass):
   MeanEntireCell650: float
   MeanEntireCell690: float
   MeanEntireCell780: float
-  MeanCytoplasmDAPI: float = optionalfield(float)
-  MeanCytoplasm480: float = optionalfield(float)
-  MeanCytoplasm520: float = optionalfield(float)
-  MeanCytoplasm540: float = optionalfield(float)
-  MeanCytoplasm570: float = optionalfield(float)
-  MeanCytoplasm620: float = optionalfield(float)
-  MeanCytoplasm650: float = optionalfield(float)
-  MeanCytoplasm690: float = optionalfield(float)
-  MeanCytoplasm780: float = optionalfield(float)
+  MeanCytoplasmDAPI: float = optionalfield(readfunction=float)
+  MeanCytoplasm480: float = optionalfield(readfunction=float)
+  MeanCytoplasm520: float = optionalfield(readfunction=float)
+  MeanCytoplasm540: float = optionalfield(readfunction=float)
+  MeanCytoplasm570: float = optionalfield(readfunction=float)
+  MeanCytoplasm620: float = optionalfield(readfunction=float)
+  MeanCytoplasm650: float = optionalfield(readfunction=float)
+  MeanCytoplasm690: float = optionalfield(readfunction=float)
+  MeanCytoplasm780: float = optionalfield(readfunction=float)
   TotalNucleusDAPI: float
   TotalNucleus480: float
   TotalNucleus520: float
@@ -471,15 +474,15 @@ class PhenotypedCell(MyDataClass):
   TotalNucleus650: float
   TotalNucleus690: float
   TotalNucleus780: float
-  TotalMembraneDAPI: float = optionalfield(float)
-  TotalMembrane480: float = optionalfield(float)
-  TotalMembrane520: float = optionalfield(float)
-  TotalMembrane540: float = optionalfield(float)
-  TotalMembrane570: float = optionalfield(float)
-  TotalMembrane620: float = optionalfield(float)
-  TotalMembrane650: float = optionalfield(float)
-  TotalMembrane690: float = optionalfield(float)
-  TotalMembrane780: float = optionalfield(float)
+  TotalMembraneDAPI: float = optionalfield(readfunction=float)
+  TotalMembrane480: float = optionalfield(readfunction=float)
+  TotalMembrane520: float = optionalfield(readfunction=float)
+  TotalMembrane540: float = optionalfield(readfunction=float)
+  TotalMembrane570: float = optionalfield(readfunction=float)
+  TotalMembrane620: float = optionalfield(readfunction=float)
+  TotalMembrane650: float = optionalfield(readfunction=float)
+  TotalMembrane690: float = optionalfield(readfunction=float)
+  TotalMembrane780: float = optionalfield(readfunction=float)
   TotalEntireCellDAPI: float
   TotalEntireCell480: float
   TotalEntireCell520: float
@@ -489,15 +492,15 @@ class PhenotypedCell(MyDataClass):
   TotalEntireCell650: float
   TotalEntireCell690: float
   TotalEntireCell780: float
-  TotalCytoplasmDAPI: float = optionalfield(float)
-  TotalCytoplasm480: float = optionalfield(float)
-  TotalCytoplasm520: float = optionalfield(float)
-  TotalCytoplasm540: float = optionalfield(float)
-  TotalCytoplasm570: float = optionalfield(float)
-  TotalCytoplasm620: float = optionalfield(float)
-  TotalCytoplasm650: float = optionalfield(float)
-  TotalCytoplasm690: float = optionalfield(float)
-  TotalCytoplasm780: float = optionalfield(float)
+  TotalCytoplasmDAPI: float = optionalfield(readfunction=float)
+  TotalCytoplasm480: float = optionalfield(readfunction=float)
+  TotalCytoplasm520: float = optionalfield(readfunction=float)
+  TotalCytoplasm540: float = optionalfield(readfunction=float)
+  TotalCytoplasm570: float = optionalfield(readfunction=float)
+  TotalCytoplasm620: float = optionalfield(readfunction=float)
+  TotalCytoplasm650: float = optionalfield(readfunction=float)
+  TotalCytoplasm690: float = optionalfield(readfunction=float)
+  TotalCytoplasm780: float = optionalfield(readfunction=float)
   ExprPhenotype: int
 
 def MakeClinicalInfo(filename):

@@ -318,7 +318,12 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
 
   @property
   def annotation(self):
-    annotations = {self.outerpolygon.annotation, *(_.annotation for _ in self.subtractpolygons)}
+    annotations = (self.outerpolygon.annotation, *(_.annotation for _ in self.subtractpolygons))
+    unique = []
+    for _ in annotations:
+      if _ in unique: continue
+      unique.append(_)
+    annotations = unique
     try:
       result, = annotations
     except ValueError:
@@ -350,7 +355,7 @@ class SimplePolygon(Polygon):
     annoscale = {annoscale}
     pscale = {pscale}
     regionid = {regionid}
-    annotation = {annotation}
+    annotation = [annotation]
 
     if vertexarray is not None is vertices:
       vertexarray = np.array(vertexarray)
@@ -360,7 +365,7 @@ class SimplePolygon(Polygon):
       annoscale |= {v.annoscale for v in vertices}
       pscale |= {v.pscale for v in vertices}
       regionid |= {v.regionid for v in vertices}
-      annotation |= {v.annotation for v in vertices}
+      annotation += [v.annotation for v in vertices]
     else:
       raise TypeError("Have to provide exactly one of vertices or vertexarray")
 
@@ -379,7 +384,13 @@ class SimplePolygon(Polygon):
     elif not regionid: regionid = {None}
     self.__regionid, = regionid
 
-    annotation.discard(None)
+    #remove duplicates (can't use set because it's not hashable)
+    unique = []
+    for _ in annotation:
+      if _ is None: continue
+      if _ in unique: continue
+      unique.append(_)
+    annotation = unique
     if len(annotation) > 1: raise ValueError(f"Inconsistent annotations {annotation}")
     elif not annotation: annotation = {None}
     self.__annotation, = annotation

@@ -181,8 +181,6 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
 
     self.__images = None
 
-    self.readannotationinfo(check_compatibility=True)
-
   @contextlib.contextmanager
   def using_images(self):
     """
@@ -709,11 +707,13 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
       affines = self.readcsv("affine", AffineEntry)
       dct = {affine.description: affine.value for affine in affines}
       myposition = np.array([dct["shiftx"], dct["shifty"]])
-      if self.annotationposition is None:
-        self.annotationposition = myposition
-      shiftannotations = myposition - self.annotationposition
-      if np.any(shiftannotations):
-        self.logger.warning(f"shifting the annotations drawn on the wsi by {shiftannotations / onepixel} pixels")
+      for a in self.annotations:
+        if a.isonwsi and a.isfromxml:
+          if a.position is None:
+            a.position = myposition
+          a.shiftannotation = myposition - a.position
+          if np.any(shiftannotations):
+            self.logger.warning(f"shifting annotation {a.name} by {shiftannotations / onepixel} pixels")
 
     if annotationsonqptiff:
       apscale = self.apscale
@@ -861,7 +861,6 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
                     otherwise actually do the alignment
     other kwargs are passed to stitch()
     """
-    self.writeannotations()
     if any(a.isonwsi for a in self.annotations):
       if not readalignments:
         self.align()
@@ -872,8 +871,8 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
       self.writestitchresult()
     self.writevertices()
     self.writeregions()
-    #this has to come after writevertices
-    self.writeannotationinfo()
+    #has to come after writevertices
+    self.writeannotations()
 
   run = runannowarp
 
