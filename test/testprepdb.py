@@ -162,8 +162,8 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
         (f"{SlideID}_qptiff.csv", QPTiffCsv, {}),
         (f"{SlideID}_rect.csv", Rectangle, {}),
         (f"{SlideID}_overlap.csv", Overlap, {"nclip": sample.nclip}),
-        (f"{SlideID}_vertices.csv", Vertex, {"annoscale": sample.apscale}),
-        (f"{SlideID}_regions.csv", Region, {"annoscale": sample.apscale}),
+        (f"{SlideID}_vertices.csv", Vertex, {}),
+        (f"{SlideID}_regions.csv", Region, {}),
       ):
         if filename == "M21_1_globals.csv": continue
         if filename == "ZW2_exposures.csv": continue #that file is huge and unnecessary
@@ -175,6 +175,8 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
           continue
         if cls == Overlap:
           extrakwargs["rectangles"] = rectangles
+        if cls in (Vertex, Region):
+          extrakwargs["annotations"] = annotations
         sample.logger.info(f"comparing {filename}")
         try:
           rows = sample.readtable(dbloadroot/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
@@ -183,6 +185,8 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
           if cls == Rectangle:
             rectangles = rows
+          if cls == Annotation:
+            annotations = rows
         except Exception as e:
           raise type(e)("Error in "+filename)
 

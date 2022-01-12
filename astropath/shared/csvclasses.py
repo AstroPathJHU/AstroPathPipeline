@@ -3,7 +3,7 @@ from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import boolasintfield, datefield, optionalfield, readtable
-from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithApscaleFrozen, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
+from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithApscale, DataClassWithApscaleFrozen, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, DataClassWithPolygonFrozen, Polygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
@@ -195,7 +195,7 @@ class Annotation(DataClassWithPolygonFrozen, DataClassWithApscaleFrozen):
 
   sampleid: numerical id of the slide
   layer: layer number of the annotation
-  name: name of the annotation, e.g. tuor
+  name: name of the annotation, e.g. tumor
   color: color of the annotation
   visible: should it be drawn?
   poly: the gdal polygon for the annotation
@@ -228,7 +228,33 @@ class Annotation(DataClassWithPolygonFrozen, DataClassWithApscaleFrozen):
         kwargs["annoscale"] = apscale
     return args, kwargs
 
-class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
+class DataClassWithAnnotation(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
+  annotation: Annotation = MetaDataAnnotation(None, includeintable=False)
+  @classmethod
+  def transforminitargs(cls, *, annoscale=None, pscale=None, apscale=None, annotation=None, annotations=None, **kwargs):
+    if annotation is not None and annotations is not None:
+      raise TypeError("Provided both annotation and annotations")
+
+    if annotations is not None:
+      annotation, = {annotation for annotation in annotations if annotation.layer == kwargs["regionid"] // 1000}
+
+    if annotation is not None:
+      if annoscale is None: annoscale = annotation.annoscale
+      if annoscale != annotation.annoscale: raise ValueError(f"Inconsistent annoscales {annoscale} {annotation.annoscale}")
+      if pscale is None: pscale = annotation.pscale
+      if pscale != annotation.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {annotation.pscale}")
+      if apscale is None: apscale = annotation.apscale
+      if apscale != annotation.apscale is not None: raise ValueError(f"Inconsistent apscales {apscale} {annotation.apscale}")
+
+    return super().transforminitargs(
+      pscale=pscale,
+      annoscale=annoscale,
+      apscale=apscale,
+      annotation=annotation,
+      **kwargs,
+    )
+
+class Vertex(DataClassWithAnnotation):
   """
   A vertex of a polygon.
 
@@ -247,7 +273,6 @@ class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
   x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   pscale = None
-  annotation: Annotation = MetaDataAnnotation(None, includeintable=False)
 
   @property
   def xvec(self):
@@ -261,7 +286,7 @@ class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
     return self.annotation.isonwsi
 
   @classmethod
-  def transforminitargs(cls, *args, pscale=None, annoscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
+  def transforminitargs(cls, *, pscale=None, annoscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
     xveckwargs = {}
     vertexkwargs = {}
     im3xykwargs = {}
@@ -285,7 +310,6 @@ class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
     if im3xvec is not None:
       im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, annoscale)
     return super().transforminitargs(
-      *args,
       pscale=pscale,
       annoscale=annoscale,
       **kwargs,
@@ -312,7 +336,7 @@ class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
     """y in im3 coordinates"""
     return self.xvec[1]
 
-class Region(DataClassWithPolygon):
+class Region(DataClassWithPolygon, DataClassWithAnnotation):
   """
   An annotation region
 
