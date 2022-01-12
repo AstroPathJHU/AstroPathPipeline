@@ -14,7 +14,6 @@ from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
 from ..align.stitch import AffineEntry
 from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedQPTiffVertex
-from ..annowarp.mergeannotationxmls import AnnotationInfoReaderSample
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
 from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSample
@@ -67,11 +66,10 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
     }
     return kwargs
 
-class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
+class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
   rectangletype = CsvScanRectangle
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self.readannotationinfo()
 
   @property
   def logger(self): return super().logger
@@ -139,7 +137,6 @@ class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, 
     }
     optionalcsvs = {
       self.csv(_) for _ in (
-        "annotationinfo",
         "globals",
       )
     } | {
@@ -171,7 +168,6 @@ class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, 
           "affine": (AffineEntry, "Affine"),
           "align": (AlignmentResult, "Align"),
           "annotations": (Annotation, "Annotations"),
-          "annotationinfo": (Constant, "AnnotationInfo"),
           "annowarp": (AnnoWarpAlignmentResult, "AnnoWarp"),
           "annowarp-stitch": (AnnoWarpStitchResultEntry, "AnnoWarpStitch"),
           "batch": (Batch, "Batch"),
