@@ -737,7 +737,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
           )
         )
       else:
-        wxvec = v.xvec
+        wxvec = v.xvec * 1. #convert to float, if it's int
         if v.isfromxml:
           wxvec += units.nominal_values(stitchresult.dxvec(v, apscale=apscale))
         wxvec = wxvec / oneapmicron * onemicron // onepixel * onepixel
