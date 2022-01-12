@@ -22,10 +22,14 @@ def showannotation(image, regions, *, imagescale, vertices=None, xlim=(), ylim=(
   ax = fig.add_subplot(1, 1, 1)
   plt.imshow(image)
   for region in regions:
-    if vertices is None:
+    if region.poly is not None:
       poly = region.poly
+    elif vertices is not None:
+      pscalepoly = SimplePolygon(vertices=[v for v in vertices if v.regionid == region.regionid])
+      vertexarray = pscalepoly.vertexarray
+      poly = SimplePolygon(vertexarray=vertexarray, pscale=imagescale, annoscale=pscalepoly.annoscale)
     else:
-      poly = SimplePolygon(vertices=[v for v in vertices if v.regionid == region.regionid], pscale=imagescale)
+      raise ValueError("Have to provide either vertices or a region with a polygon")
 
     polygon = poly.matplotlibpolygon(
       imagescale=imagescale,

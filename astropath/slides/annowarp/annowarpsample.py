@@ -683,18 +683,12 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
   @property
   def vertices(self):
     """
-    get the original vertices in im3 coordinates
+    get the original vertices
     """
     return self.__getvertices()
-  @property
-  def apvertices(self):
-    """
-    get the original vertices in qptiff coordinates
-    """
-    return self.__getvertices(pscale=self.apscale)
 
   @methodtools.lru_cache()
-  def __getwarpedvertices(self, *, pscale):
+  def __getwarpedvertices(self):
     """
     Create the new warped vertices
     """
