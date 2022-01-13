@@ -7,7 +7,7 @@ from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.align.alignsample import AlignSample
-from astropath.slides.prepdb.prepdbsample import PrepDbSample
+from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTissueMask
 from astropath.slides.annowarp.mergeannotationxmls import MergeAnnotationXMLsCohort, MergeAnnotationXMLsSample
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
@@ -128,8 +128,8 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
   def testStandaloneAnnotations(self, SlideID="M21_1"):
     try:
       folder = thisfolder/"test_for_jenkins"/"misc"
-      s = PrepDbSample(thisfolder/"data", SlideID)
-      writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
+      s = AnnoWarpSampleAstroPathTissueMask(thisfolder/"data", SlideID, zoomroot=folder, annotationsonwsi=False)
+      writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID, annotationsonwsi=False)
       extrakwargs = {}
       for filename, cls in (
         (f"{SlideID}_annotations.csv", Annotation),
@@ -138,7 +138,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       ):
         try:
           rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
-          targetrows = s.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          targetrows = s.readtable(thisfolder/"data"/"reference"/"misc"/"standaloneannotations"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
           for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
           if cls == Annotation:
