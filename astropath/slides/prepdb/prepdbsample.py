@@ -1,17 +1,16 @@
 import argparse, methodtools, numpy as np, PIL, skimage
-from ...shared.argumentparser import DbloadArgumentParser, XMLPolygonReaderArgumentParser
+from ...shared.argumentparser import DbloadArgumentParser
 from ...shared.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
-from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader, XMLPolygonAnnotationReaderSample
+from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
 from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 
-class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser):
+class PrepDbArgumentParser(DbloadArgumentParser):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--skip-annotations", action="store_true", help="do not check the annotations for validity and do not write the annotations, vertices, and regions csvs (they will be written later, in the annowarp step)")
     p.add_argument("--skip-qptiff", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--margin", type=int, help="minimum number of pixels between the tissue and the wsi edge", default=1024)
     return p
@@ -20,7 +19,6 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
   def runkwargsfromargumentparser(cls, parsed_args_dict):
     return {
       **super().runkwargsfromargumentparser(parsed_args_dict),
-      "skipannotations": parsed_args_dict.pop("skip_annotations"),
       "_skipqptiff": parsed_args_dict.pop("skip_qptiff"),
     }
 
@@ -31,7 +29,7 @@ class PrepDbArgumentParser(DbloadArgumentParser, XMLPolygonReaderArgumentParser)
       "margin": parsed_args_dict.pop("margin"),
     }
 
-class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationReaderSample, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
+class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   """
   The prepdb stage of the pipeline extracts metadata for a sample from the `.xml` files
   and writes it out to `.csv` files.
@@ -82,15 +80,6 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, XMLPolygonAnnotationRe
 
   @property
   def globals(self): return self.getXMLplan()[1]
-
-  @property
-  def annotations(self): return self.getXMLpolygonannotations()[0]
-  @property
-  def regions(self): return self.getXMLpolygonannotations()[1]
-  @property
-  def vertices(self): return self.getXMLpolygonannotations()[2]
-  @property
-  def annotationinfocsv(self): return self.csv("annotationinfo")
 
   @property
   def jpgfilename(self): return self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)
@@ -275,21 +264,9 @@ class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
     self.logger.info("write globals")
     self.writecsv("globals", self.globals)
 
-  def writeannotations(self):
-    self.logger.info("write annotations")
-    self.writecsv("annotations", self.annotations, rowclass=Annotation)
-
   def writeexposures(self):
     self.logger.info("write exposure times")
     self.writecsv("exposures", self.exposuretimes, rowclass=ExposureTime)
-
-  def writeregions(self):
-    self.logger.info("write regions")
-    self.writecsv("regions", self.regions, rowclass=Region)
-
-  def writevertices(self):
-    self.logger.info("write vertices")
-    self.writecsv("vertices", self.vertices, rowclass=Vertex)
 
   def writeqptiffcsv(self):
     self.logger.info("write qptiff csv")
@@ -308,7 +285,7 @@ class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
     self.logger.info("write constants")
     self.writecsv("constants", self.getconstants())
 
-  def writemetadata(self, *, skipannotations=False, _skipqptiff=False):
+  def writemetadata(self, *, _skipqptiff=False):
     self.dbload.mkdir(parents=True, exist_ok=True)
     self.writerectangles()
     self.writeexposures()
@@ -321,16 +298,10 @@ class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
       self.writeconstants()
       self.writeqptiffcsv()
       self.writeqptiffjpg()
-    if skipannotations:
-      self.logger.warningglobal("as requested, not checking annotations. the csvs will be written in the annowarp step.")
-    else:
-      self.writeannotations()
-      self.writevertices()
-      self.writeregions()
 
   run = writemetadata
 
-  def inputfiles(self, *, skipannotations=False, _skipqptiff=False, **kwargs):
+  def inputfiles(self, *, _skipqptiff=False, **kwargs):
     result = super().inputfiles(**kwargs) + [
       self.annotationsxmlfile,
       self.fullxmlfile,
@@ -346,14 +317,10 @@ class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
       result += [
         self.qptifffilename,
       ]
-    if not skipannotations:
-      result += [
-        self.annotationspolygonsxmlfile,
-      ]
     return result
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, dbloadroot, skipannotations=False, _skipqptiff=False, **otherkwargs):
+  def getoutputfiles(cls, SlideID, *, dbloadroot, _skipqptiff=False, **otherkwargs):
     dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [
       dbload/f"{SlideID}_batch.csv",
@@ -364,11 +331,7 @@ class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
       dbload/f"{SlideID}_constants.csv",
       dbload/f"{SlideID}_qptiff.csv",
       dbload/f"{SlideID}{UNIV_CONST.QPTIFF_SUFFIX}",
-    ] if not _skipqptiff else []) + ([
-      dbload/f"{SlideID}_annotations.csv",
-      dbload/f"{SlideID}_regions.csv",
-      dbload/f"{SlideID}_vertices.csv",
-    ] if not skipannotations else [])
+    ] if not _skipqptiff else [])
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
