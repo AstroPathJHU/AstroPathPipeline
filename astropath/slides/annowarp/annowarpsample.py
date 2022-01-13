@@ -18,7 +18,6 @@ from ..align.overlap import AlignmentComparison
 from ..align.stitch import AffineEntry
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample, TissueMaskSampleWithPolygons
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
-from .mergeannotationxmls import AnnotationInfoWriterArgumentParser, AnnotationInfoWriterSample, MergeAnnotationXMLsSample
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class QPTiffSample(SampleBase, units.ThingWithImscale):
@@ -115,8 +114,7 @@ class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
         self.__wsi = None
         self.__using_wsi_context.close()
 
-class AnnoWarpArgumentParserBase(AnnotationInfoWriterArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
-  require_annotations_on_wsi_or_qptiff_argument = True
+class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
   defaulttilepixels = 100
 
   @classmethod
@@ -147,7 +145,7 @@ class AnnoWarpArgumentParserBase(AnnotationInfoWriterArgumentParser, SelectRecta
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,

@@ -13,7 +13,7 @@ from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
 from ..align.stitch import AffineEntry
-from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedQPTiffVertex
+from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
 from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSample
@@ -183,14 +183,16 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
           "rect": (Rectangle, "Rect"),
           "regions": (Region, "Regions"),
           "tumorGeometry": (Boundary, "TumorGeometry"),
-          "vertices": (WarpedQPTiffVertex, "Vertices"),
+          "vertices": (WarpedVertex, "Vertices"),
         }[match.group(1)]
         allrectangles = self.readcsv("rect", Rectangle)
+        allannotations = self.readcsv("annotations", Annotation)
         extrakwargs = {
           "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0},
           "fieldoverlaps": {"nclip": 8, "rectangles": allrectangles},
           "overlap": {"nclip": 8, "rectangles": allrectangles},
-          "vertices": {"bigtilesize": 0, "bigtileoffset": 0}
+          "regions": {"annotations": allannotations},
+          "vertices": {"annotations": allannotations},
         }.get(match.group(1), {})
         fieldsizelimit = {
           "regions": 500000,
