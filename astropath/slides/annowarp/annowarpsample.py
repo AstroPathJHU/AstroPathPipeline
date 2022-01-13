@@ -807,7 +807,14 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     return result
 
   @property
-  def annotationscsv(self):
+  def annotationinfocsv(self):
+    """
+    filename for the annotation info csv file
+    """
+    return self.csv("annotationinfo")
+
+  @property
+  def annotationinfocsv(self):
     """
     filename for the annotations csv file
     """

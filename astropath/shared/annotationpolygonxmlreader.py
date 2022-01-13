@@ -229,10 +229,14 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, annotationsonwsi=False, annotationposition=None, readcsvannotations=False, **kwargs):
+  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, annotationsonwsi=None, annotationposition=None, readannotationinfo=False, **kwargs):
     self.__annotationsonwsi = annotationsonwsi
     self.__annotationposition = annotationposition
-    self.__readcsvannotations = readcsvannotations
+    self.__readannotationinfo = readannotationinfo
+    if self.__annotationsonwsi is None and not self.__readannotationinfo:
+      raise ValueError("Have to either read the annotation info from a csv file or specify if the annotations are on the wsi or qptiff")
+    if self.__readannotationinfo and not self.annotationinfocsv.exists():
+      raise ValueError("Can't read the annotation info from {self.annotationinfocsv} because it doesn't exist")
 
     self.__saveallannotationimages = saveallannotationimages
     if annotationimagefolder is not None: annotationimagefolder = pathlib.Path(annotationimagefolder)
@@ -292,11 +296,11 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     with open(self.annotationspolygonsxmlfile, "rb") as f:
       return [AnnotationNodeXML(node, annoscale=self.pscale/2 if self.annotationsonwsi else self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
 
-  def readcsvannotations(self):
-    return self.readtable(self.annotationscsv, Annotation, filter=lambda row: row["name"] != "empty")
+  def readannotationinfo(self):
+    return self.readtable(self.annotationinfocsv, AnnotationInfo)
   @property
   @abc.abstractmethod
-  def annotationscsv(self): pass
+  def annotationinfocsv(self): pass
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self, *, pscale=None):
@@ -306,8 +310,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     annotations = []
     allregions = []
     allvertices = []
-    if self.__readcsvannotations:
-      csvannotations = iter(self.readcsvannotations())
+    if self.__readannotationinfo:
+      annotationinfos = iter(self.readannotationinfo())
 
     errors = []
 
@@ -392,30 +396,31 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
           self.logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
           color = targetcolor
 
-        if self.__readcsvannotations:
-          csvannotation = next(csvannotations)
+        if node.isfromxml and self.__readannotationinfo:
+          annotationinfo = next(annotationinfos)
 
         if not node.isfromxml:
           isonwsi = True
           isfromxml = False
         else:
           isfromxml = True
-          if self.__readcsvannotations:
-            isonwsi = csvannotation.isonwsi
-          else:
+          if self.annotationsonwsi is not None:
             isonwsi = self.annotationsonwsi
+          elif self.__readannotationinfo:
+            isonwsi = annotationinfo.isonwsi
+          else:
+            assert False
 
         if not isonwsi:
-          xposition = yposition = None
+          position = None
         elif isfromxml:
-          xposition = yposition = 0
+          position = 0
         elif self.__annotationposition is not None:
-          xposition, yposition = self.__annotationposition
-        elif self.__readcsvannotations:
-          xposition = csvannotation.xposition
-          yposition = csvannotation.yposition
+          position = self.__annotationposition
+        elif self.__readannotationinfo:
+          position = annotationinfo.position
         else:
-          xposition = yposition = None
+          position = None
 
         annotation = Annotation(
           color=color,
@@ -428,12 +433,11 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
           apscale=self.apscale,
           isonwsi=isonwsi,
           isfromxml=isfromxml,
-          xposition=xposition,
-          yposition=yposition,
+          position=position,
         )
-        if self.__readcsvannotations:
-          if annotation != csvannotation:
-            raise ValueError(f"Annotations inconsistent with csv:\ncsv: {csvannotation}\nxml: {annotation}")
+        if self.__readannotationinfo:
+          if annotation.annotationinfo != annotationinfo:
+            raise ValueError(f"Annotations inconsistent with annotationinfo csv:\ncsv: {annotationinfo}\nnew: {annotation.annotationinfo}")
         annotations.append(annotation)
 
         regions = node.regions
@@ -577,7 +581,7 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
   def annotationspolygonsxmlfile(self): return self.__polygonxmlfile
 
   @property
-  def annotationscsv(self): raise NotImplementedError
+  def annotationinfocsv(self): raise NotImplementedError
 
 class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoaderWithPolygons):
   @property

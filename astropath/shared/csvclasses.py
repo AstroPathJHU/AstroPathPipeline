@@ -251,6 +251,10 @@ class Annotation(_AnnotationBase, AnnotationInfo):
         kwargs["annoscale"] = apscale
     return super().transforminitargs(*args, **kwargs)
 
+  @property
+  def annotationinfo(self):
+    return AnnotationInfo(getattr(self, field) for field in dataclassy.fields(AnnotationInfo))
+
 class DataClassWithAnnotation(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
   annotation: Annotation = MetaDataAnnotation(None, includeintable=False)
   @classmethod

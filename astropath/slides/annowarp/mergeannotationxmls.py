@@ -7,30 +7,15 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict, ArgParseAddTupleToDict
 
 class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
-  require_annotations_on_wsi_or_qptiff_argument = False
-
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    """
-    g = p.add_mutually_exclusive_group(required=cls.require_annotations_on_wsi_or_qptiff_argument)
-    g.add_argument("--annotations-on-wsi", action="store_const", dest="annotationsource", help="annotations were drawn on the AstroPath image", const="wsi")
-    g.add_argument("--annotations-on-qptiff", action="store_const", dest="annotationsource", help="annotations were drawn on the qptiff", const="qptiff")
-    g.add_argument("--annotations-on-both", action="store_const", dest="annotationsource", help="annotations were drawn on either the wsi or qptiff or a mix, and the annotations.csv already exists with that information", const="both")
-    p.add_argument("--annotation-position", nargs=2, type=float)
-    """
     return p
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    """
-    if parsed_args_dict["annotation_position"] is not None and not parsed_args_dict["annotationsonwsi"]:
-      raise ValueError("--annotation-position is only valid for --annotations-on-wsi")
-    """
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-#      "annotationsource": parsed_args_dict.pop("annotationsource"),
-#      "annotationposition": parsed_args_dict.pop("annotation_position"),
     }
 
 class AnnotationInfoWriterSample(DbloadSample, AnnotationInfoWriterArgumentParser):
