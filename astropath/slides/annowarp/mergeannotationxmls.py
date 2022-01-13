@@ -1,11 +1,10 @@
-import collections, contextlib, jxmlease, methodtools, numpy as np, re
+import collections, contextlib, jxmlease, methodtools, re
 from ...shared.argumentparser import DbloadArgumentParser
 from ...shared.cohort import DbloadCohort, WorkflowCohort
-from ...shared.csvclasses import Constant
+from ...shared.csvclasses import AnnotationInfo
 from ...shared.sample import DbloadSample, WorkflowSample
-from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import ArgParseAddRegexToDict
+from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict, ArgParseAddTupleToDict
 
 class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
   require_annotations_on_wsi_or_qptiff_argument = False
@@ -13,54 +12,91 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
+    """
     g = p.add_mutually_exclusive_group(required=cls.require_annotations_on_wsi_or_qptiff_argument)
     g.add_argument("--annotations-on-wsi", action="store_const", dest="annotationsource", help="annotations were drawn on the AstroPath image", const="wsi")
     g.add_argument("--annotations-on-qptiff", action="store_const", dest="annotationsource", help="annotations were drawn on the qptiff", const="qptiff")
     g.add_argument("--annotations-on-both", action="store_const", dest="annotationsource", help="annotations were drawn on either the wsi or qptiff or a mix, and the annotations.csv already exists with that information", const="both")
     p.add_argument("--annotation-position", nargs=2, type=float)
+    """
     return p
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
+    """
     if parsed_args_dict["annotation_position"] is not None and not parsed_args_dict["annotationsonwsi"]:
       raise ValueError("--annotation-position is only valid for --annotations-on-wsi")
+    """
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-      "annotationsource": parsed_args_dict.pop("annotationsource"),
-      "annotationposition": parsed_args_dict.pop("annotation_position"),
+#      "annotationsource": parsed_args_dict.pop("annotationsource"),
+#      "annotationposition": parsed_args_dict.pop("annotation_position"),
     }
 
-class MergeAnnotationXMLsArgumentParser(DbloadArgumentParser):
-  def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
+class AnnotationInfoWriterSample(DbloadSample, AnnotationInfoWriterArgumentParser):
+  def writeannotationinfo(self, annotationinfos):
+    self.writecsv("annotationinfo", annotationinfos)
+
+class AnnotationInfoWriterCohort(DbloadCohort, AnnotationInfoWriterArgumentParser):
+  pass
+
+class MergeAnnotationXMLsArgumentParser(AnnotationInfoWriterArgumentParser, DbloadArgumentParser):
+  def __init__(self, *args, annotationselectiondict, annotationsourcedict, annotationpositiondict, skipannotations, **kwargs):
     self.__annotationselectiondict = annotationselectiondict
     self.__annotationsourcedict = annotationsourcedict
     self.__annotationpositiondict = annotationpositiondict
     self.__skipannotations = skipannotations
     super().__init__(*args, **kwargs)
 
-    duplicates = frozenset(self.__annotationselectiondict) & frozenset(self.__skipannotations)
+    duplicates = frozenset(self.annotationselectiondict) & frozenset(self.skipannotations)
     if duplicates:
       raise ValueError(f"Some annotations are specified to be taken from an xml file and to be skipped: {', '.join(duplicates)}")
-    nosource = frozenset(self.__annotationselectiondict) - frozenset(self.__annotationsourcedict)
+
+    nosource = set()
+    for _ in self.annotationselectiondict:
+      try:
+        self.annotationsourcedict[_]
+      except KeyError:
+        nosource.add(_)
     if nosource:
       raise ValueError(f"Some annotations are not specified to come from the wsi or qptiff: {', '.join(nosource)}")
+
+  @property
+  def annotationselectiondict(self): return self.__annotationselectiondict
+  @property
+  def annotationsourcedict(self): return self.__annotationsourcedict
+  @property
+  def annotationpositiondict(self): return self.__annotationpositiondict
+  @property
+  def skipannotations(self): return self.__skipannotations
 
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--annotation", nargs=2, action=ArgParseAddRegexToDict, metavar=("ANNOTATION", "FILENAME_REGEX"), default={}, help="take annotation with this name from the annotation file that matches the regex", dest="annotationselectiondict")
     p.add_argument("--annotation-source", nargs=2, action=ArgParseAddToDict, metavar=("ANNOTATION", "SOURCE"), default={}, help="source of the annotations (wsi or qptiff)", dest="annotationsourcedict")
-    p.add_argument("--annotation-position", nargs=3, action=ArgParseAddToDict, metavar=("ANNOTATION", "XPOS", "YPOS"), default={}, help="position of the annotations if they were drawn on the wsi", dest="annotationpositiondict")
+    p.add_argument("--annotation-position", nargs=3, action=ArgParseAddTupleToDict, metavar=("ANNOTATION", "XPOS", "YPOS"), default={}, help="position of the annotations if they were drawn on the wsi", dest="annotationpositiondict")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--annotations-on-wsi", action="store_const", dest="defaultsource", const="wsi", help="Unless otherwise specified, annotations are drawn on the wsi")
+    g.add_argument("--annotations-on-qptiff", action="store_const", dest="defaultsource", const="qptiff", help="Unless otherwise specified, annotations are drawn on the qptiff")
     p.add_argument("--skip-annotation", action="append", metavar="ANNOTATION", default=[], help="skip this annotation if it exists in an xml file")
     return p
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
+    defaultsource = parsed_args_dict.pop("defaultsource")
+    annotationsourcedict = parsed_args_dict.pop("annotationsourcedict")
+    if defaultsource is not None:
+      annotationsourcedict = collections.defaultdict(lambda: defaultsource, annotationsourcedict)
+
+    annotationpositiondict = parsed_args_dict.pop("annotationpositiondict")
+    annotationpositiondict = collections.defaultdict(lambda: None, annotationpositiondict)
+
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "annotationselectiondict": parsed_args_dict.pop("annotationselectiondict"),
-      "annotationsourcedict": parsed_args_dict.pop("annotationsourcedict"),
-      "annotationpositiondict": parsed_args_dict.pop("annotationpositiondict"),
+      "annotationsourcedict": annotationsourcedict,
+      "annotationpositiondict": annotationpositiondict,
       "skipannotations": parsed_args_dict.pop("skip_annotation"),
     }
 
@@ -93,9 +129,9 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSample, WorkflowSample, Merg
 
   @methodtools.lru_cache()
   @property
-  def annotationselectiondict(self):
+  def annotationxmldict(self):
     result = {}
-    for annotation, regex in self.__annotationselectiondict.items():
+    for annotation, regex in self.annotationselectiondict.items():
       regex = re.compile(regex)
       filenames = {xml for xml in self.allxmls if regex.match(xml.name)}
       try:
@@ -122,23 +158,33 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSample, WorkflowSample, Merg
         xml[xmlfile] = nodedict
         allnames.update(nodedict.keys())
 
-      unknown = allnames - set(self.annotationselectiondict) - set(self.__skipannotations)
+      unknown = allnames - set(self.annotationxmldict) - set(self.skipannotations)
       if unknown:
         raise ValueError(f"Found unknown annotations in xml files: {', '.join(sorted(unknown))}")
 
       annotations = []
-      for name, xmlfile in self.annotationselectiondict.items():
+      for name, xmlfile in self.annotationxmldict.items():
         self.logger.info(f"Taking {name} from {xmlfile.name}")
         annotations.append(xml[xmlfile][name.lower()])
 
-      for name in sorted(set(self.__skipannotations) & allnames):
+      for name in sorted(set(self.skipannotations) & allnames):
         self.logger.info(f"Skipping {name}")
 
       result = jxmlease.XMLDictNode({"Annotations": jxmlease.XMLDictNode({"Annotation": jxmlease.XMLListNode(annotations)})})
       with open(self.xmloutput, "w") as f:
         f.write(result.emit_xml())
 
-    self.writeannotationinfo()
+    names = [node.get_xml_attr("Name") for node in annotations]
+    annotationcsv = [
+      AnnotationInfo(
+        sampleid=self.SampleID,
+        name=name,
+        isonwsi={"wsi": True, "qptiff": False}[self.annotationsourcedict[name]],
+        position=self.annotationpositiondict[name],
+        pscale=self.pscale,
+      ) for name in names
+    ]
+    self.writeannotationinfo(annotationcsv)
 
   def run(self, **kwargs):
     return self.mergexmls(**kwargs)
@@ -149,17 +195,17 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSample, WorkflowSample, Merg
 
 class MergeAnnotationXMLsCohort(AnnotationInfoWriterCohort, WorkflowCohort, MergeAnnotationXMLsArgumentParser):
   sampleclass = MergeAnnotationXMLsSample
-  def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
-    self.__annotationselectiondict = annotationselectiondict
-    self.__skipannotations = skipannotations
+  def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
   @property
   def initiatesamplekwargs(self):
     return {
       **super().initiatesamplekwargs,
-      "annotationselectiondict": self.__annotationselectiondict,
-      "skipannotations": self.__skipannotations,
+      "annotationselectiondict": self.annotationselectiondict,
+      "annotationsourcedict": self.annotationsourcedict,
+      "annotationpositiondict": self.annotationpositiondict,
+      "skipannotations": self.skipannotations,
     }
 
 def samplemain(*args, **kwargs):

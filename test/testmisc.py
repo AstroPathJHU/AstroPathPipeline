@@ -1,7 +1,7 @@
 import cv2, datetime, hashlib, jxmlease, more_itertools, numpy as np, os, pathlib, skimage
 from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
-from astropath.shared.csvclasses import Annotation, Constant, Region, Vertex
+from astropath.shared.csvclasses import Annotation, AnnotationInfo, Region, Vertex
 from astropath.shared.logging import printlogger
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
@@ -245,15 +245,15 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     dbloadroot = im3root = thisfolder/"test_for_jenkins"/"misc"
     SlideID = "M206"
     args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--sampleregex", SlideID, "--annotation", "good tissue", ".*[.]xml", "--skip-annotation", "tumor", "--debug", "--no-log", "--annotations-on-qptiff"]
-    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=im3root, samp=SlideID, annotationselectiondict={}, skipannotations=set())
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=im3root, samp=SlideID, annotationselectiondict={}, annotationsourcedict={}, annotationpositiondict={}, skipannotations=set())
 
     try:
       MergeAnnotationXMLsCohort.runfromargumentparser(args)
 
       new = s.csv("annotationinfo")
       reffolder = root/"reference"/"misc"/"mergeannotationxmls"/SlideID/"dbload"
-      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "apscale", "qpscale")}
-      compare_two_csv_files(new.parent, reffolder, new.name, Constant, extrakwargs=extrakwargs)
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale",)}
+      compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
 
       with open(im3root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml", "rb") as f:
         newxml = jxmlease.parse(f)

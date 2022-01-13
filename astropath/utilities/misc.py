@@ -123,6 +123,13 @@ class recursionlimit(contextlib.AbstractContextManager):
 
 class ArgParseAddToDict(argparse.Action):
   def __call__(self, parser, namespace, values, option_string=None):
+    k, v = values
+    dct = getattr(namespace, self.dest)
+    if dct is None: dct = {}; setattr(namespace, self.dest, dct)
+    dct[k] = v
+
+class ArgParseAddTupleToDict(argparse.Action):
+  def __call__(self, parser, namespace, values, option_string=None):
     k, *v = values
     dct = getattr(namespace, self.dest)
     if dct is None: dct = {}; setattr(namespace, self.dest, dct)

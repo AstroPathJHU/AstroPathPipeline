@@ -183,16 +183,35 @@ class RectangleFile(DataClassWithPscaleFrozen):
   def cxvec(self):
     return np.array([self.cx, self.cy])
 
-class Annotation(DataClassWithPolygon, DataClassWithApscale):
+class AnnotationInfo(DataClassWithPscale):
   """
-  An annotation from a pathologist.
+  """
+  sampleid: int
+  name: str
+  isonwsi: bool = boolasintfield(False)
+  xposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
+  yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
 
-  sampleid: numerical id of the slide
-  layer: layer number of the annotation
-  name: name of the annotation, e.g. tumor
-  color: color of the annotation
-  visible: should it be drawn?
-  poly: the gdal polygon for the annotation
+  @property
+  def isonqptiff(self): return not self.isonwsi
+
+  @classmethod
+  def transforminitargs(cls, *args, position=None, **kwargs):
+    positionkwargs = {}
+    if position is not None:
+      positionkwargs["xposition"], positionkwargs["yposition"] = position
+    return super().transforminitargs(*args, **kwargs, **positionkwargs)
+
+  @property
+  def position(self):
+    return np.array([self.xposition, self.yposition], dtype=units.unitdtype)
+  @position.setter
+  def position(self, position):
+    self.xposition, self.yposition = position
+
+class _AnnotationBase(DataClassWithPolygon, DataClassWithApscale):
+  """
+  Base class so that the fields are in the right order
   """
   sampleid: int
   layer: int
@@ -205,12 +224,20 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
   xposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
   yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
 
-  @property
-  def isonqptiff(self): return not self.isonwsi
+class Annotation(_AnnotationBase, AnnotationInfo):
+  """
+  An annotation from a pathologist.
+
+  sampleid: numerical id of the slide
+  layer: layer number of the annotation
+  name: name of the annotation, e.g. tumor
+  color: color of the annotation
+  visible: should it be drawn?
+  poly: the gdal polygon for the annotation
+  """
 
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
-    args, kwargs = super().transforminitargs(*args, **kwargs)
     if "annoscale" not in kwargs:
       isonwsi = kwargs.get("isonwsi", cls.__defaults__["isonwsi"])
       isfromxml = kwargs.get("isfromxml", cls.__defaults__["isfromxml"])
@@ -222,14 +249,7 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
         kwargs["annoscale"] = pscale/2
       else:
         kwargs["annoscale"] = apscale
-    return args, kwargs
-
-  @property
-  def position(self):
-    return np.array([self.xposition, self.yposition], dtype=units.unitdtype)
-  @position.setter
-  def position(self, position):
-    self.xposition, self.yposition = position
+    return super().transforminitargs(*args, **kwargs)
 
 class DataClassWithAnnotation(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
   annotation: Annotation = MetaDataAnnotation(None, includeintable=False)
