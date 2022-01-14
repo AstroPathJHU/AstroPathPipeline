@@ -116,8 +116,6 @@ class sampledef : sharedtools{
                 Where-Object -FilterScript {$_.Project -eq $this.project}
         #Adjust if testing on jenkins
         if ($project_dat.dpath -match '/var/lib/jenkins') {
-            Write-Host 'Mpath: ' $mpath
-            Write-Host 'FWPath: ' $project_dat.fwpath
             $this.basepath = $project_dat.dpath + '/' + $project_dat.dname
         }
         else {

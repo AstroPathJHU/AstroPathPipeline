@@ -32,6 +32,8 @@ Class testpsmeanimage {
         $task = ('0', 'M21_1', $processing, $mpath)
         $inp = meanimage $task
 
+        Write-Host $inp
+
         #
         # Run Tests
         #
