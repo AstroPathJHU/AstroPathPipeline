@@ -74,18 +74,20 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = s.readtable(annotationsfilename, Annotation, checkorder=True, checknewlines=True)
+    annotations = rows = s.readtable(annotationsfilename, Annotation, checkorder=True, checknewlines=True)
     targetrows = s.readtable(referenceannotationsfilename, Annotation, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = s.readtable(verticesfilename, WarpedQPTiffVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize}, checkorder=True, checknewlines=True)
-    targetrows = s.readtable(referenceverticesfilename, WarpedQPTiffVertex, extrakwargs={"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize}, checkorder=True, checknewlines=True)
+    extrakwargs = {"bigtileoffset": s.bigtileoffset, "bigtilesize": s.bigtilesize, "annotations": annotations}
+    rows = s.readtable(verticesfilename, WarpedQPTiffVertex, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referenceverticesfilename, WarpedQPTiffVertex, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
-    rows = s.readtable(regionsfilename, Region, checkorder=True, checknewlines=True)
-    targetrows = s.readtable(referenceregionsfilename, Region, checkorder=True, checknewlines=True)
+    extrakwargs = {"annotations": annotations}
+    rows = s.readtable(regionsfilename, Region, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
+    targetrows = s.readtable(referenceregionsfilename, Region, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
       self.assertGreater(row.poly.area, 0)

@@ -193,19 +193,19 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     """
     The tile size as a Distance
     """
-    return units.convertpscale(self.__tilepixels*self.oneannopixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__tilepixels*self.oneappixel, self.apscale, self.imscale)
   @property
   def bigtilesize(self):
     """
     The big tile size (1400, 2100) as a distance
     """
-    return units.convertpscale(self.__bigtilepixels*self.oneannopixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__bigtilepixels*self.oneappixel, self.apscale, self.imscale)
   @property
   def bigtileoffset(self):
     """
     The big tile size (0, 1000) as a distance
     """
-    return units.convertpscale(self.__bigtileoffsetpixels*self.oneannopixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__bigtileoffsetpixels*self.oneappixel, self.apscale, self.imscale)
 
   def getimages(self, *, keep=False):
     """

@@ -435,7 +435,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
           isfromxml=isfromxml,
           position=position,
         )
-        if self.__readannotationinfo:
+        if node.isfromxml and self.__readannotationinfo:
           if annotation.annotationinfo != annotationinfo:
             raise ValueError(f"Annotations inconsistent with annotationinfo csv:\ncsv: {annotationinfo}\nnew: {annotation.annotationinfo}")
         annotations.append(annotation)

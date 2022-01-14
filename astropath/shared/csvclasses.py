@@ -253,7 +253,7 @@ class Annotation(_AnnotationBase, AnnotationInfo):
 
   @property
   def annotationinfo(self):
-    return AnnotationInfo(getattr(self, field) for field in dataclassy.fields(AnnotationInfo))
+    return AnnotationInfo(**{field: getattr(self, field) for field in dataclassy.fields(AnnotationInfo)})
 
 class DataClassWithAnnotation(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
   annotation: Annotation = MetaDataAnnotation(None, includeintable=False)
