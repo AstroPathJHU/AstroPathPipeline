@@ -175,10 +175,6 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSampleBase, WorkflowSample, 
       *super().getoutputfiles(SlideID=SlideID, **kwargs),
       im3root/SlideID/UNIV_CONST.IM3_DIR_NAME/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}.annotations.polygons.merged.xml",
     ]
-  def inputfiles(self, **kwargs):
-    return [
-      *super().inputfiles(**kwargs),
-    ]
 
   @classmethod
   def logmodule(cls):

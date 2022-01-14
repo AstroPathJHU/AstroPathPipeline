@@ -865,7 +865,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
                     otherwise actually do the alignment
     other kwargs are passed to stitch()
     """
-    if any(a.isonwsi for a in self.annotations):
+    if any(not a.isonwsi for a in self.annotations):
       if not readalignments:
         self.align()
         self.writealignments()
@@ -886,6 +886,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       self.wsifilename(layer=self.wsilayer),
       self.csv("fields"),
       self.csv("annotationinfo"),
+      self.csv("affine"),
     ]
 
   @classmethod

@@ -7,7 +7,7 @@ from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohortInformTissueM
 from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.utilities import units
 
-from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -18,6 +18,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       olddbload = thisfolder/"data"/SlideID/"dbload"
       newdbload = thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"
       for csv in (
+        "affine",
         "constants",
         "fields",
       ):
@@ -50,29 +51,34 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/f"{SlideID}-annowarp.log",
     ] for SlideID in ("M206",)), [])
 
-  def compareoutput(self, SlideID):
+  def compareoutput(self, SlideID, reffolder=None, alignment=True):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=True, annotationsonwsi=False)
+    if reffolder is None: reffolder = thisfolder/"data"/"reference"/"annowarp"
 
     alignmentfilename = s.alignmentcsv
-    referencealignmentfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
+    referencealignmentfilename = reffolder/SlideID/"dbload"/s.alignmentcsv.name
     stitchfilename = s.stitchcsv
-    referencestitchfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.stitchcsv.name
+    referencestitchfilename = reffolder/SlideID/"dbload"/s.stitchcsv.name
     verticesfilename = s.verticescsv
-    referenceverticesfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.verticescsv.name
+    referenceverticesfilename = reffolder/SlideID/"dbload"/s.verticescsv.name
     annotationsfilename = s.annotationscsv
-    referenceannotationsfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.annotationscsv.name
+    referenceannotationsfilename = reffolder/SlideID/"dbload"/s.annotationscsv.name
     regionsfilename = s.regionscsv
-    referenceregionsfilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.regionscsv.name
+    referenceregionsfilename = reffolder/SlideID/"dbload"/s.regionscsv.name
 
-    rows = s.readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
-    targetrows = s.readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
-    for row, target in more_itertools.zip_equal(rows, targetrows):
-      assertAlmostEqual(row, target, rtol=1e-5)
+    if alignment:
+      rows = s.readtable(alignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
+      targetrows = s.readtable(referencealignmentfilename, AnnoWarpAlignmentResult, extrakwargs={"tilesize": s.tilesize, "bigtilesize": s.bigtilesize, "bigtileoffset": s.bigtileoffset}, checkorder=True, checknewlines=True)
+      for row, target in more_itertools.zip_equal(rows, targetrows):
+        assertAlmostEqual(row, target, rtol=1e-5)
 
-    rows = s.readtable(stitchfilename, AnnoWarpStitchResultEntry, checkorder=True, checknewlines=True)
-    targetrows = s.readtable(referencestitchfilename, AnnoWarpStitchResultEntry, checkorder=True, checknewlines=True)
-    for row, target in more_itertools.zip_equal(rows, targetrows):
-      assertAlmostEqual(row, target, rtol=1e-4)
+      rows = s.readtable(stitchfilename, AnnoWarpStitchResultEntry, checkorder=True, checknewlines=True)
+      targetrows = s.readtable(referencestitchfilename, AnnoWarpStitchResultEntry, checkorder=True, checknewlines=True)
+      for row, target in more_itertools.zip_equal(rows, targetrows):
+        assertAlmostEqual(row, target, rtol=1e-4)
+    else:
+      self.assertFalse(alignmentfilename.exists())
+      self.assertFalse(stitchfilename.exists())
 
     annotations = rows = s.readtable(annotationsfilename, Annotation, checkorder=True, checknewlines=True)
     targetrows = s.readtable(referenceannotationsfilename, Annotation, checkorder=True, checknewlines=True)
@@ -140,23 +146,30 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       rtol=0.01,
     )
 
-  def testCohort(self, SlideID="M206", units="safe"):
+  def testCohort(self, SlideID="M206", units="safe", **compareoutputkwargs):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
-    logroot = thisfolder/"test_for_jenkins"/"annowarp"
+    dbloadroot = logroot = thisfolder/"test_for_jenkins"/"annowarp"
     maskroot = thisfolder/"data"/"reference"/"stitchmask"
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot), "--ignore-dependencies", "--rerun-finished"]
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--ignore-dependencies", "--rerun-finished"]
     try:
       AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
-      self.compareoutput(SlideID)
+      self.compareoutput(SlideID, **compareoutputkwargs)
     except:
       self.saveoutput()
       raise
     else:
       self.removeoutput()
 
-  def testCohortFastUnits(self, SlideID="M206"):
-    self.testCohort(SlideID=SlideID, units="fast")
+  def testCohortFastUnits(self, SlideID="M206", **kwargs):
+    self.testCohort(SlideID=SlideID, units="fast", **kwargs)
+
+  def testWsiAnnotations(self, SlideID="M206", units="fast"):
+    dbloadroot = thisfolder/"test_for_jenkins"/"annowarp"
+    with open(thisfolder/"data"/"reference"/"writeannotationinfo"/"annotationposition"/SlideID/"dbload"/f"{SlideID}_annotationinfo.csv") as f:
+      contents = f.read()
+    with temporarilyreplace(dbloadroot/SlideID/"dbload"/f"{SlideID}_annotationinfo.csv", contents):
+      self.testCohort(SlideID=SlideID, units=units, reffolder=thisfolder/"data"/"reference"/"annowarp"/"wsiannotations", alignment=False)
 
   def testConstraint(self, SlideID="M206"):
     s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", annotationsonwsi=False)
