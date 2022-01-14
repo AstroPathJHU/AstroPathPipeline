@@ -117,7 +117,7 @@ class sampledef : sharedtools{
         #Adjust if testing on jenkins
         if ($project_dat.dpath -match '/var/lib/jenkins') {
             Write-Host 'Mpath: ' $mpath
-            Write-Host 'Dpath: '$project_dat.dpath
+            Write-Host 'Project Dat: ' $project_dat
             $this.basepath = $project_dat.dpath + '/' + $project_dat.dname
         }
         else {
