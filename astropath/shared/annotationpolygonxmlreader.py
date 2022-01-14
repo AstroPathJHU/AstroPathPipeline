@@ -58,7 +58,7 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
 
   @property
   def annotationtype(self):
-    return re.sub(r" [0-9]+$", "", self.annotationname)
+    return re.sub(r" ([0-9]+|x)$", "", self.annotationname)
   @annotationtype.setter
   def annotationtype(self, value):
     self.__oldannotationtype = self.annotationtype
@@ -320,7 +320,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     allregions = []
     allvertices = []
     if self.__readannotationinfo:
-      annotationinfos = iter(self.readannotationinfo())
+      annotationinfos = self.readannotationinfo()
 
     errors = []
 
@@ -350,10 +350,13 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     for node in nodes:
       nodesbytype[node.annotationtype].append(node)
     for node in nodes:
-      if len(nodesbytype[node.annotationtype]) > 1:
+      if len([_ for _ in nodesbytype[node.annotationtype] if isinstance(_.annotationsubindexname, int)]) > 1:
         node.usesubindex = True
       else:
-        node.usesubindex = False
+        if isinstance(node.annotationsubindexname, int):
+          node.usesubindex = False
+        else:
+          node.usesubindex = True
 
     for layeridx, (annotationtype, annotationnodes) in zip(count, nodesbytype.items()):
       try:
@@ -405,7 +408,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
           color = targetcolor
 
         if node.isfromxml and self.__readannotationinfo:
-          annotationinfo = next(annotationinfos)
+          annotationinfo, = (info for info in annotationinfos if info.name == name)
+          annotationinfos.remove(annotationinfo)
 
         if not node.isfromxml:
           isonwsi = True
