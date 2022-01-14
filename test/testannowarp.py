@@ -89,7 +89,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       s = AnnoWarpSampleInformTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", maskroot=thisfolder/"data"/"reference"/"stitchmask", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=True, annotationsonwsi=False)
 
       try:
-        AnnoWarpSampleInformTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--allow-local-edits", "--annotations-on-qptiff"])
+        AnnoWarpSampleInformTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--allow-local-edits"])
 
         if not s.runstatus():
           raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus()}")
@@ -137,7 +137,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     logroot = thisfolder/"test_for_jenkins"/"annowarp"
     maskroot = thisfolder/"data"/"reference"/"stitchmask"
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot), "--ignore-dependencies", "--rerun-finished", "--annotations-on-qptiff"]
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(logroot), "--ignore-dependencies", "--rerun-finished"]
     try:
       AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
       self.compareoutput(SlideID)
