@@ -1329,9 +1329,9 @@ class XMLLayoutReader(SampleBase):
         )
     return overlaps
 
-class XMLPolygonAnnotationReaderSample(SampleBase, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
+class XMLPolygonAnnotationSample(SampleBase):
   """
-  Base class for any sample that reads the annotations from the XML metadata.
+  Base class for any sample that uses the XML annotations file.
   """
   def __init__(self, *args, annotationsxmlregex=None, **kwargs):
     if annotationsxmlregex is not None: annotationsxmlregex = re.compile(annotationsxmlregex)
@@ -1371,6 +1371,10 @@ class XMLPolygonAnnotationReaderSample(SampleBase, XMLPolygonAnnotationReader, X
       self.logger.warning(f"Using {candidate.name} for annotations")
     return candidate
 
+class XMLPolygonAnnotationReaderSample(XMLPolygonAnnotationSample, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
+  """
+  Base class for any sample that reads the annotations from the XML metadata.
+  """
 class XMLPolygonAnnotationReaderSampleWithOutline(XMLPolygonAnnotationReaderSample, XMLPolygonAnnotationReaderWithOutline):
   pass
 

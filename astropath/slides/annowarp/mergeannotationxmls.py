@@ -2,12 +2,23 @@ import collections, contextlib, jxmlease, methodtools, re
 from ...shared.argumentparser import DbloadArgumentParser
 from ...shared.cohort import DbloadCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
-from ...shared.sample import DbloadSample, WorkflowSample
+from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationSample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict, ArgParseAddTupleToDict
+from ...utilities.tableio import writetable
 from ..align.alignsample import AlignSample, ReadAffineShiftSample
 
 class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
+  def __init__(self, *args, annotationsourcedict, annotationpositiondict, **kwargs):
+    self.__annotationsourcedict = annotationsourcedict
+    self.__annotationpositiondict = annotationpositiondict
+    super().__init__(*args, **kwargs)
+
+  @property
+  def annotationsourcedict(self): return self.__annotationsourcedict
+  @property
+  def annotationpositiondict(self): return self.__annotationpositiondict
+
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
@@ -35,6 +46,10 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
     }
 
 class AnnotationInfoWriterSampleBase(ReadAffineShiftSample, AnnotationInfoWriterArgumentParser):
+  @property
+  def annotationinfocsv(self):
+    return self.csv("annotationinfo")
+
   def writeannotationinfo(self, names):
     for name in names:
       if self.annotationsourcedict[name] == "wsi" and self.annotationpositiondict[name] is None:
@@ -48,7 +63,7 @@ class AnnotationInfoWriterSampleBase(ReadAffineShiftSample, AnnotationInfoWriter
         pscale=self.pscale,
       ) for name in names
     ]
-    self.writecsv("annotationinfo", annotationinfos)
+    writetable(self.annotationinfocsv, annotationinfos)
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **kwargs):
@@ -71,9 +86,15 @@ class AnnotationInfoWriterSampleBase(ReadAffineShiftSample, AnnotationInfoWriter
     ]
 
 class AnnotationInfoWriterCohortBase(DbloadCohort, AnnotationInfoWriterArgumentParser):
-  pass
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "annotationsourcedict": self.annotationsourcedict,
+      "annotationpositiondict": self.annotationpositiondict,
+    }
 
-class WriteAnnotationInfoSample(AnnotationInfoWriterSampleBase, WorkflowSample):
+class WriteAnnotationInfoSample(AnnotationInfoWriterSampleBase, XMLPolygonAnnotationSample, WorkflowSample):
   def run(self):
     xmlfile = self.annotationspolygonsxmlfile
     with open(xmlfile, "rb") as f:
@@ -89,21 +110,18 @@ class WriteAnnotationInfoSample(AnnotationInfoWriterSampleBase, WorkflowSample):
   def logmodule(cls):
     return "annotationinfo"
 
-  @property
-  def inputfiles(self):
+  def inputfiles(self, **kwargs):
     return [
-      *super().inputfiles,
+      *super().inputfiles(**kwargs),
       self.annotationspolygonsxmlfile,
     ]
 
 class WriteAnnotationInfoCohort(AnnotationInfoWriterCohortBase, WorkflowCohort):
-  pass
+  sampleclass = WriteAnnotationInfoSample
 
 class MergeAnnotationXMLsArgumentParser(AnnotationInfoWriterArgumentParser, DbloadArgumentParser):
-  def __init__(self, *args, annotationselectiondict, annotationsourcedict, annotationpositiondict, skipannotations, **kwargs):
+  def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
     self.__annotationselectiondict = annotationselectiondict
-    self.__annotationsourcedict = annotationsourcedict
-    self.__annotationpositiondict = annotationpositiondict
     self.__skipannotations = skipannotations
     super().__init__(*args, **kwargs)
 
@@ -122,10 +140,6 @@ class MergeAnnotationXMLsArgumentParser(AnnotationInfoWriterArgumentParser, Dblo
 
   @property
   def annotationselectiondict(self): return self.__annotationselectiondict
-  @property
-  def annotationsourcedict(self): return self.__annotationsourcedict
-  @property
-  def annotationpositiondict(self): return self.__annotationpositiondict
   @property
   def skipannotations(self): return self.__skipannotations
 
@@ -236,8 +250,6 @@ class MergeAnnotationXMLsCohort(AnnotationInfoWriterCohortBase, WorkflowCohort, 
     return {
       **super().initiatesamplekwargs,
       "annotationselectiondict": self.annotationselectiondict,
-      "annotationsourcedict": self.annotationsourcedict,
-      "annotationpositiondict": self.annotationpositiondict,
       "skipannotations": self.skipannotations,
     }
 
