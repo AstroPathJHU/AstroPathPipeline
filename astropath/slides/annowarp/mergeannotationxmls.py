@@ -2,7 +2,7 @@ import collections, contextlib, jxmlease, methodtools, numpy as np, re
 from ...shared.argumentparser import DbloadArgumentParser
 from ...shared.cohort import DbloadCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
-from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationSample
+from ...shared.sample import WorkflowSample, XMLPolygonAnnotationSample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict, ArgParseAddTupleToDict
 from ...utilities.tableio import writetable
