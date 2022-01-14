@@ -93,7 +93,9 @@ pipeline {
         stage('annowarp') {
           stages {
             stage('test writeannotationinfo') {
+              steps{
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwriteannotationinfo'
+              }
             }
             stage('test annowarp') {
               steps {
