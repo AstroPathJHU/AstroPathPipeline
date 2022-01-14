@@ -49,7 +49,7 @@ class AnnotationInfoWriterSampleBase(DbloadSample, AnnotationInfoWriterArgumentP
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **kwargs):
     return [
-      super().getoutputfiles(SlideID=SlideID, **kwargs),
+      *super().getoutputfiles(SlideID=SlideID, **kwargs),
       dbloadroot/SlideID/"dbload"/f"{SlideID}_annotationinfo.csv",
     ]
 
@@ -124,7 +124,7 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSampleBase, WorkflowSample, 
   @classmethod
   def getoutputfiles(cls, SlideID, *, im3root, Scan, **kwargs):
     return [
-      super().getoutputfiles(SlideID=SlideID, **kwargs),
+      *super().getoutputfiles(SlideID=SlideID, **kwargs),
       im3root/SlideID/UNIV_CONST.IM3_DIR_NAME/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}.annotations.polygons.merged.xml",
     ]
   def inputfiles(self, **kwargs):
