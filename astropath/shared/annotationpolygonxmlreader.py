@@ -263,6 +263,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
   @property
   @abc.abstractmethod
   def annotationspolygonsxmlfile(self): pass
+  @property
+  @abc.abstractmethod
+  def SampleID(self): pass
 
   @methodtools.lru_cache()
   @property
@@ -376,7 +379,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
               color=emptycolor,
               visible=False,
               name="empty",
-              sampleid=0,
+              sampleid=self.SampleID,
               layer=layeridx,
               poly="poly",
               pscale=pscale,
@@ -587,6 +590,9 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
 
   @property
   def annotationinfocsv(self): raise NotImplementedError
+
+  @property
+  def SampleID(self): return 0
 
 class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoaderWithPolygons):
   @property
