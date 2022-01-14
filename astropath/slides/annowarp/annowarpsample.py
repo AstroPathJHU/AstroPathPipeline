@@ -814,7 +814,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     return self.csv("annotationinfo")
 
   @property
-  def annotationinfocsv(self):
+  def annotationscsv(self):
     """
     filename for the annotations csv file
     """
@@ -886,6 +886,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       self.qptifffilename,
       self.wsifilename(layer=self.wsilayer),
       self.csv("fields"),
+      self.csv("annotationinfo"),
     ]
 
   @classmethod
@@ -911,6 +912,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     ]
     if any("merged" in _.name for _ in xmls):
       result.append(MergeAnnotationXMLsSample)
+    else:
+      result.append(WriteAnnotationInfoSample)
     return result    
 
   @property
