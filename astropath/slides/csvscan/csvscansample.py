@@ -3,7 +3,7 @@ import abc, os, pathlib, re
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...utilities.config import CONST as UNIV_CONST
 from ...shared.argumentparser import RunFromArgumentParser
-from ...shared.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
+from ...shared.csvclasses import Annotation, AnnotationInfo, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
 from ...shared.overlap import Overlap
 from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
@@ -91,6 +91,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       self.csv(_) for _ in (
         "affine",
         "align",
+        "annotationinfo",
         "annotations",
         "annowarp",
         "annowarp-stitch",
@@ -167,6 +168,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
         csvclass, tablename = {
           "affine": (AffineEntry, "Affine"),
           "align": (AlignmentResult, "Align"),
+          "annotationinfo": (AnnotationInfo, "AnnotationInfo"),
           "annotations": (Annotation, "Annotations"),
           "annowarp": (AnnoWarpAlignmentResult, "AnnoWarp"),
           "annowarp-stitch": (AnnoWarpStitchResultEntry, "AnnoWarpStitch"),
