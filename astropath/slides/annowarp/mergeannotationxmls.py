@@ -56,14 +56,15 @@ class AnnotationInfoWriterSampleBase(DbloadSample, AnnotationInfoWriterArgumentP
 class AnnotationInfoWriterCohortBase(DbloadCohort, AnnotationInfoWriterArgumentParser):
   pass
 
-class WriteAnnotationInfoSample(AnnotationInfoWriterSampleBase, WorkflowCohort):
+class WriteAnnotationInfoSample(AnnotationInfoWriterSampleBase, WorkflowSample):
   def run(self):
-    with open(self.annotationspolygonsxmlfile, "rb") as f:
+    xmlfile = self.annotationspolygonsxmlfile
+    with open(xmlfile, "rb") as f:
       nodes = jxmlease.parse(f)["Annotations"]["Annotation"]
       if isinstance(nodes, jxmlease.XMLDictNode): nodes = [nodes]
       nodedict = {node.get_xml_attr("Name").lower(): node for node in nodes}
       if len(nodes) != len(nodedict):
-        raise ValueError(f"Duplicate annotation names in {xmlfile.name}: {collections.Counter(node.get_xml_attr('Name') for node in nodes)}")
+        raise ValueError(f"Duplicate annotation names in {xmlfile}: {collections.Counter(node.get_xml_attr('Name') for node in nodes)}")
 
       self.writeannotationinfo(nodedict.keys())
 
@@ -121,7 +122,7 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSampleBase, WorkflowSample, 
     return self.scanfolder/f"{self.SlideID}_Scan{self.Scan}.annotations.polygons.merged.xml"
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, im3root, Scan, **otherworkflowkwargs):
+  def getoutputfiles(cls, SlideID, *, im3root, Scan, **kwargs):
     return [
       super().getoutputfiles(SlideID=SlideID, **kwargs),
       im3root/SlideID/UNIV_CONST.IM3_DIR_NAME/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}.annotations.polygons.merged.xml",

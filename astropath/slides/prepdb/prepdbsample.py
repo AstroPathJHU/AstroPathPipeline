@@ -1,6 +1,6 @@
 import argparse, methodtools, numpy as np, PIL, skimage
 from ...shared.argumentparser import DbloadArgumentParser
-from ...shared.csvclasses import Annotation, Constant, Batch, ExposureTime, QPTiffCsv, Region, Vertex
+from ...shared.csvclasses import Constant, Batch, ExposureTime, QPTiffCsv
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
 from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader

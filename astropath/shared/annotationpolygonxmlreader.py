@@ -5,7 +5,7 @@ from ..utilities.misc import ArgParseAddToDict
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import distancefield, DataClassWithAnnoscale
-from .csvclasses import Annotation, Region, Vertex
+from .csvclasses import Annotation, AnnotationInfo, Region, Vertex
 from .image_masking.maskloader import TissueMaskLoaderWithPolygons
 from .logging import dummylogger, printlogger, ThingWithLogger
 from .polygon import SimplePolygon

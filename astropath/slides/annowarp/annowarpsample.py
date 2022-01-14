@@ -18,6 +18,7 @@ from ..align.overlap import AlignmentComparison
 from ..align.stitch import AffineEntry
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample, TissueMaskSampleWithPolygons
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
+from .mergeannotationxmls import MergeAnnotationXMLsSample, WriteAnnotationInfoSample
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class QPTiffSample(SampleBase, units.ThingWithImscale):
