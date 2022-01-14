@@ -29,7 +29,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
       WriteAnnotationInfoCohort.runfromargumentparser(args)
 
       new = s.csv("annotationinfo")
-      reffolder = root/"reference"/"writeannotationinfo"/"mergeannotationxmls"/SlideID/"dbload"
+      reffolder = root/"reference"/"writeannotationinfo"/SlideID/"dbload"
       extrakwargs = {_: getattr(s, _) for _ in ("pscale",)}
       compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
     except:
@@ -41,7 +41,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testWriteAnnotationInfoFastUnits(self, **kwargs):
     self.testWriteAnnotationInfo(units="fast_pixels", **kwargs)
 
-  def testMergeAnnotationXMLs(self, *, SlideID="M206", units="safe"):
+  def testSkipAnnotation(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"
     args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--sampleregex", SlideID, "--annotation", "good tissue", ".*[.]xml", "--skip-annotation", "tumor", "--debug", "--no-log", "--annotations-on-qptiff", "--units", units, "--ignore-dependencies"]
@@ -51,7 +51,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
       MergeAnnotationXMLsCohort.runfromargumentparser(args)
 
       new = s.csv("annotationinfo")
-      reffolder = root/"reference"/"writeannotationinfo"/"mergeannotationxmls"/SlideID/"dbload"
+      reffolder = root/"reference"/"writeannotationinfo"/"skipannotation"/SlideID/"dbload"
       extrakwargs = {_: getattr(s, _) for _ in ("pscale",)}
       compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
 
@@ -68,5 +68,5 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  def testMergeAnnotationXMLsFastUnits(self, **kwargs):
-    self.testMergeAnnotationXMLs(units="fast_microns", **kwargs)
+  def testSkipAnnotationFastUnits(self, **kwargs):
+    self.testSkipAnnotation(units="fast_microns", **kwargs)
