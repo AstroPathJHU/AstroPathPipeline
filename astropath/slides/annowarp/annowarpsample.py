@@ -915,8 +915,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     SlideID = kwargs["SlideID"]
     result = [ZoomSample] + super().workflowdependencyclasses(**kwargs)
     xmls = [
-      _ for _ in (im3root/f"Scan{Scan}").glob(f"*{SlideID}*annotations.polygons*.xml")
-      if annotationsxmlregex is None or re.match(annotationsxmlregex, _)
+      _ for _ in (im3root/SlideID/"im3"/f"Scan{Scan}").glob(f"*{SlideID}*annotations.polygons*.xml")
+      if annotationsxmlregex is None or re.match(annotationsxmlregex, _.name)
     ]
     if any("merged" in _.name for _ in xmls):
       result.append(MergeAnnotationXMLsSample)
