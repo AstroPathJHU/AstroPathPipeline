@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import contextlib, numpy as np
+import contextlib, methodtools, numpy as np
 
 from ...shared.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
 from ...utilities.config import CONST as UNIV_CONST
@@ -403,6 +403,17 @@ class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleF
   An alignment set that runs on component tiff images and does not rely on the dbload folder.
   This class is used for identifying overexposed HPFs.
   """
+
+class ReadAffineShiftSample(DbloadSample):
+  """
+  Utility class for reading the shift from the affine csv.
+  """
+  @methodtools.lru_cache()
+  @property
+  def affineshift(self):
+    affines = self.readcsv("affine", AffineEntry)
+    dct = {affine.description: affine.value for affine in affines}
+    return np.array([dct["shiftx"], dct["shifty"]])
 
 def main(args=None):
   AlignSample.runfromargumentparser(args)

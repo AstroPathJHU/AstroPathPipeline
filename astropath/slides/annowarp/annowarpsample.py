@@ -12,10 +12,10 @@ from ...utilities.miscmath import covariance_matrix, floattoint
 from ...utilities.optionalimports import cvxpy as cp
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
+from ..align.alignsample import ReadAffineShiftSample
 from ..align.computeshift import computeshift
 from ..align.field import Field
 from ..align.overlap import AlignmentComparison
-from ..align.stitch import AffineEntry
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample, TissueMaskSampleWithPolygons
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .mergeannotationxmls import MergeAnnotationXMLsSample, WriteAnnotationInfoSample
@@ -146,7 +146,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ReadAffineShiftSample, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -703,9 +703,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
 
     if annotationstoshift:
       onezoomedinmicron = units.onemicron(pscale=pscale/2)
-      affines = self.readcsv("affine", AffineEntry)
-      dct = {affine.description: affine.value for affine in affines}
-      myposition = np.array([dct["shiftx"], dct["shifty"]])
+      myposition = self.affineshift
       for a in self.annotations:
         if a.isonwsi and a.isfromxml:
           if a.position is None:

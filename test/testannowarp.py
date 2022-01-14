@@ -23,6 +23,12 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
 
+      olddbload = thisfolder/"data"/"reference"/"writeannotationinfo"/SlideID/"dbload"
+      for csv in (
+        "annotationinfo",
+      ):
+        yield olddbload/f"{SlideID}_{csv}.csv", newdbload
+
   @classmethod
   def setUpClass(cls):
     super().setUpClass()

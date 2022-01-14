@@ -5,6 +5,7 @@ from ...shared.csvclasses import AnnotationInfo
 from ...shared.sample import DbloadSample, WorkflowSample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict, ArgParseAddTupleToDict
+from ..align.alignsample import AlignSample, ReadAffineShiftSample
 
 class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
   @classmethod
@@ -33,8 +34,11 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
       "annotationpositiondict": annotationpositiondict,
     }
 
-class AnnotationInfoWriterSampleBase(DbloadSample, AnnotationInfoWriterArgumentParser):
+class AnnotationInfoWriterSampleBase(ReadAffineShiftSample, AnnotationInfoWriterArgumentParser):
   def writeannotationinfo(self, names):
+    for name in names:
+      if self.annotationsourcedict[name] == "wsi" and self.annotationpositiondict[name] is None:
+        self.annotationpositiondict[name] = self.affineshift
     annotationinfos = [
       AnnotationInfo(
         sampleid=self.SampleID,
@@ -53,6 +57,19 @@ class AnnotationInfoWriterSampleBase(DbloadSample, AnnotationInfoWriterArgumentP
       dbloadroot/SlideID/"dbload"/f"{SlideID}_annotationinfo.csv",
     ]
 
+  def inputfiles(self, **kwargs):
+    return [
+      *super().inputfiles(**kwargs),
+      self.csv("affine"),
+    ]
+
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
+    return [
+      *super().workflowdependencyclasses(**kwargs),
+      AlignSample,
+    ]
+
 class AnnotationInfoWriterCohortBase(DbloadCohort, AnnotationInfoWriterArgumentParser):
   pass
 
@@ -67,6 +84,17 @@ class WriteAnnotationInfoSample(AnnotationInfoWriterSampleBase, WorkflowSample):
         raise ValueError(f"Duplicate annotation names in {xmlfile}: {collections.Counter(node.get_xml_attr('Name') for node in nodes)}")
 
       self.writeannotationinfo(nodedict.keys())
+
+  @classmethod
+  def logmodule(cls):
+    return "annotationinfo"
+
+  @property
+  def inputfiles(self):
+    return [
+      *super().inputfiles,
+      self.annotationspolygonsxmlfile,
+    ]
 
 class WriteAnnotationInfoCohort(AnnotationInfoWriterCohortBase, WorkflowCohort):
   pass
@@ -128,7 +156,9 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSampleBase, WorkflowSample, 
       im3root/SlideID/UNIV_CONST.IM3_DIR_NAME/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}.annotations.polygons.merged.xml",
     ]
   def inputfiles(self, **kwargs):
-    return []
+    return [
+      *super().inputfiles(**kwargs),
+    ]
 
   @classmethod
   def logmodule(cls):
@@ -195,10 +225,6 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSampleBase, WorkflowSample, 
 
   def run(self, **kwargs):
     return self.mergexmls(**kwargs)
-
-  @classmethod
-  def workflowdependencyclasses(cls, **kwargs):
-    return []
 
 class MergeAnnotationXMLsCohort(AnnotationInfoWriterCohortBase, WorkflowCohort, MergeAnnotationXMLsArgumentParser):
   sampleclass = MergeAnnotationXMLsSample
