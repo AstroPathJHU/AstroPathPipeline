@@ -96,8 +96,8 @@ class AnnotationInfoWriterCohortBase(DbloadCohort, AnnotationInfoWriterArgumentP
   def initiatesamplekwargs(self):
     return {
       **super().initiatesamplekwargs,
-      "annotationsourcedict": self.annotationsourcedict,
-      "annotationpositiondict": self.annotationpositiondict,
+      "annotationsourcedict": self.annotationsourcedict.copy(),
+      "annotationpositiondict": self.annotationpositiondict.copy(),
     }
 
 class WriteAnnotationInfoSample(AnnotationInfoWriterSampleBase, XMLPolygonAnnotationSample, WorkflowSample):
@@ -251,8 +251,8 @@ class MergeAnnotationXMLsCohort(AnnotationInfoWriterCohortBase, WorkflowCohort, 
   def initiatesamplekwargs(self):
     return {
       **super().initiatesamplekwargs,
-      "annotationselectiondict": self.annotationselectiondict,
-      "skipannotations": self.skipannotations,
+      "annotationselectiondict": self.annotationselectiondict.copy(),
+      "skipannotations": self.skipannotations.copy(),
     }
 
 def mergeannotationxmlssample(*args, **kwargs):
