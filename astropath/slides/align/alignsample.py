@@ -10,7 +10,7 @@ from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
 from .rectangle import AlignmentRectangle, AlignmentRectangleBase, AlignmentRectangleComponentTiff
-from .stitch import ReadStitchResult, stitch
+from .stitch import AffineEntry, ReadStitchResult, stitch
 
 class AlignSampleBase(SampleBase):
   """

@@ -1,4 +1,4 @@
-import collections, contextlib, jxmlease, methodtools, re
+import collections, contextlib, jxmlease, methodtools, numpy as np, re
 from ...shared.argumentparser import DbloadArgumentParser
 from ...shared.cohort import DbloadCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
@@ -22,8 +22,8 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--annotation-source", nargs=2, action=ArgParseAddToDict, metavar=("ANNOTATION", "SOURCE"), default={}, help="source of the annotations (wsi or qptiff)", dest="annotationsourcedict")
-    p.add_argument("--annotation-position", nargs=3, action=ArgParseAddTupleToDict, metavar=("ANNOTATION", "XPOS", "YPOS"), default={}, help="position of the annotations if they were drawn on the wsi", dest="annotationpositiondict")
+    p.add_argument("--annotation-source", nargs=2, action=ArgParseAddToDict, metavar=("ANNOTATION", "SOURCE"), default={}, help="source of the annotations (wsi or qptiff)", dest="annotationsourcedict", case_sensitive=False)
+    p.add_argument("--annotation-position", nargs=3, action=ArgParseAddTupleToDict, metavar=("ANNOTATION", "XPOS", "YPOS"), default={}, help="position of the annotations if they were drawn on the wsi", dest="annotationpositiondict", case_sensitive=False, value_type=float)
     g = p.add_mutually_exclusive_group()
     g.add_argument("--annotations-on-wsi", action="store_const", dest="defaultsource", const="wsi", help="Unless otherwise specified, annotations are drawn on the wsi")
     g.add_argument("--annotations-on-qptiff", action="store_const", dest="defaultsource", const="qptiff", help="Unless otherwise specified, annotations are drawn on the qptiff")
@@ -46,6 +46,12 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
     }
 
 class AnnotationInfoWriterSampleBase(ReadAffineShiftSample, AnnotationInfoWriterArgumentParser):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    dct = self.annotationpositiondict
+    for k, v in dct.items():
+      dct[k] = np.array(v) * self.onepixel
+
   @property
   def annotationinfocsv(self):
     return self.csv("annotationinfo")
@@ -102,7 +108,7 @@ class WriteAnnotationInfoSample(AnnotationInfoWriterSampleBase, XMLPolygonAnnota
       if isinstance(nodes, jxmlease.XMLDictNode): nodes = [nodes]
       nodedict = {node.get_xml_attr("Name").lower(): node for node in nodes}
       if len(nodes) != len(nodedict):
-        raise ValueError(f"Duplicate annotation names in {xmlfile}: {collections.Counter(node.get_xml_attr('Name') for node in nodes)}")
+        raise ValueError(f"Duplicate annotation names in {xmlfile}: {collections.Counter(node.get_xml_attr('Name').lower() for node in nodes)}")
 
       self.writeannotationinfo(nodedict.keys())
 
@@ -146,7 +152,7 @@ class MergeAnnotationXMLsArgumentParser(AnnotationInfoWriterArgumentParser, Dblo
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--annotation", nargs=2, action=ArgParseAddRegexToDict, metavar=("ANNOTATION", "FILENAME_REGEX"), default={}, help="take annotation with this name from the annotation file that matches the regex", dest="annotationselectiondict")
+    p.add_argument("--annotation", nargs=2, action=ArgParseAddRegexToDict, metavar=("ANNOTATION", "FILENAME_REGEX"), default={}, help="take annotation with this name from the annotation file that matches the regex", dest="annotationselectiondict", case_sensitive=False)
     p.add_argument("--skip-annotation", action="append", metavar="ANNOTATION", default=[], help="skip this annotation if it exists in an xml file")
     return p
 
@@ -214,7 +220,7 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSampleBase, WorkflowSample, 
         if isinstance(nodes, jxmlease.XMLDictNode): nodes = [nodes]
         nodedict = {node.get_xml_attr("Name").lower(): node for node in nodes}
         if len(nodes) != len(nodedict):
-          raise ValueError(f"Duplicate annotation names in {xmlfile.name}: {collections.Counter(node.get_xml_attr('Name') for node in nodes)}")
+          raise ValueError(f"Duplicate annotation names in {xmlfile.name}: {collections.Counter(node.get_xml_attr('Name').lower() for node in nodes)}")
         xml[xmlfile] = nodedict
         allnames.update(nodedict.keys())
 
@@ -234,7 +240,7 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSampleBase, WorkflowSample, 
       with open(self.xmloutput, "w") as f:
         f.write(result.emit_xml())
 
-    names = [node.get_xml_attr("Name") for node in annotations]
+    names = [node.get_xml_attr("Name").lower() for node in annotations]
     self.writeannotationinfo(names)
 
   def run(self, **kwargs):

@@ -1,4 +1,4 @@
-import argparse, collections, contextlib, itertools, more_itertools, re, sys
+import abc, argparse, collections, contextlib, itertools, more_itertools, re, sys
 
 def split_csv_to_list(value) :
   """
@@ -121,23 +121,42 @@ class recursionlimit(contextlib.AbstractContextManager):
     elements = set(cls.__recursionlimitcounter.elements()) | {cls.__defaultrecursionlimit}
     sys.setrecursionlimit(max(elements))
 
-class ArgParseAddToDict(argparse.Action):
+class ArgParseAddToDictBase(argparse.Action, abc.ABC):
+  def __init__(self, *args, case_sensitive=True, type=None, key_type=None, value_type=None, **kwargs):
+    self.case_sensitive = case_sensitive
+    self.key_type = key_type
+    self.value_type = value_type
+    if type is not None: raise TypeError("Use key_type and value_type instead of type")
+    if not case_sensitive and key_type is not None: raise TypeError("case_sensitive=False and key_type are incompatible")
+    super().__init__(*args, **kwargs)
+  @abc.abstractmethod
+  def process_values(self, values):
+    values = list(values)
+    if not self.case_sensitive:
+      values[0] = values[0].lower()
+    elif self.key_type is not None:
+      values[0] = self.key_type(values[0])
+    if self.value_type is not None:
+      values[1:] = [self.value_type(_) for _ in values[1:]]
+    return values
   def __call__(self, parser, namespace, values, option_string=None):
-    k, v = values
+    k, v = self.process_values(values)
     dct = getattr(namespace, self.dest)
-    if dct is None: dct = {}; setattr(namespace, self.dest, dct)
+    if dct is None: dct = self.default; setattr(namespace, self.dest, dct)
     dct[k] = v
 
-class ArgParseAddTupleToDict(argparse.Action):
-  def __call__(self, parser, namespace, values, option_string=None):
-    k, *v = values
-    dct = getattr(namespace, self.dest)
-    if dct is None: dct = {}; setattr(namespace, self.dest, dct)
-    dct[k] = v
+class ArgParseAddToDict(ArgParseAddToDictBase):
+  def process_values(self, values):
+    k, v = super().process_values(values)
+    return k, v
+
+class ArgParseAddTupleToDict(ArgParseAddToDictBase):
+  def process_values(self, values):
+    k, *v = super().process_values(values)
+    return k, v
 
 class ArgParseAddRegexToDict(ArgParseAddToDict):
-  def __call__(self, parser, namespace, values, option_string=None):
-    k, v = values
+  def process_values(self, values):
+    k, v = super().process_values(values)
     v = re.compile(v)
-    values = k, v
-    return super().__call__(parser, namespace, values, option_string=None)
+    return k, v

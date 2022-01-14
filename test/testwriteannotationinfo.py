@@ -44,7 +44,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testSkipAnnotation(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"
-    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--sampleregex", SlideID, "--annotation", "good tissue", ".*[.]xml", "--skip-annotation", "tumor", "--debug", "--no-log", "--annotations-on-qptiff", "--units", units, "--ignore-dependencies"]
+    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--sampleregex", SlideID, "--annotation", "Good tissue", ".*[.]xml", "--skip-annotation", "tumor", "--debug", "--no-log", "--annotations-on-qptiff", "--units", units, "--ignore-dependencies"]
     s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, annotationsourcedict={}, annotationpositiondict={}, skipannotations=set())
 
     try:
@@ -70,3 +70,31 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testSkipAnnotationFastUnits(self, **kwargs):
     self.testSkipAnnotation(units="fast_microns", **kwargs)
+
+  def testAnnotationPosition(self, *, SlideID="M206", units="safe"):
+    root = thisfolder/"data"
+    dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"
+    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--sampleregex", SlideID, "--annotation", "Good tissue", ".*[.]xml", "--annotation", "tumor", ".*[.]xml", "--debug", "--no-log", "--annotation-source", "tumor", "wsi", "--annotation-source", "Good tissue", "wsi", "--annotation-position", "Good tissue", "100", "100", "--units", units, "--ignore-dependencies"]
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, annotationsourcedict={}, annotationpositiondict={}, skipannotations=set())
+
+    try:
+      MergeAnnotationXMLsCohort.runfromargumentparser(args)
+
+      new = s.csv("annotationinfo")
+      reffolder = root/"reference"/"writeannotationinfo"/"annotationposition"/SlideID/"dbload"
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale",)}
+      compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
+
+      with open(im3root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml", "rb") as f:
+        newxml = jxmlease.parse(f)
+      with open(root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml", "rb") as f:
+        oldxml = jxmlease.parse(f)
+      self.assertEqual(newxml, oldxml)
+    except:
+      self.saveoutput()
+      raise
+    else:
+      self.removeoutput()
+
+  def testAnnotationPositionFastUnits(self, **kwargs):
+    self.testAnnotationPosition(units="fast_microns", **kwargs)
