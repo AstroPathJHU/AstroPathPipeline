@@ -122,6 +122,7 @@ class sampledef : sharedtools{
             $this.basepath = '\\' + $project_dat.dpath + '\' + $project_dat.dname
         }
         $this.project_data = $project_dat
+        Write-Host $this.project_data
     }
     #
     [string]im3folder(){
