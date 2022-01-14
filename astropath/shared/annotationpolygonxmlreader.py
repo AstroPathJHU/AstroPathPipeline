@@ -235,8 +235,6 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     self.__readannotationinfo = readannotationinfo
     if self.__annotationsonwsi is None and not self.__readannotationinfo:
       raise ValueError("Have to either read the annotation info from a csv file or specify if the annotations are on the wsi or qptiff")
-    if self.__readannotationinfo and not self.annotationinfocsv.exists():
-      raise ValueError("Can't read the annotation info from {self.annotationinfocsv} because it doesn't exist")
 
     self.__saveallannotationimages = saveallannotationimages
     if annotationimagefolder is not None: annotationimagefolder = pathlib.Path(annotationimagefolder)
@@ -297,6 +295,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
       return [AnnotationNodeXML(node, annoscale=self.pscale/2 if self.annotationsonwsi else self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
 
   def readannotationinfo(self):
+    if not self.annotationinfocsv.exists():
+      raise FileNotFoundError("Can't read the annotation info from {self.annotationinfocsv} because it doesn't exist")
     return self.readtable(self.annotationinfocsv, AnnotationInfo)
   @property
   @abc.abstractmethod
