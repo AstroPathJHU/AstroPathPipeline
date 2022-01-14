@@ -377,8 +377,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
               apscale=self.apscale,
               isonwsi=False,
               isfromxml=False,
-              xposition=None,
-              yposition=None,
+              position=None,
             )
           )
           layeridx = next(count)
@@ -413,8 +412,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
 
         if not isonwsi:
           position = None
-        elif isfromxml:
-          position = 0
+        elif not isfromxml:
+          position = None
         elif self.__annotationposition is not None:
           position = self.__annotationposition
         elif self.__readannotationinfo:
