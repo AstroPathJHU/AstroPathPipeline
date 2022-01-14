@@ -1,7 +1,7 @@
 import argparse, numpy as np, pathlib, PIL, shutil, tempfile
 from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTissueMask
 from astropath.slides.annowarp.visualization import showannotation
-from astropath.shared.csvclasses import Region
+from astropath.shared.csvclasses import Annotation, Region
 from astropath.utilities import units
 from ...test.testzoom import TestZoom
 
@@ -11,6 +11,7 @@ zoomroot = here/".."/".."/"test"/"data"/"reference"/"zoom"
 annowarproot = here/".."/".."/"test"/"data"/"reference"/"annowarp"
 alignroot = here/".."/".."/"test"/"data"/"reference"/"alignment"/"component_tiff"
 prepdbroot = here/".."/".."/"test"/"data"/"reference"/"prepdb"
+writeannotationinforoot = here/".."/".."/"test"/"data"/"reference"/"writeannotationinfo"
 samp = "M206"
 
 def makeplots():
@@ -18,14 +19,15 @@ def makeplots():
   with tempfile.TemporaryDirectory() as dbloadroot:
     dbloadroot = pathlib.Path(dbloadroot)
     (dbloadroot/samp/"dbload").mkdir(parents=True)
-    for root in prepdbroot, annowarproot, alignroot:
+    for root in prepdbroot, annowarproot, alignroot, writeannotationinforoot:
       for folder in root/samp, root/samp/"dbload":
         for filename in folder.glob("*.csv"):
           shutil.copy(filename, dbloadroot/samp/"dbload")
     from ...test.testzoom import gunzipreference
     gunzipreference(samp)
     with AnnoWarpSampleAstroPathTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=dbloadroot) as A:
-      warpedregions = A.readtable(A.regionscsv, Region)
+      annotations = A.readtable(A.annotationscsv, Annotation)
+      warpedregions = A.readtable(A.regionscsv, Region, extrakwargs={"annotations": annotations})
 
       with A.using_images() as (wsi, fqptiff):
         zoomlevel = fqptiff.zoomlevels[0]

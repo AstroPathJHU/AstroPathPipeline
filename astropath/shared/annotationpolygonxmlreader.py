@@ -296,7 +296,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
 
   def readannotationinfo(self):
     if not self.annotationinfocsv.exists():
-      raise FileNotFoundError("Can't read the annotation info from {self.annotationinfocsv} because it doesn't exist")
+      raise FileNotFoundError(f"Can't read the annotation info from {self.annotationinfocsv} because it doesn't exist")
     return self.readtable(self.annotationinfocsv, AnnotationInfo)
   @property
   @abc.abstractmethod
