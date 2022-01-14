@@ -146,12 +146,12 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       rtol=0.01,
     )
 
-  def testCohort(self, SlideID="M206", units="safe", **compareoutputkwargs):
+  def testCohort(self, SlideID="M206", units="safe", moreargs=[], **compareoutputkwargs):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     dbloadroot = logroot = thisfolder/"test_for_jenkins"/"annowarp"
     maskroot = thisfolder/"data"/"reference"/"stitchmask"
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--ignore-dependencies", "--rerun-finished"]
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--ignore-dependencies", "--rerun-finished"] + moreargs
     try:
       AnnoWarpCohortInformTissueMask.runfromargumentparser(args)
       self.compareoutput(SlideID, **compareoutputkwargs)

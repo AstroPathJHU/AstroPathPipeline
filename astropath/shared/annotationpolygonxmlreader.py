@@ -44,7 +44,7 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
       result = result.replace(self.__oldannotationtype, self.__newannotationtype)
     if self.usesubindex is None: return result
 
-    regex = " ([0-9]+)$"
+    regex = " ([0-9]+|x)$"
     match = re.search(regex, result)
     if self.usesubindex is True:
       if match: return result
@@ -52,7 +52,7 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
     elif self.usesubindex is False:
       if not match: return result
       subindex = match.group(1)
-      if subindex == 1:
+      if subindex == "1":
         return re.sub(regex, "", result)
       raise ValueError(f"Can't force not having a subindex when the subindex is > 1: {result}")
 
@@ -65,11 +65,17 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
     self.__newannotationtype = value
   @property
   def annotationsubindex(self):
-    result = self.annotationname.replace(self.annotationtype, "")
+    result = self.annotationname.replace(self.annotationtype, "").strip()
     if result:
-      return int(self.annotationname.replace(self.annotationtype, ""))
+      if result == "x": result = 999
+      return int(result)
     else:
       return 1
+  @property
+  def annotationsubindexname(self):
+    subindex = self.annotationsubindex
+    if subindex == 999: return "x"
+    return subindex
 
   @property
   @abc.abstractmethod
@@ -352,9 +358,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
       except AttributeError:
         errors += [str(node.annotationerror) for node in annotationnodes if hasattr(node, "annotationerror")]
         continue
-      subindices = [node.annotationsubindex for node in annotationnodes]
-      if subindices != list(range(1, len(subindices)+1)):
-        errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in subindices)}")
+      numericalsubindices = [node.annotationsubindex for node in annotationnodes if isinstance(node.annotationsubindexname, int)]
+      if numericalsubindices != list(range(1, len(numericalsubindices)+1)):
+        errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in numericalsubindices)}")
         continue
       annotationtype = targetannotation.name
       targetlayer = targetannotation.layer
@@ -386,7 +392,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
         color = node.color
         visible = node.visible
         if node.usesubindex:
-          name = f"{annotationtype} {node.annotationsubindex}"
+          name = f"{annotationtype} {node.annotationsubindexname}"
           layer = layeridx * 1000 + node.annotationsubindex
         else:
           name = annotationtype
