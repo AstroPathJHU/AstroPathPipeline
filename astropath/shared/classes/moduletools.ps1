@@ -44,7 +44,7 @@
     #
     [void]BuildProcessLocPaths($task){
         #Adjust if testing on jenkins
-        if ($this.sample.fwpath -match '/var/lib/jenkins') {
+        if ($this.sample.project_data.fwpath -match '/var/lib/jenkins') {
             $fwpath = $this.sample.project_data.fwpath
         }
         else {
