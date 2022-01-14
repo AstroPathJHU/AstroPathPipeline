@@ -1,7 +1,7 @@
 import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, re, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
-from ...shared.csvclasses import Region, Vertex
+from ...shared.csvclasses import AnnotationInfo, Region, Vertex
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
 from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ZoomFolderSampleBase
@@ -10,7 +10,7 @@ from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscmath import covariance_matrix, floattoint
 from ...utilities.optionalimports import cvxpy as cp
-from ...utilities.tableio import writetable
+from ...utilities.tableio import readtable, writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
 from ..align.alignsample import ReadAffineShiftSample
 from ..align.computeshift import computeshift
@@ -865,7 +865,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
                     otherwise actually do the alignment
     other kwargs are passed to stitch()
     """
-    if any(not a.isonwsi for a in self.annotations):
+    if any(a.isonqptiff for a in self.annotations if a.name != "empty"):
       if not readalignments:
         self.align()
         self.writealignments()
@@ -890,15 +890,23 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     ]
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **kwargs):
     dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
-    return [
-      dbload/f"{SlideID}_annowarp.csv",
-      dbload/f"{SlideID}_annowarp-stitch.csv",
+    result = [
+      *super().getoutputfiles(SlideID=SlideID, dbloadroot=dbloadroot, **kwargs),
+      dbload/f"{SlideID}_annotations.csv",
       dbload/f"{SlideID}_vertices.csv",
       dbload/f"{SlideID}_regions.csv",
     ]
-
+    infocsv = dbload/f"{SlideID}_annotationinfo.csv"
+    if infocsv.exists():
+      infos = readtable(infocsv, AnnotationInfo, extrakwargs={"pscale": 1})
+      if any(info.isonqptiff for info in infos if info.name != "empty"):
+        result += [
+          dbload/f"{SlideID}_annowarp.csv",
+          dbload/f"{SlideID}_annowarp-stitch.csv",
+        ]
+    return result
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
     annotationsxmlregex = kwargs["annotationsxmlregex"]
