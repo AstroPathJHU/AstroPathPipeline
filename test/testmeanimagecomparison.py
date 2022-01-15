@@ -93,11 +93,18 @@ class TestMeanImageComparison(TestBaseCopyInput,TestBaseSaveOutput) :
         try :
             created = readtable(self.workingdir/'meanimagecomparison_table.csv',ComparisonTableEntry)
             ref = readtable(reffolder/'meanimagecomparison_table.csv',ComparisonTableEntry)
-            for c,r in zip(created,ref) :
-                assert c.slide_ID_1 == r.slide_ID_1
-                assert c.slide_ID_2 == r.slide_ID_2
-                assert c.layer_n == r.layer_n
-                assert c.delta_over_sigma_std_dev == r.delta_over_sigma_std_dev
+            assert len(created)==len(ref)
+            for c in created : 
+                r_entry = None
+                for r in ref :
+                    if ( (c.slide_ID_1 == r.slide_ID_1 and c.slide_ID_2 == r.slide_ID_2) or 
+                         (c.slide_ID_2 == r.slide_ID_1 and c.slide_ID_1 == r.slide_ID_2) ) :
+                        if c.layer_n==r.layer_n :
+                            r_entry = r
+                            break
+                if r_entry is None :
+                    raise RuntimeError(f'ERROR: no reference table entry found for created entry {c}')
+                assert c.delta_over_sigma_std_dev == r_entry.delta_over_sigma_std_dev
         except :
             self.saveoutput()
             raise

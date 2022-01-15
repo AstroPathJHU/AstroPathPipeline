@@ -202,6 +202,7 @@ class MeanImageComparison :
                 batchflatfieldmulticohortargs.append(os.fspath(root_dir))
             batchflatfieldmulticohortargs+=['--version',version_tag]
             batchflatfieldmulticohortargs+=['--flatfield-model-file',os.fspath(self.MODEL_TABLE_PATH)]
+            batchflatfieldmulticohortargs+=['--include-bad-samples']
             BatchFlatfieldMultiCohort.runfromargumentparser(args=batchflatfieldmulticohortargs)
 
     #################### CLASS VARIABLES & PROPERTIES ####################
@@ -348,7 +349,7 @@ class MeanImageComparison :
         for root_dir in root_dirs :
             samps = readtable(pathlib.Path(root_dir)/'sampledef.csv',SampleDef)
             sids = slide_ids_by_rootdir[root_dir] if root_dir in slide_ids_by_rootdir.keys() else []
-            sids_to_check = [s.SlideID for s in samps]+sids
+            sids_to_check = set(list([s.SlideID for s in samps]+sids))
             for sid in sids_to_check :
                 check_mi_and_semi = sid not in sids
                 if (sampleregex is None) or (sampleregex.match(sid)) :

@@ -36,9 +36,9 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         if self.warping_file is not None :
             raise RuntimeError('ERROR: cannot apply warping corrections before fitting for warping!')
         self.__workingdir = workingdir
-        #if the working directory wasn't given, set it to the "Warping" directory inside the root directory
+        #if the working directory wasn't given, set it to slideID/im3/warping
         if self.__workingdir is None :
-            self.__workingdir = self.root / UNIV_CONST.WARPING_DIRNAME
+            self.__workingdir = self.im3folder / UNIV_CONST.WARPING_DIRNAME
         if not self.__workingdir.is_dir() :
             self.__workingdir.mkdir(parents=True)
         #set things up to use the GPU to perform alignment

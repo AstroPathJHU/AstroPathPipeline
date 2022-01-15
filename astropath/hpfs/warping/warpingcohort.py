@@ -48,10 +48,10 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             self.__init_bounds = {}
         self.__max_rad_warp = max_rad_warp
         self.__max_tan_warp = max_tan_warp
-        #if the working directory wasn't given, set it to the "Warping" directory inside the root directory
+        #if the working directory wasn't given, set it to the "warping" directory inside the root directory
         self.__workingdir = workingdir
         if self.__workingdir is None :
-            self.__workingdir = self.root / UNIV_CONST.WARPING_DIRNAME
+            self.__workingdir = self.auto_workingdir
         if not self.__workingdir.is_dir() :
             self.__workingdir.mkdir(parents=True)
         #if running with the GPU, create a GPU thread and start a dictionary of GPU FFTs to give to each sample
@@ -96,6 +96,9 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
     def workingdir(self) :
         return self.__workingdir
     @property
+    def auto_workingdir(self) :
+        UNIV_CONST.ASTROPATH_PROCESSING_DIR / UNIV_CONST.WARPING_DIRNAME / self.root.name 
+    @property
     def fit_1_octet_fp(self) :
         return self.__workingdir / CONST.OCTET_SUBDIR_NAME / 'initial_pattern_octets_selected.csv'
     @property
@@ -118,12 +121,14 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         to_return = {**super().initiatesamplekwargs,
                 'filetype':'raw',
                 'layer': self.__layer,
-                'workingdir':self.__workingdir,
                 'useGPU':self.__useGPU,
                 'gputhread':self.gputhread,
                 'gpufftdict':self.gpufftdict,
                }
-        # Give the correction model file by default if not flatfield file was specified
+        # Only give a workingdir if the output is going somewhere than the default location
+        if self.__workingdir!=self.auto_workingdir :
+            to_return['workingdir'] = self.__workingdir
+        # Give the correction model file by default if no flatfield file was specified
         if to_return['correction_model_file'] is None and to_return['flatfield_file'] is None :
             to_return['correction_model_file']=IMAGECORRECTION_CONST.DEFAULT_CORRECTION_MODEL_FILEPATH
         return to_return
