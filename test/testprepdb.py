@@ -1,5 +1,5 @@
 import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, re
-from astropath.shared.csvclasses import Annotation, Batch, Constant, ExposureTime, QPTiffCsv, Region, ROIGlobals, Vertex
+from astropath.shared.csvclasses import Batch, Constant, ExposureTime, QPTiffCsv, ROIGlobals
 from astropath.shared.logging import getlogger
 from astropath.shared.overlap import Overlap
 from astropath.shared.rectangle import Rectangle
@@ -73,8 +73,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
 
         dbloadfolder = testroot/SlideID/"dbload"
         dbloadfolder.mkdir(exist_ok=True, parents=True)
-        for filename in "batch.csv", "exposures.csv", "overlap.csv", "rect.csv", "constants.csv", "qptiff.csv", "qptiff.jpg", "annotations.csv", "regions.csv", "vertices.csv", "globals.csv":
-          if self.skipannotations(SlideID) and filename in ("regions.csv", "annotations.csv", "vertices.csv"): continue
+        for filename in "batch.csv", "exposures.csv", "overlap.csv", "rect.csv", "constants.csv", "qptiff.csv", "qptiff.jpg", "globals.csv":
           if self.skipqptiff(SlideID) and filename in ("constants.csv", "qptiff.csv", "qptiff.jpg"): continue
           if SlideID == "M21_1" and filename == "globals.csv": continue
           (dbloadfolder/f"{SlideID}_{filename}").touch()
@@ -109,21 +108,13 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       yield oldim3/filename, newim3
     oldScan1 = oldim3/"Scan1"
     newScan1 = newim3/"Scan1"
-    for filename in "M206_Scan1.annotations.polygons.xml", "M206_Scan1_annotations.xml", "M206_Scan1.qptiff":
+    for filename in "M206_Scan1_annotations.xml", "M206_Scan1.qptiff":
       yield oldScan1/filename, newScan1
     oldMSI = oldScan1/"MSI"
     newMSI = newScan1/"MSI"
     for filename in oldMSI.glob("*.im3"):
       yield filename, newMSI
 
-  @classmethod
-  def skipannotations(cls, SlideID):
-    return {
-      "M206": False,
-      "M21_1": False,
-      "YZ71": True,
-      "ZW2": False
-    }[SlideID]
   @classmethod
   def skipqptiff(cls, SlideID):
     return {
@@ -136,12 +127,9 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
   def testPrepDb(self, SlideID="M21_1", units="safe", moreargs=[], removeoutput=True):
     dbloadroot = thisfolder/"test_for_jenkins"/"prepdb"
 
-    skipannotations = self.skipannotations(SlideID)
     skipqptiff = self.skipqptiff(SlideID)
 
     args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", units, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)] + moreargs
-    if skipannotations:
-      args.append("--skip-annotations")
     if skipqptiff:
       args.append("--skip-qptiff")
 
@@ -154,7 +142,6 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
 
       rectangles = None
       for filename, cls, extrakwargs in (
-        (f"{SlideID}_annotations.csv", Annotation, {}),
         (f"{SlideID}_batch.csv", Batch, {}),
         (f"{SlideID}_constants.csv", Constant, {}),
         (f"{SlideID}_exposures.csv", ExposureTime, {}),
@@ -162,14 +149,9 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
         (f"{SlideID}_qptiff.csv", QPTiffCsv, {}),
         (f"{SlideID}_rect.csv", Rectangle, {}),
         (f"{SlideID}_overlap.csv", Overlap, {"nclip": sample.nclip}),
-        (f"{SlideID}_vertices.csv", Vertex, {}),
-        (f"{SlideID}_regions.csv", Region, {}),
       ):
         if filename == "M21_1_globals.csv": continue
         if filename == "ZW2_exposures.csv": continue #that file is huge and unnecessary
-        if skipannotations and cls in (Annotation, Vertex, Region):
-          self.assertFalse((dbloadroot/SlideID/"dbload"/filename).exists())
-          continue
         if skipqptiff and cls in (Constant, QPTiffCsv):
           self.assertFalse((dbloadroot/SlideID/"dbload"/filename).exists())
           continue
@@ -221,13 +203,9 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testPrepDbM206FastUnits(self):
     testroot = thisfolder/"test_for_jenkins"/"prepdb"
-    xmlfile = testroot/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml"
-    with open(xmlfile) as f:
-      contents = f.read()
-    with temporarilyreplace(xmlfile, contents.replace("Tumor", "Good Tissue").replace("Good tissue", "Tumor")):
-      self.testPrepDb(SlideID="M206", units="fast_microns", moreargs=["--rename-annotation", "Good tissue", "Tumor", "--rename-annotation", "Tumor", "Good Tissue", "--im3root", os.fspath(testroot), "--xmlfolder", os.fspath(thisfolder/"data"/"M206"/"im3"/"xml")])
+    self.testPrepDb(SlideID="M206", units="fast_microns", moreargs=["--im3root", os.fspath(testroot), "--xmlfolder", os.fspath(thisfolder/"data"/"M206"/"im3"/"xml")])
 
-  def testPrepDBZW2(self):
+  def testPrepDbZW2(self):
     testroot = thisfolder/"test_for_jenkins"/"prepdb"
     sampledef = testroot/"sampledef.csv"
     with open(sampledef, newline="") as f:

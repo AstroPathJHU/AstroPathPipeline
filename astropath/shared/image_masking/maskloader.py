@@ -115,7 +115,7 @@ class TissueMaskLoader(units.ThingWithPscale, MaskLoader):
         if self.__using_tissuemask_zoomed_count[zoomfactor] == 0:
           del self.__tissuemask_zoomed[zoomfactor]
 
-class TissueMaskLoaderWithPolygons(TissueMaskLoader, units.ThingWithAnnoscale, ThingWithLogger, contextlib.ExitStack):
+class TissueMaskLoaderWithPolygons(TissueMaskLoader, ThingWithLogger, contextlib.ExitStack):
   @methodtools.lru_cache()
   def __tissuemaskpolygons_and_area_cutoff(self, *, zoomfactor, epsilon):
     self.logger.debug("finding tissue mask as polygons")
@@ -163,11 +163,10 @@ class TissueMaskLoaderWithPolygons(TissueMaskLoader, units.ThingWithAnnoscale, T
 
       self.logger.debug("converting to gdal")
       mask = mask.astype(np.uint8)
-      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.annoscale, imagescale=imagescale, forgdal=True)
-      areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.annoscale, power=2)
+      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, imagescale=imagescale, forgdal=True)
+      areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.pscale, power=2)
 
       self.logger.debug("smoothing")
-      epsilon = units.convertpscale(epsilon, self.pscale, self.annoscale)
       polygons = [p.smooth_rdp(epsilon=epsilon) for p in polygons]
 
       return polygons, areacutoff

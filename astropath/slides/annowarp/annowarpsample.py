@@ -1,7 +1,7 @@
 import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, re, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
-from ...shared.csvclasses import Region, Vertex
+from ...shared.csvclasses import AnnotationInfo, Region, Vertex
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
 from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ZoomFolderSampleBase
@@ -10,15 +10,15 @@ from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscmath import covariance_matrix, floattoint
 from ...utilities.optionalimports import cvxpy as cp
-from ...utilities.tableio import writetable
+from ...utilities.tableio import readtable, writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, distancefield
+from ..align.alignsample import ReadAffineShiftSample
 from ..align.computeshift import computeshift
 from ..align.field import Field
 from ..align.overlap import AlignmentComparison
-from ..align.stitch import AffineEntry
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample, TissueMaskSampleWithPolygons
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
-from .mergeannotationxmls import AnnotationInfoWriterArgumentParser, AnnotationInfoWriterSample, MergeAnnotationXMLsSample
+from .mergeannotationxmls import MergeAnnotationXMLsSample, WriteAnnotationInfoSample
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class QPTiffSample(SampleBase, units.ThingWithImscale):
@@ -115,8 +115,7 @@ class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
         self.__wsi = None
         self.__using_wsi_context.close()
 
-class AnnoWarpArgumentParserBase(AnnotationInfoWriterArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
-  require_annotations_on_wsi_or_qptiff_argument = True
+class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
   defaulttilepixels = 100
 
   @classmethod
@@ -147,7 +146,7 @@ class AnnoWarpArgumentParserBase(AnnotationInfoWriterArgumentParser, SelectRecta
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ReadAffineShiftSample, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,
@@ -171,7 +170,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     tilepixels: we divide the wsi and qptiff into tiles of this size
                 in order to align (default: 100)
     """
-    super().__init__(*args, **kwargs)
+    super().__init__(*args, readannotationinfo=True, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
     if tilepixels is None: tilepixels = self.defaulttilepixels
@@ -180,8 +179,6 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
       raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
 
     self.__images = None
-
-    self.readannotationinfo(check_compatibility=True)
 
   @contextlib.contextmanager
   def using_images(self):
@@ -196,19 +193,19 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     """
     The tile size as a Distance
     """
-    return units.convertpscale(self.__tilepixels*self.oneannopixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__tilepixels*self.oneappixel, self.apscale, self.imscale)
   @property
   def bigtilesize(self):
     """
     The big tile size (1400, 2100) as a distance
     """
-    return units.convertpscale(self.__bigtilepixels*self.oneannopixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__bigtilepixels*self.oneappixel, self.apscale, self.imscale)
   @property
   def bigtileoffset(self):
     """
     The big tile size (0, 1000) as a distance
     """
-    return units.convertpscale(self.__bigtileoffsetpixels*self.oneannopixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__bigtileoffsetpixels*self.oneappixel, self.apscale, self.imscale)
 
   def getimages(self, *, keep=False):
     """
@@ -683,70 +680,79 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
   @property
   def vertices(self):
     """
-    get the original vertices in im3 coordinates
+    get the original vertices
     """
     return self.__getvertices()
-  @property
-  def apvertices(self):
-    """
-    get the original vertices in qptiff coordinates
-    """
-    return self.__getvertices(pscale=self.apscale)
-  @property
-  def annovertices(self):
-    """
-    get the original vertices in annotation coordinates
-    """
-    return self.__getvertices(pscale=self.annoscale)
 
   @methodtools.lru_cache()
-  def __getwarpedvertices(self, *, annoscale, pscale):
+  def __getwarpedvertices(self):
     """
     Create the new warped vertices
     """
-    oneannomicron = units.onemicron(pscale=annoscale)
+    pscale = self.pscale
     onemicron = self.onemicron
     onepixel = self.onepixel
-    if self.annotationsonwsi:
-      affines = self.readcsv("affine", AffineEntry)
-      dct = {affine.description: affine.value for affine in affines}
-      myposition = np.array([dct["shiftx"], dct["shifty"]])
-      if self.annotationposition is None:
-        self.annotationposition = myposition
-      shiftannotations = myposition - self.annotationposition
-      if np.any(shiftannotations):
-        self.logger.warning(f"shifting the annotations by {shiftannotations / onepixel} pixels")
 
-      result = []
-      for v in self.__getvertices():
+    annotationsonwsi = any(a.isonwsi for a in self.annotations)
+    annotationstoshift = any(a.isonwsi and a.isfromxml for a in self.annotations)
+    annotationsonqptiff = any(a.isonqptiff for a in self.annotations)
+    annotationstowarp = any(a.isonqptiff and a.isfromxml for a in self.annotations)
+
+    if annotationsonwsi:
+      pass
+
+    if annotationstoshift:
+      onezoomedinmicron = units.onemicron(pscale=pscale/2)
+      myposition = self.affineshift
+      for a in self.annotations:
+        if a.isonwsi and a.isfromxml:
+          if a.position is None:
+            a.position = myposition
+          a.shiftannotation = myposition - a.position
+          if np.any(a.shiftannotation):
+            self.logger.warning(f"shifting annotation {a.name} by {a.shiftannotation / onepixel} pixels")
+
+    if annotationsonqptiff:
+      apscale = self.apscale
+      oneapmicron = units.onemicron(pscale=apscale)
+
+    if annotationstowarp:
+      stitchresult = self.__stitchresult
+
+    result = []
+    for v in self.__getvertices():
+      if v.isonwsi:
+        wxvec = v.xvec
+        if v.isfromxml:
+          wxvec = wxvec / onezoomedinmicron * onemicron
+          wxvec += v.annotation.shiftannotation
+        wxvec = (wxvec + .000001 * onepixel) // onepixel * onepixel
         result.append(
           WarpedVertex(
             vertex=v,
-            wxvec=(v.xvec / oneannomicron * onemicron + shiftannotations * bool(v.isfromxml)) // onepixel * onepixel
+            wxvec=wxvec,
           )
         )
-      return result
-    else:
-      return [
-        WarpedQPTiffVertex(
-          vertex=v,
-          wxvec=(
-            v.xvec + (
-              units.nominal_values(self.__stitchresult.dxvec(v, apscale=annoscale))
-              if v.isfromxml
-              else 0
-            )
-          ) / oneannomicron * onemicron // onepixel * onepixel,
-          pscale=self.pscale,
-        ) for v in self.__getvertices()
-      ]
+      else:
+        wxvec = v.xvec * 1. #convert to float, if it's int
+        if v.isfromxml:
+          wxvec += units.nominal_values(stitchresult.dxvec(v, apscale=apscale))
+        wxvec = wxvec / oneapmicron * onemicron // onepixel * onepixel
+        result.append(
+          WarpedQPTiffVertex(
+            vertex=v,
+            wxvec=wxvec,
+            pscale=pscale,
+          )
+        )
+    return result
 
   @property
   def warpedvertices(self):
     """
     Get the new warped vertices in im3 coordinates
     """
-    return self.__getwarpedvertices(annoscale=self.annoscale, pscale=self.pscale)
+    return self.__getwarpedvertices()
 
   @methodtools.lru_cache()
   def __getregions(self, **kwargs):
@@ -800,6 +806,13 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     return result
 
   @property
+  def annotationinfocsv(self):
+    """
+    filename for the annotation info csv file
+    """
+    return self.csv("annotationinfo")
+
+  @property
   def annotationscsv(self):
     """
     filename for the annotations csv file
@@ -827,7 +840,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     """
     self.logger.info("writing vertices")
     if filename is None: filename = self.verticescsv
-    writetable(filename, self.warpedvertices)
+    writetable(filename, self.warpedvertices, rowclass=WarpedVertex)
 
   @property
   def regionscsv(self):
@@ -852,8 +865,7 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
                     otherwise actually do the alignment
     other kwargs are passed to stitch()
     """
-    self.writeannotations()
-    if not self.annotationsonwsi:
+    if any(a.isonqptiff for a in self.annotations if a.name != "empty"):
       if not readalignments:
         self.align()
         self.writealignments()
@@ -863,8 +875,8 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
       self.writestitchresult()
     self.writevertices()
     self.writeregions()
-    #this has to come after writevertices
-    self.writeannotationinfo()
+    #has to come after writevertices
+    self.writeannotations()
 
   run = runannowarp
 
@@ -873,18 +885,28 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
       self.qptifffilename,
       self.wsifilename(layer=self.wsilayer),
       self.csv("fields"),
+      self.csv("annotationinfo"),
+      self.csv("affine"),
     ]
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
+  def getoutputfiles(cls, SlideID, *, dbloadroot, **kwargs):
     dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
-    return [
-      dbload/f"{SlideID}_annowarp.csv",
-      dbload/f"{SlideID}_annowarp-stitch.csv",
+    result = [
+      *super().getoutputfiles(SlideID=SlideID, dbloadroot=dbloadroot, **kwargs),
+      dbload/f"{SlideID}_annotations.csv",
       dbload/f"{SlideID}_vertices.csv",
       dbload/f"{SlideID}_regions.csv",
     ]
-
+    infocsv = dbload/f"{SlideID}_annotationinfo.csv"
+    if infocsv.exists():
+      infos = readtable(infocsv, AnnotationInfo, extrakwargs={"pscale": 1})
+      if any(info.isonqptiff for info in infos if info.name != "empty"):
+        result += [
+          dbload/f"{SlideID}_annowarp.csv",
+          dbload/f"{SlideID}_annowarp-stitch.csv",
+        ]
+    return result
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
     annotationsxmlregex = kwargs["annotationsxmlregex"]
@@ -893,11 +915,13 @@ class AnnoWarpSampleBase(AnnotationInfoWriterSample, QPTiffSample, WSISample, Wo
     SlideID = kwargs["SlideID"]
     result = [ZoomSample] + super().workflowdependencyclasses(**kwargs)
     xmls = [
-      _ for _ in (im3root/f"Scan{Scan}").glob(f"*{SlideID}*annotations.polygons*.xml")
-      if annotationsxmlregex is None or re.match(annotationsxmlregex, _)
+      _ for _ in (im3root/SlideID/"im3"/f"Scan{Scan}").glob(f"*{SlideID}*annotations.polygons*.xml")
+      if annotationsxmlregex is None or re.match(annotationsxmlregex, _.name)
     ]
     if any("merged" in _.name for _ in xmls):
       result.append(MergeAnnotationXMLsSample)
+    else:
+      result.append(WriteAnnotationInfoSample)
     return result    
 
   @property
@@ -1057,8 +1081,6 @@ class QPTiffVertex(QPTiffCoordinate, Vertex):
   @property
   def qptiffcoordinate(self):
     return self.xvec
-  @property
-  def apscale(self): return self.annoscale
 
 class WarpedVertex(Vertex):
   """

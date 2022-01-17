@@ -308,7 +308,7 @@ def datefield(dateformat, *defaultvalue, optional=False, **metadata):
   }
   return (optionalfield if optional else MetaDataAnnotation)(*defaultvalue, **metadata)
 
-def timestampfield(*, optional=False, **metadata):
+def timestampfield(*defaultvalue, optional=False, **metadata):
   """
   returns a MetaDataAnnotation for writing a as a unix timestamp
   """
@@ -317,9 +317,9 @@ def timestampfield(*, optional=False, **metadata):
     "writefunction": lambda x: int(datetime.datetime.timestamp(x)),
     **metadata,
   }
-  return (optionalfield if optional else MetaDataAnnotation)(**metadata)
+  return (optionalfield if optional else MetaDataAnnotation)(*defaultvalue, **metadata)
 
-def optionalfield(readfunction, *, writefunction=str, **metadata):
+def optionalfield(*defaultvalue, readfunction, writefunction=str, **metadata):
   """
   returns a MetaDataAnnotation for a field that is optional
   (None <--> blank in the csv)
@@ -335,14 +335,14 @@ def optionalfield(readfunction, *, writefunction=str, **metadata):
     ...     '''.replace("      ", "").strip()) and None #avoid printing return value of f.write
     ...   class OptionalYDataClass(MyDataClass):
     ...     x: int
-    ...     y: int = optionalfield(int)
+    ...     y: int = optionalfield(readfunction=int)
     ...   table = readtable(filename, OptionalYDataClass)
     ...   print(table)
     [OptionalYDataClass(x=1, y=2), OptionalYDataClass(x=2, y=None)]
   """
   metadata = {
-    "readfunction": lambda x: None if not x else readfunction(x),
-    "writefunction": lambda x: "" if x is None else writefunction(x),
+    "readfunction": lambda x, **kwargs: None if not x else readfunction(x, **kwargs),
+    "writefunction": lambda x, **kwargs: "" if x is None else writefunction(x, **kwargs),
     **metadata,
   }
-  return MetaDataAnnotation(**metadata)
+  return MetaDataAnnotation(*defaultvalue, **metadata)
