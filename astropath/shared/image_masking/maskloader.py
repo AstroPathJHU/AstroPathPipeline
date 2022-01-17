@@ -1,4 +1,4 @@
-import abc, collections, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.transform
+import abc, collections, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.measure, skimage.transform
 from ...utilities import units
 from ..contours import findcontoursaspolygons
 from ..logging import ThingWithLogger
@@ -135,31 +135,28 @@ class TissueMaskLoaderWithPolygons(TissueMaskLoader, ThingWithLogger, contextlib
       filled = scipy.ndimage.binary_fill_holes(croppedmask)
       self.logger.debug("  finding outer regions")
       labeled, nlabels = scipy.ndimage.label(filled, structure=[[0,1,0],[1,1,1],[0,1,0]])
-      labels = range(1, nlabels+1)
+      self.logger.debug("finding region properties")
+      properties = skimage.measure.regionprops(labeled)
       self.logger.debug("  finding areas of outer regions")
-      areas = {label: np.count_nonzero(labeled==label) for label in labels}
-      totalarea = sum(areas.values())
+      totalarea = sum(props.area for props in properties)
       areacutoff = 0.001 * totalarea
-      labels = sorted(labels, key=areas.get, reverse=True)
-      for idx, label in list(enumerate(labels)):
+      properties.sort(key=lambda x: x.area, reverse=True)
+      for idx, props in enumerate(properties):
         self.logger.debug(f"  looking at outer region {idx+1} / {nlabels}")
-        area = areas[label]
-        if idx >= 100 or area < areacutoff: #drop the tiny labels, and only keep 100 labels maximum
-          self.logger.debug(f"  too small (rank {idx+1}, area {area}) --> skip it")
-          croppedmask[labeled==label] = 0
+        if idx >= 100 or props.area < areacutoff: #drop the tiny labels, and only keep 100 labels maximum
+          self.logger.debug(f"  too small (rank {idx+1}, area {props.area}) --> skip it")
+          croppedmask[props.slice][props.image] = False
           continue
 
         #now we have a large region
         #fill in the tiny holes
         self.logger.debug("  filling in the tiny holes")
-        holes = (labeled == label) & notmask
+        holes = props.image & notmask[props.slice]
         labeledholes, nholelabels = scipy.ndimage.label(holes)
-        holelabels = range(1, nholelabels+1)
-        for holelabel in holelabels:
-          hole = labeledholes == holelabel
-          holearea = np.count_nonzero(hole)
-          if holearea / area < 0.0025:
-            croppedmask[hole] = True
+        holeproperties = skimage.measure.regionprops(labeledholes)
+        for holeprops in holeproperties:
+          if holeprops.area / props.area < 0.0025:
+            croppedmask[props.slice][holeprops.slice][holeprops.image] = True
 
       self.logger.debug("converting to gdal")
       mask = mask.astype(np.uint8)
