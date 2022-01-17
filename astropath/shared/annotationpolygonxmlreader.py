@@ -44,7 +44,7 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
       result = result.replace(self.__oldannotationtype, self.__newannotationtype)
     if self.usesubindex is None: return result
 
-    regex = " ([0-9]+|x)$"
+    regex = " ([0-9]+)$"
     match = re.search(regex, result)
     if self.usesubindex is True:
       if match: return result
@@ -52,30 +52,24 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
     elif self.usesubindex is False:
       if not match: return result
       subindex = match.group(1)
-      if subindex == "1":
+      if subindex == 1:
         return re.sub(regex, "", result)
       raise ValueError(f"Can't force not having a subindex when the subindex is > 1: {result}")
 
   @property
   def annotationtype(self):
-    return re.sub(r" ([0-9]+|x)$", "", self.annotationname)
+    return re.sub(r" [0-9]+$", "", self.annotationname)
   @annotationtype.setter
   def annotationtype(self, value):
     self.__oldannotationtype = self.annotationtype
     self.__newannotationtype = value
   @property
   def annotationsubindex(self):
-    result = self.annotationname.replace(self.annotationtype, "").strip()
+    result = self.annotationname.replace(self.annotationtype, "")
     if result:
-      if result == "x": result = 999
-      return int(result)
+      return int(self.annotationname.replace(self.annotationtype, ""))
     else:
       return 1
-  @property
-  def annotationsubindexname(self):
-    subindex = self.annotationsubindex
-    if subindex == 999: return "x"
-    return subindex
 
   @property
   @abc.abstractmethod
@@ -320,7 +314,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     allregions = []
     allvertices = []
     if self.__readannotationinfo:
-      annotationinfos = self.readannotationinfo()
+      annotationinfos = iter(self.readannotationinfo())
 
     errors = []
 
@@ -350,13 +344,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     for node in nodes:
       nodesbytype[node.annotationtype].append(node)
     for node in nodes:
-      if len([_ for _ in nodesbytype[node.annotationtype] if isinstance(_.annotationsubindexname, int)]) > 1:
+      if len(nodesbytype[node.annotationtype]) > 1:
         node.usesubindex = True
       else:
-        if isinstance(node.annotationsubindexname, int):
-          node.usesubindex = False
-        else:
-          node.usesubindex = True
+        node.usesubindex = False
 
     for layeridx, (annotationtype, annotationnodes) in zip(count, nodesbytype.items()):
       try:
@@ -364,9 +355,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
       except AttributeError:
         errors += [str(node.annotationerror) for node in annotationnodes if hasattr(node, "annotationerror")]
         continue
-      numericalsubindices = [node.annotationsubindex for node in annotationnodes if isinstance(node.annotationsubindexname, int)]
-      if numericalsubindices != list(range(1, len(numericalsubindices)+1)):
-        errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in numericalsubindices)}")
+      subindices = [node.annotationsubindex for node in annotationnodes]
+      if subindices != list(range(1, len(subindices)+1)):
+        errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in subindices)}")
         continue
       annotationtype = targetannotation.name
       targetlayer = targetannotation.layer
@@ -398,7 +389,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
         color = node.color
         visible = node.visible
         if node.usesubindex:
-          name = f"{annotationtype} {node.annotationsubindexname}"
+          name = f"{annotationtype} {node.annotationsubindex}"
           layer = layeridx * 1000 + node.annotationsubindex
         else:
           name = annotationtype
@@ -408,8 +399,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
           color = targetcolor
 
         if node.isfromxml and self.__readannotationinfo:
-          annotationinfo, = (info for info in annotationinfos if info.name == name)
-          annotationinfos.remove(annotationinfo)
+          annotationinfo = next(annotationinfos)
 
         if not node.isfromxml:
           isonwsi = True
