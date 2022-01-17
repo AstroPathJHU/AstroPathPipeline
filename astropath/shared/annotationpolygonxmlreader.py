@@ -556,7 +556,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
 
     if "good tissue" not in nodesbytype:
       errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(nodesbytype)})")
-    if annotationinfos:
+    if self.__readannotationinfo and annotationinfos:
       errors.append(f"Extra annotationinfos: {', '.join(info.name for info in annotationinfos)}")
 
     if errors:
