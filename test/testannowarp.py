@@ -8,7 +8,6 @@ from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.utilities import units
 
 from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
-from .testzoom import TestZoom
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -38,7 +37,8 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     assembleqptiff()
     from .testzoom import gunzipreference
     gunzipreference("M206")
-    TestZoom.hackM206mask()
+    from .data.M206.im3.meanimage.image_masking.hackmask import hackmask
+    hackmask()
 
   @property
   def outputfilenames(self):

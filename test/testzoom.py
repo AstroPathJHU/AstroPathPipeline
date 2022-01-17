@@ -1,7 +1,6 @@
 import datetime, gzip, job_lock, more_itertools, numpy as np, os, pathlib, PIL.Image, shutil, tifffile
 from astropath.shared.logging import MyLogger
 from astropath.utilities.version import astropathversion
-from astropath.slides.stitchmask.stitchmasksample import StitchAstroPathTissueMaskSample, StitchInformMaskSample
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
 from .testbase import TestBaseSaveOutput
@@ -14,18 +13,8 @@ class TestZoom(TestBaseSaveOutput):
     super().setUpClass()
     gunzipreference("M206")
     gunzipreference("L1_1")
-    cls.hackM206mask()
-
-  @classmethod
-  def hackM206mask(cls):
-    root = thisfolder/"data"
-    maskroot = thisfolder/"data"/"reference"/"stitchmask"
-    s1 = StitchInformMaskSample(root, "M206", maskroot=maskroot)
-    s2 = StitchAstroPathTissueMaskSample(root, "M206")
-    filename = s2.maskfilename()
-    if not filename.exists():
-      with s1.using_tissuemask() as mask:
-        np.savez_compressed(s2.maskfilename(), mask=mask)
+    from .data.M206.im3.meanimage.image_masking.hackmask import hackmask
+    hackmask()
 
   @classmethod
   def layers(cls, SlideID):
