@@ -318,7 +318,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     allregions = []
     allvertices = []
     if self.__readannotationinfo:
-      annotationinfos = iter(self.readannotationinfo())
+      annotationinfos = self.readannotationinfo()
 
     errors = []
 
@@ -403,7 +403,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
           color = targetcolor
 
         if node.isfromxml and self.__readannotationinfo:
-          annotationinfo = next(annotationinfos)
+          annotationinfo, = (info for info in annotationinfos if info.name == name)
+          annotationinfos.remove(annotationinfo)
 
         if not node.isfromxml:
           isonwsi = True
@@ -443,7 +444,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
         )
         if node.isfromxml and self.__readannotationinfo:
           if annotation.annotationinfo != annotationinfo:
-            raise ValueError(f"Annotations inconsistent with annotationinfo csv:\ncsv: {annotationinfo}\nnew: {annotation.annotationinfo}")
+            errors.append(f"Annotations inconsistent with annotationinfo csv:\ncsv: {annotationinfo}\nnew: {annotation.annotationinfo}")
         annotations.append(annotation)
 
         regions = node.regions
@@ -555,6 +556,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
 
     if "good tissue" not in nodesbytype:
       errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(nodesbytype)})")
+    if annotationinfos:
+      errors.append(f"Extra annotationinfos: {', '.join(info.name for info in annotationinfos)}")
 
     if errors:
       raise ValueError("\n".join(errors))
