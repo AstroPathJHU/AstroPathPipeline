@@ -17,6 +17,10 @@ class AllowedAnnotation(MyDataClassFrozen):
   color: str
   synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
 
+  @classmethod
+  def allowedannotations(cls):
+    return readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", cls)
+
 class AnnotationNodeBase(units.ThingWithAnnoscale):
   def __init__(self, *args, annoscale, **kwargs):
     super().__init__(*args, **kwargs)
@@ -44,7 +48,7 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
       result = result.replace(self.__oldannotationtype, self.__newannotationtype)
     if self.usesubindex is None: return result
 
-    regex = " ([0-9]+|x)$"
+    regex = " ([0-9]+)$"
     match = re.search(regex, result)
     if self.usesubindex is True:
       if match: return result
@@ -52,30 +56,24 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
     elif self.usesubindex is False:
       if not match: return result
       subindex = match.group(1)
-      if subindex == "1":
+      if subindex == 1:
         return re.sub(regex, "", result)
       raise ValueError(f"Can't force not having a subindex when the subindex is > 1: {result}")
 
   @property
   def annotationtype(self):
-    return re.sub(r" ([0-9]+|x)$", "", self.annotationname)
+    return re.sub(r" [0-9]+$", "", self.annotationname)
   @annotationtype.setter
   def annotationtype(self, value):
     self.__oldannotationtype = self.annotationtype
     self.__newannotationtype = value
   @property
   def annotationsubindex(self):
-    result = self.annotationname.replace(self.annotationtype, "").strip()
+    result = self.annotationname.replace(self.annotationtype, "")
     if result:
-      if result == "x": result = 999
-      return int(result)
+      return int(self.annotationname.replace(self.annotationtype, ""))
     else:
       return 1
-  @property
-  def annotationsubindexname(self):
-    subindex = self.annotationsubindex
-    if subindex == 999: return "x"
-    return subindex
 
   @property
   @abc.abstractmethod
@@ -270,7 +268,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
   @methodtools.lru_cache()
   @property
   def allowedannotations(self):
-    result = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
+    result = AllowedAnnotation.allowedannotations()
     allsynonyms = {synonym.lower() for synonym in self.__annotationsynonyms}
     for a in result:
       if a.name.lower() not in allsynonyms:
@@ -350,13 +348,10 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
     for node in nodes:
       nodesbytype[node.annotationtype].append(node)
     for node in nodes:
-      if len([_ for _ in nodesbytype[node.annotationtype] if isinstance(_.annotationsubindexname, int)]) > 1:
+      if len(nodesbytype[node.annotationtype]) > 1:
         node.usesubindex = True
       else:
-        if isinstance(node.annotationsubindexname, int):
-          node.usesubindex = False
-        else:
-          node.usesubindex = True
+        node.usesubindex = False
 
     for layeridx, (annotationtype, annotationnodes) in zip(count, nodesbytype.items()):
       try:
@@ -364,9 +359,9 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
       except AttributeError:
         errors += [str(node.annotationerror) for node in annotationnodes if hasattr(node, "annotationerror")]
         continue
-      numericalsubindices = [node.annotationsubindex for node in annotationnodes if isinstance(node.annotationsubindexname, int)]
-      if numericalsubindices != list(range(1, len(numericalsubindices)+1)):
-        errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in numericalsubindices)}")
+      subindices = [node.annotationsubindex for node in annotationnodes]
+      if subindices != list(range(1, len(subindices)+1)):
+        errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in subindices)}")
         continue
       annotationtype = targetannotation.name
       targetlayer = targetannotation.layer
@@ -398,7 +393,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
         color = node.color
         visible = node.visible
         if node.usesubindex:
-          name = f"{annotationtype} {node.annotationsubindexname}"
+          name = f"{annotationtype} {node.annotationsubindex}"
           layer = layeridx * 1000 + node.annotationsubindex
         else:
           name = annotationtype
@@ -449,7 +444,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
         )
         if node.isfromxml and self.__readannotationinfo:
           if annotation.annotationinfo != annotationinfo:
-            raise ValueError(f"Annotations inconsistent with annotationinfo csv:\ncsv: {annotationinfo}\nnew: {annotation.annotationinfo}")
+            errors.append(f"Annotations inconsistent with annotationinfo csv:\ncsv: {annotationinfo}\nnew: {annotation.annotationinfo}")
         annotations.append(annotation)
 
         regions = node.regions
@@ -561,6 +556,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
 
     if "good tissue" not in nodesbytype:
       errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(nodesbytype)})")
+    if self.__readannotationinfo and annotationinfos:
+      errors.append(f"Extra annotationinfos: {', '.join(info.name for info in annotationinfos)}")
 
     if errors:
       raise ValueError("\n".join(errors))

@@ -6,3 +6,5 @@ regression,4,00FFFF,
 epithelial islands,5,FF00FF,
 benign,6,0000FF,
 outline,7,FFFFFF,
+good tissue x,8,FFFF00,
+tumor x,9,00FF00,tumour
