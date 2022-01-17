@@ -17,6 +17,10 @@ class AllowedAnnotation(MyDataClassFrozen):
   color: str
   synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
 
+  @classmethod
+  def allowedannotations(cls):
+    return readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", cls)
+
 class AnnotationNodeBase(units.ThingWithAnnoscale):
   def __init__(self, *args, annoscale, **kwargs):
     super().__init__(*args, **kwargs)
@@ -264,7 +268,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, 
   @methodtools.lru_cache()
   @property
   def allowedannotations(self):
-    result = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
+    result = AllowedAnnotation.allowedannotations()
     allsynonyms = {synonym.lower() for synonym in self.__annotationsynonyms}
     for a in result:
       if a.name.lower() not in allsynonyms:
