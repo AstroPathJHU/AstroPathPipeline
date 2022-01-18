@@ -27,6 +27,7 @@ Class testpsmeanimage {
         
         $test = queue $mpath 'meanimage'
         Write-Host 'Test Root: '$test.defRoot()
+        Write-Host 'Py Package: ' $test.pypackagepath()
         $slides = $test.importslideids($mpath)
         Write-Host $slides
         #
