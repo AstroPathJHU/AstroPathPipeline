@@ -1,4 +1,4 @@
-import abc, contextlib, csv, dataclasses, dataclassy, datetime, io, job_lock, pathlib
+import abc, collections, contextlib, csv, dataclasses, dataclassy, datetime, io, job_lock, pathlib
 try:
   contextlib.nullcontext
 except AttributeError:
@@ -6,6 +6,7 @@ except AttributeError:
 
 from ..shared.logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
+from .misc import MemorizeLastIterator
 from .miscfileio import checkwindowsnewlines, field_size_limit_context, guesspathtype, mountedpathtopath, pathtomountedpath
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
@@ -48,6 +49,27 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
     ...   print(table)
     [Point(ID='A', x=1.0, y=3.0), Point(ID='B', x=2.0, y=4.5)]
 
+    It will raise an error if the type doesn't match what's expected:
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   with open(filename, "w") as f:
+    ...     f.write('''
+    ...       ID,x,y
+    ...       A,1,3
+    ...       B,2,4.5
+    ...     '''.replace(" ", "").strip()) and None #avoid printing return value of f.write
+    ...   class Point(MyDataClass):
+    ...     ID: str
+    ...     x: int
+    ...     y: int
+    ...   table = readtable(filename, Point)
+    Traceback (most recent call last):
+        ...
+    ValueError: Row has bad syntax:
+    B,2,4.5
+    {'ID': 'B', 'x': 2, 'y': '4.5'}
+    {'readingfromfile': True, 'extrakwargs': {...}}
+
   You can access the column values through table[0].ID (= "A")
 
   The row class inherits from MyDataClass and therefore can have
@@ -65,6 +87,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
   if checknewlines:
     checkwindowsnewlines(filename)
   with field_size_limit_context(fieldsizelimit), contextlib.nullcontext(filename) if isinstance(filename, io.TextIOBase) else open(filename) as f:
+    f = MemorizeLastIterator(f)
     if header:
       fieldnames = None
     else:
@@ -99,15 +122,14 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
     for i, row in enumerate(reader):
       if i >= maxrows: break
-      for column, typ in columntypes.items():
-        row[column] = typ(row[column])
-
-      if not filter(row): continue
-
       try:
+        for column, typ in columntypes.items():
+          row[column] = typ(row[column])
+        if not filter(row): continue
         result.append(Row(**row, **extrakwargs))
-      except TypeError:
-        raise ValueError(f"Row has bad syntax:\n{row}\n{extrakwargs}")
+      except (TypeError, ValueError):
+        if isinstance(row, collections.OrderedDict): row = dict(row) #compatibility in doctest with python < 3.8
+        raise ValueError(f"Row has bad syntax:\n{f.last}\n{row}\n{extrakwargs}")
 
   return result
 

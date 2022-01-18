@@ -53,6 +53,19 @@ def re_subs(string, *patternsandrepls, **kwargs):
     string = re.sub(p, r, string, **kwargs)
   return string
 
+class MemorizeLastIterator(collections.abc.Iterator):
+  def __init__(self, iterable):
+    self.__iterator = iterable
+  def __next__(self):
+    last = self.__last = next(self.__iterator)
+    return last
+  @property
+  def last(self):
+    try:
+      return self.__last
+    except AttributeError:
+      raise IndexError("Haven't started iterating yet")
+
 class UnequalDictsError(ValueError):
   """
   Copied from more_itertools.UnequalIterablesError,
