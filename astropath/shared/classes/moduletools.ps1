@@ -28,7 +28,6 @@
     [string]$pythonmodulename
     #
     moduletools([array]$task,[launchmodule]$sample){
-        Write-Host 'Getting to moduletools'
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
         $this.vers = $this.sample.GetVersion(
@@ -44,15 +43,15 @@
     ----------------------------------------- #>
     #
     [void]BuildProcessLocPaths($task){
-        #Adjust if testing on jenkins
-        Write-Host 'Project Data FWpath: ' $this.sample.project_data.fwpath
-        Write-Host 'Sample: ' $this.sample
-        if ($this.sample.project_data.fwpath -match '/var/lib/jenkins') {
-            $fwpath = $this.sample.project_data.fwpath
-        }
-        else {
+        ##Adjust if testing on jenkins
+        #Write-Host 'Project Data FWpath: ' $this.sample.project_data.fwpath
+        #Write-Host 'Sample: ' $this.sample
+        #if ($this.sample.project_data.fwpath -match '/var/lib/jenkins') {
+        #    $fwpath = $this.sample.project_data.fwpath
+        #}
+        #else {
             $fwpath = '\\'+$this.sample.project_data.fwpath
-        }
+        #}
         $this.processvars = @($this.sample.basepath, $fwpath, `
             $this.sample.flatwim3folder(), $this.sample.batchflatfield())
         #

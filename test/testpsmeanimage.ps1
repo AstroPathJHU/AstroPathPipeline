@@ -26,8 +26,6 @@ Class testpsmeanimage {
         #Write-Host (gci ($PSScriptRoot + '/data\astropath_processing'))
         
         $test = queue $mpath 'meanimage'
-        Write-Host 'Test Root: '$test.defRoot()
-        Write-Host (gci ($test.defRoot()))
         Write-Host 'Py Package: ' $test.pypackagepath()
         Write-Host (gci ($test.pypackagepath()))
         $slides = $test.importslideids($mpath)
