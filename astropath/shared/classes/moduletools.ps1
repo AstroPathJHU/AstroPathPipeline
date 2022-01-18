@@ -44,14 +44,14 @@
     #
     [void]BuildProcessLocPaths($task){
         #Adjust if testing on jenkins
-        #Write-Host $this.sample.project_data.fwpath
-        #Write-Host $this.sample
-        #if ($this.sample.project_data.fwpath -match '/var/lib/jenkins') {
-        #    $fwpath = $this.sample.project_data.fwpath
-        #}
-        #else {
+        Write-Host 'Project Data FWpath: ' $this.sample.project_data.fwpath
+        Write-Host 'Sample: ' $this.sample
+        if ($this.sample.project_data.fwpath -match '/var/lib/jenkins') {
+            $fwpath = $this.sample.project_data.fwpath
+        }
+        else {
             $fwpath = '\\'+$this.sample.project_data.fwpath
-        #}
+        }
         $this.processvars = @($this.sample.basepath, $fwpath, `
             $this.sample.flatwim3folder(), $this.sample.batchflatfield())
         #
