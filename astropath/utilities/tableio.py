@@ -1,4 +1,4 @@
-import abc, contextlib, csv, dataclasses, dataclassy, datetime, io, job_lock, pathlib
+import abc, collections, contextlib, csv, dataclasses, dataclassy, datetime, io, job_lock, pathlib
 try:
   contextlib.nullcontext
 except AttributeError:
@@ -67,7 +67,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
         ...
     ValueError: Row has bad syntax:
     B,2,4.5
-    OrderedDict([('ID', 'B'), ('x', 2), ('y', '4.5')])
+    {'ID': 'B', 'x': 2, 'y': '4.5'}
     {'readingfromfile': True, 'extrakwargs': {...}}
 
   You can access the column values through table[0].ID (= "A")
@@ -128,6 +128,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
         if not filter(row): continue
         result.append(Row(**row, **extrakwargs))
       except (TypeError, ValueError):
+        if isinstance(row, collections.OrderedDict): row = dict(row) #compatibility in doctest with python < 3.8
         raise ValueError(f"Row has bad syntax:\n{f.last}\n{row}\n{extrakwargs}")
 
   return result
