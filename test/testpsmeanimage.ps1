@@ -22,7 +22,7 @@ Class testpsmeanimage {
         $processing = $PSScriptRoot + '/test_for_jenkins\testing_meanimage'
         $mpath = $PSScriptRoot + '/data\astropath_processing'
         #
-        #Write-Host 'DataLocation: ' $mpath
+        Write-Host 'MPath: ' $mpath
         #Write-Host (gci ($PSScriptRoot + '/data\astropath_processing'))
         
         $test = queue $mpath 'meanimage'
