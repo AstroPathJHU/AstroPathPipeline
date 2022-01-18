@@ -9,6 +9,8 @@
 #
  Class testpsimport {
     #
+    [string]$mpath 
+    #
     testpsimport(){
       #
       $module = $PSScriptRoot + '/../astropath'
@@ -31,6 +33,29 @@
           Throw 'Module could not be imported'
       } 
       #
+    }
+    #
+    testmpath(){
+        #
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
+        #
+        if (!(test-path $this.mpath)){
+            Throw ('Cannot find mpath' + $this.mpath)
+        }
+        #
+        Write-Host $this.mpath
+        #
+
+    }
+    #
+    testapidfiles(){
+        #
+        $apidfile = $this.mpath + '\AstroPathAPIDdef.csv'
+        #
+        if (!($apidfile)){
+            Throw ('Cannot find ap id file' + $apidfile)
+        }
+        #
     }
 }
 #

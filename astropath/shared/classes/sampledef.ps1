@@ -369,8 +369,11 @@ class sampledef : sharedtools{
     #
     [switch]testwarpoctets(){
         #
-        $file = $this.basepath + '\warping\octets\' + $this.slideid + 'all-overlap-octets.csv'
-        if (!(test-path $file)){
+        $file = $this.basepath + '\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
+        #
+        $file2 = $this.basepath + '\' + $this.slideid + '\im3\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
+        #
+        if (!(test-path $file) -AND !(test-path $file2)){
             return $false
         }
         #
