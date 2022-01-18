@@ -61,12 +61,12 @@
         #
         $apidfile = $this.mpath + '\AstropathAPIDdef.csv'
         #
-        if (!($apidfile)){
+        if (!(test-path $apidfile -PathType Leaf)){
             Throw ('Cannot find ap id file' + $apidfile)
         }
         #
         try {
-            $apids = Get-Content $apidfile
+            $apids = Get-Content $apidfile -EA Stop
         } catch {
             Throw ('Cannot open ap id file')
         }
