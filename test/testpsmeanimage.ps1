@@ -25,16 +25,16 @@ Class testpsmeanimage {
         Write-Host 'MPath: ' $mpath
         #Write-Host (gci ($PSScriptRoot + '/data\astropath_processing'))
         
-        $test = queue $mpath 'meanimage'
-        Write-Host 'Py Package: ' $test.pypackagepath()
-        Write-Host (gci ($test.pypackagepath()))
-        $slides = $test.importslideids($mpath)
-        Write-Host $slides
+      #  $test = queue $mpath 'meanimage'
+      #  Write-Host 'Py Package: ' $test.pypackagepath()
+      #  Write-Host (gci ($test.pypackagepath()))
+      #  $slides = $test.importslideids($mpath)
+      #  Write-Host $slides
         #
-        $task = ('0', 'M21_1', $processing, $mpath)
-        $inp = meanimage $task
+      #  $task = ('0', 'M21_1', $processing, $mpath)
+      #  $inp = meanimage $task
 
-        Write-Host $inp
+      #  Write-Host $inp
 
         #
         # Run Tests
