@@ -20,10 +20,10 @@ Class testpsmeanimage {
             Throw 'Module could not be imported'
         }
         $processing = $PSScriptRoot + '/test_for_jenkins/testing_meanimage'
-        $mpath = $PSScriptRoot + '/data/astropath_processing'
+        $mpath = $PSScriptRoot + '/data\astropath_processing'
         #
         Write-Host 'DataLocation: ' $mpath
-        Write-Host (gci ($PSScriptRoot + '/data/astropath_processing'))
+        Write-Host (gci ($PSScriptRoot + '/data\astropath_processing'))
         
         #$test = queue $mpath 'meanimage'
         #$slides = $test.importslideids($mpath)
