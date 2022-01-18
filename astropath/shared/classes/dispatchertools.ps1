@@ -151,24 +151,23 @@ class DispatcherTools : queue {
     [void]buildtaskfile($jobname, $currenttaskinput){
         #
         $currenttasktowrite = (' Import-Module "', $this.coderoot(), '"
-                        $output = & {LaunchModule -mpath:"', `
+                        $output.output = & {LaunchModule -mpath:"', `
                         $this.mpath, '" -module:"', $this.module, '" -stringin:"', `
                         $currenttaskinput,'"} 2>&1
-                        $tool = [sharedtools]::new()
-                    if ($output -ne 0){ 
+                    if ($output.output -ne 0){ 
                         #
                         $count = 1
                         #
-                        $output | Foreach-object {
-                            $tool.popfile("',$this.workerlogfile($jobname),'", ("ERROR: " + $count + "`r`n"))
-                            $tool.popfile("',$this.workerlogfile($jobname),'", ("  " + $_.Exception.Message  + "`r`n"))
+                        $output.output | Foreach-object {
+                            $output.popfile("',$this.workerlogfile($jobname),'", ("ERROR: " + $count + "`r`n"))
+                            $output.popfile("',$this.workerlogfile($jobname),'", ("  " + $_.Exception.Message  + "`r`n"))
                             $s = $_.ScriptStackTrace.replace("at", "`t at")
-                            $tool.popfile("',$this.workerlogfile($jobname),'", ($s + "`r`n"))
+                            $output.popfile("',$this.workerlogfile($jobname),'", ($s + "`r`n"))
                             $count += 1
                         }
                         #
                     } else {
-                        $tool.popfile("',$this.workerlogfile($jobname),'", "Completed Successfully `r`n")
+                        $output.popfile("',$this.workerlogfile($jobname),'", "Completed Successfully `r`n")
                     }') -join ''
         #
         $this.SetFile($this.workertaskfile($jobname), $currenttasktowrite)

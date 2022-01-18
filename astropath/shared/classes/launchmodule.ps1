@@ -1,6 +1,8 @@
 ﻿#
 class launchmodule : mylogger{
     #
+    [int]$output
+    #
     launchmodule(){}
     #
     launchmodule($mpath, $module, $val) : base($mpath, $module){
@@ -38,10 +40,10 @@ class launchmodule : mylogger{
         #
         try {
             $( & $this.module $this.val $this)  
-            Write-Output 0
+            $this.output = 0
         } catch {
             $this.error($_.Exception.Message)
-            Write-Output 1
+            $this.output = 1
         } finally { # end messages
             $this.finish($this.module)
             
