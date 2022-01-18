@@ -28,6 +28,7 @@
     [string]$pythonmodulename
     #
     moduletools([array]$task,[launchmodule]$sample){
+        Write-Host 'Getting to moduletools'
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
         $this.vers = $this.sample.GetVersion(
