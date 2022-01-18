@@ -59,7 +59,7 @@
     #
     [void]testapidfiles(){
         #
-        $apidfile = $this.mpath + '\AstroPathAPIDdef.csv'
+        $apidfile = $this.mpath + '\AstropathAPIDdef.csv'
         #
         if (!($apidfile)){
             Throw ('Cannot find ap id file' + $apidfile)
