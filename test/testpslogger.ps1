@@ -47,7 +47,7 @@
         }
         #
         try {
-            $log = logger $this.mpath 'shredxml' 'M21_1' '8'
+            $log = logger $this.mpath 'shredxml' '08' '0'
         } catch {
             Throw ('[logger] construction with [4] input(s) failed. ' + $_.Exception.Message)
         }

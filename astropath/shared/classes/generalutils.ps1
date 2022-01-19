@@ -105,10 +105,11 @@
     #
     [string]defRoot(){
         #
-        if ($PSScriptRoot[0] -ne '\' -and $PSScriptRoot[0] -ne '/'){
-            $root = ('\\' + $env:computername+'\'+$PSScriptRoot) -replace ":", "$"
+        $r = replace($PSScriptRoot, '/', '\')
+        if ($r[0] -ne '\'){
+            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
         } else{
-            $root = $PSScriptRoot -replace ":", "$"
+            $root = $r -replace ":", "$"
         }
         #
         return($root)
