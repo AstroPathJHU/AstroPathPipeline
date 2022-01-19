@@ -35,7 +35,7 @@
     [string]pypackagepath(){
         $str = $this.coderoot() + '\..\.'
         if (!($this.isWindows)){
-            $str -replace ('\\', '/')
+            $str = $str -replace ('\\', '/')
         }
         #
         return $str
