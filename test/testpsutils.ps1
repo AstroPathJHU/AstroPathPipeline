@@ -24,11 +24,10 @@
     importmodule(){
         $module = $PSScriptRoot + '/../astropath'
         Import-Module $module -EA SilentlyContinue
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
     }
     #
     [void]testmpath(){
-        #
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         #
         if (!(test-path $this.mpath)){
             Throw ('Cannot find mpath' + $this.mpath)
@@ -75,8 +74,8 @@
             Throw 'cannot create a shared tools object'
         }
         #
-        Write-Host 'sharedtools object created'
-        Write-Host 'testing import slideids method'
+        Write-Host '[sharedtools] object created'
+        Write-Host 'Testing import slideids method. Output below:'
         #
         try {
             $internal_apids = $tools.importslideids($this.mpath)
@@ -104,8 +103,8 @@
             Throw 'cannot create a shared tools object'
         }
         #
-        Write-Host 'queue object created'
-        Write-Host 'testing import slideids method'
+        Write-Host '[queue] object created'
+        Write-Host 'Testing import slideids method. Output below:'
         #
         try {
             $internal_apids = $tools.importslideids($this.mpath)
