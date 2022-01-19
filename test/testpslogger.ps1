@@ -31,25 +31,25 @@
         try {
             $log = logger
         } catch {
-            Throw 'logger contruction with [0] input(s) failed'
+            Throw ('[logger] construction with [0] input(s) failed. ' + $_.Exception.Message)
         }
         #
         try {
             $log = logger $this.mpath 'shredxml'
         } catch {
-            Throw 'logger contruction with [2] input(s) failed'
+            Throw ('[logger] construction with [2] input(s) failed. ' + $_.Exception.Message)
         }
         #
         try {
             $log = logger $this.mpath 'shredxml' 'M21_1'
         } catch {
-            Throw 'logger contruction with [3] input(s) failed'
+            Throw ('[logger] construction with [3] input(s) failed. ' + $_.Exception.Message)
         }
         #
         try {
             $log = logger $this.mpath 'shredxml' 'M21_1' '0'
         } catch {
-            Throw 'logger contruction with [4] input(s) failed'
+            Throw ('[logger] construction with [4] input(s) failed. ' + $_.Exception.Message)
         }
         #
     }

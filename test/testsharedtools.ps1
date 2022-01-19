@@ -33,7 +33,7 @@
         try {
             $tools = sharedtools
         } catch {
-            Throw 'cannot create a shared tools object'
+            Throw ('cannot create a [sharedtools] object. ' + $_.Exception.Message)
         }
         #
         Write-Host '[sharedtools] object created'
@@ -42,7 +42,7 @@
     #
     [void]testcheckgitrepo($tools){
         #
-        Write-Host 'py package path: ' $this.pypackagepath()
+        Write-Host 'py package path: ' $tools.pypackagepath()
         Write-Host 'Git installed: ' $tools.checkgitinstalled()
         Write-Host 'Git repo: ' $tools.checkgitrepo()
         #

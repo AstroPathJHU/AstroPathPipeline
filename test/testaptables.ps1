@@ -32,7 +32,7 @@
     [void]testmpath(){
         #
         if (!(test-path $this.mpath)){
-            Throw ('Cannot find mpath' + $this.mpath)
+            Throw ('Cannot find mpath' + $this.mpath + '. ' + $_.Exception.Message)
         }
         #
         Write-Host ("mpath: " + $this.mpath)
@@ -45,13 +45,13 @@
         $apidfile = $this.mpath + '\AstropathAPIDdef.csv'
         #
         if (!(test-path $apidfile -PathType Leaf)){
-            Throw ('Cannot find ap id file' + $apidfile)
+            Throw ('Cannot find ap id file' + $apidfile + '. ' + $_.Exception.Message)
         }
         #
         try {
             $apids = Import-CSV $apidfile -EA Stop
         } catch {
-            Throw ('Cannot open ap id file')
+            Throw ('Cannot open ap id file. ' + $_.Exception.Message)
         }
         #
         write-host " " ($apids | 
@@ -74,7 +74,7 @@
         try {
             $internal_apids = $tools.importslideids($this.mpath)
         } Catch {
-            Throw 'Cannot open apid def file'
+            Throw ('Cannot open apid def file. ' + $_.Exception.Message)
         }
         #
         write-host " " ($internal_apids | 
@@ -96,7 +96,7 @@
         try {
             $internal_apids = $tools.ImportConfigInfo($this.mpath)
         } Catch {
-            Throw 'Cannot open config file'
+            Throw ('Cannot open config file. ' + $_.Exception.Message)
         }
         #
         write-host " " $internal_apids 
