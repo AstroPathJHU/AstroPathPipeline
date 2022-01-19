@@ -47,10 +47,11 @@
         Write-Host 'py package path: ' $tools.pypackagepath() 
         Write-Host 'Git installed: ' $tools.checkgitinstalled()
         Write-Host 'Git repo: ' $tools.checkgitrepo()
-        git -C $tools.pypackagepath() fetch --tags
-        Write-Host 'Git version: ' $tools.getgitversion()
-        Write-Host 'Git status: ' $tools.checkgitstatus()
-        Write-Host 'Git full version: ' $tools.getfullversion()
+        Write-Host 'Git version: ' $tools.getgitversion() 2>&1
+        Write-Host 'Git status: ' $tools.checkgitstatus() 2>&1
+        # Write-Host 'Git full version: ' $tools.getfullversion()
+        #
+        Set-Content ($this.pypackagepath() + '/file.csv') $this.pypackagepath()
         #
     }
 }
