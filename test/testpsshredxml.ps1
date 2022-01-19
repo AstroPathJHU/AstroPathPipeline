@@ -12,16 +12,16 @@
 #
 Class testpsshredxml {
     #
+    [string]$mpath 
+    [string]$process_loc
+    #
     testpsshredxml(){
         #
         # Setup Testing
         #
-        $module = '\\bki08\e$\working_code\dev\AstroPathPipelinePrivate\astropath'
-        Import-Module $module -EA SilentlyContinue
+        $this.importmodule()
         #
-        $processing = '\\Bki08\h\testing'
-        $mpath = '\\Bki08\h\testing\astropath_processing'
-        $task = ('1', 'M21_1', $processing, $mpath)
+        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
         $inp = shredxml $task
         #
         # Run Tests
@@ -33,26 +33,33 @@ Class testpsshredxml {
         #
     }
     #
+    importmodule(){
+        $module = $PSScriptRoot + '/../astropath'
+        Import-Module $module -EA SilentlyContinue
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
+        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
+    }
+    #
     [void]TestPaths($inp){
         Write-Host 'Starting Paths Testing'
         #
-        if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape('\\bki08\h$\testing'))){
+        if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape($this.process_loc))){
             Throw 'processvars[0] not correct'
         }
         #
-        if (!([regex]::Escape($inp.processvars[1]) -contains [regex]::Escape('\\Bki08\h\testing\astropath_ws\shredxml\M21_1\flatw'))){
+        if (!([regex]::Escape($inp.processvars[1]) -contains [regex]::Escape(($this.process_loc + '\astropath_ws\shredxml\M21_1\flatw')))){
             Throw 'processvars[1] not correct'
         }
         #
-        if (!([regex]::Escape($inp.processvars[2]) -contains [regex]::Escape('\\Bki08\h\testing\astropath_ws\shredxml\M21_1\M21_1\im3\flatw'))){
+        if (!([regex]::Escape($inp.processvars[2]) -contains [regex]::Escape(($this.process_loc + '\astropath_ws\shredxml\M21_1\M21_1\im3\flatw')))){
             Throw 'processvars[2] not correct'
         }
         #
-        if (!([regex]::Escape($inp.processvars[3]) -contains [regex]::Escape('\\Bki08\h\testing\astropath_ws\shredxml\M21_1\flatfield\flatfield_BatchID_99.bin'))){
+        if (!([regex]::Escape($inp.processvars[3]) -contains [regex]::Escape(($this.process_loc + '\astropath_ws\shredxml\M21_1\flatfield\flatfield_BatchID_8.bin')))){
             Throw 'processvars[3] not correct'
         }
         #
-        if (!([regex]::Escape($inp.processloc) -contains [regex]::Escape('\\bki08\h\testing\astropath_ws\shredxml\M21_1'))){
+        if (!([regex]::Escape($inp.processloc) -contains [regex]::Escape(($this.process_loc + '\astropath_ws\shredxml\M21_1')))){
             Throw 'processloc not correct'
         }
         #

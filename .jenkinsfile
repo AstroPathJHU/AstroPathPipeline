@@ -39,6 +39,12 @@ pipeline {
           }
         }
 
+        stage('ps shredxml') {
+          steps {
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
+          }
+        }
+
         stage('ps meanimage') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'

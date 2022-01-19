@@ -10,6 +10,7 @@
  Class testpsimport {
     #
     [string]$mpath 
+    [string]$process_loc
     #
     testpsimport(){
         #
