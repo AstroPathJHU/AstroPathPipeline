@@ -42,6 +42,7 @@
     #
     [void]testcheckgitrepo($tools){
         #
+        Write-Host 'root: ' $tools.defRoot()
         Write-Host 'py package path: ' $tools.pypackagepath()
         Write-Host 'Git installed: ' $tools.checkgitinstalled()
         Write-Host 'Git repo: ' $tools.checkgitrepo()

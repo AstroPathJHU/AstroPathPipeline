@@ -85,7 +85,7 @@ Class testpsmeanimage {
 #
 # launch test and exit if no error found
 #
-$test = [testpsmeanimage]::new()
+#$test = [testpsmeanimage]::new()
 exit 0
 
 #Remove temporary processing directory
