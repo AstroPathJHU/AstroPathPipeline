@@ -165,9 +165,13 @@
     }
     #
     [void]CreateFile($fpath){
+        #
+        $this.createDirs((Split-Path $fpath))
+        #
         if (!(test-path $fpath)){
             New-Item -path $fpath -itemtype file -Force -EA Stop | Out-Null
         }
+        #
     }
     #
     [void]removedir([string]$dir){
