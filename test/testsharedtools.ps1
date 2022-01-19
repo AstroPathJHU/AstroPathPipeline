@@ -14,12 +14,21 @@
     #
     testsharedtools(){
         #
+        $this.importmodule()
         $this.testconstructor()
         $tools = sharedtools
+        $this.testcheckgitrepo($tools)
         #
     }
     #
-    [void]testconstructor(){
+    importmodule(){
+        $module = $PSScriptRoot + '/../astropath'
+        Import-Module $module -EA SilentlyContinue
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
+        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
+    }
+    #
+    testconstructor(){
         #
         try {
             $tools = sharedtools
