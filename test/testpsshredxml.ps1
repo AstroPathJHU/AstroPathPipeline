@@ -26,10 +26,10 @@ Class testpsshredxml {
         #
         # Run Tests
         #
-        $this.TestPaths($inp)
-        $this.ShredXMLTest($inp)
-        $this.ReturnDataTest($inp)
-        $this.CleanupTest($inp)
+        #$this.TestPaths($inp)
+        #$this.ShredXMLTest($inp)
+        #$this.ReturnDataTest($inp)
+        #$this.CleanupTest($inp)
         #
     }
     #
@@ -134,7 +134,7 @@ Class testpsshredxml {
 #
 # launch test and exit if no error found
 #
-#$test = [testpsshredxml]::new()
+$test = [testpsshredxml]::new()
 exit 0
 
 #Remove temporary processing directory
