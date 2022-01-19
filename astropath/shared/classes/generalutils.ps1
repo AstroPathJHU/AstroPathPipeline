@@ -103,20 +103,14 @@
         #
     }
     #
-    [string]defOS(){
-        #
-        $OS = (Get-WMIObject win32_operatingsystem).name
-        return $OS
-        #
-    }
-    #
     [switch]isWindows(){
         #
-        if ($this.defOS() -match 'Windows'){
+        try{
+            $OS = (Get-WMIObject win32_operatingsystem).name
             return $true
-        } 
-        #
-        return $false
+        } catch {
+            return $false
+        }
         #
     }
     #
