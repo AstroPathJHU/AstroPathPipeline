@@ -15,8 +15,9 @@
         #
         $this.importmodule()
         $this.testmpath()
-        $this.testapidfiles()
-        $this.testsharedtools()
+        $apids = $this.testapidfiles()
+        $this.testsharedtools($apids)
+        $this.testqueue($apids)
         #
     }
     #
@@ -38,7 +39,7 @@
 
     }
     #
-    [void]testapidfiles(){
+    [PSCustomObject]testapidfiles(){
         #
         $apidfile = $this.mpath + '\AstropathAPIDdef.csv'
         #
@@ -47,7 +48,7 @@
         }
         #
         try {
-            $apids = Get-Content $apidfile -EA Stop
+            $apids = Import-CSV $apidfile -EA Stop
         } catch {
             Throw ('Cannot open ap id file')
         }
@@ -62,9 +63,11 @@
                             @{Name="isGood";Expression = { $_.isGood }; Alignment="center" } |
             Out-String).Trim() -ForegroundColor Yellow
         #
+        return $apids
+        #
     }
     #
-    [void]testsharedtools(){
+    [void]testsharedtools($apids){
         #
         try {
             $tools = sharedtools
@@ -72,13 +75,45 @@
             Throw 'cannot create a shared tools object'
         }
         #
+        Write-Host 'sharedtools object created'
+        Write-Host 'testing import slideids method'
+        #
         try {
-            $apids = $tools.importslideids($this.mpath)
+            $internal_apids = $tools.importslideids($this.mpath)
         } Catch {
             Throw 'Cannot open apid def file'
         }
         #
-        write-host " " ($apids | 
+        write-host " " ($internal_apids | 
+        Format-Table  @{Name="SlideID";Expression = { $_.SlideID }; Alignment="center" },
+                        @{Name="SampleName";Expression = { $_.SampleName }; Alignment="center" },
+                        @{Name="Project";Expression = { $_.Project }; Alignment="center" },
+                        @{Name="Cohort";Expression = { $_.Cohort }; Alignment="center" },
+                        @{Name="Scan";Expression = { $_.Scan }; Alignment="center" },
+                        @{Name="BatchID";Expression = { $_.BatchID }; Alignment="center" }, 
+                        @{Name="isGood";Expression = { $_.isGood }; Alignment="center" } |
+        Out-String).Trim() -ForegroundColor Yellow
+        #
+    }
+    #
+    [void]testqueue($apids){
+        #
+        try {
+            $tools = queue $this.mpath 'shredxml'
+        } catch {
+            Throw 'cannot create a shared tools object'
+        }
+        #
+        Write-Host 'queue object created'
+        Write-Host 'testing import slideids method'
+        #
+        try {
+            $internal_apids = $tools.importslideids($this.mpath)
+        } Catch {
+            Throw 'Cannot open apid def file'
+        }
+        #
+        write-host " " ($internal_apids | 
         Format-Table  @{Name="SlideID";Expression = { $_.SlideID }; Alignment="center" },
                         @{Name="SampleName";Expression = { $_.SampleName }; Alignment="center" },
                         @{Name="Project";Expression = { $_.Project }; Alignment="center" },
