@@ -14,8 +14,6 @@
     testpsimport(){
         #
         $this.testimport()
-        $this.testmpath()
-        $this.testapidfiles()
         #
     }
     #
@@ -42,45 +40,6 @@
       } 
       #
 
-    }
-    #
-    [void]testmpath(){
-        #
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        #
-        if (!(test-path $this.mpath)){
-            Throw ('Cannot find mpath' + $this.mpath)
-        }
-        #
-        Write-Host $this.mpath
-        #
-
-    }
-    #
-    [void]testapidfiles(){
-        #
-        $apidfile = $this.mpath + '\AstropathAPIDdef.csv'
-        #
-        if (!(test-path $apidfile -PathType Leaf)){
-            Throw ('Cannot find ap id file' + $apidfile)
-        }
-        #
-        try {
-            $apids = Get-Content $apidfile -EA Stop
-        } catch {
-            Throw ('Cannot open ap id file')
-        }
-        #
-        write-host " " ($apids | 
-            Format-Table  @{Name="SlideID";Expression = { $_.SlideID }; Alignment="center" },
-                            @{Name="SampleName";Expression = { $_.SampleName }; Alignment="center" },
-                            @{Name="Project";Expression = { $_.Project }; Alignment="center" },
-                            @{Name="Cohort";Expression = { $_.Cohort }; Alignment="center" },
-                            @{Name="Scan";Expression = { $_.Scan }; Alignment="center" },
-                            @{Name="BatchID";Expression = { $_.BatchID }; Alignment="center" }, 
-                            @{Name="isGood";Expression = { $_.isGood }; Alignment="center" } |
-            Out-String).Trim() -ForegroundColor Yellow
-        #
     }
     #
 }

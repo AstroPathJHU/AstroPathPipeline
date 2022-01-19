@@ -32,7 +32,13 @@ pipeline {
     
     stage('run tests') {
       parallel {
-        
+
+        stage('ps utils') {
+          steps {
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsutils.ps1'
+          }
+        }
+
         stage('ps meanimage') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
