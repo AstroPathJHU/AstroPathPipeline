@@ -103,8 +103,25 @@
         #
     }
     #
-    [string]defRoot(){
+    [string]defOS(){
         #
+        $OS = (Get-WMIObject win32_operatingsystem).name
+        return $OS
+        #
+    }
+    #
+    [switch]isWindows(){
+        #
+        if ($this.defOS() -match 'Windows'){
+            return $true
+        } 
+        #
+        return $false
+        #
+    }
+    #
+    [string]defRoot(){
+        ##
         $r = $PSScriptRoot -replace( '/', '\')
         if ($r[0] -ne '\'){
             $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"

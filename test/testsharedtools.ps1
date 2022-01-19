@@ -45,6 +45,7 @@
         Write-Host 'root: ' $tools.defRoot()
         Write-Host 'py package path: ' $tools.pypackagepath()
         Write-Host 'Git installed: ' $tools.checkgitinstalled()
+        git -C $tools.pypackagepath() status
         Write-Host 'Git repo: ' $tools.checkgitrepo()
         #
     }

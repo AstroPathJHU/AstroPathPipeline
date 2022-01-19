@@ -34,6 +34,10 @@
     #
     [string]pypackagepath(){
         $str = $this.coderoot() + '\..\.'
+        if (!$this.isWindows){
+            $str -replace ('\', '/')
+        }
+        #
         return $str
     }
     <# -----------------------------------------
@@ -177,7 +181,7 @@
     [switch]checkgitrepo(){
         if ($this.checkgitinstalled()){
             try {
-               $gitrepo = git -C ($this.pypackagepath() -replace ('\', '/')) rev-parse --is-inside-work-tree
+               $gitrepo = git -C $this.pypackagepath() rev-parse --is-inside-work-tree
                return $true
             } catch {
                return $false
