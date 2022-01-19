@@ -3,7 +3,7 @@
  testpsshredxml
  created by: Andrew Jorquera
  Last Edited by: Benjamin Green
- Last Edit: 1/10/2022
+ Last Edit: 01.18.2022
  --------------------------------------------
  Description
  test if the methods of shredxml are 
@@ -134,7 +134,7 @@ Class testpsshredxml {
 #
 # launch test and exit if no error found
 #
-$test = [testpsmeanimage]::new()
+$test = [testpsshredxml]::new()
 exit 0
 
 #Remove temporary processing directory

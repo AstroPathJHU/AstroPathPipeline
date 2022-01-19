@@ -1,7 +1,7 @@
 ﻿<# -------------------------------------------
  testpsmeanimage
  created by: Andrew Jorquera
- Last Edit: 1/5/2021
+ Last Edit: 01.18.2022
  --------------------------------------------
  Description
  test if the methods of meanimage are 

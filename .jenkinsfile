@@ -35,7 +35,9 @@ pipeline {
 
         stage('ps utils') {
           steps {
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsutils.ps1'
+	    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsharedtools.ps1'
+	    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testaptables.ps1'            
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
           }
         }
 

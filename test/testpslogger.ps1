@@ -1,5 +1,5 @@
 ﻿<# -------------------------------------------
- testpsutils
+ testpslogger
  created by: Benjamin Green - JHU
  Last Edit: 01.18.2022
  --------------------------------------------
@@ -7,14 +7,15 @@
  test if the module can be imported or not
  -------------------------------------------#>
 #
- Class testpsutils {
+ Class testpslogger {
     #
     [string]$mpath 
     [string]$process_loc
     #
-    testpsutils(){
+    testpslogger(){
         #
         $this.importmodule()
+        $this.testloggerconstruction()
         #
     }
     #
@@ -56,5 +57,5 @@
 #
 # launch test and exit if no error found
 #
-$test = [testpsutils]::new() 
+$test = [testpslogger]::new() 
 exit 0
