@@ -44,10 +44,12 @@
         #
         Write-Host 'root: ' $tools.defRoot()
         Write-Host 'is Windows: ' $tools.isWindows()
-        Write-Host 'py package path: ' $tools.pypackagepath()
+        Write-Host 'py package path: ' $tools.pypackagepath() 
         Write-Host 'Git installed: ' $tools.checkgitinstalled()
-        git -C $tools.pypackagepath() status
         Write-Host 'Git repo: ' $tools.checkgitrepo()
+        Write-Host 'Git version: ' $tools.getgitversion()
+        Write-Host 'Git status: ' $tools.checkgitstatus()
+        Write-Host 'Git full version: ' $tools.getfullversion()
         #
     }
 }
