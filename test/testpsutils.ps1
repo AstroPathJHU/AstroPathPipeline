@@ -71,12 +71,22 @@
         } catch {
             Throw 'cannot create a shared tools object'
         }
-
+        #
         try {
-            $tools.importslideids($this.mpath)
+            $apids = $tools.importslideids($this.mpath)
         } Catch {
             Throw 'Cannot open apid def file'
         }
+        #
+        write-host " " ($apids | 
+        Format-Table  @{Name="SlideID";Expression = { $_.SlideID }; Alignment="center" },
+                        @{Name="SampleName";Expression = { $_.SampleName }; Alignment="center" },
+                        @{Name="Project";Expression = { $_.Project }; Alignment="center" },
+                        @{Name="Cohort";Expression = { $_.Cohort }; Alignment="center" },
+                        @{Name="Scan";Expression = { $_.Scan }; Alignment="center" },
+                        @{Name="BatchID";Expression = { $_.BatchID }; Alignment="center" }, 
+                        @{Name="isGood";Expression = { $_.isGood }; Alignment="center" } |
+        Out-String).Trim() -ForegroundColor Yellow
         #
     }
 }
