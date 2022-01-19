@@ -51,7 +51,7 @@
         Write-Host 'Git status: ' $tools.checkgitstatus() 
         # Write-Host 'Git full version: ' $tools.getfullversion()
         #
-        Set-Content ($tools.pypackagepath() + '/file.csv') $tools.pypackagepath()
+        Set-Content (($tools.pypackagepath() + '/file.csv') -replace ('/', '\')) $tools.pypackagepath()
         #
     }
 }

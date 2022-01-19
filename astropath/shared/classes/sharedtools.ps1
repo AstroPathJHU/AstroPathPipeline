@@ -34,6 +34,10 @@
     #
     [string]pypackagepath(){
         $str = $this.coderoot() + '\..\.'
+        if (!$this.isWindows()){
+            $str = $str -replace ('\\', '/')
+        }
+        #
         return $str
     }
     <# -----------------------------------------
@@ -194,7 +198,7 @@
      clean return true else return false
     ----------------------------------------- #>
     [switch]checkgitstatus(){
-           $gitstatus = git -C $this.pypackagepath() status 2>&1
+           $gitstatus = git -C $this.pypackagepath() status
            if ($gitstatus -match "nothing to commit, working tree clean"){
                 return $true
            } else {
@@ -208,7 +212,7 @@
      get the git version in the astropath format
     ----------------------------------------- #>
     [string]getgitversion(){
-        $v = git -C $this.pypackagepath() describe --tags --long 2>&1
+        $v = git -C $this.pypackagepath() describe --tags --long
         $v2 = $v -split '-'
         $v3 = $v2[0] -split '\.'
         $v4 = [int]$v3[2] + 1
