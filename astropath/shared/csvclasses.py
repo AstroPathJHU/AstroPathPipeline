@@ -209,22 +209,7 @@ class AnnotationInfo(DataClassWithPscale):
   def position(self, position):
     self.xposition, self.yposition = position
 
-class _AnnotationBase(DataClassWithPolygon, DataClassWithApscale):
-  """
-  Base class so that the fields are in the right order
-  """
-  sampleid: int
-  layer: int
-  name: str
-  color: str
-  visible: bool = boolasintfield()
-  poly: Polygon = polygonfield()
-  isonwsi: bool = boolasintfield(False)
-  isfromxml: bool = boolasintfield(True)
-  xposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
-  yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
-
-class Annotation(_AnnotationBase, AnnotationInfo):
+class Annotation(DataClassWithPolygon, DataClassWithApscale):
   """
   An annotation from a pathologist.
 
@@ -236,11 +221,23 @@ class Annotation(_AnnotationBase, AnnotationInfo):
   poly: the gdal polygon for the annotation
   """
 
+  sampleid: int
+  layer: int
+  name: str
+  color: str
+  visible: bool = boolasintfield()
+  poly: Polygon = polygonfield()
+  isfromxml: bool = boolasintfield(includeintable=False)
+  annotationinfo: AnnotationInfo = MetaDataAnnotation(None, includeintable=False)
+
   @classmethod
-  def transforminitargs(cls, *args, **kwargs):
+  def transforminitargs(cls, *args, isfromxml, annotationinfo=None, **kwargs):
+    if isfromxml and annotationinfo is None:
+      raise TypeError("Need annotationinfo if annotation is from xml")
     if "annoscale" not in kwargs:
-      isonwsi = kwargs.get("isonwsi", cls.__defaults__["isonwsi"])
-      isfromxml = kwargs.get("isfromxml", cls.__defaults__["isfromxml"])
+      annotationinfo = kwargs["annotationinfo"]
+      isonwsi = annotationinfo.isonwsi
+      isfromxml = kwargs.get["isfromxml"]
       pscale = kwargs["pscale"]
       apscale = kwargs["apscale"]
       if not isfromxml:
@@ -249,11 +246,12 @@ class Annotation(_AnnotationBase, AnnotationInfo):
         kwargs["annoscale"] = pscale/2
       else:
         kwargs["annoscale"] = apscale
-    return super().transforminitargs(*args, **kwargs)
+    return super().transforminitargs(*args, isfromxml=isfromxml, annotationinfo=annotationinfo, **kwargs)
 
   @property
-  def annotationinfo(self):
-    return AnnotationInfo(**{field: getattr(self, field) for field in dataclassy.fields(AnnotationInfo)})
+  def isonwsi(self): return self.annotationinfo.isonwsi
+  @property
+  def position(self): return self.annotationinfo.position
 
 class DataClassWithAnnotation(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
   annotation: Annotation = MetaDataAnnotation(None, includeintable=False)

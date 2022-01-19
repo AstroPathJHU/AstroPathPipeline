@@ -170,7 +170,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     tilepixels: we divide the wsi and qptiff into tiles of this size
                 in order to align (default: 100)
     """
-    super().__init__(*args, readannotationinfo=True, **kwargs)
+    super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
     if tilepixels is None: tilepixels = self.defaulttilepixels
