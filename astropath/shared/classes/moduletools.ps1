@@ -60,7 +60,7 @@
                 [regex]::escape('\\'+$this.sample.project_data.fwpath), `
                 ($this.processloc+'\flatw')
             $this.processvars = @($processvarsa[0], $processvarsb, `
-                $processvarsa[2], $processvarsa[3], 1)
+                $processvarsa[1], $processvarsa[2], 1)
         } else {
             $this.processloc = $this.sample.flatwfolder()
         }
