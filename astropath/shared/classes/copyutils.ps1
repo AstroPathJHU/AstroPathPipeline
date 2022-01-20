@@ -41,9 +41,8 @@ class copyutils{
             xcopy $sor, $des /q /y /z /j /v | Out-Null
         } else {
             $sor = $sor -replace '\\', '/'
-            write-host $sor
             $des = $des -replace '\\', '/'
-            write-host $des
+            mkdir -p $des
             cp $sor $des -r
         }
         #    
