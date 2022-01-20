@@ -44,7 +44,7 @@ Class testpsshredxml {
         Write-Host 'Starting Paths Testing'
         #
         if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape($this.process_loc))){
-            Throw 'processvars[0] not correct'
+            Throw ('processvars[0] not correct:' + $inp.processvars[0] + '~=' + $this.process_loc)
         }
         #
         if (!([regex]::Escape($inp.processvars[1]) -contains [regex]::Escape(($this.process_loc + '\astropath_ws\shredxml\M21_1\flatw')))){
