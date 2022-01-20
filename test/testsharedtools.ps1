@@ -59,7 +59,7 @@
         #
         Write-Host 'test create dirs and files started'
         #
-        $logpath = $PSScriptRoot + '\..\logfiles'
+        $logpath = $PSScriptRoot + '\..\data\logfiles'
         #
         Write-Host $logpath
         $tools.createdirs($logpath)
