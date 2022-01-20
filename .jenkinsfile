@@ -33,7 +33,7 @@ pipeline {
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
       }
     }
-    
+    /*
     stage('pip install') {
       steps {
         sh 'pip install .[all]'
@@ -154,7 +154,7 @@ pipeline {
             }
           }
         }
-
+	*/
         stage('meanimage') {
           stages {
             stage('test meanimage') {
@@ -171,7 +171,7 @@ pipeline {
             }
           }
         }
-
+	/*
         stage('flatfield cohorts') {
           stages {
             stage('batch flatfield multicohort') {
@@ -210,6 +210,7 @@ pipeline {
             sh 'python -m pyflakes .'
           }
         }
+	*/
         stage('ps shredxml') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
