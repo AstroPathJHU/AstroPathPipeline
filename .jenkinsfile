@@ -157,21 +157,23 @@ pipeline {
         }
 	*/
         stage('meanimage') {
-          stages {
-            stage('test meanimage') {
+        //  stages {
+        //    stage('test meanimage') {
               steps {
 		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
                 // sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimage'
               }
             }
+	/*
             stage('flatfield documents') {
               steps {
-               // sh 'cd documents/flatfield; pdflatex flatfield_documentation.tex; bibtex flatfield_documentation; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
-               // sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
+                sh 'cd documents/flatfield; pdflatex flatfield_documentation.tex; bibtex flatfield_documentation; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
               }
             }
-          }
-        }
+	*/
+       //   }
+       // }
 	/*
         stage('flatfield cohorts') {
           stages {
