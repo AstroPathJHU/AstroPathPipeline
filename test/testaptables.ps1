@@ -114,7 +114,7 @@
             Throw ('Cannot open config file. ' + $_.Exception.Message)
         }
         #
-        write-host " " $internal_apids 
+        write-host " " ($internal_apids | Out-String)
         #
     }
     #

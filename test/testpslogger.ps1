@@ -69,9 +69,13 @@
         #
         Write-Host 'write to log tests started'
         #
+        Write-Host 'write to main log'
+        #
         $log.level = 4
         #
         $log.Start('shredxml-test')
+        #
+        Write-Host 'write to console log'
         #
         $log.level = 8
         #
@@ -79,9 +83,13 @@
         #
         $log.level = 12
         #
+        Write-Host 'write to main log and console'
+        #
         $log.Start('shredxml-test')
         #
         $log.level = 2
+        #
+        Write-Host 'write to slide log'
         #
         $log.Start('shredxml-test')
         #
