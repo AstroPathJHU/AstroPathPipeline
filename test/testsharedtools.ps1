@@ -96,6 +96,14 @@
         Write-Host 'test create dirs and files finished'
         #
     }
+    #
+    [void]testcopy($tools){
+        #
+        Write-Host 'test copy files started'
+
+
+        #
+    }
 }
 
 #

@@ -61,7 +61,7 @@
         }
         #
         if (!([regex]::Escape($inp.processvars[3]) -contains [regex]::Escape(($testloc + '\flatfield\flatfield_BatchID_8.bin')))){
-            Write-Host 'batch flatfield file:' $this.sample.batchflatfield()
+            Write-Host 'batch flatfield file:' $inp.sample.batchflatfield()
             Throw ('processvars[3] not correct: ' + $inp.processvars[0] + '~=' + $testloc + '\flatfield\flatfield_BatchID_8.bin')
         }
         #
