@@ -53,16 +53,16 @@
         }
         #
         if (!([regex]::Escape($inp.processvars[1]) -contains [regex]::Escape(($testloc + '\flatw')))){
-            Throw ('processvars[1] not correct: ' + $inp.processvars[0] + '~=' + $testloc + '\flatw')
+            Throw ('processvars[1] not correct: ' + $inp.processvars[1] + '~=' + $testloc + '\flatw')
         }
         #
         if (!([regex]::Escape($inp.processvars[2]) -contains [regex]::Escape(($testloc + '\M21_1\im3\flatw')))){
-            Throw ('processvars[2] not correct: ' + $inp.processvars[0] + '~=' + $testloc + '\M21_1\im3\flatw')
+            Throw ('processvars[2] not correct: ' + $inp.processvars[2] + '~=' + $testloc + '\M21_1\im3\flatw')
         }
         #
         if (!([regex]::Escape($inp.processvars[3]) -contains [regex]::Escape(($testloc + '\flatfield\flatfield_BatchID_8.bin')))){
             Write-Host 'batch flatfield file:' $inp.sample.batchflatfield()
-            Throw ('processvars[3] not correct: ' + $inp.processvars[0] + '~=' + $testloc + '\flatfield\flatfield_BatchID_8.bin')
+            Throw ('processvars[3] not correct: ' + $inp.processvars[3] + '~=' + $testloc + '\flatfield\flatfield_BatchID_8.bin')
         }
         #
         if (!(test-path $inp.processloc)){

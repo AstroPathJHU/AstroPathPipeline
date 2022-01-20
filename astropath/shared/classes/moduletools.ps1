@@ -43,15 +43,7 @@
     ----------------------------------------- #>
     #
     [void]BuildProcessLocPaths($task){
-        ##Adjust if testing on jenkins
-        #Write-Host 'Project Data FWpath: ' $this.sample.project_data.fwpath
-        #Write-Host 'Sample: ' $this.sample
-        #if ($this.sample.project_data.fwpath -match '/var/lib/jenkins') {
-        #    $fwpath = $this.sample.project_data.fwpath
-        #}
-        #else {
-            $fwpath = '\\'+$this.sample.project_data.fwpath
-        #}
+        $fwpath = '\\'+$this.sample.project_data.fwpath
         $this.processvars = @($this.sample.basepath, $fwpath, `
             $this.sample.flatwim3folder(), $this.sample.batchflatfield())
         #
@@ -68,7 +60,7 @@
                 [regex]::escape('\\'+$this.sample.project_data.fwpath), `
                 ($this.processloc+'\flatw')
             $this.processvars = @($processvarsa[0], $processvarsb, `
-                $processvarsa[1], $processvarsa[2], 1)
+                $processvarsa[2], $processvarsa[3], 1)
         } else {
             $this.processloc = $this.sample.flatwfolder()
         }
