@@ -104,17 +104,25 @@ class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationSampl
     ]
 
   def inputfiles(self, **kwargs):
-    return [
+    result = [
       *super().inputfiles(**kwargs),
-      self.csv("affine"),
     ]
+    if self.annotationpositionfromaffineshift:
+      result += [
+        self.csv("affine"),
+      ]
+    return result
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [
+    result = [
       *super().workflowdependencyclasses(**kwargs),
-      AlignSample,
     ]
+    if kwargs["annotationpositionfromaffineshift"]:
+      result += [
+        AlignSample,
+      ]
+    return result
 
   @classmethod
   def logmodule(cls): return "writeannotationinfo"
