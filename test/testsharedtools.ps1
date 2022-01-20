@@ -18,6 +18,7 @@
         $this.testconstructor()
         $tools = sharedtools
         $this.testcheckgitrepo($tools)
+        $this.testcreatedirs($tools)
         #
     }
     #
