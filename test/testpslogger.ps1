@@ -18,9 +18,7 @@
         $this.testloggerconstruction()
         #
         $log = logger $this.mpath 'shredxml' 'M21_1'
-        $log.basepath = $PSScriptRoot + '\data'
-        $log.defpaths()
-        Write-Host $log.project_data
+        Write-Host ($log.project_data | out-string)
         #
         $this.testwritestartmessage($log)
         #
@@ -97,13 +95,6 @@
         #
     }
     #
-    [void]correctlogger($log){
-        #
-        $log.basepath = $PSScriptRoot + '\data'
-        $log.defpaths()
-        Write-Host $log.project_data
-        #
-    }
 }
 #
 # launch test and exit if no error found

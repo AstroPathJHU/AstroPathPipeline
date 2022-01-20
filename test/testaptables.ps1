@@ -20,6 +20,7 @@
         $this.testapidfiles2($tools)
         $this.testconfiginfo($tools)
         $this.testcohortsinfo($tools)
+        $this.correctcohortsinfo($tools)
         #
     }
     #
@@ -100,7 +101,7 @@
             Throw ('Cannot open config file. ' + $_.Exception.Message)
         }
         #
-        write-host " " $internal_apids 
+        write-host " " $internal_apids | Format-Table
         #
     }
     #
@@ -114,6 +115,30 @@
             Throw ('Cannot open config file. ' + $_.Exception.Message)
         }
         #
+        write-host " " ($internal_apids | Out-String)
+        #
+    }
+    #
+    # the cohorts info file have to be relative to the 
+    # particular branch which mean they also need to be 
+    # dynamically updated
+    #
+    [void]correctcohortsinfo($tools){
+        #
+        Write-Host 'Updating cohorts info. Output below:'
+        #
+        $cohort_csv_file = $this.mpath + '\AstropathCohortsProgress.csv'
+        $project_data = $this.OpencsvFileConfirm($cohort_csv_file)
+        $project_data[0].Dpath = $PSScriptRoot
+        Export-CSV $cohort_csv_file $project_data
+        #
+        $paths_csv_file = $this.mpath + '\AstropathPaths.csv'
+        $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
+        $paths_data[0].Dpath = $PSScriptRoot
+        $paths_data[0].FWpath = $PSScriptRoot + '\flatw'
+        Export-CSV $paths_csv_file $paths_data
+        #
+        $internal_apids = $tools.ImportCohortsInfo($this.mpath)
         write-host " " ($internal_apids | Out-String)
         #
     }
