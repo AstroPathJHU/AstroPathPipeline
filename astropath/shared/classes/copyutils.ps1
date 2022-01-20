@@ -40,8 +40,10 @@ class copyutils{
         if ($this.isWindows()){
             xcopy $sor, $des /q /y /z /j /v | Out-Null
         } else {
-            $sor = $sor -replace '\', '/'
-            $des = $des -replace '\', '/'
+            $sor = $sor -replace '\\', '/'
+            write-host $sor
+            $des = $des -replace '\\', '/'
+            write-host $des
             cp $sor $des -r
         }
         #    
