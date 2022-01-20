@@ -127,6 +127,13 @@ class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationSampl
   @classmethod
   def logmodule(cls): return "writeannotationinfo"
 
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "annotationpositionfromaffineshift": self.annotationpositionfromaffineshift,
+    }
+
 class WriteAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCohort, AnnotationInfoWriterArgumentParser):
   sampleclass = WriteAnnotationInfoSample
 
@@ -136,6 +143,13 @@ class WriteAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCoho
       **super().initiatesamplekwargs,
       "annotationsource": self.annotationsource,
       "annotationposition": self.annotationposition,
+      "annotationpositionfromaffineshift": self.annotationpositionfromaffineshift,
+    }
+
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
       "annotationpositionfromaffineshift": self.annotationpositionfromaffineshift,
     }
 
