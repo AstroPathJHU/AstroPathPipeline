@@ -44,15 +44,56 @@
         #
         Write-Host 'root: ' $tools.defRoot()
         Write-Host 'is Windows: ' $tools.isWindows()
-        Write-Host 'py package path: ' $tools.pypackagepath() 
+        Write-Host 'Git repo path: ' $tools.pypackagepath() 
         Write-Host 'Git installed: ' $tools.checkgitinstalled()
         Write-Host 'Git repo: ' $tools.checkgitrepo()
-        # Write-Host 'Git version: ' $tools.getgitversion()
-        # Write-Host 'Git status: ' $tools.checkgitstatus() 
-        # Write-Host 'Git full version: ' $tools.getfullversion()
+        Write-Host 'Git version: ' $tools.getgitversion()
+        Write-Host 'Git status: ' $tools.checkgitstatus() 
+        Write-Host 'Git full version: ' $tools.getfullversion()
+        #
+    }
+    #
+    [void]testcreatedirs($tools){
+        #
+        Write-Host 'test create dirs and files started'
+        #
+        $logpath = $this.mpath + '\data\logfiles'
+        $tools.createdirs($logpath)
+        #
+        if (!(test-path $logpath)){
+            Throw 'could not create folder in data'
+        }
+        #
+        Write-Host 'dir created'
+        #
+        $logfile = $logpath + '\logfile.log'
+        $content = 'log file contents'
+        #
+        set-content $logfile $content -EA Stop
+        #
+        Write-Host 'file created'
+        #
+        $tools.setfile($logfile, $content)
+        #
+        Write-Host 'setfile checked'
+        #
+        $tools.popfile($logfile, $content)
+        #
+        Write-Host 'popfile checked'
+        #
+        $tools.removedir($logpath)
+        #
+        Write-Host 'remove dir checked'
+        #
+        $tools.popfile($logfile, $content)
+        #
+        Write-Host 'pop file without dir checked'
+        #
+        Write-Host 'test create dirs and files finished'
         #
     }
 }
+
 #
 # launch test and exit if no error found
 #
