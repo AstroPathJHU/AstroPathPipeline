@@ -17,6 +17,7 @@
         $this.importmodule()
         $this.testloggerconstruction()
         $log = logger $this.mpath 'shredxml' 'M21_1'
+        $this.testwritestartmessage($log)
         #
     }
     #
@@ -28,6 +29,8 @@
     }
     #
     [void]testloggerconstruction(){
+        #
+        Write-Host '[logger] construction tests started'
         #
         try {
             $log = logger
@@ -53,11 +56,31 @@
             Throw ('[logger] construction with [4] input(s) failed. ' + $_.Exception.Message)
         }
         #
+        Write-Host '[logger] construction tests finished'
+        #
     }
     #
     [void]testwritestartmessage($log){
         #
+        Write-Host 'write to log tests started'
+        #
+        $log.level = 4
+        #
         $log.Start('shredxml-test')
+        #
+        $log.level = 8
+        #
+        $log.Start('shredxml-test')
+        #
+        $log.level = 12
+        #
+        $log.Start('shredxml-test')
+        #
+        $log.level = 2
+        #
+        $log.Start('shredxml-test')
+        #
+        Write-Host 'write to log tests finished'
         #
     }
 }

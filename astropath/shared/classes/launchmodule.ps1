@@ -8,7 +8,7 @@ class launchmodule : mylogger{
     launchmodule($mpath, $module, $val) : base($mpath, $module){
         #
         $this.val = $val
-        $this.level = 4 + 8
+        $this.level = 4
         #
         if ($module -match 'batch'){
             $this.sampledefbatch($val[1], $val[0])
