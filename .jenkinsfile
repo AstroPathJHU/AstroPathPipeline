@@ -31,6 +31,7 @@ pipeline {
 	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsharedtools.ps1'
 	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testaptables.ps1'            
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
+	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
       }
     }
     /*
