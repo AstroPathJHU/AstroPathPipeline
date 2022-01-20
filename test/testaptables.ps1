@@ -128,12 +128,12 @@
         Write-Host 'Updating cohorts info. Output below:'
         #
         $cohort_csv_file = $this.mpath + '\AstropathCohortsProgress.csv'
-        $project_data = $this.OpencsvFileConfirm($cohort_csv_file)
+        $project_data = $tools.OpencsvFileConfirm($cohort_csv_file)
         $project_data[0].Dpath = $PSScriptRoot
         Export-CSV $cohort_csv_file $project_data
         #
         $paths_csv_file = $this.mpath + '\AstropathPaths.csv'
-        $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
+        $paths_data = $tools.OpencsvFileConfirm($paths_csv_file)
         $paths_data[0].Dpath = $PSScriptRoot
         $paths_data[0].FWpath = $PSScriptRoot + '\flatw'
         Export-CSV $paths_csv_file $paths_data
