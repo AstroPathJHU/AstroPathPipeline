@@ -19,6 +19,7 @@
         $tools = sharedtools
         $this.testapidfiles2($tools)
         $this.testconfiginfo($tools)
+        $this.testcohortsinfo($tools)
         #
     }
     #
@@ -95,6 +96,20 @@
         #
         try {
             $internal_apids = $tools.ImportConfigInfo($this.mpath)
+        } Catch {
+            Throw ('Cannot open config file. ' + $_.Exception.Message)
+        }
+        #
+        write-host " " $internal_apids 
+        #
+    }
+    #
+    [void]testcohortsinfo($tools){
+        #
+        Write-Host 'Testing Cohorts info method. Output below:'
+        #
+        try {
+            $internal_apids = $tools.ImportCohortsInfo($this.mpath)
         } Catch {
             Throw ('Cannot open config file. ' + $_.Exception.Message)
         }

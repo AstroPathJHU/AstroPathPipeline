@@ -16,7 +16,12 @@
         #
         $this.importmodule()
         $this.testloggerconstruction()
+        #
         $log = logger $this.mpath 'shredxml' 'M21_1'
+        $log.basepath = $PSScriptRoot + '\data'
+        $log.defpaths()
+        Write-Host $log.project_data
+        #
         $this.testwritestartmessage($log)
         #
     }
@@ -81,6 +86,14 @@
         $log.Start('shredxml-test')
         #
         Write-Host 'write to log tests finished'
+        #
+    }
+    #
+    [void]correctlogger($log){
+        #
+        $log.basepath = $PSScriptRoot + '\data'
+        $log.defpaths()
+        Write-Host $log.project_data
         #
     }
 }
