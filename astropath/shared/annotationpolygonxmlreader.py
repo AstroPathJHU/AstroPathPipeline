@@ -1,4 +1,4 @@
-import abc, argparse, collections, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
+import abc, argparse, collections, hashlib, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.misc import ArgParseAddToDict
@@ -244,9 +244,20 @@ class XMLPolygonAnnotationFile(units.ThingWithPscale):
     if not self.annotationinfofilename.exists():
       raise FileNotFoundError(f"Can't read the annotation info from {self.annotationinfofilename} because it doesn't exist")
     return self.readtable(self.annotationinfofilename, AnnotationInfo)
+  @methodtools.lru_cache()
   @property
   def annotationinfo(self):
-    return self.readannotationinfo()
+    result = self.readannotationinfo()
+    hashdict = {}
+    for info in result:
+      if info.xmlfile not in hashdict:
+        with open(self.annotationspolygonsxmlfile.parent/info.xmlfile, "rb") as f:
+          hash = hashlib.sha256()
+          hash.update(f.read())
+          hashdict[info.xmlfile] = hash.hexdigest()
+      if info.xmlhash != hashdict[info.xmlfile]:
+        raise ValueError(f"xml hash {info.xmlhash} in the annotation info doesn't match the current hash of {info.xmlfile}")
+    return result
 
 class XMLPolygonAnnotationReader(XMLPolygonAnnotationFile, units.ThingWithApscale, ThingWithLogger):
   """
@@ -574,11 +585,21 @@ class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMa
     result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.pscale, areacutoff=self.tissuemaskpolygonareacutoff()))
     return result
 
-class SingleXMLPolygonAnnotationFile(XMLPolygonAnnotationFile):
+class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFile, ThingWithLogger):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
+  @property
+  @abc.abstractmethod
+  def annotationsource(self): pass
+  @property
+  @abc.abstractmethod
+  def annotationposition(self): pass
+
   @methodtools.lru_cache()
-  def getannotationinfo(self):
+  def getannotationinfo(self, *, log=False):
+    logger = self.logger if log else dummylogger
     xmlfile = self.annotationspolygonsxmlfile
-    infofile = self.annotationinfofilename
     with open(xmlfile, "rb") as f:
       nodes = jxmlease.parse(f)["Annotations"]["Annotation"]
       if isinstance(nodes, jxmlease.XMLDictNode): nodes = [nodes]
@@ -591,6 +612,11 @@ class SingleXMLPolygonAnnotationFile(XMLPolygonAnnotationFile):
       hash.update(f.read())
       xmlsha = hash.hexdigest()
 
+    message = f"xml file {xmlfile.name}, hash {xmlsha}, contains annotations drawn on the {self.annotationsource}"
+    if self.annotationposition is not None:
+      message += f", image position {self.annotationposition}"
+    logger.info(message)
+
     annotationinfos = [
       AnnotationInfo(
         sampleid=self.SampleID,
@@ -600,7 +626,7 @@ class SingleXMLPolygonAnnotationFile(XMLPolygonAnnotationFile):
         pscale=self.pscale,
         xmlfile=xmlfile.name,
         xmlsha=xmlsha,
-      ) for name in names
+      ) for name in nodedict
     ]
 
     return annotationinfos
@@ -613,7 +639,7 @@ class SingleXMLPolygonAnnotationFile(XMLPolygonAnnotationFile):
 
     newfile, = {i.xmlfile for i in newinfo}
     newsha, = {i.xmlsha for i in newinfo}
-    assert newfile == self.annotationinfofilename.name
+    assert newfile == xmlfile.name
 
     try:
       oldinfo = super().annotationinfo
@@ -628,7 +654,7 @@ class SingleXMLPolygonAnnotationFile(XMLPolygonAnnotationFile):
       if oldfile != newfile:
         raise ValueError(f"AnnotationInfos in {xmlfile} are from the wrong filename {oldfile}")
       if oldsha != xmlfile.xmlsha:
-        raise ValueError(f"AnnotationInfos in {xmlfile} are from a different version of the file with hash {oldsha}, current hash is {xmlsha}.")
+        raise ValueError(f"AnnotationInfos in {xmlfile} are from a different version of the file with hash {oldsha}, current hash is {xmlfile.xmlsha}.")
 
       try:
         for old, new in more_itertools.zip_equal(oldinfo, newinfo):
@@ -640,6 +666,7 @@ class SingleXMLPolygonAnnotationFile(XMLPolygonAnnotationFile):
       return oldinfo
 
   def writeannotationinfos(self):
+    self.getannotationinfo(log=True)
     return writetable(self.annotationinfofilename, self.annotationinfo)
 
 def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):

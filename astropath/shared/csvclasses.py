@@ -191,6 +191,8 @@ class AnnotationInfo(DataClassWithPscale):
   isonwsi: bool = boolasintfield(False)
   xposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
   yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
+  xmlfile: str
+  xmlsha: str
 
   @property
   def isonqptiff(self): return not self.isonwsi

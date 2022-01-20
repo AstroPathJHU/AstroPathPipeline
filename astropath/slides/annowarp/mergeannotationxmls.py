@@ -1,81 +1,106 @@
 import collections, contextlib, jxmlease, methodtools, numpy as np, re
+from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationFileInfoWriter
 from ...shared.argumentparser import DbloadArgumentParser
-from ...shared.cohort import DbloadCohort, WorkflowCohort
+from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
 from ...shared.sample import WorkflowSample, XMLPolygonAnnotationSample
+from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict, ArgParseAddTupleToDict
 from ...utilities.tableio import writetable
 from ..align.alignsample import AlignSample, ReadAffineShiftSample
 
 class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
-  def __init__(self, *args, annotationsourcedict, annotationpositiondict, **kwargs):
-    self.__annotationsourcedict = annotationsourcedict
-    self.__annotationpositiondict = annotationpositiondict
+  def __init__(self, *args, annotationsource, annotationposition, annotationpositionfromaffineshift, **kwargs):
+    providedposition = annotationposition is not None or annotationpositionfromaffineshift
+    if annotationsource == "wsi":
+      if not providedposition:
+        raise ValueError("For wsi annotations, have to provide the annotation position or specify that it's taken from the affine shift")
+    elif annotationsource == "qptiff":
+      if providedposition:
+        raise ValueError("Don't provide annotationposition for qptiff")
+    else:
+      assert False
+
+    self.__annotationsource = annotationsource
+    if annotationposition is not None:
+      annotationposition = np.array(annotationposition, dtype=units.unitdtype)
+    self.__annotationposition = annotationposition
+    self.__annotationpositionfromaffineshift = annotationpositionfromaffineshift
     super().__init__(*args, **kwargs)
 
   @property
-  def annotationsourcedict(self): return self.__annotationsourcedict
+  def annotationsource(self): return self.__annotationsource
   @property
-  def annotationpositiondict(self): return self.__annotationpositiondict
+  def annotationposition(self): return self.__annotationposition
+  @property
+  def annotationpositionfromaffineshift(self): return self.__annotationpositionfromaffineshift
 
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--annotation-source", nargs=2, action=ArgParseAddToDict, metavar=("ANNOTATION", "SOURCE"), default={}, help="source of the annotations (wsi or qptiff)", dest="annotationsourcedict", case_sensitive=False)
-    p.add_argument("--annotation-position", nargs=3, action=ArgParseAddTupleToDict, metavar=("ANNOTATION", "XPOS", "YPOS"), default={}, help="position of the annotations if they were drawn on the wsi", dest="annotationpositiondict", case_sensitive=False, value_type=float)
     g = p.add_mutually_exclusive_group()
-    g.add_argument("--annotations-on-wsi", action="store_const", dest="defaultsource", const="wsi", help="Unless otherwise specified, annotations are drawn on the wsi")
-    g.add_argument("--annotations-on-qptiff", action="store_const", dest="defaultsource", const="qptiff", help="Unless otherwise specified, annotations are drawn on the qptiff")
+    g.add_argument("--annotation-position", nargs=2, metavar=("XPOS", "YPOS"), help="position of the annotations if they were drawn on the wsi", dest="annotationposition", type=float)
+    g.add_argument("--annotation-position-from-affine-shift", action="store_true", dest="annotationpositionfromaffineshift")
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--annotations-on-wsi", action="store_const", dest="annotationsource", const="wsi", help="Unless otherwise specified, annotations are drawn on the wsi")
+    g.add_argument("--annotations-on-qptiff", action="store_const", dest="annotationsource", const="qptiff", help="Unless otherwise specified, annotations are drawn on the qptiff")
     return p
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
-    defaultsource = parsed_args_dict.pop("defaultsource")
-    annotationsourcedict = parsed_args_dict.pop("annotationsourcedict")
-    if defaultsource is not None:
-      annotationsourcedict = collections.defaultdict(lambda: defaultsource, annotationsourcedict)
-
-    annotationpositiondict = parsed_args_dict.pop("annotationpositiondict")
-    annotationpositiondict = collections.defaultdict(lambda: None, annotationpositiondict)
+    annotationsource = parsed_args_dict.pop("annotationsource")
+    annotationposition = parsed_args_dict.pop("annotationposition")
+    annotationpositionfromaffineshift = parsed_args_dict.pop("annotationpositionfromaffineshift")
 
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-      "annotationsourcedict": annotationsourcedict,
-      "annotationpositiondict": annotationpositiondict,
+      "annotationsource": annotationsource,
+      "annotationposition": annotationposition,
+      "annotationpositionfromaffineshift": annotationpositionfromaffineshift,
     }
 
-class AnnotationInfoWriterSampleBase(ReadAffineShiftSample, AnnotationInfoWriterArgumentParser):
+class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationSample, WorkflowSample, AnnotationInfoWriterArgumentParser, XMLPolygonAnnotationFileInfoWriter):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    dct = self.annotationpositiondict
-    for k, v in dct.items():
-      dct[k] = np.array(v) * self.onepixel
 
+  def run(self):
+    self.writeannotationinfos()
+
+  @methodtools.lru_cache()
   @property
-  def annotationinfocsv(self):
-    return self.csv("annotationinfo")
-
-  def writeannotationinfo(self, names):
-    for name in names:
-      if self.annotationsourcedict[name] == "wsi" and self.annotationpositiondict[name] is None:
-        self.annotationpositiondict[name] = self.affineshift
-    annotationinfos = [
-      AnnotationInfo(
-        sampleid=self.SampleID,
-        name=name,
-        isonwsi={"wsi": True, "qptiff": False}[self.annotationsourcedict[name]],
-        position=self.annotationpositiondict[name],
-        pscale=self.pscale,
-      ) for name in names
-    ]
-    writetable(self.annotationinfocsv, annotationinfos)
+  def annotationposition(self):
+    result = super().annotationposition
+    if result is None:
+      if self.annotationsource == "wsi":
+        assert self.annotationpositionfromaffineshift
+        return self.affineshift
+      elif self.annotationsource == "qptiff":
+        return None
+      else:
+        assert False
+    else:
+      if self.annotationsource == "wsi":
+        pass
+      elif self.annotationsource == "qptiff":
+        assert False
+      else:
+        assert False
+      return result * self.onepixel
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, dbloadroot, **kwargs):
+  def getoutputfiles(cls, **kwargs):
+    annotationsxmlregex = kwargs["annotationsxmlregex"]
+    im3root = kwargs["im3root"]
+    Scan = kwargs["Scan"]
+    SlideID = kwargs["SlideID"]
+    xmls = [
+      _ for _ in (im3root/SlideID/"im3"/f"Scan{Scan}").glob(f"*{SlideID}*annotations..polygons*.xml")
+      if annotationsxmlregex is None or re.match(annotationsxmlregex, _.name)
+    ]
     return [
-      *super().getoutputfiles(SlideID=SlideID, **kwargs),
-      dbloadroot/SlideID/"dbload"/f"{SlideID}_annotationinfo.csv",
+      *super().getoutputfiles(**kwargs),
+      *(xml.with_suffix(".annotationinfo.csv") for xml in xmls)
     ]
 
   def inputfiles(self, **kwargs):
@@ -91,39 +116,20 @@ class AnnotationInfoWriterSampleBase(ReadAffineShiftSample, AnnotationInfoWriter
       AlignSample,
     ]
 
-class AnnotationInfoWriterCohortBase(DbloadCohort, AnnotationInfoWriterArgumentParser):
+  @classmethod
+  def logmodule(cls): return "writeannotationinfo"
+
+class WriteAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCohort, AnnotationInfoWriterArgumentParser):
+  sampleclass = WriteAnnotationInfoSample
+
   @property
   def initiatesamplekwargs(self):
     return {
       **super().initiatesamplekwargs,
-      "annotationsourcedict": self.annotationsourcedict.copy(),
-      "annotationpositiondict": self.annotationpositiondict.copy(),
+      "annotationsource": self.annotationsource,
+      "annotationposition": self.annotationposition,
+      "annotationpositionfromaffineshift": self.annotationpositionfromaffineshift,
     }
-
-class WriteAnnotationInfoSample(AnnotationInfoWriterSampleBase, XMLPolygonAnnotationSample, WorkflowSample):
-  def run(self):
-    xmlfile = self.annotationspolygonsxmlfile
-    with open(xmlfile, "rb") as f:
-      nodes = jxmlease.parse(f)["Annotations"]["Annotation"]
-      if isinstance(nodes, jxmlease.XMLDictNode): nodes = [nodes]
-      nodedict = {node.get_xml_attr("Name").lower(): node for node in nodes}
-      if len(nodes) != len(nodedict):
-        raise ValueError(f"Duplicate annotation names in {xmlfile}: {collections.Counter(node.get_xml_attr('Name').lower() for node in nodes)}")
-
-      self.writeannotationinfo(nodedict.keys())
-
-  @classmethod
-  def logmodule(cls):
-    return "annotationinfo"
-
-  def inputfiles(self, **kwargs):
-    return [
-      *super().inputfiles(**kwargs),
-      self.annotationspolygonsxmlfile,
-    ]
-
-class WriteAnnotationInfoCohort(AnnotationInfoWriterCohortBase, WorkflowCohort):
-  sampleclass = WriteAnnotationInfoSample
 
 class MergeAnnotationXMLsArgumentParser(AnnotationInfoWriterArgumentParser, DbloadArgumentParser):
   def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
@@ -164,7 +170,7 @@ class MergeAnnotationXMLsArgumentParser(AnnotationInfoWriterArgumentParser, Dblo
       "skipannotations": parsed_args_dict.pop("skip_annotation"),
     }
 
-class MergeAnnotationXMLsSample(AnnotationInfoWriterSampleBase, WorkflowSample, MergeAnnotationXMLsArgumentParser):
+class MergeAnnotationXMLsSample(WorkflowSample, MergeAnnotationXMLsArgumentParser):
   @property
   def xmloutput(self):
     return self.scanfolder/f"{self.SlideID}_Scan{self.Scan}.annotations.polygons.merged.xml"
@@ -242,7 +248,7 @@ class MergeAnnotationXMLsSample(AnnotationInfoWriterSampleBase, WorkflowSample, 
   def run(self, **kwargs):
     return self.mergexmls(**kwargs)
 
-class MergeAnnotationXMLsCohort(AnnotationInfoWriterCohortBase, WorkflowCohort, MergeAnnotationXMLsArgumentParser):
+class MergeAnnotationXMLsCohort(WorkflowCohort, MergeAnnotationXMLsArgumentParser):
   sampleclass = MergeAnnotationXMLsSample
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
