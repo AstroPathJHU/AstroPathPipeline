@@ -36,7 +36,13 @@ class copyutils{
      Usage: copy(sor, des)
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des){
-        xcopy $sor, $des /q /y /z /j /v | Out-Null
+        #
+        if ($this.isWindows()){
+            xcopy $sor, $des /q /y /z /j /v | Out-Null
+        } else {
+            cp $sor $des -r
+        }
+        #    
         $this.verifyChecksum($sor, $des, '*', 0)
     }
     <# -----------------------------------------
