@@ -20,6 +20,7 @@
         $tools = sharedtools
         $this.testcheckgitrepo($tools)
         $this.testcreatedirs($tools)
+        $this.testcopy($tools)
         #
     }
     #
@@ -100,9 +101,41 @@
     [void]testcopy($tools){
         #
         Write-Host 'test copy files started'
-
-
         #
+        $sor = $PSScriptRoot + '\data\logfiles'
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile.log'
+        $content = 'log file contents'
+        $tools.popfile($sorfile, $content)
+        #
+        if (!(Test-Path $sorfile)){
+            Throw 'write failed in copy tests'
+        }
+        #
+        $des = $PSScriptRoot + 'data\logfiles2'
+        $desfile = $des + '\logfile.log'
+        #
+        Write-Host 'testing single copy'
+        #
+        $tools.copy($sorfile, $des)
+        #
+        if (!(Test-Path $desfile)){
+            Throw 'could not copy single file'
+        } else {
+             $tools.removedir($des)
+             if (Test-Path $des){
+                Throw 'could not remove directory in copy tests'
+             }
+        }
+        #
+        Write-Host 'testing robo copy'
+        #
+        $tools.copy($sor, $des, 'log')
+        #
+        if (!(Test-Path $desfile)){
+            Throw 'could not copy using robocopy'
+        }
+
+
     }
 }
 
