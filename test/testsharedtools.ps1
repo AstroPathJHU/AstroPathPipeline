@@ -59,6 +59,8 @@
         Write-Host 'test create dirs and files started'
         #
         $logpath = $this.mpath + '\data\logfiles'
+        #
+        Write-Host $logpath
         $tools.createdirs($logpath)
         #
         if (!(test-path $logpath)){
