@@ -26,10 +26,10 @@ Class testpsshredxml {
         #
         # Run Tests
         #
-        #$this.TestPaths($inp)
-        #$this.ShredXMLTest($inp)
-        #$this.ReturnDataTest($inp)
-        #$this.CleanupTest($inp)
+        $this.TestPaths($inp)
+        $this.ShredXMLTest($inp)
+        $this.ReturnDataTest($inp)
+        $this.CleanupTest($inp)
         #
     }
     #

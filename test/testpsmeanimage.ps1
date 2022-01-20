@@ -26,10 +26,10 @@ Class testpsmeanimage {
         #
         # Run Tests
         #
-        #$this.DownloadFilesTest($inp)
-        #$this.ShredDatTest($inp)
-        #$this.ReturnDataTest($inp)
-        #$this.CleanupTest($inp)
+        $this.DownloadFilesTest($inp)
+        $this.ShredDatTest($inp)
+        $this.ReturnDataTest($inp)
+        $this.CleanupTest($inp)
     }
     #
     importmodule(){
@@ -85,7 +85,7 @@ Class testpsmeanimage {
 #
 # launch test and exit if no error found
 #
-#$test = [testpsmeanimage]::new()
+$test = [testpsmeanimage]::new()
 exit 0
 
 #Remove temporary processing directory
