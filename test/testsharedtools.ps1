@@ -10,6 +10,7 @@
  Class testsharedtools {
     #
     [string]$mpath 
+    [string]$module 
     [string]$process_loc
     #
     testsharedtools(){
@@ -23,8 +24,8 @@
     }
     #
     importmodule(){
-        $module = $PSScriptRoot + '/../astropath'
-        Import-Module $module -EA SilentlyContinue
+        $this.module = $PSScriptRoot + '/../astropath'
+        Import-Module $this.module -EA SilentlyContinue
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
     }
@@ -58,7 +59,7 @@
         #
         Write-Host 'test create dirs and files started'
         #
-        $logpath = $this.mpath + '\data\logfiles'
+        $logpath = $PSScriptRoot + '\..\logfiles'
         #
         Write-Host $logpath
         $tools.createdirs($logpath)
