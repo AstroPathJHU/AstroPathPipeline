@@ -103,17 +103,6 @@
         #
     }
     #
-    [switch]isWindows(){
-        #
-        try{
-            $OS = (Get-WMIObject win32_operatingsystem).name
-            return $true
-        } catch {
-            return $false
-        }
-        #
-    }
-    #
     [string]defRoot(){
         ##
         $r = $PSScriptRoot -replace( '/', '\')

@@ -10,6 +10,22 @@ class copyutils{
     #
     copyutils(){}
     <# -----------------------------------------
+     isWindows
+     check if OS is windows (T) or not (F)
+     ------------------------------------------
+     Usage: isWindows()
+    ----------------------------------------- #>
+    [switch]isWindows(){
+        #
+        try{
+            $OS = (Get-WMIObject win32_operatingsystem).name
+            return $true
+        } catch {
+            return $false
+        }
+        #
+    }
+    <# -----------------------------------------
      copy
      copy a file from one location to another
      ------------------------------------------
