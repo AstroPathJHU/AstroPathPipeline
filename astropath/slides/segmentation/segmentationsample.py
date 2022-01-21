@@ -115,7 +115,8 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         os.environ['nnUNet_raw_data_base'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
         os.environ['nnUNet_preprocessed'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
         os.environ['RESULTS_FOLDER'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
-        nnunet_cmd = f'nnUNet_predict -i {str(temp_dir.resolve())} -o {str(self.__workingdir.resolve())} -t 500 -m 2d'
+        nnunet_cmd = f'nnUNet_predict -i {str(temp_dir.resolve())} -o {str(self.__workingdir.resolve())}'
+        nnunet_cmd+= f' -t 500 -m 2d --num_threads_preprocessing {self.njobs} --num_threads_nifti_save {self.njobs}'
         try :
             os.system(nnunet_cmd)
         except Exception as e :
