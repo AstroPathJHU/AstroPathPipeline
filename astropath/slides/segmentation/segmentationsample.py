@@ -97,7 +97,7 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
             segmented_file_path = self.__workingdir/f'{rect.imagefile.name[:-4]}_nnunet_nuclear_segmentation.npz'
             #skip any rectangles that already have segmentation input or output
             if nifti_file_path.is_file() or segmented_nifti_path.is_file() or segmented_file_path.is_file() :
-                msg = f'\tSkipping writing NIfTI file for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
+                msg = f'Skipping writing NIfTI file for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
                 if segmented_nifti_path.is_file() or segmented_file_path.is_file() :
                     msg+=' (segmentation output already exists)'
                 elif nifti_file_path.is_file() :
@@ -105,18 +105,17 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                 self.logger.debug(msg)
                 continue
             with rect.using_image() as im :
-                self.logger.debug(f'\tWriting NIfTI file for {rect.imagefile.name} ({ir} of {len(self.rectangles)})')
+                self.logger.debug(f'Writing NIfTI file for {rect.imagefile.name} ({ir} of {len(self.rectangles)})')
                 img = im[:,:,np.newaxis]
                 img = img.transpose(2,0,1)
                 itk_img = sitk.GetImageFromArray(img)
                 itk_img.SetSpacing([1,1,999])
                 sitk.WriteImage(itk_img, str(nifti_file_path))
         #run the nnU-Net nuclear segmentation algorithm
-        os.environ['nnUNet_raw_data_base'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
-        os.environ['nnUNet_preprocessed'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
         os.environ['RESULTS_FOLDER'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
         nnunet_cmd = f'nnUNet_predict -i {str(temp_dir.resolve())} -o {str(self.__workingdir.resolve())}'
         nnunet_cmd+= f' -t 500 -m 2d --num_threads_preprocessing {self.njobs} --num_threads_nifti_save {self.njobs}'
+        self.logger.debug('Running nnU-Net....')
         try :
             os.system(nnunet_cmd)
         except Exception as e :
@@ -126,11 +125,13 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
             raise e
         finally :
             completed_files = 0
-            for rect in self.rectangles :
+            for ir,rect in enumerate(self.rectangles,start=1) :
                 nifti_file_path = temp_dir/f'{rect.imagefile.name[:-4]}_0000.nii.gz'
                 segmented_nifti_path = self.__workingdir/f'{rect.imagefile.name[:-4]}.nii.gz'
                 segmented_file_path = self.__workingdir/f'{rect.imagefile.name[:-4]}_nnunet_nuclear_segmentation.npz'
                 if segmented_nifti_path.is_file() :
+                    msg = f'Converting nnU-Net output for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
+                    self.logger.debug(msg)
                     itk_read_img = sitk.ReadImage(str(segmented_nifti_path),imageIO='NiftiImageIO')
                     output_img = np.zeros((itk_read_img.GetHeight(),itk_read_img.GetWidth()),dtype=np.float32)
                     for ix in range(output_img.shape[1]) :
