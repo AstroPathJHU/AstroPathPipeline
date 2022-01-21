@@ -233,6 +233,9 @@ class ThingWithAnnotationInfos(units.ThingWithPscale):
   @property
   @abc.abstractmethod
   def annotationinfofile(self): pass
+  @property
+  @abc.abstractmethod
+  def scanfolder(self): pass
   @methodtools.lru_cache()
   def readannotationinfo(self):
     if not self.annotationinfofile.exists():
@@ -249,8 +252,8 @@ class ThingWithAnnotationInfos(units.ThingWithPscale):
           hash = hashlib.sha256()
           hash.update(f.read())
           hashdict[info.xmlpath] = hash.hexdigest()
-      if info.xmlhash != hashdict[info.xmlpath]:
-        raise ValueError(f"xml hash {info.xmlhash} in the annotation info doesn't match the current hash of {info.xmlpath}")
+      if info.xmlsha != hashdict[info.xmlpath]:
+        raise ValueError(f"xml hash {info.xmlsha} in the annotation info doesn't match the current hash of {info.xmlpath}")
     return result
 
   def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
@@ -288,6 +291,8 @@ class XMLPolygonAnnotationFile(XMLPolygonAnnotationFileBase):
   def pscale(self): return self.__pscale
   @property
   def annotationspolygonsxmlfile(self): return self.__xmlfile
+  @property
+  def scanfolder(self): return self.annotationspolygonsxmlfile.parent
 
 class MergedAnnotationFiles(ThingWithAnnotationInfos):
   def __init__(self, *args, **kwargs):
@@ -659,7 +664,7 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
 
     message = f"xml file {xmlfile.name}, hash {xmlsha}, contains annotations drawn on the {self.annotationsource}"
     if self.annotationposition is not None:
-      message += f", image position {self.annotationposition}"
+      message += f", image position {(self.annotationposition / self.onepixel).astype(float)} pixels"
     logger.info(message)
 
     annotationinfos = [

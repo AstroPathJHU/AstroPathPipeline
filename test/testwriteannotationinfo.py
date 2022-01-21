@@ -11,20 +11,23 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     return [
       thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml",
       thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.annotationinfo.csv",
-      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"logfiles"/"M206-writeannotationinfo.log",
+      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"logfiles"/"M206-copyannotationinfo.log",
     ]
   @classmethod
   def filestocopy(cls):
-    for SlideID in "M206",:
-      yield thisfolder/"data"/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", thisfolder/"test_for_jenkins"/"writeannotationinfo"/SlideID/"im3"/"Scan1"
-      for csv in "constants", "affine":
-        yield thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_{csv}.csv", thisfolder/"test_for_jenkins"/"writeannotationinfo"/SlideID/"dbload"
+    for destroot in thisfolder/"test_for_jenkins"/"writeannotationinfo", thisfolder/"test_for_jenkins"/"writeannotationinfo"/"annotationposition":
+      for SlideID in "M206",:
+        yield thisfolder/"data"/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1"
+        yield thisfolder/"data"/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", (destroot/SlideID/"im3"/"Scan1", f"{SlideID}_Scan1.annotations.polygons_2.xml")
+        for csv in "constants", "affine":
+          yield thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_{csv}.csv", destroot/SlideID/"dbload"
 
   def testWriteAnnotationInfo(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     im3root = dbloadroot = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
-    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--annotations-on-qptiff", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
-    s = WriteAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID, annotationsource="qptiff", annotationposition=None, annotationpositionfromaffineshift=False)
+    regex = ".*annotations.polygons.xml"
+    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--annotations-on-qptiff", "--units", units, "--ignore-dependencies", "--allow-local-edits", "--annotations-xml-regex", regex]
+    s = WriteAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID, annotationsource="qptiff", annotationposition=None, annotationpositionfromaffineshift=False, annotationsxmlregex=regex)
 
     try:
       WriteAnnotationInfoCohort.runfromargumentparser(args)
@@ -65,7 +68,6 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testCopyAnnotationInfoFastUnits(self, **kwargs):
     self.testCopyAnnotationInfo(units="fast_microns", **kwargs)
 
-  @unittest.skip
   def testSkipAnnotation(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"
@@ -96,26 +98,27 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testSkipAnnotationFastUnits(self, **kwargs):
     self.testSkipAnnotation(units="fast_microns", **kwargs)
 
-  @unittest.skip
   def testAnnotationPosition(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
-    dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"
-    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--sampleregex", SlideID, "--annotation", "Good tissue", ".*[.]xml", "--annotation", "tumor", ".*[.]xml", "--debug", "--no-log", "--annotation-source", "tumor", "wsi", "--annotation-source", "Good tissue", "wsi", "--annotation-position", "Good tissue", "100", "100", "--units", units, "--ignore-dependencies"]
-    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, annotationsourcedict={}, annotationpositiondict={}, skipannotations=set())
+    dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"/"annotationposition"
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set())
+    commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
+    regex1 = ".*annotations.polygons.xml"
+    regex2 = ".*annotations.polygons_2.xml"
+    write1args = ["--annotations-on-wsi", "--annotation-position", "100", "100", "--annotations-xml-regex", regex1]
+    write2args = ["--annotations-on-wsi", "--annotation-position-from-affine-shift", "--annotations-xml-regex", regex2]
+    mergeargs = ["--annotation", "Good tissue", regex1, "--annotation", "tumor", regex2]
+
+    WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write1args)
+    WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write2args)
 
     try:
-      MergeAnnotationXMLsCohort.runfromargumentparser(args)
+      MergeAnnotationXMLsCohort.runfromargumentparser(commonargs+mergeargs)
 
       new = s.csv("annotationinfo")
       reffolder = root/"reference"/"writeannotationinfo"/"annotationposition"/SlideID/"dbload"
-      extrakwargs = {_: getattr(s, _) for _ in ("pscale",)}
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "scanfolder")}
       compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
-
-      with open(im3root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml", "rb") as f:
-        newxml = jxmlease.parse(f)
-      with open(root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml", "rb") as f:
-        oldxml = jxmlease.parse(f)
-      self.assertEqual(newxml, oldxml)
     except:
       self.saveoutput()
       raise
