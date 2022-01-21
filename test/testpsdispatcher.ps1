@@ -10,25 +10,26 @@
 #
 Class testpsdispatcher {
     #
+    [string]$mpath 
+    [string]$process_loc
+    #
     testpsdispatcher(){
         #
         # Setup Testing
         #
-        $module = '\\bki08\e$\working_code\dev\AstroPathPipelinePrivate\astropath'
-        Import-Module $module -EA SilentlyContinue
+        $this.importmodule()
         #
-        $processing = '\\Bki08\h\testing'
-        $mpath = '\\Bki08\h\testing\astropath_processing'
         $cred = Get-Credential -Message "Provide a user name (domain\username) and password"
-        $inp = [dispatcher]::new($mpath, 'shredxml', 'NA', 'NA', 'NA', $cred)
+        $inp = [dispatcher]::new($this.mpath, 'shredxml', 'NA', 'NA', 'NA', $cred)
         #
-        # Run Tests
-        #
-        $this.TestePaths($inp)
-        $this.ShredXMLTest($inp)
-        $this.ReturnDataTest($inp)
-        $this.CleanupTest($inp)
-        #
+    }
+    #
+    [void]importmodule(){
+        #$module = '\\bki08\e$\working_code\dev\AstroPathPipelinePrivate\astropath'
+        $module = $PSScriptRoot + '/../astropath'
+        Import-Module $module -EA SilentlyContinue
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
+        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
     }
     #
     [void]TestIntializeWorkerList($inp){

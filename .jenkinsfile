@@ -34,6 +34,7 @@ pipeline {
 	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
       }
     }
+
     stage('pip install') {
       steps {
         sh 'pip install .[all]'
@@ -89,6 +90,7 @@ pipeline {
             }
           }
         }
+		
         stage('zoom') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
@@ -164,7 +166,6 @@ pipeline {
                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimage'
               }
             }
-	
             stage('flatfield documents') {
               steps {
                 sh 'cd documents/flatfield; pdflatex flatfield_documentation.tex; bibtex flatfield_documentation; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
@@ -174,7 +175,7 @@ pipeline {
 	
           }
         }
-	
+		
         stage('flatfield cohorts') {
           stages {
             stage('batch flatfield multicohort') {

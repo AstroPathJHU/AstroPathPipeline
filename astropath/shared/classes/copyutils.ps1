@@ -10,6 +10,22 @@ class copyutils{
     #
     copyutils(){}
     <# -----------------------------------------
+     isWindows
+     check if OS is windows (T) or not (F)
+     ------------------------------------------
+     Usage: isWindows()
+    ----------------------------------------- #>
+    [switch]isWindows(){
+        #
+        try{
+            $OS = (Get-WMIObject win32_operatingsystem).name
+            return $true
+        } catch {
+            return $false
+        }
+        #
+    }
+    <# -----------------------------------------
      copy
      copy a file from one location to another
      ------------------------------------------
@@ -20,7 +36,13 @@ class copyutils{
      Usage: copy(sor, des)
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des){
-        xcopy $sor, $des /q /y /z /j /v | Out-Null
+        #
+        if ($this.isWindows()){
+            xcopy $sor, $des /q /y /z /j /v | Out-Null
+        } else {
+            $this.lxcopy($sor, $des)
+        }
+        #    
         $this.verifyChecksum($sor, $des, '*', 0)
     }
     <# -----------------------------------------
@@ -37,11 +59,15 @@ class copyutils{
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des, [array]$filespec){
         $filespeco = $filespec
-        if ($filespec -match '\*'){
-            robocopy $sor $des -r:3 -w:3 -np -E -mt:1 | out-null
+        if ($this.isWindows()){
+            if ($filespec -match '\*'){
+                robocopy $sor $des -r:3 -w:3 -np -E -mt:1 | out-null
+            } else {
+                $filespec = $filespec | foreach-object {'*' + $_}
+                robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:1 | out-null
+            }
         } else {
-            $filespec = $filespec | foreach-object {'*' + $_}
-            robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:1 | out-null
+            $this.lxcopy($sor, $des, $filespec)
         }
         $this.verifyChecksum($sor, $des, $filespeco, 0)
     }
@@ -61,11 +87,15 @@ class copyutils{
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des, [array]$filespec, [int]$threads){
         $filespeco = $filespec
-        if ($filespec -match '\*'){
-            robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads | out-null
+        if ($this.isWindows()){
+            if ($filespec -match '\*'){
+                robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads | out-null
+            } else {
+                $filespec = $filespec | foreach-object {'*' + $_}
+                robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads | out-null
+            }
         } else {
-            $filespec = $filespec | foreach-object {'*' + $_}
-            robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads | out-null
+            $this.lxcopy($sor, $des, $filespec)
         }
         $this.verifyChecksum($sor, $des, $filespeco, 0)
     }
@@ -86,13 +116,62 @@ class copyutils{
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des, [array]$filespec, [int]$threads, [string]$logfile){
         $filespeco = $filespec
-        if ($filespec -match '\*'){
-           $output = robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads -log:$logfile
+        if ($this.isWindows()){
+            if ($filespec -match '\*'){
+               $output = robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads -log:$logfile
+            } else {
+               $filespec = $filespec | foreach-object {'*' + $_}
+               $output = robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads -log:$logfile
+            }
         } else {
-           $filespec = $filespec | foreach-object {'*' + $_}
-           $output = robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads -log:$logfile
+            $this.lxcopy($sor, $des, $filespec)
         }
         $this.verifyChecksum($sor, $des, $filespeco, 0)
+    }
+    <# -----------------------------------------
+     lxcopy
+     copy a file from one location to another
+     on linux
+     ------------------------------------------
+     Input: 
+        -sor: source file path (one file)
+        -des: destination folder path
+     ------------------------------------------
+     Usage: lxcopy(sor, des)
+    ----------------------------------------- #>
+    [void]lxcopy($sor, $des){
+        #
+        $sor1 = $sor -replace '\\', '/'
+        $des1 = $des -replace '\\', '/'
+        mkdir -p $des1
+        cp $sor1 $des1 -r
+        #
+    }
+    <# -----------------------------------------
+     lxcopy
+     copy a file from one location to another
+     on linux
+     ------------------------------------------
+     Input: 
+        -sor: source file path (one file)
+        -des: destination folder path
+     ------------------------------------------
+     Usage: lxcopy(sor, des)
+    ----------------------------------------- #>
+    [void]lxcopy($sor, $des, $filespec){
+        #
+        $sor1 = ($sor -replace '\\', '/') + '/'
+        $des1 = $des -replace '\\', '/'
+        mkdir -p $des1
+        #
+        if (!($filespec -match '\*')){
+            $filespec = $filespec | foreach-object {'*' + $_}
+        }
+        #
+        $filespec | ForEach-Object{
+            cp ($sor1+$_) $des1 -r
+        }
+        #
     }
     <# -----------------------------------------
      listfiles
@@ -173,7 +252,13 @@ class copyutils{
                 if ($copycount -gt 5){
                     Throw ('failed to copy ' + $tempsor)
                 }
-                xcopy $tempsor, $des /q /y /z /j /v | Out-Null
+                #
+                if ($this.isWindows()){
+                    xcopy $tempsor, $des /q /y /z /j /v | Out-Null
+                } else {
+                    $this.lxcopy($sor, $des)
+                }
+                #
                 $copycount += 1
                 $this.verifyChecksum($tempsor, $des, '*', $copycount)
             }
