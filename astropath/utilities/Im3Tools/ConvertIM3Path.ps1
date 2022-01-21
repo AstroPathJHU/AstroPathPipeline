@@ -195,8 +195,8 @@ function write-convertim3log {
     # ----------------------------------------------------- #>
     [CmdletBinding(PositionalBinding=$false)]
     #
-    param([parameter(Mandatory=$false)][String[]]$myparams,
-          [parameter(Mandatory=$false)][String[]]$IM3_fd,
+    param([parameter(Mandatory=$false)][hashtable]$myparams,
+          [parameter(Mandatory=$false)][String]$IM3_fd,
           [parameter(Mandatory=$false)][Switch]$Start,
           [parameter(Mandatory=$false)][Switch]$Finish)
     #
