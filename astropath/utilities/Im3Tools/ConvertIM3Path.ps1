@@ -25,7 +25,7 @@ function ConvertIm3Path{
     param ([Parameter(Position=0)][string] $root1 = '',
            [Parameter(Position=1)][string] $root2 = '', 
            [Parameter(Position=2)][string] $sample = '',
-           [Parameter()[string] $images = '',
+           [Parameter()][string] $images = '',
            [Parameter()][switch]$inject,
            [Parameter()][switch]$shred, 
            [Parameter()][switch]$all,
