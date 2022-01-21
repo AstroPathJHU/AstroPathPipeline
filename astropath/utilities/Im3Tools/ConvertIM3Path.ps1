@@ -25,38 +25,113 @@ function ConvertIm3Path{
     param ([Parameter(Position=0)][string] $root1 = '',
            [Parameter(Position=1)][string] $root2 = '', 
            [Parameter(Position=2)][string] $sample = '',
-           [Parameter()][switch]$i,
-           [Parameter()][switch]$s, 
-           [Parameter()][switch]$a,
+           [Parameter()][string] $images,
+           [Parameter()][switch]$inject,
+           [Parameter()][switch]$shred, 
+           [Parameter()][switch]$all,
            [Parameter()][switch]$xml,
-           [Parameter()][switch]$d)
+           [Parameter()][switch]$xmlfull,
+           [Parameter()][switch]$dat)
+    #
+    test-convertim3params $PSBoundParameters
+    $scan = search-scan $root1 $sample
+    $im3 = search-im3 $scan
+    $flatw = search-flatw $root2 $sample -inject:$inject
+
+    #
+    write-convertim3log -myparams $PSBoundParameters -IM3_fd $IM3 -Start 
+    #
+    if (!($PSBoundParameters.ContainsKey('images'))){
+        $images = gci "$IM3\*" '*.im3'
+    } else {
+        $images = search-imagenames $IM3 $images
+    }
+    #
+    if ($images.Count -eq 0){
+         write-convertim3log -myparams $PSBoundParameters -IM3_fd $IM3 -Finish 
+         return
+    }
+    #
+    if ($shred) {
+        #
+        # for shred: extract the bit map and xml for each image. 
+        # then extract the full xml and rename to 'Full.xml' and 
+        # extract additional sample information like shape, etc
+        # optional inputs are applied
+        #
+        if ($all -or $dat) { Invoke-IM3Convert $images $flatw -BIN }
+        #
+        if ($all -or $xml) {
+            Invoke-IM3Convert $images $flatw -XML
+        }
+        #
+        if ($all -or $xml -or $xmlfull) {
+            Invoke-IM3Convert $images $flatw -FULL
+            Invoke-IM3Convert $images $flatw -PARMS
+        }
+        #
+    } elseif ($inject) {
+        #
+        # for inject check for '.dat' files then inject
+        # back to im3 into the flatw folder
+        #
+        $dats = gci "$flatw\*" '*.dat'
+        if (!($dats.Count -eq $images.Count)) { 
+            Write-Verbose "$flatw\*.fw N File(s) and $IM3\*im3 N File(s) do not match"
+        }
+        #
+        $dest = "$root1\$sample\im3\flatw"
+        if (!(test-path $dest)) {
+            new-item $dest -itemtype directory | Out-Null
+        }
+        #
+        Invoke-IM3Convert $images "$root1\$sample\im3\flatw" -inject -IM3 $IM3 -flatw $flatw
+        # 
+    } 
+    #
+    write-convertim3log -myparams $PSBoundParameters -IM3_fd $IM3 -Finish 
+    #
+}
+#
+function test-convertim3params{
+    #
+    param ([Parameter(Position=0)][hashtable] $myparams)
     #
     if (
-        !($PSBoundParameters.ContainsKey('root1')) -OR 
-        !($PSBoundParameters.ContainsKey('root2')) -OR 
-        !($PSBoundParameters.ContainsKey('sample')) -OR
-        (!($i) -AND !($s))
+        !($myparams.ContainsKey('root1')) -OR 
+        !($myparams.ContainsKey('root2')) -OR 
+        !($myparams.ContainsKey('sample')) -OR
+        (!($myparams.inject) -AND !($myparams.shred))
     ) {
-        Throw "Usage: ConvertIm3Path dataroot dest sample -i -s:[-a -d -xml]"
+        Throw "Usage: ConvertIm3Path dataroot dest sample -inject -shred:[-all -dat -xml -xmlfull]"
     }
     #
     # set default to all for shred if no other value given
     #
-    if ($s -and !$a -and !$d -and !$xml) { $a = $true }
+    if ($myparams.shred -and !$myparams.all -and !$myparams.dat -and !$myparams.xml -and !$myparams.xmlfull) { $myparams.all = $true }
     #
     # if option is set for inject send a warning message as the option params are not valid
     #
-    if ($i) {
+    if ($myparams.inject) {
         #
-        if ($a) {
-            Write-Verbose "WARNING: '-a' not valid for inject. IGNORING"
-        } elseif ($d) {
-            Write-Verbose "WARNING: '-d' not valid for option inject. IGNORING"
-        } elseif ($xml) {
+        if ($myparams.all) {
+            Write-Verbose "WARNING: '-all' not valid for inject. IGNORING"
+        } elseif ($myparams.dat) {
+            Write-Verbose "WARNING: '-dat' not valid for option inject. IGNORING"
+        } elseif ($myparams.xml) {
             Write-Verbose "WARNING: '-xml' not valid for option inject. IGNORING"
+        } elseif ($myparams.xmlfull) {
+            Write-Verbose "WARNING: '-xmlfull' not valid for option inject. IGNORING"
         }
         #
     }
+    #
+}
+#
+function search-scan {
+    #
+    param ([Parameter(Position=0)][string] $root1 = '',
+        [Parameter(Position=2)][string] $sample = '')
     #
     # find highest scan folder, exit if im3 directory not found
     #
@@ -72,86 +147,67 @@ function ConvertIm3Path{
             }
         }
     #
+    return $scan
+    #
+}
+#
+function search-im3 {
+    #
+    param ([Parameter(Position=0)][string] $scan = '')
+    #
     # build full im3 path, exit if not found
     #
     $IM3 = "$scan\MSI"
     if (!(test-path $IM3)) { 
         Throw "IM3 subpath $IM3 not found"
-        }
+    }
+    #
+    return $IM3
+    #
+}
+#
+function search-flatw {
+    #
+    param ([Parameter(Position=0)][string] $root2 = '',
+        [Parameter(Position=2)][string] $sample = '',
+        [parameter(Mandatory=$false)][Switch]$inject)
     #
     # build flatw path, and create folders if they do not exist for shred
     # exit if not found on inject
     #
     $flatw = "$root2\$sample"
-    if (!(test-path $flatw) -and !$i) {
+    if (!(test-path $flatw) -and !$inject) {
         new-item $flatw -itemtype directory | Out-Null
-    } elseif (!(test-path $flatw) -and $i){
+    } elseif (!(test-path $flatw) -and $inject){
         Throw "flatw path $flatw not found"; return
     }
     #
-    Write-Log -root1 $root1 -root2 $root2 -sample $sample `
-                 -IM3_fd $IM3 -Start -s:$s -a:$a -d:$d -xml:$xml
-    #
-    $images = gci "$IM3\*" '*.im3'
-    if (!($images.Count -eq 0) -and $s) {
-        #
-        # for shred: extract the bit map and xml for each image. 
-        # then extract the full xml and rename to 'Full.xml' and 
-        # extract additional sample information like shape, etc
-        # optional inputs are applied
-        #
-        if ($a -or $d) { Invoke-IM3Convert $images $flatw -BIN }
-        #
-        if ($a -or $xml) {
-            Invoke-IM3Convert $images $flatw -XML
-            Invoke-IM3Convert $images $flatw -FULL
-            Invoke-IM3Convert $images $flatw -PARMS
-        }
-        #
-    } elseif (!($images.Count -eq 0) -and $i) {
-        #
-        # for inject check for '.dat' files then inject
-        # back to im3 into the flatw folder
-        #
-        $dats = gci "$flatw\*" '*.dat'
-        if (!($dats.Count -eq $images.Count)) { 
-            Write-Verbose "$flatw\*.fw N File(s) and $IM3\*im3 N File(s) do not match"
-        }
-        #
-        $dest = "$root1\$sample\im3\flatw"
-        if (!(test-path $dest)) {
-            new-item $dest -itemtype directory | Out-Null
-        }
-        #
-        Invoke-IM3Convert $images "$root1\$sample\im3\flatw" -i -IM3 $IM3 -flatw $flatw
-        # 
-    } 
-    #
-    Write-Log -root1 $root1 -root2 $root2 -sample $sample `
-                 -Finish -s:$s -a:$a -d:$d -xml:$xml
+    return $flatw
     #
 }
 #
-function Write-Log {
+function write-convertim3log {
     <# ----------------------------------------------------- 
-    # Part of the shredPath workflow. This function
-    # writes to the log using either a -Start or -Finish Switch
-    #
-    # Usage: Write-Log -Start OR Write-Log -Finish
-    #
+     Part of the shredPath workflow. This function
+     writes to the log using either a -Start or -Finish Switch
+    -----------------------------------------------------
+     Usage: Write-Log -Start OR Write-Log -Finish
     # ----------------------------------------------------- #>
     [CmdletBinding(PositionalBinding=$false)]
     #
-    param([parameter(Mandatory=$false)][String[]]$root1,
-          [parameter(Mandatory=$false)][String[]]$root2,
-          [parameter(Mandatory=$false)][String[]]$sample,
-          [parameter(Mandatory=$false)][String[]]$IM3_fd,
+    param([parameter(Mandatory=$false)][hashtable]$myparams,
+          [parameter(Mandatory=$false)][String]$IM3_fd,
           [parameter(Mandatory=$false)][Switch]$Start,
-          [parameter(Mandatory=$false)][Switch]$Finish,
-          [parameter(Mandatory=$false)][Switch]$s,
-          [parameter(Mandatory=$false)][Switch]$a,
-          [parameter(Mandatory=$false)][Switch]$d,
-          [parameter(Mandatory=$false)][Switch]$xml)
+          [parameter(Mandatory=$false)][Switch]$Finish)
+    #
+    $s = $myparams.shred
+    $i = $myparams.inject
+    $d = $myparams.dat
+    $xml = $myparams.xml
+    $a = $myparams.all
+    $root1 = $myparams.root1
+    $root2 = $myparams.root2
+    $sample = $myparams.sample
     #
     # if Start switch is active write the start error messaging for shred
     #
@@ -179,12 +235,12 @@ function Write-Log {
         #
         if (!$s) {
             Write-Verbose "  src path $root2\$sample `r"
-            $stats = gci "$root2\$sample\*" '*.dat' | Measure Length -s
+            $stats = gci "$root2\$sample\*" '*.dat' | Measure Length -sum
             Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
         }
         #
         Write-Verbose "  im3 path $IM3_fd `r"
-        $stats = gci "$IM3_fd\*" '*.im3' | Measure Length -s
+        $stats = gci "$IM3_fd\*" '*.im3' | Measure Length -sum
         Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
         #
     }
@@ -201,17 +257,17 @@ function Write-Log {
         if ($s) {
             #
             if($a -or $d) {
-                $stats = gci "$dest\*" '*.dat' | Measure Length -s
+                $stats = gci "$dest\*" '*.dat' | Measure Length -sum
                 Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
             }
             #
             if ($a -or $xml){
-                $stats = gci "$dest\*" '*.xml' | Measure Length -s
+                $stats = gci "$dest\*" '*.xml' | Measure Length -sum
                 Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
             }
             #
         } else {
-            $stats = gci "$dest\*" '*.im3' | Measure Length -s
+            $stats = gci "$dest\*" '*.im3' | Measure Length -sum
             Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
             #
         }
@@ -219,6 +275,18 @@ function Write-Log {
         Write-Verbose (" "+(get-date).ToString('T')+"`r")
         # 
     }
+    #
+}
+#
+function search-imagenames{
+    #
+    param([parameter(Position=0)][String[]]$IM3,
+          [parameter(Position=1)][String[]]$images
+        )
+    #
+
+    #
+    return $images
     #
 }
 #
@@ -235,7 +303,7 @@ function Invoke-IM3Convert {
           [parameter(Mandatory=$false)][Switch]$XML,
           [parameter(Mandatory=$false)][Switch]$FULL,
           [parameter(Mandatory=$false)][Switch]$PARMS, 
-          [parameter(Mandatory=$false)][Switch]$i,
+          [parameter(Mandatory=$false)][Switch]$inject,
           [parameter(Mandatory=$false)][String[]]$IM3,
           [parameter(Mandatory=$false)][String[]]$flatw)
     #
@@ -249,7 +317,7 @@ function Invoke-IM3Convert {
                  "//D[@name='SampleLocation'] | " +
                  "//D[@name='MillimetersPerPixel'] | " +
                  "(.//G[@name='Protocol']//G[@name='CameraState'])[1]" + '"'
-    $inject = ".//D[@name='Data']/text()"
+    $injecttxt = ".//D[@name='Data']/text()"
     #
     # extracts the binary bit map
     #
@@ -302,14 +370,14 @@ function Invoke-IM3Convert {
     #
     # for inject switch inject the .dat back into the flatw files
     # 
-    if ($i) {
+    if ($inject) {
         #
         $images | foreach-object {
             #
             $in = $_.Replace($IM3, $flatw)
             $in = $in.Replace('.im3', '.Data.dat')
             #
-            & $code $_ IM3 -x $inject -i $in -o $dest 2>&1>> "$dest\doInject.log"
+            & $code $_ IM3 -x $injecttxt -i $in -o $dest 2>&1>> "$dest\doInject.log"
             #
         }
         #

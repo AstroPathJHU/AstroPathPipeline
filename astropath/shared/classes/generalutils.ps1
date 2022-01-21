@@ -104,11 +104,12 @@
     }
     #
     [string]defRoot(){
-        #
-        if ($PSScriptRoot[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$PSScriptRoot) -replace ":", "$"
+        ##
+        $r = $PSScriptRoot -replace( '/', '\')
+        if ($r[0] -ne '\'){
+            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
         } else{
-            $root = $PSScriptRoot -replace ":", "$"
+            $root = $r -replace ":", "$"
         }
         #
         return($root)
@@ -153,9 +154,13 @@
     }
     #
     [void]CreateFile($fpath){
+        #
+        $this.createDirs((Split-Path $fpath))
+        #
         if (!(test-path $fpath)){
             New-Item -path $fpath -itemtype file -Force -EA Stop | Out-Null
         }
+        #
     }
     #
     [void]removedir([string]$dir){

@@ -25,7 +25,7 @@ class fileutils : generalutils {
         $cnt = 0
         $e = 1
         $err = ''
-        $Max = 120
+        $Max = 5
         $mxtxid = 'Global\' + $fpath.replace('\', '_').replace('/', '_') + '.LOCK'
         #
         $Q = New-Object -TypeName psobject
@@ -75,7 +75,7 @@ class fileutils : generalutils {
         $cnt = 0
         $e = 1
         $err = ''
-        $Max = 120
+        $Max = 5
         $mxtxid = 'Global\' + $fpath.replace('\', '_').replace('/', '_') + '.LOCK'
         #
         $Q = New-Object -TypeName psobject
@@ -156,7 +156,7 @@ class fileutils : generalutils {
         $cnt = 0
         $e = 1
         $err = ''
-        $Max = 120
+        $Max = 5
         $mxtxid = 'Global\' + $fpath.replace('\', '_').replace('/', '_') + '.LOCK'
         #
         $Q = New-Object -TypeName psobject
@@ -235,7 +235,7 @@ class fileutils : generalutils {
         $cnt = 0
         $e = 1
         $err = ''
-        $Max = 120
+        $Max = 5
         $mxtxid = 'Global\' + $fpath.replace('\', '_').replace('/', '_') + '.LOCK'
         #
         do{
@@ -329,5 +329,76 @@ class fileutils : generalutils {
         } catch {
             Throw "mutex not released: " + $fpath
         }
+    }
+    <# -----------------------------------------
+     FileWatcher
+     Create a file watcher 
+     ------------------------------------------
+     Input: 
+        -file: full file path
+     ------------------------------------------
+     Usage: $this.FileWatcher(file)
+    ----------------------------------------- #>
+    [string]FileWatcher($file){
+        #
+        $fname = $file.Split('\\')[-1]
+        $fpath = $file.replace(('\'+$fname), '')
+        #
+        $SI = $this.FileWatcher($fpath, $fname)
+        return $SI
+        #
+    }
+    <# -----------------------------------------
+     FileWatcher
+     Create a file watcher 
+     ------------------------------------------
+     Input: 
+        -fpath: file path
+        -fname: file name
+     ------------------------------------------
+     Usage: $this.FileWatcher(fpath, fname)
+    ----------------------------------------- #>
+    [string]FileWatcher($fpath, $fname){
+        #
+        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+        $newwatcher.Filter = $fname
+        $newwatcher.NotifyFilter = 'LastWrite'
+        #
+        $onChanged = Register-ObjectEvent $newwatcher `
+            -MessageData 'happy times' `
+            -EventName Changed `
+            -SourceIdentifier ($fpath + '\' + $fname)
+        #
+        return ($fpath + '\' + $fname)
+        #
+    }
+    <# -----------------------------------------
+     WaitEvent
+     wait for an event to trigger optionally
+     remove the event subscriber and the event
+     ------------------------------------------
+     Input: 
+        -SI: the source identifier
+     ------------------------------------------
+     Usage: $this.WaitEvent(SI)
+    ----------------------------------------- #>
+    [void]WaitEvent($SI){
+        #
+        Wait-Event -SourceIdentifier $SI -Force
+        Remove-Event -SourceIdentifier $SI -Force
+        #
+    }
+    <# -----------------------------------------
+     WaitEvent
+     wait for an event to trigger optionally
+     remove the event subscriber and the event
+     ------------------------------------------
+     Input: 
+        -SI: the source identifier
+     ------------------------------------------
+     Usage: $this.WaitEvent(SI)
+    ----------------------------------------- #>
+    [void]UnregisterEvent($SI){
+        Unregister-Event -SourceIdentifier $SI -Force 
     }
 }

@@ -1,7 +1,7 @@
 ﻿<# -------------------------------------------
  testpsmeanimage
  created by: Andrew Jorquera
- Last Edit: 1/5/2021
+ Last Edit: 01.18.2022
  --------------------------------------------
  Description
  test if the methods of meanimage are 
@@ -10,39 +10,33 @@
 #
 Class testpsmeanimage {
     #
+    [string]$mpath 
+    [string]$process_loc
+    #
     testpsmeanimage(){
         #
         # Setup Testing
         #
-        $module = $PSScriptRoot + '/../astropath'
-        Import-Module $module -EA SilentlyContinue
-        if($error){
-            Throw 'Module c  ould not be imported'
-        }
-        $processing = $PSScriptRoot + '/test_for_jenkins\testing_meanimage'
-        $mpath = $PSScriptRoot + '/data\astropath_processing'
+        $this.importmodule()
         #
-        Write-Host 'MPath: ' $mpath
-        #Write-Host (gci ($PSScriptRoot + '/data\astropath_processing'))
-        
-        $test = queue $mpath 'meanimage'
-        Write-Host 'Py Package: ' $test.pypackagepath()
-        Write-Host (gci ($test.pypackagepath()))
-        $slides = $test.importslideids($mpath)
-        Write-Host $slides
-        #
-        $task = ('0', 'M21_1', $processing, $mpath)
+        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
         $inp = meanimage $task
-
+        #
         Write-Host $inp
-
         #
         # Run Tests
         #
-        #$this.DownloadFilesTest($inp)
-        #$this.ShredDatTest($inp)
-        #$this.ReturnDataTest($inp)
-        #$this.CleanupTest($inp)
+        $this.DownloadFilesTest($inp)
+        # $this.ShredDatTest($inp)
+        $this.ReturnDataTest($inp)
+        $this.CleanupTest($inp)
+    }
+    #
+    importmodule(){
+        $module = $PSScriptRoot + '/../astropath'
+        Import-Module $module -EA SilentlyContinue
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
+        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
     }
     #
     [void]DownloadFilesTest($inp){

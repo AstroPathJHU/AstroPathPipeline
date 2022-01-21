@@ -43,15 +43,7 @@
     ----------------------------------------- #>
     #
     [void]BuildProcessLocPaths($task){
-        ##Adjust if testing on jenkins
-        #Write-Host 'Project Data FWpath: ' $this.sample.project_data.fwpath
-        #Write-Host 'Sample: ' $this.sample
-        #if ($this.sample.project_data.fwpath -match '/var/lib/jenkins') {
-        #    $fwpath = $this.sample.project_data.fwpath
-        #}
-        #else {
-            $fwpath = '\\'+$this.sample.project_data.fwpath
-        #}
+        $fwpath = '\\'+$this.sample.project_data.fwpath
         $this.processvars = @($this.sample.basepath, $fwpath, `
             $this.sample.flatwim3folder(), $this.sample.batchflatfield())
         #
@@ -247,13 +239,13 @@
         $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
         if ($type -match 'inject'){
             ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -i -verbose 4>&1 >> $externallog
+                $this.sample.slideid -inject -verbose 4>&1 >> $externallog
         } elseif($type -match 'shreddat') {
             ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -s -d -verbose 4>&1 >> $externallog
+                $this.sample.slideid -shred -dat -verbose 4>&1 >> $externallog
         } elseif($type -match 'shredxml') {
             ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -s -xml -verbose 4>&1 >> $externallog
+                $this.sample.slideid -shred -xml -verbose 4>&1 >> $externallog
         } 
         $log = $this.sample.GetContent($externallog) |
              where-object  {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 

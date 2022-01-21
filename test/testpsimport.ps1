@@ -1,7 +1,7 @@
 <# -------------------------------------------
  testpsimport
  created by: Benjamin Green - JHU
- Last Edit: 10.13.2020
+ Last Edit: 10.13.2021
  --------------------------------------------
  Description
  test if the module can be imported or not
@@ -9,7 +9,16 @@
 #
  Class testpsimport {
     #
+    [string]$mpath 
+    [string]$process_loc
+    #
     testpsimport(){
+        #
+        $this.testimport()
+        #
+    }
+    #
+    [void]testimport(){
       #
       $module = $PSScriptRoot + '/../astropath'
       Write-Host 'checking: ' $module
@@ -31,7 +40,9 @@
           Throw 'Module could not be imported'
       } 
       #
+
     }
+    #
 }
 #
 # launch test and exit if no error found
