@@ -235,12 +235,12 @@ function write-convertim3log {
         #
         if (!$s) {
             Write-Verbose "  src path $root2\$sample `r"
-            $stats = gci "$root2\$sample\*" '*.dat' | Measure Length -s
+            $stats = gci "$root2\$sample\*" '*.dat' | Measure Length -sum
             Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
         }
         #
         Write-Verbose "  im3 path $IM3_fd `r"
-        $stats = gci "$IM3_fd\*" '*.im3' | Measure Length -s
+        $stats = gci "$IM3_fd\*" '*.im3' | Measure Length -sum
         Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
         #
     }
@@ -257,17 +257,17 @@ function write-convertim3log {
         if ($s) {
             #
             if($a -or $d) {
-                $stats = gci "$dest\*" '*.dat' | Measure Length -s
+                $stats = gci "$dest\*" '*.dat' | Measure Length -sum
                 Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
             }
             #
             if ($a -or $xml){
-                $stats = gci "$dest\*" '*.xml' | Measure Length -s
+                $stats = gci "$dest\*" '*.xml' | Measure Length -sum
                 Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
             }
             #
         } else {
-            $stats = gci "$dest\*" '*.im3' | Measure Length -s
+            $stats = gci "$dest\*" '*.im3' | Measure Length -sum
             Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
             #
         }
