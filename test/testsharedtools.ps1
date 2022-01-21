@@ -118,8 +118,28 @@
         #
         $tools.copy($sorfile, $des)
         #
+        $this.checkdesfiles($des, $desfile, $tools)
+        #
+        Write-Host 'testing robo copy'
+        #
+        $tools.copy($sor, $des, 'log')
+        #
+        $this.checkdesfiles($des, $desfile, $tools)
+        #
+        Write-Host 'testing robo copy all files'
+        #
+        $tools.copy($sor, $des, '*')
+        #
+        $this.checkdesfiles($des, $desfile, $tools)
+        #
+        Write-Host 'test copy files finished'
+        #
+    }
+    #
+    [void]checkdesfiles($des, $desfile, $tools){
+        #
         if (!(Test-Path $desfile)){
-            Throw 'could not copy single file'
+            Throw 'could not copy using robocopy'
         } else {
              $tools.removedir($des)
              if (Test-Path $des){
@@ -127,16 +147,8 @@
              }
         }
         #
-        Write-Host 'testing robo copy'
-        #
-        $tools.copy($sor, $des, 'log')
-        #
-        if (!(Test-Path $desfile)){
-            Throw 'could not copy using robocopy'
-        }
-
-
     }
+    #
 }
 
 #
