@@ -1,8 +1,9 @@
 #imports
-import pathlib, shutil
+import shutil
 from hashlib import sha512
+from .config import SEG_CONST
 
-def split_model_files(model_dir_path=pathlib.Path(__file__).parent/'nnunet_models',
+def split_model_files(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR,
                       bytes_per_chunk=50000000,remove=True) :
     """
     Recursively search a directory for any "model_final_checkpoint.model" files 
@@ -52,7 +53,7 @@ def split_model_files(model_dir_path=pathlib.Path(__file__).parent/'nnunet_model
             if remove :
                 fp.unlink()
 
-def assemble_model_files(model_dir_path=pathlib.Path(__file__).parent/'nnunet_models',remove=False) :
+def assemble_model_files(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR,remove=False) :
     """
     Recursively search a directory for any "fold_n" subdirectories and, if those subdirectories 
     contain any "model_final_checkpoint.model_chunk_n" files, assemble the individual files into 
@@ -88,3 +89,21 @@ def assemble_model_files(model_dir_path=pathlib.Path(__file__).parent/'nnunet_mo
         if remove :
             for fp in fold_dir.glob('model_final_checkpoint.model_chunk_*') :
                 fp.unlink()
+
+def model_files_exist(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR) :
+    """
+    Returns True if every "model_final_checkpoint.model" file exists and False otherwise
+    """
+    if not model_dir_path.is_dir() :
+        raise FileNotFoundError(f'ERROR: {model_dir_path} is not a directory!')
+    for fold_dir in model_dir_path.rglob('fold_*') :
+        if not (fold_dir/'model_final_checkpoint.model').is_file() :
+            return False
+    return True
+
+def rebuild_model_files_if_necessary(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR,remove=False) :
+    """
+    Calls two functions above to make sure that the required model files exist
+    """
+    if not model_files_exist(model_dir_path) :
+        assemble_model_files(model_dir_path,remove)

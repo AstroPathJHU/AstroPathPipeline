@@ -105,6 +105,7 @@ setupkwargs = dict(
     "scikit-learn>=0.17",
     "scipy>=0.12",
     "setuptools-scm",
+    "SimpleITK>=2.1.1",
     "slurm-python-utils>=1.4.4",
     "uncertainties",
   ],
