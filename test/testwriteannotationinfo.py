@@ -92,16 +92,8 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
 
       new = s.csv("annotationinfo")
       reffolder = root/"reference"/"writeannotationinfo"/"skipannotation"/SlideID/"dbload"
-      extrakwargs = {_: getattr(s, _) for _ in ("pscale",)}
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "scanfolder")}
       compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
-
-      with open(im3root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml", "rb") as f:
-        newxml = jxmlease.parse(f)
-      with open(root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml", "rb") as f:
-        oldxml = jxmlease.parse(f)
-      del oldxml["Annotations"]["Annotation"][1]
-      oldxml["Annotations"]["Annotation"], = oldxml["Annotations"]["Annotation"]
-      self.assertEqual(newxml, oldxml)
     except:
       self.saveoutput()
       raise
