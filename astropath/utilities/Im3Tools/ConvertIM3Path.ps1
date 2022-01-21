@@ -48,7 +48,7 @@ function ConvertIm3Path{
     }
     #
     if ($images.Count -eq 0){
-         write-convertim3log $PSBoundParameters -IM3_fd $IM3 -Finish 
+         write-convertim3log -myparams $PSBoundParameters -IM3_fd $IM3 -Finish 
          return
     }
     #
@@ -89,7 +89,7 @@ function ConvertIm3Path{
         # 
     } 
     #
-    write-convertim3log $PSBoundParameters -IM3_fd $IM3 -Finish 
+    write-convertim3log -myparams $PSBoundParameters -IM3_fd $IM3 -Finish 
     #
 }
 #
