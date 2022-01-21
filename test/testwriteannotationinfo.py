@@ -9,18 +9,26 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml",
+      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"dbload"/"M206_annotationinfo.csv",
+
       thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.annotationinfo.csv",
+      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons_2.annotationinfo.csv",
+
+      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"logfiles"/"copyannotationinfo.log",
+      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"logfiles"/"writeannotationinfo.log",
+
       thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"logfiles"/"M206-copyannotationinfo.log",
+      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"logfiles"/"M206-writeannotationinfo.log",
     ]
   @classmethod
   def filestocopy(cls):
-    for destroot in thisfolder/"test_for_jenkins"/"writeannotationinfo", thisfolder/"test_for_jenkins"/"writeannotationinfo"/"annotationposition":
-      for SlideID in "M206",:
-        yield thisfolder/"data"/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1"
-        yield thisfolder/"data"/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", (destroot/SlideID/"im3"/"Scan1", f"{SlideID}_Scan1.annotations.polygons_2.xml")
-        for csv in "constants", "affine":
-          yield thisfolder/"data"/SlideID/"dbload"/f"{SlideID}_{csv}.csv", destroot/SlideID/"dbload"
+    sourceroot = thisfolder/"data"
+    destroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
+    for SlideID in "M206",:
+      yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1"
+      yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", (destroot/SlideID/"im3"/"Scan1", f"{SlideID}_Scan1.annotations.polygons_2.xml")
+      for csv in "constants", "affine":
+        yield sourceroot/SlideID/"dbload"/f"{SlideID}_{csv}.csv", destroot/SlideID/"dbload"
 
   def testWriteAnnotationInfo(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
@@ -100,7 +108,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testAnnotationPosition(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
-    dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"/"annotationposition"
+    dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
     s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set())
     commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
     regex1 = ".*annotations.polygons.xml"
