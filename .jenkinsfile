@@ -162,7 +162,7 @@ pipeline {
           stages {
             stage('test meanimage') {
               steps {
-		// sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
+				// sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimage'
               }
             }
