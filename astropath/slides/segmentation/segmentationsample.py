@@ -112,6 +112,8 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                 itk_img.SetSpacing([1,1,999])
                 sitk.WriteImage(itk_img, str(nifti_file_path))
         #run the nnU-Net nuclear segmentation algorithm
+        os.environ['nnUNet_raw_data_base'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
+        os.environ['nnUNet_preprocessed'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
         os.environ['RESULTS_FOLDER'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
         nnunet_cmd = f'nnUNet_predict -i {str(temp_dir.resolve())} -o {str(self.__workingdir.resolve())} -t 500 -m 2d'
         try :
