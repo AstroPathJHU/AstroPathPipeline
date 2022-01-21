@@ -39,7 +39,7 @@ function ConvertIm3Path{
     $flatw = search-flatw $root2 $sample -inject:$inject
 
     #
-    write-convertim3log $PSBoundParameters -IM3_fd $IM3 -Start 
+    write-convertim3log -myparams $PSBoundParameters -IM3_fd $IM3 -Start 
     #
     if (!($PSBoundParameters.ContainsKey('images'))){
         $images = gci "$IM3\*" '*.im3'
