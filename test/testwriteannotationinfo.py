@@ -1,6 +1,6 @@
 import jxmlease, os, pathlib, unittest
 from astropath.shared.csvclasses import AnnotationInfo
-from astropath.slides.annowarp.mergeannotationxmls import MergeAnnotationXMLsCohort, MergeAnnotationXMLsSample, WriteAnnotationInfoCohort, WriteAnnotationInfoSample
+from astropath.slides.annowarp.mergeannotationxmls import CopyAnnotationInfoCohort, CopyAnnotationInfoSample, MergeAnnotationXMLsCohort, MergeAnnotationXMLsSample, WriteAnnotationInfoCohort, WriteAnnotationInfoSample
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -29,9 +29,9 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     try:
       WriteAnnotationInfoCohort.runfromargumentparser(args)
 
-      new = s.annotationinfofilename
+      new = s.annotationinfofile
       reffolder = root/"reference"/"writeannotationinfo"/SlideID/"im3"/f"Scan{s.Scan}"
-      extrakwargs = {_: getattr(s, _) for _ in ("pscale",)}
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "scanfolder")}
       compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
     except:
       self.saveoutput()
@@ -42,6 +42,30 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testWriteAnnotationInfoFastUnits(self, **kwargs):
     self.testWriteAnnotationInfo(units="fast_pixels", **kwargs)
 
+  def testCopyAnnotationInfo(self, SlideID="M206", units="safe"):
+    root = thisfolder/"data"
+    dbloadroot = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
+    im3root = root/"reference"/"writeannotationinfo"
+    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
+    s = CopyAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID)
+
+    try:
+      CopyAnnotationInfoCohort.runfromargumentparser(args)
+
+      new = s.csv("annotationinfo")
+      reffolder = root/"reference"/"writeannotationinfo"/SlideID/"dbload"
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "scanfolder")}
+      compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
+    except:
+      self.saveoutput()
+      raise
+    else:
+      self.removeoutput()
+
+  def testCopyAnnotationInfoFastUnits(self, **kwargs):
+    self.testCopyAnnotationInfo(units="fast_microns", **kwargs)
+
+  @unittest.skip
   def testSkipAnnotation(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"
@@ -72,6 +96,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testSkipAnnotationFastUnits(self, **kwargs):
     self.testSkipAnnotation(units="fast_microns", **kwargs)
 
+  @unittest.skip
   def testAnnotationPosition(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"

@@ -1,9 +1,9 @@
 import collections, contextlib, jxmlease, methodtools, numpy as np, re
 from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationFileInfoWriter
-from ...shared.argumentparser import DbloadArgumentParser, RunFromArgumentParser
-from ...shared.cohort import XMLPolygonFileCohort, WorkflowCohort
+from ...shared.argumentparser import DbloadArgumentParser, RunFromArgumentParser, XMLPolygonFileArgumentParser
+from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, XMLPolygonReaderCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
-from ...shared.sample import WorkflowSample, XMLPolygonAnnotationSample
+from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationSample
 from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict, ArgParseAddTupleToDict
@@ -153,6 +153,55 @@ class WriteAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCoho
       "annotationpositionfromaffineshift": self.annotationpositionfromaffineshift,
     }
 
+class CopyAnnotationInfoArgumentParser(DbloadArgumentParser, XMLPolygonFileArgumentParser):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+    }  
+
+class CopyAnnotationInfoSample(DbloadSample, XMLPolygonAnnotationSample, WorkflowSample, CopyAnnotationInfoArgumentParser):
+  def run(self):
+    self.writecsv("annotationinfo", self.readtable(self.annotationinfofile, AnnotationInfo))
+
+  def inputfiles(self, **kwargs):
+    result = [
+      *super().inputfiles(**kwargs),
+      self.annotationinfofile,
+    ]
+    return result
+
+  @classmethod
+  def getoutputfiles(cls, **kwargs):
+    SlideID = kwargs["SlideID"]
+    dbloadroot = kwargs["dbloadroot"]
+    return [
+      *super().getoutputfiles(**kwargs),
+      dbloadroot/SlideID/"dbload"/f"{SlideID}_annotationinfo.csv",
+    ]
+
+  @classmethod
+  def logmodule(cls):
+    return "copyannotationinfo"
+
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
+    return [
+      *super().workflowdependencyclasses(**kwargs),
+      WriteAnnotationInfoSample,
+    ]
+
+class CopyAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCohort, CopyAnnotationInfoArgumentParser):
+  sampleclass = CopyAnnotationInfoSample
+
 class MergeAnnotationXMLsArgumentParser(RunFromArgumentParser):
   def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
     self.__annotationselectiondict = annotationselectiondict
@@ -269,13 +318,14 @@ class MergeAnnotationXMLsSample(WorkflowSample, MergeAnnotationXMLsArgumentParse
         f.write(result.emit_xml())
 
       writetable(self.mergedinfo, mergedinfo)
+      self.writecsv("annotationinfo", mergedinfo)
 
   def run(self, **kwargs):
     return self.mergexmls(**kwargs)
 
   def inputfiles(self, **kwargs):
     xmls = [
-      _ for _ in self.scanfolder.glob(f"*{SlideID}*annotations.polygons*.xml")
+      _ for _ in self.scanfolder.glob(f"*{self.SlideID}*annotations.polygons*.xml")
     ]
     return [
       *super().inputfiles(**kwargs),

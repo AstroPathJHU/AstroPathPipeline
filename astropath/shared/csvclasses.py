@@ -1,4 +1,4 @@
-import csv, dataclassy, datetime, numbers, numpy as np
+import csv, dataclassy, datetime, numbers, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
@@ -193,6 +193,7 @@ class AnnotationInfo(DataClassWithPscale):
   yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
   xmlfile: str
   xmlsha: str
+  scanfolder: pathlib.Path = MetaDataAnnotation(includeintable=False)
 
   @property
   def isonqptiff(self): return not self.isonwsi
@@ -210,6 +211,10 @@ class AnnotationInfo(DataClassWithPscale):
   @position.setter
   def position(self, position):
     self.xposition, self.yposition = position
+
+  @property
+  def xmlpath(self):
+    return self.scanfolder/self.xmlfile
 
 class Annotation(DataClassWithPolygon, DataClassWithApscale):
   """
