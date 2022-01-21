@@ -44,7 +44,7 @@ pipeline {
 
     stage('run tests') {
       parallel {
-	/*
+
         stage('console scripts and documents') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
