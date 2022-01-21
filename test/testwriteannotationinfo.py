@@ -42,7 +42,6 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testWriteAnnotationInfoFastUnits(self, **kwargs):
     self.testWriteAnnotationInfo(units="fast_pixels", **kwargs)
 
-  @unittest.skip
   def testSkipAnnotation(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"
@@ -70,11 +69,9 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  @unittest.skip
   def testSkipAnnotationFastUnits(self, **kwargs):
     self.testSkipAnnotation(units="fast_microns", **kwargs)
 
-  @unittest.skip
   def testAnnotationPosition(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"
@@ -100,6 +97,5 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  @unittest.skip
   def testAnnotationPositionFastUnits(self, **kwargs):
     self.testAnnotationPosition(units="fast_microns", **kwargs)

@@ -1,7 +1,7 @@
 import collections, contextlib, jxmlease, methodtools, numpy as np, re
 from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationFileInfoWriter
-from ...shared.argumentparser import DbloadArgumentParser
-from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, WorkflowCohort
+from ...shared.argumentparser import DbloadArgumentParser, RunFromArgumentParser
+from ...shared.cohort import XMLPolygonFileCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
 from ...shared.sample import WorkflowSample, XMLPolygonAnnotationSample
 from ...utilities import units
@@ -153,7 +153,7 @@ class WriteAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCoho
       "annotationpositionfromaffineshift": self.annotationpositionfromaffineshift,
     }
 
-class MergeAnnotationXMLsArgumentParser(DbloadArgumentParser):
+class MergeAnnotationXMLsArgumentParser(RunFromArgumentParser):
   def __init__(self, *args, annotationselectiondict, skipannotations, **kwargs):
     self.__annotationselectiondict = annotationselectiondict
     self.__skipannotations = skipannotations
@@ -281,10 +281,13 @@ class MergeAnnotationXMLsSample(WorkflowSample, MergeAnnotationXMLsArgumentParse
       *super().inputfiles(**kwargs),
       *(xml.with_suffix(".annotationinfo.csv") for xml in xmls)
     ]
+
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
     return [
-      *super().inputfiles(**kwargs),
+      super().workflowdependencyclasses(**kwargs),
+      WriteAnnotationInfoSample,
     ]
-    return result
 
 class MergeAnnotationXMLsCohort(WorkflowCohort, MergeAnnotationXMLsArgumentParser):
   sampleclass = MergeAnnotationXMLsSample
