@@ -28,7 +28,7 @@
       #
       # confirm installation
       #
-      Import-Module $module -EA SilentlyContinue 
+      Import-Module $module -EA SilentlyContinue
       if($error){
           Throw 'Module could not be imported'
       } 
