@@ -78,12 +78,17 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testSkipAnnotation(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
-    dbloadroot = im3root = thisfolder/"test_for_jenkins"/"writeannotationinfo"
-    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--sampleregex", SlideID, "--annotation", "Good tissue", ".*[.]xml", "--skip-annotation", "tumor", "--debug", "--no-log", "--annotations-on-qptiff", "--units", units, "--ignore-dependencies"]
-    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, annotationsourcedict={}, annotationpositiondict={}, skipannotations=set())
+    dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set())
+    commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
+    write1args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons.xml"]
+    write2args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons_2.xml"]
+    mergeargs = ["--annotation", "Good tissue", ".*annotations.polygons.xml", "--skip-annotation", "tumor"]
 
     try:
-      MergeAnnotationXMLsCohort.runfromargumentparser(args)
+      WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write1args)
+      WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write2args)
+      MergeAnnotationXMLsCohort.runfromargumentparser(commonargs+mergeargs)
 
       new = s.csv("annotationinfo")
       reffolder = root/"reference"/"writeannotationinfo"/"skipannotation"/SlideID/"dbload"
@@ -117,10 +122,10 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     write2args = ["--annotations-on-wsi", "--annotation-position-from-affine-shift", "--annotations-xml-regex", regex2]
     mergeargs = ["--annotation", "Good tissue", regex1, "--annotation", "tumor", regex2]
 
-    WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write1args)
-    WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write2args)
-
     try:
+      WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write1args)
+      WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write2args)
+
       MergeAnnotationXMLsCohort.runfromargumentparser(commonargs+mergeargs)
 
       new = s.csv("annotationinfo")

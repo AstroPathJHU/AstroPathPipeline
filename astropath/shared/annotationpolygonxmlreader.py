@@ -700,7 +700,7 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
         oldfile, = {i.xmlfile for i in oldinfo}
         oldsha, = {i.xmlsha for i in oldinfo}
       except ValueError:
-        print(f"AnnotationInfos in {oldfile} are not all from the same file or version of the file")
+        raise ValueError(f"AnnotationInfos in {oldfile} are not all from the same file or version of the file")
       if oldfile != newfile:
         raise ValueError(f"AnnotationInfos in {xmlfile} are from the wrong filename {oldfile}")
       if oldsha != xmlfile.xmlsha:

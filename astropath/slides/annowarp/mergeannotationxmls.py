@@ -262,7 +262,6 @@ class MergeAnnotationXMLsSample(CopyAnnotationInfoSampleBase, MergeAnnotationXML
         infodict = {info.name: info for info in xmlfile.annotationinfo}
         allnames.update(infodict.keys())
         info[xmlfile.annotationspolygonsxmlfile] = infodict
-      print(list(info.keys()))
 
       unknown = allnames - set(self.annotationxmldict) - set(self.skipannotations)
       if unknown:
