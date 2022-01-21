@@ -93,11 +93,12 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         self.logger.debug('Writing NIfTI files for nnU-Net input....')
         for ir,rect in enumerate(self.rectangles,start=1) :
             nifti_file_path = temp_dir/f'{rect.imagefile.name[:-4]}_0000.nii.gz'
+            segmented_nifti_path = self.__workingdir/f'{rect.imagefile.name[:-4]}.nii.gz'
             segmented_file_path = self.__workingdir/f'{rect.imagefile.name[:-4]}_nnunet_nuclear_segmentation.npz'
             #skip any rectangles that already have segmentation input or output
-            if nifti_file_path.is_file() or segmented_file_path.is_file() :
+            if nifti_file_path.is_file() or segmented_nifti_path.is_file() or segmented_file_path.is_file() :
                 msg = f'\tSkipping writing NIfTI file for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
-                if segmented_file_path.is_file() :
+                if segmented_nifti_path.is_file() or segmented_file_path.is_file() :
                     msg+=' (segmentation output already exists)'
                 elif nifti_file_path.is_file() :
                     msg+=' (NIfTI file already exists in temp. directory)'
@@ -124,7 +125,16 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
             completed_files = 0
             for rect in self.rectangles :
                 nifti_file_path = temp_dir/f'{rect.imagefile.name[:-4]}_0000.nii.gz'
+                segmented_nifti_path = self.__workingdir/f'{rect.imagefile.name[:-4]}.nii.gz'
                 segmented_file_path = self.__workingdir/f'{rect.imagefile.name[:-4]}_nnunet_nuclear_segmentation.npz'
+                if segmented_nifti_path.is_file() :
+                    itk_read_img = sitk.ReadImage(str(segmented_nifti_path),imageIO='NiftiImageIO')
+                    output_img = np.zeros((itk_read_img.GetHeight(),itk_read_img.GetWidth()),dtype=np.float32)
+                    for ix in range(output_img.shape[1]) :
+                        for iy in range(output_img.shape[0]) :
+                            output_img[iy,ix] = itk_read_img.GetPixel((ix,iy,0))
+                    output_img = output_img.astype(np.uint8)
+                    np.savez_compressed(segmented_file_path,output_img)
                 if segmented_file_path.is_file() :
                     completed_files+=1
                     nifti_file_path.unlink()
