@@ -27,7 +27,7 @@ Class testpsmeanimage {
         # Run Tests
         #
         $this.DownloadFilesTest($inp)
-        $this.ShredDatTest($inp)
+        # $this.ShredDatTest($inp)
         $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
     }

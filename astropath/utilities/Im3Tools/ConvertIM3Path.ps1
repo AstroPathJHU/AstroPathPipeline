@@ -25,7 +25,7 @@ function ConvertIm3Path{
     param ([Parameter(Position=0)][string] $root1 = '',
            [Parameter(Position=1)][string] $root2 = '', 
            [Parameter(Position=2)][string] $sample = '',
-           [Parameter()][string] $images = '',
+           [Parameter()][string] $images,
            [Parameter()][switch]$inject,
            [Parameter()][switch]$shred, 
            [Parameter()][switch]$all,
@@ -33,7 +33,7 @@ function ConvertIm3Path{
            [Parameter()][switch]$xmlfull,
            [Parameter()][switch]$dat)
     #
-    check-convertim3params $PSBoundParameters
+    test-convertim3params $PSBoundParameters
     $scan = search-scan $root1 $sample
     $im3 = search-im3 $scan
     $flatw = search-flatw $root2 $sample -inject:$inject
@@ -93,7 +93,7 @@ function ConvertIm3Path{
     #
 }
 #
-function check-convertim3params{
+function test-convertim3params{
     #
     param ([Parameter(Position=0)][hashtable] $myparams)
     #
