@@ -34,9 +34,9 @@ function ConvertIm3Path{
            [Parameter()][switch]$dat)
     #
     check-convertim3params $PSBoundParameters
-    $scan = build-scan $root1 $sample
-    $im3 = build-im3 $scan
-    $flatw = build-flatw $root2 $sample $inject
+    $scan = search-scan $root1 $sample
+    $im3 = search-im3 $scan
+    $flatw = search-flatw $root2 $sample -inject:$inject
 
     #
     write-convertim3log $PSBoundParameters -IM3_fd $IM3 -Start 
@@ -44,7 +44,7 @@ function ConvertIm3Path{
     if (!($PSBoundParameters.ContainsKey('images'))){
         $images = gci "$IM3\*" '*.im3'
     } else {
-        $images = def-imagenames $IM3 $images
+        $images = search-imagenames $IM3 $images
     }
     #
     if ($images.Count -eq 0){
@@ -128,7 +128,7 @@ function check-convertim3params{
     #
 }
 #
-function build-scan {
+function search-scan {
     #
     param ([Parameter(Position=0)][string] $root1 = '',
         [Parameter(Position=2)][string] $sample = '')
@@ -151,7 +151,7 @@ function build-scan {
     #
 }
 #
-function build-im3 {
+function search-im3 {
     #
     param ([Parameter(Position=0)][string] $scan = '')
     #
@@ -166,7 +166,7 @@ function build-im3 {
     #
 }
 #
-function build-flatw {
+function search-flatw {
     #
     param ([Parameter(Position=0)][string] $root2 = '',
         [Parameter(Position=2)][string] $sample = '',
@@ -278,7 +278,7 @@ function write-convertim3log {
     #
 }
 #
-function def-imagenames{
+function search-imagenames{
     #
     param([parameter(Position=0)][String[]]$IM3,
           [parameter(Position=1)][String[]]$images
