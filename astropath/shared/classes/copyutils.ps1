@@ -40,10 +40,10 @@ class copyutils{
         if ($this.isWindows()){
             xcopy $sor, $des /q /y /z /j /v | Out-Null
         } else {
-            $sor = $sor -replace '\\', '/'
-            $des = $des -replace '\\', '/'
-            mkdir -p $des
-            cp $sor $des -r
+            $sor1 = $sor -replace '\\', '/'
+            $des1 = $des -replace '\\', '/'
+            mkdir -p $des1
+            cp $sor1 $des1 -r
         }
         #    
         $this.verifyChecksum($sor, $des, '*', 0)
