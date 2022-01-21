@@ -252,7 +252,13 @@ class copyutils{
                 if ($copycount -gt 5){
                     Throw ('failed to copy ' + $tempsor)
                 }
-                xcopy $tempsor, $des /q /y /z /j /v | Out-Null
+                #
+                if ($this.isWindows()){
+                    xcopy $tempsor, $des /q /y /z /j /v | Out-Null
+                } else {
+                    $this.lxcopy($sor, $des)
+                }
+                #
                 $copycount += 1
                 $this.verifyChecksum($tempsor, $des, '*', $copycount)
             }
