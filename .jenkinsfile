@@ -21,9 +21,9 @@ pipeline {
     HOME = "/home/astropath"
     GITHUB_TOKEN = credentials('astropath-github')
   }
-/*
-  stages {
 
+  stages {
+/*
    stage('pip install') {
       steps {
 	sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
@@ -215,7 +215,7 @@ pipeline {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
           }
         }
-
+*/
         stage('code checks') {
           steps {
             sh 'python -m pyflakes .'
@@ -234,7 +234,7 @@ pipeline {
       }
     }
   }
-*/
+
   post {
     always {
       archiveArtifacts artifacts: 'documents/alignment/alignment.pdf', fingerprint: true
