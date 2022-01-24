@@ -167,12 +167,12 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
   def testSampleDef(self):
     self.maxDiff = None
     s1 = SampleDef(samp="M21_1", root=thisfolder/"data")
-    s2 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef.csv", SampleID=s1.SampleID)
-    s3 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef_oldformat.csv", Scan=s1.Scan, SampleID=s1.SampleID)
-    s4 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"AstropathAPIDdef_oldformat.csv", root=thisfolder/"data")
-    APID, = {APID for APID in readtable(thisfolder/"data"/"AstropathAPIDdef.csv", APIDDef) if APID.SlideID == "M21_1"}
+    s2 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"upkeep_and_progress"/"AstropathAPIDdef_0.csv", SampleID=s1.SampleID)
+    s3 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"upkeep_and_progress"/"AstropathAPIDdef_0_oldformat.csv", Scan=s1.Scan, SampleID=s1.SampleID)
+    s4 = SampleDef(samp="M21_1", apidfile=thisfolder/"data"/"upkeep_and_progress"/"AstropathAPIDdef_0_oldformat.csv", root=thisfolder/"data")
+    APID, = {APID for APID in readtable(thisfolder/"data"/"upkeep_and_progress"/"AstropathAPIDdef_0.csv", APIDDef) if APID.SlideID == "M21_1"}
     s5 = SampleDef(samp=APID, SampleID=s1.SampleID)
-    APID, = {APID for APID in readtable(thisfolder/"data"/"AstropathAPIDdef_oldformat.csv", APIDDef) if APID.SlideID == "M21_1"}
+    APID, = {APID for APID in readtable(thisfolder/"data"/"upkeep_and_progress"/"AstropathAPIDdef_0_oldformat.csv", APIDDef) if APID.SlideID == "M21_1"}
     s6 = SampleDef(samp=APID, Scan=s1.Scan, SampleID=s1.SampleID)
     s7 = SampleDef(samp=APID, root=thisfolder/"data")
     self.assertEqual(s1, s2)
@@ -187,7 +187,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     outfile = thisfolder/"test_for_jenkins"/"misc"/"makesampledef"/"sampledef.csv"
     outfile.parent.mkdir(parents=True, exist_ok=True)
     reference = thisfolder/"data"/"sampledef.csv"
-    args = [os.fspath(thisfolder/"data"), "--apidfile", os.fspath(thisfolder/"data"/"AstropathAPIDdef.csv"), "--first-sample-id", "1", "--outfile", os.fspath(outfile)]
+    args = [os.fspath(thisfolder/"data"), "--apidfile", os.fspath(thisfolder/"data"/"upkeep_and_progress"/"AstropathAPIDdef_0.csv"), "--first-sample-id", "1", "--outfile", os.fspath(outfile)]
     MakeSampleDef.runfromargumentparser(args)
 
     try:
