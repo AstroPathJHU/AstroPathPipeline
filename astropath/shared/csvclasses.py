@@ -242,21 +242,25 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
     if isfromxml and annotationinfo is None:
       raise TypeError("Need annotationinfo if annotation is from xml")
     if "annoscale" not in kwargs:
-      annotationinfo = kwargs["annotationinfo"]
-      isonwsi = annotationinfo.isonwsi
-      isfromxml = kwargs.get["isfromxml"]
       pscale = kwargs["pscale"]
       apscale = kwargs["apscale"]
       if not isfromxml:
         kwargs["annoscale"] = pscale
-      elif isonwsi:
-        kwargs["annoscale"] = pscale/2
       else:
-        kwargs["annoscale"] = apscale
+        if annotationinfo.isonwsi:
+          kwargs["annoscale"] = pscale/2
+        else:
+          kwargs["annoscale"] = apscale
     return super().transforminitargs(*args, isfromxml=isfromxml, annotationinfo=annotationinfo, **kwargs)
 
   @property
-  def isonwsi(self): return self.annotationinfo.isonwsi
+  def isonwsi(self):
+    if not self.isfromxml: return True
+    return self.annotationinfo.isonwsi
+  @property
+  def isonqptiff(self):
+    if not self.isfromxml: return False
+    return self.annotationinfo.isonqptiff
   @property
   def position(self): return self.annotationinfo.position
 

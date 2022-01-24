@@ -1336,7 +1336,7 @@ class SampleWithAnnotationInfos(SampleBase, ThingWithAnnotationInfos):
       extrakwargs["scanfolder"] = self.scanfolder
     return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
 
-class XMLPolygonAnnotationSample(SampleWithAnnotationInfos, XMLPolygonFileArgumentParser):
+class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, XMLPolygonFileArgumentParser):
   """
   Base class for any sample that uses the XML annotations file.
   """
@@ -1382,10 +1382,13 @@ class XMLPolygonAnnotationSample(SampleWithAnnotationInfos, XMLPolygonFileArgume
   def annotationinfofile(self):
     return self.annotationspolygonsxmlfile.with_suffix(".annotationinfo.csv")
 
-class XMLPolygonAnnotationReaderSample(XMLPolygonAnnotationSample, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
+class XMLPolygonAnnotationReaderSample(SampleWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
   """
   Base class for any sample that reads the annotations from the XML metadata.
   """
+  @property
+  def annotationinfofile(self): return self.csv("annotationinfo")
+
 class XMLPolygonAnnotationReaderSampleWithOutline(XMLPolygonAnnotationReaderSample, XMLPolygonAnnotationReaderWithOutline):
   pass
 

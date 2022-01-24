@@ -614,7 +614,7 @@ class XMLPolygonFileCohort(Cohort, XMLPolygonFileArgumentParser):
       "annotationsxmlregex": self.__annotationsxmlregex,
     }
 
-class XMLPolygonReaderCohort(XMLPolygonFileCohort, XMLPolygonReaderArgumentParser):
+class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
   def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
     self.__annotationsynonyms = annotationsynonyms
     self.__reorderannotations = reorderannotations

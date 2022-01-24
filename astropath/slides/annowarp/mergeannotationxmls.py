@@ -3,7 +3,7 @@ from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationFile, XMLPo
 from ...shared.argumentparser import DbloadArgumentParser, RunFromArgumentParser, XMLPolygonFileArgumentParser
 from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, XMLPolygonReaderCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
-from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationSample
+from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationFileSample
 from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict, ArgParseAddTupleToDict
@@ -60,7 +60,7 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
       "annotationpositionfromaffineshift": annotationpositionfromaffineshift,
     }
 
-class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationSample, WorkflowSample, AnnotationInfoWriterArgumentParser, XMLPolygonAnnotationFileInfoWriter):
+class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationFileSample, WorkflowSample, AnnotationInfoWriterArgumentParser, XMLPolygonAnnotationFileInfoWriter):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
@@ -180,7 +180,7 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
       WriteAnnotationInfoSample,
     ]
 
-class CopyAnnotationInfoSample(CopyAnnotationInfoSampleBase, XMLPolygonAnnotationSample, WorkflowSample, CopyAnnotationInfoArgumentParser):
+class CopyAnnotationInfoSample(CopyAnnotationInfoSampleBase, XMLPolygonAnnotationFileSample, WorkflowSample, CopyAnnotationInfoArgumentParser):
   def run(self):
     self.writecsv("annotationinfo", self.readtable(self.annotationinfofile, AnnotationInfo))
 
