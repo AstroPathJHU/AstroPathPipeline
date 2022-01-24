@@ -61,7 +61,7 @@ Class segmaps : moduletools {
         $this.sample.info("started processing segmentation maps")
         $taskname = 'GetaSeg'
         $matlabtask = ";GetaSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished processing segmentation maps")
     }
     <# -----------------------------------------
@@ -74,7 +74,7 @@ Class segmaps : moduletools {
         $this.sample.info("started processing fields without segmentation data")
         $taskname = 'GetnoSeg'
         $matlabtask = ";GetnoSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished processing fields without segmentation data")
     }
     <# -----------------------------------------

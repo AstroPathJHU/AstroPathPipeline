@@ -25,8 +25,8 @@ Class testsegmaps {
         # Run Tests
         #
         $this.CleanupTest($inp)
-        #$this.GetaSegTest($inp)
-        #$this.GetnoSegTest($inp)
+        $this.GetaSegTest($inp)
+        $this.GetnoSegTest($inp)
     }
     #
     importmodule(){
@@ -35,41 +35,46 @@ Class testsegmaps {
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
     }
+    #
     [void]CleanupTest($inp){
         Write-Host 'Starting Cleanup Test'
-        #$inp.cleanup()
+        $inp.cleanup()
         if ($inp.processvars[4]) {
             $sor = $inp.sample.componentfolder()
-            #Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
             Write-Host 'Component Folder: ' $sor
-            Write-Host 'All Files: ' (gci -Path $sor)
             Write-Host 'Deleting these files: ' (gci -Path $sor -Include *w_seg.tif -Recurse)
-
-            #if (@(Test-Path $inp.processvars[0])) {
-            #    Throw 'Cleanup Test Failed'
-            #}
+            try {
+                Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
+            }
+            catch {
+                Throw 'Error deleting segmentation files'
+            }
         }
         Write-Host 'Passed Cleanup Test'
     }
     #
     [void]GetaSegTest($inp){
         Write-Host 'Starting GetaSeg Test'
+        $table = $this.phenotypefolder() + '\Results\Tables'
+        if (!(test-path $table + '\*csv')){
+            Throw 'Phenotype Tables do not exist'
+        }
         $inp.GetaSeg()
-        $xmlpath = $inp.processvars[1] + '/' + $inp.sample.slideid + '/*.xml'
-        Write-Host 'xml path: ' $xmlpath
-        $im3path = $inp.processvars[2] + '/../Scan1/MSI/*.im3'
-        if (!(@(Test-Path $xmlpath) -and @(Test-Path $im3path))) {
-            Throw 'GetaSeg Failed'
+        $comp = (gci ($table + '\*') '*csv').Count
+        $seg = (gci ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
+        if (!($comp -eq $seg)){
+            Throw 'Component data count ~= Segmentation Data count'
         }
         Write-Host 'Passed GetaSeg Test'
     }
     #
     [void]GetnoSegTest($inp){
         Write-Host 'Starting GetnoSeg Test'
-        $inp.GetnoSeg()
-        $datpath = $inp.processvars[1] + '/' + $inp.sample.slideid + '/*.dat'
-        if (!(@(Test-Path $datpath))) {
-            Throw 'GetnoSeg Test Failed'
+        try {
+            $inp.GetnoSeg()
+        }
+        catch {
+            Throw 'Error running GetnoSeg'
         }
         Write-Host 'Passed GetnoSeg Test'
     }
