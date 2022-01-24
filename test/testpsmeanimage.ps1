@@ -66,7 +66,7 @@ Class testpsmeanimage {
         Write-Host 'Processvars: '$inp.processvars
         $inp.returndata()
         if ($inp.processvars[4]) {
-            $sourcepath = $inp.sample.processvars[0] + '\meanimage'
+            $sourcepath = $inp.processvars[0] + '\meanimage'
             $returnpath = $inp.sample.im3folder() + '\meanimage'
             Write-Host 'Source Path: ' $sourcepath
             Write-Host 'Return Path: ' $returnpath
