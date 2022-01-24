@@ -216,7 +216,33 @@ class AnnotationInfo(DataClassWithPscale):
   def xmlpath(self):
     return self.scanfolder/self.xmlfile
 
-class Annotation(DataClassWithPolygon, DataClassWithApscale):
+class DataClassWithAnnotationInfo(DataClassWithPscale):
+  annotationinfo: AnnotationInfo = MetaDataAnnotation(None, includeintable=False)
+  @classmethod
+  def transforminitargs(cls, *, pscale=None, annotationinfo=None, annotationinfos=None, **kwargs):
+    if annotationinfo is not None and annotationinfos is not None:
+      raise TypeError("Provided both annotationinfo and annotationinfos")
+
+    if annotationinfos is not None:
+      annotationinfos = [annotationinfo for annotationinfo in annotationinfos if annotationinfo.name == kwargs["name"]]
+      try:
+        annotationinfo, = annotationinfos
+      except ValueError:
+        if len(annotationinfos) > 1:
+          raise ValueError(f"Multiple annotationinfos with the same name: {annotationinfos}")
+        annotationinfo = None
+
+    if annotationinfo is not None:
+      if pscale is None: pscale = annotation.pscale
+      if pscale != annotationinfo.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {annotationinfo.pscale}")
+
+    return super().transforminitargs(
+      pscale=pscale,
+      annotationinfo=annotationinfo,
+      **kwargs,
+    )
+
+class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon, DataClassWithApscale):
   """
   An annotation from a pathologist.
 
@@ -234,7 +260,6 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
   color: str
   visible: bool = boolasintfield()
   poly: Polygon = polygonfield()
-  annotationinfo: AnnotationInfo = MetaDataAnnotation(None, includeintable=False)
 
   def __bool__(self):
     return self.name.lower() != "empty"
@@ -247,7 +272,9 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
     return AllowedAnnotation.allowedannotation(name).isfromxml
 
   @classmethod
-  def transforminitargs(cls, *args, annotationinfo=None, **kwargs):
+  def transforminitargs(cls, *args, **kwargs):
+    args, kwargs = super().transforminitargs(*args, **kwargs)
+    annotationinfo = kwargs["annotationinfo"]
     isfromxml = cls.isannotationnamefromxml(kwargs["name"])
     if isfromxml and annotationinfo is None:
       raise TypeError("Need annotationinfo if annotation is from xml")
@@ -261,7 +288,7 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
           kwargs["annoscale"] = pscale/2
         else:
           kwargs["annoscale"] = apscale
-    return super().transforminitargs(*args, annotationinfo=annotationinfo, **kwargs)
+    return args, kwargs
 
   @property
   def isfromxml(self):

@@ -82,8 +82,9 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       self.assertFalse(alignmentfilename.exists())
       self.assertFalse(stitchfilename.exists())
 
-    annotations = rows = s.readtable(annotationsfilename, Annotation, checkorder=True, checknewlines=True)
-    targetrows = s.readtable(referenceannotationsfilename, Annotation, checkorder=True, checknewlines=True)
+    extrakwargs = {"annotationinfos": s.annotationinfo}
+    annotations = rows = s.readtable(annotationsfilename, Annotation, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+    targetrows = s.readtable(referenceannotationsfilename, Annotation, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
     for row, target in more_itertools.zip_equal(rows, targetrows):
       assertAlmostEqual(row, target, rtol=1e-4)
 
