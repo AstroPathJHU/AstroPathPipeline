@@ -1,4 +1,4 @@
-import jxmlease, os, pathlib, unittest
+import os, pathlib
 from astropath.shared.csvclasses import AnnotationInfo
 from astropath.slides.annowarp.mergeannotationxmls import CopyAnnotationInfoCohort, CopyAnnotationInfoSample, MergeAnnotationXMLsCohort, MergeAnnotationXMLsSample, WriteAnnotationInfoCohort, WriteAnnotationInfoSample
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput

@@ -1,13 +1,11 @@
-import collections, contextlib, jxmlease, methodtools, numpy as np, re
+import methodtools, numpy as np, re
 from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationFile, XMLPolygonAnnotationFileInfoWriter
-from ...shared.argumentparser import DbloadArgumentParser, RunFromArgumentParser, XMLPolygonFileArgumentParser
-from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, XMLPolygonReaderCohort, WorkflowCohort
+from ...shared.argumentparser import DbloadArgumentParser, XMLPolygonFileArgumentParser
+from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
 from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationFileSample
 from ...utilities import units
-from ...utilities.config import CONST as UNIV_CONST
-from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict, ArgParseAddTupleToDict
-from ...utilities.tableio import writetable
+from ...utilities.misc import ArgParseAddRegexToDict
 from ..align.alignsample import AlignSample, ReadAffineShiftSample
 
 class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
@@ -254,28 +252,27 @@ class MergeAnnotationXMLsSample(CopyAnnotationInfoSampleBase, MergeAnnotationXML
     return result
 
   def mergexmls(self):
-    with contextlib.ExitStack() as stack:
-      info = {}
-      allnames = set()
-      for xmlfile in self.allxmls:
-        xmlfile = XMLPolygonAnnotationFile(xmlfile=xmlfile, pscale=self.pscale)
-        infodict = {info.name: info for info in xmlfile.annotationinfo}
-        allnames.update(infodict.keys())
-        info[xmlfile.annotationspolygonsxmlfile] = infodict
+    info = {}
+    allnames = set()
+    for xmlfile in self.allxmls:
+      xmlfile = XMLPolygonAnnotationFile(xmlfile=xmlfile, pscale=self.pscale)
+      infodict = {info.name: info for info in xmlfile.annotationinfo}
+      allnames.update(infodict.keys())
+      info[xmlfile.annotationspolygonsxmlfile] = infodict
 
-      unknown = allnames - set(self.annotationxmldict) - set(self.skipannotations)
-      if unknown:
-        raise ValueError(f"Found unknown annotations in xml files: {', '.join(sorted(unknown))}")
+    unknown = allnames - set(self.annotationxmldict) - set(self.skipannotations)
+    if unknown:
+      raise ValueError(f"Found unknown annotations in xml files: {', '.join(sorted(unknown))}")
 
-      mergedinfo = []
-      for name, xmlfile in self.annotationxmldict.items():
-        self.logger.info(f"Taking {name} from {xmlfile.name}")
-        mergedinfo.append(info[xmlfile][name.lower()])
+    mergedinfo = []
+    for name, xmlfile in self.annotationxmldict.items():
+      self.logger.info(f"Taking {name} from {xmlfile.name}")
+      mergedinfo.append(info[xmlfile][name.lower()])
 
-      for name in sorted(set(self.skipannotations) & allnames):
-        self.logger.info(f"Skipping {name}")
+    for name in sorted(set(self.skipannotations) & allnames):
+      self.logger.info(f"Skipping {name}")
 
-      self.writecsv("annotationinfo", mergedinfo)
+    self.writecsv("annotationinfo", mergedinfo)
 
   def run(self, **kwargs):
     return self.mergexmls(**kwargs)

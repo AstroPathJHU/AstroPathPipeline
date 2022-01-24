@@ -233,7 +233,7 @@ class DataClassWithAnnotationInfo(DataClassWithPscale):
         annotationinfo = None
 
     if annotationinfo is not None:
-      if pscale is None: pscale = annotation.pscale
+      if pscale is None: pscale = annotationinfo.pscale
       if pscale != annotationinfo.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {annotationinfo.pscale}")
 
     return super().transforminitargs(

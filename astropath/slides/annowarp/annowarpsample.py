@@ -1,4 +1,4 @@
-import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, re, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import AnnotationInfo, Region, Vertex
@@ -18,7 +18,7 @@ from ..align.field import Field
 from ..align.overlap import AlignmentComparison
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample, TissueMaskSampleWithPolygons
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
-from .mergeannotationxmls import MergeAnnotationXMLsSample, WriteAnnotationInfoSample
+from .mergeannotationxmls import CopyAnnotationInfoSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class QPTiffSample(SampleBase, units.ThingWithImscale):
