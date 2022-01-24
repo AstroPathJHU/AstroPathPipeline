@@ -67,14 +67,16 @@ Class testpsmeanimage {
         if ($inp.processvars[4]) {
             $sourcepath = $inp.sample.processvars[0] + '\meanimage'
             $returnpath = $inp.sample.im3folder() + '\meanimage'
+            Write-Host 'Source Path: ' $sourcepath
+            Write-Host 'Return Path: ' $returnpath
             #
             if (!(@(Test-Path $sourcepath))) {
-                Write-Host 'source path does not exist'
+                Write-Host 'Source path does not exist'
                 Throw 'Return Data Test Failed'
             }
             #
             if (!(@(Test-Path $returnpath))) {
-                Write-Host 'return path does not exist'
+                Write-Host 'Return path does not exist'
                 Throw 'Return Data Test Failed'
             }
         }
