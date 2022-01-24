@@ -64,13 +64,20 @@ Class testpsmeanimage {
     [void]ReturnDataTest($inp){
         Write-Host 'Starting Return Data Test'
         $inp.returndata()
-        $returnpath = $inp.sample.im3folder() + '\meanimage'
-        if (!(@(Test-Path $returnpath))) {
-            Throw 'Return Data Test Failed'
+        if ($inp.processvars[4]) {
+            $sourcepath = $inp.sample.processvars[0] + '\meanimage'
+            $returnpath = $inp.sample.im3folder() + '\meanimage'
+            #
+            if (!(@(Test-Path $sourcepath))) {
+                Write-Host 'source path does not exist'
+                Throw 'Return Data Test Failed'
+            }
+            #
+            if (!(@(Test-Path $returnpath))) {
+                Write-Host 'return path does not exist'
+                Throw 'Return Data Test Failed'
+            }
         }
-        #if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape($returnpath))){
-        #    Throw ('processvars[0] not correct: ' + $inp.processvars[0] + '~=' + $returnpath)
-        #}
         Write-Host 'Passed Return Data Test'
     }
     #
@@ -83,6 +90,7 @@ Class testpsmeanimage {
                 Throw 'Cleanup Test Failed'
             }
         }
+        Write-Host 'processing folder deleted'
         Write-Host 'Passed Cleanup Test'
     }
 }
