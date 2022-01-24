@@ -68,11 +68,15 @@ Class testpsmeanimage {
         if (!(@(Test-Path $returnpath))) {
             Throw 'Return Data Test Failed'
         }
+        #if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape($returnpath))){
+        #    Throw ('processvars[0] not correct: ' + $inp.processvars[0] + '~=' + $returnpath)
+        #}
         Write-Host 'Passed Return Data Test'
     }
     #
     [void]CleanupTest($inp){
         Write-Host 'Starting Cleanup Test'
+        Write-Host $inp.processvars
         $inp.cleanup()
         if ($inp.processvars[4]) {
             if (@(Test-Path $inp.processvars[0])) {
