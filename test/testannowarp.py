@@ -14,9 +14,11 @@ thisfolder = pathlib.Path(__file__).parent
 class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
+    sourceroot = thisfolder/"data"
+    destroot = thisfolder/"test_for_jenkins"/"annowarp"
     for SlideID in "M206",:
-      olddbload = thisfolder/"data"/SlideID/"dbload"
-      newdbload = thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"
+      olddbload = sourceroot/SlideID/"dbload"
+      newdbload = destroot/SlideID/"dbload"
       for csv in (
         "affine",
         "constants",
@@ -24,11 +26,17 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
 
-      olddbload = thisfolder/"data"/"reference"/"writeannotationinfo"/SlideID/"dbload"
+      olddbload = sourceroot/"reference"/"writeannotationinfo"/SlideID/"dbload"
       for csv in (
         "annotationinfo",
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
+
+      oldscanfolder = sourceroot/SlideID/"im3"/"Scan1"
+      newscanfolder = destroot/SlideID/"im3"/"Scan1"
+      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolder
+      yield oldscanfolder/f"{SlideID}_Scan1.qptiff", newscanfolder
+      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", (newscanfolder, f"{SlideID}_Scan1.annotations.polygons_2.xml")
 
   @classmethod
   def setUpClass(cls):
@@ -54,7 +62,10 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     ] for SlideID in ("M206",)), [])
 
   def compareoutput(self, SlideID, reffolder=None, alignment=True):
-    s = AnnoWarpSampleAstroPathTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=True)
+    root = thisfolder/"data"
+    zoomroot = thisfolder/"data"/"reference"/"zoom"
+    dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, uselogfiles=True)
     if reffolder is None: reffolder = thisfolder/"data"/"reference"/"annowarp"
 
     alignmentfilename = s.alignmentcsv
@@ -119,7 +130,10 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
         self.removeoutput()
 
   def testReadingWritingAlignments(self, SlideID="M206"):
-    s = AnnoWarpSampleAstroPathTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp")
+    root = thisfolder/"data"
+    zoomroot = thisfolder/"data"/"reference"/"zoom"
+    dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root)
     referencefilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
     testfilename = thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"testreadannowarpalignments.csv"
     testfilename.parent.mkdir(parents=True, exist_ok=True)
@@ -132,7 +146,10 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     testfilename.unlink()
 
   def testStitchCvxpy(self, SlideID="M206"):
-    s = AnnoWarpSampleAstroPathTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp")
+    root = thisfolder/"data"
+    zoomroot = thisfolder/"data"/"reference"/"zoom"
+    dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root)
     referencefilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch(residualpullcutoff=None)
@@ -152,9 +169,9 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
   def testCohort(self, SlideID="M206", units="safe", moreargs=[], **compareoutputkwargs):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
-    dbloadroot = logroot = thisfolder/"test_for_jenkins"/"annowarp"
+    dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
     maskroot = root
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--ignore-dependencies", "--rerun-finished"] + moreargs
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--im3root", os.fspath(im3root), "--ignore-dependencies", "--rerun-finished"] + moreargs
     try:
       AnnoWarpCohortAstroPathTissueMask.runfromargumentparser(args)
       self.compareoutput(SlideID, **compareoutputkwargs)
@@ -175,7 +192,10 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       self.testCohort(SlideID=SlideID, units=units, reffolder=thisfolder/"data"/"reference"/"annowarp"/"wsiannotations", alignment=False)
 
   def testConstraint(self, SlideID="M206"):
-    s = AnnoWarpSampleAstroPathTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp")
+    root = thisfolder/"data"
+    zoomroot = thisfolder/"data"/"reference"/"zoom"
+    dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root)
     referencefilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch(residualpullcutoff=None)
