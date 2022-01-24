@@ -22,8 +22,6 @@ Class testpsmeanimage {
         $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
         $inp = meanimage $task
         #
-        Write-Host $inp
-        #
         # Run Tests
         #
         $this.DownloadFilesTest($inp)
