@@ -19,15 +19,8 @@ Class testsegmaps {
         #
         $this.importmodule()
         #
-        #$task = ('0', 'M21_1', $this.process_loc, $this.mpath)
-        #$inp = segmaps $task
-        Write-Host 'building a segmaps module object'
-        try {
-            $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
-            $inp = segmaps $task
-        } catch {
-            Throw 'module could not be constructed'
-        }
+        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
+        $inp = segmaps $task
         #
         # Run Tests
         #
