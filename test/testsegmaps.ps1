@@ -80,5 +80,5 @@ Class testpsmeanimage {
 #
 # launch test and exit if no error found
 #
-$test = [testpssegmaps]::new()
+$test = [testsegmaps]::new()
 exit 0
