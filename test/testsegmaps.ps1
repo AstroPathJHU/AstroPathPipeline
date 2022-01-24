@@ -55,13 +55,13 @@ Class testsegmaps {
     #
     [void]GetaSegTest($inp){
         Write-Host 'Starting GetaSeg Test'
-        $table = $this.phenotypefolder() + '\Results\Tables'
+        $table = $inp.sample.phenotypefolder() + '\Results\Tables'
         if (!(test-path $table + '\*csv')){
             Throw 'Phenotype Tables do not exist'
         }
         $inp.GetaSeg()
         $comp = (gci ($table + '\*') '*csv').Count
-        $seg = (gci ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
+        $seg = (gci ($inp.sample.componentfolder() + '\*') '*data_w_seg.tif').Count
         if (!($comp -eq $seg)){
             Throw 'Component data count ~= Segmentation Data count'
         }
