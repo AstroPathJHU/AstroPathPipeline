@@ -1,4 +1,4 @@
-import csv, dataclassy, datetime, numbers, numpy as np, pathlib
+import csv, dataclassy, datetime, methodtools, numbers, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
@@ -234,11 +234,28 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
   color: str
   visible: bool = boolasintfield()
   poly: Polygon = polygonfield()
-  isfromxml: bool = boolasintfield(includeintable=False)
   annotationinfo: AnnotationInfo = MetaDataAnnotation(None, includeintable=False)
 
+  def __bool__(self):
+    return self.name.lower() != "empty"
+
+  @methodtools.lru_cache()
   @classmethod
-  def transforminitargs(cls, *args, isfromxml, annotationinfo=None, **kwargs):
+  def isannotationnamefromxml(cls, name):
+    if name == "empty": return False
+    from .annotationpolygonxmlreader import AllowedAnnotation
+    annotations = {_ for _ in AllowedAnnotation.allowedannotations() if _.name == name}
+    try:
+      a, = annotations
+    except ValueError:
+      if len(annotations) > 1:
+        assert False, annotations
+      raise ValueError(f"Didn't find an annotation with name {name} in master_annotation_list.csv")
+    return a.isfromxml
+
+  @classmethod
+  def transforminitargs(cls, *args, annotationinfo=None, **kwargs):
+    isfromxml = cls.isannotationnamefromxml(kwargs["name"])
     if isfromxml and annotationinfo is None:
       raise TypeError("Need annotationinfo if annotation is from xml")
     if "annoscale" not in kwargs:
@@ -251,8 +268,11 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
           kwargs["annoscale"] = pscale/2
         else:
           kwargs["annoscale"] = apscale
-    return super().transforminitargs(*args, isfromxml=isfromxml, annotationinfo=annotationinfo, **kwargs)
+    return super().transforminitargs(*args, annotationinfo=annotationinfo, **kwargs)
 
+  @property
+  def isfromxml(self):
+    return self.isannotationnamefromxml(self.name)
   @property
   def isonwsi(self):
     if not self.isfromxml: return True

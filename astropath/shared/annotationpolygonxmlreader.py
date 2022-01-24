@@ -3,7 +3,7 @@ from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.misc import ArgParseAddToDict
 from ..utilities.miscmath import floattoint
-from ..utilities.tableio import readtable, writetable
+from ..utilities.tableio import boolasintfield, readtable, writetable
 from ..utilities.units.dataclasses import distancefield, DataClassWithAnnoscale
 from .csvclasses import Annotation, AnnotationInfo, Region, Vertex
 from .image_masking.maskloader import TissueMaskLoaderWithPolygons
@@ -16,7 +16,9 @@ class AllowedAnnotation(MyDataClassFrozen):
   layer: int
   color: str
   synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
+  isfromxml: bool = boolasintfield()
 
+  @methodtools.lru_cache()
   @classmethod
   def allowedannotations(cls):
     return readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", cls)
@@ -438,7 +440,6 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
               poly="poly",
               pscale=pscale,
               apscale=self.apscale,
-              isfromxml=False,
             )
           )
           layeridx = next(count)
@@ -473,7 +474,6 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           poly="poly",
           pscale=pscale,
           apscale=self.apscale,
-          isfromxml=isfromxml,
           annotationinfo=annotationinfo,
         )
         annotations.append(annotation)
