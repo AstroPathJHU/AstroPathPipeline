@@ -42,7 +42,8 @@ Class testsegmaps {
         if ($inp.processvars[4]) {
             $sor = $inp.sample.componentfolder()
             Write-Host 'Component Folder: ' $sor
-            Write-Host 'Deleting these files: ' (gci -Path $sor -Include *w_seg.tif -Recurse)
+            Write-Host 'Current Files: ' (gci -Path $sor -Recurse)
+            Write-Host 'Deleting component data with segmentation data: ' (gci -Path $sor -Include *w_seg.tif -Recurse)
             try {
                 Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
             }
@@ -56,9 +57,10 @@ Class testsegmaps {
     [void]GetaSegTest($inp){
         Write-Host 'Starting GetaSeg Test'
         $table = $inp.sample.phenotypefolder() + '\Results\Tables'
-        if (!(test-path $table + '\*csv')){
+        if (!(test-path ($table + '\*csv'))){
             Throw 'Phenotype Tables do not exist'
         }
+        Write-Host 'Phenotype tables checked'
         $inp.GetaSeg()
         $comp = (gci ($table + '\*') '*csv').Count
         $seg = (gci ($inp.sample.componentfolder() + '\*') '*data_w_seg.tif').Count
