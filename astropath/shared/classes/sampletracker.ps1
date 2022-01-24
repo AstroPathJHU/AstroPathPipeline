@@ -46,9 +46,11 @@ class sampletracker : dependencies {
     }
     #
     [void]removewatchers(){
-        $this.modules | ForEach-Object {
-            $SI = $this.modulelogs.($cmodule).slidelog
-            $this.UnregisterEvent($SI)
+        if ($this.modules){
+            $this.modules | ForEach-Object {
+                $SI = $this.modulelogs.($cmodule).slidelog
+                $this.UnregisterEvent($SI)
+            }
         }
     }
 }
