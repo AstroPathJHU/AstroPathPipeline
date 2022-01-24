@@ -63,6 +63,7 @@ Class testpsmeanimage {
     #
     [void]ReturnDataTest($inp){
         Write-Host 'Starting Return Data Test'
+        Write-Host 'Processvars: '$inp.processvars
         $inp.returndata()
         if ($inp.processvars[4]) {
             $sourcepath = $inp.sample.processvars[0] + '\meanimage'
@@ -71,13 +72,11 @@ Class testpsmeanimage {
             Write-Host 'Return Path: ' $returnpath
             #
             if (!(@(Test-Path $sourcepath))) {
-                Write-Host 'Source path does not exist'
-                Throw 'Return Data Test Failed'
+                Throw 'Return Data Test Failed - Source path does not exist'
             }
             #
             if (!(@(Test-Path $returnpath))) {
-                Write-Host 'Return path does not exist'
-                Throw 'Return Data Test Failed'
+                Throw 'Return Data Test Failed - Return path does not exist'
             }
         }
         Write-Host 'Passed Return Data Test'
@@ -85,7 +84,6 @@ Class testpsmeanimage {
     #
     [void]CleanupTest($inp){
         Write-Host 'Starting Cleanup Test'
-        Write-Host $inp.processvars
         $inp.cleanup()
         if ($inp.processvars[4]) {
             if (@(Test-Path $inp.processvars[0])) {
