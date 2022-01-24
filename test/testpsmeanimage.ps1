@@ -64,12 +64,13 @@ Class testpsmeanimage {
     [void]ReturnDataTest($inp){
         Write-Host 'Starting Return Data Test'
         Write-Host 'Processvars: '$inp.processvars
+        $sourcepath = $inp.processvars[0] + '\meanimage'
+        $returnpath = $inp.sample.im3folder() + '\meanimage'
+        Write-Host 'Source Path: ' $sourcepath
+        Write-Host 'Return Path: ' $returnpath
+        #
         $inp.returndata()
         if ($inp.processvars[4]) {
-            $sourcepath = $inp.processvars[0] + '\meanimage'
-            $returnpath = $inp.sample.im3folder() + '\meanimage'
-            Write-Host 'Source Path: ' $sourcepath
-            Write-Host 'Return Path: ' $returnpath
             #
             if (!(@(Test-Path $sourcepath))) {
                 Throw 'Return Data Test Failed - Source path does not exist'
@@ -99,6 +100,3 @@ Class testpsmeanimage {
 #
 $test = [testpsmeanimage]::new()
 exit 0
-
-#Remove temporary processing directory
-#$inp.sample.removedir($processing)

@@ -1,10 +1,10 @@
 ﻿<# -------------------------------------------
  testpsmeanimage
  created by: Andrew Jorquera
- Last Edit: 01.18.2022
+ Last Edit: 01.24.2022
  --------------------------------------------
  Description
- test if the methods of meanimage are 
+ test if the methods of segmaps are 
  functioning as intended
  -------------------------------------------#>
 #
@@ -27,8 +27,8 @@ Class testpsmeanimage {
         # Run Tests
         #
         $this.CleanupTest($inp)
-        $this.GetaSegTest($inp)
-        $this.GetnoSegTest($inp)
+        #$this.GetaSegTest($inp)
+        #$this.GetnoSegTest($inp)
     }
     #
     importmodule(){
@@ -39,11 +39,17 @@ Class testpsmeanimage {
     }
     [void]CleanupTest($inp){
         Write-Host 'Starting Cleanup Test'
-        $inp.cleanup()
+        #$inp.cleanup()
         if ($inp.processvars[4]) {
-            if (@(Test-Path $inp.processvars[0])) {
-                Throw 'Cleanup Test Failed'
-            }
+            $sor = $inp.sample.componentfolder()
+            #Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
+            Write-Host 'Component Folder: ' $sor
+            Write-Host 'All Files: ' (gci -Path $sor)
+            Write-Host 'Deleting these files: ' (gci -Path $sor -Include *w_seg.tif -Recurse)
+
+            #if (@(Test-Path $inp.processvars[0])) {
+            #    Throw 'Cleanup Test Failed'
+            #}
         }
         Write-Host 'Passed Cleanup Test'
     }

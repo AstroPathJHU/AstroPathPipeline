@@ -220,6 +220,12 @@ pipeline {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
           }
         }
+		
+		stage('segmaps') {
+		  steps {
+		    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsegmaps.ps1'
+		  }
+		}
       }
     }
     stage('check that the repo is clean') {
