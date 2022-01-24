@@ -113,11 +113,15 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       self.assertGreater(row.poly.area, 0)
 
   def testAlignment(self, SlideID="M206"):
+    root = thisfolder/"data"
+    zoomroot = thisfolder/"data"/"reference"/"zoom"
+    dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+    maskroot = root
     with units.setup_context("safe"):
-      s = AnnoWarpSampleAstroPathTissueMask(root=thisfolder/"data", samp=SlideID, zoomroot=thisfolder/"data"/"reference"/"zoom", dbloadroot=thisfolder/"test_for_jenkins"/"annowarp", logroot=thisfolder/"test_for_jenkins"/"annowarp", uselogfiles=True)
+      s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, maskroot=maskroot, uselogfiles=True)
 
       try:
-        AnnoWarpSampleAstroPathTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--allow-local-edits"])
+        AnnoWarpSampleAstroPathTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--im3root", os.fspath(s.im3root), "--allow-local-edits"])
 
         if not s.runstatus():
           raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus()}")
