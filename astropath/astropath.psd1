@@ -67,6 +67,8 @@ PowerShellVersion = '3.0'
 	              'shared\classes\moduletools.ps1',
 	              'hpfs\vminform\classes\vminformqueue.ps1',
                       'shared\classes\queue.ps1',
+					  'shared\classes\dependencies.ps1',
+					  'shared\classes\sampletracker.ps1',
                       'shared\classes\dispatchertools.ps1',
                       'shared\classes\dispatcher.ps1',
                       'hpfs\vminform\classes\vminform.ps1',

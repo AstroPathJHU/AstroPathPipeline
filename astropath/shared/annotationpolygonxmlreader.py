@@ -5,7 +5,7 @@ from ..utilities.misc import ArgParseAddToDict
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import readtable, writetable
 from ..utilities.units.dataclasses import distancefield, DataClassWithAnnoscale
-from .csvclasses import Annotation, Region, Vertex
+from .csvclasses import Annotation, AnnotationInfo, Region, Vertex
 from .image_masking.maskloader import TissueMaskLoaderWithPolygons
 from .logging import dummylogger, printlogger, ThingWithLogger
 from .polygon import SimplePolygon
@@ -16,6 +16,10 @@ class AllowedAnnotation(MyDataClassFrozen):
   layer: int
   color: str
   synonyms: set = MetaDataAnnotation(set(), readfunction=lambda x: set(x.lower().split(",")) if x else set(), writefunction=lambda x: ",".join(sorted(x)))
+
+  @classmethod
+  def allowedannotations(cls):
+    return readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", cls)
 
 class AnnotationNodeBase(units.ThingWithAnnoscale):
   def __init__(self, *args, annoscale, **kwargs):
@@ -225,12 +229,17 @@ class AnnotationVertexFromPolygon(DataClassWithAnnoscale):
   X: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="annoscale")
   Y: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="annoscale")
 
-class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale, ThingWithLogger):
+class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithApscale, ThingWithLogger):
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, annotationsonwsi=False, **kwargs):
+  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, annotationsonwsi=None, annotationposition=None, readannotationinfo=False, **kwargs):
     self.__annotationsonwsi = annotationsonwsi
+    self.__annotationposition = annotationposition
+    self.__readannotationinfo = readannotationinfo
+    if self.__annotationsonwsi is None and not self.__readannotationinfo:
+      raise ValueError("Have to either read the annotation info from a csv file or specify if the annotations are on the wsi or qptiff")
+
     self.__saveallannotationimages = saveallannotationimages
     if annotationimagefolder is not None: annotationimagefolder = pathlib.Path(annotationimagefolder)
     self.__annotationimagefolder = annotationimagefolder
@@ -252,11 +261,14 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
   @property
   @abc.abstractmethod
   def annotationspolygonsxmlfile(self): pass
+  @property
+  @abc.abstractmethod
+  def SampleID(self): pass
 
   @methodtools.lru_cache()
   @property
   def allowedannotations(self):
-    result = readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", AllowedAnnotation)
+    result = AllowedAnnotation.allowedannotations()
     allsynonyms = {synonym.lower() for synonym in self.__annotationsynonyms}
     for a in result:
       if a.name.lower() not in allsynonyms:
@@ -287,7 +299,15 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
   @property
   def annotationnodes(self):
     with open(self.annotationspolygonsxmlfile, "rb") as f:
-      return [AnnotationNodeXML(node, annoscale=self.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+      return [AnnotationNodeXML(node, annoscale=self.pscale/2 if self.annotationsonwsi else self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")]
+
+  def readannotationinfo(self):
+    if not self.annotationinfocsv.exists():
+      raise FileNotFoundError(f"Can't read the annotation info from {self.annotationinfocsv} because it doesn't exist")
+    return self.readtable(self.annotationinfocsv, AnnotationInfo)
+  @property
+  @abc.abstractmethod
+  def annotationinfocsv(self): pass
 
   @methodtools.lru_cache()
   def getXMLpolygonannotations(self, *, pscale=None):
@@ -297,6 +317,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
     annotations = []
     allregions = []
     allvertices = []
+    if self.__readannotationinfo:
+      annotationinfos = self.readannotationinfo()
 
     errors = []
 
@@ -355,11 +377,14 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
               color=emptycolor,
               visible=False,
               name="empty",
-              sampleid=0,
+              sampleid=self.SampleID,
               layer=layeridx,
               poly="poly",
               pscale=pscale,
-              annoscale=self.annoscale,
+              apscale=self.apscale,
+              isonwsi=False,
+              isfromxml=False,
+              position=None,
             )
           )
           layeridx = next(count)
@@ -376,18 +401,51 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
         if color != targetcolor:
           self.logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
           color = targetcolor
-        annotations.append(
-          Annotation(
-            color=color,
-            visible=visible,
-            name=name,
-            sampleid=0,
-            layer=layer,
-            poly="poly",
-            pscale=pscale,
-            annoscale=self.annoscale,
-          )
+
+        if node.isfromxml and self.__readannotationinfo:
+          annotationinfo, = (info for info in annotationinfos if info.name == name)
+          annotationinfos.remove(annotationinfo)
+
+        if not node.isfromxml:
+          isonwsi = True
+          isfromxml = False
+        else:
+          isfromxml = True
+          if self.annotationsonwsi is not None:
+            isonwsi = self.annotationsonwsi
+          elif self.__readannotationinfo:
+            isonwsi = annotationinfo.isonwsi
+          else:
+            assert False
+
+        if not isonwsi:
+          position = None
+        elif not isfromxml:
+          position = None
+        elif self.__annotationposition is not None:
+          position = self.__annotationposition
+        elif self.__readannotationinfo:
+          position = annotationinfo.position
+        else:
+          position = None
+
+        annotation = Annotation(
+          color=color,
+          visible=visible,
+          name=name,
+          sampleid=self.SampleID,
+          layer=layer,
+          poly="poly",
+          pscale=pscale,
+          apscale=self.apscale,
+          isonwsi=isonwsi,
+          isfromxml=isfromxml,
+          position=position,
         )
+        if node.isfromxml and self.__readannotationinfo:
+          if annotation.annotationinfo != annotationinfo:
+            errors.append(f"Annotations inconsistent with annotationinfo csv:\ncsv: {annotationinfo}\nnew: {annotation.annotationinfo}")
+        annotations.append(annotation)
 
         regions = node.regions
         if not regions: continue
@@ -406,15 +464,15 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
                 vid=k,
                 x=x,
                 y=y,
-                annoscale=self.annoscale,
+                annoscale=annotation.annoscale,
                 pscale=pscale,
-                isfromxml=node.isfromxml,
+                annotation=annotation,
               )
             )
           isNeg = region.NegativeROA
 
           polygon = SimplePolygon(vertices=regionvertices)
-          valid = polygon.makevalid(round=True, imagescale=self.annoscale)
+          valid = polygon.makevalid(round=True, imagescale=annotation.annoscale)
 
           perimeter = 0
           maxlength = 0
@@ -434,7 +492,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
 
           if saveimage and self.__annotationimagefolder is not None:
             poly = SimplePolygon(vertices=regionvertices)
-            if self.annotationsonwsi:
+            if annotation.isonwsi:
               raise ValueError("saving images is not implemented on wsi")
             else:
               with QPTiff(self.qptifffilename) as fqptiff:
@@ -455,7 +513,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
               ],
               extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
             )
-            ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=self.annoscale))
+            ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=annotation.annoscale))
 
             if badimage:
               openvertex1 = poly.vertexarray[0]
@@ -468,7 +526,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
             plt.close(fig)
 
           areacutoff = node.areacutoff
-          if areacutoff is not None: areacutoff = units.convertpscale(areacutoff, self.annoscale, pscale, power=2)
+          if areacutoff is not None: areacutoff = units.convertpscale(areacutoff, annotation.annoscale, pscale, power=2)
           for subpolygon in valid:
             subsubpolygons = (p for p in [subpolygon.outerpolygon] + subpolygon.subtractpolygons if not (areacutoff is not None and polygon.area < areacutoff))
             for polygon, m in zip(subsubpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
@@ -489,7 +547,7 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
                   type=region.Type,
                   nvert=len(regionvertices),
                   poly=None,
-                  annoscale=self.annoscale,
+                  annoscale=annotation.annoscale,
                   pscale=pscale,
                 )
               )
@@ -498,6 +556,8 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
 
     if "good tissue" not in nodesbytype:
       errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(nodesbytype)})")
+    if self.__readannotationinfo and annotationinfos:
+      errors.append(f"Extra annotationinfos: {', '.join(info.name for info in annotationinfos)}")
 
     if errors:
       raise ValueError("\n".join(errors))
@@ -505,23 +565,23 @@ class XMLPolygonAnnotationReader(units.ThingWithPscale, units.ThingWithAnnoscale
     return annotations, allregions, allvertices
 
 class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
-  def __init__(self, polygonxmlfile, *args, pscale=None, annoscale=None, logger=dummylogger, **kwargs):
+  def __init__(self, polygonxmlfile, *args, pscale=None, apscale=None, logger=dummylogger, **kwargs):
     self.__polygonxmlfile = polygonxmlfile
     self.__logger = logger
     super().__init__(*args, **kwargs)
     if pscale is None: pscale = 1
-    if annoscale is None:
+    if apscale is None:
       if self.annotationimagefolder is not None:
         with QPTiff(self.qptifffilename) as fqptiff:
-          annoscale = fqptiff.annoscale
+          apscale = fqptiff.apscale
       else:
-        annoscale = 1
+        apscale = 1
     self.__pscale = pscale
-    self.__annoscale = annoscale
+    self.__apscale = apscale
   @property
   def pscale(self): return self.__pscale
   @property
-  def annoscale(self): return self.__annoscale
+  def apscale(self): return self.__apscale
 
   @property
   def logger(self): return self.__logger
@@ -529,11 +589,17 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
   @property
   def annotationspolygonsxmlfile(self): return self.__polygonxmlfile
 
+  @property
+  def annotationinfocsv(self): raise NotImplementedError
+
+  @property
+  def SampleID(self): return 0
+
 class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoaderWithPolygons):
   @property
   def annotationnodes(self):
     result = super().annotationnodes
-    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.annoscale, areacutoff=self.tissuemaskpolygonareacutoff()))
+    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.pscale, areacutoff=self.tissuemaskpolygonareacutoff()))
     return result
 
 def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):

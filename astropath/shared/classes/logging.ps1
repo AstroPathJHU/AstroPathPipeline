@@ -33,8 +33,6 @@
  }
 #
 class mylogger : sampledef {
-    [string]$mainlog
-    [string]$slidelog
     [int]$level = 2
     [string]$message
     [string]$messageappend = ''
@@ -58,19 +56,6 @@ class mylogger : sampledef {
     #
     getlogger(){
         $this.vers = $this.GetVersion($this.mpath, $this.module, $this.project)
-        $this.defpaths()
-    }
-    #
-    # define paths
-    #
-    [void]defpaths(){
-        #
-        $this.mainlog = $this.basepath + '\logfiles\' + $this.module + '.log'
-        $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
-             $this.slideid + '-' + $this.module + '.log'
-        #
-        #$this.mainlog = Convert-Path $this.mainlog
-        #$this.samplelog = Convert-Path $this.samplelog
     }
     #
     # change level default 

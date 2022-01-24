@@ -1,18 +1,17 @@
-import cv2, datetime, hashlib, jxmlease, more_itertools, numpy as np, os, pathlib, skimage
-from astropath.shared.annotationpolygonxmlreader import writeannotationcsvs
+import collections, cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib, skimage
+from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, writeannotationcsvs
 from astropath.shared.contours import findcontoursaspolygons
-from astropath.shared.csvclasses import Annotation, Constant, Region, Vertex
+from astropath.shared.csvclasses import Annotation, Region, Vertex
 from astropath.shared.logging import printlogger
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.align.alignsample import AlignSample
-from astropath.slides.prepdb.prepdbsample import PrepDbSample
-from astropath.slides.annowarp.mergeannotationxmls import MergeAnnotationXMLsCohort, MergeAnnotationXMLsSample
+from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTissueMask
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable, writetable
-from .testbase import assertAlmostEqual, compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -29,13 +28,10 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"misc"/"makesampledef"/"sampledef.csv",
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"sampledef.csv",
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"noheader.csv",
-      thisfolder/"test_for_jenkins"/"misc"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml",
-      thisfolder/"test_for_jenkins"/"misc"/"M206"/"dbload"/"M206_annotationinfo.csv",
     ]
   @classmethod
   def filestocopy(cls):
-    yield thisfolder/"data"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml", thisfolder/"test_for_jenkins"/"misc"/"M206"/"im3"/"Scan1"
-    yield thisfolder/"data"/"M206"/"dbload"/"M206_constants.csv", thisfolder/"test_for_jenkins"/"misc"/"M206"/"dbload"
+    return []
 
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
@@ -128,18 +124,21 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
   def testStandaloneAnnotations(self, SlideID="M21_1"):
     try:
       folder = thisfolder/"test_for_jenkins"/"misc"
-      s = PrepDbSample(thisfolder/"data", SlideID)
-      writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID)
+      s = AnnoWarpSampleAstroPathTissueMask(thisfolder/"data", SlideID, zoomroot=folder, annotationsonwsi=False)
+      writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID, annotationsonwsi=False)
+      extrakwargs = {}
       for filename, cls in (
         (f"{SlideID}_annotations.csv", Annotation),
         (f"{SlideID}_vertices.csv", Vertex),
         (f"{SlideID}_regions.csv", Region),
       ):
         try:
-          rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True)
-          targetrows = s.readtable(thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True)
+          rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          targetrows = s.readtable(thisfolder/"data"/"reference"/"misc"/"standaloneannotations"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
           for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
+          if cls == Annotation:
+            extrakwargs["annotations"] = rows
         except:
           raise ValueError("Error in "+filename)
     except:
@@ -237,34 +236,6 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  def testMergeAnnotationXMLs(self):
-    root = thisfolder/"data"
-    dbloadroot = im3root = thisfolder/"test_for_jenkins"/"misc"
-    SlideID = "M206"
-    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--sampleregex", SlideID, "--annotation", "good tissue", ".*[.]xml", "--skip-annotation", "tumor", "--debug", "--no-log", "--annotations-on-qptiff"]
-    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=im3root, samp=SlideID, annotationselectiondict={}, skipannotations=set())
-
-    try:
-      MergeAnnotationXMLsCohort.runfromargumentparser(args)
-
-      new = s.csv("annotationinfo")
-      reffolder = root/"reference"/"misc"/"mergeannotationxmls"/SlideID/"dbload"
-      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "apscale", "qpscale")}
-      compare_two_csv_files(new.parent, reffolder, new.name, Constant, extrakwargs=extrakwargs)
-
-      with open(im3root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.merged.xml", "rb") as f:
-        newxml = jxmlease.parse(f)
-      with open(root/SlideID/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.xml", "rb") as f:
-        oldxml = jxmlease.parse(f)
-      del oldxml["Annotations"]["Annotation"][1]
-      oldxml["Annotations"]["Annotation"], = oldxml["Annotations"]["Annotation"]
-      self.assertEqual(newxml, oldxml)
-    except:
-      self.saveoutput()
-      raise
-    else:
-      self.removeoutput()
-
   def testHPFOffset(self, SlideID="M21_1"):
     root = thisfolder/"data"
     shardedim3root = thisfolder/"data"/"flatw"
@@ -276,3 +247,26 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
           "YZ71": [744.8, 558.4],
         }[SlideID]) * s.onemicron
         assertAlmostEqual(s.hpfoffset, target)
+
+  def testAnnotationVariations(self):
+    annotations = AllowedAnnotation.allowedannotations()
+    byname = collections.defaultdict(list)
+    bylayer = collections.defaultdict(list)
+    bycolor = collections.defaultdict(list)
+    for a in annotations:
+      byname[a.name].append(a)
+      bylayer[a.layer].append(a)
+      bycolor[a.color].append(a)
+
+    for k, v in bycolor.items():
+      #if there are multiple with the same color, they should be variations
+      #of the first one.  e.g. good tissue and good tissue x
+      first = v[0]
+      for later in v[1:]:
+        self.assertRegex(later.name, first.name+" .*")
+
+    for k, v in byname.items():
+      self.assertLengthEqual(v, 1)
+
+    for k, v in bylayer.items():
+      self.assertLengthEqual(v, 1)

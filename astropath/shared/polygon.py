@@ -4,7 +4,7 @@ from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation
 from ..utilities.miscmath import floattoint
 from ..utilities.optionalimports import ogr
-from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithPscale
+from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithAnnoscaleFrozen, DataClassWithPscale, DataClassWithPscaleFrozen
 
 class InvalidPolygonError(Exception):
   def __init__(self, polygon, reason=None):
@@ -105,7 +105,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
           polygons.append(poly)
         else:
           raise ValueError(f"Unknown component from MakeValid: {component}")
-      polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, isfromxml=self.isfromxml) for p in polygons]
+      polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, annotation=self.annotation) for p in polygons]
       if round: polygons = [p.round(imagescale=imagescale) for p in polygons]
       polygons = sum((p.makevalid(round=round, imagescale=imagescale) for p in polygons), [])
       polygons.sort(key=lambda x: x.area, reverse=True)
@@ -317,12 +317,17 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
     return Polygon(outerpolygon=self.outerpolygon.round(**kwargs), subtractpolygons=[p.round(**kwargs) for p in self.subtractpolygons])
 
   @property
-  def isfromxml(self):
-    isfromxmls = {self.outerpolygon.isfromxml, *(_.isfromxml for _ in self.subtractpolygons)}
+  def annotation(self):
+    annotations = (self.outerpolygon.annotation, *(_.annotation for _ in self.subtractpolygons))
+    unique = []
+    for _ in annotations:
+      if _ in unique: continue
+      unique.append(_)
+    annotations = unique
     try:
-      result, = isfromxmls
+      result, = annotations
     except ValueError:
-      raise ValueError(f"Inconsistent isfromxmls {isfromxmls}")
+      raise ValueError(f"Inconsistent annotations {annotations}")
     return result
 
   def smooth_rdp(self, epsilon):
@@ -343,14 +348,14 @@ class SimplePolygon(Polygon):
   annoscale: annoscale of the polygon
   """
 
-  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, annoscale=None, power=1, regionid=None, requirevalidity=False, isfromxml=None):
+  def __init__(self, *, vertexarray=None, vertices=None, pscale=None, annoscale=None, power=1, regionid=None, requirevalidity=False, annotation=None):
     if power != 1:
       raise ValueError("Polygon should be inited with power=1")
 
     annoscale = {annoscale}
     pscale = {pscale}
     regionid = {regionid}
-    isfromxml = {isfromxml}
+    annotation = [annotation]
 
     if vertexarray is not None is vertices:
       vertexarray = np.array(vertexarray)
@@ -360,7 +365,7 @@ class SimplePolygon(Polygon):
       annoscale |= {v.annoscale for v in vertices}
       pscale |= {v.pscale for v in vertices}
       regionid |= {v.regionid for v in vertices}
-      isfromxml |= {v.isfromxml for v in vertices}
+      annotation += [v.annotation for v in vertices]
     else:
       raise TypeError("Have to provide exactly one of vertices or vertexarray")
 
@@ -379,10 +384,16 @@ class SimplePolygon(Polygon):
     elif not regionid: regionid = {None}
     self.__regionid, = regionid
 
-    isfromxml.discard(None)
-    if len(isfromxml) > 1: raise ValueError(f"Inconsistent isfromxmls {isfromxml}")
-    elif not isfromxml: isfromxml = {False}
-    self.__isfromxml, = isfromxml
+    #remove duplicates (can't use set because it's not hashable)
+    unique = []
+    for _ in annotation:
+      if _ is None: continue
+      if _ in unique: continue
+      unique.append(_)
+    annotation = unique
+    if len(annotation) > 1: raise ValueError(f"Inconsistent annotations {annotation}")
+    elif not annotation: annotation = {None}
+    self.__annotation, = annotation
 
     self.__vertices = vertices
     self.__vertexarray = np.array(vertexarray)
@@ -422,8 +433,11 @@ class SimplePolygon(Polygon):
       for v in self.__vertices:
         v.regionid = regionid
   @property
+  def annotation(self):
+    return self.__annotation
+  @property
   def isfromxml(self):
-    return self.__isfromxml
+    return self.annotation.isfromxml
 
   @property
   def vertexarray(self): return self.__vertexarray
@@ -432,7 +446,7 @@ class SimplePolygon(Polygon):
     if self.__vertices is None:
       from .csvclasses import Vertex
       self.__vertices = [
-        Vertex(x=x, y=y, vid=i, regionid=self.regionid, annoscale=self.annoscale, pscale=self.pscale, isfromxml=self.isfromxml)
+        Vertex(x=x, y=y, vid=i, regionid=self.regionid, annoscale=self.annoscale, pscale=self.pscale, annotation=self.annotation)
         for i, (x, y) in enumerate(self.vertexarray, start=1)
       ]
     return self.__vertices
@@ -447,7 +461,7 @@ class SimplePolygon(Polygon):
     if imagescale is None: imagescale = self.pscale
     onepixel = units.convertpscale(units.onepixel(imagescale), imagescale, self.annoscale)
     vertexarray = (self.vertexarray+1e-10*onepixel) // onepixel * onepixel
-    return SimplePolygon(vertexarray=vertexarray, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, isfromxml=self.isfromxml)
+    return SimplePolygon(vertexarray=vertexarray, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, annotation=self.annotation)
 
   def gdallinearring(self, *, imagescale=None, round=False, _rounded=False):
     """
@@ -505,7 +519,7 @@ class SimplePolygon(Polygon):
     """
     vertices = self.vertexarray
     newvertices = rdp.rdp(vertices, epsilon=epsilon)
-    return SimplePolygon(vertexarray=newvertices, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, isfromxml=self.isfromxml)
+    return SimplePolygon(vertexarray=newvertices, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, annotation=self.annotation)
 
 def PolygonFromGdal(*, pixels=None, microns=None, pscale, annoscale, **kwargs):
   """
@@ -564,9 +578,9 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithAnnoscale):
       if isinstance(poly, Polygon):
         pass
       elif poly is None or isinstance(poly, str) and poly == "poly":
-        setattr(self, field, None)
+        object.__setattr__(self, field, None)
       elif isinstance(poly, (str, ogr.Geometry)):
-        setattr(self, field, PolygonFromGdal(
+        object.__setattr__(self, field, PolygonFromGdal(
           pixels=poly,
           pscale=self.pscale,
           annoscale=self.annoscale,
@@ -574,6 +588,9 @@ class DataClassWithPolygon(DataClassWithPscale, DataClassWithAnnoscale):
         ))
       else:
         raise TypeError(f"Unknown type {type(poly).__name__} for {field}")
+
+class DataClassWithPolygonFrozen(DataClassWithPolygon, DataClassWithPscaleFrozen, DataClassWithAnnoscaleFrozen):
+  pass
 
 def polygonfield(**metadata):
   """

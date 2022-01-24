@@ -13,10 +13,11 @@ class sampledef : sharedtools{
     [string]$basepath
     [PSCustomObject]$project_data
     [PSCustomObject]$batchslides
+    [string]$mainlog
+    [string]$slidelog
+    [hashtable]$modulelogs
     #
     sampledef(){}
-    #
-    # sampledef([string]$mpath) : base($mpath){}
     #
     sampledef($mpath, $module){
         $this.mpath = $mpath
@@ -122,6 +123,33 @@ class sampledef : sharedtools{
             $this.basepath = '\\' + $project_dat.dpath + '\' + $project_dat.dname
         }
         $this.project_data = $project_dat
+        #
+        $this.deflogpaths()
+        #
+    }
+    #
+    # define log paths
+    #
+    [void]deflogpaths(){
+        #
+        $this.mainlog = $this.basepath + '\logfiles\' + $this.module + '.log'
+        $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
+             $this.slideid + '-' + $this.module + '.log'
+        #
+    }
+    #
+    [void]deflogpaths($cmodule){
+        #
+        $cmainlog = $this.basepath + '\logfiles\' + $cmodule + '.log'
+        if ($cmodule -match 'batch'){
+                $cslidelog = $cmainlog
+            } else {
+                $cslidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
+                    $this.slideid + '-' + $cmodule + '.log'
+        }
+        $vers = $this.GetVersion($this.mpath, $cmodule, $this.project)
+        $this.modulelogs.($cmodule) = @{mainlog =$cmainlog; slidelog=$cslidelog; version=$vers}
+        #
     }
     #
     [string]im3folder(){

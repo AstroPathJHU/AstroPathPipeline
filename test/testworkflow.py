@@ -52,6 +52,7 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
     try:
       Workflow.runfromargumentparser(args=args)
       assert (root/"dbload"/"project0_loadfiles.csv").exists()
+      assert (deepzoomroot/SlideID/"zoomlist.csv").exists()
       for filename in testfolder.rglob("*.log"):
         checkwindowsnewlines(filename)
     except:

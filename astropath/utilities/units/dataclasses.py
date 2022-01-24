@@ -1,6 +1,7 @@
 import dataclassy, functools, methodtools, numbers, numpy as np
 from ..dataclasses import MetaDataAnnotation, MyDataClass, MyDataClassFrozen
 from ..miscmath import floattoint
+from ..tableio import optionalfield
 from .core import ThingWithAnnoscale, ThingWithApscale, ThingWithImscale, ThingWithPscale, ThingWithQpscale, UnitsError
 
 def __setup(mode):
@@ -17,7 +18,7 @@ def __setup(mode):
   currentmode = mode
 
 __notgiven = object()
-def distancefield(*defaultvalue, pixelsormicrons, power=1, dtype=float, secondfunction=None, pscalename="pscale", **metadata):
+def distancefield(*defaultvalue, pixelsormicrons, power=1, dtype=float, secondfunction=None, pscalename="pscale", optional=False, **metadata):
   if secondfunction is None:
     if issubclass(dtype, numbers.Integral):
       secondfunction = functools.partial(floattoint, atol=1e-9)
@@ -49,7 +50,7 @@ def distancefield(*defaultvalue, pixelsormicrons, power=1, dtype=float, secondfu
     "writefunctionkwargs": lambda object: {"pscale": getattr(object, pscalename(object)), "power": power(object), "pixelsormicrons": pixelsormicrons(object)},
     **metadata,
   }
-  return MetaDataAnnotation(*defaultvalue, **metadata)
+  return (optionalfield if optional else MetaDataAnnotation)(*defaultvalue, **metadata)
 
 def pscalefield(*defaultvalue, **metadata):
   metadata = {
@@ -142,7 +143,9 @@ class DataClassWithDistances(MyDataClass):
     if readingfromfile:
       for fieldname in self.distancefields():
         if fieldname in extrakwargs: continue
-        setattr(self, fieldname, types[fieldname](power=powers[fieldname], pscale=pscales[fieldname], **{self.metadata(fieldname)["pixelsormicrons"](self): getattr(self, fieldname)}))
+        value = getattr(self, fieldname)
+        if value is None: continue
+        setattr(self, fieldname, types[fieldname](power=powers[fieldname], pscale=pscales[fieldname], **{self.metadata(fieldname)["pixelsormicrons"](self): value}))
 
     super().__post_init__(*args, readingfromfile=readingfromfile, extrakwargs=extrakwargs, **kwargs)
 

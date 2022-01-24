@@ -149,6 +149,16 @@
         #
     }
     #
+    [void]testfilewatchers($tools){
+        #
+        Write-Host 'test file watcher started'
+        #
+        $sor = $PSScriptRoot + '\data\logfiles'
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile.log'
+        $content = 'log file contents'
+        $tools.popfile($sorfile, $content)
+
+    }
 }
 
 #

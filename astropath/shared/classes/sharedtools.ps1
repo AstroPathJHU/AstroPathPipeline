@@ -13,6 +13,7 @@
     [string]$slideid
     [string]$psroot = $pshome + "\powershell.exe"
     [string]$package = 'astropath'
+    [array]$modules
     #
     sharedtools(){}
     #
@@ -417,4 +418,108 @@
         Write-Host -NoNewline $($writecurrent)
         #
     }
+    <# -----------------------------------------
+     FileWatcher
+     Create a file watcher 
+     ------------------------------------------
+     Input: 
+        -file: full file path
+     ------------------------------------------
+     Usage: $this.FileWatcher(file)
+    ----------------------------------------- #>
+    [string]FileWatcher($file){
+        #
+        $fname = $file.Split('\\')[-1]
+        $fpath = $file.replace(('\'+$fname), '')
+        #
+        $SI = $this.FileWatcher($fpath, $fname)
+        return $SI
+        #
+    }
+    <# -----------------------------------------
+     FileWatcher
+     Create a file watcher 
+     ------------------------------------------
+     Input: 
+        -fpath: file path
+        -fname: file name
+     ------------------------------------------
+     Usage: $this.FileWatcher(fpath, fname)
+    ----------------------------------------- #>
+    [string]FileWatcher($fpath, $fname){
+        #
+        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+        $newwatcher.Filter = $fname
+        $newwatcher.NotifyFilter = 'LastWrite'
+        #
+        $onChanged = Register-ObjectEvent $newwatcher `
+            -MessageData 'happy times' `
+            -EventName Changed `
+            -SourceIdentifier ($fpath + '\' + $fname)
+        #
+        return ($fpath + '\' + $fname)
+        #
+    }
+    <# -----------------------------------------
+     WaitEvent
+     wait for an event to trigger optionally
+     remove the event subscriber and the event
+     ------------------------------------------
+     Input: 
+        -SI: the source identifier
+     ------------------------------------------
+     Usage: $this.WaitEvent(SI)
+    ----------------------------------------- #>
+    [void]WaitEvent($SI){
+        #
+        Wait-Event -SourceIdentifier $SI
+        Remove-Event -SourceIdentifier $SI
+        #
+    }
+    <# -----------------------------------------
+     UnregisterEvent
+     wait for an event to trigger optionally
+     remove the event subscriber and the event
+     ------------------------------------------
+     Input: 
+        -SI: the source identifier
+     ------------------------------------------
+     Usage: $this.UnregisterEvent(SI)
+    ----------------------------------------- #>
+    [void]UnregisterEvent($SI){
+        Unregister-Event -SourceIdentifier $SI -Force 
+    }
+    <# -----------------------------------------
+     UnregisterEvent
+     wait for an event to trigger optionally
+     remove the event subscriber and the event
+     ------------------------------------------
+     Input: 
+        -SI: the source identifier
+     ------------------------------------------
+     Usage: $this.UnregisterEvent(SI)
+    ----------------------------------------- #>
+    [void]File($SI){
+        Unregister-Event -SourceIdentifier $SI -Force 
+    }
+    #
+    [void]getmodulenames(){
+        #
+        $project_dat = $this.ImportConfigInfo($this.mpath)
+        $this.modules = ($project_dat | Get-Member -MemberType NoteProperty).Name `
+          -notmatch ('version', 'Delete','Dname','Cohorts','Space_TB','Project' -join '|')
+        #
+    }
+    #
+    [PSCustomObject]getmodulestatus($project){
+        #
+        $project_dat = $this.ImportConfigInfo($this.mpath)
+        $project_dat = $project_dat | 
+                Where-Object {$project -contains $_.Project}
+        $this.modules = ($project_dat | Get-Member -MemberType NoteProperty).Name `
+          -notmatch ('version', 'Delete','Dname','Cohorts','Space_TB','Project' -join '|')
+        $modulestatus = $project_dat | Select-Object -Property $this.modules 
+        return $modulestatus
+        #
+    }   
 }
