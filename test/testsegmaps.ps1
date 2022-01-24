@@ -1,5 +1,5 @@
 ﻿<# -------------------------------------------
- testpsmeanimage
+ testsegmaps
  created by: Andrew Jorquera
  Last Edit: 01.24.2022
  --------------------------------------------
@@ -8,12 +8,12 @@
  functioning as intended
  -------------------------------------------#>
 #
-Class testpsmeanimage {
+Class testsegmaps {
     #
     [string]$mpath 
     [string]$process_loc
     #
-    testpsmeanimage(){
+    testsegmaps(){
         #
         # Setup Testing
         #
