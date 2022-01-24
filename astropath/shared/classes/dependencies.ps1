@@ -9,11 +9,11 @@
  -------------------------------------------#>
  class dependencies : sampledef {
     #
-    [hashtable]$modulestatus
+    [hashtable]$modulestatus = @{}
     #
-    dependencies($mpath, $module, $slideid): base ($mpath, $module, $slideid){}
+    dependencies($mpath, $slideid): base ($mpath, '', $slideid){}
     #
-    dependencies($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
+    # dependencies($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
     #
     [void]getlogstatus($cmodule){
             #

@@ -9,9 +9,9 @@
  -------------------------------------------#>
 class sampletracker : dependencies {
     #
-    sampletracker($mpath, $module, $slideid): base ($mpath, $module, $slideid){}
+    sampletracker($mpath, $slideid): base ($mpath, $slideid){}
     #
-    sampletracker($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
+    # sampletracker($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
     #
     [void]defmodulestatus(){
         #

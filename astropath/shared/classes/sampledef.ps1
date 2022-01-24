@@ -15,7 +15,7 @@ class sampledef : sharedtools{
     [PSCustomObject]$batchslides
     [string]$mainlog
     [string]$slidelog
-    [hashtable]$modulelogs
+    [hashtable]$modulelogs = @{}
     #
     sampledef(){}
     #
