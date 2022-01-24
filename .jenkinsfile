@@ -44,10 +44,10 @@ pipeline {
 	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsampletracker.ps1'
       }
     }
-/*
+
     stage('run tests') {
       parallel {
-
+/*
         stage('console scripts and documents') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
