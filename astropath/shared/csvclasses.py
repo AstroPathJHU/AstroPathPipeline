@@ -244,14 +244,7 @@ class Annotation(DataClassWithPolygon, DataClassWithApscale):
   def isannotationnamefromxml(cls, name):
     if name == "empty": return False
     from .annotationpolygonxmlreader import AllowedAnnotation
-    annotations = {_ for _ in AllowedAnnotation.allowedannotations() if _.name == name}
-    try:
-      a, = annotations
-    except ValueError:
-      if len(annotations) > 1:
-        assert False, annotations
-      raise ValueError(f"Didn't find an annotation with name {name} in master_annotation_list.csv")
-    return a.isfromxml
+    return AllowedAnnotation.allowedannotation(name).isfromxml
 
   @classmethod
   def transforminitargs(cls, *args, annotationinfo=None, **kwargs):

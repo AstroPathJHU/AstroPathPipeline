@@ -23,6 +23,18 @@ class AllowedAnnotation(MyDataClassFrozen):
   def allowedannotations(cls):
     return readtable(pathlib.Path(__file__).parent/"master_annotation_list.csv", cls)
 
+  @methodtools.lru_cache()
+  @classmethod
+  def allowedannotation(cls, name):
+    annotations = {_ for _ in AllowedAnnotation.allowedannotations() if _.name == name}
+    try:
+      a, = annotations
+    except ValueError:
+      if len(annotations) > 1:
+        assert False, annotations
+      raise ValueError(f"Didn't find an annotation with name {name} in master_annotation_list.csv")
+    return a
+
 class AnnotationNodeBase(units.ThingWithAnnoscale):
   def __init__(self, *args, annoscale, **kwargs):
     super().__init__(*args, **kwargs)
