@@ -4,6 +4,7 @@ import numpy as np
 from scipy.ndimage import distance_transform_edt
 from numba import njit, prange
 from ...utilities.img_file_io import smooth_image_worker
+from ...utilities.dataclasses import MyDataClass
 from ...shared.image_masking.utilities import get_size_filtered_mask
 
 def expand_labels(label_image, distance=1):
@@ -129,3 +130,38 @@ def get_homogenized_pca_image(im,tissue_mask,pca,dapi_layer_index=0,threshold=0.
     p_slice = pixels_to_replace==1
     h_pca_im[:,:,dapi_layer_index][p_slice] = smoothed_pca_dapi_layer[p_slice]
     return h_pca_im
+
+class PCAColorsSegmentTableEntry(MyDataClass) :
+    im_key : str
+    segment : int
+    npix : int
+    comp_1_mean : float
+    comp_1_median : float
+    comp_1_std : float
+    comp_2_mean : float
+    comp_2_median : float
+    comp_2_std : float
+    comp_3_mean : float
+    comp_3_median : float
+    comp_3_std : float
+    comp_4_mean : float
+    comp_4_median : float
+    comp_4_std : float
+    comp_5_mean : float
+    comp_5_median : float
+    comp_5_std : float
+    comp_6_mean : float
+    comp_6_median : float
+    comp_6_std : float
+    comp_7_mean : float
+    comp_7_median : float
+    comp_7_std : float
+    comp_8_mean : float
+    comp_8_median : float
+    comp_8_std : float
+    comp_9_mean : float
+    comp_9_median : float
+    comp_9_std : float
+    comp_10_mean : float
+    comp_10_median : float
+    comp_10_std : float

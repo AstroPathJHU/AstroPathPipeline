@@ -3,9 +3,9 @@ import numpy as np
 from sklearn.decomposition import IncrementalPCA
 from ...utilities.img_file_io import smooth_image_worker
 from ...shared.image_masking.image_mask import ImageMask
-from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, MaskSampleBase
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase
 
-class PCASample(ReadCorrectedRectanglesIm3MultiLayerFromXML,MaskSampleBase) :
+class PCASample(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML,MaskSampleBase) :
     """
     Class to work with a PCA across all of a slide's images
     The PCA is calculated using images after correction for 
