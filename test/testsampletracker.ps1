@@ -16,7 +16,7 @@
     testsampletracker(){
         #
         $this.importmodule()
-        $this.testconstructor()
+        $this.testsampletrackerconstructors()
         $sampletracker = sampletracker -mpath $this.mpath -slideid 'M21_1'
         $this.testmodules($sampletracker)
         $this.teststatus($sampletracker)
