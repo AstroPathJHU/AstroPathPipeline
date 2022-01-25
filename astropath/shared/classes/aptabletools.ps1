@@ -201,7 +201,7 @@
      ------------------------------------------
      Usage: Importlogfile($fpath)
     ----------------------------------------- #>
-    [PSCustomObject]selectlogline([string] $loglines, [string] $ID, [string] $status, [string] $vers){    
+    [PSCustomObject]selectlogline([PSCustomObject] $loglines, [string] $ID, [string] $status, [string] $vers){    
         #
         $logline = $loglines |
                 where-object {
@@ -215,7 +215,7 @@
         #
     }
     #
-    [PSCustomObject]selectlogline([string] $loglines, [string] $ID, [string] $status, [string] $vers, [string] $antibody){    
+    [PSCustomObject]selectlogline([PSCustomObject] $loglines, [string] $ID, [string] $status, [string] $vers, [string] $antibody){    
         #
         $logline = $loglines |
                 where-object {
@@ -229,7 +229,7 @@
         #
     } 
     #
-    [PSCustomObject]selectlogline([string] $loglines, [string] $ID, [string] $status, [string] $vers, [string] $antibody, [string] $algorithm){    
+    [PSCustomObject]selectlogline([PSCustomObject] $loglines, [string] $ID, [string] $status, [string] $vers, [string] $antibody, [string] $algorithm){    
         #
         $logline = $loglines |
                 where-object {
