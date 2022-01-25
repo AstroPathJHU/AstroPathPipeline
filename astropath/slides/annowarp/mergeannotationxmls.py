@@ -132,7 +132,7 @@ class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationFileS
       "annotationpositionfromaffineshift": self.annotationpositionfromaffineshift,
     }
 
-class WriteAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCohort, AnnotationInfoWriterArgumentParser):
+class WriteAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCohort, AnnotationInfoWriterArgumentParser, XMLPolygonFileArgumentParser):
   sampleclass = WriteAnnotationInfoSample
 
   @property
