@@ -1,13 +1,13 @@
 #imports
 import os
 import numpy as np
-from skimage.segmentation import find_boundaries
 from deepcell.applications import NuclearSegmentation
 from ...utilities.config import CONST as UNIV_CONST
 from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.sample import ReadRectanglesComponentTiffFromXML, WorkflowSample, ParallelSample
 from .config import SEG_CONST
-from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im, convert_nnunet_output
+from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im
+from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation
 
 class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,ParallelSample,WorkingDirArgumentParser) :
     """
@@ -90,6 +90,10 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
 
     def __get_rect_nnunet_segmented_fp(self,rect) :
         seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_nnunet_nuclear_segmentation.npz'
+        return self.__workingdir/seg_fn
+
+    def __get_rect_deepcell_segmented_fp(self,rect) :
+        seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_deepcell_nuclear_segmentation.npz'
         return self.__workingdir/seg_fn
 
     def __run_nnunet(self) :
@@ -203,29 +207,44 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         self.logger.debug('Running nuclear segmentation with DeepCell....')
         app = NuclearSegmentation()
         completed_files = 0
+        rects_to_run = []
+        for ir,rect in enumerate(self.rectangles,start=1) :
+            #skip any rectangles that already have segmentation output
+            if self.__get_rect_deepcell_segmented_fp(rect).is_file() :
+                msg = f'Skipping {rect.imagefile.name} ({ir} of {len(self.rectangles)}) '
+                msg+= '(segmentation output already exists)'
+                self.logger.debug(msg)
+                completed_files+=1
+                continue
+            rects_to_run.append((ir,rect,self.__get_rect_deepcell_segmented_fp(rect)))
         try :
-            for ir,rect in enumerate(self.rectangles[:5],start=1) :
-                seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_deepcell_nuclear_segmentation.npz'
-                segmented_file_path = self.__workingdir/seg_fn
-                #skip any rectangles that already have segmentation output
-                if segmented_file_path.is_file() :
-                    msg = f'Skipping {rect.imagefile.name} ({ir} of {len(self.rectangles)}) '
-                    msg+= '(segmentation output already exists)'
-                    self.logger.debug(msg)
-                    completed_files+=1
-                    continue
-                with rect.using_image() as im :
-                    self.logger.debug(f'Segmenting {rect.imagefile.name} ({ir} of {len(self.rectangles)})')
-                    img = np.expand_dims(im,axis=-1)
-                img = np.expand_dims(img,axis=0)
-                labeled_img = app.predict(img,image_mpp=1./self.pscale)
-                labeled_img = labeled_img[0,:,:,0]
-                boundaries = find_boundaries(labeled_img)
-                output_img = np.zeros(labeled_img.shape,dtype=np.uint8)
-                output_img[labeled_img!=0] = 2
-                output_img[boundaries] = 1
-                np.savez_compressed(segmented_file_path,output_img)
-                if segmented_file_path.is_file() :
+            if self.njobs is not None and self.njobs>1 :
+                with self.pool() as pool :
+                    proc_results = {}
+                    for ir,rect,segmented_file_path in rects_to_run :
+                        with rect.using_image() as im :
+                            msg = f'Running DeepCell segmentation for {rect.imagefile.name} '
+                            msg+= f'({ir} of {len(self.rectangles)})'
+                            self.logger.debug(msg)
+                            proc_results[(ir,rect)] = pool.apply_async(run_deepcell_nuclear_segmentation,
+                                                                        (im,app,self.pscale,segmented_file_path))
+                    for (ir,rect),res in proc_results.items() :
+                        try :
+                            _ = res.get()
+                        except Exception as e :
+                            errmsg = f'ERROR: Running DeepCell failed for {rect.imagefile.name} '
+                            errmsg+= f'({ir} of {len(self.rectangles)}). Exception will be reraised.'
+                            self.logger.error(errmsg)
+                            raise e
+            else :
+                for ir,rect,segmented_file_path in rects_to_run :
+                    with rect.using_image() as im :
+                        msg = f'Running DeepCell segmentation for {rect.imagefile.name} '
+                        msg+= f'({ir} of {len(self.rectangles)})'
+                        self.logger.debug(msg)
+                        run_deepcell_nuclear_segmentation(im,app,self.pscale,segmented_file_path)
+            for rect in self.rectangles :
+                if self.__get_rect_deepcell_segmented_fp(rect).is_file() :
                     completed_files+=1
         except Exception as e :
             raise e
