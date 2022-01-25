@@ -25,10 +25,11 @@ def plot_eigenvalue_coverage(pca) :
     ax.legend(ln1+ln2,lab1+lab2,loc='center')
     plt.show()
 
-def plot_vector_components(pca) :
+def plot_vector_components(pcasamp) :
     """
     Plot the components of each eigenvector of a PCA
     """
+    pca = pcasamp.pca
     comp_vecs = pca.components_
     f,ax=plt.subplots(figsize=(12.,12.))
     pos = ax.imshow(comp_vecs,cmap='PiYG',vmax=0.5,vmin=-0.5)
@@ -39,7 +40,7 @@ def plot_vector_components(pca) :
     ax.plot((31.5,31.5),(-0.5,34.5),linewidth=3,color='k')
     ax.set_xlabel('raw image layer',fontsize=13)
     ax.set_ylabel('PCA component vector',fontsize=13)
-    ax.set_title('raw image layer components of PCA vectors',fontsize=14)
+    ax.set_title(f'raw image layer components of PCA vectors for {pcasamp.SlideID}',fontsize=14)
     plt.show()
 
 def stretch_layer(layer) :
