@@ -87,6 +87,7 @@ setupkwargs = dict(
   ],
   install_requires = [
     "contextlib2>=0.6.0; python_version < '3.7'",
+    "deepcell>=0.11.0",
     "dataclassy>=0.10.0",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
