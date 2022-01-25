@@ -207,6 +207,8 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         Run nuclear segmentation using DeepCell's nuclear segmentation algorithm
         """
         self.logger.debug('Running nuclear segmentation with DeepCell....')
+        if self.njobs is not None and self.njobs>1 :
+            self.logger.warning(f'WARNING: njobs is {self.njobs} but DeepCell segmentation cannot be run in parallel.')
         app = NuclearSegmentation()
         completed_files = 0
         rects_to_run = []
@@ -220,31 +222,12 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                 continue
             rects_to_run.append((ir,rect,self.__get_rect_deepcell_segmented_fp(rect)))
         try :
-            if self.njobs is not None and self.njobs>1 :
-                with self.pool() as pool :
-                    proc_results = {}
-                    for ir,rect,segmented_file_path in rects_to_run :
-                        with rect.using_image() as im :
-                            msg = f'Running DeepCell segmentation for {rect.imagefile.name} '
-                            msg+= f'({ir} of {len(self.rectangles)})'
-                            self.logger.debug(msg)
-                            proc_results[(ir,rect.imagefile.name)] = pool.apply_async(run_deepcell_nuclear_segmentation,
-                                                                        (im,app,self.pscale,segmented_file_path))
-                    for (ir,rname),res in proc_results.items() :
-                        try :
-                            _ = res.get()
-                        except Exception as e :
-                            errmsg = f'ERROR: Running DeepCell failed for {rname} '
-                            errmsg+= f'({ir} of {len(self.rectangles)}). Exception will be reraised.'
-                            self.logger.error(errmsg)
-                            raise e
-            else :
-                for ir,rect,segmented_file_path in rects_to_run :
-                    with rect.using_image() as im :
-                        msg = f'Running DeepCell segmentation for {rect.imagefile.name} '
-                        msg+= f'({ir} of {len(self.rectangles)})'
-                        self.logger.debug(msg)
-                        run_deepcell_nuclear_segmentation(im,app,self.pscale,segmented_file_path)
+            for ir,rect,segmented_file_path in rects_to_run :
+                with rect.using_image() as im :
+                    msg = f'Running DeepCell segmentation for {rect.imagefile.name} '
+                    msg+= f'({ir} of {len(self.rectangles)})'
+                    self.logger.debug(msg)
+                    run_deepcell_nuclear_segmentation(im,app,self.pscale,segmented_file_path)
             for rect in self.rectangles :
                 if self.__get_rect_deepcell_segmented_fp(rect).is_file() :
                     completed_files+=1
