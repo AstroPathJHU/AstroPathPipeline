@@ -1,5 +1,6 @@
 #imports
 import shutil
+import numpy as np, SimpleITK as sitk
 from hashlib import sha512
 from .config import SEG_CONST
 
@@ -107,3 +108,28 @@ def rebuild_model_files_if_necessary(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_D
     """
     if not model_files_exist(model_dir_path) :
         assemble_model_files(model_dir_path,remove)
+
+def write_nifti_file_for_rect_im(im,nifti_file_path) :
+    """
+    Convert a given rectangle image to the NIfTI format needed by nnU-Net and write it out
+    """
+    img = im[:,:,np.newaxis]
+    img = img.transpose(2,0,1)
+    itk_img = sitk.GetImageFromArray(img)
+    itk_img.SetSpacing([1,1,999])
+    sitk.WriteImage(itk_img, str(nifti_file_path))
+    assert nifti_file_path.is_file()
+
+def convert_nnunet_output(segmented_nifti_path,segmented_file_path) :
+    """
+    Convert the NIfTI output from nnU-Net to a compressed numpy file where 0=background, 1=boundary, and 2=nucleus
+    """
+    itk_read_img = sitk.ReadImage(str(segmented_nifti_path),imageIO='NiftiImageIO')
+    output_img = np.zeros((itk_read_img.GetHeight(),itk_read_img.GetWidth()),dtype=np.float32)
+    for ix in range(output_img.shape[1]) :
+        for iy in range(output_img.shape[0]) :
+            output_img[iy,ix] = itk_read_img.GetPixel((ix,iy,0))
+    output_img[output_img>1] = 2
+    output_img = output_img.astype(np.uint8)
+    np.savez_compressed(segmented_file_path,output_img)
+    assert segmented_file_path.is_file()
