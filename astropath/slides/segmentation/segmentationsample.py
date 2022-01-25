@@ -130,12 +130,13 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                     with rect.using_image() as im :
                         msg = f'Writing NIfTI file for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
                         self.logger.debug(msg)
-                        proc_results[(ir,rect)] = pool.apply_async(write_nifti_file_for_rect_im,(im,nifti_file_path))
-                for (ir,rect),res in proc_results.items() :
+                        proc_results[(ir,rect.imagefile.name)] = pool.apply_async(write_nifti_file_for_rect_im,
+                                                                                  (im,nifti_file_path))
+                for (ir,rname),res in proc_results.items() :
                     try :
                         _ = res.get()
                     except Exception as e :
-                        errmsg = f'ERROR: failed to write NIfTI file for {rect.imagefile.name} '
+                        errmsg = f'ERROR: failed to write NIfTI file for {rname} '
                         errmsg+= f'({ir} of {len(self.rectangles)}). Exception will be reraised.'
                         self.logger.error(errmsg)
                         raise e
@@ -171,13 +172,14 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                     for ir,rect,segmented_nifti_path,segmented_file_path in rects_to_run :
                         msg = f'Converting nnU-Net output for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
                         self.logger.debug(msg)
-                        proc_results[(ir,rect)] = pool.apply_async(convert_nnunet_output,
-                                                                   (segmented_nifti_path,segmented_file_path))
-                    for (ir,rect),res in proc_results.items() :
+                        proc_results[(ir,rect.imagefile.name)] = pool.apply_async(convert_nnunet_output,
+                                                                                  (segmented_nifti_path,
+                                                                                  segmented_file_path))
+                    for (ir,rname),res in proc_results.items() :
                         try :
                             _ = res.get()
                         except Exception as e :
-                            errmsg = f'ERROR: failed to convert nnU-Net output for {rect.imagefile.name} '
+                            errmsg = f'ERROR: failed to convert nnU-Net output for {rname} '
                             errmsg+= f'({ir} of {len(self.rectangles)}). Exception will be reraised.'
                             self.logger.error(errmsg)
                             raise e
@@ -226,13 +228,13 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                             msg = f'Running DeepCell segmentation for {rect.imagefile.name} '
                             msg+= f'({ir} of {len(self.rectangles)})'
                             self.logger.debug(msg)
-                            proc_results[(ir,rect)] = pool.apply_async(run_deepcell_nuclear_segmentation,
+                            proc_results[(ir,rect.imagefile.name)] = pool.apply_async(run_deepcell_nuclear_segmentation,
                                                                         (im,app,self.pscale,segmented_file_path))
-                    for (ir,rect),res in proc_results.items() :
+                    for (ir,rname),res in proc_results.items() :
                         try :
                             _ = res.get()
                         except Exception as e :
-                            errmsg = f'ERROR: Running DeepCell failed for {rect.imagefile.name} '
+                            errmsg = f'ERROR: Running DeepCell failed for {rname} '
                             errmsg+= f'({ir} of {len(self.rectangles)}). Exception will be reraised.'
                             self.logger.error(errmsg)
                             raise e
