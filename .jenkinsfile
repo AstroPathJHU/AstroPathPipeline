@@ -23,7 +23,7 @@ pipeline {
   }
 
   stages {
-/*
+
    stage('pip install') {
       steps {
 	sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
@@ -32,22 +32,22 @@ pipeline {
         sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
       }
     }
-*/
+
     stage('ps module install') {
       steps {
-	sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
+//	sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
 	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsharedtools.ps1'
 	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testaptables.ps1'            
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
 	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
-	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsampletracker.ps1'
+//	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsampletracker.ps1'
       }
     }
 
     stage('run tests') {
       parallel {
-/*
+
         stage('console scripts and documents') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
@@ -215,7 +215,7 @@ pipeline {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
           }
         }
-*/
+
         stage('code checks') {
           steps {
             sh 'python -m pyflakes .'
