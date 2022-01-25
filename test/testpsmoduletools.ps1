@@ -65,10 +65,6 @@
             Throw ('processvars[3] not correct: ' + $inp.processvars[3] + '~=' + $testloc + '\flatfield\flatfield_BatchID_08.bin')
         }
         #
-        if (!(test-path $inp.processloc)){
-            Throw 'processloc does not exist'
-        }
-        #
         Write-Host 'Passed Paths Testing'
         #
     }
