@@ -188,15 +188,25 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
   """
   sampleid: int
   name: str
-  isonwsi: bool = boolasintfield(False)
+  annotationsource: str
   xposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
   yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
   xmlfile: str
   xmlsha: str
   scanfolder: pathlib.Path = MetaDataAnnotation(includeintable=False)
 
+  def __post_init__(self, **kwargs):
+    super().__post_init__(**kwargs)
+    choices = "qptiff", "wsi"
+    if self.annotationsource not in choices:
+      raise ValueError(f"Invalid annotationsource {self.annotationsource}: choices are {choices}")
+
+  @methodtools.lru_cache()
   @property
-  def isonqptiff(self): return not self.isonwsi
+  def isonqptiff(self): return self.annotationsource == "qptiff"
+  @methodtools.lru_cache()
+  @property
+  def isonwsi(self): return self.annotationsource == "wsi"
 
   @classmethod
   def transforminitargs(cls, *args, position=None, **kwargs):
@@ -206,11 +216,13 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
     if kwargs.get("annoscale", None) is None:
       pscale = kwargs["pscale"]
       apscale = kwargs["apscale"]
-      isonwsi = kwargs["isonwsi"]
-      if isonwsi:
+      annotationsource = kwargs["annotationsource"]
+      if annotationsource == "wsi":
         kwargs["annoscale"] = pscale/2
-      else:
+      elif annotationsource == "qptiff":
         kwargs["annoscale"] = apscale
+      else:
+        assert False, annotationsource
     return super().transforminitargs(*args, **kwargs, **positionkwargs)
 
   @property

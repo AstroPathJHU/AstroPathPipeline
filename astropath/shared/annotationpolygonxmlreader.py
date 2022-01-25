@@ -324,7 +324,7 @@ class MergedAnnotationFiles(ThingWithAnnotationInfos):
     for info in self.annotationinfo:
       if info.xmlpath not in xmldict:
         with open(info.xmlpath, "rb") as f:
-          xmldict[info.xmlpath] = {node.get_xml_attr("Name").lower(): AnnotationNodeXML(node, annoscale=self.pscale/2 if info.isonwsi else self.apscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")}
+          xmldict[info.xmlpath] = {node.get_xml_attr("Name").lower(): AnnotationNodeXML(node, annoscale=info.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")}
     return [
       xmldict[info.xmlpath][info.name.lower()]
       for info in self.annotationinfo
@@ -688,7 +688,7 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
       AnnotationInfo(
         sampleid=self.SampleID,
         name=name,
-        isonwsi={"wsi": True, "qptiff": False}[self.annotationsource],
+        annotationsource=self.annotationsource,
         position=self.annotationposition,
         pscale=self.pscale,
         apscale=self.apscale,
