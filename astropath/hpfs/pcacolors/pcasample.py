@@ -2,6 +2,7 @@
 import numpy as np
 from sklearn.decomposition import IncrementalPCA
 from ...utilities.img_file_io import smooth_image_worker
+from ...shared.overlap import Overlap
 from ...shared.image_masking.image_mask import ImageMask
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase
 
@@ -13,6 +14,8 @@ class PCASample(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML,MaskSampleBa
     include any pixels that aren't marked as "good tissue"
     in the image masks
     """
+
+    overlaptype = Overlap
     
     def __init__(self,*args,n_components=None,batch_size=10,**kwargs) :
         super().__init__(*args,**kwargs)
