@@ -517,7 +517,7 @@
      ------------------------------------------
      Usage: $this.checkmergeloop(dependency)
     ----------------------------------------- #>
-    [int]checkmergloop($dependency){
+    [int]checkmergeloop($dependency){
         #
         return 4
         #
