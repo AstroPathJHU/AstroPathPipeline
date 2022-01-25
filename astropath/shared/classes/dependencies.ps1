@@ -26,6 +26,8 @@
                     $this.modulestatus.($cmodule) = 'READY'
                 } elseif ($statusval -eq 3){
                     $this.modulestatus.($cmodule) = 'FINISHED'
+                } elseif ($statusval -eq 4) {
+                    $this.modulestatus.($cmodule) = 'NA'
                 } else {
                     $this.modulestatus.($cmodule) = 'UNKNOWN'
                 }
@@ -61,7 +63,8 @@
             return $true
         }
         #
-        $loglines = $this.opencsvfile($this.modulelogs.($cmodule).slidelog, ';', @('Project','Cohort','slideid','Message','Date'))
+        $loglines = $this.opencsvfile($this.modulelogs.($cmodule).slidelog, `
+            ';', @('Project','Cohort','slideid','Message','Date'))
         #
         # parse log
         #
@@ -70,7 +73,8 @@
         $vers = $this.modulelogs.($cmodule).vers -replace 'v', ''
         $vers = ($vers -split '\.')[0,1,2] -join '.'
         #
-        if ($this.modulelogs.($cmodule).slidelog -match [regex]::Escape($this.modulelogs.($cmodule).mainlog)){
+        if ($this.modulelogs.($cmodule).slidelog -match `
+            [regex]::Escape($this.modulelogs.($cmodule).mainlog)){
             $ID= $this.BatchID
         } else {
             $ID = $this.slideid
@@ -243,7 +247,7 @@
             !$dependency -and
              $this.modulelogs.batchmicomp.vers -match '0.0.1'
             ){
-            return 3
+            return 4
         }
         #
         if (!($this.checkmeanimage($true) -eq 3)){
@@ -291,7 +295,7 @@
             !$dependency -and
              $this.modulelogs.batchflatfield.vers -notmatch '0.0.1'
             ){
-            return 3
+            return 4
         }
         #
         # if the version is not 0.0.1 in batchflatfield, do meanimagecomparison
@@ -433,6 +437,42 @@
         $this.originaltasks = $current_queue_data
         $this.cleanedtasks = $this.originaltasks -replace ('\s','')
         $this.cleanedtasks = $this.cleanedtasks | ForEach {$_.Split(',')[0..3] -join(',')}
+        #
+    }
+    <# -----------------------------------------
+     checkmergeloop
+     place holder
+    ------------------------------------------
+     Input: 
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkmergeloop(dependency)
+    ----------------------------------------- #>
+    [int]checkmergloop(){
+        #
+        return 4
+        #
+    }
+    <# -----------------------------------------
+     checksegmaps
+     place holder
+    ------------------------------------------
+     Input: 
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checksegmaps(dependency)
+    ----------------------------------------- #>
+    [int]checksegmaps(){
+        #
+        return 4
         #
     }
     <# -----------------------------------------

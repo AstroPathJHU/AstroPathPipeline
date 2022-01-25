@@ -506,7 +506,7 @@
     [void]getmodulenames(){
         #
         $project_dat = $this.ImportConfigInfo($this.mpath)
-        $this.modules = ($project_dat | Get-Member -MemberType NoteProperty).Name `
+        $this.modules = $project_dat[0].psobject.Properties.Name `
           -notmatch ('version', 'Delete','Dname','Cohorts','Space_TB','Project' -join '|')
         #
     }

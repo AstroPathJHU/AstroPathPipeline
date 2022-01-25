@@ -9,13 +9,19 @@
  -------------------------------------------#>
 class sampletracker : dependencies {
     #
-    sampletracker($mpath, $slideid): base ($mpath, $slideid){}
+    sampletracker($mpath, $slideid): base ($mpath, $slideid){
+        $this.getmodulenames()
+    }
+    #
+    sampletracker($mpath, $modules, $slideid): base ($mpath, $slideid){
+        $this.modules = $modules
+    
+    }
     #
     # sampletracker($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
     #
     [void]defmodulestatus(){
         #
-        $this.getmodulenames()
         $this.modules | ForEach-Object {
             $this.deflogpaths($_)
             # create file watcher
