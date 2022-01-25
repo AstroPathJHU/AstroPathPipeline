@@ -136,15 +136,14 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}",
       self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME/FF_CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,
     }
+    annotationinfocsvs = {xml.with_suffix(".annotationinfo.csv") for xml in self.scanfolder.glob("*annotations*polygons*.xml")}
     optionalcsvs = {
       self.csv(_) for _ in (
         "globals",
       )
     } | {
       r.phenotypeQAQCcsv for r in self.rectangles if hasanycells(r)
-    } | {
-      xml.with_suffix(".annotationinfo.csv") for xml in self.scanfolder.glob("*annotations.polygons*.xml")
-    } | meanimagecsvs
+    } | annotationinfocsvs | meanimagecsvs
     goodcsvs = set()
     unknowncsvs = set()
     folders = {self.mainfolder, self.dbload.parent, self.geomfolder.parent, self.phenotypefolder.parent.parent}
@@ -217,7 +216,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
         fieldsizelimit = None
       elif csv.parent == self.phenotypeQAQCtablesfolder:
         continue
-      elif csv in meanimagecsvs:
+      elif csv in meanimagecsvs | annotationinfocsvs:
         continue
       else:
         assert False, csv
