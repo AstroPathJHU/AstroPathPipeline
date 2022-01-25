@@ -21,7 +21,6 @@ Class meanimage : moduletools {
     meanimage([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
         $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
-        $this.cleanupbase()
         $this.sample.CreateDirs($this.processloc)
     }
     <# -----------------------------------------
@@ -31,6 +30,7 @@ Class meanimage : moduletools {
      Usage: $this.RunMeanImage()
     ----------------------------------------- #>
     [void]RunMeanImage(){
+        $this.cleanupbase()
         $this.DownloadFiles()
         $this.ShredDat()
         $this.GetMeanImage()
