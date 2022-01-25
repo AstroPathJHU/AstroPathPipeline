@@ -97,7 +97,7 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         return self.__workingdir
     @property
     def auto_workingdir(self) :
-        UNIV_CONST.ASTROPATH_PROCESSING_DIR / UNIV_CONST.WARPING_DIRNAME / self.root.name 
+        return UNIV_CONST.ASTROPATH_PROCESSING_DIR / UNIV_CONST.WARPING_DIRNAME / self.root.name 
     @property
     def fit_1_octet_fp(self) :
         return self.__workingdir / CONST.OCTET_SUBDIR_NAME / 'initial_pattern_octets_selected.csv'
