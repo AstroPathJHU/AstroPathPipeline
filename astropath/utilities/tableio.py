@@ -66,6 +66,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
     Traceback (most recent call last):
         ...
     ValueError: Row has bad syntax:
+    ...
     B,2,4.5
     {'ID': 'B', 'x': 2, 'y': '4.5'}
     {'readingfromfile': True, 'extrakwargs': {...}}
