@@ -16,26 +16,34 @@
     # dependencies($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
     #
     [void]getlogstatus($cmodule){
+        #
+        $logoutput = $this.checklog($cmodule, $false)
+        #
+        if ($logoutput){
             #
-            if ($this.checklog($cmodule, $false)){
-                #
-                $statusval = ($this.('check'+$cmodule)($false))
-                if ($statusval -eq 1){
-                    $this.modulestatus.($cmodule) = 'WAITING'
-                } elseif ($statusval -eq 2){
-                    $this.modulestatus.($cmodule) = 'READY'
-                } elseif ($statusval -eq 3){
-                    $this.modulestatus.($cmodule) = 'FINISHED'
-                } elseif ($statusval -eq 4) {
-                    $this.modulestatus.($cmodule) = 'NA'
-                } else {
-                    $this.modulestatus.($cmodule) = 'UNKNOWN'
-                }
-                #
+            $statusval = ($this.('check'+$cmodule)($false))
+            if ($statusval -eq 1){
+                $this.modulestatus.($cmodule) = 'WAITING'
+            } elseif ($statusval -eq 2){
+                $this.modulestatus.($cmodule) = 'READY'
+            } elseif ($statusval -eq 3){
+                $this.modulestatus.($cmodule) = 'FINISHED'
+            } elseif ($statusval -eq 4) {
+                $this.modulestatus.($cmodule) = 'NA'
             } else {
+                $this.modulestatus.($cmodule) = 'UNKNOWN'
+            }
+            #
+        } else {
+            #
+            if ($logoutput[1]){
+                $this.modulestatus.($cmodule) = $logoutput[1].Message
+            } else {    
                 $this.modulestatus.($cmodule) = 'RUNNING'
             }
             #
+        }
+        #
     }
     <# -----------------------------------------
      checklog
@@ -57,21 +65,50 @@
      ------------------------------------------
      Usage: $this.checklog(log, dependency)
     ----------------------------------------- #>
-    [switch]checklog($cmodule, $dependency){
+    [array]checklog($cmodule, $dependency){
         #
         if (!(test-path $this.modulelogs.($cmodule).slidelog)){
-            return $true
+            return @($true)
         }
         #
-        $loglines = $this.opencsvfile($this.modulelogs.($cmodule).slidelog, `
-            ';', @('Project','Cohort','slideid','Message','Date'))
+        $loglines = $this.importlogfile($this.modulelogs.($cmodule).slidelog)
+        $vers = $this.setlogvers($cmodule)
+        $ID = $this.setlogid($cmodule)
         #
-        # parse log
+        $startdate = ($this.selectlogline($loglines, $ID, 'START', $vers)).Date
+        $finishdate = ($this.selectlogline($loglines, $ID, 'FINISH', $vers)).Date
+        $errorline = $this.selectlogline($loglines, $ID, 'ERROR', $vers)
         #
-        $statustypes = @('START:','ERROR:','FINISH:')
-        $savelog = @()
-        $vers = $this.modulelogs.($cmodule).vers -replace 'v', ''
-        $vers = ($vers -split '\.')[0,1,2] -join '.'
+        return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
+        #
+    }
+    #
+    [array]checklog($cmodule, $antibody, $dependency){
+        #
+        if (!(test-path $this.modulelogs.($cmodule).slidelog)){
+            return @($true)
+        }
+        #
+        $loglines = $this.importlogfile($this.modulelogs.($cmodule).slidelog)
+        $vers = $this.setlogvers($cmodule)
+        $ID = $this.setlogid($cmodule)
+        #
+        $startdate = ($this.selectlogline($loglines, $ID, 'START', $vers, $antibody)).Date
+        $finishdate = ($this.selectlogline($loglines, $ID, 'FINISH', $vers, $antibody)).Date
+        $errorline = $this.selectlogline($loglines, $ID, 'ERROR', $vers, $antibody)
+        #
+        return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
+        #
+    }
+    <# -----------------------------------------
+     setlogid
+     set the log id, 
+     if the slide and main log files are the same
+        # this is batch process not a slide process
+     ------------------------------------------
+     Usage: $setlogid($cmodule)
+    ----------------------------------------- #>
+    [string]setlogid($cmodule){
         #
         if ($this.modulelogs.($cmodule).slidelog -match `
             [regex]::Escape($this.modulelogs.($cmodule).mainlog)){
@@ -79,40 +116,49 @@
         } else {
             $ID = $this.slideid
         }
+        return $ID
         #
-        foreach ($statustype in $statustypes){
-            $savelog += $loglines |
-                    where-object {
-                        ($_.Message -match $vers) -and 
-                         ($_.Slideid -match $ID) -and 
-                         ($_.Message -match $statustype)
-                    } |
-                    Select-Object -Last 1 
-        }
+    }
+    <# -----------------------------------------
+     setlogvers
+     set the log version number to match
+     ------------------------------------------
+     Usage: $setlogvers($cmodule)
+    ----------------------------------------- #>
+    [string]setlogvers($cmodule){
         #
-        $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
-        $d2 = ($loglines |
-                 Where-Object {
-                    $_.Message -match $statustypes[1] -and
-                     ($_.Slideid -match $ID)
-                 }).Date |
-               Select-Object -Last 1 
-        $d3 = ($savelog | Where-Object {$_.Message -match $statustypes[2]}).Date
+        $vers = $this.modulelogs.($cmodule).vers -replace 'v', ''
+        $vers = ($vers -split '\.')[0,1,2] -join '.'
+        return $vers
         #
-        # if there was an error return true 
-        # if not a dependency check and the latest run is finished return true
-        # if it is a dependency check and the lastest run is not finished return true
+    }
+    <# -----------------------------------------
+     deflogstatus
+     if there was an error return true 
+     if not a dependency check and the latest 
+        run is finished return true
+     if it is a dependency check and 
+        the lastest run is not finished return true
+     ------------------------------------------
+     Usage: $deflogstatus($startdate, $finishdate, $errorline, $dependency)
+    ----------------------------------------- #>
+    [array]deflogstatus($startdate, $finishdate, $errorline, $dependency){
         #
-        if ( !$d1 -or
-             ($d1 -le $d2 -and $d3 -ge $d2) -or 
-            (!$dependency -and ($d3 -gt $d1)) -or 
-            ($dependency -and !($d3 -gt $d1))
+        $errordate = $errorline.Date
+        $errorlogical = ($startdate -le $errordate -and $finishdate -ge $errordate) 
+        #
+        if ( !$startdate -or $errorlogical -or 
+            (!$dependency -and ($finishdate -gt $startdate)) -or 
+            ($dependency -and !($finishdate -gt $startdate))
         ){
-            return $true
+            if ($errorlogical){
+                return @($true, $errorline)
+            } else {
+                return @($true)
+            }
         } else {
-            return $false
+            return @($false)
         }
-        #
     }
     <# -----------------------------------------
      checktransfer
@@ -439,6 +485,25 @@
         $this.cleanedtasks = $this.cleanedtasks | ForEach {$_.Split(',')[0..3] -join(',')}
         #
     }
+    
+    <# -----------------------------------------
+     checkvminform
+     place holder
+    ------------------------------------------
+     Input: 
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkvminform(dependency)
+    ----------------------------------------- #>
+    [int]checkvminform($dependency){
+        #
+        return 4
+        #
+    }
     <# -----------------------------------------
      checkmergeloop
      place holder
@@ -452,7 +517,7 @@
      ------------------------------------------
      Usage: $this.checkmergeloop(dependency)
     ----------------------------------------- #>
-    [int]checkmergloop(){
+    [int]checkmergloop($dependency){
         #
         return 4
         #
@@ -470,7 +535,7 @@
      ------------------------------------------
      Usage: $this.checksegmaps(dependency)
     ----------------------------------------- #>
-    [int]checksegmaps(){
+    [int]checksegmaps($dependency){
         #
         return 4
         #

@@ -36,7 +36,7 @@
         #
         try{
             $sampletracker = sampletracker -mpath $this.mpath -slideid 'M21_1'
-            $sampletracker.removewatchers()
+            # $sampletracker.removewatchers()
         } catch {
             Throw ('[sampletracker] construction with [2] input(s) failed. ' + $_.Exception.Message)
         }

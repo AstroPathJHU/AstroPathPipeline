@@ -167,5 +167,80 @@
         return $config_data
         #
     }
-    #      
+    <# -----------------------------------------
+     Importlogfile
+     import and return a log file object
+     ------------------------------------------
+     Input: 
+        -fpath: full path to the log
+     ------------------------------------------
+     Usage: Importlogfile($fpath)
+    ----------------------------------------- #>
+    [PSCustomObject]Importlogfile([string] $fpath){
+        #
+        $logfile = $this.opencsvfile($fpath, `
+            ';', @('Project','Cohort','slideid','Message','Date'))
+        #
+        #
+        return $logfile
+        #
+     }
+    #
+    <# -----------------------------------------
+     selectlogline
+     select the most recent line for the input
+     type
+     ------------------------------------------
+     Input: 
+        - loglines: the log itself
+        - ID: the log entry type to match (batch or slideid)
+        - status: the status to match (ERROR, START, FINISH, WARNING)
+        - vers: the version number to match
+        - [antibody]: the antibody to match for vminform
+        - [algorithm]: the algorithm to match for vminform
+     ------------------------------------------
+     Usage: Importlogfile($fpath)
+    ----------------------------------------- #>
+    [PSCustomObject]selectlogline([string] $loglines, [string] $ID, [string] $status, [string] $vers){    
+        #
+        $logline = $loglines |
+                where-object {
+                    ($_.Message -match $vers) -and 
+                        ($_.Slideid -match $ID) -and 
+                        ($_.Message -match $status)
+                } |
+                Select-Object -Last 1
+        #
+        return $logline
+        #
+    }
+    #
+    [PSCustomObject]selectlogline([string] $loglines, [string] $ID, [string] $status, [string] $vers, [string] $antibody){    
+        #
+        $logline = $loglines |
+                where-object {
+                    ($_.Slideid -match $ID) -and 
+                        ($_.Message -match $status) -and 
+                        ($_.Message -match ('Antibody: ' + $antibody + ' - Algorithm:'))
+                } |
+                Select-Object -Last 1
+        #
+        return $logline
+        #
+    } 
+    #
+    [PSCustomObject]selectlogline([string] $loglines, [string] $ID, [string] $status, [string] $vers, [string] $antibody, [string] $algorithm){    
+        #
+        $logline = $loglines |
+                where-object {
+                    ($_.Slideid -match $ID) -and 
+                        ($_.Message -match $status) -and 
+                        ($_.Message -match ('Antibody: ' + $antibody + ' - Algorithm: ' + $algorithm))
+                } |
+                Select-Object -Last 1
+        #
+        return $logline
+        #
+    } 
+    #        
 }
