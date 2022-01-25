@@ -608,10 +608,10 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
     return annotations, allregions, allvertices
 
 class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
-  def __init__(self, polygonxmlfile, *args, pscale=None, apscale=None, logger=dummylogger, **kwargs):
-    self.__polygonxmlfile = polygonxmlfile
+  def __init__(self, infofile, *, pscale=None, apscale=None, logger=dummylogger, **kwargs):
+    self.__infofile = infofile
     self.__logger = logger
-    super().__init__(*args, **kwargs)
+    super().__init__(**kwargs)
     if pscale is None: pscale = 1
     if apscale is None:
       if self.annotationimagefolder is not None:
@@ -630,7 +630,9 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
   def logger(self): return self.__logger
 
   @property
-  def annotationspolygonsxmlfile(self): return self.__polygonxmlfile
+  def annotationinfofile(self): return self.__infofile
+  @property
+  def scanfolder(self): return self.annotationinfofile.parent
 
   @property
   def SampleID(self): return 0
@@ -655,6 +657,9 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
   @property
   @abc.abstractmethod
   def scanfolder(self): pass
+  @property
+  @abc.abstractmethod
+  def SampleID(self): pass
 
   @methodtools.lru_cache()
   def getannotationinfo(self, *, log=False):
@@ -713,7 +718,7 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
         raise ValueError(f"AnnotationInfos in {oldfile} are not all from the same file or version of the file")
       if oldfile != newfile:
         raise ValueError(f"AnnotationInfos in {xmlfile} are from the wrong filename {oldfile}")
-      if oldsha != xmlfile.xmlsha:
+      if oldsha != newsha:
         raise ValueError(f"AnnotationInfos in {xmlfile} are from a different version of the file with hash {oldsha}, current hash is {xmlfile.xmlsha}.")
 
       try:
@@ -729,10 +734,48 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
     self.getannotationinfo(log=True)
     return writetable(self.annotationinfofile, self.annotationinfo)
 
-def writeannotationcsvs(dbloadfolder, xmlfile, csvprefix=None, **kwargs):
+class XMLPolygonAnnotationFileInfoWriterStandalone(XMLPolygonAnnotationFileInfoWriter):
+  def __init__(self, *, infofile=None, xmlfile, annotationsource, annotationposition=None, pscale, logger=dummylogger, **kwargs):
+    self.__infofile = infofile
+    self.__xmlfile = xmlfile
+    self.__annotationsource = annotationsource
+    self.__annotationposition = annotationposition
+    self.__pscale = pscale
+    self.__logger = logger
+    super().__init__(**kwargs)
+  @property
+  def scanfolder(self):
+    return self.annotationspolygonsxmlfile.parent
+  @property
+  def annotationspolygonsxmlfile(self):
+    return self.__xmlfile
+  @property
+  def annotationinfofile(self):
+    result = self.__infofile
+    if result is None: return super().annotationinfofile
+    return result
+
+  @property
+  def logger(self): return self.__logger
+
+  @property
+  def annotationsource(self): return self.__annotationsource
+  @property
+  def annotationposition(self): return self.__annotationposition
+  @property
+  def pscale(self): return self.__pscale
+  @property
+  def SampleID(self): return 0
+
+def writeannotationinfo(*, infofile, xmlfile, **kwargs):
+  writer = XMLPolygonAnnotationFileInfoWriterStandalone(infofile=infofile, xmlfile=xmlfile, **kwargs)
+  writer.writeannotationinfos()
+  return writer.annotationinfo
+
+def writeannotationcsvs(dbloadfolder, infofile, csvprefix=None, **kwargs):
   dbloadfolder = pathlib.Path(dbloadfolder)
   dbloadfolder.mkdir(parents=True, exist_ok=True)
-  annotations, regions, vertices = XMLPolygonAnnotationReaderStandalone(polygonxmlfile=xmlfile, **kwargs).getXMLpolygonannotations()
+  annotations, regions, vertices = XMLPolygonAnnotationReaderStandalone(infofile=infofile, **kwargs).getXMLpolygonannotations()
   if csvprefix is None:
     csvprefix = ""
   elif csvprefix.endswith("_"):
