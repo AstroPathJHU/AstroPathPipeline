@@ -226,6 +226,12 @@ pipeline {
 		    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsegmaps.ps1'
 		  }
 		}
+		
+		stage('ps warpoctets') {
+		  steps {
+		    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
+		  }
+		}
       }
     }
     stage('check that the repo is clean') {
