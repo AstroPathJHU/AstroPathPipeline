@@ -187,9 +187,12 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
           "tumorGeometry": (Boundary, "TumorGeometry"),
           "vertices": (WarpedVertex, "Vertices"),
         }[match.group(1)]
+        allannotationinfos = self.readcsv("annotationinfo", AnnotationInfo, extrakwargs={"scanfolder": self.scanfolder})
+        allannotations = self.readcsv("annotations", Annotation, extrakwargs={"annotationinfos": allannotationinfos})
         allrectangles = self.readcsv("rect", Rectangle)
-        allannotations = self.readcsv("annotations", Annotation)
         extrakwargs = {
+          "annotationinfo": {"scanfolder": self.scanfolder},
+          "annotations": {"annotationinfos": allannotationinfos},
           "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0},
           "fieldoverlaps": {"nclip": 8, "rectangles": allrectangles},
           "overlap": {"nclip": 8, "rectangles": allrectangles},
