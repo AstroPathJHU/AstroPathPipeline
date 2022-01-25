@@ -134,7 +134,8 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
 
       args1 = [os.fspath(xmlfile), "--infofile", os.fspath(infofile), "--annotations-on-qptiff"]
       info = writeannotationinfo(args1)
-      writeannotationcsvs(folder, infofile, csvprefix=SlideID)
+      args2 = [os.fspath(folder), os.fspath(infofile), "--csvprefix", SlideID]
+      writeannotationcsvs(args2)
       extrakwargs = {"annotationinfos": info, "pscale": 1, "apscale": 1}
       for filename, cls in (
         (f"{SlideID}_annotations.csv", Annotation),

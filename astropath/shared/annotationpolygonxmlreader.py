@@ -772,7 +772,7 @@ def writeannotationinfostandalone(*, infofile, xmlfile, **kwargs):
   writer.writeannotationinfos()
   return writer.annotationinfo
 
-def writeannotationcsvs(dbloadfolder, infofile, csvprefix=None, **kwargs):
+def writeannotationcsvsstandalone(dbloadfolder, infofile, csvprefix=None, **kwargs):
   dbloadfolder = pathlib.Path(dbloadfolder)
   dbloadfolder.mkdir(parents=True, exist_ok=True)
   annotations, regions, vertices = XMLPolygonAnnotationReaderStandalone(infofile=infofile, **kwargs).getXMLpolygonannotations()
@@ -790,19 +790,6 @@ def add_rename_annotation_argument(argumentparser):
   argumentparser.add_argument("--rename-annotation", nargs=2, action=ArgParseAddToDict, dest="annotationsynonyms", metavar=("XMLNAME", "NEWNAME"), help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
   argumentparser.add_argument("--reorder-annotations", action="store_true", dest="reorderannotations", help="Reorder annotations if they are in the wrong order")
 
-def main(args=None):
-  p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out csv files for the annotations, regions, and vertices")
-  p.add_argument("dbloadfolder", type=pathlib.Path, help="folder to write the output csv files in")
-  p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
-  p.add_argument("--csvprefix", help="prefix to put in front of the csv file names")
-  add_rename_annotation_argument(p)
-  g = p.add_mutually_exclusive_group()
-  g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
-  g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
-  args = p.parse_args(args=args)
-  with units.setup_context("fast"):
-    return writeannotationcsvs(**args.__dict__, logger=printlogger("annotations"))
-
 def writeannotationinfo(args=None):
   p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out the annotation info csv file")
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
@@ -814,6 +801,16 @@ def writeannotationinfo(args=None):
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
     return writeannotationinfostandalone(**args.__dict__, logger=printlogger("annotations"), pscale=1)
+
+def writeannotationcsvs(args=None):
+  p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out csv files for the annotations, regions, and vertices")
+  p.add_argument("dbloadfolder", type=pathlib.Path, help="folder to write the output csv files in")
+  p.add_argument("infofile", type=pathlib.Path, help="path to the annotation info csv")
+  p.add_argument("--csvprefix", help="prefix to put in front of the csv file names")
+  add_rename_annotation_argument(p)
+  args = p.parse_args(args=args)
+  with units.setup_context("fast"):
+    return writeannotationcsvsstandalone(**args.__dict__, logger=printlogger("annotations"))
 
 def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
