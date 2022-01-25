@@ -20,9 +20,11 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_Scan1.annotationinfo.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_annotations.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_regions.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_vertices.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_Scan1.annotationinfo.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_annotations.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_regions.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_vertices.csv",
@@ -129,17 +131,19 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       xmlfile = folder/f"{SlideID}_Scan1.annotations.polygons.xml"
       infofile = folder/f"{SlideID}_Scan1.annotationinfo.csv"
       s = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID)
-      info = writeannotationinfo(xmlfile=xmlfile, infofile=infofile, pscale=s.pscale, annotationsource="qptiff")
+
+      args1 = [os.fspath(xmlfile), "--infofile", os.fspath(infofile), "--annotations-on-qptiff"]
+      info = writeannotationinfo(args1)
       writeannotationcsvs(folder, infofile, csvprefix=SlideID)
-      extrakwargs = {"annotationinfos": info}
+      extrakwargs = {"annotationinfos": info, "pscale": 1, "apscale": 1}
       for filename, cls in (
         (f"{SlideID}_annotations.csv", Annotation),
         (f"{SlideID}_vertices.csv", Vertex),
         (f"{SlideID}_regions.csv", Region),
       ):
         try:
-          rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
-          targetrows = s.readtable(thisfolder/"data"/"reference"/"misc"/"standaloneannotations"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          rows = readtable(folder/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          targetrows = readtable(thisfolder/"data"/"reference"/"misc"/"standaloneannotations"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
           for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
           if cls == Annotation:

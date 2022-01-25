@@ -767,7 +767,7 @@ class XMLPolygonAnnotationFileInfoWriterStandalone(XMLPolygonAnnotationFileInfoW
   @property
   def SampleID(self): return 0
 
-def writeannotationinfo(*, infofile, xmlfile, **kwargs):
+def writeannotationinfostandalone(*, infofile, xmlfile, **kwargs):
   writer = XMLPolygonAnnotationFileInfoWriterStandalone(infofile=infofile, xmlfile=xmlfile, **kwargs)
   writer.writeannotationinfos()
   return writer.annotationinfo
@@ -801,7 +801,19 @@ def main(args=None):
   g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    writeannotationcsvs(**args.__dict__, logger=printlogger("annotations"))
+    return writeannotationcsvs(**args.__dict__, logger=printlogger("annotations"))
+
+def writeannotationinfo(args=None):
+  p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out the annotation info csv file")
+  p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
+  p.add_argument("--infofile", type=pathlib.Path, help="output path for the annotation info (default: xmlfile with the suffix .csv)")
+  g = p.add_mutually_exclusive_group(required=True)
+  g.add_argument("--annotations-on-wsi", action="store_const", dest="annotationsource", const="wsi", help="annotations were drawn on the AstroPath image")
+  g.add_argument("--annotations-on-qptiff", action="store_const", dest="annotationsource", const="qptiff", help="annotations were drawn on the qptiff")
+  p.add_argument("--annotation-position", type=float, dest="annotationposition", nargs=2, help="position of the wsi when the annotations were drawn")
+  args = p.parse_args(args=args)
+  with units.setup_context("fast"):
+    return writeannotationinfostandalone(**args.__dict__, logger=printlogger("annotations"), pscale=1)
 
 def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")

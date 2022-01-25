@@ -75,6 +75,7 @@ setupkwargs = dict(
       "transfer-daemon=astropath.scans.transferdaemon.Daemon:launch_transfer",
       "warpingsample=astropath.hpfs.warping.warpingsample:main",
       "warpingcohort=astropath.hpfs.warping.warpingcohort:main",
+      "writeannotationinfo=astropath.shared.annotationpolygonxmlreader:writeannotationinfo",
       "writeannotationinfocohort=astropath.slides.annowarp.mergeannotationxmls:writeannotationinfocohort",
       "writeannotationinfosample=astropath.slides.annowarp.mergeannotationxmls:writeannotationinfosample",
       "zoomcohort=astropath.slides.zoom.zoomcohort:main",
