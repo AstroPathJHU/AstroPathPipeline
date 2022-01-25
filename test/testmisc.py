@@ -1,5 +1,5 @@
 import collections, cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib, skimage
-from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, writeannotationcsvs, writeannotationinfo
+from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, checkannotations, writeannotationcsvs, writeannotationinfo
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
 from astropath.shared.logging import printlogger
@@ -134,8 +134,10 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
 
       args1 = [os.fspath(xmlfile), "--infofile", os.fspath(infofile), "--annotations-on-qptiff"]
       info = writeannotationinfo(args1)
-      args2 = [os.fspath(folder), os.fspath(infofile), "--csvprefix", SlideID]
-      writeannotationcsvs(args2)
+      args2 = [os.fspath(infofile)]
+      checkannotations(args2)
+      args3 = [os.fspath(folder), os.fspath(infofile), "--csvprefix", SlideID]
+      writeannotationcsvs(args3)
       extrakwargs = {"annotationinfos": info, "pscale": 1, "apscale": 1}
       for filename, cls in (
         (f"{SlideID}_annotations.csv", Annotation),

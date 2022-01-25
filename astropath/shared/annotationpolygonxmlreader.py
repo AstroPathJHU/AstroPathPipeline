@@ -814,7 +814,7 @@ def writeannotationcsvs(args=None):
 
 def checkannotations(args=None):
   p = argparse.ArgumentParser(description="run astropath checks on an annotations.polygons.xml file")
-  p.add_argument("polygonxmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
+  p.add_argument("infofile", type=pathlib.Path, help="path to the annotation info csv")
   g = p.add_mutually_exclusive_group()
   g.add_argument("--save-polygon-images", action="store_const", dest="annotationimagefolder", const=pathlib.Path("."), help="save all annotation images to the current folder")
   g.add_argument("--save-polygon-images-folder", type=pathlib.Path, dest="annotationimagefolder", help="save all annotation images to the given directory")
@@ -822,9 +822,6 @@ def checkannotations(args=None):
   g.add_argument("--save-bad-polygon-images-folder", type=pathlib.Path, dest="badannotationimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
   p.add_argument("--save-images-filetype", default="pdf", choices=("pdf", "png"), dest="annotationimagefiletype", help="image format to save debug images")
   add_rename_annotation_argument(p)
-  g = p.add_mutually_exclusive_group()
-  g.add_argument("--annotations-on-wsi", action="store_true", dest="annotationsonwsi", help="annotations were drawn on the AstroPath image")
-  g.add_argument("--annotations-on-qptiff", action="store_false", dest="annotationsonwsi", help="annotations were drawn on the qptiff")
   args = p.parse_args(args=args)
   if args.annotationimagefolder is not None:
     args.saveallannotationimages = True
@@ -834,4 +831,4 @@ def checkannotations(args=None):
   logger = printlogger("annotations")
   with units.setup_context("fast"):
     XMLPolygonAnnotationReaderStandalone(**args.__dict__, logger=logger).getXMLpolygonannotations()
-  logger.info(f"{args.polygonxmlfile} looks good!")
+  logger.info(f"{args.infofile} looks good!")
