@@ -63,10 +63,12 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
           contents = "".join(f2)
 
         usecommit = self.testrequirecommit.parents[0]
+        #purposely write an INVALID commit hash (with X at the end)
+        #testing with --require-commit is in testgeomcell.py
         if istag:
-          contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}")
+          contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}aaaaa")
         else:
-          contents = contents.replace(match.group("commit"), usecommit.shorthash(8))
+          contents = contents.replace(match.group("commit"), usecommit.shorthash(8)+"aaaaa")
 
         with open(filename, "w", newline="") as f:
           f.write(contents)
@@ -136,9 +138,8 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
     try:
       sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID], dbloadroot=dbloadroot, logroot=dbloadroot)
       PrepDbCohort.runfromargumentparser(args) #this should not run anything
-      PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit.parents[0])]) #this should not run anything either
       with open(sample.csv("rect")) as f: assert not f.read().strip()
-      PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit)])
+      PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit.parents[0].parents[0])])
 
       rectangles = None
       for filename, cls, extrakwargs in (
