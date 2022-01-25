@@ -143,7 +143,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
     } | {
       r.phenotypeQAQCcsv for r in self.rectangles if hasanycells(r)
     } | {
-      xml.with_suffix(".csv") for xml in self.scanfolder.glob("*annotations.polygons*.xml")
+      xml.with_suffix(".annotationinfo.csv") for xml in self.scanfolder.glob("*annotations.polygons*.xml")
     } | meanimagecsvs
     goodcsvs = set()
     unknowncsvs = set()
