@@ -42,7 +42,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
 
       new = s.annotationinfofile
       reffolder = root/"reference"/"writeannotationinfo"/SlideID/"im3"/f"Scan{s.Scan}"
-      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "scanfolder")}
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "apscale", "scanfolder")}
       compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
     except:
       self.saveoutput()
@@ -65,7 +65,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
 
       new = s.csv("annotationinfo")
       reffolder = root/"reference"/"writeannotationinfo"/SlideID/"dbload"
-      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "scanfolder")}
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "apscale", "scanfolder")}
       compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
     except:
       self.saveoutput()
@@ -92,7 +92,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
 
       new = s.csv("annotationinfo")
       reffolder = root/"reference"/"writeannotationinfo"/"skipannotation"/SlideID/"dbload"
-      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "scanfolder")}
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "apscale", "scanfolder")}
       compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
     except:
       self.saveoutput()
@@ -122,7 +122,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
 
       new = s.csv("annotationinfo")
       reffolder = root/"reference"/"writeannotationinfo"/"annotationposition"/SlideID/"dbload"
-      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "scanfolder")}
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "apscale", "scanfolder")}
       compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
     except:
       self.saveoutput()

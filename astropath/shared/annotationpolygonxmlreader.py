@@ -243,7 +243,7 @@ class AnnotationVertexFromPolygon(DataClassWithAnnoscale):
   X: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="annoscale")
   Y: units.Distance = distancefield(pixelsormicrons="pixels", pscalename="annoscale")
 
-class ThingWithAnnotationInfos(units.ThingWithPscale):
+class ThingWithAnnotationInfos(units.ThingWithPscale, units.ThingWithApscale):
   @property
   @abc.abstractmethod
   def annotationinfofile(self): pass
@@ -297,12 +297,15 @@ class XMLPolygonAnnotationFileBase(ThingWithAnnotationInfos):
     return infos
 
 class XMLPolygonAnnotationFile(XMLPolygonAnnotationFileBase):
-  def __init__(self, *args, xmlfile, pscale, **kwargs):
+  def __init__(self, *args, xmlfile, pscale, apscale, **kwargs):
     super().__init__(*args, **kwargs)
     self.__xmlfile = xmlfile
     self.__pscale = pscale
+    self.__apscale = apscale
   @property
   def pscale(self): return self.__pscale
+  @property
+  def apscale(self): return self.__apscale
   @property
   def annotationspolygonsxmlfile(self): return self.__xmlfile
   @property
@@ -507,7 +510,6 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
                 vid=k,
                 x=x,
                 y=y,
-                annoscale=annotation.annoscale,
                 pscale=pscale,
                 annotation=annotation,
               )
@@ -689,6 +691,7 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
         isonwsi={"wsi": True, "qptiff": False}[self.annotationsource],
         position=self.annotationposition,
         pscale=self.pscale,
+        apscale=self.apscale,
         xmlfile=xmlfile.name,
         xmlsha=xmlsha,
         scanfolder=self.scanfolder,
@@ -735,12 +738,13 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
     return writetable(self.annotationinfofile, self.annotationinfo)
 
 class XMLPolygonAnnotationFileInfoWriterStandalone(XMLPolygonAnnotationFileInfoWriter):
-  def __init__(self, *, infofile=None, xmlfile, annotationsource, annotationposition=None, pscale, logger=dummylogger, **kwargs):
+  def __init__(self, *, infofile=None, xmlfile, annotationsource, annotationposition=None, pscale, apscale, logger=dummylogger, **kwargs):
     self.__infofile = infofile
     self.__xmlfile = xmlfile
     self.__annotationsource = annotationsource
     self.__annotationposition = annotationposition
     self.__pscale = pscale
+    self.__apscale = apscale
     self.__logger = logger
     super().__init__(**kwargs)
   @property
@@ -764,6 +768,8 @@ class XMLPolygonAnnotationFileInfoWriterStandalone(XMLPolygonAnnotationFileInfoW
   def annotationposition(self): return self.__annotationposition
   @property
   def pscale(self): return self.__pscale
+  @property
+  def apscale(self): return self.__apscale
   @property
   def SampleID(self): return 0
 
@@ -800,7 +806,7 @@ def writeannotationinfo(args=None):
   p.add_argument("--annotation-position", type=float, dest="annotationposition", nargs=2, help="position of the wsi when the annotations were drawn")
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
-    return writeannotationinfostandalone(**args.__dict__, logger=printlogger("annotations"), pscale=1)
+    return writeannotationinfostandalone(**args.__dict__, logger=printlogger("annotations"), pscale=1, apscale=1)
 
 def writeannotationcsvs(args=None):
   p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out csv files for the annotations, regions, and vertices")

@@ -183,7 +183,7 @@ class RectangleFile(DataClassWithPscaleFrozen):
   def cxvec(self):
     return np.array([self.cx, self.cy])
 
-class AnnotationInfo(DataClassWithPscale):
+class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
   """
   """
   sampleid: int
@@ -203,6 +203,14 @@ class AnnotationInfo(DataClassWithPscale):
     positionkwargs = {}
     if position is not None:
       positionkwargs["xposition"], positionkwargs["yposition"] = position
+    if kwargs.get("annoscale", None) is None:
+      pscale = kwargs["pscale"]
+      apscale = kwargs["apscale"]
+      isonwsi = kwargs["isonwsi"]
+      if isonwsi:
+        kwargs["annoscale"] = pscale/2
+      else:
+        kwargs["annoscale"] = apscale
     return super().transforminitargs(*args, **kwargs, **positionkwargs)
 
   @property
@@ -216,10 +224,10 @@ class AnnotationInfo(DataClassWithPscale):
   def xmlpath(self):
     return self.scanfolder/self.xmlfile
 
-class DataClassWithAnnotationInfo(DataClassWithPscale):
+class DataClassWithAnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
   annotationinfo: AnnotationInfo = MetaDataAnnotation(None, includeintable=False)
   @classmethod
-  def transforminitargs(cls, *, pscale=None, annotationinfo=None, annotationinfos=None, **kwargs):
+  def transforminitargs(cls, *, pscale=None, apscale=None, annoscale=None, annotationinfo=None, annotationinfos=None, **kwargs):
     if annotationinfo is not None and annotationinfos is not None:
       raise TypeError("Provided both annotationinfo and annotationinfos")
 
@@ -235,14 +243,20 @@ class DataClassWithAnnotationInfo(DataClassWithPscale):
     if annotationinfo is not None:
       if pscale is None: pscale = annotationinfo.pscale
       if pscale != annotationinfo.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {annotationinfo.pscale}")
+      if apscale is None: apscale = annotationinfo.apscale
+      if apscale != annotationinfo.apscale is not None: raise ValueError(f"Inconsistent apscales {apscale} {annotationinfo.apscale}")
+      if annoscale is None: annoscale = annotationinfo.annoscale
+      if annoscale != annotationinfo.annoscale is not None: raise ValueError(f"Inconsistent annoscales {annoscale} {annotationinfo.annoscale}")
 
     return super().transforminitargs(
       pscale=pscale,
+      apscale=apscale,
+      annoscale=annoscale,
       annotationinfo=annotationinfo,
       **kwargs,
     )
 
-class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon, DataClassWithApscale):
+class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon):
   """
   An annotation from a pathologist.
 
@@ -278,16 +292,11 @@ class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon, DataClassWit
     isfromxml = cls.isannotationnamefromxml(kwargs["name"])
     if isfromxml and annotationinfo is None:
       raise TypeError("Need annotationinfo if annotation is from xml")
-    if "annoscale" not in kwargs:
-      pscale = kwargs["pscale"]
-      apscale = kwargs["apscale"]
+    if kwargs.get("annoscale", None) is None:
       if not isfromxml:
-        kwargs["annoscale"] = pscale
+        kwargs["annoscale"] = kwargs["pscale"]
       else:
-        if annotationinfo.isonwsi:
-          kwargs["annoscale"] = pscale/2
-        else:
-          kwargs["annoscale"] = apscale
+        kwargs["annoscale"] = annotationinfo.annoscale
     return args, kwargs
 
   @property

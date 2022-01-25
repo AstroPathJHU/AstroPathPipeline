@@ -255,7 +255,7 @@ class MergeAnnotationXMLsSample(CopyAnnotationInfoSampleBase, MergeAnnotationXML
     info = {}
     allnames = set()
     for xmlfile in self.allxmls:
-      xmlfile = XMLPolygonAnnotationFile(xmlfile=xmlfile, pscale=self.pscale)
+      xmlfile = XMLPolygonAnnotationFile(xmlfile=xmlfile, pscale=self.pscale, apscale=self.apscale)
       infodict = {info.name: info for info in xmlfile.annotationinfo}
       allnames.update(infodict.keys())
       info[xmlfile.annotationspolygonsxmlfile] = infodict

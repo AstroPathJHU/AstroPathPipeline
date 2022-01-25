@@ -7,8 +7,6 @@ from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.align.alignsample import AlignSample
-from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTissueMask
-from astropath.slides.annowarp.mergeannotationxmls import WriteAnnotationInfoSample
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable, writetable
@@ -130,7 +128,6 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       folder = thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/SlideID
       xmlfile = folder/f"{SlideID}_Scan1.annotations.polygons.xml"
       infofile = folder/f"{SlideID}_Scan1.annotationinfo.csv"
-      s = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID)
 
       args1 = [os.fspath(xmlfile), "--infofile", os.fspath(infofile), "--annotations-on-qptiff"]
       info = writeannotationinfo(args1)
