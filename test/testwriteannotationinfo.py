@@ -1,6 +1,6 @@
 import os, pathlib
 from astropath.shared.csvclasses import AnnotationInfo
-from astropath.slides.annowarp.mergeannotationxmls import CopyAnnotationInfoCohort, CopyAnnotationInfoSample, MergeAnnotationXMLsCohort, MergeAnnotationXMLsSample, WriteAnnotationInfoCohort, WriteAnnotationInfoSample
+from astropath.slides.annotationinfo.annotationinfo import CopyAnnotationInfoCohort, CopyAnnotationInfoSample, MergeAnnotationXMLsCohort, MergeAnnotationXMLsSample, WriteAnnotationInfoCohort, WriteAnnotationInfoSample
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent

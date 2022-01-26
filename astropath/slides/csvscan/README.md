@@ -1,4 +1,4 @@
-# 6.10. csvscan
+# 6.11. csvscan
 
 csvscan is the last step in the preparation for loading the database.
 It compiles all the csv files created in the other steps into a single
