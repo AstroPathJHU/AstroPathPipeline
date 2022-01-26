@@ -1,8 +1,8 @@
 import argparse
 from .argumentparser import RunFromArgumentParserBase
 from ..slides.align.aligncohort import AlignCohort
+from ..slides.annotationinfo.annotationinfo import CopyAnnotationInfoCohort, WriteAnnotationInfoCohort
 from ..slides.annowarp.annowarpcohort import AnnoWarpCohortAstroPathTissueMask
-from ..slides.annowarp.mergeannotationxmls import CopyAnnotationInfoCohort, WriteAnnotationInfoCohort
 from ..slides.csvscan.csvscancohort import CsvScanCohort
 from ..slides.deepzoom.deepzoomcohort import DeepZoomCohort
 from ..slides.geom.geomcohort import GeomCohort
