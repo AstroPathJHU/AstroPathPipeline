@@ -299,14 +299,20 @@ class MergeAnnotationXMLsCohort(DbloadCohort, WorkflowCohort, MergeAnnotationXML
       "skipannotations": self.skipannotations.copy(),
     }
 
-def mergeannotationxmlssample(*args, **kwargs):
-  MergeAnnotationXMLsSample.runfromargumentparser(*args, **kwargs)
-
-def mergeannotationxmlscohort(*args, **kwargs):
-  MergeAnnotationXMLsCohort.runfromargumentparser(*args, **kwargs)
-
 def writeannotationinfosample(*args, **kwargs):
   WriteAnnotationInfoSample.runfromargumentparser(*args, **kwargs)
 
 def writeannotationinfocohort(*args, **kwargs):
   WriteAnnotationInfoCohort.runfromargumentparser(*args, **kwargs)
+
+def copyannotationinfosample(*args, **kwargs):
+  CopyAnnotationInfoSample.runfromargumentparser(*args, **kwargs)
+
+def copyannotationinfocohort(*args, **kwargs):
+  CopyAnnotationInfoCohort.runfromargumentparser(*args, **kwargs)
+
+def mergeannotationxmlssample(*args, **kwargs):
+  MergeAnnotationXMLsSample.runfromargumentparser(*args, **kwargs)
+
+def mergeannotationxmlscohort(*args, **kwargs):
+  MergeAnnotationXMLsCohort.runfromargumentparser(*args, **kwargs)
