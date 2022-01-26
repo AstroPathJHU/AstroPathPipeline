@@ -1,4 +1,4 @@
-import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, re, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import AnnotationInfo, Region, Vertex
@@ -18,7 +18,7 @@ from ..align.field import Field
 from ..align.overlap import AlignmentComparison
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample, TissueMaskSampleWithPolygons
 from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
-from .mergeannotationxmls import MergeAnnotationXMLsSample, WriteAnnotationInfoSample
+from .mergeannotationxmls import CopyAnnotationInfoSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class QPTiffSample(SampleBase, units.ThingWithImscale):
@@ -170,7 +170,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     tilepixels: we divide the wsi and qptiff into tiles of this size
                 in order to align (default: 100)
     """
-    super().__init__(*args, readannotationinfo=True, **kwargs)
+    super().__init__(*args, **kwargs)
     self.wsilayer = 1
     self.qptifflayer = 1
     if tilepixels is None: tilepixels = self.defaulttilepixels
@@ -898,9 +898,10 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       dbload/f"{SlideID}_vertices.csv",
       dbload/f"{SlideID}_regions.csv",
     ]
+    scanfolder = kwargs["im3root"]/SlideID/"im3"/f"Scan{kwargs['Scan']}"
     infocsv = dbload/f"{SlideID}_annotationinfo.csv"
     if infocsv.exists():
-      infos = readtable(infocsv, AnnotationInfo, extrakwargs={"pscale": 1})
+      infos = readtable(infocsv, AnnotationInfo, extrakwargs={"pscale": 1, "apscale": 1, "scanfolder": scanfolder})
       if any(info.isonqptiff for info in infos if info.name != "empty"):
         result += [
           dbload/f"{SlideID}_annowarp.csv",
@@ -909,20 +910,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     return result
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    annotationsxmlregex = kwargs["annotationsxmlregex"]
-    im3root = kwargs["im3root"]
-    Scan = kwargs["Scan"]
-    SlideID = kwargs["SlideID"]
-    result = [ZoomSample] + super().workflowdependencyclasses(**kwargs)
-    xmls = [
-      _ for _ in (im3root/SlideID/"im3"/f"Scan{Scan}").glob(f"*{SlideID}*annotations.polygons*.xml")
-      if annotationsxmlregex is None or re.match(annotationsxmlregex, _.name)
-    ]
-    if any("merged" in _.name for _ in xmls):
-      result.append(MergeAnnotationXMLsSample)
-    else:
-      result.append(WriteAnnotationInfoSample)
-    return result    
+    return [ZoomSample, CopyAnnotationInfoSampleBase] + super().workflowdependencyclasses(**kwargs)
 
   @property
   def workflowkwargs(self):

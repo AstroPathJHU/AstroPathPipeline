@@ -136,13 +136,14 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}",
       self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME/FF_CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,
     }
+    annotationinfocsvs = {xml.with_suffix(".annotationinfo.csv") for xml in self.scanfolder.glob("*annotations*polygons*.xml")}
     optionalcsvs = {
       self.csv(_) for _ in (
         "globals",
       )
     } | {
       r.phenotypeQAQCcsv for r in self.rectangles if hasanycells(r)
-    } | meanimagecsvs
+    } | annotationinfocsvs | meanimagecsvs
     goodcsvs = set()
     unknowncsvs = set()
     folders = {self.mainfolder, self.dbload.parent, self.geomfolder.parent, self.phenotypefolder.parent.parent}
@@ -187,9 +188,12 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
           "tumorGeometry": (Boundary, "TumorGeometry"),
           "vertices": (WarpedVertex, "Vertices"),
         }[match.group(1)]
+        allannotationinfos = self.readcsv("annotationinfo", AnnotationInfo, extrakwargs={"scanfolder": self.scanfolder})
+        allannotations = self.readcsv("annotations", Annotation, extrakwargs={"annotationinfos": allannotationinfos})
         allrectangles = self.readcsv("rect", Rectangle)
-        allannotations = self.readcsv("annotations", Annotation)
         extrakwargs = {
+          "annotationinfo": {"scanfolder": self.scanfolder},
+          "annotations": {"annotationinfos": allannotationinfos},
           "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0},
           "fieldoverlaps": {"nclip": 8, "rectangles": allrectangles},
           "overlap": {"nclip": 8, "rectangles": allrectangles},
@@ -212,7 +216,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
         fieldsizelimit = None
       elif csv.parent == self.phenotypeQAQCtablesfolder:
         continue
-      elif csv in meanimagecsvs:
+      elif csv in meanimagecsvs | annotationinfocsvs:
         continue
       else:
         assert False, csv
