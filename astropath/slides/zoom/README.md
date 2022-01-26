@@ -1,9 +1,10 @@
-# 6.4. Zoom
+# 6.5. Zoom
 
 The zoom step of the pipeline creates a single, stitched image for the
 whole slide based on the output of the align step.  From each HPF, its
 primary region as defined by (mx1, my1, mx2, my2) is taken from the
-component tiff and inserted into the large image.
+component tiff and inserted into the large image.  The image is also
+normalized for average brightness in the tissue regions.
 
 To run `zoom` on a single slide, run:
 ```

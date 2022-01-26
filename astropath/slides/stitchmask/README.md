@@ -1,4 +1,4 @@
-# 6.6. Stitch mask
+# 6.4. Stitch mask
 
 The `stitchmask` step of the pipeline creates a single, stitched mask
 whole slide based on the output of the align step.  From each HPF, its
