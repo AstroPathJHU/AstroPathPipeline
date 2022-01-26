@@ -1,11 +1,11 @@
-# 6.9. Annotation info
+# 6.7. Annotation info
 
 The `writeannotationinfo` and `copyannotationinfo` steps of the pipeline
 write metadata about the annotations.  The information written in these
 steps is needed for the subsequent `annowarp` step, which records the position
 of the annotations in `im3` coordinates.
 
-# 6.9.1. Write annotation info
+# 6.7.1. Write annotation info
 
 The first step, `writeannotationinfo`, writes a `csv` file corresponding to
 the annotation `xml` file.  It contains the hash of the `xml` file as well as
@@ -37,7 +37,7 @@ later want to take annotations from two or more files, you have to run
 The output of this step is a `csv` file in the `im3/ScanX` folder, with the same
 name as the `xml` file but with the suffix `.annotationinfo.csv`.
 
-# 6.9.2. Copy annotation info
+# 6.7.2. Copy annotation info
 
 The `copyannotationinfo` step copies the `annotationinfo.csv` from the previous
 step into `<SlideID>_annotationinfo.csv` in the `dbload` folder.  The steps are

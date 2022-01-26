@@ -2,7 +2,7 @@
 
 The `annowarp` step of the pipeline writes out the pathologist annotations,
 which were drawn on the `qptiff` image, in `im3` coordinates.  It does this
-by aligning tiles of the whole slide image, created in the [`zoom` step](../zoom#64-zoom),
+by aligning tiles of the whole slide image, created in the [`zoom` step](../zoom#65-zoom),
 to the qptiff and creating a warp map.
 
 To run `annowarp` on a single slide, run:
