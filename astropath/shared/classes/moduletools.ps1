@@ -375,8 +375,8 @@
     [void]parsepycohortlog(){
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
         $sampleoutput | ForEach-Object {
-            $inp.sample.message = ($_ -split ';')[3]
-            $inp.sample.Writelog()
+            $this.sample.message = ($_ -split ';')[3]
+            $this.sample.Writelog()
         }
     }
     <# -----------------------------------------
