@@ -125,7 +125,7 @@ def get_homogenized_pca_image(im,tissue_mask,pca,dapi_layer_index=0,threshold=0.
     #find the pixels whose PCA DAPI contents should be replaced
     pixels_to_replace = nuclei_mask*nuclei_mask_morphed
     #smooth the PCA DAPI layer
-    smoothed_pca_dapi_layer = smooth_image_worker(im_pca[:,:,dapi_layer_index],dapi_smooth_sigma,gpu=True)
+    smoothed_pca_dapi_layer = smooth_image_worker(im_normed[:,:,dapi_layer_index],dapi_smooth_sigma,gpu=True)
     #replace the homogenized PCA image DAPI contents
     p_slice = pixels_to_replace==1
     h_pca_im[:,:,dapi_layer_index][p_slice] = smoothed_pca_dapi_layer[p_slice]
