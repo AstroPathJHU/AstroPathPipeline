@@ -301,12 +301,12 @@
     ----------------------------------------- #>
     [string]buildpyopts(){
         $project = $this.sample.project.PadLeft(2,  '0')
-        $string = "--allow-local-edits --skip-start-finish" # --use-apiddef --project " + $project
+        $string = "--allow-local-edits --skip-start-finish --use-apiddef --project " + $project
         return $string
     }
     [string]buildpyopts($opt){
         $project = $this.sample.project.PadLeft(2,  '0')
-        $string = "--allow-local-edits" # --use-apiddef --project " + $project
+        $string = "--allow-local-edits --use-apiddef --project " + $project
         return $string
     }
     #
@@ -348,7 +348,7 @@
             }
             #
         } else {
-            if ($this.sample.module -match 'batchmicomp' -or $this.sample.module -match 'warpoctets'){
+            if ($this.sample.module -match 'batchmicomp'){
                 $test = $this.pythonmodulename + ' : '
             } else {
                 $test = $this.pythonmodulename + ' : ' +
@@ -356,7 +356,7 @@
             }
             if ($this.logoutput -and $this.logoutput[0] -notmatch $test) {
                 $this.silentcleanup()
-                $potentialerrors = $this.logoutput.trim() -ne ''
+                $potentialerrors = $this.logoutput -ne ''
                 Throw $potentialerrors
             }
             #
