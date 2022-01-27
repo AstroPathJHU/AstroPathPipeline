@@ -101,7 +101,7 @@ def get_homogenized_pca_image(im,tissue_mask,pca,dapi_layer_index=0,threshold=0.
     pixels_to_use_ri = np.copy(expanded_regions_im)
     pixels_to_use_ri[(nuclei_mask==1) | (tissue_mask==0)] = 0
     #replace masked pixels with the medians of the pixels surrounding them
-    h_pca_im = get_median_im_compiled(im,n_regions,regions_im,pixels_to_use_ri)
+    h_pca_im = get_median_im_compiled(im_normed,n_regions,regions_im,pixels_to_use_ri)
     #finding large chunks of nuclei pixels that should have some of the DAPI signal added back in
     SMALL_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(small_morph_size,small_morph_size))
     LARGE_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(large_morph_size,large_morph_size))
@@ -125,7 +125,7 @@ def get_homogenized_pca_image(im,tissue_mask,pca,dapi_layer_index=0,threshold=0.
     #find the pixels whose PCA DAPI contents should be replaced
     pixels_to_replace = nuclei_mask*nuclei_mask_morphed
     #smooth the PCA DAPI layer
-    smoothed_pca_dapi_layer = smooth_image_worker(im[:,:,dapi_layer_index],dapi_smooth_sigma,gpu=True)
+    smoothed_pca_dapi_layer = smooth_image_worker(im_pca[:,:,dapi_layer_index],dapi_smooth_sigma,gpu=True)
     #replace the homogenized PCA image DAPI contents
     p_slice = pixels_to_replace==1
     h_pca_im[:,:,dapi_layer_index][p_slice] = smoothed_pca_dapi_layer[p_slice]
