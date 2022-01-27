@@ -340,11 +340,12 @@ class sampledef : sharedtools{
                 return $false
             }
             #
-            $f = @('-sum_images_squared.bin', '-std_err_of_mean_image.bin', '-mask_stack.bin', '-mean_image.bin')
+            $files = @('-sum_images_squared.bin', '-std_err_of_mean_image.bin', `
+                    '-mask_stack.bin', '-mean_image.bin')
             #
-            $f | ForEach-Object {
-                $tp = $p + '\' + $this.slideid + $f
-                if (!(test-path $tp)){
+            foreach ($file in $files) {
+                $fullpath = $p + '\' + $this.slideid + $file
+                if (!(test-path $fullpath)){
                     return $false
                 }
             }
