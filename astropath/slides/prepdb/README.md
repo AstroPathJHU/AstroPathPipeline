@@ -23,9 +23,6 @@ be created:
  - `<SlideID>_constants.csv` gives basic information about the microscope's scan, such as the position of the tissue within the slide and the pixels/micron scale of the microscope.
  - `<SlideID>_qptiff.csv` gives basic information from the large qptiff image.
  - `<SlideID>_qptiff.jpg` is a thumbnail image constructed from the qptiff image.
- - `<SlideID>_annotations.csv` describes the annotations for tissue, tumor, or other regions of interest.
- - `<SlideID>_regions.csv` describes the annotations in more detail and will be modified further in the annowarp stage to fully give the boundaries of each annotation.
- - `<SlideID>_vertices.csv` also describes the annotations by giving each vertex of each annotation aboundary.
  - `<SlideID>_rect.csv` gives information about each HPFs.
  - `<SlideID>_overlap.csv` gives the overlaps between adjacent HPFs.
  - `<SlideID>_exposures.csv` gives the exposure time for each layer of each HPF.
