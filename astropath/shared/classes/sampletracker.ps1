@@ -27,7 +27,7 @@ class sampletracker : dependencies {
         #
         $this.modules | ForEach-Object {
             $this.deflogpaths($_)
-            $this.FileWatcher($_.modulelogs.($cmodule).slidelog)
+            #$this.FileWatcher($this.moduleinfo.($_).slidelog)
             $this.getlogstatus($_)
         }
         #
@@ -36,7 +36,7 @@ class sampletracker : dependencies {
     [void]removewatchers(){
         if ($this.modules){
             $this.modules | ForEach-Object {
-                $SI = $this.modulelogs.($_).slidelog
+                $SI = $this.moduleinfo.($_).slidelog
                 $this.UnregisterEvent($SI)
             }
         }

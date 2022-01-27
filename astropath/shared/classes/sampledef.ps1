@@ -15,7 +15,7 @@ class sampledef : sharedtools{
     [PSCustomObject]$batchslides
     [string]$mainlog
     [string]$slidelog
-    [hashtable]$modulelogs = @{}
+    [hashtable]$moduleinfo = @{}
     #
     sampledef(){}
     #
@@ -138,7 +138,7 @@ class sampledef : sharedtools{
                     $this.slideid + '-' + $cmodule + '.log'
         }
         $vers = $this.GetVersion($this.mpath, $cmodule, $this.project)
-        $this.modulelogs.($cmodule) = @{mainlog =$cmainlog; slidelog=$cslidelog; version=$vers}
+        $this.moduleinfo.($cmodule) = @{mainlog =$cmainlog; slidelog=$cslidelog; version=$vers}
         #
     }
     #
