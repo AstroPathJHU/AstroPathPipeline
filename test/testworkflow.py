@@ -19,6 +19,28 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
         if csv.name in ("BatchID_24.csv", "MergeConfig_24.csv"): continue
         yield csv, new
 
+    for SlideID in "M21_1",:
+      oldim3 = dataroot/SlideID/"im3"
+      newim3 = testroot/SlideID/"im3"
+      oldxml = oldim3/"xml"
+      newxml = newim3/"xml"
+      for _ in oldxml.glob("*"):
+        yield _, newxml
+      Scan = {"M21_1": 1}[SlideID]
+      oldscanfolder = oldim3/f"Scan{Scan}"
+      newscanfolder = newim3/f"Scan{Scan}"
+      yield oldscanfolder/f"{SlideID}_Scan{Scan}_annotations.xml", newscanfolder
+      yield oldscanfolder/f"{SlideID}_Scan{Scan}.annotations.polygons.xml", newscanfolder
+      yield oldscanfolder/f"{SlideID}_Scan{Scan}.qptiff", newscanfolder
+      oldMSI = oldscanfolder/"MSI"
+      newMSI = newscanfolder/"MSI"
+      for _ in oldMSI.glob("*"):
+        yield _, newMSI
+      oldmasking = oldim3/"meanimage"/"image_masking"
+      newmasking = newim3/"meanimage"/"image_masking"
+      for _ in oldmasking.glob("*"):
+        yield _, newmasking
+
   @property
   def outputfilenames(self):
     folder = thisfolder/"test_for_jenkins"/"workflow"
@@ -48,7 +70,7 @@ class TestWorkflow(TestBaseCopyInput, TestBaseSaveOutput):
     SlideID = "M21_1"
     (root/SlideID).mkdir(parents=True, exist_ok=True)
     selectrectangles = 1, 17, 18, 23, 40
-    args = [os.fspath(root), "--shardedim3root", os.fspath(shardedim3root), "--im3root", os.fspath(datafolder), "--informdataroot", os.fspath(datafolder), "--zoomroot", os.fspath(zoomroot), "--deepzoomroot", os.fspath(deepzoomroot), "--selectrectangles", *(str(_) for _ in selectrectangles), "--layers", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--njobs", "3", "--annotations-on-qptiff"]
+    args = [os.fspath(root), "--shardedim3root", os.fspath(shardedim3root), "--im3root", os.fspath(root), "--informdataroot", os.fspath(datafolder), "--zoomroot", os.fspath(zoomroot), "--deepzoomroot", os.fspath(deepzoomroot), "--selectrectangles", *(str(_) for _ in selectrectangles), "--layers", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--njobs", "3", "--annotations-on-qptiff"]
     try:
       Workflow.runfromargumentparser(args=args)
       assert (root/"dbload"/"project0_loadfiles.csv").exists()

@@ -3,7 +3,7 @@ from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from ..utilities.version.git import thisrepo
-from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger, ThingWithLogger
 from .rectangle import rectanglefilter
 from .workflowdependency import ThingWithRoots, WorkflowDependency
@@ -617,10 +617,8 @@ class ParallelCohort(Cohort, ParallelArgumentParser):
       "njobs": self.__njobs,
     }
 
-class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
-  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, annotationsxmlregex=None, **kwargs):
-    self.__annotationsynonyms = annotationsynonyms
-    self.__reorderannotations = reorderannotations
+class XMLPolygonFileCohort(Cohort, XMLPolygonFileArgumentParser):
+  def __init__(self, *args, annotationsxmlregex=None, **kwargs):
     self.__annotationsxmlregex = annotationsxmlregex
     super().__init__(*args, **kwargs)
   @property
@@ -633,9 +631,25 @@ class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
   def initiatesamplekwargs(self):
     return {
       **super().initiatesamplekwargs,
+      "annotationsxmlregex": self.__annotationsxmlregex,
+    }
+
+class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
+  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
+    self.__annotationsynonyms = annotationsynonyms
+    self.__reorderannotations = reorderannotations
+    super().__init__(*args, **kwargs)
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+    }
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
       "annotationsynonyms": self.__annotationsynonyms,
       "reorderannotations": self.__reorderannotations,
-      "annotationsxmlregex": self.__annotationsxmlregex,
     }
 
 class CorrectedImageCohort(Im3Cohort,ImageCorrectionArgumentParser) :

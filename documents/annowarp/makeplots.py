@@ -1,7 +1,7 @@
 import argparse, numpy as np, pathlib, PIL, shutil, tempfile
 from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTissueMask
 from astropath.slides.annowarp.visualization import showannotation
-from astropath.shared.csvclasses import Annotation, Region
+from astropath.shared.csvclasses import Annotation, AnnotationInfo, Region
 from astropath.utilities import units
 
 here = pathlib.Path(__file__).parent
@@ -28,7 +28,8 @@ def makeplots():
     from ...test.testzoom import gunzipreference
     gunzipreference(samp)
     with AnnoWarpSampleAstroPathTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=dbloadroot) as A:
-      annotations = A.readtable(A.annotationscsv, Annotation)
+      annotationinfos = A.readtable(A.annotationinfocsv, AnnotationInfo, extrakwargs={"scanfolder": A.scanfolder})
+      annotations = A.readtable(A.annotationscsv, Annotation, extrakwargs={"annotationinfos": annotationinfos})
       warpedregions = A.readtable(A.regionscsv, Region, extrakwargs={"annotations": annotations})
 
       with A.using_images() as (wsi, fqptiff):

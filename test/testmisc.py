@@ -1,5 +1,5 @@
 import collections, cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib, skimage
-from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, writeannotationcsvs
+from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, checkannotations, writeannotationcsvs, writeannotationinfo
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
 from astropath.shared.logging import printlogger
@@ -7,7 +7,6 @@ from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.align.alignsample import AlignSample
-from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTissueMask
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable, writetable
@@ -19,19 +18,22 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
     return [
-      thisfolder/"test_for_jenkins"/"misc"/"M206_annotations.csv",
-      thisfolder/"test_for_jenkins"/"misc"/"M206_regions.csv",
-      thisfolder/"test_for_jenkins"/"misc"/"M206_vertices.csv",
-      thisfolder/"test_for_jenkins"/"misc"/"M21_1_annotations.csv",
-      thisfolder/"test_for_jenkins"/"misc"/"M21_1_regions.csv",
-      thisfolder/"test_for_jenkins"/"misc"/"M21_1_vertices.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_Scan1.annotationinfo.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_annotations.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_regions.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_vertices.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_Scan1.annotationinfo.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_annotations.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_regions.csv",
+      thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_vertices.csv",
       thisfolder/"test_for_jenkins"/"misc"/"makesampledef"/"sampledef.csv",
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"sampledef.csv",
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"noheader.csv",
     ]
   @classmethod
   def filestocopy(cls):
-    return []
+    for SlideID in "M21_1", "M206":
+      yield thisfolder/"data"/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/SlideID
 
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
@@ -123,22 +125,30 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testStandaloneAnnotations(self, SlideID="M21_1"):
     try:
-      folder = thisfolder/"test_for_jenkins"/"misc"
-      s = AnnoWarpSampleAstroPathTissueMask(thisfolder/"data", SlideID, zoomroot=folder, annotationsonwsi=False)
-      writeannotationcsvs(folder, s.annotationspolygonsxmlfile, csvprefix=SlideID, annotationsonwsi=False)
-      extrakwargs = {}
+      folder = thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/SlideID
+      xmlfile = folder/f"{SlideID}_Scan1.annotations.polygons.xml"
+      infofile = folder/f"{SlideID}_Scan1.annotationinfo.csv"
+
+      args1 = [os.fspath(xmlfile), "--infofile", os.fspath(infofile), "--annotations-on-qptiff"]
+      info = writeannotationinfo(args1)
+      args2 = [os.fspath(infofile)]
+      checkannotations(args2)
+      args3 = [os.fspath(folder), os.fspath(infofile), "--csvprefix", SlideID]
+      writeannotationcsvs(args3)
+      extrakwargs = {"annotationinfos": info, "pscale": 1, "apscale": 1}
       for filename, cls in (
         (f"{SlideID}_annotations.csv", Annotation),
         (f"{SlideID}_vertices.csv", Vertex),
         (f"{SlideID}_regions.csv", Region),
       ):
         try:
-          rows = s.readtable(folder/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
-          targetrows = s.readtable(thisfolder/"data"/"reference"/"misc"/"standaloneannotations"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          rows = readtable(folder/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
+          targetrows = readtable(thisfolder/"data"/"reference"/"misc"/"standaloneannotations"/SlideID/"dbload"/filename, cls, checkorder=True, checknewlines=True, extrakwargs=extrakwargs)
           for i, (row, target) in enumerate(more_itertools.zip_equal(rows, targetrows)):
             assertAlmostEqual(row, target, rtol=1e-5, atol=8e-7)
           if cls == Annotation:
             extrakwargs["annotations"] = rows
+            del extrakwargs["annotationinfos"]
         except:
           raise ValueError("Error in "+filename)
     except:
