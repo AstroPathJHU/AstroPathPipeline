@@ -21,9 +21,9 @@ class sampledb : sharedtools {
         $this.mpath = $mpath
         $this.vmq = [vminformqueue]::new()
     }
-    sampledb($mpath, $project){
+    sampledb($mpath, $projects){
         $this.mpath = $mpath
-        $this.project = $project
+        $this.projects = $projects
         $this.vmq = [vminformqueue]::new()
     }
     #
@@ -62,8 +62,9 @@ class sampledb : sharedtools {
                             -CurrentOperation $slide.slideid
             $c += 1 
             #
-            $this.sampledb.($slide.slideid) = [sampletracker]::new($this.mpath, $slide.slideid, $this.vmq)
-            $this.sampledb.($slide.slideid).defmodulestatus()
+            $sampletracker = [sampletracker]::new($this.mpath, $slide.slideid, $this.vmq)
+            $sampletracker.defmodulestatus()
+            $this.sampledb.($slide.slideid) = $sampletracker.moduleinfo
         }
         #
         write-progress -Activity "Checking slides" -Status "100% Complete:" -Completed

@@ -61,9 +61,22 @@ class DispatcherTools : queue {
                     $fileStream.Dispose()
                     break
                 } catch {
-                    $SI = $this.FileWatcher($workertasklog)
-                    $this.WaitEvent($SI)
-                    $this.UnregisterEvent($SI)
+                    #
+                    $fpath = Split-Path $workertasklog
+                    $fname = Split-Path $workertasklog -Leaf
+                    #
+                    $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+                    $newwatcher.Filter = $fname
+                    $newwatcher.NotifyFilter = 'LastWrite'
+                    #
+                    $SI = ($workertasklog) 
+                    #
+                    Register-ObjectEvent $newwatcher `
+                        -EventName Changed `
+                        -SourceIdentifier $SI | Out-Null
+                    wait-event $SI  
+                    Unregister-Event -SourceIdentifier $SI -Force 
+                    #
                 }
             }
         }
