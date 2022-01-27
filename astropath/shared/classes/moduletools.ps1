@@ -155,7 +155,7 @@
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
             $sor = $this.sample.MSIfolder()
             $this.sample.copy($sor, $des, 'im3', 30)
-            if(!(((gci ($sor+'\*') -Include '*im3').Count) -eq (gci $des).count)){
+            if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
                 Throw 'im3s did not download correctly'
             }
         }
@@ -192,7 +192,7 @@
             $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
             $sor = $this.sample.xmlfolder()
             $this.sample.copy($sor, $des, 'xml', 30)
-            if(!(((gci ($sor+'\*') -Include '*xml').Count) -eq (gci $des).count)){
+            if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
                 Throw 'xmls did not download correctly'
             }
         }
@@ -249,7 +249,7 @@
         } 
         $log = $this.sample.GetContent($externallog) |
              where-object  {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 
-             foreach {$_.trim()}
+             foreach-object {$_.trim()}
         $this.sample.info($log)
         remove-item $externallog -force -ea Continue
         $this.sample.info(($type + " data finished"))

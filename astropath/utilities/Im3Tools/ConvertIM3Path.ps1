@@ -25,7 +25,7 @@ function ConvertIm3Path{
     param ([Parameter(Position=0)][string] $root1 = '',
            [Parameter(Position=1)][string] $root2 = '', 
            [Parameter(Position=2)][string] $sample = '',
-           [Parameter()][string] $images,
+           [Parameter()][array] $images,
            [Parameter()][switch]$inject,
            [Parameter()][switch]$shred, 
            [Parameter()][switch]$all,
@@ -42,9 +42,7 @@ function ConvertIm3Path{
     write-convertim3log -myparams $PSBoundParameters -IM3_fd $IM3 -Start 
     #
     if (!($PSBoundParameters.ContainsKey('images'))){
-        $images = gci "$IM3\*" '*.im3'
-    } else {
-        $images = search-imagenames $IM3 $images
+        $images = get-childitem "$IM3\*" '*.im3'
     }
     #
     if ($images.Count -eq 0){
@@ -75,7 +73,7 @@ function ConvertIm3Path{
         # for inject check for '.dat' files then inject
         # back to im3 into the flatw folder
         #
-        $dats = gci "$flatw\*" '*.dat'
+        $dats = get-childitem "$flatw\*" '*.dat'
         if (!($dats.Count -eq $images.Count)) { 
             Write-Verbose "$flatw\*.fw N File(s) and $IM3\*im3 N File(s) do not match"
         }
@@ -140,7 +138,7 @@ function search-scan {
        Throw "IM3 root path $IM3 not found"
         }
     #
-    $sub = gci $IM3 -Directory
+    $sub = get-childitem $IM3 -Directory
         foreach ($sub1 in $sub) {
             if($sub1.Name -like "Scan*") { 
                 $scan = $IM3 + "\" + $sub1.Name
@@ -235,12 +233,12 @@ function write-convertim3log {
         #
         if (!$s) {
             Write-Verbose "  src path $root2\$sample `r"
-            $stats = gci "$root2\$sample\*" '*.dat' | Measure Length -sum
+            $stats = get-childitem "$root2\$sample\*" '*.dat' | Measure-Object Length -sum
             Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
         }
         #
         Write-Verbose "  im3 path $IM3_fd `r"
-        $stats = gci "$IM3_fd\*" '*.im3' | Measure Length -sum
+        $stats = get-childitem "$IM3_fd\*" '*.im3' | Measure-Object Length -sum
         Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
         #
     }
@@ -257,17 +255,17 @@ function write-convertim3log {
         if ($s) {
             #
             if($a -or $d) {
-                $stats = gci "$dest\*" '*.dat' | Measure Length -sum
+                $stats = get-childitem "$dest\*" '*.dat' | Measure-Object Length -sum
                 Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
             }
             #
             if ($a -or $xml){
-                $stats = gci "$dest\*" '*.xml' | Measure Length -sum
+                $stats = get-childitem "$dest\*" '*.xml' | Measure-Object Length -sum
                 Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
             }
             #
         } else {
-            $stats = gci "$dest\*" '*.im3' | Measure Length -sum
+            $stats = get-childitem "$dest\*" '*.im3' | Measure-Object Length -sum
             Write-Verbose ('     '+$stats.Count+' File(s)'+$stats.Sum+'bytes'+"`r")
             #
         }
@@ -344,7 +342,7 @@ function Invoke-IM3Convert {
         $im1 = $images[0]
         & $code $im1 XML -t 64 -o $dest 2>&1>> "$dest\doShred.log"
         #
-        $f = (gci "$dest\*].xml")[0].Name
+        $f = (get-childitem "$dest\*].xml")[0].Name
         $f2 = "$dest\$sample.Full.xml"
         if (test-path $f2) {Remove-Item $f2 -Force}
         Rename-Item "$dest\*].xml" $f2 -Force
@@ -360,7 +358,7 @@ function Invoke-IM3Convert {
         $im1 = $images[0]
         & $code $im1 XML -x $glb_prms -o $dest 2>&1>> "$dest\doShred.log"
         # 
-        $f = (gci "$dest\*State.xml")[0].Name
+        $f = (get-childitem "$dest\*State.xml")[0].Name
         $f2 = "$dest\$sample.Parameters.xml"
         if (test-path $f2) {Remove-Item $f2 -Force}
         Rename-Item "$dest\*State.xml" $f2 -Force

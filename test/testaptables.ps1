@@ -131,13 +131,16 @@
         $cohort_csv_file = $this.mpath + '\AstropathCohortsProgress.csv'
         $project_data = $tools.OpencsvFileConfirm($cohort_csv_template)
         $project_data[0].Dpath = $PSScriptRoot
+        $project_data[1].Dpath = $PSScriptRoot + '\data'
         $project_data | Export-CSV $cohort_csv_file 
         #
         $paths_csv_template = $this.mpath + '\AstropathPathsTemplate.csv'
         $paths_csv_file = $this.mpath + '\AstropathPaths.csv'
         $paths_data = $tools.OpencsvFileConfirm($paths_csv_template)
         $paths_data[0].Dpath = $PSScriptRoot
+        $paths_data[1].Dpath = $PSScriptRoot + '\data'
         $paths_data[0].FWpath = $PSScriptRoot + '\flatw'
+        $paths_data[1].FWpath = $PSScriptRoot + '\data\flatw'
         $paths_data | Export-CSV $paths_csv_file
         #
         $internal_apids = $tools.ImportCohortsInfo($this.mpath)

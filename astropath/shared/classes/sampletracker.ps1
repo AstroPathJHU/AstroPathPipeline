@@ -9,13 +9,16 @@
  -------------------------------------------#>
 class sampletracker : dependencies {
     #
-    sampletracker($mpath, $slideid): base ($mpath, $slideid){
+    [vminformqueue]$vmq
+    #
+    sampletracker($mpath, $slideid, $vmq): base ($mpath, $slideid){
         $this.getmodulenames()
+        $this.vmq = $vmq
     }
     #
-    sampletracker($mpath, $modules, $slideid): base ($mpath, $slideid){
+    sampletracker($mpath, $modules, $slideid, $vmq): base ($mpath, $slideid){
         $this.modules = $modules
-    
+        $this.vmq = $vmq
     }
     #
     # sampletracker($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
@@ -24,7 +27,7 @@ class sampletracker : dependencies {
         #
         $this.modules | ForEach-Object {
             $this.deflogpaths($_)
-            # create file watcher
+            #$this.defsamplelogwatcher($_)
             $this.getlogstatus($_)
         }
         #
@@ -33,28 +36,26 @@ class sampletracker : dependencies {
     [void]defsamplelogwatcher($cmodule){
         #
         $file = $this.modulelogs.($cmodule).slidelog
-        $fname = $file.Split('\\')[-1]
-        $fpath = $file.replace(('\'+$fname), '')
+        $fpath = Split-Path $file
+        $fname = Split-Path $file -Leaf
+        #
+        $this.createdirs($fpath)
         #
         $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
         $newwatcher.Filter = $fname
         $newwatcher.NotifyFilter = 'LastWrite'
         #
-        $smpletracker = $this
-        $sb = {
-            $this.getlogstatus($cmodule)
-        }.GetNewClosure()
-        #
-        $onChanged = Register-ObjectEvent $newwatcher `
+        Register-ObjectEvent $newwatcher `
             -EventName Changed `
             -SourceIdentifier ($fpath + '\' + $fname) `
-            -Action $sb
+            -Action {$details = $event.SourceEventArgs} `
+            -MessageData  ($this.slideid, $cmodule -join '-') | Out-NUll
     }
     #
     [void]removewatchers(){
         if ($this.modules){
             $this.modules | ForEach-Object {
-                $SI = $this.modulelogs.($cmodule).slidelog
+                $SI = $this.modulelogs.($_).slidelog
                 $this.UnregisterEvent($SI)
             }
         }

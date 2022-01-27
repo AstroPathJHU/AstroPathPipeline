@@ -201,4 +201,18 @@
         }
         #
     }
+    <# ------------------------------------------
+    LastWrite
+    ------------------------------------------
+    check if a path exists
+    ------------------------------------------ #>
+    [DateTime]LastWrite([string]$p){
+        #
+        if (test-path $p){
+            return (Get-ChildItem $p).LastWriteTime
+        } else {
+            return Get-Date
+        }
+        #
+    }
 }

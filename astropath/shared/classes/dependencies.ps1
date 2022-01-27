@@ -19,7 +19,9 @@
         #
         $logoutput = $this.checklog($cmodule, $false)
         #
-        if ($logoutput){
+        if ($logoutput[1]){
+            $this.modulestatus.($cmodule) = $logoutput[1].Message
+        } elseif ($logoutput) {
             #
             $statusval = ($this.('check'+$cmodule)($false))
             if ($statusval -eq 1){
@@ -36,11 +38,7 @@
             #
         } else {
             #
-            if ($logoutput[1]){
-                $this.modulestatus.($cmodule) = $logoutput[1].Message
-            } else {    
-                $this.modulestatus.($cmodule) = 'RUNNING'
-            }
+            $this.modulestatus.($cmodule) = 'RUNNING'
             #
         }
         #

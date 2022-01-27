@@ -10,19 +10,21 @@
 class sampledb : sharedtools {
     #
     [array]$projects
+    [hashtable]$sampledb = @{}
+    [vminformqueue]$vmq
     #
-    sampledb($module){
+    sampledb(){
         $this.mpath = '\\bki04\astropath_processing'
-        $this.module = $module 
+        $this.vmq = [vminformqueue]::new()
     }
-    sampledb($mpath, $module){
+    sampledb($mpath){
         $this.mpath = $mpath
-        $this.module = $module 
+        $this.vmq = [vminformqueue]::new()
     }
-    sampledb($mpath, $module, $project){
+    sampledb($mpath, $project){
         $this.mpath = $mpath
-        $this.module = $module 
         $this.project = $project
+        $this.vmq = [vminformqueue]::new()
     }
     #
     <# -----------------------------------------
@@ -34,8 +36,7 @@ class sampledb : sharedtools {
     [void]buildsampledb(){
         #
         $slides = $this.importslideids($this.mpath)
-        #
-        $sampledb = $this.defsampleStages($slides)
+        $this.defsampleStages($slides)
         #
     }
     <# -----------------------------------------
@@ -47,9 +48,8 @@ class sampledb : sharedtools {
     ------------------------------------------
     Usage: $this.defNotCompletedSlides(cleanedslides)
     ----------------------------------------- #>
-    [array]defsampleStages($slides){
+    [void]defsampleStages($slides){
         #
-        $slidesnotcomplete = @()
         $c = 1
         $ctotal = $slides.count
         #
@@ -62,30 +62,12 @@ class sampledb : sharedtools {
                             -CurrentOperation $slide.slideid
             $c += 1 
             #
-            $this.modules | ForEach-Object{
-                #
-                $loggers = [mylogger]::new($this.mpath, $this.module, $slide.slideid)
-                #
-                if ($this.module -match 'batch'){
-                    $log.slidelog = $log.mainlog
-                }
-                #
-                if ($this.checklog($log, $false)){
-                    #
-                    if (($this.('check'+$this.module)($log, $false) -eq 2)) {
-                        $slidesnotcomplete += $slide
-                    }
-                    #
-                }
-                #
-            }
+            $this.sampledb.($slide.slideid) = [sampletracker]::new($this.mpath, $slide.slideid, $this.vmq)
+            $this.sampledb.($slide.slideid).defmodulestatus()
         }
         #
         write-progress -Activity "Checking slides" -Status "100% Complete:" -Completed
         #
-        return $slidesnotcomplete
-        #
     }
-
-
-    }
+    #
+}
