@@ -269,13 +269,13 @@
         #
         $this.sample.info("Fix M# files")
         $msi = $this.sample.MSIfolder() +'\*'
-        $m2s = gci $msi -include '*_M*.im3' -Exclude '*].im3'
+        $m2s = Get-ChildItem $msi -include '*_M*.im3' -Exclude '*].im3'
         $errors = $m2s | ForEach-Object {($_.Name -split ']')[0] + ']'}
         #
         $errors | Select-Object -Unique | ForEach-Object {
-            $ms = (gci $msi -filter ($_ + '*')).Name
+            $ms = (Get-ChildItem $msi -filter ($_ + '*')).Name
             $mnums = $ms | ForEach-Object {[regex]::match($_,']_M(.*?).im3').groups[1].value}
-            $keep = $_+'_M'+($mnums | Measure -maximum).Maximum+'.im3'
+            $keep = $_+'_M'+($mnums | Measure-Object -maximum).Maximum+'.im3'
             $ms | ForEach-Object{if($_ -ne $keep){remove-item -literalpath ($wd+'\'+$_) -force}}
             rename-item -literalpath ($wd+'\'+$keep) ($_+'.im3')
         }
@@ -288,6 +288,26 @@
         matlab -nosplash -nodesktop -minimize -sd $this.funclocation -batch $matlabtask -wait *>> $externallog
         $this.getexternallogs($externallog)
         #
+    }
+    <# -----------------------------------------
+     buildpyopts
+        some of the python options are used in
+        multiple python commands. Add 
+        them in a string that can be easily 
+        recieved when building the python
+        task.
+     ------------------------------------------
+     Usage: $this.buildpyopts()
+    ----------------------------------------- #>
+    [string]buildpyopts(){
+        $project = $this.sample.project.PadLeft(2,  '0')
+        $string = "--allow-local-edits --skip-start-finish --use-apiddef --project " + $project
+        return $string
+    }
+    [string]buildpyopts($opt){
+        $project = $this.sample.project.PadLeft(2,  '0')
+        $string = "--allow-local-edits --use-apiddef --project " + $project
+        return $string
     }
     #
     [void]runpythontask($taskname, $pythontask){
@@ -328,7 +348,7 @@
             }
             #
         } else {
-            if ($this.sample.module -match 'batchmicomp'){
+            if ($this.sample.module -match 'batchmicomp' -or $this.sample.module -match 'warpoctets'){
                 $test = $this.pythonmodulename + ' : '
             } else {
                 $test = $this.pythonmodulename + ' : ' +
@@ -339,8 +359,25 @@
                 $potentialerrors = $this.logoutput.trim() -ne ''
                 Throw $potentialerrors
             }
+            #
+            if ($this.sample.module -match 'warpoctets'){
+                $this.parsepycohortlog()
+            }
         }
         #
+    }
+    <# -----------------------------------------
+     parsepycohortlog
+        parsepycohortlog
+     ------------------------------------------
+     Usage: $this.parsepycohortlog()
+    ----------------------------------------- #>
+    [void]parsepycohortlog(){
+        $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
+        $sampleoutput | ForEach-Object {
+            $inp.sample.message = ($_ -split ';')[3]
+            $inp.sample.Writelog()
+        }
     }
     <# -----------------------------------------
      checkastropathlog

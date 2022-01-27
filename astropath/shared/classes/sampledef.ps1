@@ -75,12 +75,8 @@ class sampledef : sharedtools{
         $this.slideid = $slide.SlideID.trim()
         $this.project = $slide.Project
         $this.cohort = $slide.Cohort
+        $this.BatchID = $slide.BatchID.padleft(2, '0')
         #
-        if ($slide.BatchID.Length -eq 1){
-            $this.BatchID = '0' + $slide.BatchID
-        } else {
-            $this.BatchID = $slide.BatchID 
-        }
     }
     #
     [void]ParseAPIDdefbatch([string]$mbatchid, [PSCustomObject]$slides){
@@ -98,14 +94,8 @@ class sampledef : sharedtools{
         }
         $this.project = $batch.Project[1]
         $this.cohort = $batch.Cohort[1]
-        #
-        if ($batch.BatchID[1].Length -eq 1){
-            $this.BatchID = '0' + $batch.BatchID[1]
-        } else {
-            $this.BatchID = $batch.BatchID[1] 
-        }
+        $this.BatchID = $batch.BatchID.padleft(2, '0')
         $this.slideid = $this.BatchID
-        #
         $this.batchslides = $batch
         #
     }
@@ -160,7 +150,7 @@ class sampledef : sharedtools{
     #
     [string]Scan(){
         $path = $this.basepath + '\' + $this.slideid + '\im3\Scan*'
-        $paths = gci $path
+        $paths = get-childitem $path
         $scan = $paths | 
             select-object *, @{n = "IntVal"; e = {[int]$_.Name.substring(4)}} |
             sort-object IntVal |
@@ -307,7 +297,7 @@ class sampledef : sharedtools{
     [switch]testxmlfiles(){
         #
         $xml = $this.xmlfolder()
-        $im3s = gci ($this.Scanfolder() + '\MSI\*') *im3
+        $im3s = get-childitem ($this.Scanfolder() + '\MSI\*') *im3
         $im3n = ($im3s).Count + 2
         #
         if (!(test-path $xml)){
@@ -316,7 +306,7 @@ class sampledef : sharedtools{
         #
         # check xml files = im3s
         #
-        $xmls = gci ($xml + '\*') '*xml'
+        $xmls = get-childitem ($xml + '\*') '*xml'
         $files = ($xmls).Count
         if (!($im3n -eq $files)){
             return $false
@@ -349,6 +339,16 @@ class sampledef : sharedtools{
             if (!(test-path $p)){
                 return $false
             }
+            #
+            $f = @('-sum_images_squared.bin', '-std_err_of_mean_image.bin', '-mask_stack.bin', '-mean_image.bin')
+            #
+            $f | ForEach-Object {
+                $tp = $p + '\' + $this.slideid + $f
+                if (!(test-path $tp)){
+                    return $false
+                }
+            }
+            #
         }
         #
         return $true
@@ -357,7 +357,7 @@ class sampledef : sharedtools{
     #
     [switch]testimagecorrectionfiles(){
         #
-        $im3s = (gci ($this.Scanfolder() + '\MSI\*') *im3).Count
+        $im3s = (get-childitem ($this.Scanfolder() + '\MSI\*') *im3).Count
         #
         $paths = @($this.flatwim3folder(), $this.flatwfolder(), $this.flatwfolder())
         $filetypes = @('*im3', '*fw', '*fw01')
@@ -370,7 +370,7 @@ class sampledef : sharedtools{
             #
             # check files = im3s
             #
-            $files = (gci ($paths[$i] + '\*') $filetypes[$i]).Count
+            $files = (get-childitem ($paths[$i] + '\*') $filetypes[$i]).Count
             if (!($im3s -eq $files)){
                 return $false
             }
@@ -386,8 +386,8 @@ class sampledef : sharedtools{
         if (!(test-path $table + '\*csv')){
             return $false
         }
-        $comp = (gci ($table + '\*') '*csv').Count
-        $seg = (gci ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
+        $comp = (get-childitem ($table + '\*') '*csv').Count
+        $seg = (get-childitem ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
         if (!($comp -eq $seg)){
             return $false
         }
@@ -400,6 +400,15 @@ class sampledef : sharedtools{
         $file = $this.basepath + '\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
         #
         $file2 = $this.basepath + '\' + $this.slideid + '\im3\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
+        #
+        $logfile = $this.basepath + '\' + $this.slideid + '\logfiles\' + $this.slideid + '-warpoctets.log'
+        #
+        if (test-path $logfile){
+            $log = $this.importlogfile($logfile)
+            if ($log.Message -match "Sample is not good"){
+                return $true
+            }
+        }
         #
         if (!(test-path $file) -AND !(test-path $file2)){
             return $false

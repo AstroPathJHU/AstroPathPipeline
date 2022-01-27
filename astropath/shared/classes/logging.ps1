@@ -119,7 +119,7 @@ class mylogger : sampledef {
             $tag = ''
         }
         #
-        $msg | foreach {
+        $msg | ForEach-Object {
             $this.message = $tag + ": " + $_
             $this.Writelog($ilevel)
         }

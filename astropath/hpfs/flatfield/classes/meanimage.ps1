@@ -83,7 +83,7 @@ Class meanimage : moduletools {
         $pythontask = $this.pythonmodulename, $dpath, $this.sample.SlideID, `
          '--shardedim3root', $rpath, `
          ' --workingdir', ($this.processvars[0] + '\meanimage'), `
-         "--njobs '8' --allow-local-edits --skip-start-finish" -join ' '
+         "--njobs '8'", $this.buildpyopts() -join ' '
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished mean image sample -- python")
     }

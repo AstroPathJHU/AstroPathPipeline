@@ -35,14 +35,14 @@ function ConvertIm3Path{
     #
     test-convertim3params $PSBoundParameters
     $scan = search-scan $root1 $sample
-    $im3 = search-im3 $scan
+    $IM3 = search-im3 $scan
     $flatw = search-flatw $root2 $sample -inject:$inject
 
     #
     write-convertim3log -myparams $PSBoundParameters -IM3_fd $IM3 -Start 
     #
     if (!($PSBoundParameters.ContainsKey('images'))){
-        $images = get-childitem "$IM3\*" '*.im3'
+        $images = (get-childitem "$IM3\*" '*.im3').FullName
     }
     #
     if ($images.Count -eq 0){
@@ -60,6 +60,7 @@ function ConvertIm3Path{
         if ($all -or $dat) { Invoke-IM3Convert $images $flatw -BIN }
         #
         if ($all -or $xml) {
+            Write-Host $images
             Invoke-IM3Convert $images $flatw -XML
         }
         #
@@ -295,8 +296,8 @@ function Invoke-IM3Convert {
     # instances desired
     #
     # ----------------------------------------------------- #>
-    param([parameter(Position=0)][String[]]$images,
-          [parameter(Position=1)][String[]]$dest,
+    param([parameter(Position=0)][array]$images,
+          [parameter(Position=1)][String]$dest,
           [parameter(Mandatory=$false)][Switch]$BIN,
           [parameter(Mandatory=$false)][Switch]$XML,
           [parameter(Mandatory=$false)][Switch]$FULL,

@@ -51,7 +51,7 @@ Class warpoctets : moduletools {
          '--shardedim3root',  $rpath, `
          '--sampleregex',  $this.sample.slideid, `
          '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), `
-         '--octets-only --noGPU --allow-local-edits --skip-start-finish' -join ' '
+         '--octets-only --noGPU', $this.buildpyopts(1) -join ' '
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished warp octets")
     }
