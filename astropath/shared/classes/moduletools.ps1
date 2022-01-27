@@ -301,12 +301,12 @@
     ----------------------------------------- #>
     [string]buildpyopts(){
         $project = $this.sample.project.PadLeft(2,  '0')
-        $string = "--allow-local-edits --skip-start-finish --use-apiddef --project " + $project
+        $string = "--allow-local-edits --skip-start-finish" # --use-apiddef --project " + $project
         return $string
     }
     [string]buildpyopts($opt){
         $project = $this.sample.project.PadLeft(2,  '0')
-        $string = "--allow-local-edits --use-apiddef --project " + $project
+        $string = "--allow-local-edits" # --use-apiddef --project " + $project
         return $string
     }
     #
