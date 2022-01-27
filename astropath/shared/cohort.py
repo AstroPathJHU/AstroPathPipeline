@@ -125,7 +125,7 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
     from the parsed arguments
     """
     dct = parsed_args_dict
-    if dct["runfromapid"] and dct["project"]:
+    if dct["runfromapid"] and dct["project"] is None:
       raise ValueError("If you --use-apiddef, you also have to provide the --project number")
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
