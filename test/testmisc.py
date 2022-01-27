@@ -42,6 +42,15 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     l2 = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", selectrectangles=lambda x: x.n in islands[0], layer=1)
     self.assertEqual(l2.islands(), [l.islands()[0]])
 
+    r = l.rectangles[l.rectangledict[1]]
+    target = {
+      6: l.rectangles[l.rectangledict[2]],
+      7: l.rectangles[l.rectangledict[4]],
+      8: l.rectangles[l.rectangledict[5]],
+      9: l.rectangles[l.rectangledict[6]],
+    }
+    self.assertEqual(l.neighbors(r), target)
+
   def testRectangleOverlapListFastUnits(self):
     with units.setup_context("fast"):
       self.testRectangleOverlapList()
