@@ -429,8 +429,8 @@
     ----------------------------------------- #>
     [string]FileWatcher($file){
         #
-        $fname = $file.Split('\\')[-1]
-        $fpath = $file.replace(('\'+$fname), '')
+        $fpath = Split-Path $file
+        $fname = Split-Path $file -Leaf
         #
         $SI = $this.FileWatcher($fpath, $fname)
         return $SI
@@ -452,10 +452,9 @@
         $newwatcher.Filter = $fname
         $newwatcher.NotifyFilter = 'LastWrite'
         #
-        $onChanged = Register-ObjectEvent $newwatcher `
-            -MessageData 'happy times' `
+        Register-ObjectEvent $newwatcher `
             -EventName Changed `
-            -SourceIdentifier ($fpath + '\' + $fname)
+            -SourceIdentifier ($fpath + '\' + $fname) | Out-Null
         #
         return ($fpath + '\' + $fname)
         #

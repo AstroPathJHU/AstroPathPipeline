@@ -185,7 +185,7 @@
         $file = $this.CheckSumsfile()
         $file2 = $this.qptifffile()
         $file3 = $this.annotationxml()
-        $im3s = (gci ($this.Scanfolder() + '\MSI\*') *im3).Count
+        $im3s = (Get-ChildItem ($this.Scanfolder() + '\MSI\*') *im3).Count
         #
         #if (!(test-path $file)){
         #    return 2

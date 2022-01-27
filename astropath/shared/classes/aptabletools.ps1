@@ -102,7 +102,7 @@
         #
         $project_dat = $this.ImportConfigInfo($mpath)
         #
-        if ($project -eq $null){
+        if (!$project){
             $projects = ($project_dat | 
                 Where-object {$_.($module) -match 'yes'}).Project
         } else {
@@ -116,7 +116,7 @@
         #
         $project_dat = $this.ImportConfigInfo($this.mpath)
         #
-        if ($this.project -eq $null){
+        if (!$this.project){
             $projects = ($project_dat | 
                 Where-object {$_.($this.module) -match 'yes'}).Project
         } else {
@@ -130,7 +130,7 @@
         #
         $project_dat = $this.ImportConfigInfo($this.mpath)
         #
-        if ($this.project -eq $null){
+        if (!$this.project){
             $projects = ($project_dat | 
                 Where-object {$_.($module) -match 'yes'}).Project
         } else {

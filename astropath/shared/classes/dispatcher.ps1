@@ -96,7 +96,7 @@ class Dispatcher : DispatcherTools {
         $this.running = @(Get-Job | 
             Where-Object { $_.State -eq 'Running' -and $_.Name -match $this.module})
         if ($this.running){
-            $this.running.Name | FOREACH {
+            $this.running.Name | FOREACH-Object {
                $CC = $_
                $this.workers = $this.workers | 
                 where-object {(($_.server, $_.location, $_.module) -join('-')) -ne  $CC}

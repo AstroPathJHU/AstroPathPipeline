@@ -27,29 +27,10 @@ class sampletracker : dependencies {
         #
         $this.modules | ForEach-Object {
             $this.deflogpaths($_)
-            #$this.defsamplelogwatcher($_)
+            $this.FileWatcher($_.modulelogs.($cmodule).slidelog)
             $this.getlogstatus($_)
         }
         #
-    }
-    #
-    [void]defsamplelogwatcher($cmodule){
-        #
-        $file = $this.modulelogs.($cmodule).slidelog
-        $fpath = Split-Path $file
-        $fname = Split-Path $file -Leaf
-        #
-        $this.createdirs($fpath)
-        #
-        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-        $newwatcher.Filter = $fname
-        $newwatcher.NotifyFilter = 'LastWrite'
-        #
-        Register-ObjectEvent $newwatcher `
-            -EventName Changed `
-            -SourceIdentifier ($fpath + '\' + $fname) `
-            -Action {$details = $event.SourceEventArgs} `
-            -MessageData  ($this.slideid, $cmodule -join '-') | Out-NUll
     }
     #
     [void]removewatchers(){
