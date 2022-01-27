@@ -47,6 +47,7 @@ Class segmaps : moduletools {
         if ($this.processvars[4]){
             $sor = $this.sample.componentfolder()
             Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
+            #$this.sample.removefile($sor, 'w_seg.tif')
         }
         $this.sample.info("cleanup finished")
         #
