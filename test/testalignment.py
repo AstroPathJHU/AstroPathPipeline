@@ -324,15 +324,6 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   def testCohortFastUnits(self):
     self.testCohort(units="fast_microns")
 
-  @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
-  def testMissingFolders(self, SlideID="M21_1"):
-    with temporarilyremove(thisfolder/"data"/SlideID/"im3"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"), units.setup_context("fast"):
-      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=range(10), dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-      with a:
-        a.getDAPI()
-        a.align()
-        a.stitch()
-
   def testNoLog(self, SlideID="M21_1"):
     samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0, root=thisfolder/"data")
     with AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", samp, selectrectangles=range(10), uselogfiles=True, logthreshold=logging.CRITICAL, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment") as a:
