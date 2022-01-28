@@ -324,15 +324,6 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   def testCohortFastUnits(self):
     self.testCohort(units="fast_microns")
 
-  @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
-  def testMissingFolders(self, SlideID="M21_1"):
-    with temporarilyremove(thisfolder/"data"/SlideID/"im3"), temporarilyremove(thisfolder/"data"/SlideID/"inform_data"), units.setup_context("fast"):
-      a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectrectangles=range(10), dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-      with a:
-        a.getDAPI()
-        a.align()
-        a.stitch()
-
   def testNoLog(self, SlideID="M21_1"):
     samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0, root=thisfolder/"data")
     with AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", samp, selectrectangles=range(10), uselogfiles=True, logthreshold=logging.CRITICAL, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment") as a:
@@ -401,9 +392,9 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testIslands(self, SlideID="M21_1"):
     for island in (
-      (4, 5),
+      #(4, 5),
       (5, 6),
-      (1, 2, 3, 5, 6, 7),
+      #(1, 2, 3, 5, 6, 7),
     ):
       a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectoverlaps=lambda o: not ((o.p1 in island) ^ (o.p2 in island)), dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
       readfilename = thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"

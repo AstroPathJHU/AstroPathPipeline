@@ -11,9 +11,9 @@ from ..utilities.img_file_io import get_raw_as_hwl, LayerOffset
 from ..utilities.tableio import readtable, writetable
 from ..utilities.version import astropathversionregex
 from .annotationxmlreader import AnnotationXMLReader
-from .annotationpolygonxmlreader import XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
-from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
-from .csvclasses import constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
+from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger, ThingWithLogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
@@ -1329,7 +1329,14 @@ class XMLLayoutReader(SampleBase):
         )
     return overlaps
 
-class XMLPolygonAnnotationSample(SampleBase):
+class SampleWithAnnotationInfos(SampleBase, ThingWithAnnotationInfos):
+  def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
+    if extrakwargs is None: extrakwargs = {}
+    if issubclass(rowclass, AnnotationInfo):
+      extrakwargs["scanfolder"] = self.scanfolder
+    return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
+
+class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, XMLPolygonFileArgumentParser):
   """
   Base class for any sample that uses the XML annotations file.
   """
@@ -1371,10 +1378,17 @@ class XMLPolygonAnnotationSample(SampleBase):
       self.logger.warning(f"Using {candidate.name} for annotations")
     return candidate
 
-class XMLPolygonAnnotationReaderSample(XMLPolygonAnnotationSample, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
+  @property
+  def annotationinfofile(self):
+    return self.annotationspolygonsxmlfile.with_suffix(".annotationinfo.csv")
+
+class XMLPolygonAnnotationReaderSample(SampleWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
   """
   Base class for any sample that reads the annotations from the XML metadata.
   """
+  @property
+  def annotationinfofile(self): return self.csv("annotationinfo")
+
 class XMLPolygonAnnotationReaderSampleWithOutline(XMLPolygonAnnotationReaderSample, XMLPolygonAnnotationReaderWithOutline):
   pass
 

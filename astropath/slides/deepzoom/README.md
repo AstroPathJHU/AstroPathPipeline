@@ -1,4 +1,4 @@
-# 6.5. Deepzoom
+# 6.6. Deepzoom
 
 The `deepzoom` step of the pipeline runs on the output of `zoom` and creates
 image tiles at various zoom levels, each one more zoomed out than the previous

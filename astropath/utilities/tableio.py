@@ -66,6 +66,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
     Traceback (most recent call last):
         ...
     ValueError: Row has bad syntax:
+    ...
     B,2,4.5
     {'ID': 'B', 'x': 2, 'y': '4.5'}
     {'readingfromfile': True, 'extrakwargs': {...}}
@@ -129,7 +130,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
         result.append(Row(**row, **extrakwargs))
       except (TypeError, ValueError):
         if isinstance(row, collections.OrderedDict): row = dict(row) #compatibility in doctest with python < 3.8
-        raise ValueError(f"Row has bad syntax:\n{f.last}\n{row}\n{extrakwargs}")
+        raise ValueError(f"Row has bad syntax:\n{filename}\n{f.last.rstrip()}\n{row}\n{extrakwargs}")
 
   return result
 
