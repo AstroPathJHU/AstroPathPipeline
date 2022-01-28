@@ -3,7 +3,7 @@ import abc, os, pathlib, re
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...utilities.config import CONST as UNIV_CONST
 from ...shared.argumentparser import RunFromArgumentParser
-from ...shared.csvclasses import Annotation, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
+from ...shared.csvclasses import Annotation, AnnotationInfo, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
 from ...shared.overlap import Overlap
 from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
@@ -13,8 +13,7 @@ from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
 from ..align.stitch import AffineEntry
-from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedQPTiffVertex
-from ..annowarp.mergeannotationxmls import AnnotationInfoReaderSample
+from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
 from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSample
@@ -67,11 +66,10 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
     }
     return kwargs
 
-class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
+class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
   rectangletype = CsvScanRectangle
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self.readannotationinfo()
 
   @property
   def logger(self): return super().logger
@@ -93,6 +91,7 @@ class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, 
       self.csv(_) for _ in (
         "affine",
         "align",
+        "annotationinfo",
         "annotations",
         "annowarp",
         "annowarp-stitch",
@@ -137,14 +136,14 @@ class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, 
       self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/f"{self.SlideID}-{FF_CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}",
       self.im3folder/UNIV_CONST.MEANIMAGE_DIRNAME/FF_CONST.IMAGE_MASKING_SUBDIR_NAME/FF_CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,
     }
+    annotationinfocsvs = {xml.with_suffix(".annotationinfo.csv") for xml in self.scanfolder.glob("*annotations*polygons*.xml")}
     optionalcsvs = {
       self.csv(_) for _ in (
-        "annotationinfo",
         "globals",
       )
     } | {
       r.phenotypeQAQCcsv for r in self.rectangles if hasanycells(r)
-    } | meanimagecsvs
+    } | annotationinfocsvs | meanimagecsvs
     goodcsvs = set()
     unknowncsvs = set()
     folders = {self.mainfolder, self.dbload.parent, self.geomfolder.parent, self.phenotypefolder.parent.parent}
@@ -170,8 +169,8 @@ class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, 
         csvclass, tablename = {
           "affine": (AffineEntry, "Affine"),
           "align": (AlignmentResult, "Align"),
+          "annotationinfo": (AnnotationInfo, "AnnotationInfo"),
           "annotations": (Annotation, "Annotations"),
-          "annotationinfo": (Constant, "AnnotationInfo"),
           "annowarp": (AnnoWarpAlignmentResult, "AnnoWarp"),
           "annowarp-stitch": (AnnoWarpStitchResultEntry, "AnnoWarpStitch"),
           "batch": (Batch, "Batch"),
@@ -187,14 +186,19 @@ class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, 
           "rect": (Rectangle, "Rect"),
           "regions": (Region, "Regions"),
           "tumorGeometry": (Boundary, "TumorGeometry"),
-          "vertices": (WarpedQPTiffVertex, "Vertices"),
+          "vertices": (WarpedVertex, "Vertices"),
         }[match.group(1)]
+        allannotationinfos = self.readcsv("annotationinfo", AnnotationInfo, extrakwargs={"scanfolder": self.scanfolder})
+        allannotations = self.readcsv("annotations", Annotation, extrakwargs={"annotationinfos": allannotationinfos})
         allrectangles = self.readcsv("rect", Rectangle)
         extrakwargs = {
+          "annotationinfo": {"scanfolder": self.scanfolder},
+          "annotations": {"annotationinfos": allannotationinfos},
           "annowarp": {"tilesize": 0, "bigtilesize": 0, "bigtileoffset": 0},
           "fieldoverlaps": {"nclip": 8, "rectangles": allrectangles},
           "overlap": {"nclip": 8, "rectangles": allrectangles},
-          "vertices": {"bigtilesize": 0, "bigtileoffset": 0}
+          "regions": {"annotations": allannotations},
+          "vertices": {"annotations": allannotations},
         }.get(match.group(1), {})
         fieldsizelimit = {
           "regions": 500000,
@@ -212,7 +216,7 @@ class CsvScanSample(RunCsvScanBase, AnnotationInfoReaderSample, WorkflowSample, 
         fieldsizelimit = None
       elif csv.parent == self.phenotypeQAQCtablesfolder:
         continue
-      elif csv in meanimagecsvs:
+      elif csv in meanimagecsvs | annotationinfocsvs:
         continue
       else:
         assert False, csv

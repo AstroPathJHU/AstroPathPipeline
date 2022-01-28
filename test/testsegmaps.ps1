@@ -36,7 +36,6 @@ Class testsegmaps {
         $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_segmaps'
     }
     #
-    #
     [void]CleanupTest($inp){
         Write-Host 'Starting Cleanup Test'
         $sor = $inp.sample.componentfolder()

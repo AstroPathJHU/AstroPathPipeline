@@ -1,9 +1,9 @@
-import csv, dataclassy, datetime, numbers, numpy as np
+import csv, dataclassy, datetime, methodtools, numbers, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
-from ..utilities.tableio import datefield, optionalfield, readtable
-from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
+from ..utilities.tableio import boolasintfield, datefield, optionalfield, readtable
+from ..utilities.units.dataclasses import DataClassWithAnnoscale, DataClassWithApscale, DataClassWithDistances, DataClassWithPscale, DataClassWithPscaleFrozen, distancefield, pscalefield
 from .polygon import DataClassWithPolygon, Polygon, polygonfield
 
 class ROIGlobals(DataClassWithPscale):
@@ -103,9 +103,6 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
         "gainfactor": "",
         "binningx": "pixels",
         "binningy": "pixels",
-        "annotationsonwsi": "",
-        "annotationxposition": "pixels",
-        "annotationyposition": "pixels",
       }[name]
     if description is None:
       description = {
@@ -126,9 +123,6 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
         "gainfactor": "the gain of the A/D amplifier for the im3 files",
         "binningx": "the number of adjacent pixels coadded",
         "binningy": "the number of adjacent pixels coadded",
-        "annotationsonwsi": "annotations drawn on astropath image? (otherwise qptiff)",
-        "annotationxposition": "x offset of the WSI image used to draw the annotations",
-        "annotationyposition": "y offset of the WSI image used to draw the annotations",
       }[name]
     return super().transforminitargs(name=name, value=value, unit=unit, description=description, **kwargs)
 
@@ -189,25 +183,175 @@ class RectangleFile(DataClassWithPscaleFrozen):
   def cxvec(self):
     return np.array([self.cx, self.cy])
 
-class Annotation(DataClassWithPolygon):
+class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
+  """
+  """
+  sampleid: int
+  name: str
+  annotationsource: str
+  xposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
+  yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
+  xmlfile: str
+  xmlsha: str
+  scanfolder: pathlib.Path = MetaDataAnnotation(includeintable=False)
+
+  def __post_init__(self, **kwargs):
+    super().__post_init__(**kwargs)
+    choices = "qptiff", "wsi"
+    if self.annotationsource not in choices:
+      raise ValueError(f"Invalid annotationsource {self.annotationsource}: choices are {choices}")
+
+  @methodtools.lru_cache()
+  @property
+  def isonqptiff(self): return self.annotationsource == "qptiff"
+  @methodtools.lru_cache()
+  @property
+  def isonwsi(self): return self.annotationsource == "wsi"
+
+  @classmethod
+  def transforminitargs(cls, *args, position=None, **kwargs):
+    positionkwargs = {}
+    if position is not None:
+      positionkwargs["xposition"], positionkwargs["yposition"] = position
+    if kwargs.get("annoscale", None) is None:
+      pscale = kwargs["pscale"]
+      apscale = kwargs["apscale"]
+      annotationsource = kwargs["annotationsource"]
+      if annotationsource == "wsi":
+        kwargs["annoscale"] = pscale/2
+      elif annotationsource == "qptiff":
+        kwargs["annoscale"] = apscale
+      else:
+        assert False, annotationsource
+    return super().transforminitargs(*args, **kwargs, **positionkwargs)
+
+  @property
+  def position(self):
+    return np.array([self.xposition, self.yposition], dtype=units.unitdtype)
+  @position.setter
+  def position(self, position):
+    self.xposition, self.yposition = position
+
+  @property
+  def xmlpath(self):
+    return self.scanfolder/self.xmlfile
+
+class DataClassWithAnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
+  annotationinfo: AnnotationInfo = MetaDataAnnotation(None, includeintable=False)
+  @classmethod
+  def transforminitargs(cls, *, pscale=None, apscale=None, annoscale=None, annotationinfo=None, annotationinfos=None, **kwargs):
+    if annotationinfo is not None and annotationinfos is not None:
+      raise TypeError("Provided both annotationinfo and annotationinfos")
+
+    if annotationinfos is not None:
+      annotationinfos = [annotationinfo for annotationinfo in annotationinfos if annotationinfo.name == kwargs["name"]]
+      try:
+        annotationinfo, = annotationinfos
+      except ValueError:
+        if len(annotationinfos) > 1:
+          raise ValueError(f"Multiple annotationinfos with the same name: {annotationinfos}")
+        annotationinfo = None
+
+    if annotationinfo is not None:
+      if pscale is None: pscale = annotationinfo.pscale
+      if pscale != annotationinfo.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {annotationinfo.pscale}")
+      if apscale is None: apscale = annotationinfo.apscale
+      if apscale != annotationinfo.apscale is not None: raise ValueError(f"Inconsistent apscales {apscale} {annotationinfo.apscale}")
+      if annoscale is None: annoscale = annotationinfo.annoscale
+      if annoscale != annotationinfo.annoscale is not None: raise ValueError(f"Inconsistent annoscales {annoscale} {annotationinfo.annoscale}")
+
+    return super().transforminitargs(
+      pscale=pscale,
+      apscale=apscale,
+      annoscale=annoscale,
+      annotationinfo=annotationinfo,
+      **kwargs,
+    )
+
+class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon):
   """
   An annotation from a pathologist.
 
   sampleid: numerical id of the slide
   layer: layer number of the annotation
-  name: name of the annotation, e.g. tuor
+  name: name of the annotation, e.g. tumor
   color: color of the annotation
   visible: should it be drawn?
   poly: the gdal polygon for the annotation
   """
+
   sampleid: int
   layer: int
   name: str
   color: str
-  visible: bool = MetaDataAnnotation(readfunction=lambda x: bool(int(x)), writefunction=lambda x: int(x))
+  visible: bool = boolasintfield()
   poly: Polygon = polygonfield()
 
-class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
+  def __bool__(self):
+    return self.name.lower() != "empty"
+
+  @methodtools.lru_cache()
+  @classmethod
+  def isannotationnamefromxml(cls, name):
+    if name == "empty": return False
+    from .annotationpolygonxmlreader import AllowedAnnotation
+    return AllowedAnnotation.allowedannotation(name).isfromxml
+
+  @classmethod
+  def transforminitargs(cls, *args, **kwargs):
+    args, kwargs = super().transforminitargs(*args, **kwargs)
+    annotationinfo = kwargs["annotationinfo"]
+    isfromxml = cls.isannotationnamefromxml(kwargs["name"])
+    if isfromxml and annotationinfo is None:
+      raise TypeError("Need annotationinfo if annotation is from xml")
+    if kwargs.get("annoscale", None) is None:
+      if not isfromxml:
+        kwargs["annoscale"] = kwargs["pscale"]
+      else:
+        kwargs["annoscale"] = annotationinfo.annoscale
+    return args, kwargs
+
+  @property
+  def isfromxml(self):
+    return self.isannotationnamefromxml(self.name)
+  @property
+  def isonwsi(self):
+    if not self.isfromxml: return True
+    return self.annotationinfo.isonwsi
+  @property
+  def isonqptiff(self):
+    if not self.isfromxml: return False
+    return self.annotationinfo.isonqptiff
+  @property
+  def position(self): return self.annotationinfo.position
+
+class DataClassWithAnnotation(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
+  annotation: Annotation = MetaDataAnnotation(None, includeintable=False)
+  @classmethod
+  def transforminitargs(cls, *, annoscale=None, pscale=None, apscale=None, annotation=None, annotations=None, **kwargs):
+    if annotation is not None and annotations is not None:
+      raise TypeError("Provided both annotation and annotations")
+
+    if annotations is not None:
+      annotation, = (annotation for annotation in annotations if annotation.layer == kwargs["regionid"] // 1000)
+
+    if annotation is not None:
+      if annoscale is None: annoscale = annotation.annoscale
+      if annoscale != annotation.annoscale: raise ValueError(f"Inconsistent annoscales {annoscale} {annotation.annoscale}")
+      if pscale is None: pscale = annotation.pscale
+      if pscale != annotation.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {annotation.pscale}")
+      if apscale is None: apscale = annotation.apscale
+      if apscale != annotation.apscale is not None: raise ValueError(f"Inconsistent apscales {apscale} {annotation.apscale}")
+
+    return super().transforminitargs(
+      pscale=pscale,
+      annoscale=annoscale,
+      apscale=apscale,
+      annotation=annotation,
+      **kwargs,
+    )
+
+class Vertex(DataClassWithAnnotation):
   """
   A vertex of a polygon.
 
@@ -226,15 +370,20 @@ class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
   x: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   y: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int, pscalename="annoscale")
   pscale = None
-  isfromxml: bool = MetaDataAnnotation(False, includeintable=False)
 
   @property
   def xvec(self):
     """[x, y] as a numpy array"""
     return np.array([self.x, self.y])
+  @property
+  def isfromxml(self):
+    return self.annotation.isfromxml
+  @property
+  def isonwsi(self):
+    return self.annotation.isonwsi
 
   @classmethod
-  def transforminitargs(cls, *args, pscale=None, annoscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
+  def transforminitargs(cls, *, pscale=None, annoscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):
     xveckwargs = {}
     vertexkwargs = {}
     im3xykwargs = {}
@@ -258,7 +407,6 @@ class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
     if im3xvec is not None:
       im3xveckwargs["x"], im3xveckwargs["y"] = units.convertpscale(im3xvec, pscale, annoscale)
     return super().transforminitargs(
-      *args,
       pscale=pscale,
       annoscale=annoscale,
       **kwargs,
@@ -285,7 +433,7 @@ class Vertex(DataClassWithPscale, DataClassWithAnnoscale):
     """y in im3 coordinates"""
     return self.xvec[1]
 
-class Region(DataClassWithPolygon):
+class Region(DataClassWithPolygon, DataClassWithAnnotation):
   """
   An annotation region
 
@@ -384,15 +532,15 @@ class PhenotypedCell(MyDataClass):
   MeanNucleus650: float
   MeanNucleus690: float
   MeanNucleus780: float
-  MeanMembraneDAPI: float = optionalfield(float)
-  MeanMembrane480: float = optionalfield(float)
-  MeanMembrane520: float = optionalfield(float)
-  MeanMembrane540: float = optionalfield(float)
-  MeanMembrane570: float = optionalfield(float)
-  MeanMembrane620: float = optionalfield(float)
-  MeanMembrane650: float = optionalfield(float)
-  MeanMembrane690: float = optionalfield(float)
-  MeanMembrane780: float = optionalfield(float)
+  MeanMembraneDAPI: float = optionalfield(readfunction=float)
+  MeanMembrane480: float = optionalfield(readfunction=float)
+  MeanMembrane520: float = optionalfield(readfunction=float)
+  MeanMembrane540: float = optionalfield(readfunction=float)
+  MeanMembrane570: float = optionalfield(readfunction=float)
+  MeanMembrane620: float = optionalfield(readfunction=float)
+  MeanMembrane650: float = optionalfield(readfunction=float)
+  MeanMembrane690: float = optionalfield(readfunction=float)
+  MeanMembrane780: float = optionalfield(readfunction=float)
   MeanEntireCellDAPI: float
   MeanEntireCell480: float
   MeanEntireCell520: float
@@ -402,15 +550,15 @@ class PhenotypedCell(MyDataClass):
   MeanEntireCell650: float
   MeanEntireCell690: float
   MeanEntireCell780: float
-  MeanCytoplasmDAPI: float = optionalfield(float)
-  MeanCytoplasm480: float = optionalfield(float)
-  MeanCytoplasm520: float = optionalfield(float)
-  MeanCytoplasm540: float = optionalfield(float)
-  MeanCytoplasm570: float = optionalfield(float)
-  MeanCytoplasm620: float = optionalfield(float)
-  MeanCytoplasm650: float = optionalfield(float)
-  MeanCytoplasm690: float = optionalfield(float)
-  MeanCytoplasm780: float = optionalfield(float)
+  MeanCytoplasmDAPI: float = optionalfield(readfunction=float)
+  MeanCytoplasm480: float = optionalfield(readfunction=float)
+  MeanCytoplasm520: float = optionalfield(readfunction=float)
+  MeanCytoplasm540: float = optionalfield(readfunction=float)
+  MeanCytoplasm570: float = optionalfield(readfunction=float)
+  MeanCytoplasm620: float = optionalfield(readfunction=float)
+  MeanCytoplasm650: float = optionalfield(readfunction=float)
+  MeanCytoplasm690: float = optionalfield(readfunction=float)
+  MeanCytoplasm780: float = optionalfield(readfunction=float)
   TotalNucleusDAPI: float
   TotalNucleus480: float
   TotalNucleus520: float
@@ -420,15 +568,15 @@ class PhenotypedCell(MyDataClass):
   TotalNucleus650: float
   TotalNucleus690: float
   TotalNucleus780: float
-  TotalMembraneDAPI: float = optionalfield(float)
-  TotalMembrane480: float = optionalfield(float)
-  TotalMembrane520: float = optionalfield(float)
-  TotalMembrane540: float = optionalfield(float)
-  TotalMembrane570: float = optionalfield(float)
-  TotalMembrane620: float = optionalfield(float)
-  TotalMembrane650: float = optionalfield(float)
-  TotalMembrane690: float = optionalfield(float)
-  TotalMembrane780: float = optionalfield(float)
+  TotalMembraneDAPI: float = optionalfield(readfunction=float)
+  TotalMembrane480: float = optionalfield(readfunction=float)
+  TotalMembrane520: float = optionalfield(readfunction=float)
+  TotalMembrane540: float = optionalfield(readfunction=float)
+  TotalMembrane570: float = optionalfield(readfunction=float)
+  TotalMembrane620: float = optionalfield(readfunction=float)
+  TotalMembrane650: float = optionalfield(readfunction=float)
+  TotalMembrane690: float = optionalfield(readfunction=float)
+  TotalMembrane780: float = optionalfield(readfunction=float)
   TotalEntireCellDAPI: float
   TotalEntireCell480: float
   TotalEntireCell520: float
@@ -438,15 +586,15 @@ class PhenotypedCell(MyDataClass):
   TotalEntireCell650: float
   TotalEntireCell690: float
   TotalEntireCell780: float
-  TotalCytoplasmDAPI: float = optionalfield(float)
-  TotalCytoplasm480: float = optionalfield(float)
-  TotalCytoplasm520: float = optionalfield(float)
-  TotalCytoplasm540: float = optionalfield(float)
-  TotalCytoplasm570: float = optionalfield(float)
-  TotalCytoplasm620: float = optionalfield(float)
-  TotalCytoplasm650: float = optionalfield(float)
-  TotalCytoplasm690: float = optionalfield(float)
-  TotalCytoplasm780: float = optionalfield(float)
+  TotalCytoplasmDAPI: float = optionalfield(readfunction=float)
+  TotalCytoplasm480: float = optionalfield(readfunction=float)
+  TotalCytoplasm520: float = optionalfield(readfunction=float)
+  TotalCytoplasm540: float = optionalfield(readfunction=float)
+  TotalCytoplasm570: float = optionalfield(readfunction=float)
+  TotalCytoplasm620: float = optionalfield(readfunction=float)
+  TotalCytoplasm650: float = optionalfield(readfunction=float)
+  TotalCytoplasm690: float = optionalfield(readfunction=float)
+  TotalCytoplasm780: float = optionalfield(readfunction=float)
   ExprPhenotype: int
 
 def MakeClinicalInfo(filename):

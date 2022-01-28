@@ -1,7 +1,7 @@
 import argparse, numpy as np, pathlib, PIL, shutil, tempfile
 from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTissueMask
 from astropath.slides.annowarp.visualization import showannotation
-from astropath.shared.csvclasses import Region
+from astropath.shared.csvclasses import Annotation, AnnotationInfo, Region
 from astropath.utilities import units
 
 here = pathlib.Path(__file__).parent
@@ -10,20 +10,27 @@ zoomroot = here/".."/".."/"test"/"data"/"reference"/"zoom"
 annowarproot = here/".."/".."/"test"/"data"/"reference"/"annowarp"
 alignroot = here/".."/".."/"test"/"data"/"reference"/"alignment"/"component_tiff"
 prepdbroot = here/".."/".."/"test"/"data"/"reference"/"prepdb"
+writeannotationinforoot = here/".."/".."/"test"/"data"/"reference"/"writeannotationinfo"
 samp = "M206"
 
 def makeplots():
+  from ...test.data.M206.im3.Scan1.assembleqptiff import assembleqptiff
+  from ...test.data.M206.im3.meanimage.image_masking.hackmask import hackmask
+  assembleqptiff()
+  hackmask()
   with tempfile.TemporaryDirectory() as dbloadroot:
     dbloadroot = pathlib.Path(dbloadroot)
     (dbloadroot/samp/"dbload").mkdir(parents=True)
-    for root in prepdbroot, annowarproot, alignroot:
+    for root in prepdbroot, annowarproot, alignroot, writeannotationinforoot:
       for folder in root/samp, root/samp/"dbload":
         for filename in folder.glob("*.csv"):
           shutil.copy(filename, dbloadroot/samp/"dbload")
     from ...test.testzoom import gunzipreference
     gunzipreference(samp)
     with AnnoWarpSampleAstroPathTissueMask(data, samp, zoomroot=zoomroot, dbloadroot=dbloadroot) as A:
-      warpedregions = A.readtable(A.regionscsv, Region)
+      annotationinfos = A.readtable(A.annotationinfocsv, AnnotationInfo, extrakwargs={"scanfolder": A.scanfolder})
+      annotations = A.readtable(A.annotationscsv, Annotation, extrakwargs={"annotationinfos": annotationinfos})
+      warpedregions = A.readtable(A.regionscsv, Region, extrakwargs={"annotations": annotations})
 
       with A.using_images() as (wsi, fqptiff):
         zoomlevel = fqptiff.zoomlevels[0]
@@ -42,7 +49,7 @@ def makeplots():
       else:
         ylimpscale = ylim
 
-      showannotation(qptiff, A.regions, vertices=A.apvertices, imagescale=A.apscale, figurekwargs={}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
+      showannotation(qptiff, A.regions, vertices=A.vertices, imagescale=A.apscale, figurekwargs={}, ylim=ylim, xlim=xlim, saveas=here/"qptiff.pdf")
       showannotation(wsi, warpedregions, imagescale=A.pscale, figurekwargs={}, ylim=ylimpscale, xlim=xlimpscale, saveas=here/"wsi.pdf")
 
 if __name__ == "__main__":

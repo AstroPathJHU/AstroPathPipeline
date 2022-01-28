@@ -64,6 +64,14 @@ class TestBase(abc.ABC, unittest.TestCase):
     self.maxDiff = None
     super().setUp()
 
+  def assertLengthEqual(self, sequence, length, msg=None):
+    """Fail the test unless the sequence is the desired length."""
+    if len(sequence) != length:
+      standardMsg = "length of %r is %d, not %d" % (sequence, len(sequence), length)
+      # _formatMessage ensures the longMessage option is respected
+      msg = self._formatMessage(msg, standardMsg)
+      raise self.failureException(msg)
+
 class TestBaseSaveOutput(TestBase):
   @classmethod
   def setUpClass(cls):

@@ -3,7 +3,7 @@ from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from ..utilities.version.git import thisrepo
-from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser, ImageCorrectionArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger, ThingWithLogger
 from .rectangle import rectanglefilter
 from .workflowdependency import ThingWithRoots, WorkflowDependency
@@ -13,7 +13,7 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.NOTSET-100, **kwargs):
+  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.NOTSET-100, runfromapid=False, Project=None, **kwargs):
     super().__init__(*args, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
@@ -25,15 +25,27 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
     self.moremainlogroots = moremainlogroots
     self.skipstartfinish = skipstartfinish
     self.printthreshold = printthreshold
+    self.runfromapid = runfromapid
+    self.__Project = Project
+    if runfromapid and Project is None:
+      raise ValueError("Have to provide a Project if running from apid")
 
   def sampledefs(self, **kwargs):
-    from .samplemetadata import SampleDef
-    return readtable(self.sampledefroot/"sampledef.csv", SampleDef)
+    from .samplemetadata import APIDDef, SampleDef
+    if self.runfromapid:
+      csvfile = self.sampledefroot/"upkeep_and_progress"/f"AstropathAPIDdef_{self.__Project:d}.csv"
+      csvclass = APIDDef
+    else:
+      csvfile = self.sampledefroot/"sampledef.csv"
+      csvclass = SampleDef
+    return readtable(csvfile, csvclass)
   @property
   def SlideIDs(self): return [_.SlideID for _ in self.sampledefs()]
   @property
   def Project(self):
     Project, = {_.Project for _ in self.sampledefs()}
+    if self.__Project is not None and self.__Project != Project:
+      raise ValueError(f"--project {self.__Project} from the command line is not consistent with Project {Project} in the {'AstropathAPIDdef' if self.runfromapid else 'sampledef'} csv file")
     return Project
   @property
   def Cohort(self):
@@ -98,7 +110,11 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
     Create an argument parser to run this cohort on the command line
     """
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--sampledefroot", type=pathlib.Path, help="folder to look for sampledef.csv")
+    p.add_argument("--sampledefroot", "--apiddefroot", type=pathlib.Path, help="folder to look for sampledef.csv and/or the upkeep_and_progress folder")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--use-apiddef", action="store_true", dest="runfromapid", help="use AstropathAPIDdef_Project.csv to get the list of samples to run")
+    g.add_argument("--use-sampledef", action="store_false", dest="runfromapid", help="use sampledef.csv to get the list of samples to run")
+    p.add_argument("--project", type=int, help="Project number (used to identify the AstropathAPIDdef file)")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     return p
 
@@ -109,9 +125,13 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
     from the parsed arguments
     """
     dct = parsed_args_dict
+    if dct["runfromapid"] and dct["project"] is None:
+      raise ValueError("If you --use-apiddef, you also have to provide the --project number")
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "sampledefroot": dct.pop("sampledefroot"),
+      "runfromapid": dct.pop("runfromapid"),
+      "Project": dct.pop("project"),
     }
     return kwargs
 
@@ -597,10 +617,8 @@ class ParallelCohort(Cohort, ParallelArgumentParser):
       "njobs": self.__njobs,
     }
 
-class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
-  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, annotationsxmlregex=None, **kwargs):
-    self.__annotationsynonyms = annotationsynonyms
-    self.__reorderannotations = reorderannotations
+class XMLPolygonFileCohort(Cohort, XMLPolygonFileArgumentParser):
+  def __init__(self, *args, annotationsxmlregex=None, **kwargs):
     self.__annotationsxmlregex = annotationsxmlregex
     super().__init__(*args, **kwargs)
   @property
@@ -613,9 +631,25 @@ class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
   def initiatesamplekwargs(self):
     return {
       **super().initiatesamplekwargs,
+      "annotationsxmlregex": self.__annotationsxmlregex,
+    }
+
+class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
+  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
+    self.__annotationsynonyms = annotationsynonyms
+    self.__reorderannotations = reorderannotations
+    super().__init__(*args, **kwargs)
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+    }
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
       "annotationsynonyms": self.__annotationsynonyms,
       "reorderannotations": self.__reorderannotations,
-      "annotationsxmlregex": self.__annotationsxmlregex,
     }
 
 class CorrectedImageCohort(Im3Cohort,ImageCorrectionArgumentParser) :

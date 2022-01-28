@@ -97,7 +97,7 @@ class APIDDef(MyDataClassFrozen):
   Cohort: int
   Scan: int = None
   BatchID: int = None
-  isGood: bool = None
+  isGood: bool = boolasintfield(None)
 
   def __post_init__(self, **kwargs):
     if self.BatchID is None: raise ValueError("Have to provide BatchID")

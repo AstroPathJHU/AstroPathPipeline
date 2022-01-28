@@ -282,7 +282,7 @@ class SampleRunStatus(MyDataClass):
                 if gitcommit is None: gitcommit = startmatch.group("version")
                 if gitcommit is not None: gitcommit = thisrepo.getcommit(gitcommit)
                 localedits = bool(startmatch.group("date"))
-              except IndexError:
+              except ValueError:
                 gitcommit = None
 
             elif row["message"].startswith("ERROR:"):

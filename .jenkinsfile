@@ -23,7 +23,7 @@ pipeline {
   }
 
   stages {
-        
+
     stage('ps module install') {
       steps {
 	sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
@@ -58,7 +58,6 @@ pipeline {
         stage('miscellaneous framework tests') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
-            sh 'checkannotations test/data/M21_1/im3/Scan1/M21_1_Scan1.annotations.polygons.xml'
           }
         }
 
@@ -97,6 +96,11 @@ pipeline {
         }
         stage('annowarp') {
           stages {
+            stage('test writeannotationinfo') {
+              steps{
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwriteannotationinfo'
+              }
+            }
             stage('test annowarp') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testannowarp'
