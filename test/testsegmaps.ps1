@@ -49,7 +49,6 @@ Class testsegmaps {
             Throw 'Error deleting component data with segmentation data'
         }
         $inp.sample.copy($this.process_loc, $sor, 'w_seg.tif', 8)
-        Write-Host 'Files at End: ' (gci -Path $sor -Recurse)
         Write-Host 'Passed Cleanup Test'
     }
     #
@@ -65,6 +64,7 @@ Class testsegmaps {
         if (!($comp -eq $seg)){
             Throw 'Component data count ~= Segmentation Data count'
         }
+        Write-Host 'Component data count = Segmentation data count'
         Write-Host 'Passed SegMaps Test'
     }
     #
