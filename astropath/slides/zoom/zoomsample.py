@@ -119,12 +119,12 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
             if globalx1 < 0:
               newlocalx1 -= globalx1
               globalx1 -= globalx1
-            if newlocaly2 > shifted.shape[0]:
-              globaly2 -= (newlocaly2 - shifted.shape[0])
-              newlocaly2 -= (newlocaly2 - shifted.shape[0])
-            if newlocalx2 > shifted.shape[1]:
-              globalx2 -= (newlocalx2 - shifted.shape[1])
-              newlocalx2 -= (newlocalx2 - shifted.shape[1])
+            if newlocaly2 > shifted.shape[0] * onepixel:
+              globaly2 -= (newlocaly2 - shifted.shape[0] * onepixel)
+              newlocaly2 -= (newlocaly2 - shifted.shape[0] * onepixel)
+            if newlocalx2 > shifted.shape[1] * onepixel:
+              globalx2 -= (newlocalx2 - shifted.shape[1] * onepixel)
+              newlocalx2 -= (newlocalx2 - shifted.shape[1] * onepixel)
             #fill the big image with the HPF image
             kw = {"atol": 1e-7}
             bigimage[
@@ -387,12 +387,12 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               if tilex1 < 0:
                 newlocalx1 -= tilex1
                 tilex1 -= tilex1
-              if newlocaly2 > shifted.shape[0]:
-                tiley2 -= (newlocaly2 - shifted.shape[0])
-                newlocaly2 -= (newlocaly2 - shifted.shape[0])
-              if newlocalx2 > shifted.shape[1]:
-                tilex2 -= (newlocalx2 - shifted.shape[1])
-                newlocalx2 -= (newlocalx2 - shifted.shape[1])
+              if newlocaly2 > shifted.shape[0] * onepixel:
+                tiley2 -= (newlocaly2 - shifted.shape[0] * onepixel)
+                newlocaly2 -= (newlocaly2 - shifted.shape[0] * onepixel)
+              if newlocalx2 > shifted.shape[1] * onepixel:
+                tilex2 -= (newlocalx2 - shifted.shape[1] * onepixel)
+                newlocalx2 -= (newlocalx2 - shifted.shape[1] * onepixel)
               kw = {"atol": 1e-7}
               tileimage[
                 floattoint(float(tiley1/onepixel), **kw):floattoint(float(tiley2/onepixel), **kw),
