@@ -165,10 +165,10 @@ class StitchMaskSample(WriteMaskSampleBase):
       if globalx1 < 0:
         localx1 -= globalx1
         globalx1 -= globalx1
-      if localy2 > im.shape[0]:
+      if localy2 > im.shape[0] * onepixel:
         globaly2 -= (localy2 - im.shape[0])
         localy2 -= (localy2 - im.shape[0])
-      if localx2 > im.shape[1]:
+      if localx2 > im.shape[1] * onepixel:
         globalx2 -= (localx2 - im.shape[1])
         localx2 -= (localx2 - im.shape[1])
       mask[
