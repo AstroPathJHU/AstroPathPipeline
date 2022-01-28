@@ -119,6 +119,12 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
             if globalx1 < 0:
               newlocalx1 -= globalx1
               globalx1 -= globalx1
+            if localy2 > im.shape[0]:
+              globaly2 -= (localy2 - im.shape[0])
+              localy2 -= (localy2 - im.shape[0])
+            if localx2 > im.shape[1]:
+              globalx2 -= (localx2 - im.shape[1])
+              localx2 -= (localx2 - im.shape[1])
             #fill the big image with the HPF image
             kw = {"atol": 1e-7}
             bigimage[
