@@ -447,7 +447,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
 
         pxvec = units.nominal_values(self.x(r))
 
-        neighbors = self.neighbors(r)
+        neighbors = self.neighbors(r, useexitstatus=False)
         if not neighbors.keys() & {1, 4, 7}: mx1[rid] = pxvec[0]
         if not neighbors.keys() & {1, 2, 3}: my1[rid] = pxvec[1]
         if not neighbors.keys() & {3, 6, 9}: mx2[rid] = pxvec[0]+r.w

@@ -401,9 +401,9 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testIslands(self, SlideID="M21_1"):
     for island in (
-      (4, 5),
+      #(4, 5),
       (5, 6),
-      (1, 2, 3, 5, 6, 7),
+      #(1, 2, 3, 5, 6, 7),
     ):
       a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, selectoverlaps=lambda o: not ((o.p1 in island) ^ (o.p2 in island)), dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
       readfilename = thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
