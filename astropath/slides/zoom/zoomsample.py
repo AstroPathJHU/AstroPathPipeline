@@ -387,12 +387,12 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               if tilex1 < 0:
                 newlocalx1 -= tilex1
                 tilex1 -= tilex1
-              if newlocaly2 > tile.shape[0]:
-                tiley2 -= (newlocaly2 - tile.shape[0])
-                newlocaly2 -= (newlocaly2 - tile.shape[0])
-              if newlocalx2 > tile.shape[1]:
-                tilex2 -= (newlocalx2 - tile.shape[1])
-                newlocalx2 -= (newlocalx2 - tile.shape[1])
+              if newlocaly2 > shifted.shape[0]:
+                tiley2 -= (newlocaly2 - shifted.shape[0])
+                newlocaly2 -= (newlocaly2 - shifted.shape[0])
+              if newlocalx2 > shifted.shape[1]:
+                tilex2 -= (newlocalx2 - shifted.shape[1])
+                newlocalx2 -= (newlocalx2 - shifted.shape[1])
               kw = {"atol": 1e-7}
               tileimage[
                 floattoint(float(tiley1/onepixel), **kw):floattoint(float(tiley2/onepixel), **kw),
