@@ -25,8 +25,7 @@ Class testsegmaps {
         # Run Tests
         #
         $this.CleanupTest($inp)
-        $this.GetaSegTest($inp)
-        $this.GetnoSegTest($inp)
+        $this.SegMapsTest($inp)
     }
     #
     importmodule(){
@@ -40,10 +39,8 @@ Class testsegmaps {
         Write-Host 'Starting Cleanup Test'
         $sor = $inp.sample.componentfolder()
         Write-Host 'Component Folder: ' $sor
-        Write-Host 'Current Files: ' (gci -Path $sor -Recurse)
         $seg_files = (gci -Path $sor -Include *w_seg.tif -Recurse)
         Write-Host 'Deleting component data with segmentation data: ' $seg_files
-        Write-Host 'Files in process_loc: ' (gci -Path $this.process_loc)
         $inp.sample.copy($sor, $this.process_loc, 'W_seg.tif', 8)
         #
         $inp.cleanup()
@@ -52,11 +49,12 @@ Class testsegmaps {
             Throw 'Error deleting component data with segmentation data'
         }
         $inp.sample.copy($this.process_loc, $sor, 'w_seg.tif', 8)
+        Write-Host 'Files at End: ' (gci -Path $sor -Recurse)
         Write-Host 'Passed Cleanup Test'
     }
     #
-    [void]GetaSegTest($inp){
-        Write-Host 'Starting GetaSeg Test'
+    [void]SegMapsTest($inp){
+        Write-Host 'Starting SegMaps Test'
         $table = $inp.sample.phenotypefolder() + '\Results\Tables'
         if (!(test-path ($table + '\*csv'))){
             Throw 'Phenotype Tables do not exist'
@@ -67,7 +65,7 @@ Class testsegmaps {
         if (!($comp -eq $seg)){
             Throw 'Component data count ~= Segmentation Data count'
         }
-        Write-Host 'Passed GetaSeg Test'
+        Write-Host 'Passed SegMaps Test'
     }
     #
 }
