@@ -165,6 +165,12 @@ class StitchMaskSample(WriteMaskSampleBase):
       if globalx1 < 0:
         localx1 -= globalx1
         globalx1 -= globalx1
+      if localy2 > im.shape[0] * onepixel:
+        globaly2 -= (localy2 - im.shape[0] * onepixel)
+        localy2 -= (localy2 - im.shape[0] * onepixel)
+      if localx2 > im.shape[1] * onepixel:
+        globalx2 -= (localx2 - im.shape[1] * onepixel)
+        localx2 -= (localx2 - im.shape[1] * onepixel)
       mask[
         floattoint(float(globaly1/onepixel)):floattoint(float(globaly2/onepixel)),
         floattoint(float(globalx1/onepixel)):floattoint(float(globalx2/onepixel)),
