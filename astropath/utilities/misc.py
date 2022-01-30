@@ -135,13 +135,14 @@ class recursionlimit(contextlib.AbstractContextManager):
     sys.setrecursionlimit(max(elements))
 
 class ArgParseAddToDictBase(argparse.Action, abc.ABC):
-  def __init__(self, *args, case_sensitive=True, type=None, key_type=None, value_type=None, **kwargs):
+  def __init__(self, *args, case_sensitive=True, type=None, key_type=None, value_type=None, default=None, **kwargs):
     self.case_sensitive = case_sensitive
     self.key_type = key_type
     self.value_type = value_type
+    if default is None: default = {}
     if type is not None: raise TypeError("Use key_type and value_type instead of type")
     if not case_sensitive and key_type is not None: raise TypeError("case_sensitive=False and key_type are incompatible")
-    super().__init__(*args, **kwargs)
+    super().__init__(*args, default=default, **kwargs)
   @abc.abstractmethod
   def process_values(self, values):
     values = list(values)
