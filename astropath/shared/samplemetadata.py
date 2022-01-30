@@ -10,7 +10,7 @@ class SampleDef(MyDataClassFrozen):
   SlideID and leave out some of the others.  If you give a root,
   it will try to figure out the other arguments from there.
   """
-  SampleID: int = None
+  SampleID: int = 0
   SlideID: str = None
   Project: int = None
   Cohort: int = None
