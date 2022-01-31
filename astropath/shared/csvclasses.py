@@ -191,15 +191,33 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
   annotationsource: str
   xposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
   yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
-  xmlfile: str
-  xmlsha: str
+  xmlfile: str = optionalfield(None, readfunction=str)
+  xmlsha: str = optionalfield(None, readfunction=str)
   scanfolder: pathlib.Path = MetaDataAnnotation(includeintable=False)
 
   def __post_init__(self, **kwargs):
     super().__post_init__(**kwargs)
-    choices = "qptiff", "wsi"
+    choices = "qptiff", "wsi", "mask"
     if self.annotationsource not in choices:
       raise ValueError(f"Invalid annotationsource {self.annotationsource}: choices are {choices}")
+
+    if self.isonwsi:
+      if self.xposition is None or self.yposition is None:
+        raise ValueError("Need to provide xposition and yposition for an annotation on the wsi")
+      if self.xmlfile is None or self.xmlsha is None:
+        raise ValueError("Need to provide xmlfile and xmlsha for an annotation on the wsi")
+    elif self.isonqptiff:
+      if self.xposition is not None or self.yposition is not None:
+        raise ValueError("Don't provide xposition and yposition for an annotation on the qptiff")
+      if self.xmlfile is None or self.xmlsha is None:
+        raise ValueError("Need to provide xmlfile and xmlsha for an annotation on the qptiff")
+    elif self.isfrommask:
+      if self.xposition is not None or self.yposition is not None:
+        raise ValueError("Don't provide xposition and yposition for an annotation from a mask")
+      if self.xmlfile is not None or self.xmlsha is not None:
+        raise ValueError("Don't provide xmlfile and xmlsha for an annotation from a mask")
+    else:
+      assert False
 
   @methodtools.lru_cache()
   @property
@@ -207,6 +225,17 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
   @methodtools.lru_cache()
   @property
   def isonwsi(self): return self.annotationsource == "wsi"
+  @methodtools.lru_cache()
+  @property
+  def isfrommask(self): return self.annotationsource == "mask"
+  @methodtools.lru_cache()
+  @property
+  def isfromxml(self):
+    return {
+      "wsi": True,
+      "qptiff": True,
+      "mask": False,
+    }[self.annotationsource]
 
   @classmethod
   def transforminitargs(cls, *args, position=None, **kwargs):
@@ -221,6 +250,8 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
         kwargs["annoscale"] = pscale/2
       elif annotationsource == "qptiff":
         kwargs["annoscale"] = apscale
+      elif annotationsource == "mask":
+        kwargs["annoscale"] = pscale
       else:
         assert False, annotationsource
     return super().transforminitargs(*args, **kwargs, **positionkwargs)
@@ -290,38 +321,22 @@ class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon):
   def __bool__(self):
     return self.name.lower() != "empty"
 
-  @methodtools.lru_cache()
-  @classmethod
-  def isannotationnamefromxml(cls, name):
-    if name == "empty": return False
-    from .annotationpolygonxmlreader import AllowedAnnotation
-    return AllowedAnnotation.allowedannotation(name).isfromxml
-
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
     args, kwargs = super().transforminitargs(*args, **kwargs)
     annotationinfo = kwargs["annotationinfo"]
-    isfromxml = cls.isannotationnamefromxml(kwargs["name"])
-    if isfromxml and annotationinfo is None:
-      raise TypeError("Need annotationinfo if annotation is from xml")
     if kwargs.get("annoscale", None) is None:
-      if not isfromxml:
-        kwargs["annoscale"] = kwargs["pscale"]
-      else:
-        kwargs["annoscale"] = annotationinfo.annoscale
+      kwargs["annoscale"] = annotationinfo.annoscale
     return args, kwargs
 
   @property
-  def isfromxml(self):
-    return self.isannotationnamefromxml(self.name)
+  def isfromxml(self): return self.annotationinfo.isfromxml
   @property
-  def isonwsi(self):
-    if not self.isfromxml: return True
-    return self.annotationinfo.isonwsi
+  def isonwsi(self): return self.annotationinfo.isonwsi
   @property
-  def isonqptiff(self):
-    if not self.isfromxml: return False
-    return self.annotationinfo.isonqptiff
+  def isonqptiff(self): return self.annotationinfo.isonqptiff
+  @property
+  def isfrommask(self): return self.annotationinfo.isfrommask
   @property
   def position(self): return self.annotationinfo.position
 

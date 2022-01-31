@@ -178,9 +178,26 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
       WriteAnnotationInfoSample,
     ]
 
+  @property
+  def outlineannotationinfo(self):
+    return AnnotationInfo(
+      sampleid=self.SampleID,
+      name="outline",
+      annotationsource="mask",
+      position=None,
+      pscale=self.pscale,
+      apscale=self.apscale,
+      xmlfile=None,
+      xmlsha=None,
+      scanfolder=self.scanfolder,
+    )
+
+
 class CopyAnnotationInfoSample(CopyAnnotationInfoSampleBase, XMLPolygonAnnotationFileSample, WorkflowSample, CopyAnnotationInfoArgumentParser):
   def run(self):
-    self.writecsv("annotationinfo", self.readtable(self.annotationinfofile, AnnotationInfo))
+    annotationinfos = self.readtable(self.annotationinfofile, AnnotationInfo)
+    annotationinfos.append(self.outlineannotationinfo)
+    self.writecsv("annotationinfo", annotationinfos)
 
   def inputfiles(self, **kwargs):
     result = [
@@ -271,6 +288,8 @@ class MergeAnnotationXMLsSample(CopyAnnotationInfoSampleBase, MergeAnnotationXML
 
     for name in sorted(set(self.skipannotations) & allnames):
       self.logger.info(f"Skipping {name}")
+
+    mergedinfo.append(self.outlineannotationinfo)
 
     self.writecsv("annotationinfo", mergedinfo)
 

@@ -261,13 +261,14 @@ class ThingWithAnnotationInfos(units.ThingWithPscale, units.ThingWithApscale):
     result = self.readannotationinfo()
     hashdict = {}
     for info in result:
-      if info.xmlpath not in hashdict:
-        with open(info.xmlpath, "rb") as f:
-          hash = hashlib.sha256()
-          hash.update(f.read())
-          hashdict[info.xmlpath] = hash.hexdigest()
-      if info.xmlsha != hashdict[info.xmlpath]:
-        raise ValueError(f"xml hash {info.xmlsha} in the annotation info doesn't match the current hash of {info.xmlpath}")
+      if info.isfromxml:
+        if info.xmlpath not in hashdict:
+          with open(info.xmlpath, "rb") as f:
+            hash = hashlib.sha256()
+            hash.update(f.read())
+            hashdict[info.xmlpath] = hash.hexdigest()
+        if info.xmlsha != hashdict[info.xmlpath]:
+          raise ValueError(f"xml hash {info.xmlsha} in the annotation info doesn't match the current hash of {info.xmlpath}")
     return result
 
   def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
@@ -474,11 +475,8 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
 
         isfromxml = node.isfromxml
 
-        if isfromxml:
-          annotationinfo, = (info for info in annotationinfos if info.name == name)
-          annotationinfos.remove(annotationinfo)
-        else:
-          annotationinfo = None
+        annotationinfo, = (info for info in annotationinfos if info.name == name)
+        annotationinfos.remove(annotationinfo)
 
         annotation = Annotation(
           color=color,
