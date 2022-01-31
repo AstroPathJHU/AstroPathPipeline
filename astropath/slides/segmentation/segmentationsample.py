@@ -1,15 +1,19 @@
 #imports
 import os, shutil
-import numpy as np
 from deepcell.applications import NuclearSegmentation
 from ...utilities.config import CONST as UNIV_CONST
-from ...shared.argumentparser import WorkingDirArgumentParser
+from ...shared.argumentparser import SegmentationAlgorithmArgumentParser,WorkingDirArgumentParser
 from ...shared.sample import ReadRectanglesComponentTiffFromXML, WorkflowSample, ParallelSample
 from .config import SEG_CONST
 from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im
 from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation
 
-class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,ParallelSample,WorkingDirArgumentParser) :
+#some constants
+NNUNET_SEGMENT_FILE_APPEND = 'nnunet_nuclear_segmentation.npz'
+DEEPCELL_SEGMENT_FILE_APPEND = 'deepcell_nuclear_segmentation.npz'
+
+class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,ParallelSample,
+                         SegmentationAlgorithmArgumentParser,WorkingDirArgumentParser) :
     """
     Write out nuclear segmentation maps based on the DAPI layers of component tiffs for a single sample
     Algorithms available include pre-trained nnU-Net and DeepCell/mesmer models 
@@ -25,11 +29,7 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         super().__init__(*args,**kwargs)
         self.__algorithm = algorithm
         #set the working directory path based on the algorithm being run (if it wasn't set by a command line arg)
-        self.__workingdir = workingdir
-        if self.__workingdir is None :
-            self.__workingdir = self.im3folder/SEG_CONST.SEGMENTATION_DIR_NAME/self.__algorithm
-            if not self.__workingdir.is_dir() :
-                self.__workingdir.mkdir(parents=True)
+        self.__workingdir = SegmentationSample.output_dir(workingdir,self.im3root,self.SlideID,self.__algorithm)
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
@@ -37,6 +37,8 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                ]
 
     def run(self) :
+        if not self.__workingdir.is_dir() :
+            self.__workingdir.mkdir(parents=True)
         if self.__algorithm=='nnunet' :
             self.__run_nnunet()
         elif self.__algorithm=='deepcell' :
@@ -50,27 +52,36 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
     def workflowkwargs(self) :
         return {
             **super().workflowkwargs,
-            'workingdir':self.__workingdir
+            'workingdir':self.__workingdir,
+            'algorithm':self.__algorithm,
         }
 
     #################### CLASS METHODS ####################
 
     @classmethod
-    def makeargumentparser(cls):
-        p = super().makeargumentparser()
-        p.add_argument('--algorithm', choices=['nnunet','deepcell'], default='nnunet',
-                       help='''Which segmentation algorithm to apply''')
-        return p
+    def output_dir(cls,workingdir,im3root,SlideID,algorithm) :
+        #default output is im3folder/segmentation/algorithm
+        outputdir = workingdir
+        if outputdir is None :
+            outputdir = im3root/SlideID/'im3'/SEG_CONST.SEGMENTATION_DIR_NAME/algorithm
+        elif not outputdir.name==SlideID :
+            #put non-default output in a subdirectory named for the slide
+            outputdir = outputdir/SlideID
+        return outputdir
 
     @classmethod
-    def initkwargsfromargumentparser(cls, parsed_args_dict):
-        return {**super().initkwargsfromargumentparser(parsed_args_dict),
-                'algorithm':parsed_args_dict.pop('algorithm')
-            }
-
-    @classmethod
-    def getoutputfiles(cls,SlideID,root,workingdir,**otherworkflowkwargs) :
-        pass
+    def getoutputfiles(cls,SlideID,im3root,informdataroot,workingdir,algorithm,**otherworkflowkwargs) :
+        outputdir=cls.automatic_output_dir(workingdir,im3root,SlideID,algorithm)
+        append = None
+        if algorithm=='nnunet' :
+            append = NNUNET_SEGMENT_FILE_APPEND
+        elif algorithm=='deepcell' :
+            append = DEEPCELL_SEGMENT_FILE_APPEND
+        file_stems = [fp.name[:-len('_component_data.tif')] for fp in (informdataroot/'Component_Tiffs').glob('*_component_data.tif')]
+        outputfiles = []
+        for stem in file_stems :
+            outputfiles.append(outputdir/f'{stem}_{append}')
+        return outputfiles
 
     @classmethod
     def logmodule(cls) : 
@@ -89,11 +100,11 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         return self.__workingdir/f'{rect.imagefile.name[:-4]}.nii.gz'
 
     def __get_rect_nnunet_segmented_fp(self,rect) :
-        seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_nnunet_nuclear_segmentation.npz'
+        seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{NNUNET_SEGMENT_FILE_APPEND}'
         return self.__workingdir/seg_fn
 
     def __get_rect_deepcell_segmented_fp(self,rect) :
-        seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_deepcell_nuclear_segmentation.npz'
+        seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{DEEPCELL_SEGMENT_FILE_APPEND}'
         return self.__workingdir/seg_fn
 
     def __run_nnunet(self) :

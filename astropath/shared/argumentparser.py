@@ -264,6 +264,20 @@ class WorkingDirArgumentParser(RunFromArgumentParser) :
         'workingdir': wd,
       }
 
+class SegmentationAlgorithmArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    p.add_argument('--algorithm', choices=['nnunet','deepcell'], default='nnunet',
+                       help='''Which segmentation algorithm to apply''')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'algorithm':parsed_args_dict.pop('algorithm'),
+    }
+
 class FileTypeArgumentParser(RunFromArgumentParser) :
   @classmethod
   def makeargumentparser(cls):
