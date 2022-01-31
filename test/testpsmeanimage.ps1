@@ -40,23 +40,29 @@ Class testpsmeanimage {
     [void]DownloadFilesTest($inp){
         #
         Write-Host 'Starting Download Files Test'
-        $im3path = $inp.sample.basepath + '/' + $inp.slideid + '/im3/Scan1/MSI'
-        Write-Host 'im3path = ' $im3path
-        Write-Host 'MSI folder = ' $inp.sample.MSIfolder()
-
-        $xmlpath = $inp.processvars[1] + '/' + $inp.sample.slideid + '/*.xml'
-        #Write-Host 'xml path: ' $xmlpath
-        #$im3path = $inp.processvars[2] + '/../Scan1/MSI/*.im3'
-        #Write-Host 'Files in xml folder: ' (gci -Path $xmlpath -Recurse)
-        #Write-Host 'Files in im3 folder: ' (gci -Path $im3path -Recurse)
-        if (!(@(Test-Path $xmlpath) -and @(Test-Path $im3path))) {
-            Throw 'Download Files Test Failed'
+        $im3path = $inp.sample.basepath + '\' + $inp.sample.slideid + '\im3\Scan1\MSI'
+        Write-Host 'im3path: ' $im3path
+        Write-Host 'MSI folder: ' $inp.sample.MSIfolder()
+        if (!([regex]::Escape($inp.sample.MSIfolder()) -contains [regex]::Escape($im3path))){
+            Throw ('MSI folder not correct: ' + $inp.MSIfolder() + '~=' + $im3path)
         }
-        #if (!([regex]::Escape($inp.sample.MSIfolder()) -contains [regex]::Escape($testloc))){
-        #    Throw ('processvars[0] not correct: ' + $inp.processvars[0] + '~=' + $testloc)
-        #}
-
-        #Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
+        $im3path += '\*im3'
+        if (!(Test-Path -Path $im3path)) {
+            Throw 'No im3 files in MSI folder'
+        }
+        Write-Host 'Correct files in IM3 folder'
+        #
+        $xmlpath = $inp.sample.basepath + '\' + $inp.sample.slideid + '\im3\xml'
+        Write-Host 'xmlpath: ' $xmlpath
+        Write-Host 'XML folder: ' $inp.sample.xmlfolder()
+        if (!([regex]::Escape($inp.sample.xmlfolder()) -contains [regex]::Escape($xmlpath))){
+            Throw ('XML folder not correct: ' + $inp.xmlfolder() + '~=' + $xmlpath)
+        }
+        $xmlpath += '\*xml'
+        if (!(Test-Path -Path $xmlpath)) {
+            Throw 'No xml files in MSI folder'
+        }
+        Write-Host 'Correct files in xml folder'
         Write-Host 'Passed Download Files Test'
         #
     }
