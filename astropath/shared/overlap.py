@@ -91,7 +91,8 @@ class OverlapCollection(units.ThingWithPscale):
   @abc.abstractmethod
   def overlaps(self): pass
 
-  def overlapgraph(self, useexitstatus=False, skipoverlaps=None):
+  @methodtools.lru_cache()
+  def overlapgraph(self, useexitstatus=False, skipoverlaps=()):
     """
     Get a networkx graph object.
     It has a node for each rectangle id and an edge for
@@ -194,12 +195,13 @@ class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
   """
   def overlapgraph(self, *args, gridatol=None, skipoverlaps=None, **kwargs):
     if skipoverlaps is None: skipoverlaps = []
+    skipoverlaps = list(skipoverlaps)
     if gridatol is not None:
       for overlap in self.overlaps:
         offset = overlap.x1vec - overlap.x2vec
         if not np.all(units.np.isclose(offset, 0, atol=gridatol) | units.np.isclose(abs(offset), self.hpfoffset, atol=gridatol)):
           skipoverlaps.append(overlap)
-    g = super().overlapgraph(*args, skipoverlaps=skipoverlaps, **kwargs)
+    g = super().overlapgraph(*args, skipoverlaps=tuple(skipoverlaps), **kwargs)
     for r in self.rectangles:
       g.add_node(r.n, rectangle=r)
     return g
@@ -210,6 +212,16 @@ class RectangleOverlapCollection(RectangleCollection, OverlapCollection):
   @property
   def tissue_bulk_rects(self) :
     return [r for r in self.rectangles if len(self.overlapsforrectangle(r.n))==8]
+
+  def neighbors(self, rect, **kwargs):
+    result = {}
+    g = self.overlapgraph(**kwargs)
+    for p1, p2, data in g.in_edges(rect.n, data=True):
+      o = data["overlap"]
+      assert p2 == o.p2 == rect.n
+      assert p1 == o.p1
+      result[o.tag] = self.rectangles[self.rectangledict[p1]]
+    return result
 
 class RectangleOverlapList(RectangleOverlapCollection):
   """
