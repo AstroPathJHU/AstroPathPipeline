@@ -182,7 +182,8 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
   def outlineannotationinfo(self):
     return AnnotationInfo(
       sampleid=self.SampleID,
-      name="outline",
+      originalname="outline",
+      dbname="outline",
       annotationsource="mask",
       position=None,
       pscale=self.pscale,
@@ -273,7 +274,7 @@ class MergeAnnotationXMLsSample(CopyAnnotationInfoSampleBase, MergeAnnotationXML
     allnames = set()
     for xmlfile in self.allxmls:
       xmlfile = XMLPolygonAnnotationFile(xmlfile=xmlfile, pscale=self.pscale, apscale=self.apscale)
-      infodict = {info.name: info for info in xmlfile.annotationinfo}
+      infodict = {info.originalname: info for info in xmlfile.annotationinfo}
       allnames.update(infodict.keys())
       info[xmlfile.annotationspolygonsxmlfile] = infodict
 

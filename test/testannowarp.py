@@ -255,3 +255,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
   def testDetectBigShiftFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast_microns"):
       self.testDetectBigShift(SlideID=SlideID)
+
+  def testRenameAnnotation(self, **kwargs):
+    self.testCohort(**kwargs, moreargs=["--rename-annotation", "outline", "good tissue", "--rename-annotation", "good tissue", "good tissue x"])
+    

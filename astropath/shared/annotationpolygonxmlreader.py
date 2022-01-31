@@ -477,8 +477,6 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           self.logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
           color = targetcolor
 
-        isfromxml = node.isfromxml
-
         annotationinfo, = (info for info in annotationinfos if info.name == name)
         annotationinfos.remove(annotationinfo)
 
@@ -688,7 +686,8 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
     annotationinfos = [
       AnnotationInfo(
         sampleid=self.SampleID,
-        name=name,
+        originalname=name,
+        dbname=name,
         annotationsource=self.annotationsource,
         position=self.annotationposition,
         pscale=self.pscale,

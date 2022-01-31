@@ -904,7 +904,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     infocsv = dbload/f"{SlideID}_annotationinfo.csv"
     if infocsv.exists():
       infos = readtable(infocsv, AnnotationInfo, extrakwargs={"pscale": 1, "apscale": 1, "scanfolder": scanfolder})
-      if any(info.isonqptiff for info in infos if info.name != "empty"):
+      if any(info.isonqptiff for info in infos):
         result += [
           dbload/f"{SlideID}_annowarp.csv",
           dbload/f"{SlideID}_annowarp-stitch.csv",

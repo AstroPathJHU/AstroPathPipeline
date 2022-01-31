@@ -187,7 +187,8 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
   """
   """
   sampleid: int
-  name: str
+  originalname: str
+  dbname: str
   annotationsource: str
   xposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
   yposition: units.Distance = distancefield(None, optional=True, pixelsormicrons="pixels", dtype=int, pscalename="pscale")
@@ -201,9 +202,9 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
     if self.annotationsource not in choices:
       raise ValueError(f"Invalid annotationsource {self.annotationsource}: choices are {choices}")
 
-    if self.isdummy and self.name != "empty":
+    if self.isdummy and (self.dbname != "empty" or self.originalname != "empty"):
       raise ValueError("Dummy annotations should be named empty")
-    if not self.isdummy and self.name == "empty":
+    if not self.isdummy and (self.dbname == "empty" or self.originalname == "empty"):
       raise ValueError("Empty annotations should be marked as dummy")
 
     if self.isonwsi:
@@ -287,7 +288,8 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
       pscale=None,
       apscale=None,
       scanfolder=None,
-      name="empty",
+      originalname="empty",
+      dbname="empty",
       annotationsource="dummy",
     )
 
@@ -299,7 +301,7 @@ class DataClassWithAnnotationInfo(DataClassWithPscale, DataClassWithApscale, Dat
       raise TypeError("Provided both annotationinfo and annotationinfos")
 
     if annotationinfos is not None:
-      annotationinfos = [annotationinfo for annotationinfo in annotationinfos if annotationinfo.name == name]
+      annotationinfos = [annotationinfo for annotationinfo in annotationinfos if annotationinfo.dbname == name]
       try:
         annotationinfo, = annotationinfos
       except ValueError:
@@ -348,8 +350,8 @@ class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon):
 
   def __post_init__(self, **kwargs):
     super().__post_init__(**kwargs)
-    if self.name != self.annotationinfo.name:
-      raise ValueError(f"Mismatch between annotation name {self.name} and annotation info name {self.annotationinfo.name}")
+    if self.name != self.annotationinfo.dbname:
+      raise ValueError(f"Mismatch between annotation name {self.name} and annotation info name {self.annotationinfo.dbname}")
 
   def __bool__(self):
     return not self.isdummy
