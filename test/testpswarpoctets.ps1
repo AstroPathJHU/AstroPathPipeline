@@ -25,8 +25,6 @@ Class testpswarpoctets {
         # Run Tests
         #
         $this.DownloadFilesTest($inp)
-        #$this.ShredDatTest($inp)
-        $this.GetWarpOctetsTest($inp)
         $this.CleanupTest()
     }
     #
@@ -34,43 +32,31 @@ Class testpswarpoctets {
         $module = $PSScriptRoot + '/../astropath'
         Import-Module $module -EA SilentlyContinue
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
+        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_warpoctets'
     }
     #
     [void]DownloadFilesTest($inp){
+        #
         Write-Host 'Starting Download Files Test'
-        $inp.DownloadFiles()
-        $im3path = $inp.processvars[2] + '/../Scan1/MSI/*.im3'
-        if (!(@(Test-Path $im3path))) {
-            Throw 'Download Files Test Failed'
+        $im3path = $inp.sample.basepath + '\' + $inp.sample.slideid + '\im3\Scan1\MSI'
+        Write-Host 'im3path: ' $im3path
+        Write-Host 'MSI folder: ' $inp.sample.MSIfolder()
+        if (!([regex]::Escape($inp.sample.MSIfolder()) -contains [regex]::Escape($im3path))){
+            Throw ('MSI folder not correct: ' + $inp.MSIfolder() + '~=' + $im3path)
         }
+        $im3path += '\*im3'
+        if (!(Test-Path -Path $im3path)) {
+            Throw 'No im3 files in MSI folder'
+        }
+        Write-Host 'Correct files in IM3 folder'
         Write-Host 'Passed Download Files Test'
-    }
-    #
-    [void]ShredDatTest($inp){
-        Write-Host 'Starting Shred Dat Test'
-        $inp.ShredDat()
-        $datpath = $inp.processvars[1] + '/' + $inp.sample.slideid + '/*.dat'
-        if (!(@(Test-Path $datpath))) {
-            Throw 'Shred Dat Test Failed'
-        }
-        Write-Host 'Passed Shred Dat Test'
-    }
-    #
-    [void]GetWarpOctetsTest($inp){
-        Write-Host 'Starting GetWarpOctets Test'
-        $output = $this.basepath + '\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
-        $inp.warpoctets()
-        if (!(test-path $output)){
-            Throw 'Warp Octets Test Failed - Output file does not exist'
-        }
-        Write-Host 'Passed GetWarpOctets Test'
+        #
     }
     #
     [void]CleanupTest($inp){
         Write-Host 'Starting Cleanup Test'
-        $inp.cleanup()
         if ($inp.processvars[4]) {
+            $inp.cleanup()
             if (@(Test-Path $inp.processvars[0])) {
                 Throw 'Cleanup Test Failed'
             }
