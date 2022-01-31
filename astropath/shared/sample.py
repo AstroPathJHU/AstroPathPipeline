@@ -34,9 +34,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, **kwargs):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, **kwargs):
     self.__root = pathlib.Path(root)
-    self.samp = SampleDef(root=root, samp=samp)
+    self.samp = SampleDef(root=root, samp=samp, Project=Project)
     if not (self.root/self.SlideID).exists():
       raise FileNotFoundError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
@@ -486,6 +486,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("SlideID", help="The SlideID of the sample to run")
+    p.add_argument("--project", type=int, help="Project number (used to identify the AstropathAPIDdef file)")
     return p
 
   @classmethod
@@ -510,6 +511,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "samp": parsed_args_dict.pop("SlideID"),
+      "Project": parsed_args_dict.pop("project"),
     }
 
   @abc.abstractmethod
