@@ -1,11 +1,11 @@
-import methodtools, numpy as np, re
+import collections, methodtools, numpy as np, re
 from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationFile, XMLPolygonAnnotationFileInfoWriter
 from ...shared.argumentparser import DbloadArgumentParser, XMLPolygonFileArgumentParser
 from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
 from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationFileSample
 from ...utilities import units
-from ...utilities.misc import ArgParseAddRegexToDict
+from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict
 from ..align.alignsample import AlignSample, ReadAffineShiftSample
 
 class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
@@ -152,7 +152,25 @@ class WriteAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCoho
     }
 
 class CopyAnnotationInfoArgumentParserBase(DbloadArgumentParser):
-  pass
+  def __init__(self, *args, renameannotations, **kwargs):
+    self.__renameannotations = renameannotations
+    super().__init__(*args, **kwargs)
+
+  @property
+  def renameannotations(self): return self.__renameannotations
+
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--rename-annotation", nargs=2, action=ArgParseAddToDict, metavar=("XMLNAME", "NEWNAME"), dest="renameannotations", help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "renameannotations": parsed_args_dict.pop("renameannotations"),
+    }
 
 class CopyAnnotationInfoArgumentParser(CopyAnnotationInfoArgumentParserBase, XMLPolygonFileArgumentParser):
   pass
@@ -193,11 +211,23 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
       scanfolder=self.scanfolder,
     )
 
+  def renameannotationinfos(self, infos):
+    dct = {info.originalname: info for info in infos}
+    for oldname, newname in self.renameannotations:
+      try:
+        info = dct[oldname]
+      except KeyError:
+        raise ValueError(f"Trying to rename annotation {oldname}, which doesn't exist")
+      info.dbname = newname
+    ctr = collections.Counter(info.dbname for info in infos)
+    if max(ctr.values()) > 1:
+      raise ValueError(f"Multiple annotations with the same name after renaming: {ctr}")
 
 class CopyAnnotationInfoSample(CopyAnnotationInfoSampleBase, XMLPolygonAnnotationFileSample, WorkflowSample, CopyAnnotationInfoArgumentParser):
   def run(self):
     annotationinfos = self.readtable(self.annotationinfofile, AnnotationInfo)
     annotationinfos.append(self.outlineannotationinfo)
+    self.renameannotationinfos(annotationinfos)
     self.writecsv("annotationinfo", annotationinfos)
 
   def inputfiles(self, **kwargs):
@@ -207,10 +237,15 @@ class CopyAnnotationInfoSample(CopyAnnotationInfoSampleBase, XMLPolygonAnnotatio
     ]
     return result
 
-class CopyAnnotationInfoCohortBase(DbloadCohort, WorkflowCohort, CopyAnnotationInfoArgumentParser):
-  pass
+class CopyAnnotationInfoCohortBase(DbloadCohort, WorkflowCohort, CopyAnnotationInfoArgumentParserBase):
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "renameannotations": self.renameannotations,
+    }
 
-class CopyAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCohort, CopyAnnotationInfoArgumentParser):
+class CopyAnnotationInfoCohort(CopyAnnotationInfoCohortBase, DbloadCohort, XMLPolygonFileCohort, WorkflowCohort, CopyAnnotationInfoArgumentParser):
   sampleclass = CopyAnnotationInfoSample
 
 class MergeAnnotationXMLsArgumentParser(CopyAnnotationInfoArgumentParserBase):
@@ -292,6 +327,8 @@ class MergeAnnotationXMLsSample(CopyAnnotationInfoSampleBase, MergeAnnotationXML
 
     mergedinfo.append(self.outlineannotationinfo)
 
+    self.renameannotationinfos(mergedinfo)
+
     self.writecsv("annotationinfo", mergedinfo)
 
   def run(self, **kwargs):
@@ -306,7 +343,7 @@ class MergeAnnotationXMLsSample(CopyAnnotationInfoSampleBase, MergeAnnotationXML
       *(xml.with_suffix(".annotationinfo.csv") for xml in xmls)
     ]
 
-class MergeAnnotationXMLsCohort(DbloadCohort, WorkflowCohort, MergeAnnotationXMLsArgumentParser):
+class MergeAnnotationXMLsCohort(CopyAnnotationInfoCohortBase, DbloadCohort, WorkflowCohort, MergeAnnotationXMLsArgumentParser):
   sampleclass = MergeAnnotationXMLsSample
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)

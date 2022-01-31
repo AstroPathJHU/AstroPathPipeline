@@ -1,7 +1,6 @@
 import abc, argparse, collections, hashlib, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
-from ..utilities.misc import ArgParseAddToDict
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import boolasintfield, readtable, writetable
 from ..utilities.units.dataclasses import distancefield, DataClassWithAnnoscale
@@ -339,14 +338,11 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, **kwargs):
+  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", **kwargs):
     self.__saveallannotationimages = saveallannotationimages
     if annotationimagefolder is not None: annotationimagefolder = pathlib.Path(annotationimagefolder)
     self.__annotationimagefolder = annotationimagefolder
     self.__annotationimagefiletype = annotationimagefiletype
-    if annotationsynonyms is None:
-      annotationsynonyms = {}
-    self.__annotationsynonyms = annotationsynonyms
     self.allowedannotations #make sure there are no duplicate synonyms etc.
     super().__init__(*args, **kwargs)
 
@@ -359,23 +355,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
   @methodtools.lru_cache()
   @property
   def allowedannotations(self):
-    result = AllowedAnnotation.allowedannotations()
-    allsynonyms = {synonym.lower() for synonym in self.__annotationsynonyms}
-    for a in result:
-      if a.name.lower() not in allsynonyms:
-        a.synonyms.add(a.name.lower())
-
-    for synonym, name in self.__annotationsynonyms.items():
-      synonym = synonym.lower()
-      name = name.lower()
-      if any(synonym in a.synonyms for a in result):
-        raise ValueError(f"Duplicate synonym: {synonym}")
-      try:
-        a, = {a for a in result if name == a.name}
-      except ValueError:
-        raise ValueError(f"Unknown annotation for synonym: {name}")
-      a.synonyms.add(synonym)
-    return result
+    return AllowedAnnotation.allowedannotations()
 
   def allowedannotation(self, nameornumber, *, logwarning=True):
     try:
@@ -791,9 +771,6 @@ def writeannotationcsvsstandalone(dbloadfolder, infofile, csvprefix=None, **kwar
   writetable(dbloadfolder/f"{csvprefix}regions.csv", regions)
   writetable(dbloadfolder/f"{csvprefix}vertices.csv", vertices)
 
-def add_rename_annotation_argument(argumentparser):
-  argumentparser.add_argument("--rename-annotation", nargs=2, action=ArgParseAddToDict, dest="annotationsynonyms", metavar=("XMLNAME", "NEWNAME"), help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
-
 def writeannotationinfo(args=None):
   p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out the annotation info csv file")
   p.add_argument("xmlfile", type=pathlib.Path, help="path to the annotations.polygons.xml file")
@@ -811,7 +788,6 @@ def writeannotationcsvs(args=None):
   p.add_argument("dbloadfolder", type=pathlib.Path, help="folder to write the output csv files in")
   p.add_argument("infofile", type=pathlib.Path, help="path to the annotation info csv")
   p.add_argument("--csvprefix", help="prefix to put in front of the csv file names")
-  add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   with units.setup_context("fast"):
     return writeannotationcsvsstandalone(**args.__dict__, logger=printlogger("annotations"))
@@ -825,7 +801,6 @@ def checkannotations(args=None):
   g.add_argument("--save-bad-polygon-images", action="store_const", dest="badannotationimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
   g.add_argument("--save-bad-polygon-images-folder", type=pathlib.Path, dest="badannotationimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
   p.add_argument("--save-images-filetype", default="pdf", choices=("pdf", "png"), dest="annotationimagefiletype", help="image format to save debug images")
-  add_rename_annotation_argument(p)
   args = p.parse_args(args=args)
   if args.annotationimagefolder is not None:
     args.saveallannotationimages = True

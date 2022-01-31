@@ -3,7 +3,7 @@ from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from ..utilities.version.git import thisrepo
-from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger, ThingWithLogger
 from .rectangle import rectanglefilter
 from .workflowdependency import ThingWithRoots, WorkflowDependency
@@ -632,22 +632,6 @@ class XMLPolygonFileCohort(Cohort, XMLPolygonFileArgumentParser):
     return {
       **super().initiatesamplekwargs,
       "annotationsxmlregex": self.__annotationsxmlregex,
-    }
-
-class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
-  def __init__(self, *args, annotationsynonyms=None, **kwargs):
-    self.__annotationsynonyms = annotationsynonyms
-    super().__init__(*args, **kwargs)
-  @property
-  def workflowkwargs(self):
-    return {
-      **super().workflowkwargs,
-    }
-  @property
-  def initiatesamplekwargs(self):
-    return {
-      **super().initiatesamplekwargs,
-      "annotationsynonyms": self.__annotationsynonyms,
     }
 
 class CorrectedImageCohort(Im3Cohort,ImageCorrectionArgumentParser) :

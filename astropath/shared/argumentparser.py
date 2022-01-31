@@ -2,7 +2,6 @@ import abc, argparse, contextlib, logging, pathlib, re
 from ..utilities.tableio import TableReader
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
-from .annotationpolygonxmlreader import add_rename_annotation_argument
 from .logging import printlogger
 from .workflowdependency import ThingWithRoots
 
@@ -481,20 +480,6 @@ class XMLPolygonFileArgumentParser(RunFromArgumentParser):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "annotationsxmlregex": parsed_args_dict.pop("annotations_xml_regex"),
-    }
-
-class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
-  @classmethod
-  def makeargumentparser(cls, **kwargs):
-    p = super().makeargumentparser(**kwargs)
-    add_rename_annotation_argument(p)
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "annotationsynonyms": parsed_args_dict.pop("annotationsynonyms"),
     }
 
 class ParallelArgumentParser(RunFromArgumentParser):
