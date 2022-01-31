@@ -70,8 +70,11 @@ Class testpsmeanimage {
         Write-Host 'Starting Return Data Test'
         $sourcepath = $inp.processvars[0]
         $returnpath = $inp.sample.im3folder() + '\meanimage'
-        Write-Host 'Source Path: ' $sourcepath
+        Write-Host 'Source Path: ' $sourcepath + '\meanimage'
         Write-Host 'Return Path: ' $returnpath
+
+        Write-Host 'im3 folder: ' (gci -Path $inp.sample.im3folder() -Recurse)
+        Write-Host 'return folder: ' (gci -Path $returnpath -Recurse)
         #
         if ($inp.processvars[4]) {
             #
