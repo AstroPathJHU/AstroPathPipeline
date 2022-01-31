@@ -98,7 +98,7 @@ setupkwargs = dict(
     "methodtools",
     "more_itertools>=8.3.0",
     "networkx",
-    "nnunet>=1.7.0",
+    "nnunet>=1.6.0",
     "numba",
     "numpy>=1.17.0",
     "opencv-python",
