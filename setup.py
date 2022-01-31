@@ -71,6 +71,7 @@ setupkwargs = dict(
       "mergeannotationxmlscohort=astropath.slides.annotationinfo.annotationinfo:mergeannotationxmlscohort",
       "mergeannotationxmlssample=astropath.slides.annotationinfo.annotationinfo:mergeannotationxmlssample",
       "segmentationsample=astropath.slides.segmentation.segmentationsample:main",
+      "segmentationcohort=astropath.slides.segmentation.segmentationcohort:main",
       "stitchastropathtissuemasksample=astropath.slides.stitchmask.stitchmasksample:astropathtissuemain",
       "stitchinformmasksample=astropath.slides.stitchmask.stitchmasksample:informmain",
       "stitchastropathtissuemaskcohort=astropath.slides.stitchmask.stitchmaskcohort:astropathtissuemain",
