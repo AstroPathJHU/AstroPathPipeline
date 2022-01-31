@@ -1,5 +1,5 @@
 import collections, methodtools, numpy as np, re
-from ...shared.annotationpolygonxmlreader import XMLPolygonAnnotationFile, XMLPolygonAnnotationFileInfoWriter
+from ...shared.annotationpolygonxmlreader import AllowedAnnotation, XMLPolygonAnnotationFile, XMLPolygonAnnotationFileInfoWriter
 from ...shared.argumentparser import DbloadArgumentParser, XMLPolygonFileArgumentParser
 from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
@@ -154,6 +154,7 @@ class WriteAnnotationInfoCohort(DbloadCohort, XMLPolygonFileCohort, WorkflowCoho
 class CopyAnnotationInfoArgumentParserBase(DbloadArgumentParser):
   def __init__(self, *args, renameannotations, **kwargs):
     self.__renameannotations = renameannotations
+    [AllowedAnnotation.allowedannotation(v) for k, v in renameannotations.items()]
     super().__init__(*args, **kwargs)
 
   @property
@@ -213,7 +214,7 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
 
   def renameannotationinfos(self, infos):
     dct = {info.originalname: info for info in infos}
-    for oldname, newname in self.renameannotations:
+    for oldname, newname in self.renameannotations.items():
       try:
         info = dct[oldname]
       except KeyError:
