@@ -327,7 +327,7 @@ class MergedAnnotationFiles(ThingWithAnnotationInfos):
     return xmldict
   def getannotationnode(self, info):
     if info.isfromxml:
-      return self.__xmldict[info.xmlpath][info.name.lower()]
+      return self.__xmldict[info.xmlpath][info.originalname.lower()]
     else:
       raise ValueError(f"Don't know how to get the node for {info}")
   @methodtools.lru_cache()
@@ -476,7 +476,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           self.logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
           color = targetcolor
 
-        annotationinfo, = (info for info in annotationinfos if info.name == name)
+        annotationinfo, = (info for info in annotationinfos if info.dbname == name)
         annotationinfos.remove(annotationinfo)
 
         annotation = Annotation(
