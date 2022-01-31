@@ -71,13 +71,13 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
 
     @classmethod
     def getoutputfiles(cls,SlideID,im3root,informdataroot,workingdir,algorithm,**otherworkflowkwargs) :
-        outputdir=cls.automatic_output_dir(workingdir,im3root,SlideID,algorithm)
+        outputdir=cls.output_dir(workingdir,im3root,SlideID,algorithm)
         append = None
         if algorithm=='nnunet' :
             append = NNUNET_SEGMENT_FILE_APPEND
         elif algorithm=='deepcell' :
             append = DEEPCELL_SEGMENT_FILE_APPEND
-        file_stems = [fp.name[:-len('_component_data.tif')] for fp in (informdataroot/'Component_Tiffs').glob('*_component_data.tif')]
+        file_stems = [fp.name[:-len('_component_data.tif')] for fp in (informdataroot/SlideID/'inform_data'/'Component_Tiffs').glob('*_component_data.tif')]
         outputfiles = []
         for stem in file_stems :
             outputfiles.append(outputdir/f'{stem}_{append}')
