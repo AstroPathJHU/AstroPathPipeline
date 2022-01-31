@@ -34,6 +34,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
   def filestocopy(cls):
     for SlideID in "M21_1", "M206":
       yield thisfolder/"data"/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/SlideID
+    yield thisfolder/"data"/"upkeep_and_progress"/"AstropathAPIDdef_0.csv", thisfolder/"test_for_jenkins"/"misc"/"sampledef_from_apid"/"upkeep_and_progress"
 
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
@@ -194,12 +195,14 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     APID, = {APID for APID in readtable(thisfolder/"data"/"upkeep_and_progress"/"AstropathAPIDdef_0_oldformat.csv", APIDDef) if APID.SlideID == "M21_1"}
     s6 = SampleDef(samp=APID, Scan=s1.Scan, SampleID=s1.SampleID)
     s7 = SampleDef(samp=APID, root=thisfolder/"data")
+    s8 = SampleDef(samp="M21_1", root=thisfolder/"test_for_jenkins"/"misc"/"sampledef_from_apid", Project=0, SampleID=s1.SampleID)
     self.assertEqual(s1, s2)
     self.assertEqual(s1, s3)
     self.assertEqual(s1, s4)
     self.assertEqual(s1, s5)
     self.assertEqual(s1, s6)
     self.assertEqual(s1, s7)
+    self.assertEqual(s1, s8)
 
   def testMakeSampleDef(self):
     self.maxDiff = None
