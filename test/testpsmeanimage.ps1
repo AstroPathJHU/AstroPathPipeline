@@ -25,7 +25,7 @@ Class testpsmeanimage {
         # Run Tests
         #
         $this.DownloadFilesTest($inp)
-        # $this.ShredDatTest($inp)
+        $this.ShredDatTest($inp)
         $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
     }
@@ -38,20 +38,31 @@ Class testpsmeanimage {
     }
     #
     [void]DownloadFilesTest($inp){
+        #
         Write-Host 'Starting Download Files Test'
-        $inp.DownloadFiles()
+        $im3path = $inp.sample.basepath + '/' + $inp.slideid + '/im3/Scan1/MSI'
+        Write-Host 'im3path = ' $im3path
+        Write-Host 'MSI folder = ' $inp.sample.MSIfolder()
+
         $xmlpath = $inp.processvars[1] + '/' + $inp.sample.slideid + '/*.xml'
-        Write-Host 'xml path: ' $xmlpath
-        $im3path = $inp.processvars[2] + '/../Scan1/MSI/*.im3'
+        #Write-Host 'xml path: ' $xmlpath
+        #$im3path = $inp.processvars[2] + '/../Scan1/MSI/*.im3'
+        #Write-Host 'Files in xml folder: ' (gci -Path $xmlpath -Recurse)
+        #Write-Host 'Files in im3 folder: ' (gci -Path $im3path -Recurse)
         if (!(@(Test-Path $xmlpath) -and @(Test-Path $im3path))) {
             Throw 'Download Files Test Failed'
         }
+        #if (!([regex]::Escape($inp.sample.MSIfolder()) -contains [regex]::Escape($testloc))){
+        #    Throw ('processvars[0] not correct: ' + $inp.processvars[0] + '~=' + $testloc)
+        #}
+
+        #Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
         Write-Host 'Passed Download Files Test'
+        #
     }
     #
     [void]ShredDatTest($inp){
         Write-Host 'Starting Shred Dat Test'
-        $inp.ShredDat()
         $datpath = $inp.processvars[1] + '/' + $inp.sample.slideid + '/*.dat'
         if (!(@(Test-Path $datpath))) {
             Throw 'Shred Dat Test Failed'
