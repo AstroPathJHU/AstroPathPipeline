@@ -197,9 +197,14 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
 
   def __post_init__(self, **kwargs):
     super().__post_init__(**kwargs)
-    choices = "qptiff", "wsi", "mask"
+    choices = "qptiff", "wsi", "mask", "dummy"
     if self.annotationsource not in choices:
       raise ValueError(f"Invalid annotationsource {self.annotationsource}: choices are {choices}")
+
+    if self.isdummy and self.name != "empty":
+      raise ValueError("Dummy annotations should be named empty")
+    if not self.isdummy and self.name == "empty":
+      raise ValueError("Empty annotations should be marked as dummy")
 
     if self.isonwsi:
       if self.xposition is None or self.yposition is None:
@@ -216,6 +221,8 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
         raise ValueError("Don't provide xposition and yposition for an annotation from a mask")
       if self.xmlfile is not None or self.xmlsha is not None:
         raise ValueError("Don't provide xmlfile and xmlsha for an annotation from a mask")
+    elif self.isdummy:
+      pass
     else:
       assert False
 
@@ -230,11 +237,15 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
   def isfrommask(self): return self.annotationsource == "mask"
   @methodtools.lru_cache()
   @property
+  def isdummy(self): return self.annotationsource == "dummy"
+  @methodtools.lru_cache()
+  @property
   def isfromxml(self):
     return {
       "wsi": True,
       "qptiff": True,
       "mask": False,
+      "dummy": False,
     }[self.annotationsource]
 
   @classmethod
@@ -252,6 +263,8 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
         kwargs["annoscale"] = apscale
       elif annotationsource == "mask":
         kwargs["annoscale"] = pscale
+      elif annotationsource == "dummy":
+        kwargs["annoscale"] = pscale
       else:
         assert False, annotationsource
     return super().transforminitargs(*args, **kwargs, **positionkwargs)
@@ -267,15 +280,26 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
   def xmlpath(self):
     return self.scanfolder/self.xmlfile
 
+  @classmethod
+  def emptyannotationinfo(cls):
+    return cls(
+      sampleid=0,
+      pscale=None,
+      apscale=None,
+      scanfolder=None,
+      name="empty",
+      annotationsource="dummy",
+    )
+
 class DataClassWithAnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnnoscale):
   annotationinfo: AnnotationInfo = MetaDataAnnotation(None, includeintable=False)
   @classmethod
-  def transforminitargs(cls, *, pscale=None, apscale=None, annoscale=None, annotationinfo=None, annotationinfos=None, **kwargs):
+  def transforminitargs(cls, *, name, pscale=None, apscale=None, annoscale=None, annotationinfo=None, annotationinfos=None, **kwargs):
     if annotationinfo is not None and annotationinfos is not None:
       raise TypeError("Provided both annotationinfo and annotationinfos")
 
     if annotationinfos is not None:
-      annotationinfos = [annotationinfo for annotationinfo in annotationinfos if annotationinfo.name == kwargs["name"]]
+      annotationinfos = [annotationinfo for annotationinfo in annotationinfos if annotationinfo.name == name]
       try:
         annotationinfo, = annotationinfos
       except ValueError:
@@ -283,15 +307,19 @@ class DataClassWithAnnotationInfo(DataClassWithPscale, DataClassWithApscale, Dat
           raise ValueError(f"Multiple annotationinfos with the same name: {annotationinfos}")
         annotationinfo = None
 
+    if annotationinfo is None and name.lower() == "empty":
+      annotationinfo = AnnotationInfo.emptyannotationinfo()
+
     if annotationinfo is not None:
       if pscale is None: pscale = annotationinfo.pscale
-      if pscale != annotationinfo.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {annotationinfo.pscale}")
+      if None is not pscale != annotationinfo.pscale is not None: raise ValueError(f"Inconsistent pscales {pscale} {annotationinfo.pscale}")
       if apscale is None: apscale = annotationinfo.apscale
-      if apscale != annotationinfo.apscale is not None: raise ValueError(f"Inconsistent apscales {apscale} {annotationinfo.apscale}")
+      if None is not apscale != annotationinfo.apscale is not None: raise ValueError(f"Inconsistent apscales {apscale} {annotationinfo.apscale}")
       if annoscale is None: annoscale = annotationinfo.annoscale
-      if annoscale != annotationinfo.annoscale is not None: raise ValueError(f"Inconsistent annoscales {annoscale} {annotationinfo.annoscale}")
+      if None is not annoscale != annotationinfo.annoscale is not None: raise ValueError(f"Inconsistent annoscales {annoscale} {annotationinfo.annoscale}")
 
     return super().transforminitargs(
+      name=name,
       pscale=pscale,
       apscale=apscale,
       annoscale=annoscale,
@@ -318,8 +346,13 @@ class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon):
   visible: bool = boolasintfield()
   poly: Polygon = polygonfield()
 
+  def __post_init__(self, **kwargs):
+    super().__post_init__(**kwargs)
+    if self.name != self.annotationinfo.name:
+      raise ValueError(f"Mismatch between annotation name {self.name} and annotation info name {self.annotationinfo.name}")
+
   def __bool__(self):
-    return self.name.lower() != "empty"
+    return not self.isdummy
 
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
@@ -335,6 +368,8 @@ class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon):
   def isonwsi(self): return self.annotationinfo.isonwsi
   @property
   def isonqptiff(self): return self.annotationinfo.isonqptiff
+  @property
+  def isdummy(self): return self.annotationinfo.isdummy
   @property
   def isfrommask(self): return self.annotationinfo.isfrommask
   @property
@@ -366,6 +401,19 @@ class DataClassWithAnnotation(DataClassWithPscale, DataClassWithApscale, DataCla
       **kwargs,
     )
 
+  @property
+  def isfromxml(self):
+    return self.annotation.isfromxml
+  @property
+  def isonwsi(self):
+    return self.annotation.isonwsi
+  @property
+  def isonqptiff(self):
+    return self.annotation.isonqptiff
+  @property
+  def isfrommask(self):
+    return self.annotation.isfrommask
+
 class Vertex(DataClassWithAnnotation):
   """
   A vertex of a polygon.
@@ -390,12 +438,6 @@ class Vertex(DataClassWithAnnotation):
   def xvec(self):
     """[x, y] as a numpy array"""
     return np.array([self.x, self.y])
-  @property
-  def isfromxml(self):
-    return self.annotation.isfromxml
-  @property
-  def isonwsi(self):
-    return self.annotation.isonwsi
 
   @classmethod
   def transforminitargs(cls, *, pscale=None, annoscale=None, im3x=None, im3y=None, im3xvec=None, xvec=None, vertex=None, **kwargs):

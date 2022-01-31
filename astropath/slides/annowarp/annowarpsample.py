@@ -705,7 +705,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       onezoomedinmicron = units.onemicron(pscale=pscale/2)
       myposition = self.affineshift
       for a in self.annotations:
-        if a.isonwsi and a.isfromxml:
+        if a.isonwsi:
           if a.position is None:
             a.position = myposition
           a.shiftannotation = myposition - a.position
@@ -721,9 +721,9 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
 
     result = []
     for v in self.__getvertices():
-      if v.isonwsi:
+      if v.isonwsi or v.isfrommask:
         wxvec = v.xvec
-        if v.isfromxml:
+        if v.isonwsi:
           wxvec = wxvec / onezoomedinmicron * onemicron
           wxvec += v.annotation.shiftannotation
         wxvec = (wxvec + .000001 * onepixel) // onepixel * onepixel
@@ -733,7 +733,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
             wxvec=wxvec,
           )
         )
-      else:
+      elif v.isonqptiff:
         wxvec = v.xvec * 1. #convert to float, if it's int
         if v.isfromxml:
           wxvec += units.nominal_values(stitchresult.dxvec(v, apscale=apscale))
@@ -745,6 +745,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
             pscale=pscale,
           )
         )
+      else:
+        assert False, v
     return result
 
   @property

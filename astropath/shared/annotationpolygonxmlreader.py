@@ -315,21 +315,25 @@ class XMLPolygonAnnotationFile(XMLPolygonAnnotationFileBase):
 class MergedAnnotationFiles(ThingWithAnnotationInfos):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
+  @methodtools.lru_cache()
   @property
-  @abc.abstractmethod
-  def annotationinfofile(self): pass
+  def __xmldict(self):
+    xmldict = {}
+    for info in self.annotationinfo:
+      if info.isfromxml:
+        if info.xmlpath not in xmldict:
+          with open(info.xmlpath, "rb") as f:
+            xmldict[info.xmlpath] = {node.get_xml_attr("Name").lower(): AnnotationNodeXML(node, annoscale=info.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")}
+    return xmldict
+  def getannotationnode(self, info):
+    if info.isfromxml:
+      return self.__xmldict[info.xmlpath][info.name.lower()]
+    else:
+      raise ValueError(f"Don't know how to get the node for {info}")
   @methodtools.lru_cache()
   @property
   def annotationnodes(self):
-    xmldict = {}
-    for info in self.annotationinfo:
-      if info.xmlpath not in xmldict:
-        with open(info.xmlpath, "rb") as f:
-          xmldict[info.xmlpath] = {node.get_xml_attr("Name").lower(): AnnotationNodeXML(node, annoscale=info.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")}
-    return [
-      xmldict[info.xmlpath][info.name.lower()]
-      for info in self.annotationinfo
-    ]
+    return [self.getannotationnode(info) for info in self.annotationinfo]
 
 class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, ThingWithLogger):
   """
@@ -638,11 +642,10 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
   def SampleID(self): return 0
 
 class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoaderWithPolygons):
-  @property
-  def annotationnodes(self):
-    result = super().annotationnodes
-    result.append(AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.pscale, areacutoff=self.tissuemaskpolygonareacutoff()))
-    return result
+  def getannotationnode(self, info):
+    if info.isfrommask:
+      return AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.pscale, areacutoff=self.tissuemaskpolygonareacutoff())
+    return super().getannotationnode(info)
 
 class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWithLogger):
   def __init__(self, *args, **kwargs):
