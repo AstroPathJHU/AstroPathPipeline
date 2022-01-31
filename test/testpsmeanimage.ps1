@@ -25,7 +25,6 @@ Class testpsmeanimage {
         # Run Tests
         #
         $this.DownloadFilesTest($inp)
-        $this.ShredDatTest($inp)
         $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
     }
@@ -62,31 +61,21 @@ Class testpsmeanimage {
         if (!(Test-Path -Path $xmlpath)) {
             Throw 'No xml files in MSI folder'
         }
-        Write-Host 'Correct files in xml folder'
+        Write-Host 'Correct files in XML folder'
         Write-Host 'Passed Download Files Test'
         #
     }
     #
-    [void]ShredDatTest($inp){
-        Write-Host 'Starting Shred Dat Test'
-        $datpath = $inp.processvars[1] + '/' + $inp.sample.slideid + '/*.dat'
-        if (!(@(Test-Path $datpath))) {
-            Throw 'Shred Dat Test Failed'
-        }
-        Write-Host 'Passed Shred Dat Test'
-    }
-    #
     [void]ReturnDataTest($inp){
         Write-Host 'Starting Return Data Test'
-        Write-Host 'Processvars: '$inp.processvars
-        $sourcepath = $inp.processvars[0] + '\meanimage'
+        $sourcepath = $inp.processvars[0]
         $returnpath = $inp.sample.im3folder() + '\meanimage'
         Write-Host 'Source Path: ' $sourcepath
         Write-Host 'Return Path: ' $returnpath
         #
-        $inp.returndata()
         if ($inp.processvars[4]) {
             #
+            New-Item -Path $sourcepath -Name "meanimage" -ItemType "directory"
             if (!(@(Test-Path $sourcepath))) {
                 Throw 'Return Data Test Failed - Source path does not exist'
             }
@@ -100,8 +89,8 @@ Class testpsmeanimage {
     #
     [void]CleanupTest($inp){
         Write-Host 'Starting Cleanup Test'
-        $inp.cleanup()
         if ($inp.processvars[4]) {
+            $inp.cleanup()
             if (@(Test-Path $inp.processvars[0])) {
                 Throw 'Cleanup Test Failed'
             }
