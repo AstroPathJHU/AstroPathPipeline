@@ -1,5 +1,5 @@
 #imports
-import os
+import os, shutil
 import numpy as np
 from deepcell.applications import NuclearSegmentation
 from ...utilities.config import CONST as UNIV_CONST
@@ -196,7 +196,14 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                     if self.__get_rect_segmented_nifti_fp(rect).is_file() :
                         self.__get_rect_segmented_nifti_fp(rect).unlink()
             if completed_files==len(self.rectangles) :
-                self.logger.info('All files segmented using nnU-Net')
+                shutil.rmtree(self.temp_dir)
+                plans_file = self.__workingdir/'plans.pkl'
+                if plans_file.is_file() :
+                    plans_file.unlink()
+                postproc_file = self.__workingdir/'postprocessing.json'
+                if postproc_file.is_file() :
+                    postproc_file.unlink()
+                self.logger.info(f'All files segmented using nnU-Net with output in {self.__workingdir}')
             else :
                 msg = f'{completed_files} of {len(self.rectangles)} files segmented using nnU-Net. '
                 msg+= 'Rerun the same command to retry.'
@@ -235,7 +242,7 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
             raise e
         finally :
             if completed_files==len(self.rectangles) :
-                self.logger.info('All files segmented using DeepCell')
+                self.logger.info(f'All files segmented using DeepCell with output in {self.__workingdir}')
             else :
                 msg = f'{completed_files} of {len(self.rectangles)} files segmented using DeepCell. '
                 msg+= 'Rerun the same command to retry.'
