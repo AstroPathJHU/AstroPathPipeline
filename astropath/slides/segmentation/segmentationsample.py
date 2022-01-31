@@ -28,6 +28,7 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         kwargs['layer'] = 1 
         super().__init__(*args,**kwargs)
         self.__algorithm = algorithm
+        self.__workingdirarg = workingdir
         #set the working directory path based on the algorithm being run (if it wasn't set by a command line arg)
         self.__workingdir = SegmentationSample.output_dir(workingdir,self.im3root,self.SlideID,self.__algorithm)
 
@@ -52,7 +53,7 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
     def workflowkwargs(self) :
         return {
             **super().workflowkwargs,
-            'workingdir':self.__workingdir,
+            'workingdir':self.__workingdirarg,
             'algorithm':self.__algorithm,
         }
 
@@ -64,9 +65,10 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         outputdir = workingdir
         if outputdir is None :
             outputdir = im3root/SlideID/'im3'/SEG_CONST.SEGMENTATION_DIR_NAME/algorithm
-        elif not outputdir.name==SlideID :
-            #put non-default output in a subdirectory named for the slide
-            outputdir = outputdir/SlideID
+        else :
+            if outputdir.name!=SlideID :
+                #put non-default output in a subdirectory named for the slide
+                outputdir = outputdir/SlideID
         return outputdir
 
     @classmethod
@@ -228,7 +230,6 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but DeepCell segmentation cannot be run in parallel.')
         app = NuclearSegmentation()
-        completed_files = 0
         rects_to_run = []
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
@@ -236,9 +237,9 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                 msg = f'Skipping {rect.imagefile.name} ({ir} of {len(self.rectangles)}) '
                 msg+= '(segmentation output already exists)'
                 self.logger.debug(msg)
-                completed_files+=1
                 continue
             rects_to_run.append((ir,rect,self.__get_rect_deepcell_segmented_fp(rect)))
+        completed_files = 0
         try :
             for ir,rect,segmented_file_path in rects_to_run :
                 with rect.using_image() as im :
