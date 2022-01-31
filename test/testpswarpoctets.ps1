@@ -25,7 +25,7 @@ Class testpswarpoctets {
         # Run Tests
         #
         $this.DownloadFilesTest($inp)
-        $this.CleanupTest()
+        $this.CleanupTest($inp)
     }
     #
     importmodule(){
