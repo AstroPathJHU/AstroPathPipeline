@@ -495,7 +495,6 @@ class XMLPolygonReaderArgumentParser(RunFromArgumentParser):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "annotationsynonyms": parsed_args_dict.pop("annotationsynonyms"),
-      "reorderannotations": parsed_args_dict.pop("reorderannotations"),
     }
 
 class ParallelArgumentParser(RunFromArgumentParser):

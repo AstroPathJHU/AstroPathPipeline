@@ -635,9 +635,8 @@ class XMLPolygonFileCohort(Cohort, XMLPolygonFileArgumentParser):
     }
 
 class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
-  def __init__(self, *args, annotationsynonyms=None, reorderannotations=False, **kwargs):
+  def __init__(self, *args, annotationsynonyms=None, **kwargs):
     self.__annotationsynonyms = annotationsynonyms
-    self.__reorderannotations = reorderannotations
     super().__init__(*args, **kwargs)
   @property
   def workflowkwargs(self):
@@ -649,7 +648,6 @@ class XMLPolygonReaderCohort(Cohort, XMLPolygonReaderArgumentParser):
     return {
       **super().initiatesamplekwargs,
       "annotationsynonyms": self.__annotationsynonyms,
-      "reorderannotations": self.__reorderannotations,
     }
 
 class CorrectedImageCohort(Im3Cohort,ImageCorrectionArgumentParser) :

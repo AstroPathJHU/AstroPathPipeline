@@ -339,7 +339,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
   """
   Class to read the annotations from the annotations.polygons.xml file
   """
-  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, reorderannotations=False, **kwargs):
+  def __init__(self, *args, saveallannotationimages=False, annotationimagefolder=None, annotationimagefiletype="pdf", annotationsynonyms=None, **kwargs):
     self.__saveallannotationimages = saveallannotationimages
     if annotationimagefolder is not None: annotationimagefolder = pathlib.Path(annotationimagefolder)
     self.__annotationimagefolder = annotationimagefolder
@@ -347,7 +347,6 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
     if annotationsynonyms is None:
       annotationsynonyms = {}
     self.__annotationsynonyms = annotationsynonyms
-    self.__reorderannotations = reorderannotations
     self.allowedannotations #make sure there are no duplicate synonyms etc.
     super().__init__(*args, **kwargs)
 
@@ -794,7 +793,6 @@ def writeannotationcsvsstandalone(dbloadfolder, infofile, csvprefix=None, **kwar
 
 def add_rename_annotation_argument(argumentparser):
   argumentparser.add_argument("--rename-annotation", nargs=2, action=ArgParseAddToDict, dest="annotationsynonyms", metavar=("XMLNAME", "NEWNAME"), help="Rename an annotation given in the xml file to a new name (which has to be in the master list)")
-  argumentparser.add_argument("--reorder-annotations", action="store_true", dest="reorderannotations", help="Reorder annotations if they are in the wrong order")
 
 def writeannotationinfo(args=None):
   p = argparse.ArgumentParser(description="read an annotations.polygons.xml file and write out the annotation info csv file")
