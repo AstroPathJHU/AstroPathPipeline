@@ -359,7 +359,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
 
   def allowedannotation(self, nameornumber, *, logwarning=True):
     try:
-      result, = {a for a in self.allowedannotations if nameornumber in {a.layer} | a.synonyms}
+      result, = {a for a in self.allowedannotations if nameornumber in {a.layer, a.name} | a.synonyms}
     except ValueError:
       typ = 'number' if isinstance(nameornumber, int) else 'name'
       raise ValueError(f"Unknown annotation {typ} {nameornumber}")
@@ -387,8 +387,14 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
         if node.annotationtype != "empty":
           self.logger.warningglobal(f"Annotation {node.annotationname} is empty, skipping it")
         nodes.remove(node)
+
+    annotationinfodict = {}
     for node in nodes:
       try:
+        annotationinfo, = (info for info in annotationinfos if info.originalname == node.annotationtype)
+        annotationinfodict[node] = annotationinfo
+        annotationinfos.remove(annotationinfo)
+        node.annotationtype = annotationinfo.dbname
         node.annotation = self.allowedannotation(node.annotationtype)
         node.annotationtype = node.annotation.name
       except ValueError as e:
@@ -456,9 +462,6 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           self.logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
           color = targetcolor
 
-        annotationinfo, = (info for info in annotationinfos if info.dbname == name)
-        annotationinfos.remove(annotationinfo)
-
         annotation = Annotation(
           color=color,
           visible=visible,
@@ -468,7 +471,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           poly="poly",
           pscale=pscale,
           apscale=self.apscale,
-          annotationinfo=annotationinfo,
+          annotationinfo=annotationinfodict[node],
         )
         annotations.append(annotation)
 
@@ -581,7 +584,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
     if "good tissue" not in nodesbytype:
       errors.append(f"Didn't find a 'good tissue' annotation (only found: {', '.join(nodesbytype)})")
     if annotationinfos:
-      errors.append(f"Extra annotationinfos: {', '.join(info.name for info in annotationinfos)}")
+      errors.append(f"Extra annotationinfos: {', '.join(info.originalname for info in annotationinfos)}")
 
     if errors:
       raise ValueError("\n".join(errors))
