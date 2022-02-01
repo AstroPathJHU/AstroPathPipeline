@@ -84,7 +84,9 @@ Class testpsimagecorrection {
         if (!([regex]::Escape($inp.sample.flatwim3folder()) -contains [regex]::Escape($flatwim3path))){
             Throw ('MSI folder not correct: ' + $inp.sample.flatwim3folder() + '~=' + $flatwim3path)
         }
-        Write-Host 'Correct files in FlatwIM3 folder'
+        Write-Host 'Recieved Correct FlatwIM3 Folder'
+        #
+        Write-Host 'Flatw Folder: ' $inp.sample.flatwfolder()
         Write-Host 'Passed Cleanup Test'
     }
 }
