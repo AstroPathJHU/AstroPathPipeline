@@ -250,10 +250,12 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
     }[self.annotationsource]
 
   @classmethod
-  def transforminitargs(cls, *args, position=None, **kwargs):
-    positionkwargs = {}
+  def transforminitargs(cls, *args, name=None, position=None, **kwargs):
+    morekwargs = {}
     if position is not None:
-      positionkwargs["xposition"], positionkwargs["yposition"] = position
+      morekwargs["xposition"], morekwargs["yposition"] = position
+    if name is not None:
+      morekwargs["originalname"] = morekwargs["dbname"] = name
     if kwargs.get("annoscale", None) is None:
       pscale = kwargs["pscale"]
       apscale = kwargs["apscale"]
@@ -268,7 +270,7 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
         kwargs["annoscale"] = pscale
       else:
         assert False, annotationsource
-    return super().transforminitargs(*args, **kwargs, **positionkwargs)
+    return super().transforminitargs(*args, **kwargs, **morekwargs)
 
   @property
   def position(self):
