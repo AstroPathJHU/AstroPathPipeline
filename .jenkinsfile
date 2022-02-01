@@ -236,6 +236,12 @@ pipeline {
 		    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
 		  }
 		}
+		
+		stage('ps imagecorrection') {
+		  steps {
+		    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimagecorrection.ps1'
+		  }
+		}
       }
     }
     stage('check that the repo is clean') {
