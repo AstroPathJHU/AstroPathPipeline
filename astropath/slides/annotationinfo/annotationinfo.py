@@ -215,11 +215,13 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
   def renameannotationinfos(self, infos):
     dct = {info.originalname: info for info in infos}
     for oldname, newname in self.renameannotations.items():
-      try:
-        info = dct[oldname]
-      except KeyError:
+      found = False
+      for info in infos:
+        if info.originalannotationtype == oldname:
+          found = True
+          info.dbannotationtype = newname
+      if not found:
         raise ValueError(f"Trying to rename annotation {oldname}, which doesn't exist")
-      info.dbname = newname
     ctr = collections.Counter(info.dbname for info in infos)
     if max(ctr.values()) > 1:
       raise ValueError(f"Multiple annotations with the same name after renaming: {ctr}")

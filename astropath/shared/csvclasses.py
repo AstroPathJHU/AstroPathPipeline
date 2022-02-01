@@ -1,4 +1,4 @@
-import csv, dataclassy, datetime, methodtools, numbers, numpy as np, pathlib
+import csv, dataclassy, datetime, methodtools, numbers, numpy as np, pathlib, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
@@ -226,6 +226,16 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
       pass
     else:
       assert False
+
+  @property
+  def originalannotationtype(self):
+    return re.sub(" ([0-9]+)$", "", self.originalname)
+  @property
+  def dbannotationtype(self):
+    return re.sub(" ([0-9]+)$", "", self.dbname)
+  @dbannotationtype.setter
+  def dbannotationtype(self, newtype):
+    self.dbname = self.dbname.replace(self.dbannotationtype, newtype)
 
   @methodtools.lru_cache()
   @property
