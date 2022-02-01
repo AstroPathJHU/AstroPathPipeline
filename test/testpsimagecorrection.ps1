@@ -76,13 +76,15 @@ Class testpsimagecorrection {
     #
     [void]CleanupTest($inp){
         Write-Host 'Starting Cleanup Test'
-        if ($inp.processvars[4]) {
-            $inp.cleanup()
-            if (@(Test-Path $inp.processvars[0])) {
-                Throw 'Cleanup Test Failed'
-            }
+        $flatwim3path = $inp.sample.basepath + '\' + $this.slideid + '\im3'
+        New-Item -Path $flatwim3path -Name "flatw" -ItemType "directory"
+        $flatwim3path += '\flatw'
+        Write-Host 'flatwim3path: ' $flatwim3path
+        Write-Host 'Flatw IM3 folder: ' $inp.sample.flatwim3folder()
+        if (!([regex]::Escape($inp.sample.flatwim3folder()) -contains [regex]::Escape($flatwim3path))){
+            Throw ('MSI folder not correct: ' + $inp.MSIfolder() + '~=' + $flatwim3path)
         }
-        Write-Host 'Processing Folder Deleted'
+        Write-Host 'Correct files in FlatwIM3 folder'
         Write-Host 'Passed Cleanup Test'
     }
 }
