@@ -386,15 +386,18 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
       if not node.regions:
         if node.annotationtype != "empty":
           self.logger.warningglobal(f"Annotation {node.annotationname} is empty, skipping it")
+        for info in annotationinfos[:]:
+          if info.originalname == node.annotationname:
+            annotationinfos.remove(info)
         nodes.remove(node)
 
     annotationinfodict = {}
     for node in nodes:
       try:
-        annotationinfo, = (info for info in annotationinfos if info.originalname == node.annotationtype)
+        annotationinfo, = (info for info in annotationinfos if info.originalname == node.annotationname)
         annotationinfodict[node] = annotationinfo
         annotationinfos.remove(annotationinfo)
-        node.annotationtype = annotationinfo.dbname
+        node.annotationtype = annotationinfo.dbannotationtype
         node.annotation = self.allowedannotation(node.annotationtype)
         node.annotationtype = node.annotation.name
       except ValueError as e:

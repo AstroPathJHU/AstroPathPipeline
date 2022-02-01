@@ -1,4 +1,4 @@
-import csv, dataclassy, datetime, methodtools, numbers, numpy as np, pathlib
+import csv, dataclassy, datetime, methodtools, numbers, numpy as np, pathlib, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClass
 from ..utilities.miscmath import floattoint
@@ -227,6 +227,16 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
     else:
       assert False
 
+  @property
+  def originalannotationtype(self):
+    return re.sub(" ([0-9]+)$", "", self.originalname)
+  @property
+  def dbannotationtype(self):
+    return re.sub(" ([0-9]+)$", "", self.dbname)
+  @dbannotationtype.setter
+  def dbannotationtype(self, newtype):
+    self.dbname = self.dbname.replace(self.dbannotationtype, newtype)
+
   @methodtools.lru_cache()
   @property
   def isonqptiff(self): return self.annotationsource == "qptiff"
@@ -352,8 +362,10 @@ class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon):
 
   def __post_init__(self, **kwargs):
     super().__post_init__(**kwargs)
-    if self.name != self.annotationinfo.dbname:
-      raise ValueError(f"Mismatch between annotation name {self.name} and annotation info name {self.annotationinfo.dbname}")
+    myname = re.sub(" 1$", "", self.name)
+    dbname = re.sub(" 1$", "", self.annotationinfo.dbname)
+    if myname != dbname:
+      raise ValueError(f"Mismatch between annotation name {myname} and annotation info name {dbname}")
 
   def __bool__(self):
     return not self.isdummy
