@@ -213,7 +213,6 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
     )
 
   def renameannotationinfos(self, infos):
-    dct = {info.originalname: info for info in infos}
     for oldname, newname in self.renameannotations.items():
       found = False
       for info in infos:

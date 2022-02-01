@@ -362,8 +362,10 @@ class Annotation(DataClassWithAnnotationInfo, DataClassWithPolygon):
 
   def __post_init__(self, **kwargs):
     super().__post_init__(**kwargs)
-    if self.name != self.annotationinfo.dbname:
-      raise ValueError(f"Mismatch between annotation name {self.name} and annotation info name {self.annotationinfo.dbname}")
+    myname = re.sub(" 1$", "", self.name)
+    dbname = re.sub(" 1$", "", self.annotationinfo.dbname)
+    if myname != dbname:
+      raise ValueError(f"Mismatch between annotation name {myname} and annotation info name {dbname}")
 
   def __bool__(self):
     return not self.isdummy
