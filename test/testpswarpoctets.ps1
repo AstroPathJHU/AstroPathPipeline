@@ -42,7 +42,7 @@ Class testpswarpoctets {
         Write-Host 'im3path: ' $im3path
         Write-Host 'MSI folder: ' $inp.sample.MSIfolder()
         if (!([regex]::Escape($inp.sample.MSIfolder()) -contains [regex]::Escape($im3path))){
-            Throw ('MSI folder not correct: ' + $inp.MSIfolder() + '~=' + $im3path)
+            Throw ('MSI folder not correct: ' + $inp.sample.MSIfolder() + '~=' + $im3path)
         }
         $im3path += '\*im3'
         if (!(Test-Path -Path $im3path)) {
