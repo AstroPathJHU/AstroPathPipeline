@@ -63,11 +63,11 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_regions.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_vertices.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"rename_annotation"/SlideID/"dbload"/f"{SlideID}_annotations.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"rename_annotation"/SlideID/"dbload"/f"{SlideID}_annowarp.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"rename_annotation"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"rename_annotation"/SlideID/"dbload"/f"{SlideID}_regions.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"rename_annotation"/SlideID/"dbload"/f"{SlideID}_vertices.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_annotations.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_annowarp.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_regions.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_vertices.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/f"{SlideID}-annowarp.log",
     ] for SlideID in ("M206",)), [])
 
