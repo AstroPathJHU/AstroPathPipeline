@@ -1,6 +1,6 @@
 import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
 
-from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import AnnotationInfo, Region, Vertex
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
@@ -115,7 +115,7 @@ class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
         self.__wsi = None
         self.__using_wsi_context.close()
 
-class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser):
+class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentParser, ZoomFolderArgumentParser):
   defaulttilepixels = 100
 
   @classmethod
@@ -705,7 +705,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       onezoomedinmicron = units.onemicron(pscale=pscale/2)
       myposition = self.affineshift
       for a in self.annotations:
-        if a.isonwsi and a.isfromxml:
+        if a.isonwsi:
           if a.position is None:
             a.position = myposition
           a.shiftannotation = myposition - a.position
@@ -721,9 +721,9 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
 
     result = []
     for v in self.__getvertices():
-      if v.isonwsi:
+      if v.isonwsi or v.isfrommask:
         wxvec = v.xvec
-        if v.isfromxml:
+        if v.isonwsi:
           wxvec = wxvec / onezoomedinmicron * onemicron
           wxvec += v.annotation.shiftannotation
         wxvec = (wxvec + .000001 * onepixel) // onepixel * onepixel
@@ -733,7 +733,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
             wxvec=wxvec,
           )
         )
-      else:
+      elif v.isonqptiff:
         wxvec = v.xvec * 1. #convert to float, if it's int
         if v.isfromxml:
           wxvec += units.nominal_values(stitchresult.dxvec(v, apscale=apscale))
@@ -745,6 +745,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
             pscale=pscale,
           )
         )
+      else:
+        assert False, v
     return result
 
   @property
@@ -902,7 +904,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     infocsv = dbload/f"{SlideID}_annotationinfo.csv"
     if infocsv.exists():
       infos = readtable(infocsv, AnnotationInfo, extrakwargs={"pscale": 1, "apscale": 1, "scanfolder": scanfolder})
-      if any(info.isonqptiff for info in infos if info.name != "empty"):
+      if any(info.isonqptiff for info in infos):
         result += [
           dbload/f"{SlideID}_annowarp.csv",
           dbload/f"{SlideID}_annowarp-stitch.csv",

@@ -1,0 +1,23 @@
+name: 'Push submodules'
+
+on:
+  push:
+    paths:
+      - test/data
+
+jobs:
+  push-submodules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          #https://stackoverflow.com/a/67059629/5228524
+          token: ${{ secrets.CI_TOKEN }}
+          submodules: true
+      - name: push submodules
+        run: |
+          #https://stackoverflow.com/a/67059629/5228524
+          git remote set-url origin https://x-access-token:${{ secrets.CI_TOKEN }}@github.com/${{ github.repository }}
+          #https://stackoverflow.com/a/58034787/5228524
+          git submodule foreach git push HEAD:${GITHUB_REF##*/}
