@@ -25,7 +25,6 @@ Class testpsimagecorrection {
         # Run Tests
         #
         $this.DownloadFilesTest($inp)
-        $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
     }
     #
@@ -68,6 +67,7 @@ Class testpsimagecorrection {
         if (!($inp.sample.BatchID -eq $testid)) {
             Throw 'Incorrect BatchID'
         }
+        Write-Host 'Received Correct Batch ID'
         #
         Write-Host 'Flatfield Folder: ' $inp.sample.flatfieldfolder()
         Write-Host 'Passed Download Files Test'
