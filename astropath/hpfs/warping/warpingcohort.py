@@ -226,13 +226,11 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             for octet in selected_octets :
                 if octet.slide_ID!=samp.SlideID :
                     continue
-                print(f'found {keys_by_rect_n[octet.p1_rect_n]} (p1 rect)')
                 all_image_keys.add(keys_by_rect_n[octet.p1_rect_n])
                 olap_ns = (octet.olap_1_n,octet.olap_2_n,octet.olap_3_n,octet.olap_4_n,
                            octet.olap_6_n,octet.olap_7_n,octet.olap_8_n,octet.olap_9_n,)
                 olap_rect_ns = [olap.p2 for olap in samp.overlaps if olap.n in olap_ns]
                 for orn in olap_rect_ns :
-                    print(f'found {keys_by_rect_n[orn]} (overlap rect)')
                     all_image_keys.add(keys_by_rect_n[orn])
         with open(self.image_key_fp,'w') as fp :
             for ik in sorted(list(all_image_keys)) :
