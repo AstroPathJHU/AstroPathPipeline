@@ -112,7 +112,7 @@ class AnnotationNodeXML(AnnotationNodeBase):
     self.__xmlnode = node
   @property
   def rawname(self):
-    return self.__xmlnode.get_xml_attr("Name")
+    return self.__xmlnode.get_xml_attr("Name").strip().lower()
 
   @property
   def color(self):
@@ -322,7 +322,7 @@ class MergedAnnotationFiles(ThingWithAnnotationInfos):
       if info.isfromxml:
         if info.xmlpath not in xmldict:
           with open(info.xmlpath, "rb") as f:
-            xmldict[info.xmlpath] = {node.get_xml_attr("Name").lower(): AnnotationNodeXML(node, annoscale=info.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")}
+            xmldict[info.xmlpath] = {node.get_xml_attr("Name").strip().lower(): AnnotationNodeXML(node, annoscale=info.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")}
     return xmldict
   def getannotationnode(self, info):
     if info.isfromxml:
@@ -654,7 +654,7 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
     with open(xmlfile, "rb") as f:
       nodes = jxmlease.parse(f)["Annotations"]["Annotation"]
       if isinstance(nodes, jxmlease.XMLDictNode): nodes = [nodes]
-      nodedict = {node.get_xml_attr("Name").lower(): node for node in nodes}
+      nodedict = {node.get_xml_attr("Name").strip().lower(): node for node in nodes}
       if len(nodes) != len(nodedict):
         raise ValueError(f"Duplicate annotation names in {xmlfile}: {collections.Counter(node.get_xml_attr('Name').lower() for node in nodes)}")
 

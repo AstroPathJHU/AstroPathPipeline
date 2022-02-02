@@ -313,12 +313,12 @@ class DataClassWithAnnotationInfo(DataClassWithPscale, DataClassWithApscale, Dat
       raise TypeError("Provided both annotationinfo and annotationinfos")
 
     if annotationinfos is not None:
-      annotationinfos = [annotationinfo for annotationinfo in annotationinfos if annotationinfo.dbname == name]
+      infos = [annotationinfo for annotationinfo in annotationinfos if re.sub(" 1$", "", annotationinfo.dbname) == re.sub(" 1$", "", name)]
       try:
-        annotationinfo, = annotationinfos
+        annotationinfo, = infos
       except ValueError:
-        if len(annotationinfos) > 1:
-          raise ValueError(f"Multiple annotationinfos with the same name: {annotationinfos}")
+        if len(infos) > 1:
+          raise ValueError(f"Multiple annotationinfos with the same name: {infos}")
         annotationinfo = None
 
     if annotationinfo is None and name.lower() == "empty":
