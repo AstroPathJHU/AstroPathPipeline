@@ -65,6 +65,8 @@ def pathtomountedpath(filename):
     #please note that the AstroPath framework is NOT tested on cygwin
     return pathlib.PureWindowsPath(subprocess.check_output(["cygpath", "-w", filename]).strip().decode("utf-8"))
 
+  if not filename.is_absolute(): return filename
+
   bestmount = bestmountpoint = None
   for mount in psutil.disk_partitions(all=True):
     mountpoint = mount.mountpoint
@@ -93,6 +95,8 @@ def mountedpathtopath(filename):
   if sys.platform == "cygwin":
     #please note that the AstroPath framework is NOT tested on cygwin
     return pathlib.Path(subprocess.check_output(["cygpath", "-u", filename]).strip().decode("utf-8"))
+
+  if not filename.is_absolute(): return filename
 
   bestmount = bestmountexists = bestresult = None
   for mount in psutil.disk_partitions(all=True):

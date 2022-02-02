@@ -1,7 +1,7 @@
-from ...shared.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort, XMLPolygonReaderCohort, ZoomFolderCohort
+from ...shared.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort, ZoomFolderCohort
 from .annowarpsample import AnnoWarpArgumentParserBase, AnnoWarpArgumentParserTissueMask, AnnoWarpSampleAstroPathTissueMask, AnnoWarpSampleInformTissueMask
 
-class AnnoWarpCohortBase(DbloadCohort, SelectRectanglesCohort, WorkflowCohort, XMLPolygonReaderCohort, ZoomFolderCohort, AnnoWarpArgumentParserBase):
+class AnnoWarpCohortBase(DbloadCohort, SelectRectanglesCohort, WorkflowCohort, ZoomFolderCohort, AnnoWarpArgumentParserBase):
   """
   Cohort for running annowarp over a whole folder of samples.
   """

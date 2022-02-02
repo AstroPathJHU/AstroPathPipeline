@@ -1,0 +1,25 @@
+name: 'Push submodules'
+
+on:
+  push:
+    paths:
+      - test/data
+      - .github/workflows/pushsubmodules.yml
+
+jobs:
+  push-submodules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          #https://stackoverflow.com/a/67059629/5228524
+          token: ${{ secrets.CI_TOKEN }}
+          submodules: true
+          fetch-depth: 0
+      - name: push submodules
+        run: |
+          #https://stackoverflow.com/a/67059629/5228524
+          git submodule foreach bash -c 'git remote set-url origin https://x-access-token:${{ secrets.CI_TOKEN }}@github.com/$(git remote get-url origin | sed -r "s|.*[:/]([^:/]*/[^/]*$)|\1|")'
+          #https://stackoverflow.com/a/58034787/5228524
+          git submodule foreach git push origin HEAD:${GITHUB_REF}
