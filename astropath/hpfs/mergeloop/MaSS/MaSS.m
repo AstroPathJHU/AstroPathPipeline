@@ -1284,12 +1284,12 @@ function f = getphenofield(C, Markers, units)
 %
 fold = extractBefore(C.fname.folder,'Phenotyped');
 fold = [fold,'\Component_Tiffs'];
-iname = [fold,'\',extractBefore(C.fname.name,...
-    "]_cell_seg"),']_component_data.tif'];
+iname = extractBefore(C.fname.name, "]_cell_seg");
 if isempty(iname)
-    iname = [fold,'\',extractBefore(C.fname.name,...
-        "]_CELL_SEG"),']_component_data.tif'];
+    iname = extractBefore(C.fname.name, "]_CELL_SEG");
 end
+%
+iname = [fold,'\',iname,']_component_data.tif'];
 %
 imageinfo = imfinfo(iname);
 W = imageinfo.Width;
@@ -1878,12 +1878,12 @@ for i1 = 1:length(Markers.altseg)
     %
     fdname = [extractBefore(p.fname.folder,Markers.all{1}),...
         markalt,'\'];
-    iname = [fdname,extractBefore(p.fname.name,...
-        "]_cell_seg"),']_binary_seg_maps.tif'];
+    iname = extractBefore(p.fname.name, "]_cell_seg");
     if isempty(iname)
-        iname = [fdname,extractBefore(p.fname.name,...
-            "]_CELL_SEG"),']_binary_seg_maps.tif'];
+        iname = extractBefore(p.fname.name, "]_CELL_SEG");
     end
+    %
+    iname = [fdname,'\',iname,']_binary_seg_maps.tif'];
     %
     % get rows of altseg cells
     %
@@ -1906,11 +1906,13 @@ end
 %get filenames for 1ry seg images
 %
 iname = fullfile(p.fname.folder,p.fname.name);
-iname = replace(iname, Markers.all{1}, Markers.seg{1});
-iname = [extractBefore(iname,"]_cell_seg"),']_binary_seg_maps.tif'];
+iname1 = replace(iname, Markers.all{1}, Markers.seg{1});
+%
+iname = extractBefore(iname1,"]_cell_seg");
 if isempty(iname)
-    iname = [extractBefore(iname,"]_CELL_SEG"),']_binary_seg_maps.tif'];
+    iname = extractBefore(iname1,"]_CELL_SEG");
 end
+iname = [iname,']_binary_seg_maps.tif'];
 %
 % get cellids of 1ry seg cells
 %

@@ -197,6 +197,13 @@ class copyutils{
         }
         return $files
     }
+    <#------------------------------------------
+    handlebrackets
+    -------------------------------------------#>
+    [string]handlebrackets([string]$fname){
+        $fname = $fname.replace('[','`[').replace(']','`]')
+        return $fname
+    }
     <# -----------------------------------------
      verifyChecksum
      create checksums on files to make sure they
@@ -220,18 +227,18 @@ class copyutils{
             $sourcehash = $sourcefiles | Get-FileHash -Algorithm MD5
             $destinationhash = $desfiles | Get-FileHash -Algorithm MD5
         } else {
-            $sourcefiles = $sor
-            $desfiles = $des + '\' + ($sor -split '\\')[-1]
+            $sourcefiles = $this.handlebrackets($sor)
+            $desfiles = $this.handlebrackets($des + '\' + (Split-Path $sor -Leaf))
             $sourcehash = Get-FileHash $sourcefiles -Algorithm MD5
             $destinationhash = Get-FileHash $desfiles -Algorithm MD5
         }
         #
         # catch empty folders
         #
-        if ($sourcehash -eq $null) {
+        if (!$sourcehash) {
             $sourcehash = @()
         }
-        if ($destinationhash -eq $null) {
+        if (!$destinationhash) {
             $destinationhash = @()
         }
         #
@@ -246,7 +253,7 @@ class copyutils{
         # call checksum on the particular file to make sure the 
         # second go round went properly, fail on the 5th try.
         #
-        if ($comparison -ne $null) {
+        if (!$comparison) {
             foreach ($file in $comparison) {
                 $tempsor = ($sourcehash -match $file.Hash).Path
                 if ($copycount -gt 5){
