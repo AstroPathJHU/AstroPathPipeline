@@ -18,4 +18,4 @@ jobs:
           #https://stackoverflow.com/a/67059629/5228524
           git submodule foreach bash -c 'git remote set-url origin https://x-access-token:${{ secrets.CI_TOKEN }}@github.com/$(git remote get-url origin | sed -r "s|.*[:/]([^:/]*/[^/]*$)|\1|")'
           #https://stackoverflow.com/a/58034787/5228524
-          git submodule foreach bash -c 'if git merge-base --is-ancestor origin/main HEAD; then git push --delete origin ${{ github.event.ref }}; fi'
+          git submodule foreach bash -c 'if git merge-base --is-ancestor HEAD origin/main && git merge-base --is-ancestor origin/${{ github.event.ref }} origin/main; then git push --delete origin ${{ github.event.ref }}; fi'
