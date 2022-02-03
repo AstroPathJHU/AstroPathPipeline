@@ -209,14 +209,22 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             errmsg+= 'Please request fewer octets to use in fitting.'
             raise RuntimeError(errmsg)
         #randomly choose the three subsets of octets
-        selected_octets = sample(self.__octets,n_total_octets_needed)
-        self.__fit_1_octets = selected_octets[:self.__n_fit_1_octets]
-        self.__fit_2_octets = selected_octets[self.__n_fit_1_octets:(self.__n_fit_1_octets+self.__n_fit_2_octets)]
-        self.__fit_3_octets = selected_octets[-self.__n_fit_3_octets:]
+        if n_total_octets_needed>0 :
+            selected_octets = sample(self.__octets,n_total_octets_needed)
+            self.__fit_1_octets = selected_octets[:self.__n_fit_1_octets]
+            self.__fit_2_octets = selected_octets[self.__n_fit_1_octets:(self.__n_fit_1_octets+self.__n_fit_2_octets)]
+            self.__fit_3_octets = selected_octets[-self.__n_fit_3_octets:]
+        else :
+            with self.globallogger() as logger :
+                logger.warning(f'WARNING: requested {n_total_octets_needed} total octets to use in fitting')
+            selected_octets = []
         #write out files listing the octets
-        writetable(self.fit_1_octet_fp,self.__fit_1_octets)
-        writetable(self.fit_2_octet_fp,self.__fit_2_octets)
-        writetable(self.fit_3_octet_fp,self.__fit_3_octets)
+        if len(self.__fit_1_octets)>0 :
+            writetable(self.fit_1_octet_fp,self.__fit_1_octets)
+        if len(self.__fit_2_octets)>0 :
+            writetable(self.fit_2_octet_fp,self.__fit_2_octets)
+        if len(self.__fit_3_octets)>0 :
+            writetable(self.fit_3_octet_fp,self.__fit_3_octets)
         #write out the file listing the image keys needed
         all_image_keys = set()
         for samp in self.samples() :
