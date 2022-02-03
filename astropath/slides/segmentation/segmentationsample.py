@@ -2,7 +2,7 @@
 import os, shutil
 from deepcell.applications import NuclearSegmentation
 from ...utilities.config import CONST as UNIV_CONST
-from ...shared.argumentparser import SegmentationAlgorithmArgumentParser,WorkingDirArgumentParser
+from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.sample import ReadRectanglesComponentTiffFromXML, WorkflowSample, ParallelSample
 from .config import SEG_CONST
 from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im
@@ -12,8 +12,8 @@ from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation
 NNUNET_SEGMENT_FILE_APPEND = 'nnunet_nuclear_segmentation.npz'
 DEEPCELL_SEGMENT_FILE_APPEND = 'deepcell_nuclear_segmentation.npz'
 
-class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,ParallelSample,
-                         SegmentationAlgorithmArgumentParser,WorkingDirArgumentParser) :
+class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,WorkflowSample,ParallelSample,
+                             WorkingDirArgumentParser) :
     """
     Write out nuclear segmentation maps based on the DAPI layers of component tiffs for a single sample
     Algorithms available include pre-trained nnU-Net and DeepCell/mesmer models 
@@ -30,7 +30,7 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
         self.__algorithm = algorithm
         self.__workingdirarg = workingdir
         #set the working directory path based on the algorithm being run (if it wasn't set by a command line arg)
-        self.__workingdir = SegmentationSample.output_dir(workingdir,self.im3root,self.SlideID,self.__algorithm)
+        self.__workingdir = SegmentationSampleBase.output_dir(workingdir,self.im3root,self.SlideID,self.__algorithm)
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
@@ -260,10 +260,28 @@ class SegmentationSample(ReadRectanglesComponentTiffFromXML,WorkflowSample,Paral
                 msg+= 'Rerun the same command to retry.'
                 self.logger.info(msg)
 
+class SegmentationSampleNNUNet(SegmentationSampleBase) :
+
+    def __init__(self,*args,**kwargs) :
+        super().__init__(*args,algorithm='nnunet',**kwargs)
+
+    @classmethod
+    def logmodule(cls) : 
+        return "segmentationnnunet"
+
+class SegmentationSampleDeepCell(SegmentationSampleBase) :
+
+    def __init__(self,*args,**kwargs) :
+        super().__init__(*args,algorithm='deepcell',**kwargs)
+
+    @classmethod
+    def logmodule(cls) : 
+        return "segmentationdeepcell"
+
 #################### FILE-SCOPE FUNCTIONS ####################
 
-def main(args=None) :
-    SegmentationSample.runfromargumentparser(args)
+def segmentationsamplennunet(args=None) :
+    SegmentationSampleNNUNet.runfromargumentparser(args)
 
-if __name__=='__main__' :
-    main()
+def segmentationsampledeepcell(args=None) :
+    SegmentationSampleDeepCell.runfromargumentparser(args)

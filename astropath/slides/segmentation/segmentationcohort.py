@@ -1,10 +1,10 @@
 #imports
-from ...shared.argumentparser import SegmentationAlgorithmArgumentParser,WorkingDirArgumentParser
+from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.cohort import ParallelCohort, WorkflowCohort
-from .segmentationsample import SegmentationSample
+from .segmentationsample import SegmentationSampleBase, SegmentationSampleNNUNet, SegmentationSampleDeepCell
 
-class SegmentationCohort(ParallelCohort,WorkflowCohort,SegmentationAlgorithmArgumentParser,WorkingDirArgumentParser) :
-    sampleclass = SegmentationSample
+class SegmentationCohortBase(ParallelCohort,WorkflowCohort,WorkingDirArgumentParser) :
+    sampleclass = SegmentationSampleBase
     __doc__ = sampleclass.__doc__
 
     def __init__(self,*args,workingdir=None,algorithm='nnunet',**kwargs) :
@@ -16,7 +16,6 @@ class SegmentationCohort(ParallelCohort,WorkflowCohort,SegmentationAlgorithmArgu
     def initiatesamplekwargs(self) :
         return {**super().initiatesamplekwargs,
             'workingdir':self.workingdir,
-            'algorithm':self.algorithm,
             }
 
     @property
@@ -26,8 +25,22 @@ class SegmentationCohort(ParallelCohort,WorkflowCohort,SegmentationAlgorithmArgu
             'algorithm':self.algorithm,
         }
 
-def main(args=None) :
-    SegmentationCohort.runfromargumentparser(args)
+class SegmentationCohortNNUNet(SegmentationCohortBase) :
+    sampleclass = SegmentationSampleNNUNet
+    __doc__ = sampleclass.__doc__
 
-if __name__ == "__main__":
-    main()
+    def __init__(self,*args,**kwargs) :
+        super().__init__(*args,algorithm='nnunet',**kwargs)
+
+class SegmentationCohortDeepCell(SegmentationCohortBase) :
+    sampleclass = SegmentationSampleDeepCell
+    __doc__ = sampleclass.__doc__
+
+    def __init__(self,*args,**kwargs) :
+        super().__init__(*args,algorithm='deepcell',**kwargs)
+
+def segmentationcohortnnunet(args=None) :
+    SegmentationCohortNNUNet.runfromargumentparser(args)
+
+def segmentationcohortdeepcell(args=None) :
+    SegmentationCohortDeepCell.runfromargumentparser(args)
