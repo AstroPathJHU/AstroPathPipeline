@@ -4,6 +4,7 @@ import numpy as np
 from scipy.ndimage import distance_transform_edt
 from numba import njit, prange
 from ...utilities.img_file_io import smooth_image_worker
+from ...utilities.dataclasses import MyDataClass
 from ...shared.image_masking.utilities import get_size_filtered_mask
 
 def expand_labels(label_image, distance=1):
@@ -100,7 +101,7 @@ def get_homogenized_pca_image(im,tissue_mask,pca,dapi_layer_index=0,threshold=0.
     pixels_to_use_ri = np.copy(expanded_regions_im)
     pixels_to_use_ri[(nuclei_mask==1) | (tissue_mask==0)] = 0
     #replace masked pixels with the medians of the pixels surrounding them
-    h_pca_im = get_median_im_compiled(im,n_regions,regions_im,pixels_to_use_ri)
+    h_pca_im = get_median_im_compiled(im_normed,n_regions,regions_im,pixels_to_use_ri)
     #finding large chunks of nuclei pixels that should have some of the DAPI signal added back in
     SMALL_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(small_morph_size,small_morph_size))
     LARGE_EL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(large_morph_size,large_morph_size))
@@ -124,8 +125,43 @@ def get_homogenized_pca_image(im,tissue_mask,pca,dapi_layer_index=0,threshold=0.
     #find the pixels whose PCA DAPI contents should be replaced
     pixels_to_replace = nuclei_mask*nuclei_mask_morphed
     #smooth the PCA DAPI layer
-    smoothed_pca_dapi_layer = smooth_image_worker(im[:,:,dapi_layer_index],dapi_smooth_sigma,gpu=True)
+    smoothed_pca_dapi_layer = smooth_image_worker(im_normed[:,:,dapi_layer_index],dapi_smooth_sigma,gpu=True)
     #replace the homogenized PCA image DAPI contents
     p_slice = pixels_to_replace==1
     h_pca_im[:,:,dapi_layer_index][p_slice] = smoothed_pca_dapi_layer[p_slice]
     return h_pca_im
+
+class PCAColorsSegmentTableEntry(MyDataClass) :
+    im_key : str
+    segment : int
+    npix : int
+    comp_1_mean : float
+    comp_1_median : float
+    comp_1_std : float
+    comp_2_mean : float
+    comp_2_median : float
+    comp_2_std : float
+    comp_3_mean : float
+    comp_3_median : float
+    comp_3_std : float
+    comp_4_mean : float
+    comp_4_median : float
+    comp_4_std : float
+    comp_5_mean : float
+    comp_5_median : float
+    comp_5_std : float
+    comp_6_mean : float
+    comp_6_median : float
+    comp_6_std : float
+    comp_7_mean : float
+    comp_7_median : float
+    comp_7_std : float
+    comp_8_mean : float
+    comp_8_median : float
+    comp_8_std : float
+    comp_9_mean : float
+    comp_9_median : float
+    comp_9_std : float
+    comp_10_mean : float
+    comp_10_median : float
+    comp_10_std : float

@@ -90,6 +90,9 @@ class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
                 '--flatfield-file',os.fspath(output_dir/ff_file.name),
                 '--sampleregex',slideID,
                 '--workingdir',os.fspath(output_dir),
+                '--initial-pattern-octets','0',
+                '--principal-point-octets','0',
+                '--final-pattern-octets','0',
                 '--octets-only',
                 '--noGPU',
                ]
@@ -99,6 +102,7 @@ class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         #just make sure that the empty octet output file exists
         try :
             self.assertTrue((output_dir/'octets'/f'{slideID}-all_overlap_octets.csv').is_file())
+            self.assertTrue((output_dir/'octets'/'image_keys_needed.txt').is_file())
         except :
             self.saveoutput()
             raise

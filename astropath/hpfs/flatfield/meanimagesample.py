@@ -526,8 +526,8 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         #the files below might not actually exist in the case that no images were stacked
         #outputfiles.append(meanimagedir/CONST.FIELDS_USED_CSV_FILENAME)
         #outputfiles.append(meanimagedir/f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
-        if not skip_masking :
-            outputfiles.append(meanimagedir/f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
+        #if not skip_masking :
+        #    outputfiles.append(meanimagedir/f'{SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
         return outputfiles
     @classmethod
     def logmodule(cls) : 

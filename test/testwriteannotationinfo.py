@@ -64,7 +64,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     dbloadroot = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
     im3root = root/"reference"/"writeannotationinfo"
     args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
-    s = CopyAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID)
+    s = CopyAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID, renameannotations={})
 
     try:
       CopyAnnotationInfoCohort.runfromargumentparser(args)
@@ -85,7 +85,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testSkipAnnotation(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
-    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set())
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set(), renameannotations={})
     commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
     write1args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons.xml"]
     write2args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons_2.xml"]
@@ -112,7 +112,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testAnnotationPosition(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
-    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set())
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set(), renameannotations={})
     commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
     regex1 = ".*annotations.polygons.xml"
     regex2 = ".*annotations.polygons_2.xml"
@@ -138,3 +138,27 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testAnnotationPositionFastUnits(self, **kwargs):
     self.testAnnotationPosition(units="fast_microns", **kwargs)
+
+  def testRenameAnnotation(self, *, SlideID="M206", units="safe"):
+    root = thisfolder/"data"
+    dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set(), renameannotations={})
+    commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
+    write1args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons.xml"]
+    write2args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons_2.xml"]
+    mergeargs = ["--annotation", "Good tissue", ".*annotations.polygons.xml", "--annotation", "tumor", ".*annotations.polygons_2.xml", "--rename-annotation", "outline", "good tissue", "--rename-annotation", "good tissue", "good tissue x", "--rename-annotation", "tumor", "tumor x"]
+
+    try:
+      WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write1args)
+      WriteAnnotationInfoCohort.runfromargumentparser(commonargs+write2args)
+      MergeAnnotationXMLsCohort.runfromargumentparser(commonargs+mergeargs)
+
+      new = s.csv("annotationinfo")
+      reffolder = root/"reference"/"writeannotationinfo"/"renameannotation"/SlideID/"dbload"
+      extrakwargs = {_: getattr(s, _) for _ in ("pscale", "apscale", "scanfolder")}
+      compare_two_csv_files(new.parent, reffolder, new.name, AnnotationInfo, extrakwargs=extrakwargs)
+    except:
+      self.saveoutput()
+      raise
+    else:
+      self.removeoutput()

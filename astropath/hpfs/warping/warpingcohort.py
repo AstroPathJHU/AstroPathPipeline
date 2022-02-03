@@ -72,11 +72,11 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             self.__octets = []
             # Run all of the individual samples first (runs octet finding, which is independent for every sample)
             super().run(**kwargs)
+            # Randomly separate the octets into the three fit groups of the requested size
+            self.__split_octets()
             #If we're only getting the octets for all the samples then we're done here
             if self.__octets_only :
                 return
-            # Randomly separate the octets into the three fit groups of the requested size
-            self.__split_octets()
         # Run the three fit groups
         if not self.__octets_only :
             with self.globallogger() as logger :
@@ -98,6 +98,9 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
     @property
     def auto_workingdir(self) :
         return UNIV_CONST.ASTROPATH_PROCESSING_DIR / UNIV_CONST.WARPING_DIRNAME / self.root.name 
+    @property
+    def image_key_fp(self) :
+        return self.__workingdir / CONST.OCTET_SUBDIR_NAME / 'image_keys_needed.txt'
     @property
     def fit_1_octet_fp(self) :
         return self.__workingdir / CONST.OCTET_SUBDIR_NAME / 'initial_pattern_octets_selected.csv'
@@ -206,14 +209,40 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             errmsg+= 'Please request fewer octets to use in fitting.'
             raise RuntimeError(errmsg)
         #randomly choose the three subsets of octets
-        selected_octets = sample(self.__octets,n_total_octets_needed)
-        self.__fit_1_octets = selected_octets[:self.__n_fit_1_octets]
-        self.__fit_2_octets = selected_octets[self.__n_fit_1_octets:(self.__n_fit_1_octets+self.__n_fit_2_octets)]
-        self.__fit_3_octets = selected_octets[-self.__n_fit_3_octets:]
+        if n_total_octets_needed>0 :
+            selected_octets = sample(self.__octets,n_total_octets_needed)
+            self.__fit_1_octets = selected_octets[:self.__n_fit_1_octets]
+            self.__fit_2_octets = selected_octets[self.__n_fit_1_octets:(self.__n_fit_1_octets+self.__n_fit_2_octets)]
+            self.__fit_3_octets = selected_octets[-self.__n_fit_3_octets:]
+        else :
+            with self.globallogger() as logger :
+                logger.warning(f'WARNING: requested {n_total_octets_needed} total octets to use in fitting')
+            selected_octets = []
         #write out files listing the octets
-        writetable(self.fit_1_octet_fp,self.__fit_1_octets)
-        writetable(self.fit_2_octet_fp,self.__fit_2_octets)
-        writetable(self.fit_3_octet_fp,self.__fit_3_octets)
+        if len(self.__fit_1_octets)>0 :
+            writetable(self.fit_1_octet_fp,self.__fit_1_octets)
+        if len(self.__fit_2_octets)>0 :
+            writetable(self.fit_2_octet_fp,self.__fit_2_octets)
+        if len(self.__fit_3_octets)>0 :
+            writetable(self.fit_3_octet_fp,self.__fit_3_octets)
+        #write out the file listing the image keys needed
+        all_image_keys = set()
+        for samp in self.samples() :
+            keys_by_rect_n = {}
+            for rect in samp.rectangles :
+                keys_by_rect_n[rect.n] = rect.file[:-len(UNIV_CONST.IM3_EXT)]
+            for octet in selected_octets :
+                if octet.slide_ID!=samp.SlideID :
+                    continue
+                all_image_keys.add(keys_by_rect_n[octet.p1_rect_n])
+                olap_ns = (octet.olap_1_n,octet.olap_2_n,octet.olap_3_n,octet.olap_4_n,
+                           octet.olap_6_n,octet.olap_7_n,octet.olap_8_n,octet.olap_9_n,)
+                olap_rect_ns = [olap.p2 for olap in samp.overlaps if olap.n in olap_ns]
+                for orn in olap_rect_ns :
+                    all_image_keys.add(keys_by_rect_n[orn])
+        with open(self.image_key_fp,'w') as fp :
+            for ik in sorted(list(all_image_keys)) :
+                fp.write(f'{ik}\n')
 
     def __get_group_of_fit_results(self,fit_group_number,logger) :
         """

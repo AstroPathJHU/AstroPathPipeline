@@ -16,21 +16,26 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
   def filestocopy(cls):
     sourceroot = thisfolder/"data"
     destroot = thisfolder/"test_for_jenkins"/"annowarp"
+    destrootrename = thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"
     for SlideID in "M206",:
       olddbload = sourceroot/SlideID/"dbload"
       newdbload = destroot/SlideID/"dbload"
+      newdbloadrename = destrootrename/SlideID/"dbload"
       for csv in (
         "affine",
         "constants",
         "fields",
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
+        yield olddbload/f"{SlideID}_{csv}.csv", newdbloadrename
 
       olddbload = sourceroot/"reference"/"writeannotationinfo"/SlideID/"dbload"
+      olddbloadrename = sourceroot/"reference"/"writeannotationinfo"/"renameannotation"/SlideID/"dbload"
       for csv in (
         "annotationinfo",
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
+        yield olddbloadrename/f"{SlideID}_{csv}.csv", newdbloadrename
 
       oldscanfolder = sourceroot/SlideID/"im3"/"Scan1"
       newscanfolder = destroot/SlideID/"im3"/"Scan1"
@@ -58,13 +63,20 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_regions.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_vertices.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_annotations.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_annowarp.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_regions.csv",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_vertices.csv",
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/f"{SlideID}-annowarp.log",
     ] for SlideID in ("M206",)), [])
 
-  def compareoutput(self, SlideID, reffolder=None, alignment=True):
+  def compareoutput(self, SlideID, reffolder=None, dbloadroot=None, alignment=True):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
-    dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+    logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+    if dbloadroot is None:
+      dbloadroot = logroot
     s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, uselogfiles=True)
     if reffolder is None: reffolder = thisfolder/"data"/"reference"/"annowarp"
 
@@ -170,15 +182,22 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       rtol=0.01,
     )
 
-  def testCohort(self, SlideID="M206", units="safe", moreargs=[], **compareoutputkwargs):
+  def testCohort(self, SlideID="M206", units="safe", moreargs=[], rename=False, **compareoutputkwargs):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+    if rename:
+      dbloadroot = dbloadroot/"renameannotation"
+      renamekwargs = {
+        "reffolder": thisfolder/"data"/"reference"/"annowarp"/"renameannotation",
+      }
+    else:
+      renamekwargs = {}
     maskroot = root
     args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--im3root", os.fspath(im3root), "--ignore-dependencies", "--rerun-finished"] + moreargs
     try:
       AnnoWarpCohortAstroPathTissueMask.runfromargumentparser(args)
-      self.compareoutput(SlideID, **compareoutputkwargs)
+      self.compareoutput(SlideID, **compareoutputkwargs, **renamekwargs, dbloadroot=dbloadroot)
     except:
       self.saveoutput()
       raise
@@ -255,3 +274,6 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
   def testDetectBigShiftFastUnits(self, SlideID="M21_1"):
     with units.setup_context("fast_microns"):
       self.testDetectBigShift(SlideID=SlideID)
+
+  def testRenameAnnotation(self, **kwargs):
+    self.testCohort(units="fast", rename=True, **kwargs)
