@@ -8,6 +8,8 @@
  error checking and using file locking mutexes
  -------------------------------------------#>
 class fileutils : generalutils {
+    [INT]$MAX = 500
+
     <# -----------------------------------------
      OpenCSVFile
      open a csv file with error checking and a 
@@ -25,7 +27,6 @@ class fileutils : generalutils {
         $cnt = 0
         $e = 1
         $err = ''
-        $Max = 5
         $mxtxid = 'Global\' + $fpath.replace('\', '_').replace('/', '_') + '.LOCK'
         #
         $Q = New-Object -TypeName psobject
@@ -45,12 +46,12 @@ class fileutils : generalutils {
             }
             $this.ReleaseMxtx($mxtx, $fpath)
             #
-        } while(($cnt -lt $Max) -and ($e -eq 1))
+        } while(($cnt -lt $this.MAX) -and ($e -eq 1))
         #
         # if code cannot access the file 
         # after 10 minutes return an error indicator
         #
-        if ($cnt -ge $Max){
+        if ($cnt -ge $this.MAX){
            Throw $cnt.ToString() + ' attempts failed reading ' `
                 + $fpath + '. Final message: ' + $err
         }
@@ -75,7 +76,6 @@ class fileutils : generalutils {
         $cnt = 0
         $e = 1
         $err = ''
-        $Max = 5
         $mxtxid = 'Global\' + $fpath.replace('\', '_').replace('/', '_') + '.LOCK'
         #
         $Q = New-Object -TypeName psobject
@@ -98,12 +98,12 @@ class fileutils : generalutils {
             }
             $this.ReleaseMxtx($mxtx, $fpath)
             #
-        } while(($cnt -lt $Max) -and ($e -eq 1))
+        } while(($cnt -lt $this.MAX) -and ($e -eq 1))
         #
         # if code cannot access the file 
         # after 10 minutes return an error indicator
         #
-        if ($cnt -ge $Max){
+        if ($cnt -ge $this.MAX){
            Throw $cnt.ToString() + ' attempts failed reading ' `
                 + $fpath + '. Final message: ' + $err
         }
@@ -156,7 +156,6 @@ class fileutils : generalutils {
         $cnt = 0
         $e = 1
         $err = ''
-        $Max = 5
         $mxtxid = 'Global\' + $fpath.replace('\', '_').replace('/', '_') + '.LOCK'
         #
         $Q = New-Object -TypeName psobject
@@ -176,12 +175,12 @@ class fileutils : generalutils {
             }
             $this.ReleaseMxtx($mxtx, $fpath)
             #
-        } while(($cnt -lt $Max) -and ($e -eq 1))
+        } while(($cnt -lt $this.MAX) -and ($e -eq 1))
         #
         # if code cannot access the file 
         # after 10 minutes return an error indicator
         #
-        if ($cnt -ge $Max){
+        if ($cnt -ge $this.MAX){
            Throw $cnt.ToString() + ' attempts failed reading ' `
                 + $fpath + '. Final message: ' + $err
         }
@@ -235,7 +234,6 @@ class fileutils : generalutils {
         $cnt = 0
         $e = 1
         $err = ''
-        $Max = 5
         $mxtxid = 'Global\' + $fpath.replace('\', '_').replace('/', '_') + '.LOCK'
         #
         do{
@@ -253,12 +251,12 @@ class fileutils : generalutils {
              }
             $this.ReleaseMxtx($mxtx, $fpath)
             #
-        } while(($cnt -lt $Max) -and ($e -eq 1))
+        } while(($cnt -lt $this.MAX) -and ($e -eq 1))
         #
         # if code cannot access the file 
         # after 10 minutes return an error indicator
         #
-        if ($cnt -ge $Max){
+        if ($cnt -ge $this.MAX){
             Throw $cnt.ToString() + ' attempts failed writing ' +
                 $fstring + ' to ' + $fpath + '. Final message: ' + $err
         }
