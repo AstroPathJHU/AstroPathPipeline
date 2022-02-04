@@ -1,4 +1,4 @@
-import csv, pathlib, setuptools.command.build_py, setuptools.command.develop, site, subprocess
+import os, csv, pathlib, setuptools.command.build_py, setuptools.command.develop, site, subprocess
 
 site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
 here = pathlib.Path(__file__).parent
@@ -28,6 +28,14 @@ class develop(setuptools.command.develop.develop):
   def run(self):
     self.run_command("build_commits_csv")
     super().run()
+
+def get_nnunet_package_files():
+  directory = here/'astropath'/'slides'/'segmentation'/'nnunet_models'
+  paths = []
+  for (path, directories, filenames) in os.walk(directory):
+    for filename in filenames:
+      paths.append(os.path.join('..', path, filename))
+  return paths
 
 setupkwargs = dict(
   name = "astropath",
@@ -70,6 +78,10 @@ setupkwargs = dict(
       "meanimagecomparison=astropath.hpfs.flatfield.meanimagecomparison:main",
       "mergeannotationxmlscohort=astropath.slides.annotationinfo.annotationinfo:mergeannotationxmlscohort",
       "mergeannotationxmlssample=astropath.slides.annotationinfo.annotationinfo:mergeannotationxmlssample",
+      "segmentationsampledeepcell=astropath.slides.segmentation.segmentationsample:segmentationsampledeepcell",
+      "segmentationsamplennunet=astropath.slides.segmentation.segmentationsample:segmentationsamplennunet",
+      "segmentationcohortdeepcell=astropath.slides.segmentation.segmentationcohort:segmentationcohortdeepcell",
+      "segmentationcohortnnunet=astropath.slides.segmentation.segmentationcohort:segmentationcohortnnunet",
       "stitchastropathtissuemasksample=astropath.slides.stitchmask.stitchmasksample:astropathtissuemain",
       "stitchinformmasksample=astropath.slides.stitchmask.stitchmasksample:informmain",
       "stitchastropathtissuemaskcohort=astropath.slides.stitchmask.stitchmaskcohort:astropathtissuemain",
@@ -90,16 +102,19 @@ setupkwargs = dict(
   install_requires = [
     "contextlib2>=0.6.0; python_version < '3.7'",
     "dataclassy>=0.10.0",
+    "deepcell>=0.11.0",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",
     "methodtools",
     "more_itertools>=8.3.0",
     "networkx",
+    "nnunet>=1.6.0",
     "numba",
     "numpy>=1.17.0",
     "opencv-python",
     "openpyxl",
+    "pathos>=0.2.8",
     "psutil;sys_platform!='cygwin'", #please note astropath is NOT been tested on cygwin
     "rdp",
     "seaborn",
@@ -107,6 +122,7 @@ setupkwargs = dict(
     "scikit-learn>=0.17",
     "scipy>=0.12",
     "setuptools-scm",
+    "SimpleITK>=2.1.1",
     "slurm-python-utils>=1.4.4",
     "uncertainties",
   ],
@@ -122,7 +138,7 @@ setupkwargs = dict(
       "shared/master_annotation_list.csv",
       "slides/zoom/color_matrix.txt",
       "utilities/version/commits.csv",
-    ],
+    ]+get_nnunet_package_files(),
   },
 )
 
