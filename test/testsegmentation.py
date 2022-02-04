@@ -60,8 +60,6 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
         return all_fps
 
     def test_segmentation_nnunet(self) :
-        os.environ['USE_CUDA'] = 0
-        os.environ['USE_NNPACK'] = 0
         #run the segmentation cohort with the nnU-Net algorithm
         args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
                 slide_ID,
