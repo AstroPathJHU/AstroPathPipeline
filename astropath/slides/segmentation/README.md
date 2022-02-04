@@ -12,7 +12,7 @@ OR
 
 where `[njobs]` is the maximum number of parallel processes allowed to run at once during the parallelized portions of the code running. 
 
-See [here](../../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
+See [here](../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.
 
 Two main differences between the algorithms are: only the `nnunet` algorithm is capable of processing in parallel, and the `nnunet` algorithm takes significantly longer to run than the `deepcell` algorithm.
 
