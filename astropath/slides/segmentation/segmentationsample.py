@@ -1,5 +1,9 @@
 #imports
 import os, shutil
+from nnunet.inference.predict import predict_from_folder
+from nnunet.paths import default_plans_identifier, network_training_output_dir, default_cascade_trainer
+from batchgenerators.utilities.file_and_folder_operations import join
+from nnunet.utilities.task_name_id_conversion import convert_id_to_task_name
 from deepcell.applications import NuclearSegmentation
 from ...utilities.config import CONST as UNIV_CONST
 from ...shared.argumentparser import WorkingDirArgumentParser
@@ -160,11 +164,15 @@ class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,WorkflowSample,P
                     write_nifti_file_for_rect_im(im,nifti_file_path)
         #run the nnU-Net nuclear segmentation algorithm
         os.environ['RESULTS_FOLDER'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
-        nnunet_cmd = f'nnUNet_predict -i {str(self.temp_dir.resolve())} -o {str(self.__workingdir.resolve())}'
-        nnunet_cmd+= f' -t 500 -m 2d --num_threads_preprocessing {self.njobs} --num_threads_nifti_save {self.njobs}'
         self.logger.debug('Running nuclear segmentation with nnU-Net....')
+        task_name = convert_id_to_task_name(500)
+        model_folder_name = join(network_training_output_dir, '2d', task_name, default_cascade_trainer + "__" +
+                                 default_plans_identifier)
         try :
-            os.system(nnunet_cmd)
+            predict_from_folder(model_folder_name, str(self.temp_dir.resolve()), str(self.__workingdir.resolve()), 
+                                None, False, self.njobs, self.njobs, None, 0, 1, True, overwrite_existing=False, 
+                                mode='normal', overwrite_all_in_gpu=None, mixed_precision=True,
+                                step_size=0.5, checkpoint_name='model_final_checkpoint')
         except Exception as e :
             errmsg = 'ERROR: some exception was raised while running nnU-Net. Output will be collected and then '
             errmsg = 'the exception will be reraised. See log lines above for what was completed.'
