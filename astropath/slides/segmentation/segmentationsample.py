@@ -1,7 +1,7 @@
 #imports
 import os, shutil
 from nnunet.inference.predict import predict_from_folder
-from nnunet.paths import default_plans_identifier, network_training_output_dir, default_trainer
+from nnunet.paths import default_plans_identifier, default_trainer
 from batchgenerators.utilities.file_and_folder_operations import join
 from deepcell.applications import NuclearSegmentation
 from ...utilities.config import CONST as UNIV_CONST
