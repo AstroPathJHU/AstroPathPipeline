@@ -1,4 +1,4 @@
-import csv, pathlib, setuptools.command.build_py, setuptools.command.develop, site, subprocess
+import os, csv, pathlib, setuptools.command.build_py, setuptools.command.develop, site, subprocess
 
 site.ENABLE_USER_SITE = True #https://www.scivision.dev/python-pip-devel-user-install/
 here = pathlib.Path(__file__).parent
@@ -28,6 +28,14 @@ class develop(setuptools.command.develop.develop):
   def run(self):
     self.run_command("build_commits_csv")
     super().run()
+
+def get_nnunet_package_files():
+  directory = here/'astropath'/'slides'/'segmentation'/'nnunet_models'
+  paths = []
+  for (path, directories, filenames) in os.walk(directory):
+    for filename in filenames:
+      paths.append(os.path.join('..', path, filename))
+  return paths
 
 setupkwargs = dict(
   name = "astropath",
@@ -130,7 +138,7 @@ setupkwargs = dict(
       "shared/master_annotation_list.csv",
       "slides/zoom/color_matrix.txt",
       "utilities/version/commits.csv",
-    ],
+    ]+get_nnunet_package_files(),
   },
 )
 
