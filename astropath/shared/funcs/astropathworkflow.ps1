@@ -4,7 +4,7 @@
         [Parameter()][array]$projects,
         [Parameter()][string]$module = 'hpfs', 
         [Parameter()][array]$submodules,
-        [Parameter()][PSCredential]$Credential = [PSCredential]::Empty
+        [Parameter()][PSCredential]$Credential = [PSCredential]::Empty,
         [Parameter()][switch]$test 
     )
     #
