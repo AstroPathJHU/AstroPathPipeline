@@ -6,7 +6,8 @@ from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 slide_ID = 'M21_1'
-rectangle_ns_with_comp_tiff_files = [1,17,18,23,40]
+rectangle_ns_with_comp_tiff_files_nnunet = [18,23,40]
+rectangle_ns_with_comp_tiff_files_deepcell = [1,17,18,23,40]
 
 class TestSegmentationBase(TestBaseCopyInput, TestBaseSaveOutput) :
     """
@@ -66,7 +67,7 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
                 '--allow-local-edits',
                 '--selectrectangles'
                 ]
-        for rn in rectangle_ns_with_comp_tiff_files :
+        for rn in rectangle_ns_with_comp_tiff_files_nnunet :
             args.append(str(rn))
         SegmentationSampleNNUNet.runfromargumentparser(args=args)
         #compare the results to the reference files
@@ -104,7 +105,7 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
                 '--allow-local-edits',
                 '--selectrectangles'
                 ]
-        for rn in rectangle_ns_with_comp_tiff_files :
+        for rn in rectangle_ns_with_comp_tiff_files_deepcell :
             args.append(str(rn))
         SegmentationSampleDeepCell.runfromargumentparser(args=args)
         #compare the results to the reference files
