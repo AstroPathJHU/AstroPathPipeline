@@ -1,7 +1,7 @@
 #imports
 import os, shutil
 from nnunet.inference.predict import predict_from_folder
-from nnunet.paths import default_plans_identifier, network_training_output_dir, default_cascade_trainer
+from nnunet.paths import default_plans_identifier, network_training_output_dir, default_trainer
 from batchgenerators.utilities.file_and_folder_operations import join
 from deepcell.applications import NuclearSegmentation
 from ...utilities.config import CONST as UNIV_CONST
@@ -164,8 +164,9 @@ class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,WorkflowSample,P
         #run the nnU-Net nuclear segmentation algorithm
         os.environ['RESULTS_FOLDER'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
         self.logger.debug('Running nuclear segmentation with nnU-Net....')
+        my_network_training_output_dir = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve()/'nnUNet')
         task_name = 'Task500_Pathology_DAPI'
-        model_folder_name = join(network_training_output_dir, '2d', task_name, default_cascade_trainer + "__" +
+        model_folder_name = join(my_network_training_output_dir, '2d', task_name, default_trainer + "__" +
                                  default_plans_identifier)
         try :
             predict_from_folder(model_folder_name, str(self.temp_dir.resolve()), str(self.__workingdir.resolve()), 
