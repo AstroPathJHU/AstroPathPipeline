@@ -1,7 +1,8 @@
 #imports
 import os, pathlib, shutil
 import numpy as np
-from astropath.slides.segmentation.segmentationsample import SegmentationSampleNNUNet, SegmentationSampleDeepCell
+#from astropath.slides.segmentation.segmentationsample import SegmentationSampleNNUNet
+from astropath.slides.segmentation.segmentationsample import SegmentationSampleDeepCell
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
