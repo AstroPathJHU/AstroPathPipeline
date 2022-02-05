@@ -204,7 +204,7 @@
     <# ------------------------------------------
     LastWrite
     ------------------------------------------
-    check if a path exists
+    get the last write time for a path or file
     ------------------------------------------ #>
     [DateTime]LastWrite([string]$p){
         #
@@ -215,4 +215,19 @@
         }
         #
     }
+    #
+    <# -----------------------------------------
+     GetCreds
+     puts credentials in a string format
+     ------------------------------------------
+     Usage: $this.GetCreds()
+    ----------------------------------------- 
+    [array]GetCreds([Pscredential]$login){
+        #
+        $username = $login.UserName
+        $password = $login.GetNetworkCredential().Password
+        return @($username, $password)
+        #
+    }
+    #>
 }

@@ -1,8 +1,7 @@
 ﻿function sampletracker {
     param(
         [parameter()][string]$mpath,
-        [parameter()][string]$slideid,
-        [parameter()][string]$project
+        [parameter()][string]$slideid
     )
     #
     if (!($PSBoundParameters.ContainsKey('project'))){

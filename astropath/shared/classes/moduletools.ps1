@@ -341,8 +341,9 @@
             $test = 'ERROR'
             if ($this.logoutput -match $test){
                 $this.silentcleanup()
-                $potentialerrors = ($this.logoutput.trim() -ne '') -notmatch 'ERROR'
-                Throw $potentialerrors
+                $potentialerrors = ($this.logoutput -notmatch 'Exit Status' -ne '').replace(';', '')
+                $this.sample.error($potentialerrors)
+                Throw 'Error in matlab task'
             } elseif ($this.logoutput) {
                 $this.sample.info($this.logoutput.trim())
             }
@@ -357,7 +358,8 @@
             if ($this.logoutput -and $this.logoutput[0] -notmatch $test) {
                 $this.silentcleanup()
                 $potentialerrors = $this.logoutput -ne ''
-                Throw $potentialerrors
+                $this.sample.error($potentialerrors)
+                Throw 'Error in python task'
             }
             #
             if ($this.sample.module -match 'warpoctets'){

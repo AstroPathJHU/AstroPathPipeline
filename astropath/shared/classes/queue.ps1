@@ -189,6 +189,7 @@ class queue : vminformqueue{
         $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
         $d2 = ($loglines |
                  Where-Object {
+                    ($_.Message -match $vers) -and 
                     $_.Message -match $statustypes[1] -and
                      ($_.Slideid -match $ID)
                  }).Date |

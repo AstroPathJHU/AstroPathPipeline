@@ -11,6 +11,10 @@ class sampletracker : dependencies {
     #
     [vminformqueue]$vmq
     #
+    sampletracker($mpath, $slideid): base ($mpath, $slideid){
+        $this.getmodulenames()
+    }
+    #
     sampletracker($mpath, $slideid, $vmq): base ($mpath, $slideid){
         $this.getmodulenames()
         $this.vmq = $vmq
@@ -20,8 +24,6 @@ class sampletracker : dependencies {
         $this.modules = $modules
         $this.vmq = $vmq
     }
-    #
-    # sampletracker($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
     #
     [void]defmodulestatus(){
         #

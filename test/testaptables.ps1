@@ -152,5 +152,5 @@
 #
 # launch test and exit if no error found
 #
-$test = [testaptables]::new() 
+[testaptables]::new() 
 exit 0

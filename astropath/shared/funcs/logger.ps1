@@ -3,6 +3,7 @@
         [parameter()][string]$mpath,
         [parameter()][string]$module,
         [parameter()][string]$slideid,
+        [parameter()][string]$batchid,
         [parameter()][string]$project
     )
     #
@@ -14,14 +15,23 @@
         return [mylogger]::new()
     }
     #
-    if (!($PSBoundParameters.ContainsKey('slideid'))){
+    if (!($PSBoundParameters.ContainsKey('slideid')) -AND 
+        !($PSBoundParameters.ContainsKey('batchid'))
+    ){
         return [mylogger]::new($mpath, $module)
     }
     #
-    if (!($PSBoundParameters.ContainsKey('project'))){
+    if (!($PSBoundParameters.ContainsKey('batchid'))
+    ){
         return [mylogger]::new($mpath, $module, $slideid)
     }
     #
-    return [mylogger]::new($mpath, $module, $slideid, $project)
+    if (($PSBoundParameters.ContainsKey('project')) -AND 
+        ($PSBoundParameters.ContainsKey('batchid'))
+        ){
+        return [mylogger]::new($mpath, $module, $batchid, $project)
+    }
+    #
+    Throw 'usage: logger [mpath [module [slideid] [project batchid]]]'
     #
 }

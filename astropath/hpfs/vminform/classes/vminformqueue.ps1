@@ -166,11 +166,10 @@ class vminformqueue : sharedtools {
             # replace old local row with the row in main
             #
             $localrow = $localqueue | Where-Object -FilterScript {$_.TaskID -eq $row.TaskID}
-            if ($localrow -notmatch ($row | select -Property TaskID, Specimen, Antibody, Algorithm)) {
-                $addedrow = New-Object System.Object
-                $newid = ($localqueue.taskid | measure -maximum).Maximum + 1
+            if ($localrow -notmatch ($row | select-object -Property TaskID, Specimen, Antibody, Algorithm)) {
+                $newid = ($localqueue.taskid | measure-object -maximum).Maximum + 1
                 $NewRow =  $localrow |
-                    select -Property Specimen, Antibody, Algorithm |
+                select-object -Property Specimen, Antibody, Algorithm |
                     Add-Member TaskID $newid -PassThru
                 $localqueue += $NewRow
                 #
@@ -193,7 +192,7 @@ class vminformqueue : sharedtools {
         $localqueue | ForEach-Object{
             if ($_.TaskID -notin $mainqueue.localtaskid -and $_.Algorithm -ne '') {
                 
-                $NewRow = $_ | select -Property TaskID, Specimen, Antibody, Algorithm |
+                $NewRow = $_ | select-object -Property TaskID, Specimen, Antibody, Algorithm |
                     Add-Member ProcessingLocation, StartDate '','' -PassThru
                 $NewRow.TaskID = 'T' + $project.PadLeft(3,'0') + ($NewRow.TaskID.ToString()).PadLeft(5,'0')
                 $mainqueue += $NewRow
@@ -209,7 +208,7 @@ class vminformqueue : sharedtools {
     }
     #
     [void]writemainqueue($mainqueue, $mainqueuelocation){
-        $mainqueue = $mainqueue | select -Property TaskID, Specimen, Antibody, Algorithm, ProcessingLocation, StartDate
+        $mainqueue = $mainqueue | select-object -Property TaskID, Specimen, Antibody, Algorithm, ProcessingLocation, StartDate
         $updatedmain = (($mainqueue | ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
         $this.SetFile($mainqueuelocation, $updatedmain)
     }

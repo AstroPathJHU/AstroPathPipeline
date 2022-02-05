@@ -306,32 +306,18 @@
             ){
             return 4
         }
-        <#
-        if (!($this.checkmeanimage($true) -eq 3)){
-            return 1
-        }
-        #>
+        #
         if ($this.moduleinfo.meanimage.status -ne 'FINISHED'){
             return 1
         }
         #
-        if (!(test-path $this.moduleinfo.batchmicomp.slidelog)){
-            return 2
-        }
-        <#
         if ($this.checklog('batchmicomp', $true)){
             return 2
         }
-        #>
-        # get the meanimagecomparison table  
-        # extract current dpath from root_dir_1
-        # check if slideID is in slideid 1
-        # do the same on root 2
-        # if slide not yet then return 2
         #
-        # if (!$log.testmeanimagecomparison()){
-        #    return 2
-        #}
+        if (!$this.testbatchmicompfiles()){
+            return 2
+        }
         #
         return 3
         #
@@ -371,7 +357,7 @@
                 return 1
             }
             #>
-            if ($this.moduleinfo.checkbatchmicomp.status -ne 'FINISHED'){
+            if ($this.moduleinfo.batchmicomp.status -ne 'FINISHED'){
                 return 1
             }
             #
@@ -427,12 +413,8 @@
      Usage: $this.checkmeanimage(log, dependency)
     ----------------------------------------- #>
     [int]checkwarpoctets($dependency){
-        <#
+        #
         if (!($this.checkbatchflatfield($true) -eq 3)){
-            return 1
-        }
-        #>
-        if ($this.moduleinfo.batchflatfield.status -ne 'FINISHED'){
             return 1
         }
         <#

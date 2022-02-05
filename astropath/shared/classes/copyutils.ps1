@@ -253,7 +253,7 @@ class copyutils{
         # call checksum on the particular file to make sure the 
         # second go round went properly, fail on the 5th try.
         #
-        if (!$comparison) {
+        if ($comparison) {
             foreach ($file in $comparison) {
                 $tempsor = ($sourcehash -match $file.Hash).Path
                 if ($copycount -gt 5){

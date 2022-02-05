@@ -63,10 +63,10 @@
         #
         $defpath = $mpath + '\AstropathAPIDdef.csv'
         #
-        $slide_ids = $this.opencsvfile($defpath)
+        $slide_ids = $this.OpencsvFileConfirm($defpath)
         return $slide_ids
         #
-     }
+    }
     <# -----------------------------------------
      ImportFlatfieldModels
      open the AstropathAPIDdef.csv to get all slide
@@ -179,6 +179,27 @@
         $config_data = $this.opencsvfile($config_csv_file)
         #
         return $config_data
+        #
+    }
+    <# -----------------------------------------
+     ImportMICOMP
+     open the AstroPathmeanimagecomparison info 
+     for the astropath processing pipeline with 
+     error checking in the mpath location
+     ------------------------------------------
+     Input: 
+        -mpath: main path for the astropath processing
+         which contains all necessary processing files
+     ------------------------------------------
+     Usage: ImportMICOMP(mpath)
+    ----------------------------------------- #>
+    [PSCustomObject]ImportMICOMP([string] $mpath){
+        #
+        $micomp_csv_file = $mpath + '\meanimagecomparison\meanimagecomparison_table.csv'
+        #
+        $micomp_data = $this.opencsvfile($micomp_csv_file)
+        #
+        return $micomp_data
         #
     }
     <# -----------------------------------------

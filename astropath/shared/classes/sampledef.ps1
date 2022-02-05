@@ -92,8 +92,8 @@ class sampledef : sharedtools{
         if (!$batch){
             Throw 'Not a valid batchid'
         }
-        $this.project = $batch.Project[1]
-        $this.cohort = $batch.Cohort[1]
+        $this.project = $batch.Project[0]
+        $this.cohort = $batch.Cohort[0]
         $this.BatchID = $batch.BatchID.padleft(2, '0')
         $this.slideid = $this.BatchID
         $this.batchslides = $batch
@@ -140,6 +140,38 @@ class sampledef : sharedtools{
         $vers = $this.GetVersion($this.mpath, $cmodule, $this.project)
         $this.moduleinfo.($cmodule) = @{mainlog =$cmainlog; slidelog=$cslidelog; version=$vers}
         #
+    }
+    #
+    [string]slidelogfolder(){
+        $path = $this.basepath + '\' + $this.slideid + '\logfiles'
+        return $path
+
+    }
+    #
+    [string]slidelogbase(){
+        $path = $this.slidelogfolder() + '\' + $this.slideid + '-'
+        return $path
+    }
+    #
+    [string]slidelogbase($cmodule){
+        $path = $this.slidelogfolder() + '\' + $this.slideid + '-' + $cmodule + '.log'
+        return $path
+    }
+    #
+    [string]mainlogfolder(){
+        $path = $this.basepath + '\logfiles'
+        return $path
+
+    }
+    #
+    [string]mainlogbase(){
+        $path = $this.mainlogfolder() + '\' 
+        return $path
+    }
+    #
+    [string]mainlogbase($cmodule){
+        $path = $this.mainlogfolder() + '\' + $cmodule + '.log'
+        return $path
     }
     #
     [string]im3folder(){
@@ -341,7 +373,7 @@ class sampledef : sharedtools{
             }
             #
             $files = @('-sum_images_squared.bin', '-std_err_of_mean_image.bin', `
-                    '-mask_stack.bin', '-mean_image.bin')
+                     '-mean_image.bin') #'-mask_stack.bin',
             #
             foreach ($file in $files) {
                 $fullpath = $p + '\' + $this.slideid + $file
@@ -353,6 +385,19 @@ class sampledef : sharedtools{
         }
         #
         return $true
+        #
+    }
+    #
+    [switch]testbatchmicompfiles(){
+        $micomp_data = $this.ImportMICOMP($this.mpath)
+        if (($micomp_data.root_dir_1 -contains ($this.basepath + '\') -AND
+                $micomp_data.slide_ID_1 -contains ($this.slideid)) -OR
+            (($micomp_data.root_dir_2 -contains ($this.basepath + '\') -AND
+                $micomp_data.slide_ID_2 -contains ($this.slideid)))){
+            return $true
+        }
+        #
+        return $false
         #
     }
     #
@@ -409,6 +454,12 @@ class sampledef : sharedtools{
             if ($log.Message -match "Sample is not good"){
                 return $true
             }
+        }
+        #
+        $p = ($this.meanimagefolder() + '\' + $this.slideid + '-mask_stack.bin')
+        #
+        if (test-path $p){
+            return $true
         }
         #
         if (!(test-path $file) -AND !(test-path $file2)){
