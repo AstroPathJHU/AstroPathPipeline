@@ -89,10 +89,6 @@ class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,WorkflowSample,P
         return outputfiles
 
     @classmethod
-    def logmodule(cls) : 
-        return "segmentation"
-
-    @classmethod
     def workflowdependencyclasses(cls, **kwargs):
         return super().workflowdependencyclasses(**kwargs)
 
