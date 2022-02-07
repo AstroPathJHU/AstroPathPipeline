@@ -256,8 +256,8 @@ class copyutils{
         if ($comparison) {
             foreach ($file in $comparison) {
                 $tempsor = ($sourcehash -match $file.Hash).Path
-                if ($copycount -gt 5){
-                    Throw ('failed to copy ' + $tempsor)
+                if ($copycount -gt 50){
+                    Throw ('failed to copy ' + $tempsor + '. N tries:' + $copycount)
                 }
                 #
                 if ($this.isWindows()){

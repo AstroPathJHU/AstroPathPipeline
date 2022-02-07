@@ -10,8 +10,8 @@
 class sampledb : sharedtools {
     #
     [array]$projects
-    [hashtable]$sampledb = @{}
-    [hashtable]$moduledb = @{}
+    [System.Collections.Concurrent.ConcurrentDictionary[string,object]]$sampledb = @{}
+    [System.Collections.Concurrent.ConcurrentDictionary[string,object]]$moduledb = @{}
     [vminformqueue]$vmq
     #
     sampledb(){
@@ -66,6 +66,48 @@ class sampledb : sharedtools {
             $sampletracker = [sampletracker]::new($this.mpath, $slide.slideid, $this.vmq)
             $sampletracker.defmodulestatus()
             $this.sampledb.($slide.slideid) = $sampletracker
+        }
+        #
+        write-progress -Activity "Checking slides" -Status "100% Complete:" -Completed
+        #
+    }
+    <# -----------------------------------------
+    defsampleStagesParallel
+    For each slide, check the current module 
+    and the module dependencies to create a status
+    for each module and file watchers for the samples
+    log
+    adopted from: https://stackoverflow.com/questions/67570734/powershell-foreach-object-parallel-how-to-change-the-value-of-a-variable-outsid
+    ------------------------------------------
+    Usage: $this.defNotCompletedSlides(cleanedslides)
+    ----------------------------------------- #>
+    [void]defsampleStagesParallel($slides){
+        #
+        $queue = [System.Collections.Queue]::new()
+        1..$slides.Count | ForEach-Object { $queue.Enqueue($_) }
+        $syncQueue = [System.Collections.Queue]::synchronized($queue)
+        #
+        $parpool = $slides | ForEach-Object -AsJob -ThrottleLimit 6 -Parallel {
+            $sdbcopy = $using:this.sampledb
+            $sqcopy = $using:syncQueue
+            $vmqcopy = $using:this.vmq
+            # might need to import module here??
+            #
+            $sampletracker = [sampletracker]::new($_.mpath, $_.slideid, $vmqcopy)
+            $sampletracker.defmodulestatus()
+            $sdbcopy.($_.slideid) = $sampletracker
+            #
+            $sqCopy.Dequeue()
+        }
+        #
+        while ($parpool.State -eq 'Running') {
+            if ($syncQueue.Count -gt 0) {
+                $p = ((1 / $syncQueue.Count) * 100)
+                Write-Progress -Activity "Checking slides" `
+                    -Status "$p% Complete:" `
+                    -PercentComplete $p
+                Start-Sleep -Milliseconds 100
+            }
         }
         #
         write-progress -Activity "Checking slides" -Status "100% Complete:" -Completed
