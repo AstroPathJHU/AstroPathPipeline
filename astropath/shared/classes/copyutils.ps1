@@ -18,7 +18,7 @@ class copyutils{
     [switch]isWindows(){
         #
         try{
-            $OS = (Get-WMIObject win32_operatingsystem).name
+            (Get-WMIObject win32_operatingsystem).name | out-null
             return $true
         } catch {
             return $false
@@ -37,8 +37,10 @@ class copyutils{
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des){
         #
+        $this.createdirs($des)
+        #
         if ($this.isWindows()){
-            xcopy $sor, $des /q /y /z /j /v | Out-Null
+            xcopy $sor $des /q /y /z /j /v | Out-Null
         } else {
             $this.lxcopy($sor, $des)
         }
@@ -118,10 +120,10 @@ class copyutils{
         $filespeco = $filespec
         if ($this.isWindows()){
             if ($filespec -match '\*'){
-               $output = robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads -log:$logfile
+               robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads -log:$logfile | out-null
             } else {
                $filespec = $filespec | foreach-object {'*' + $_}
-               $output = robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads -log:$logfile
+               robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads -log:$logfile  | out-null
             }
         } else {
             $this.lxcopy($sor, $des, $filespec)
@@ -187,12 +189,12 @@ class copyutils{
     [system.object]listfiles([string]$sor, [array]$filespec){
         $sor = $sor + '\*'
         if ($filespec -match '\*'){
-            $files = gci $sor -Recurse 
+            $files = get-ChildItem $sor -Recurse 
         } else {
             $filespec = $filespec | foreach-object {'*' + $_}
-            $files = gci $sor -Include  $filespec -Recurse
+            $files = get-ChildItem $sor -Include  $filespec -Recurse
         }
-        if ($files -eq $null) {
+        if (!$files) {
             $files = @()
         }
         return $files
@@ -222,31 +224,42 @@ class copyutils{
         # get the list of files that were transferred
         #
         if ((Get-Item $sor) -is [System.IO.DirectoryInfo]){
+            #
             $sourcefiles = $this.listfiles($sor, $filespec)
             $desfiles = $this.listfiles($des, $filespec)
-            $sourcehash = $sourcefiles | Get-FileHash -Algorithm MD5
-            $destinationhash = $desfiles | Get-FileHash -Algorithm MD5
+            #
+            #
+            if ($global:PSVersionTable.PSVersion -lt 7){
+                $sourcehash = $this.FileHasher($sourcefiles)
+                $destinationhash = $this.FileHasher($desfiles)
+            } else {
+                $sourcehash = $this.FileHasher($sourcefiles, 7)
+                $destinationhash = $this.FileHasher($desfiles, 7)
+            }
         } else {
+            #
             $sourcefiles = $this.handlebrackets($sor)
             $desfiles = $this.handlebrackets($des + '\' + (Split-Path $sor -Leaf))
-            $sourcehash = Get-FileHash $sourcefiles -Algorithm MD5
-            $destinationhash = Get-FileHash $desfiles -Algorithm MD5
+            #
+            $sourcehash = $this.FileHasher($sourcefiles, 7, $true)
+            $destinationhash = $this.FileHasher($desfiles, 7, $true)
+            #
         }
         #
         # catch empty folders
         #
-        if (!$sourcehash) {
-            $sourcehash = @()
+        if ($sourcehash.count -eq 0) {
+            $sourcehash = @{}
+            $sourcehash.('tmp') = 'tmp'
         }
-        if (!$destinationhash) {
-            $destinationhash = @()
+        if ($destinationhash.count -eq 0) {
+            $destinationhash = @{}
+            $destinationhash.('tmp') = 'tmp'
         }
         #
-        # compare hashes
-        #
-        $comparison = Compare-Object -ReferenceObject $sourcehash `
-                                -DifferenceObject $destinationhash `
-                                -Property Hash |
+        $comparison = Compare-Object -ReferenceObject $($sourcehash.Values) `
+                                -DifferenceObject $($destinationhash.Values) `
+                        |
                 Where-Object -FilterScript {$_.SideIndicator -eq '<='}
         #
         # copy files that failed
@@ -254,14 +267,19 @@ class copyutils{
         # second go round went properly, fail on the 5th try.
         #
         if ($comparison) {
+            #
             foreach ($file in $comparison) {
-                $tempsor = ($sourcehash -match $file.Hash).Path
-                if ($copycount -gt 50){
+                $tempsor = ($sourcehash.GetEnumerator() | 
+                    Where-Object {$_.Value -contains $file.InputObject}).Key
+                #
+                if ($copycount -ge 50){
                     Throw ('failed to copy ' + $tempsor + '. N tries:' + $copycount)
                 }
                 #
+                $this.createdirs($des)
+                #
                 if ($this.isWindows()){
-                    xcopy $tempsor, $des /q /y /z /j /v | Out-Null
+                    xcopy $tempsor $des /q /y /z /j /v | Out-Null
                 } else {
                     $this.lxcopy($sor, $des)
                 }
@@ -270,6 +288,85 @@ class copyutils{
                 $this.verifyChecksum($tempsor, $des, '*', $copycount)
             }
         }
+        #
+    }
+    <#-----------------------------------------
+    FileHasher
+    get the file hash if the version is 7.0 or higher use parallel
+    processing.
+    Edited from 'Get-FileHash' source code
+    -----------------------------------------#>
+    [System.Collections.Concurrent.ConcurrentDictionary[string,object]]FileHasher($filelist, [int]$v){
+        #
+        [System.Collections.Concurrent.ConcurrentDictionary[string,object]]$hashes = @{}
+        #
+        $filelist | foreach-Object -Parallel{
+            #
+            $hcopy = $using:hashes
+            $Algorithm="MD5"
+            $hasherType = "System.Security.Cryptography.${Algorithm}CryptoServiceProvider" -as [Type]
+            if ($hasherType) {
+                $hasher = $hasherType::New()
+            }
+            #
+            if(Test-Path -LiteralPath $_ -PathType Container) {
+                continue
+            }
+            #
+            if (!(Test-path $_)){
+                continue
+            }
+            #
+            try{
+                [system.io.stream]$stream = [system.io.file]::OpenRead($_.FullName)
+                [Byte[]] $computedHash = $hasher.ComputeHash($stream)
+                [string] $hash = [BitConverter]::ToString($computedHash) -replace '-',''
+                $hcopy.($_.FullName) = $hash
+            } catch {
+                    Throw $_.Exception.Message
+            } finally {
+                if($stream)
+                {
+                    $stream.Dispose()
+                }
+            }
+        -ThrottleLimit 20
+        }
+        #
+        return ($hashes)
+        #
+    }
+    <#-----------------------------------------
+    FileHasher
+    get the file hash if the version is 7.0
+     or higher use parallel processing.
+    Edited from 'Get-FileHash' source code
+    -----------------------------------------#>
+    [hashtable]FileHasher($filelist){
+        #
+        if ($filelist.Count -eq 1){
+            $filehash = $this.FileHasher($filelist, 7, $true)
+            return $filehash
+        }
+        #
+        $filehash = @{}
+        $filehash1 = $filelist | Get-FileHash -Algorithm MD5
+        $filehash1 | ForEach-Object{
+            $filehash.($_.Path) = $_.Hash
+        }
+        #
+        return $filehash
+        #
+    }
+
+    [hashtable]FileHasher($file, [int]$v, $singlefile){
+        #
+        $filehash = @{}
+        if (test-path $file){
+            $filehash1 = Get-FileHash $file -Algorithm MD5
+            $filehash.($file) = $filehash1.Hash
+        }  
+        return $filehash
         #
     }
 }

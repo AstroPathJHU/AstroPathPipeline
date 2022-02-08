@@ -26,15 +26,15 @@
     #
     importmodule(){
         $this.module = $PSScriptRoot + '/../astropath'
-        Import-Module $this.module -EA SilentlyContinue
+        Import-Module $this.module
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
+        $this.process_loc = $PSScriptRoot + '\test_for_jenkins'
     }
     #
     testconstructor(){
         #
         try {
-            $tools = sharedtools
+            sharedtools | Out-Null
         } catch {
             Throw ('cannot create a [sharedtools] object. ' + $_.Exception.Message)
         }
@@ -63,7 +63,6 @@
         $logpath = $PSScriptRoot + '\data\logfiles'
         #
         Write-Host $logpath
-        $tools.createdirs($logpath)
         #
         if (!(test-path $logpath)){
             Throw 'could not create folder in data'
@@ -111,20 +110,71 @@
             Throw 'write failed in copy tests'
         }
         #
-        $des = $PSScriptRoot + 'data\logfiles2'
+        $des = $PSScriptRoot + '\data\logfiles2'
+        $tools.createdirs($des)
         $desfile = $des + '\logfile.log'
         #
         Write-Host 'testing single copy'
         #
         $tools.copy($sorfile, $des)
+        $tools.popfile($sorfile,'edited')
         #
+        Write-Host 'testing single checksum'
+        #
+        $tools.verifyChecksum($sor, $des, '*', 0)
         $this.checkdesfiles($des, $desfile, $tools)
         #
         Write-Host 'testing robo copy'
         #
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile.log'
+        $tools.popfile($sorfile, $content)
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile2.log'
+        $tools.popfile($sorfile, $content)
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile3.log'
+        $tools.popfile($sorfile, $content)
+        #
+        $tools.copy($sor, $des, 'log')
+        $this.checkdesfiles($des, $desfile, $tools)
+        #
+        Write-Host 'testing robo copy 2'
+        #
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile.log'
+        $tools.popfile($sorfile, $content)
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile2.log'
+        $tools.popfile($sorfile, $content)
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile3.log'
+        $tools.popfile($sorfile, $content)
         $tools.copy($sor, $des, 'log')
         #
-        $this.checkdesfiles($des, $desfile, $tools)
+        Write-Host 'testing checksum multiple files'
+        #
+        $tools.popfile($sorfile, 'new contents')
+        $tools.verifyChecksum($sor, $des, '*', 0)
+        $this.checkdesfiles($des, $desfile, $tools, 3)
+        #
+        Write-Host 'testing checksum on one file'
+        #
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile.log'
+        $tools.popfile($sorfile, $content)
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile2.log'
+        $tools.popfile($sorfile, $content)
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile3.log'
+        $tools.popfile($sorfile, $content)
+        $tools.copy($sor, $des, 'log')
+        $tools.popfile($sorfile, $content)
+        $tools.verifyChecksum($sorfile, $des, '*', 0)
+        $this.checkdesfiles($des, $desfile, $tools, 3)
+        #
+        Write-Host 'testing checksum no files in des'
+        #
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile.log'
+        $tools.popfile($sorfile, $content)
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile2.log'
+        $tools.popfile($sorfile, $content)
+        $sorfile = $PSScriptRoot + '\data\logfiles\logfile3.log'
+        $tools.popfile($sorfile, $content)
+        $tools.verifyChecksum($sor, $des, '*', 0)
+        $this.checkdesfiles($des, $desfile, $tools, 3)
         #
         Write-Host 'testing robo copy all files'
         #
@@ -140,11 +190,34 @@
         #
         if (!(Test-Path $desfile)){
             Throw 'could not copy using robocopy'
-        } else {
-             $tools.removedir($des)
-             if (Test-Path $des){
-                Throw 'could not remove directory in copy tests'
-             }
+        }
+        #
+        $files = get-childitem $des
+        Write-Host ($files.FullName)
+        #
+        $tools.removedir($des)
+        if (Test-Path $des){
+        Throw 'could not remove directory in copy tests'
+        }
+        #
+    }
+    #
+    [void]checkdesfiles($des, $desfile, $tools, $n){
+        #
+        if (!(Test-Path $desfile)){
+            Throw 'could not copy using robocopy'
+        }
+        #
+        $files = get-childitem $des
+        Write-Host ($files.FullName)
+        $nfiles = ($files).Length
+        if ($nfiles -ne $n){
+            Throw 'wrong number of files for test'
+
+        }
+        $tools.removedir($des)
+        if (Test-Path $des){
+        Throw 'could not remove directory in copy tests'
         }
         #
     }
@@ -164,5 +237,5 @@
 #
 # launch test and exit if no error found
 #
-$test = [testsharedtools]::new() 
+[testsharedtools]::new() 
 exit 0
