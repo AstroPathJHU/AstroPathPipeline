@@ -223,14 +223,14 @@ class Dispatcher : DispatcherTools {
             $myscriptblock = {
                 param($username, $password, $currentworkerip, $workertaskfile)
                 psexec -i -nobanner -accepteula -u $username -p $password \\$currentworkerip `
-                    powershell -noprofile -executionpolicy bypass -command "$workertaskfile" `
+                    pwsh -noprofile -executionpolicy bypass -command "$workertaskfile" `
                     *>> ($workertaskfile -replace '.ps1', '-job.log')
             }
         } else {
             $myscriptblock = {
                 param($username, $password, $currentworkerip, $workertaskfile)
                 psexec -nobanner -accepteula -u $username -p $password \\$currentworkerip `
-                    powershell -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" `
+                    pwsh -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" `
                     *>> ($workertaskfile -replace '.ps1', '-job.log')
             }
         }
