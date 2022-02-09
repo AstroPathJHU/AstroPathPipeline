@@ -5,7 +5,7 @@ from ...shared.image_masking.image_mask import ImageMask
 from ...shared.image_masking.maskloader import MaskLoader, TissueMaskLoader, TissueMaskLoaderWithPolygons
 from ...shared.logging import ThingWithLogger
 from ...shared.rectangle import MaskRectangle
-from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadComponentTiff, MaskWorkflowSampleBase
+from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, MaskWorkflowSampleBase
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
@@ -184,7 +184,7 @@ class StitchMaskSample(WriteMaskSampleBase):
   def workflowdependencyclasses(cls, **kwargs):
     return [AlignSample] + super().workflowdependencyclasses(**kwargs)
 
-class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadComponentTiff, InformMaskSample):
+class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadSegmentedComponentTiff, InformMaskSample):
   """
   Stitch the inform mask together from layer 9 of the component tiffs.
   The implementation is the same as zoom, and the mask will match the
@@ -192,7 +192,7 @@ class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadComponentTiff
   because the mask is discrete)
   """
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, with_seg=True, layer="setlater", **kwargs)
+    super().__init__(*args, layer="setlater", **kwargs)
     self.setlayers(layer=self.masklayer)
 
   @classmethod
@@ -200,12 +200,6 @@ class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadComponentTiff
 
   multilayer = False
   rectangletype = FieldReadComponentTiff
-  @property
-  def rectangleextrakwargs(self):
-    return {
-      **super().rectangleextrakwargs,
-      "with_seg": True,
-    }
 
   def inputfiles(self, **kwargs):
     result = [self.csv("fields")]
