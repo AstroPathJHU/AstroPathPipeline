@@ -19,23 +19,6 @@ pipeline {
   }
 
   stages {
-
-    stage('test without optional dependencies') {
-      agent {
-        dockerfile {
-          dir '.docker'
-          additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'" --build-arg ASTROPATH_INSTALL_EXTRAS=false'
-        }
-      }
-      steps {
-        sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
-        sh 'pip install .'
-        sh '''echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
-        sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
-        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
-      }
-    }
-
     stage('run tests') {
       agent {
         dockerfile {
@@ -244,6 +227,21 @@ pipeline {
             sh '! find test/test_for_jenkins -type f | grep . || (echo "expected the test_for_jenkins folder to be empty when tests succeed (feel free to modify this check if you want to keep output files from successful tests)"; exit 1)'
           }
         }
+      }
+    }
+    stage('test without optional dependencies') {
+      agent {
+        dockerfile {
+          dir '.docker'
+          additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'" --build-arg ASTROPATH_INSTALL_EXTRAS=false'
+        }
+      }
+      steps {
+        sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
+        sh 'pip install .'
+        sh '''echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
+        sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
+        sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
       }
     }
   }
