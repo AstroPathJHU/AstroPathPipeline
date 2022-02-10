@@ -1,15 +1,13 @@
 #imports
 import os, shutil
-from nnunet.inference.predict import predict_from_folder
-from nnunet.paths import default_plans_identifier, default_trainer
 from batchgenerators.utilities.file_and_folder_operations import join
-from deepcell.applications import NuclearSegmentation
 from ...utilities.config import CONST as UNIV_CONST
 from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.sample import ReadRectanglesComponentTiffFromXML, WorkflowSample, ParallelSample
 from .config import SEG_CONST
 from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im
 from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation
+from .utilities.optionalimports import deepcell, nnunet
 
 #some constants
 NNUNET_SEGMENT_FILE_APPEND = 'nnunet_nuclear_segmentation.npz'
@@ -112,6 +110,10 @@ class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,WorkflowSample,P
         """
         Run nuclear segmentation using the pre-trained nnU-Net algorithm
         """
+        predict_from_folder = nnunet.inference.predict.predict_from_folder
+        default_plans_identifier = nnunet.paths.default_plans_identifier
+        default_trainer = nnunet.paths.default_trainer
+
         #make sure that the necessary model files exist
         rebuild_model_files_if_necessary()
         #create the temporary directory that will hold the NIfTI files
@@ -230,6 +232,8 @@ class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,WorkflowSample,P
         """
         Run nuclear segmentation using DeepCell's nuclear segmentation algorithm
         """
+        NuclearSegmentation = deepcell.applications.NuclearSegmentation
+
         self.logger.debug('Running nuclear segmentation with DeepCell....')
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but DeepCell segmentation cannot be run in parallel.')
