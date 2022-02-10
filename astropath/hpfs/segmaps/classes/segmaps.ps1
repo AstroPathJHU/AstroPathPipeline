@@ -47,6 +47,7 @@ Class segmaps : moduletools {
         if ($this.processvars[4]){
             $sor = $this.sample.componentfolder()
             Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
+            #$this.sample.removefile($sor, 'w_seg.tif')
         }
         $this.sample.info("cleanup finished")
         #
@@ -61,7 +62,7 @@ Class segmaps : moduletools {
         $this.sample.info("started processing segmentation maps")
         $taskname = 'GetaSeg'
         $matlabtask = ";GetaSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished processing segmentation maps")
     }
     <# -----------------------------------------
@@ -74,7 +75,7 @@ Class segmaps : moduletools {
         $this.sample.info("started processing fields without segmentation data")
         $taskname = 'GetnoSeg'
         $matlabtask = ";GetnoSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished processing fields without segmentation data")
     }
     <# -----------------------------------------

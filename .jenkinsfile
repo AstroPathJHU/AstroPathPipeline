@@ -28,15 +28,15 @@ pipeline {
       steps {
 	sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
-	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsharedtools.ps1'
-	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testaptables.ps1'            
+	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
+	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
+        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
 	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
-	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testsampletracker.ps1'
+	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
       }
     }
-/*
-   stage('pip install') {
+    stage('pip install') {
       steps {
 //	sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
         sh 'pip install .[all]'
@@ -44,7 +44,6 @@ pipeline {
         sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
       }
     }
-
     stage('run tests') {
       parallel {
 
@@ -72,6 +71,12 @@ pipeline {
         stage('prepdb') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
+          }
+        }
+
+        stage('ps shredxml') {
+          steps {
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
           }
         }
 
@@ -125,6 +130,12 @@ pipeline {
           }
         }
 
+	stage('segmaps') {
+	  steps {
+	    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
+	  }
+	}
+
         stage('geom') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeom'
@@ -151,6 +162,9 @@ pipeline {
 
         stage('warping') {
           stages {
+	    stage('test ps warping workflow'){
+		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
+	    }
             stage('test warping') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarping'
@@ -166,9 +180,11 @@ pipeline {
 
         stage('meanimage') {
           stages {
+	    stage('test ps meanimage workflow'){
+		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
+	    }
             stage('test meanimage') {
               steps {
-				// sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimage'
               }
             }
@@ -204,6 +220,10 @@ pipeline {
         }
 
         stage('applyflatw') {
+          stages {
+	    stage('test ps applyflatw - image correction workflow'){
+		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimagecorrection.ps1'
+	    }
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
           }
@@ -220,10 +240,10 @@ pipeline {
             sh 'python -m pyflakes .'
           }
         }
-
+		
       }
     }
-*/
+
     stage('check that the repo is clean') {
       steps {
         //make sure normal execution doesn't make files that aren't ignored by .gitignore

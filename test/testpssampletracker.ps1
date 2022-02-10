@@ -1,23 +1,38 @@
 ﻿ <# -------------------------------------------
  testsampletracker
- created by: Benjamin Green - JHU
- Last Edit: 01.18.2022
+ Benjamin Green - JHU
+ Last Edit: 02.09.2022
  --------------------------------------------
  Description
- test if the module can be imported or not
+ test if the sample tracker works correctly
+ and defines all the stages \ dependencies
+ properly.
  -------------------------------------------#>
 #
- Class testsampletracker {
+ Class testpssampletracker {
     #
     [string]$mpath 
-    [string]$module 
     [string]$process_loc
+    [string]$slideid = 'M21_1'
+    [string]$project = '0'
+    [string]$apmodule = $PSScriptRoot + '\..\astropath'
     #
-    testsampletracker(){
+    testpssampletracker(){
+        $this.launchtests()
+    }
+    #
+    testpssampletracker($project, $slideid){
+        $this.project = $project
+        $this.slideid = $slideid
+        $this.launchtests()
+    }
+    #
+    [void]launchtests(){
         #
+        Write-Host '---------------------test ps [sampletracker]---------------------'
         $this.importmodule()
         $this.testsampletrackerconstructors()
-        $sampletracker = sampletracker -mpath $this.mpath -slideid 'M21_1'
+        $sampletracker = sampletracker -mpath $this.mpath -slideid $this.slideid
         $this.cleanup($sampletracker)
         $sampletracker.defmodulestatus()
         $this.testmodules($sampletracker)
@@ -26,22 +41,23 @@
         $this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
         $this.testupdate($sampletracker, 'batchmicomp', 'warpoctets')
         $this.cleanup($sampletracker)
+        Write-Host '.'
         #
     }
     #
-    importmodule(){
-        $this.module = $PSScriptRoot + '/../astropath'
-        Import-Module $this.module -EA SilentlyContinue
+    [void]importmodule(){
+        Import-Module $this.apmodule -EA SilentlyContinue
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
+        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
     }
     #
     [void]testsampletrackerconstructors(){
         #
+        Write-Host "."
         Write-Host 'test [sampletracker] constructors started'
         #
         try{
-            sampletracker -mpath $this.mpath -slideid 'M21_1' | Out-Null
+            sampletracker -mpath $this.mpath -slideid $this.slideid | Out-Null
             # $sampletracker.removewatchers()
         } catch {
             Throw ('[sampletracker] construction with [2] input(s) failed. ' + $_.Exception.Message)
@@ -53,13 +69,15 @@
     #
     [void]testmodules($sampletracker){
         #
+        Write-Host "."
+        Write-Host "Get module names"
         try {
             $sampletracker.getmodulenames()
         } catch {
             Throw ('[sampletracker].getmodulenames() failed: ' + $_.Exception.Message)
         }
         #
-        Write-Host 'Modules:' $sampletracker.modules 
+        Write-Host '    Modules:' $sampletracker.modules 
         #
         $cmodules = @('batchflatfield','batchmicomp','imagecorrection','meanimage','mergeloop',`
             'segmaps','shredxml','transfer','vminform','warpoctets')
@@ -72,7 +90,8 @@
     #
     [void]teststatus($sampletracker){
         #
-        Write-Host 'test status init on M21_1 started'
+        Write-Host "."
+        Write-Host 'test status init on' $this.slideid 'started'
         #
         try {
             $sampletracker.defmodulestatus()
@@ -87,34 +106,41 @@
         }
         #
         if ($sampletracker.moduleinfo.transfer.status -notmatch 'FINISHED'){
-            Throw ('transfer init status not correct. Status is: ' + $sampletracker.moduleinfo.transfer.status)
+            Throw ('transfer init status not correct. Status is: ' + 
+                $sampletracker.moduleinfo.transfer.status)
         }
         #
         if ($sampletracker.moduleinfo.shredxml.status -notmatch 'READY'){
-            Throw ('shredxml init status not correct. Status is: ' + $sampletracker.moduleinfo.shredxml.status)
+            Throw ('shredxml init status not correct. Status is: ' + 
+                $sampletracker.moduleinfo.shredxml.status)
         }
         #
         if ($sampletracker.moduleinfo.meanimage.status -notmatch 'WAITING'){
-            Throw ('meanimage init status not correct. Status is: ' + $sampletracker.moduleinfo.meanimage.status)
+            Throw ('meanimage init status not correct. Status is: ' + 
+                $sampletracker.moduleinfo.meanimage.status)
         }
         #
         if ($sampletracker.moduleinfo.batchmicomp.status -notmatch 'WAITING'){
-            Throw ('batchmicomp init status not correct. Status is: ' + $sampletracker.moduleinfo.batchmicomp.status)
+            Throw ('batchmicomp init status not correct. Status is: ' + 
+                $sampletracker.moduleinfo.batchmicomp.status)
         }
         #
         if ($sampletracker.moduleinfo.warpoctets.status -notmatch 'WAITING'){
-            Throw ('warpoctets init status not correct. Status is: ' + $sampletracker.moduleinfo.warpoctets.status)
+            Throw ('warpoctets init status not correct. Status is: ' + 
+                $sampletracker.moduleinfo.warpoctets.status)
         }
         #
         if ($sampletracker.moduleinfo.batchflatfield.status -notmatch 'NA'){
-            Throw ('batchflatfield init status not correct. Status is: ' + $sampletracker.moduleinfo.batchflatfield.status)
+            Throw ('batchflatfield init status not correct. Status is: ' + 
+                $sampletracker.moduleinfo.batchflatfield.status)
         }
         #
-        Write-Host 'test status init on M21_1 finished'
+        Write-Host 'test status init on' $this.slideid 'finished'
     }
     #
     [void]testupdate($sampletracker, $current, $next){
         #
+        Write-Host "."
         Write-Host 'test' $current 'status update started'
         Write-Host '    test' $current 'status with updated log but no results'
         #
@@ -271,6 +297,7 @@
         }
         #
         Write-Host 'test' $current 'status update finished'
+        #
     }
     #
     [void]cleanup($sampletracker){
@@ -397,5 +424,5 @@
 #
 # launch test and exit if no error found
 #
-[testsampletracker]::new() 
+[testpssampletracker]::new() | Out-Null
 exit 0

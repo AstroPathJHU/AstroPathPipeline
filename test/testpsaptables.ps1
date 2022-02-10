@@ -1,38 +1,43 @@
 ﻿<# -------------------------------------------
  testaptables
- created by: Benjamin Green - JHU
- Last Edit: 01.18.2022
+ Benjamin Green - JHU
+ Last Edit: 02.09.2022
  --------------------------------------------
  Description
  test if the module can be imported or not
  -------------------------------------------#>
 #
- Class testaptables {
+ Class testpsaptables {
     #
     [string]$mpath 
     [string]$process_loc
+    [string]$apmodule = $PSScriptRoot + '/../astropath'
     #
-    testaptables(){
+    testpsaptables(){
         #
+        Write-Host '---------------------test ps [aptabletools]---------------------'
         $this.importmodule()
         $this.testmpath()
         $tools = sharedtools
-        $this.testapidfiles2($tools)
+        $this.testapidfiles() | Out-Null
+        $this.testapidfiles($tools)
         $this.testconfiginfo($tools)
         $this.correctcohortsinfo($tools)
         $this.testcohortsinfo($tools)
+        Write-Host '.'
         #
     }
     #
     importmodule(){
-        $module = $PSScriptRoot + '/../astropath'
-        Import-Module $module -EA SilentlyContinue
+        Import-Module $this.apmodule
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
+        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
     }
     #
     [void]testmpath(){
         #
+        Write-Host '.'
+        Write-Host 'test mpath'
         if (!(test-path $this.mpath)){
             Throw ('Cannot find mpath' + $this.mpath + '. ' + $_.Exception.Message)
         }
@@ -44,6 +49,8 @@
     #
     [PSCustomObject]testapidfiles(){
         #
+        Write-Host '.'
+        Write-Host 'Testing manual apid import. Output below:'
         $apidfile = $this.mpath + '\AstropathAPIDdef.csv'
         #
         if (!(test-path $apidfile -PathType Leaf)){
@@ -70,7 +77,8 @@
         #
     }
     #
-    testapidfiles2($tools){
+    testapidfiles($tools){
+        Write-Host '.'
         Write-Host 'Testing import slideids method. Output below:'
         #
         try {
@@ -93,6 +101,7 @@
     #
     [void]testconfiginfo($tools){
         #
+        Write-Host '.'
         Write-Host 'Testing config info method. Output below:'
         #
         try {
@@ -107,6 +116,7 @@
     #
     [void]testcohortsinfo($tools){
         #
+        Write-Host '.'
         Write-Host 'Testing Cohorts info method. Output below:'
         #
         try {
@@ -125,6 +135,7 @@
     #
     [void]correctcohortsinfo($tools){
         #
+        Write-Host '.'
         Write-Host 'Updating cohorts info. Output below:'
         #
         $cohort_csv_template = $this.mpath + '\AstropathCohortsProgressTemplate.csv'
@@ -152,5 +163,5 @@
 #
 # launch test and exit if no error found
 #
-[testaptables]::new() 
+[testpsaptables]::new() | Out-Null
 exit 0

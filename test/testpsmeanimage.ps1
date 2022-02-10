@@ -11,82 +11,202 @@
 Class testpsmeanimage {
     #
     [string]$mpath 
-    [string]$process_loc
+    [string]$processloc
+    [string]$basepath
+    [string]$module = 'meanimage'
+    [string]$slideid = 'M21_1'
+    [string]$project = '0'
+    [string]$apmodule = $PSScriptRoot + '/../astropath'
     #
     testpsmeanimage(){
         #
-        # Setup Testing
+        $this.launchtests()
         #
+    }
+    #
+    testpsmeanimage($project, $slideid){
+        #
+        $this.slideid = $slideid
+        $this.project = $project
+        $this.launchtests
+        #
+    }
+    #
+    [void]launchtests(){
+        #
+        Write-Host '---------------------test ps [meanimage]---------------------'
         $this.importmodule()
-        #
-        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
+        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
+       # $this.testpsmeanimageconstruction($task)
         $inp = meanimage $task
-        #
-        Write-Host $inp
-        #
-        # Run Tests
-        #
-        $this.DownloadFilesTest($inp)
-        # $this.ShredDatTest($inp)
-        $this.ReturnDataTest($inp)
-        $this.CleanupTest($inp)
+       # $this.testprocessroot($inp)
+       # $this.testcleanupbase($inp)
+        $this.runpymeanimage($inp)
+        #$this.ReturnDataTest($inp)
+        #$this.CleanupTest($inp)
+        Write-Host '.'
     }
     #
     importmodule(){
-        $module = $PSScriptRoot + '/../astropath'
-        Import-Module $module -EA SilentlyContinue
+        Import-Module $this.apmodule
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
+        $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_meanimage'))
+        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
     }
     #
-    [void]DownloadFilesTest($inp){
-        Write-Host 'Starting Download Files Test'
-        $inp.DownloadFiles()
-        $xmlpath = $inp.processvars[1] + '/' + $inp.sample.slideid + '/*.xml'
-        Write-Host 'xml path: ' $xmlpath
-        $im3path = $inp.processvars[2] + '/../Scan1/MSI/*.im3'
-        if (!(@(Test-Path $xmlpath) -and @(Test-Path $im3path))) {
-            Throw 'Download Files Test Failed'
+    [string]uncpath($str){
+        $r = $str -replace( '/', '\')
+        if ($r[0] -ne '\'){
+            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
+        } else{
+            $root = $r -replace ":", "$"
         }
-        Write-Host 'Passed Download Files Test'
+        return $root
     }
     #
-    [void]ShredDatTest($inp){
-        Write-Host 'Starting Shred Dat Test'
-        $inp.ShredDat()
-        $datpath = $inp.processvars[1] + '/' + $inp.sample.slideid + '/*.dat'
-        if (!(@(Test-Path $datpath))) {
-            Throw 'Shred Dat Test Failed'
+    [void]testpsmeanimageconstruction($task){
+        #
+        Write-Host "."
+        Write-Host 'test [meanimage] constructors started'
+        #
+        $log = logger $this.mpath $this.module $this.slideid 
+        #
+        try {
+            meanimage  $task | Out-Null
+        } catch {
+            Throw ('[meanimage] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
-        Write-Host 'Passed Shred Dat Test'
+        <#
+        try {
+            meanimage  $task $log | Out-Null
+        } catch {
+            Throw ('[meanimage] construction with [2] input(s) failed. ' + $_.Exception.Message)
+        }
+        #>
+        Write-Host 'test [meanimage] constructors finished'
+        #
+    }
+    #
+    [void]testcleanupbase($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test cleanup base method'
+        #
+        Write-Host '   copying old results to a safe location'
+        $sor = $this.basepath, $this.slideid, 'im3\meanimage' -join '\'
+        $des = $this.processloc, $this.slideid, 'im3\meanimage' -join '\'
+        $sorfiles = get-childitem $sor
+        #
+        Write-Host '   source:' $sor
+        Write-Host '   destination:' $des
+        $inp.sample.copy($sor, $des, '*')
+        #
+        Write-Host '   running cleanup protocol'
+        $inp.cleanupbase()
+        #
+        if (test-path $sor){
+            Throw 'meanimage directory still exists after cleanup'
+        }
+        #
+        Write-Host '   results appear to be cleared replacing'
+        #
+        $inp.sample.copy($des, $sor, '*')
+        $sorfiles2 = get-childitem $sor
+        #
+        $comparison = Compare-Object -ReferenceObject $sorfiles -DifferenceObject $sorfiles2
+        #
+        if (!(test-path $sor) -OR $comparison){
+            Throw 'Data files did not seem to copy back correctly'
+        }
+        #
+        # $inp.sample.removedir($des)
+        #
+        Write-Host 'test cleanup base method finished'
+
+    }
+    #
+    [void]testprocessroot($inp){
+        Write-Host '.'
+        Write-Host 'test processing dir preparation'
+        #
+        $md_processloc = ($this.processloc, 'astropath_ws', $this.module, $this.slideid) -join '\'
+        if (!([regex]::escape($md_processloc) -contains [regex]::escape($inp.processloc))){
+            Write-Host 'meanimage module process location not defined correctly:'
+            Write-Host $md_processloc '~='
+            Throw ($inp.processloc)
+        }
+        #
+        $inp.sample.CreateDirs($inp.processloc)
+        #
+        if (!(test-path $md_processloc)){
+            Throw 'process working directory not created'
+        }
+        #
+    }
+    [void]runpymeanimage($inp){
+        Write-Host '.'
+        Write-Host 'test python meanimage input'
+            $rpath = $PSScriptRoot + '\data\raw'
+            $dpath = $this.basepath
+            $pythontask = ('meanimagesample',
+            $dpath, $this.slideid,
+            '--shardedim3root', $rpath,
+            ' --workingdir', $this.processloc,
+            "--njobs '8'",
+            '--allow-local-edits',
+            '--use-apiddef', 
+            '--project', $this.project, 
+            '--no-log' -join ' ')
+            #
+            $externallog = $inp.ProcessLog('meanimagesample') 
+            #
+            Write-Host '    meanimage command:'
+            Write-Host '   '$pythontask  
+            #Write-Host '    external log:' $externallog
+            Write-Host '    launch task'
+            #
+            $inp.sample.checkconda()
+            etenv $inp.sample.pyenv()
+            Invoke-Expression $pythontask
+            exenv
+            #
     }
     #
     [void]ReturnDataTest($inp){
         Write-Host 'Starting Return Data Test'
-        $inp.returndata()
-        $returnpath = $inp.sample.im3folder() + '\meanimage'
-        if (!(@(Test-Path $returnpath))) {
-            Throw 'Return Data Test Failed'
+        $sourcepath = $inp.processvars[0]
+        $returnpath = $inp.sample.im3folder()
+        Write-Host 'Source Path: ' $sourcepath '\meanimage'
+        Write-Host 'Return Path: ' $returnpath
+        #
+        if ($inp.processvars[4]) {
+            #
+            New-Item -Path $sourcepath -Name "meanimage" -ItemType "directory"
+            if (!(@(Test-Path $sourcepath))) {
+                Throw 'Return Data Test Failed - Source path does not exist'
+            }
+            #
+            if (!(@(Test-Path $returnpath))) {
+                Throw 'Return Data Test Failed - Return path does not exist'
+            }
         }
         Write-Host 'Passed Return Data Test'
     }
     #
     [void]CleanupTest($inp){
         Write-Host 'Starting Cleanup Test'
-        $inp.cleanup()
         if ($inp.processvars[4]) {
+            $inp.cleanup()
             if (@(Test-Path $inp.processvars[0])) {
                 Throw 'Cleanup Test Failed'
             }
         }
+        Write-Host 'Processing Folder Deleted'
         Write-Host 'Passed Cleanup Test'
     }
 }
 #
 # launch test and exit if no error found
 #
-$test = [testpsmeanimage]::new()
+[testpsmeanimage]::new() | Out-Null
 exit 0
-
-#Remove temporary processing directory
-#$inp.sample.removedir($processing)

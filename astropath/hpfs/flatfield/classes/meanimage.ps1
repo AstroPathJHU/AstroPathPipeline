@@ -79,7 +79,7 @@ Class meanimage : moduletools {
         $taskname = 'meanimagecohort'
         $dpath = $this.sample.basepath + ' '
         $rpath = $this.processvars[1]
-        $this.pythonmodulename = 'meanimagecohort'
+        $this.pythonmodulename = 'meanimagesample'
         $pythontask = $this.pythonmodulename, $dpath, `
          '--sampleregex', $this.sample.SlideID, `
          '--shardedim3root', $rpath, ` #' --workingdir', ($this.processvars[0] + '\meanimage'), `
@@ -119,13 +119,13 @@ Class meanimage : moduletools {
         $sor = $this.processvars[1] + '\flat\' + 
             $this.sample.slideid + '\*.flt'
         #
-        if (!(gci $sor)){
+        if (!(Get-ChildItem $sor)){
             Throw 'no .flt file found, matlab meanimage failed'
         }                        
         $this.sample.copy($sor, $des) 
         #
         $sor = $sor -replace 'flt', 'csv'
-        if (!(gci $sor)){
+        if (!(Get-ChildItem $sor)){
             Throw 'no .csv file found, matlab meanimage failed'
         }
         $this.sample.copy($sor, $des) 

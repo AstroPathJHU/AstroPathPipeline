@@ -31,21 +31,15 @@
         Write-Host 'test [sampledb] constructors started'
         #
         try{
-            $sampledb = sampledb -module 'shredxml'
+            $sampledb = sampledb -mpath $this.mpath
         } catch {
             Throw ('[sampledb] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
         #
         try{
-            $sampledb = sampledb -mpath $this.mpath -module 'shredxml'
+            $sampledb = sampledb -mpath $this.mpath -projects '00'
         } catch {
-            Throw ('[sampledb] construction with [1] input(s) failed. ' + $_.Exception.Message)
-        }
-        #
-        try{
-            $sampledb = sampledb -mpath $this.mpath -module 'shredxml' -project '00'
-        } catch {
-            Throw ('[sampledb] construction with [1] input(s) failed. ' + $_.Exception.Message)
+            Throw ('[sampledb] construction with [2] input(s) failed. ' + $_.Exception.Message)
         }
         #
         Write-Host 'test [sampledb] constructors finished'

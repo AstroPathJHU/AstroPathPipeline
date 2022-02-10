@@ -105,13 +105,24 @@ class sampledef : sharedtools{
         $project_dat = $this.importcohortsinfo($this.mpath)
         $project_dat = $project_dat | 
                 Where-Object -FilterScript {$_.Project -eq $this.project}
-        #Adjust if testing on jenkins
+        <#
+                #Adjust if testing on jenkins
         if ($project_dat.dpath -match '/var/lib/jenkins') {
             $this.basepath = $project_dat.dpath + '/' + $project_dat.dname
         }
         else {
             $this.basepath = '\\' + $project_dat.dpath + '\' + $project_dat.dname
         }
+        more robust path editing #>
+        $r = $project_dat.dpath -replace( '/', '\')
+        if ($r[0] -ne '\'){
+            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
+        } else{
+            $root = $r -replace ":", "$"
+        }
+        #
+        $this.basepath = $root, '\', $project_dat.dname -join ''
+        #
         $this.project_data = $project_dat
         #
         $this.deflogpaths()

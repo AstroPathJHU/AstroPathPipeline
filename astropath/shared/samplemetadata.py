@@ -10,7 +10,7 @@ class SampleDef(MyDataClassFrozen):
   SlideID and leave out some of the others.  If you give a root,
   it will try to figure out the other arguments from there.
   """
-  SampleID: int = None
+  SampleID: int = 0
   SlideID: str = None
   Project: int = None
   Cohort: int = None
@@ -25,6 +25,9 @@ class SampleDef(MyDataClassFrozen):
 
   @classmethod
   def transforminitargs(cls, *args, root=None, samp=None, apidfile=None, **kwargs):
+    Project = kwargs.get("Project", None)
+    if Project is None: kwargs.pop("Project", None)
+
     if samp is not None:
       if isinstance(samp, str):
         if "SlideID" in kwargs:
@@ -56,6 +59,10 @@ class SampleDef(MyDataClassFrozen):
         for row in cohorttable:
           if row.SlideID == kwargs["SlideID"]:
             return cls.transforminitargs(root=root, samp=row)
+
+    if "SlideID" in kwargs and root is not None is not Project:
+      apidfile = root/"upkeep_and_progress"/f"AstropathAPIDdef_{Project:d}.csv"
+      if not apidfile.exists(): apidfile = None
 
     if "SlideID" in kwargs and apidfile is not None:
       apidtable = readtable(apidfile, APIDDef)

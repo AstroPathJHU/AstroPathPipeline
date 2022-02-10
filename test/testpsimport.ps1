@@ -1,7 +1,7 @@
 <# -------------------------------------------
  testpsimport
- created by: Benjamin Green - JHU
- Last Edit: 10.13.2021
+ Benjamin Green - JHU
+ Last Edit: 02.09.2022
  --------------------------------------------
  Description
  test if the module can be imported or not
@@ -11,21 +11,24 @@
     #
     [string]$mpath 
     [string]$process_loc
+    [string]$apmodule = $PSScriptRoot + '/../astropath'
     #
     testpsimport(){
         #
+        Write-Host '---------------------test ps astropath module import---------------------'
         $this.testimport()
+        Write-Host '.'
         #
     }
     #
     [void]testimport(){
       #
-      $module = $PSScriptRoot + '/../astropath'
-      Write-Host 'checking: ' $module
+      Write-Host '.'
+      Write-Host 'checking: ' $this.apmodule
       #
       # check for the module
       #
-      $modules = Get-Module -ListAvailable -Name $module 
+      $modules = Get-Module -ListAvailable -Name $this.apmodule
       if ($modules) {
             Write-Host "Module exists"
             Write-Host $modules
@@ -35,17 +38,17 @@
       #
       # confirm installation
       #
-      Import-Module $module -EA SilentlyContinue
+      Import-Module $this.apmodule -EA SilentlyContinue
       if($error){
           Throw 'Module could not be imported'
       } 
       #
-
+      Write-Host 'module imported successfully'
     }
     #
 }
 #
 # launch test and exit if no error found
 #
-$test = [testpsimport]::new() 
+[testpsimport]::new() | Out-Null
 exit 0

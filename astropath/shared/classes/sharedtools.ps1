@@ -14,6 +14,7 @@
     [string]$psroot = $pshome + "\powershell.exe"
     [string]$package = 'astropath'
     [array]$modules
+    [switch]$checkpyenvswitch = $false
     #
     sharedtools(){}
     #
@@ -164,7 +165,7 @@
     ----------------------------------------- #>
     [switch]checkgitinstalled(){
         try {
-            $gitversion = git --version
+            git --version | Out-NUll
             return $true
         } catch {
             return $false
@@ -182,7 +183,7 @@
     [switch]checkgitrepo(){
         if ($this.checkgitinstalled()){
             try {
-               $gitrepo = git -C $this.pypackagepath() rev-parse --is-inside-work-tree
+               git -C $this.pypackagepath() rev-parse --is-inside-work-tree | Out-Null
                return $true
             } catch {
                return $false
@@ -264,61 +265,17 @@
                 $minicondapath
         }
         #
-        try{
-            conda activate
-            conda deactivate
-        }catch{
+        if ((get-module).name -notcontains 'Conda'){
+            $Env:CONDA_EXE = $minicondapath, 'Scripts\conda.exe' -join '\'
+            $Env:_CE_M = ""
+            $Env:_CE_CONDA = ""
+            $Env:_CONDA_ROOT = $minicondapath
+            $Env:_CONDA_EXE =  $minicondapath, 'Scripts\conda.exe' -join '\'
+            $CondaModuleArgs = @{ChangePs1 = $True}
+            $mname = "$Env:_CONDA_ROOT\shell\condabin\Conda.psm1"
+            Import-Module $mname -Global
             #
-            $myerror = $_.Exception.Message
-            if($myerror -match "The term 'conda' is not"){
-                    #
-                    $myenv = ($env:PATH -split ';')
-                    #
-                    # if conda is on the path use that installation 
-                    #
-                    if ($myenv -match 'Miniconda3'){
-                        $condainstalllocation = ($myenv -match 'Miniconda3')[0]
-                        $condascripts = $condainstalllocation + "\Scripts\conda.exe"
-                    } else {
-                        #
-                        # if conda is not already on the path attempt to 
-                        # check if it is installed on the parent system and
-                        # use that installation
-                        #
-                        $str = (";C:\ProgramData\Miniconda3;" +
-                               "C:\ProgramData\Miniconda3\Library\mingw-w64\bin;" +
-                               "C:\ProgramData\Miniconda3\Library\usr\bin;" +
-                               "C:\ProgramData\Miniconda3\Library\bin;" +
-                               "C:\ProgramData\Miniconda3\Scripts;"+
-                               "C:\ProgramData\Miniconda3\bin;").replace('C:', $drive)
-                        #
-                        $str2 = ($str -split ';').trim() -ne ''
-                        $str2 = $str2[0]
-                        if (!(test-path $str2)){
-                            Throw ("Conda install not found at " + $str2 + 
-                                ". Check that conda is installed on the C drive of the parent system " +
-                                " or add conda to the system path of each worker system.")
-                        }
-                        #
-                        $env:PATH += $str
-                        $condascripts = ("C:\ProgramData\Miniconda3\Scripts\conda.exe").replace('C:', $drive)
-                    }
-                    #
-                    (& $condascripts "shell.powershell" "hook") | Out-String | Invoke-Expression
-                    #
-                } else { Throw $myerror }
-        }
-        <#
-        try{
-            conda activate
-            conda deactivate
-        } catch {
-            Throw "The term conda is not a valid command. " + 
-                "Check that conda is installed on the C drive of the system. " +
-                $condascripts + "-env:PATH:" + $env:PATH + " " + 
-                $_.ExceptionMessage
-        }
-        #>
+        } 
     }
     <# ------------------------------------------
     CheckMikTex
@@ -349,20 +306,23 @@
      Check if py\<packagename>workflow conda environment
      exists. If it does not create it and install
      the astropath package from the current working.
-     If it does exist check for updates.
+     If it does exist check for updates. Added 
+     a switch that assumes that the conda environment
+     is active. Should check the conda environment
+     higher up in the code. 
      ------------------------------------------
      Usage: $this.CheckpyEnvir()
     ----------------------------------------- #>        
     [switch]CheckpyEnvir(){
         #
         $this.checkconda()
-        try {
-            conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-            conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-            return $true
-        } catch {
-            return $false
-        }
+            try {
+                conda activate $this.pyenv() | Out-Null
+                conda deactivate $this.pyenv() | Out-Null
+                return $true
+            } catch {
+                return $false
+            }
         #
     }
     #

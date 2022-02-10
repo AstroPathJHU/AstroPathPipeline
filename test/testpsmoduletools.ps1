@@ -1,7 +1,7 @@
 ﻿<# testpsmoduletools
  testpslogger
- created by: Benjamin Green - JHU
- Last Edit: 01.18.2022
+ Benjamin Green - JHU
+ Last Edit: 02.09.2022
  --------------------------------------------
  Description
  test if the module can be imported or not
@@ -11,32 +11,39 @@
     #
     [string]$mpath 
     [string]$process_loc
+    [string]$basepath = $PSScriptRoot + '\data'
+    [string]$module = 'shredxml'
+    [string]$slideid = 'M21_1'
+    [string]$project = '0'
+    [string]$apmodule = $PSScriptRoot + '\..\astropath'
     #
     testpsmoduletools(){
         #
+        Write-Host '---------------------test ps [moduletools]---------------------'
         $this.importmodule()
         $this.testmodulecontruction()
         #
-        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
+        $task = ($this.project, $this.slideid, $this.process_loc, $this.mpath)
         $inp = meanimage $task
         #
         $this.TestPaths($inp)
+        Write-Host '.'
         #
     }
     #
     importmodule(){
-        $module = $PSScriptRoot + '\..\astropath'
-        Import-Module $module -EA SilentlyContinue
+        Import-Module $this.apmodule -EA SilentlyContinue
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins'
+        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
     }
     #
     [void]testmodulecontruction(){
         #
+        Write-Host '.'
         Write-Host 'building a shredxml module object'
         try {
-            $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
-            $inp = shredxml $task
+            $task = ($this.project, $this.slideid, $this.process_loc, $this.mpath)
+            shredxml $task | Out-Null
         } catch {
             Throw 'module could not be constructed'
         }
@@ -44,9 +51,11 @@
     }
     #
     [void]TestPaths($inp){
+        #
+        Write-Host '.'
         Write-Host 'Starting Paths Testing'
         #
-        $testloc = $this.process_loc + '\astropath_ws\meanimage\M21_1'
+        $testloc = $this.process_loc + '\astropath_ws\meanimage\' + $this.slideid
         #
         if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape($testloc))){
             Throw ('processvars[0] not correct: ' + $inp.processvars[0] + '~=' + $testloc)
@@ -56,8 +65,8 @@
             Throw ('processvars[1] not correct: ' + $inp.processvars[1] + '~=' + $testloc + '\flatw')
         }
         #
-        if (!([regex]::Escape($inp.processvars[2]) -contains [regex]::Escape(($testloc + '\M21_1\im3\flatw')))){
-            Throw ('processvars[2] not correct: ' + $inp.processvars[2] + '~=' + $testloc + '\M21_1\im3\flatw')
+        if (!([regex]::Escape($inp.processvars[2]) -contains [regex]::Escape(($testloc + '\' + $this.slideid + '\im3\flatw')))){
+            Throw ('processvars[2] not correct: ' + $inp.processvars[2] + '~=' + $testloc + '\' + $this.slideid + '\im3\flatw')
         }
         #
         if (!([regex]::Escape($inp.processvars[3]) -contains [regex]::Escape(($testloc + '\flatfield\flatfield_BatchID_08.bin')))){
@@ -73,5 +82,5 @@
 #
 # launch test and exit if no error found
 #
-$test = [testpsmoduletools]::new() 
+[testpsmoduletools]::new() | Out-Null
 exit 0

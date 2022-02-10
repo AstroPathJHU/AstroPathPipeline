@@ -1,27 +1,17 @@
 ﻿function sampledb {
     param(
         [parameter()][string]$mpath,
-        [parameter()][string]$module,
-        [parameter()][string]$slideid,
-        [parameter()][string]$project
+        [parameter()][string]$projects
     )
     #
     if (!($PSBoundParameters.ContainsKey('mpath'))){
-        return [mylogger]::new()
+        return [sampledb]::new()
     }
     #
-    if (!($PSBoundParameters.ContainsKey('module'))){
-        return [mylogger]::new()
+    if (!($PSBoundParameters.ContainsKey('projects'))){
+        return [sampledb]::new($mpath)
     }
     #
-    if (!($PSBoundParameters.ContainsKey('slideid'))){
-        return [mylogger]::new($mpath, $module)
-    }
-    #
-    if (!($PSBoundParameters.ContainsKey('project'))){
-        return [mylogger]::new($mpath, $module, $slideid)
-    }
-    #
-    return [mylogger]::new($mpath, $module, $slideid, $project)
+    return [sampledb]::new($mpath, $projects)
     #
 }
