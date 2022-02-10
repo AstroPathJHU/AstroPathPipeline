@@ -79,13 +79,25 @@ Class meanimage : moduletools {
         $taskname = 'meanimagecohort'
         $dpath = $this.sample.basepath + ' '
         $rpath = $this.processvars[1]
-        $this.pythonmodulename = 'meanimagesample'
-        $pythontask = $this.pythonmodulename, $dpath, `
-         '--sampleregex', $this.sample.SlideID, `
-         '--shardedim3root', $rpath, ` #' --workingdir', ($this.processvars[0] + '\meanimage'), `
-         "--njobs '8'", $this.buildpyopts() -join ' '
+        #
+        $pythontask = $this.getpythontask($dpath, $rpath)
+        #
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished mean image sample -- python")
+    }
+    [string]getpythontask($dpath, $rpath){
+        #
+        $this.pythonmodulename = 'meanimagecohort'
+        $globalargs = $this.buildpyopts()
+        $pythontask = ($this.pythonmodulename,
+             $dpath, 
+             $this.sample.slideid,
+            '--shardedim3root', $rpath, 
+            ' --workingdir', ($this.processvars[0] + '\meanimage'), 
+            "--njobs '8'",
+            $globalargs -join ' ')
+        #
+        return $pythontask
     }
     <# -----------------------------------------
      returndata

@@ -301,13 +301,13 @@
     ----------------------------------------- #>
     [string]buildpyopts(){
         $project = $this.sample.project.PadLeft(2,  '0')
-        $string = "--allow-local-edits --skip-start-finish --use-apiddef --project " + $project
-        return $string
+        $str = ('--allow-local-edits --skip-start-finish --use-apiddef --project', $project -join ' ')
+        return $str
     }
     [string]buildpyopts($opt){
         $project = $this.sample.project.PadLeft(2,  '0')
-        $string = "--allow-local-edits --use-apiddef --project " + $project
-        return $string
+        $str = '--allow-local-edits --use-apiddef --project', $project -join ' '
+        return $str
     }
     #
     [void]runpythontask($taskname, $pythontask){
@@ -316,7 +316,7 @@
         $this.sample.checkconda()
         conda activate $this.sample.pyenv()
         Invoke-Expression $pythontask *>> $externallog
-        conda deactivate $this.sample.pyenv()
+        conda deactivate 
         $this.getexternallogs($externallog)
         #
     }

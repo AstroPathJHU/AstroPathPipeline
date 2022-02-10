@@ -318,7 +318,7 @@
         $this.checkconda()
             try {
                 conda activate $this.pyenv() | Out-Null
-                conda deactivate $this.pyenv() | Out-Null
+                conda deactivate | Out-Null
                 return $true
             } catch {
                 return $false
@@ -344,7 +344,7 @@
         $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE  `r`n"))
         pip -q install $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
         $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
-        conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+        conda deactivate 2>&1 >> $this.pyinstalllog()
     }
     <# -----------------------------------------
      upgradepyenvir
@@ -359,7 +359,7 @@
             $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
             pip -q install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
             $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
-            conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+            conda deactivate 2>&1 >> $this.pyinstalllog()
         } catch {
             $this.createpyenvir()
         }
