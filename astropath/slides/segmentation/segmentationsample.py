@@ -2,12 +2,12 @@
 import os, shutil
 from batchgenerators.utilities.file_and_folder_operations import join
 from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.optionalimports import deepcell, nnunet
 from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.sample import ReadRectanglesComponentTiffFromXML, WorkflowSample, ParallelSample
 from .config import SEG_CONST
 from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im
 from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation
-from .utilities.optionalimports import deepcell, nnunet
 
 #some constants
 NNUNET_SEGMENT_FILE_APPEND = 'nnunet_nuclear_segmentation.npz'
