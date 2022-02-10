@@ -352,8 +352,7 @@
             if ($this.sample.module -match 'batchmicomp'){
                 $test = $this.pythonmodulename + ' : '
             } else {
-                $test = $this.pythonmodulename + ' : ' +
-                    $this.sample.project + ';' + $this.sample.cohort
+                $test = $this.sample.project + ';' + $this.sample.cohort
             }
             if ($this.logoutput -and $this.logoutput[0] -notmatch $test) {
                 $this.silentcleanup()
@@ -364,6 +363,10 @@
             #
             if ($this.sample.module -match 'warpoctets'){
                 $this.parsepycohortlog()
+            }
+            #
+            if ($this.pythonmodulename -match 'cohort'){
+                $this.parsepycohortlog('errors')
             }
         }
         #
@@ -379,6 +382,18 @@
         $sampleoutput | ForEach-Object {
             $this.sample.message = ($_ -split ';')[3]
             $this.sample.Writelog()
+        }
+    }
+    <# -----------------------------------------
+     parsepycohortlog
+        parsepycohortlog
+     ------------------------------------------
+     Usage: $this.parsepycohortlog()
+    ----------------------------------------- #>
+    [void]parsepycohortlog($errors){
+        $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
+        if ($sampleoutput -match 'Error'){
+            Throw 'Python tasked launched but there was an ERROR.'
         }
     }
     <# -----------------------------------------

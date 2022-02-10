@@ -91,9 +91,9 @@ Class meanimage : moduletools {
         $globalargs = $this.buildpyopts()
         $pythontask = ($this.pythonmodulename,
              $dpath, 
-             $this.sample.slideid,
+             '--sampleregex', $this.sample.slideid,
             '--shardedim3root', $rpath, 
-            ' --workingdir', ($this.processvars[0] + '\meanimage'), 
+            #' --workingdir', ($this.processvars[0] + '\meanimage'), 
             "--njobs '8'",
             $globalargs -join ' ')
         #

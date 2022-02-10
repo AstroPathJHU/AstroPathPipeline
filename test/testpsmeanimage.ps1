@@ -38,14 +38,14 @@ Class testpsmeanimage {
         Write-Host '---------------------test ps [meanimage]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-       # $this.testpsmeanimageconstruction($task)
+        $this.testpsmeanimageconstruction($task)
         $inp = meanimage $task
-       # $this.testprocessroot($inp)
-       # $this.testcleanupbase($inp)
+        $this.testprocessroot($inp)
+        $this.testcleanupbase($inp)
         $this.comparepymeanimageinput($inp)
         $this.runpymeanimage($inp)
-        #$this.ReturnDataTest($inp)
-        #$this.CleanupTest($inp)
+        # $this.ReturnDataTest($inp)
+        # $this.CleanupTest($inp)
         Write-Host '.'
     }
     #
@@ -92,11 +92,11 @@ Class testpsmeanimage {
     [void]testcleanupbase($inp){
         #
         Write-Host '.'
-        Write-Host 'test cleanup base method'
+        Write-Host 'test cleanup base method started'
         #
         Write-Host '   copying old results to a safe location'
-        $sor = $this.basepath, $this.slideid, 'im3\meanimage' -join '\'
-        $des = $this.processloc, $this.slideid, 'im3\meanimage' -join '\'
+        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
         #
         Write-Host '   source:' $sor
         Write-Host '   destination:' $des
@@ -115,7 +115,7 @@ Class testpsmeanimage {
             #
             Write-Host '   $fast_test: true... replacing masks'
             $inp.sample.copy($des, $sor, '*')
-            $this.comparepaths($des, $sor)
+            $this.comparepaths($des, $sor, $inp)
             #
         }
         #
@@ -126,8 +126,9 @@ Class testpsmeanimage {
     }
     #
     [void]testprocessroot($inp){
+        #
         Write-Host '.'
-        Write-Host 'test processing dir preparation'
+        Write-Host 'test processing dir preparation started'
         #
         $md_processloc = ($this.processloc, 'astropath_ws', $this.module, $this.slideid) -join '\'
         if (!([regex]::escape($md_processloc) -contains [regex]::escape($inp.processloc))){
@@ -141,21 +142,23 @@ Class testpsmeanimage {
         if (!(test-path $md_processloc)){
             Throw 'process working directory not created'
         }
+        Write-Host 'test processing dir preparation finished'
         #
     }
     #
     [void]comparepymeanimageinput($inp){
         #
         Write-Host '.'
-        Write-Host 'compare python [meanimage] expected input to actual'
+        Write-Host 'compare python [meanimage] expected input to actual started'
         #
         $md_processloc = ($this.processloc, 'astropath_ws', $this.module, $this.slideid, 'meanimage') -join '\'
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         [string]$userpythontask = ('meanimagecohort',
-            $dpath, $this.slideid,
+            $dpath, 
+            '--sampleregex', $this.slideid,
             '--shardedim3root', $rpath,
-            ' --workingdir', $md_processloc,
+            #' --workingdir', $md_processloc,
             "--njobs '8'",
             '--allow-local-edits',
             '--skip-start-finish',
@@ -169,13 +172,13 @@ Class testpsmeanimage {
             Write-Host '[meanimage] defined:' [regex]::escape($pythontask)'end' -foregroundColor Red
             Throw ('user defined and [meanimage] defined tasks do not match')
         }
-        Write-Host 'python [meanimage] input matches'
+        Write-Host 'python [meanimage] input matches -- finished'
         #
     }
     #
     [void]runpymeanimage($inp){
         Write-Host '.'
-        Write-Host 'test python meanimage in expected workflow'
+        Write-Host 'test python meanimage in workflow started'
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         $pythontask = $inp.getpythontask($dpath, $rpath)
@@ -189,8 +192,20 @@ Class testpsmeanimage {
         #
         $inp.sample.checkconda()
         etenv $inp.sample.pyenv()
-        Invoke-Expression $pythontask
+        Invoke-Expression $pythontask *>> $externallog
         exenv
+        #
+        try {
+            $inp.getexternallogs($externallog)
+        } catch {
+            $err = $_.Exception.Message
+             $expectedoutput = 'Python tasked launched but there was an ERROR.'
+            if ($err -notcontains $expectedoutput){
+                Write-Host $_.Exception.Message
+            }
+        }
+        #
+        Write-Host 'test python meanimage in workflow finished'
         #
     }
     #
@@ -208,7 +223,7 @@ Class testpsmeanimage {
         #
         if ($inp.processvars[4]) {
             #
-            $this.comparepaths($presaved_results_path, $returnpath)
+            $this.comparepaths($presaved_results_path, $returnpath, $inp)
             #
         }
         #
@@ -235,7 +250,7 @@ Class testpsmeanimage {
         $hashb = $inp.sample.FileHasher($listb)
         $comparison = Compare-Object -ReferenceObject $($hasha.Values) `
                 -DifferenceObject $($hashb.Values)
-        if (comparison){
+        if ($comparison){
             Throw 'file contents do not match'
         }
         #
