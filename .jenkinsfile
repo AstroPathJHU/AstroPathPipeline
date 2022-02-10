@@ -24,7 +24,7 @@ pipeline {
       agent {
         dockerfile {
           dir '.docker'
-          additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'" --build-arg ASTROPATH_INSTALL_EXTRAS='
+          additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'" --build-arg ASTROPATH_INSTALL_EXTRAS=false'
         }
       }
       steps {
