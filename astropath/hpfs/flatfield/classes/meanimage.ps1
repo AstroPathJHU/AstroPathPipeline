@@ -18,6 +18,8 @@ Usage: $a = [meanimage]::new($task, $sample)
 #>
 Class meanimage : moduletools {
     #
+    [string]$pytype = 'sample'
+    #
     meanimage([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
         $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
@@ -76,28 +78,45 @@ Class meanimage : moduletools {
     ----------------------------------------- #>
     [void]GetMeanImagePy(){
         $this.sample.info("started mean image sample -- python")
-        $taskname = 'meanimagecohort'
+        $this.getmodulename()
+        $taskname = $this.pythonmodulename
         $dpath = $this.sample.basepath + ' '
         $rpath = $this.processvars[1]
-        #
-        $pythontask = $this.getpythontask($dpath, $rpath)
+        $pythontask = $this.('getpythontask' + $this.pytype)($dpath, $rpath)
         #
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished mean image sample -- python")
     }
-    [string]getpythontask($dpath, $rpath){
+    [string]getpythontasksample($dpath, $rpath){
         #
-        $this.pythonmodulename = 'meanimagecohort'
         $globalargs = $this.buildpyopts()
+        $pythontask = ($this.pythonmodulename,
+            $dpath, 
+            $this.sample.slideid,
+            '--shardedim3root', $rpath, 
+            ' --workingdir', ($this.processvars[0] + '\meanimage'), 
+            "--njobs '8'",
+            $globalargs -join ' ')
+        #
+        return $pythontask
+    }
+    #
+    [string]getpythontaskcohort($dpath, $rpath){
+        #
+        $globalargs = $this.buildpyopts('cohort')
         $pythontask = ($this.pythonmodulename,
              $dpath, 
              '--sampleregex', $this.sample.slideid,
-            '--shardedim3root', $rpath, 
+             '--shardedim3root', $rpath, 
             #' --workingdir', ($this.processvars[0] + '\meanimage'), 
             "--njobs '8'",
             $globalargs -join ' ')
         #
         return $pythontask
+    }
+    #
+    [void]getmodulename(){
+        $this.pythonmodulename = ('meanimage', $this.pytype -join '')
     }
     <# -----------------------------------------
      returndata

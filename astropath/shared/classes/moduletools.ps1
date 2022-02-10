@@ -300,8 +300,7 @@
      Usage: $this.buildpyopts()
     ----------------------------------------- #>
     [string]buildpyopts(){
-        $project = $this.sample.project.PadLeft(2,  '0')
-        $str = ('--allow-local-edits --skip-start-finish --use-apiddef --project', $project -join ' ')
+        $str = '--allow-local-edits --skip-start-finish'
         return $str
     }
     [string]buildpyopts($opt){
@@ -352,7 +351,7 @@
             if ($this.sample.module -match 'batchmicomp'){
                 $test = $this.pythonmodulename + ' : '
             } else {
-                $test = $this.sample.project + ';' + $this.sample.cohort
+                $test = ($this.sample.project, ';', $this.sample.cohort -join '')
             }
             if ($this.logoutput -and $this.logoutput[0] -notmatch $test) {
                 $this.silentcleanup()

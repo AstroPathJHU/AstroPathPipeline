@@ -18,6 +18,7 @@ Class testpsmeanimage {
     [string]$project = '0'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
     [switch]$fast_test = $true
+    [string]$pytype = 'sample'
     #
     testpsmeanimage(){
         #
@@ -38,12 +39,13 @@ Class testpsmeanimage {
         Write-Host '---------------------test ps [meanimage]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        $this.testpsmeanimageconstruction($task)
-        $inp = meanimage $task
-        $this.testprocessroot($inp)
-        $this.testcleanupbase($inp)
-        $this.comparepymeanimageinput($inp)
-        $this.runpymeanimage($inp)
+        # $this.testpsmeanimageconstruction($task)
+        $inp = meanimage $task 
+        # $this.testprocessroot($inp)
+        # $this.testcleanupbase($inp)
+        # $this.comparepymeanimageinput($inp)
+        # $this.runpymeanimage($inp)
+        $this.testlogs($inp)
         # $this.ReturnDataTest($inp)
         # $this.CleanupTest($inp)
         Write-Host '.'
@@ -151,21 +153,22 @@ Class testpsmeanimage {
         Write-Host '.'
         Write-Host 'compare python [meanimage] expected input to actual started'
         #
-        $md_processloc = ($this.processloc, 'astropath_ws', $this.module, $this.slideid, 'meanimage') -join '\'
+        $md_processloc = ($this.processloc, 'astropath_ws',
+             $this.module, $this.slideid, 'meanimage') -join '\'
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
-        [string]$userpythontask = ('meanimagecohort',
+        [string]$userpythontask = (('meanimage', $this.pytype -join ''),
             $dpath, 
-            '--sampleregex', $this.slideid,
+            $this.slideid, #'--sampleregex',
             '--shardedim3root', $rpath,
-            #' --workingdir', $md_processloc,
+            ' --workingdir', $md_processloc,
             "--njobs '8'",
             '--allow-local-edits',
-            '--skip-start-finish',
-            '--use-apiddef', 
-            '--project', ($this.project).padleft(2,'0')-join ' ')
+            '--skip-start-finish')
         #
-        $pythontask = $inp.getpythontask($dpath, $rpath)
+        $inp.getmodulename()
+        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath)
+        #
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
             Write-Host 'user defined and [meanimage] defined tasks do not match:'  -foregroundColor Red
             Write-Host 'user defined       :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
@@ -181,9 +184,11 @@ Class testpsmeanimage {
         Write-Host 'test python meanimage in workflow started'
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
-        $pythontask = $inp.getpythontask($dpath, $rpath)
+        $inp.getmodulename()
+        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath) 
+        $pythontask = $pythontask, '--selectrectangles' -join ' '
         #
-        $externallog = $inp.ProcessLog('meanimagecohort') 
+        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         #
         Write-Host '    meanimage command:'
         Write-Host '   '$pythontask  
@@ -195,17 +200,32 @@ Class testpsmeanimage {
         Invoke-Expression $pythontask *>> $externallog
         exenv
         #
+        Write-Host 'test python meanimage in workflow finished'
+        #
+    }
+    #
+    [void]testlogs($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test python log output started'
+        $inp.getmodulename()
+        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
+        $inp.logoutput = $inp.sample.GetContent($externallog)
+        Write-Host $inp.logoutput[0]
+        Write-Host $inp.sample.project';'$inp.sample.cohort
+        <#
         try {
             $inp.getexternallogs($externallog)
+            Write-Host $inp.logoutput
         } catch {
             $err = $_.Exception.Message
-             $expectedoutput = 'Python tasked launched but there was an ERROR.'
+                $expectedoutput = 'Python tasked launched but there was an ERROR.'
             if ($err -notcontains $expectedoutput){
                 Write-Host $_.Exception.Message
             }
         }
-        #
-        Write-Host 'test python meanimage in workflow finished'
+        #>
+        Write-Host 'test python log output finished'
         #
     }
     #
