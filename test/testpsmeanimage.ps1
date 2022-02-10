@@ -44,7 +44,7 @@ Class testpsmeanimage {
         # $this.testprocessroot($inp)
         # $this.testcleanupbase($inp)
         # $this.comparepymeanimageinput($inp)
-        # $this.runpymeanimage($inp)
+        $this.runpymeanimage($inp)
         $this.testlogs($inp)
         # $this.ReturnDataTest($inp)
         # $this.CleanupTest($inp)
@@ -227,6 +227,18 @@ Class testpsmeanimage {
         #>
         Write-Host 'test python log output finished'
         #
+    }
+    #
+    [void]testpyerrorlog($inp){
+
+    }
+    #
+    [void]testaperrorlog($inp){
+
+    }
+    #
+    [void]testnormalrun($inp){
+        
     }
     #
     [void]ReturnDataTest($inp){
