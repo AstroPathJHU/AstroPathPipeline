@@ -403,9 +403,15 @@ RUN \
   sudo git checkout "${ASTROPATH_DEPENDENCY_COMMIT}" && \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
 
-ARG ASTROPATH_INSTALL_EXTRAS=all
+ARG ASTROPATH_INSTALL_EXTRAS=true
 
-RUN sudo pip3 install "./AstroPathPipelinePrivate[$ASTROPATH_INSTALL_EXTRAS]"
+RUN \
+  if $ASTROPATH_INSTALL_EXTRAS; then \
+    EXTRAS="[all]"; \
+  else \
+    EXTRAS=; \
+  fi && \
+  sudo pip3 install "./AstroPathPipelinePrivate$EXTRAS"
 RUN sudo pip3 uninstall -y astropath
 
 from base as final
