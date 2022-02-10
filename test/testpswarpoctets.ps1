@@ -1,7 +1,7 @@
 ﻿<# -------------------------------------------
  testpswarpoctets
  created by: Andrew Jorquera
- Last Edit: 01.25.2022
+ Last Edit: 02.10.2022
  --------------------------------------------
  Description
  test if the methods of warpoctets are 
@@ -11,45 +11,147 @@
 Class testpswarpoctets {
     #
     [string]$mpath 
-    [string]$process_loc
+    [string]$processloc
+    [string]$basepath
+    [string]$module = 'warpoctets'
+    [string]$slideid = 'M21_1'
+    [string]$project = '0'
+    [string]$batchid = '8'
+    [string]$apmodule = $PSScriptRoot + '/../astropath'
+    [string]$batchbinfile
+    [switch]$fast_test = $true
     #
     testpswarpoctets(){
         #
-        # Setup Testing
+        $this.launchtests()
         #
+    }
+    testpswarpoctets($project, $slideid){
+        #
+        $this.slideid = $slideid
+        $this.project = $project
+        $this.launchtests
+        #
+    }
+    #
+    [void]launchtests(){
+        #
+        Write-Host '---------------------test ps [warpoctets]---------------------'
         $this.importmodule()
-        #
-        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
+        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
+        $this.testpswarpoctetsconstruction($task)
         $inp = warpoctets $task
-        #
-        # Run Tests
-        #
-        $this.DownloadFilesTest($inp)
-        $this.CleanupTest($inp)
+        #$this.testprocessroot($inp)
+        #$this.testcleanupbase($inp)
+        $this.comparepywarpoctetsinput($inp)
+        #$this.runpywarpoctets($inp)
+        # $this.CleanupTest($inp)
+        Write-Host '.'
     }
     #
     importmodule(){
-        $module = $PSScriptRoot + '/../astropath'
-        Import-Module $module -EA SilentlyContinue
+        Import-Module $this.apmodule
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_warpoctets'
+        $this.batchbinfile = $this.mpath + '\flatfield\flatfield_' + $this.batchid + '.bin'
+        $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_warpoctets'))
+        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
     }
     #
-    [void]DownloadFilesTest($inp){
+    [string]uncpath($str){
+        $r = $str -replace( '/', '\')
+        if ($r[0] -ne '\'){
+            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
+        } else{
+            $root = $r -replace ":", "$"
+        }
+        return $root
+    }
+    #
+    [void]testpswarpoctetsconstruction($task){
         #
-        Write-Host 'Starting Download Files Test'
-        $im3path = $inp.sample.basepath + '\' + $inp.sample.slideid + '\im3\Scan1\MSI'
-        Write-Host 'im3path: ' $im3path
-        Write-Host 'MSI folder: ' $inp.sample.MSIfolder()
-        if (!([regex]::Escape($inp.sample.MSIfolder()) -contains [regex]::Escape($im3path))){
-            Throw ('MSI folder not correct: ' + $inp.sample.MSIfolder() + '~=' + $im3path)
+        Write-Host "."
+        Write-Host 'test [warpoctets] constructors started'
+        #
+        $log = logger $this.mpath $this.module $this.slideid 
+        #
+        try {
+            warpoctets  $task | Out-Null
+        } catch {
+            Throw ('[warpoctets] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
-        $im3path += '\*im3'
-        if (!(Test-Path -Path $im3path)) {
-            Throw 'No im3 files in MSI folder'
+        <#
+        try {
+            warpoctets  $task $log | Out-Null
+        } catch {
+            Throw ('[warpoctets] construction with [2] input(s) failed. ' + $_.Exception.Message)
         }
-        Write-Host 'Correct files in IM3 folder'
-        Write-Host 'Passed Download Files Test'
+        #>
+        Write-Host 'test [warpoctets] constructors finished'
+        #
+    }
+    
+    #
+    [void]comparepywarpoctetsinput($inp){
+        #
+        Write-Host '.'
+        Write-Host 'compare python [warpoctets] expected input to actual started'
+        #
+        $md_processloc = ($this.processloc, 'astropath_ws', $this.module, $this.slideid, 'warpoctets') -join '\'
+        $rpath = $PSScriptRoot + '\data\raw'
+        $dpath = $this.basepath
+        [string]$userpythontask = ('warpingcohort',
+            $dpath,
+            '--shardedim3root', $rpath,
+            '--sampleregex', $this.slideid,
+            '--flatfield-file',  $this.batchbinfile,
+            '--octets-only',
+            '--noGPU',
+            '--allow-local-edits',
+            '--skip-start-finish',
+            '--use-apiddef', 
+            '--project', ($this.project).padleft(2,'0')-join ' ')
+        #
+        $pythontask = $inp.getpythontask($dpath, $rpath)
+        if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
+            Write-Host 'user defined and [warpoctets] defined tasks do not match:'  -foregroundColor Red
+            Write-Host 'user defined       :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
+            Write-Host '[warpoctets] defined:' [regex]::escape($pythontask)'end' -foregroundColor Red
+            Throw ('user defined and [warpoctets] defined tasks do not match')
+        }
+        Write-Host 'python [warpoctets] input matches -- finished'
+        #
+    }
+    #
+    [void]runpywarpoctets($inp){
+        Write-Host '.'
+        Write-Host 'test python warpoctets in workflow started'
+        $rpath = $PSScriptRoot + '\data\raw'
+        $dpath = $this.basepath
+        $pythontask = $inp.getpythontask($dpath, $rpath)
+        #
+        $externallog = $inp.ProcessLog('warpingcohort') 
+        #
+        Write-Host '    warpoctets command:'
+        Write-Host '   '$pythontask  
+        Write-Host '    external log:' $externallog
+        Write-Host '    launching task'
+        #
+        $inp.sample.checkconda()
+        etenv $inp.sample.pyenv()
+        Invoke-Expression $pythontask *>> $externallog
+        exenv
+        #
+        try {
+            $inp.getexternallogs($externallog)
+        } catch {
+            $err = $_.Exception.Message
+             $expectedoutput = 'Python tasked launched but there was an ERROR.'
+            if ($err -notcontains $expectedoutput){
+                Write-Host $_.Exception.Message
+            }
+        }
+        #
+        Write-Host 'test python warpoctets in workflow finished'
         #
     }
     #
