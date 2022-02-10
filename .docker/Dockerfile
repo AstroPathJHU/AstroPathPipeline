@@ -393,7 +393,7 @@ ARG GITHUB_TOKEN
 #add python packages
 RUN sudo pip3 install --upgrade pip
 
-ENV ASTROPATH_DEPENDENCY_COMMIT 2c56dcfd05825aa6c74092409e6cdc7b6b10ed42
+ARG ASTROPATH_DEPENDENCY_COMMIT 2c56dcfd05825aa6c74092409e6cdc7b6b10ed42
 
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
@@ -402,7 +402,10 @@ RUN \
   sudo git fetch && \
   sudo git checkout "${ASTROPATH_DEPENDENCY_COMMIT}" && \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
-RUN sudo pip3 install ./AstroPathPipelinePrivate[all]
+
+ARG ASTROPATH_INSTALL_EXTRAS all
+
+RUN sudo pip3 install "./AstroPathPipelinePrivate[$ASTROPATH_INSTALL_EXTRAS]"
 RUN sudo pip3 uninstall -y astropath
 
 from base as final
