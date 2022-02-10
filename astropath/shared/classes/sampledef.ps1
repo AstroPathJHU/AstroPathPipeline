@@ -116,9 +116,9 @@ class sampledef : sharedtools{
         more robust path editing #>
         $r = $project_dat.dpath -replace( '/', '\')
         if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
+            $root = '\\' + $project_dat.dpath 
         } else{
-            $root = $r -replace ":", "$"
+            $root = $project_dat.dpath
         }
         #
         $this.basepath = $root, '\', $project_dat.dname -join ''
