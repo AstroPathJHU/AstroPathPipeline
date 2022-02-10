@@ -12,7 +12,7 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.version import astropathversionregex
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
-from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, XMLPolygonReaderArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger, ThingWithLogger
 from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer
@@ -1384,7 +1384,7 @@ class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, XMLPolygonFileAr
   def annotationinfofile(self):
     return self.annotationspolygonsxmlfile.with_suffix(".annotationinfo.csv")
 
-class XMLPolygonAnnotationReaderSample(SampleWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonReaderArgumentParser):
+class XMLPolygonAnnotationReaderSample(SampleWithAnnotationInfos, XMLPolygonAnnotationReader):
   """
   Base class for any sample that reads the annotations from the XML metadata.
   """

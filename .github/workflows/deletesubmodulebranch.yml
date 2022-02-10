@@ -1,0 +1,21 @@
+name: Delete submodule branch if it's been merged to main
+on: delete
+jobs:
+  delete:
+    #https://stackoverflow.com/a/62293570/5228524
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          #https://stackoverflow.com/a/67059629/5228524
+          token: ${{ secrets.CI_TOKEN }}
+          submodules: true
+          fetch-depth: 0
+      - name: delete submodule branch if it's been merged to main
+        run: |
+          #https://stackoverflow.com/a/67059629/5228524
+          git submodule foreach bash -c 'git remote set-url origin https://x-access-token:${{ secrets.CI_TOKEN }}@github.com/$(git remote get-url origin | sed -r "s|.*[:/]([^:/]*/[^/]*$)|\1|")'
+          #https://stackoverflow.com/a/58034787/5228524
+          git submodule foreach bash -c 'if git merge-base --is-ancestor HEAD origin/main && git merge-base --is-ancestor origin/${{ github.event.ref }} origin/main; then git push --delete origin ${{ github.event.ref }}; fi'

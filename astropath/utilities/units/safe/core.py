@@ -92,6 +92,7 @@ class Distance:
   def __int__(self):
     return int(float(self))
   def __eq__(self, other):
+    if other is None: return False
     return pixels(self - other, power=None) == 0
   def __lt__(self, other):
     return pixels(self - other, power=None) < 0

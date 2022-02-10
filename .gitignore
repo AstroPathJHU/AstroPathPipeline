@@ -1,3 +1,6 @@
+# The large "model_final_checkpoint.model" files needed by nnU-Net
+/astropath/slides/segmentation/nnunet_models/**/model_final_checkpoint.model
+
 *.pyc
 .ipynb_checkpoints
 # Compiled source #

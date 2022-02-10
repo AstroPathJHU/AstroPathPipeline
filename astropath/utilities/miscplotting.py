@@ -55,3 +55,19 @@ def save_figure_in_dir(pyplot_inst,figname,save_dirpath=None) :
     pyplot_inst.savefig(figname)
     pyplot_inst.close()
     crop_and_overwrite_image(figname)
+
+def set_size(w,h, ax=None):
+  """
+  Adjust the size of an axes object within a figure so that the axes have a precise size
+  (Useful for "imshow"ing an image a full resolution)
+  w, h: width, height in inches 
+  """
+  if not ax : 
+    ax=plt.gca()
+  l = ax.figure.subplotpars.left
+  r = ax.figure.subplotpars.right
+  t = ax.figure.subplotpars.top
+  b = ax.figure.subplotpars.bottom
+  figw = float(w)/(r-l)
+  figh = float(h)/(t-b)
+  ax.figure.set_size_inches(figw, figh)
