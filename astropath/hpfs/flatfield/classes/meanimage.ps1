@@ -32,7 +32,7 @@ Class meanimage : moduletools {
     ----------------------------------------- #>
     [void]RunMeanImage(){
         $this.cleanupbase()
-        $this.sample.CreateDirs($this.processloc)
+        $this.sample.CreateNewDirs($this.processloc)
         $this.DownloadFiles()
         $this.ShredDat()
         $this.GetMeanImage()
@@ -173,6 +173,7 @@ Class meanimage : moduletools {
             #
 		    $des = $this.sample.im3folder() + '\meanimage'
             $sor = $this.processvars[0] +'\meanimage'
+            #
             $this.sample.copy($sor, $des, '*', 30)
             #
         }

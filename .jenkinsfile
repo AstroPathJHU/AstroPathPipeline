@@ -162,9 +162,6 @@ pipeline {
 
         stage('warping') {
           stages {
-	    stage('test ps warping workflow'){
-		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
-	    }
             stage('test warping') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarping'
@@ -175,14 +172,14 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
               }
             }
+	    stage('test ps warping workflow'){
+		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
+	    }
           }
         }
 
         stage('meanimage') {
           stages {
-	    stage('test ps meanimage workflow'){
-		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
-	    }
             stage('test meanimage') {
               steps {
                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimage'
@@ -194,7 +191,9 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
               }
             }
-	
+	    stage('test ps meanimage workflow'){
+		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
+	    }
           }
         }
 		
@@ -219,14 +218,17 @@ pipeline {
           }
         }
 
-        stage('applyflatw') {
-          stages {
+        stage('apply image corrections') {
+	  stages {
+	    stage('applyflatw'){
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
+              }
+            }
 	    stage('test ps applyflatw - image correction workflow'){
 		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimagecorrection.ps1'
 	    }
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
-          }
+	  } 
         }
 
         stage('segmentation') {

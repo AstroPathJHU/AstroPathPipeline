@@ -357,7 +357,7 @@
                 $this.silentcleanup()
                 $potentialerrors = $this.logoutput -ne ''
                 $this.sample.error($potentialerrors)
-                Throw 'Error in python task'
+                Throw 'Error in launching python task'
             }
             #
             if ($this.sample.module -match 'warpoctets'){
@@ -392,7 +392,7 @@
     [void]parsepycohortlog($errors){
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
         if ($sampleoutput -match 'Error'){
-            Throw 'Python tasked launched but there was an ERROR.'
+            Throw 'Python tasked launched but there was an ERROR'
         }
     }
     <# -----------------------------------------
