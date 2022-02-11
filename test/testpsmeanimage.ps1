@@ -50,7 +50,7 @@ Class testpsmeanimage {
         $this.runpytaskexpected($inp)
         $this.testlogsexpected($inp)
         $this.testreturndatapy($inp)
-        $this.testmasks($inp)
+        # $this.testmasks($inp)
         $this.testcleanup($inp)
         Write-Host '.'
     }
@@ -491,9 +491,8 @@ Class testpsmeanimage {
         #
         $masking_processloc = (
             $this.processloc,
-            'astropath_ws',
-            $this.module,
             $this.slideid,
+            'im3',
             'meanimage',
             'image_masking'
         ) -join '\'
