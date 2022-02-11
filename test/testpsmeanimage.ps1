@@ -391,8 +391,7 @@ Class testpsmeanimage {
         $addedargs = '--selectrectangles',
                      '17 18 19 20 23 24 25 26 29 30 31 32 35 36 37 38 39 40', 
                      '--maskroot', $this.processloc,
-                     '--exposure-time-offset-file', $et_offset_file,
-                     '--ignore-dependencies' -join ' '
+                     '--exposure-time-offset-file', $et_offset_file -join ' '
                      
         $pythontask = $pythontask, $addedargs -join ' '
         #
@@ -418,7 +417,7 @@ Class testpsmeanimage {
         Write-Host '    test log output'
         #
         try {
-            #$inp.getexternallogs($externallog)
+            $inp.getexternallogs($externallog)
         } catch {
             Write-Host '   '$logoutput
             Throw $_.Exception.Message

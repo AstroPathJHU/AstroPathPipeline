@@ -173,7 +173,7 @@
     ----------------------------------------- #>
     [int]checktransfer($dependency){
         #
-        if (!($this.moduleinfo.transfer.vers -match '0.0.1') -and 
+        if (!($this.moduleinfo.transfer.version -match '0.0.1') -and 
             $this.checklog('transfer', $true)){
             return 2
         }
