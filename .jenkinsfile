@@ -228,8 +228,15 @@ pipeline {
           }
         }
       }
+      post {
+        always {
+          archiveArtifacts artifacts: 'documents/alignment/alignment.pdf', fingerprint: true
+          archiveArtifacts artifacts: 'documents/annowarp/annowarp.pdf', fingerprint: true
+          archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
+          archiveArtifacts artifacts: 'test/test_for_jenkins/**', fingerprint: true, allowEmptyArchive: true
+        }
+      }
     }
-/*
     stage('test without optional dependencies') {
       agent {
         dockerfile {
@@ -244,15 +251,6 @@ pipeline {
         sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
         sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testconsolescripts'
       }
-    }
-*/
-  }
-  post {
-    always {
-      archiveArtifacts artifacts: 'documents/alignment/alignment.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documents/annowarp/annowarp.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
-      archiveArtifacts artifacts: 'test/test_for_jenkins/**', fingerprint: true, allowEmptyArchive: true
     }
   }
 }
