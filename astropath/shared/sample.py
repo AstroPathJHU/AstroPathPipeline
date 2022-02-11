@@ -1730,9 +1730,15 @@ class ParallelSample(SampleBase, ParallelArgumentParser):
     return mp.get_context().Pool(nworkers)
 
 class SampleWithSegmentations(SampleBase):
-  pass
+  @classmethod
+  @abc.abstractmethod
+  def segmentationalgorithm(cls): pass
 
 class InformSegmentationSample(SampleWithSegmentations):
+  @classmethod
+  def segmentationalgorithm(cls):
+    return "inform"
+
   @methodtools.lru_cache()
   @property
   def segmentationids(self):
