@@ -134,187 +134,7 @@ class Rectangle(DataClassWithPscale):
     """
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
 
-class RectangleWithImageBase(Rectangle):
-  """
-  Base class for any kind of rectangle that has a way of getting an image.
-  To get the image and keep it indefinitely, you can access `rectangle.image`.
-  However, you might also want to do instead
-  ```
-  with rectangle.using_image() as im:
-    ... #do stuff with im
-  ```
-  This frees up the memory of im after the with block is finished.
-
-  Subclasses have to implement `getimage`, which loads the image from
-  an im3 or component tiff or somewhere else.
-
-  A rectangle can also have transformations, which are applied to the
-  raw image to make the final image returned by `using_image()` or `image`.
-  They should inherit from RectangleTransformationBase.
-  """
-
-  #if _DEBUG is true, then when the rectangle is deleted, it will print
-  #a warning if its image has been loaded multiple times, for debug
-  #purposes.  If __DEBUG_PRINT_TRACEBACK is also true, it will print the
-  #tracebacks for each of the times the image was loaded.
-  _DEBUG = True
-  def __DEBUG_PRINT_TRACEBACK(self, i):
-    return False
-
-  def __post_init__(self, *args, transformations=[], **kwargs):
-    self.__transformations = transformations
-    self.__images_cache = [None for _ in range(self.nimages)]
-    self.__accessed_image = np.zeros(dtype=bool, shape=self.nimages)
-    self.__using_image_counter = np.zeros(dtype=int, shape=self.nimages)
-    self.__debug_load_images_counter = np.zeros(dtype=int, shape=self.nimages)
-    self.__debug_load_images_tracebacks = [[] for _ in range(self.nimages)]
-    super().__post_init__(*args, **kwargs)
-
-  def __del__(self):
-    if self._DEBUG:
-      for i, ctr in enumerate(self.__debug_load_images_counter):
-        if ctr > 1:
-          for formattedtb in self.__debug_load_images_tracebacks[i]:
-            printlogger("rectangle").debug("".join(formattedtb))
-          warnings.warn(f"Loaded image {i} for rectangle {self} {ctr} times")
-
-  def add_transformation(self,new_transformation) :
-    """
-    Add a new transformation to this Rectangle post-initialization
-    Helpful in case a Rectangle needs to be transformed after calculating something from the whole set of Rectangles
-    
-    new_transformation: the new transformation to add (should inherit from RectangleTransformationBase)
-    """
-    old_nimages = self.nimages
-    old_nimages = old_nimages #make pyflakes happy
-    self.__transformations.append(new_transformation)
-    self.__images_cache.append(None)
-    self.__accessed_image = np.append(self.__accessed_image,0)
-    self.__using_image_counter = np.append(self.__using_image_counter,0)
-    self.__debug_load_images_counter = np.append(self.__debug_load_images_counter,0)
-    self.__debug_load_images_tracebacks.append([])
-
-  @abc.abstractmethod
-  def getimage(self):
-    """
-    Override this function in subclasses that actually implement
-    a way of loading the image
-    """
-
-  @property
-  def nimages(self):
-    return len(self.__transformations)+1
-
-  #do not override any of these functions or call them from super()
-  #override getimage() instead and call super().getimage()
-
-  def any_image(self, index):
-    """
-    any_image(-1) gives the actual image
-    any_image(-2) gives the previous image, immediately before the last transformation
-    The image gets saved indefinitely until you call delete_any_image
-    etc.
-    """
-    self.__accessed_image[index] = True
-    return self.__image(index)
-
-  def delete_any_image(self, index):
-    """
-    Call this to free the memory from an image accessed by any_image
-    """
-    self.__accessed_image[index] = False
-    self.__check_delete_images()
-
-  @property
-  def image(self):
-    """
-    Gives the HPF image.
-    It gets saved in memory until you call `del rectangle.image`
-    """
-    return self.any_image(-1)
-  @image.deleter
-  def image(self):
-    self.delete_any_image(-1)
-    self.__check_delete_images()
-
-  @property
-  def all_images(self):
-    return [self.any_image(i) for i in range(len(self.__images_cache))]
-  def delete_all_images(self, index):
-    """
-    Free up the memory from all previously accessed images
-    """
-    self.__accessed_image[:] = False
-    self.__check_delete_images()
-
-  def __check_delete_images(self):
-    """
-    This gets called whenever you delete an image or leave a using_image context.
-    It deletes images that are no longer needed in memory.
-    """
-    for i, (ctr, usingproperty) in enumerate(zip(self.__using_image_counter, self.__accessed_image)):
-      if not ctr and not usingproperty:
-        self.__images_cache[i] = None
-
-  def __image(self, i):
-    if self.__images_cache[i] is None:
-      self.__debug_load_images_counter[i] += 1
-      if self.__DEBUG_PRINT_TRACEBACK(i):
-        self.__debug_load_images_tracebacks[i].append(traceback.format_stack())
-      if i < 0: i = self.nimages + i
-      if i == 0:
-        self.__images_cache[i] = self.getimage()
-      else:
-        with self.using_image(i-1) as previous:
-          self.__images_cache[i] = self.__transformations[i-1].transform(previous)
-    return self.__images_cache[i]
-
-  @contextlib.contextmanager
-  def using_image(self, index=-1):
-    """
-    Use this in a with statement to load the image for the HPF.
-    It gets freed from memory when the with statement ends.
-    """
-    self.__using_image_counter[index] += 1
-    try:
-      yield self.__image(index)
-    finally:
-      self.__using_image_counter[index] -= 1
-      self.__check_delete_images()
-  @contextlib.contextmanager
-  def using_all_images(self):
-    with contextlib.ExitStack() as stack:
-      for i in range(len(self.__images_cache)):
-        stack.enter_context(self.using_image(i))
-      yield stack
-
-  @property
-  def _imshowextent(self):
-    return self.x, self.x+self.w, self.y+self.h, self.y
-  def imshow(self, *, imagescale=None, xlim=(), ylim=()):
-    """
-    Convenience function to show the image.
-    """
-    if imagescale is None: imagescale = self.pscale
-    extent = units.convertpscale(self._imshowextent, self.pscale, imagescale)
-    xlim = (np.array(xlim) / units.onepixel(imagescale)).astype(float)
-    ylim = (np.array(ylim) / units.onepixel(imagescale)).astype(float)
-    with self.using_image() as im:
-      plt.imshow(im, extent=(extent / units.onepixel(imagescale)).astype(float))
-      plt.xlim(*xlim)
-      plt.ylim(*ylim)
-
-class RectangleReadIm3MultiLayer(RectangleWithImageBase):
-  """
-  Rectangle class that reads the image from a sharded im3
-  (could be raw, flatw, etc.)
-
-  imagefolder: folder where the im3 image is located
-  filetype: flatWarp, camWarp, or raw (determines the file extension)
-  width, height: the shape of the HPF image
-  nlayers: the number of layers in the *input* file
-  layers: which layers you actually want to access
-  """
+class RectangleReadIm3Base(Rectangle):
   @property
   def imagefolder(self): return self.__imagefolder
   @imagefolder.setter
@@ -346,12 +166,33 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   def layers(self, layers): self.__layers = layers
   layers: list = MetaDataAnnotation(layers, includeintable=False, use_default=False)
 
+class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
+  """
+  Rectangle class that reads the image from a sharded im3
+  (could be raw, flatw, etc.)
+
+  imagefolder: folder where the im3 image is located
+  filetype: flatWarp, camWarp, or raw (determines the file extension)
+  width, height: the shape of the HPF image
+  nlayers: the number of layers in the *input* file
+  layers: which layers you actually want to access
+  """
+
+  def __post_init__(self, *args, **kwargs):
+    super().__post_init__(*args, **kwargs):
+    if self.layers is None: self.layers = range(1, self.nlayers+1)
+    if -1 in self.layers:
+      if len(self.layers) > 1:
+        raise ValueError(f"layers given are {self.layers}: if you want to include -1, meaning all layers, that should be the only one in the list")
+      self.layers = range(1, self.nlayers+1)
+    self.layers = tuple(self.layers)
+
   @property
   def imageshape(self):
     return [
       floattoint(float(self.height / self.onepixel)),
       floattoint(float(self.width / self.onepixel)),
-      self.nlayers if -1 in self.layers else len(self.layers),
+      len(self.layers),
     ]
 
   @property
@@ -369,36 +210,6 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
       raise ValueError(f"requested file type {self.__filetype} not recognized")
 
     return self.__imagefolder/self.file.replace(UNIV_CONST.IM3_EXT, ext)
-
-  @property
-  def imageshapeininput(self):
-    return self.__nlayers, floattoint(float(self.__width / self.onepixel)), floattoint(float(self.__height / self.onepixel))
-  @property
-  def imagetransposefrominput(self):
-    #it's saved as (layers, width, height), we want (height, width, layers)
-    return (2, 1, 0)
-  @property
-  def imageslicefrominput(self):
-    return slice(None), slice(None), slice(None) if -1 in self.__layers else tuple(_-1 for _ in self.__layers)
-  @property
-  def imageshapeinoutput(self):
-    return (np.empty((self.imageshapeininput)).transpose(self.imagetransposefrominput)[self.imageslicefrominput]).shape
-
-  def getimage(self):
-    image = np.ndarray(shape=self.imageshape, dtype=np.uint16)
-
-    with open(self.imagefile, "rb") as f:
-      #use fortran order, like matlab!
-      with memmapcontext(
-        f,
-        dtype=np.uint16,
-        shape=tuple(self.imageshapeininput),
-        order="F",
-        mode="r"
-      ) as memmap:
-        image[:] = memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput]
-
-    return image
 
   @property
   def exposuretimes(self):
