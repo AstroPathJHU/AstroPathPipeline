@@ -136,15 +136,15 @@ class Rectangle(DataClassWithPscale):
 
 class RectangleReadIm3Base(Rectangle):
   @property
-  def imagefolder(self): return self.__imagefolder
-  @imagefolder.setter
-  def imagefolder(self, imagefolder): self.__imagefolder = imagefolder
-  imagefolder: pathlib.Path = pathfield(imagefolder, includeintable=False, use_default=False)
+  def im3folder(self): return self.__im3folder
+  @im3folder.setter
+  def im3folder(self, im3folder): self.__im3folder = im3folder
+  im3folder: pathlib.Path = pathfield(im3folder, includeintable=False, use_default=False)
   @property
-  def filetype(self): return self.__filetype
-  @filetype.setter
-  def filetype(self, filetype): self.__filetype = filetype
-  filetype: str = MetaDataAnnotation(filetype, includeintable=False, use_default=False)
+  def im3filetype(self): return self.__im3filetype
+  @im3filetype.setter
+  def im3filetype(self, im3filetype): self.__im3filetype = im3filetype
+  im3filetype: str = MetaDataAnnotation(im3filetype, includeintable=False, use_default=False)
   @property
   def width(self): return self.__width
   @width.setter
@@ -156,81 +156,81 @@ class RectangleReadIm3Base(Rectangle):
   def height(self, height): self.__height = height
   height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels", use_default=False)
   @property
-  def nlayers(self): return self.__nlayers
-  @nlayers.setter
-  def nlayers(self, nlayers): self.__nlayers = nlayers
-  nlayers: int = MetaDataAnnotation(nlayers, includeintable=False, use_default=False)
+  def nlayersim3(self): return self.__nlayersim3
+  @nlayersim3.setter
+  def nlayersim3(self, nlayersim3): self.__nlayersim3 = nlayersim3
+  nlayersim3: int = MetaDataAnnotation(nlayersim3, includeintable=False, use_default=False)
   @property
-  def layers(self): return self.__layers
-  @layers.setter
-  def layers(self, layers): self.__layers = layers
-  layers: list = MetaDataAnnotation(layers, includeintable=False, use_default=False)
+  def layersim3(self): return self.__layersim3
+  @layersim3.setter
+  def layersim3(self, layersim3): self.__layersim3 = layersim3
+  layersim3: list = MetaDataAnnotation(layersim3, includeintable=False, use_default=False)
 
 class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
   """
   Rectangle class that reads the image from a sharded im3
   (could be raw, flatw, etc.)
 
-  imagefolder: folder where the im3 image is located
-  filetype: flatWarp, camWarp, or raw (determines the file extension)
+  im3folder: folder where the im3 image is located
+  im3filetype: flatWarp, camWarp, or raw (determines the file extension)
   width, height: the shape of the HPF image
-  nlayers: the number of layers in the *input* file
-  layers: which layers you actually want to access
+  nlayersim3: the number of layersim3 in the *input* file
+  layersim3: which layersim3 you actually want to access
   """
 
   def __post_init__(self, *args, **kwargs):
-    super().__post_init__(*args, **kwargs):
-    if self.layers is None: self.layers = range(1, self.nlayers+1)
-    if -1 in self.layers:
-      if len(self.layers) > 1:
-        raise ValueError(f"layers given are {self.layers}: if you want to include -1, meaning all layers, that should be the only one in the list")
-      self.layers = range(1, self.nlayers+1)
-    self.layers = tuple(self.layers)
+    super().__post_init__(*args, **kwargs)
+    if self.layersim3 is None: self.layersim3 = range(1, self.nlayersim3+1)
+    if -1 in self.layersim3:
+      if len(self.layersim3) > 1:
+        raise ValueError(f"layersim3 given are {self.layersim3}: if you want to include -1, meaning all layersim3, that should be the only one in the list")
+      self.layersim3 = range(1, self.nlayersim3+1)
+    self.layersim3 = tuple(self.layersim3)
 
   @property
   def imageshape(self):
     return [
       floattoint(float(self.height / self.onepixel)),
       floattoint(float(self.width / self.onepixel)),
-      len(self.layers),
+      len(self.layersim3),
     ]
 
   @property
-  def imagefile(self):
+  def im3file(self):
     """
     The full file path to the image file
     """
-    if self.__filetype=="flatWarp" :
+    if self.__im3filetype=="flatWarp" :
       ext = UNIV_CONST.FLATW_EXT
-    elif self.__filetype=="camWarp" :
+    elif self.__im3filetype=="camWarp" :
       ext = ".camWarp"
-    elif self.__filetype=="raw" :
+    elif self.__im3filetype=="raw" :
       ext = UNIV_CONST.RAW_EXT
     else :
-      raise ValueError(f"requested file type {self.__filetype} not recognized")
+      raise ValueError(f"requested file type {self.__im3filetype} not recognized")
 
-    return self.__imagefolder/self.file.replace(UNIV_CONST.IM3_EXT, ext)
+    return self.im3folder/self.file.replace(UNIV_CONST.IM3_EXT, ext)
 
   @property
   def exposuretimes(self):
     """
-    The exposure times for the HPF layers you access
+    The exposure times for the HPF layersim3 you access
     """
     all = self.allexposuretimes
-    return [all[layer-1] for layer in self.__layers]
+    return [all[layer-1] for layer in self.__layersim3]
 
   @property
   def broadbandfilters(self):
     """
-    The broadband filter ids (numbered from 1) of the layers you access
+    The broadband filter ids (numbered from 1) of the layersim3 you access
     """
     all = self.allbroadbandfilters
-    return [all[layer-1] for layer in self.__layers]
+    return [all[layer-1] for layer in self.__layersim3]
 
 class RectangleReadIm3(RectangleReadIm3MultiLayer):
   """
   Single layer image read from a sharded im3.
-  You can also use RectangleReadIm3MultiLayer and write layers=[i],
+  You can also use RectangleReadIm3MultiLayer and write layersim3=[i],
   but this class gives you a 2D array as the image instead of a 3D array
   with shape[0] = 1.
   Also, in this class you can read a layer file (e.g. fw01).
@@ -245,21 +245,21 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   @classmethod
   def transforminitargs(cls, *args, layer, readlayerfile=True, **kwargs):
     morekwargs = {
-      "layers": (layer,),
+      "layersim3": (layer,),
       "readlayerfile": readlayerfile,
     }
-    if readlayerfile and "nlayers" not in kwargs:
-      morekwargs["nlayers"] = 1
+    if readlayerfile and "nlayersim3" not in kwargs:
+      morekwargs["nlayersim3"] = 1
     return super().transforminitargs(*args, **kwargs, **morekwargs)
 
   def __post_init__(self, *args, **kwargs):
-    if self.nlayers != 1 and self.readlayerfile:
-      raise ValueError("Provided nlayers!=1, readlayerfile=True")
+    if self.nlayersim3 != 1 and self.readlayerfile:
+      raise ValueError("Provided nlayersim3!=1, readlayerfile=True")
     super().__post_init__(*args, **kwargs)
 
   @property
   def layer(self):
-    layer, = self.layers
+    layer, = self.layersim3
     return layer
 
   @property
@@ -267,8 +267,8 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
     return super().imageshape[:-1]
 
   @property
-  def imagefile(self):
-    result = super().imagefile
+  def im3file(self):
+    result = super().im3file
     if self.readlayerfile:
       folder = result.parent
       basename = result.name
@@ -396,19 +396,19 @@ class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
     self.add_transformation(RectangleWarpingTransformationMultilayer(warps_by_layer))
 
 
-class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
+class RectangleReadComponentTiffBase(Rectangle):
   """
   Rectangle class that reads the image from a component tiff
 
-  imagefolder: folder where the component tiff is located
+  componenttifffolder: folder where the component tiff is located
   nlayers: the number of layers in the *input* file (optional, just used as a sanity check)
   layers: which layers you actually want to access
   with_seg: indicates if you want to use the _w_seg.tif which contains some segmentation info from inform
   """
 
-  def __post_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, nsegmentations=None, **kwargs):
+  def __post_init__(self, *args, componenttifffolder, layers, nlayers=None, with_seg=False, nsegmentations=None, **kwargs):
     super().__post_init__(*args, **kwargs)
-    self.__imagefolder = pathlib.Path(imagefolder)
+    self.__componenttifffolder = pathlib.Path(componenttifffolder)
     self.__layers = layers
     self.__nlayers = nlayers
     self.__with_seg = with_seg
@@ -417,15 +417,15 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
       raise ValueError("To use segmented component tiffs, you have to provide nsegmentations")
 
   @property
-  def imagefile(self):
-    return self.__imagefolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
+  def componenttifffile(self):
+    return self.__componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
 
   @property
   def layers(self):
     return self.__layers
 
   def getimage(self):
-    with tifffile.TiffFile(self.imagefile) as f:
+    with tifffile.TiffFile(self.componenttifffile) as f:
       pages = []
       shape = None
       dtype = None
