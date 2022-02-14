@@ -376,30 +376,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   @property
   def mergeconfig(self):
     return self.readtable(self.mergeconfigcsv, MergeConfig)
-  @methodtools.lru_cache()
-  @property
-  def segmentationids(self):
-    dct = {}
-    for layer in self.mergeconfig:
-      segstatus = layer.SegmentationStatus
-      if segstatus != 0:
-        segid = layer.ImageQA
-        if segid == "NA":
-          segid = segstatus
-        if segstatus not in dct:
-          dct[segstatus] = segid
-        elif segid != segstatus:
-          if segid != dct[segstatus] != segstatus:
-            raise ValueError(f"Multiple different non-NA ImageQAs for SegmentationStatus {segstatus} ({self.mergeconfigcsv})")
-          else:
-            dct[segstatus] = segid
-    if sorted(dct.keys()) != list(range(1, len(dct)+1)):
-      raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
-    return tuple(dct[k] for k in range(1, len(dct)+1))
-
-  @property
-  def nsegmentations(self):
-    return len(self.segmentationids)
 
   @property
   def samplelog(self):
@@ -1784,3 +1760,34 @@ class ParallelSample(SampleBase, ParallelArgumentParser):
     nworkers = mp.cpu_count()
     if self.njobs is not None: nworkers = min(nworkers, self.njobs)
     return mp.get_context().Pool(nworkers)
+
+class SampleWithSegmentations(SampleBase):
+  @property
+  @abc.abstractmethod
+  def segmentationids(self): pass
+
+  @property
+  def nsegmentations(self):
+    return len(self.segmentationids)
+
+class InformSegmentationSample(SampleBase):
+  @methodtools.lru_cache()
+  @property
+  def segmentationids(self):
+    dct = {}
+    for layer in self.mergeconfig:
+      segstatus = layer.SegmentationStatus
+      if segstatus != 0:
+        segid = layer.ImageQA
+        if segid == "NA":
+          segid = segstatus
+        if segstatus not in dct:
+          dct[segstatus] = segid
+        elif segid != segstatus:
+          if segid != dct[segstatus] != segstatus:
+            raise ValueError(f"Multiple different non-NA ImageQAs for SegmentationStatus {segstatus} ({self.mergeconfigcsv})")
+          else:
+            dct[segstatus] = segid
+    if sorted(dct.keys()) != list(range(1, len(dct)+1)):
+      raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
+    return tuple(dct[k] for k in range(1, len(dct)+1))

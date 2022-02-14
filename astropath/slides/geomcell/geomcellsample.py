@@ -21,7 +21,7 @@ class GeomLoadField(Field, GeomLoadRectangle):
 class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample, CleanupArgumentParser):
+class GeomCellSampleBase(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample, CleanupArgumentParser):
   @property
   def segmentationorder(self):
     return sorted(
