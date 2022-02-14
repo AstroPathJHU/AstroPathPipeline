@@ -55,6 +55,20 @@ Class warpoctets : moduletools {
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished warp octets")
     }
+    [string]getpythontask($dpath, $rpath){
+        #
+        $taskname = 'warpoctets'
+        $dpath = $this.sample.basepath
+        $rpath = $this.processvars[1]
+        $this.pythonmodulename = 'warpingcohort'
+        $pythontask = $this.pythonmodulename, $dpath, `
+         '--shardedim3root',  $rpath, `
+         '--sampleregex',  $this.sample.slideid, `
+         '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), `
+         '--octets-only --noGPU', $this.buildpyopts() -join ' '
+        #
+        return $pythontask
+    }
     <# -----------------------------------------
      cleanup
      cleanup the data directory

@@ -52,7 +52,7 @@ Class testpswarpoctets {
     importmodule(){
         Import-Module $this.apmodule
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.batchbinfile = $this.mpath + '\flatfield\flatfield_' + $this.batchid + '.bin'
+        $this.batchbinfile = $PSScriptRoot + '\data\reference\batchflatfieldcohort\flatfield_TEST.bin'
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_warpoctets'))
         $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
     }
@@ -127,7 +127,12 @@ Class testpswarpoctets {
         Write-Host 'test python warpoctets in workflow started'
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
+        
+        
         $pythontask = $inp.getpythontask($dpath, $rpath)
+        
+        
+        
         #
         $externallog = $inp.ProcessLog('warpingcohort') 
         #
@@ -171,5 +176,5 @@ Class testpswarpoctets {
 #
 # launch test and exit if no error found
 #
-$test = [testpswarpoctets]::new()
+[testpswarpoctets]::new() | Out-Null
 exit 0
