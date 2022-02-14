@@ -300,8 +300,7 @@
      Usage: $this.buildpyopts()
     ----------------------------------------- #>
     [string]buildpyopts(){
-        $project = $this.sample.project.PadLeft(2,  '0')
-        $str = ('--allow-local-edits --skip-start-finish --use-apiddef --project', $project -join ' ')
+        $str = '--allow-local-edits --skip-start-finish'
         return $str
     }
     [string]buildpyopts($opt){
@@ -352,13 +351,13 @@
             if ($this.sample.module -match 'batchmicomp'){
                 $test = $this.pythonmodulename + ' : '
             } else {
-                $test = $this.sample.project + ';' + $this.sample.cohort
+                $test = ($this.sample.project, ';', $this.sample.cohort -join '')
             }
             if ($this.logoutput -and $this.logoutput[0] -notmatch $test) {
                 $this.silentcleanup()
                 $potentialerrors = $this.logoutput -ne ''
                 $this.sample.error($potentialerrors)
-                Throw 'Error in python task'
+                Throw 'Error in launching python task'
             }
             #
             if ($this.sample.module -match 'warpoctets'){
@@ -393,7 +392,7 @@
     [void]parsepycohortlog($errors){
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
         if ($sampleoutput -match 'Error'){
-            Throw 'Python tasked launched but there was an ERROR.'
+            Throw 'Python tasked launched but there was an ERROR'
         }
     }
     <# -----------------------------------------

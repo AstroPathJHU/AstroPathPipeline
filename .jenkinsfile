@@ -33,12 +33,10 @@ pipeline {
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
 	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
-	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
       }
     }
     stage('pip install') {
       steps {
-//	sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
         sh 'pip install .[all]'
         sh '''echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
         sh '''cd ..; echo "import re; from astropath.utilities.version import astropathversion, astropathversionmatch; print(astropathversion); assert not astropathversionmatch.group('date')" | python'''
@@ -65,6 +63,7 @@ pipeline {
         stage('workflow') {
           steps {
             sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
+	    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1' 
           }
         }
 
@@ -74,7 +73,7 @@ pipeline {
           }
         }
 
-        stage('ps shredxml') {
+        stage('shredxml') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
           }
@@ -132,7 +131,7 @@ pipeline {
 
 	stage('segmaps') {
 	  steps {
-	    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
+	   sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
 	  }
 	}
 
@@ -162,9 +161,6 @@ pipeline {
 
         stage('warping') {
           stages {
-	        stage('test ps warping workflow'){
-		      sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
-	        }
             stage('test warping') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarping'
@@ -175,14 +171,16 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
               }
             }
+	    stage('test ps warping workflow'){
+	     steps{
+	      sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
+	    }
+	   }
           }
         }
 
         stage('meanimage') {
           stages {
-	    stage('test ps meanimage workflow'){
-		sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
-	    }
             stage('test meanimage') {
               steps {
                  sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimage'
@@ -194,7 +192,11 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
               }
             }
-	
+            stage('test ps meanimage workflow'){
+	      steps{
+	        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
+	      }
+	    }
           }
         }
 		
@@ -219,14 +221,19 @@ pipeline {
           }
         }
 
-        stage('applyflatw') {
-          stages {
-	        stage('test ps applyflatw - image correction workflow'){
-		    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimagecorrection.ps1'
-	      }
-          steps {
-            sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
-          }
+        stage('apply image corrections') {
+	  stages {
+           stage('applyflatw'){
+             steps {
+               sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
+             }
+           }
+	   stage('test ps applyflatw - image correction workflow'){
+	     steps{
+	       sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimagecorrection.ps1'
+	     }
+	   }
+	  } 
         }
 
         stage('segmentation') {

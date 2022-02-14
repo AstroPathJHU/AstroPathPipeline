@@ -522,7 +522,7 @@ class queue : vminformqueue{
     ----------------------------------------- #>
     [void]checkvminform(){
         #
-        $this.informvers = '2.6.0'
+        $this.informvers = '2.4.8'
         #
         $queue_path = $this.mpath + '\across_project_queues'
         $this.queue_file = $queue_path + '\' + $this.module + '-queue.csv'
