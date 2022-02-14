@@ -40,6 +40,8 @@ class OgrImport(OptionalImport):
     self.UseExceptions()
 
 cvxpy = OptionalImport("cvxpy")
+deepcell = OptionalImport("deepcell")
+nnunet = OptionalImport("nnunet")
 ogr = OgrImport()
 pyopencl = OptionalImport("pyopencl")
 pyvips = OptionalImport("pyvips")

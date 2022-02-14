@@ -3,7 +3,7 @@ import os, pathlib, shutil, unittest
 import numpy as np
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleNNUNet
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleDeepCell
-from .testbase import TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import expectedFailureIf, TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 slide_ID = 'M21_1'
@@ -60,7 +60,7 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
             all_fps.append(outputdir/f'{fns}_nnunet_nuclear_segmentation.npz')
         return all_fps
 
-    @unittest.skipIf(int(os.environ.get("JENKINS_NO_NNUNET", 0)), "nnU-Net is not installed on jenkins")
+    @expectedFailureIf(int(os.environ.get("JENKINS_NO_NNUNET", 0))) #nnU-Net is not installed on jenkins
     def test_segmentation_nnunet(self) :
         #run the segmentation cohort with the nnU-Net algorithm
         args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),

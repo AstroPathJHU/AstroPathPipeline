@@ -1012,37 +1012,9 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
   Base class for any sample that loads images from a component tiff file.
   layer or layers: the layer or layers to read, depending on whether
                    the class uses multilayer images or not
-  with_seg: whether or not to read from the _w_seg component tiff file
   """
-
-  def __init__(self, *args, with_seg=False, **kwargs):
-    self.__with_seg = with_seg
-    super().__init__(*args, **kwargs)
-
   @property
-  def masklayer(self):
-    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
-    return self.nlayersunmixed + 1
-  def segmentationnucleuslayer(self, segid):
-    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
-    return self.nlayersunmixed + 2 + self.segmentationids.index(segid)
-  def segmentationmembranelayer(self, segid):
-    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
-    return self.nlayersunmixed + 2 + self.nsegmentations + self.segmentationids.index(segid)
-
-  def isnucleuslayer(self, layer):
-    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
-    return self.nlayersunmixed + 1 < layer <= self.nlayersunmixed + 1 + self.nsegmentations
-  def ismembranelayer(self, layer):
-    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
-    return self.nlayersunmixed + 1 + self.nsegmentations < layer <= self.nlayersunmixed + 1 + 2*self.nsegmentations
-  def segmentationidfromlayer(self, layer):
-    if not self.__with_seg: raise ValueError("This sample does not use the segmented component tiff")
-    if layer <= self.masklayer: raise ValueError(f"{layer} is not a segmentation layer")
-    idx = layer - self.masklayer
-    if self.ismembranelayer(layer):
-      idx -= self.nsegmentations
-    return self.segmentationids[idx-1]
+  def with_seg(self): return False
 
   @property
   def rectangletype(self):
@@ -1055,12 +1027,8 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
     kwargs = {
       **super().rectangleextrakwargs,
       "imagefolder": self.componenttiffsfolder,
-      "with_seg": self.__with_seg,
+      "with_seg": self.with_seg,
     }
-    if self.__with_seg:
-      kwargs.update({
-        "nsegmentations": self.nsegmentations
-      })
     return kwargs
 
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
@@ -1762,15 +1730,15 @@ class ParallelSample(SampleBase, ParallelArgumentParser):
     return mp.get_context().Pool(nworkers)
 
 class SampleWithSegmentations(SampleBase):
-  @property
+  @classmethod
   @abc.abstractmethod
-  def segmentationids(self): pass
+  def segmentationalgorithm(cls): pass
 
-  @property
-  def nsegmentations(self):
-    return len(self.segmentationids)
+class InformSegmentationSample(SampleWithSegmentations):
+  @classmethod
+  def segmentationalgorithm(cls):
+    return "inform"
 
-class InformSegmentationSample(SampleBase):
   @methodtools.lru_cache()
   @property
   def segmentationids(self):
@@ -1791,3 +1759,41 @@ class InformSegmentationSample(SampleBase):
     if sorted(dct.keys()) != list(range(1, len(dct)+1)):
       raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
     return tuple(dct[k] for k in range(1, len(dct)+1))
+
+  @property
+  def nsegmentations(self):
+    return len(self.segmentationids)
+
+class ReadRectanglesSegmentedComponentTiffBase(ReadRectanglesComponentTiffBase, InformSegmentationSample):
+  @property
+  def with_seg(self): return True
+
+  @property
+  def masklayer(self):
+    return self.nlayersunmixed + 1
+  def segmentationnucleuslayer(self, segid):
+    return self.nlayersunmixed + 2 + self.segmentationids.index(segid)
+  def segmentationmembranelayer(self, segid):
+    return self.nlayersunmixed + 2 + self.nsegmentations + self.segmentationids.index(segid)
+
+  def isnucleuslayer(self, layer):
+    return self.nlayersunmixed + 1 < layer <= self.nlayersunmixed + 1 + self.nsegmentations
+  def ismembranelayer(self, layer):
+    return self.nlayersunmixed + 1 + self.nsegmentations < layer <= self.nlayersunmixed + 1 + 2*self.nsegmentations
+  def segmentationidfromlayer(self, layer):
+    if layer <= self.masklayer: raise ValueError(f"{layer} is not a segmentation layer")
+    idx = layer - self.masklayer
+    if self.ismembranelayer(layer):
+      idx -= self.nsegmentations
+    return self.segmentationids[idx-1]
+
+  @property
+  def rectangleextrakwargs(self):
+    kwargs = {
+      **super().rectangleextrakwargs,
+      "nsegmentations": self.nsegmentations
+    }
+    return kwargs
+
+class ReadRectanglesDbloadSegmentedComponentTiff(ReadRectanglesDbloadComponentTiff, ReadRectanglesSegmentedComponentTiffBase):
+  pass

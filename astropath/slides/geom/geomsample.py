@@ -3,20 +3,20 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import Vertex
 from ...shared.polygon import DataClassWithPolygon, SimplePolygon, Polygon, polygonfield
-from ...shared.sample import ReadRectanglesDbloadComponentTiff, WorkflowSample
+from ...shared.sample import ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample
 from ...utilities import units
 from ...utilities.tableio import writetable
 from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiff
 
-class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
+class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
   """
   The geom step of the pipeline writes out the boundaries of the HPF
   primary regions and the boundaries of the tumor region determined
   by inform to csv files.
   """
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, with_seg=True, layer="setlater", **kwargs)
+    super().__init__(*args, layer="setlater", **kwargs)
     self.setlayers(layer=self.masklayer)
 
   @classmethod
@@ -25,12 +25,6 @@ class GeomSample(ReadRectanglesDbloadComponentTiff, WorkflowSample):
   @property
   def rectanglecsv(self): return "fields"
   rectangletype = FieldReadComponentTiff
-  @property
-  def rectangleextrakwargs(self):
-    return {
-      **super().rectangleextrakwargs,
-      "with_seg": True,
-    }
 
   @methodtools.lru_cache()
   def getfieldboundaries(self):
