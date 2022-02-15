@@ -134,7 +134,18 @@ class Rectangle(DataClassWithPscale):
     """
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
 
-class RectangleReadIm3Base(Rectangle):
+class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
+  """
+  Rectangle class that reads the image from a sharded im3
+  (could be raw, flatw, etc.)
+
+  im3folder: folder where the im3 image is located
+  im3filetype: flatWarp, camWarp, or raw (determines the file extension)
+  width, height: the shape of the HPF image
+  nlayersim3: the number of layersim3 in the *input* file
+  layersim3: which layersim3 you actually want to access
+  """
+
   @property
   def im3folder(self): return self.__im3folder
   @im3folder.setter
@@ -165,18 +176,6 @@ class RectangleReadIm3Base(Rectangle):
   @layersim3.setter
   def layersim3(self, layersim3): self.__layersim3 = layersim3
   layersim3: list = MetaDataAnnotation(layersim3, includeintable=False, use_default=False)
-
-class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
-  """
-  Rectangle class that reads the image from a sharded im3
-  (could be raw, flatw, etc.)
-
-  im3folder: folder where the im3 image is located
-  im3filetype: flatWarp, camWarp, or raw (determines the file extension)
-  width, height: the shape of the HPF image
-  nlayersim3: the number of layersim3 in the *input* file
-  layersim3: which layersim3 you actually want to access
-  """
 
   def __post_init__(self, *args, **kwargs):
     super().__post_init__(*args, **kwargs)
@@ -258,13 +257,9 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
     super().__post_init__(*args, **kwargs)
 
   @property
-  def layer(self):
-    layer, = self.layersim3
-    return layer
-
-  @property
-  def imageshape(self):
-    return super().imageshape[:-1]
+  def layerim3(self):
+    layerim3, = self.layersim3
+    return layerim3
 
   @property
   def im3file(self):
@@ -281,28 +276,6 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
       result = folder/basename
 
     return result
-
-  @property
-  def imageshapeininput(self):
-    result = super().imageshapeininput
-    if self.readlayerfile:
-      assert result[0] == 1
-      return result[0], result[2], result[1]
-    return result
-  @property
-  def imagetransposefrominput(self):
-    if self.readlayerfile:
-      #it's saved as (height, width), which is what we want
-      return (0, 1, 2)
-    else:
-      #it's saved as (layers, width, height), we want (height, width, layers)
-      return (2, 1, 0)
-  @property
-  def imageslicefrominput(self):
-    if self.readlayerfile:
-      return 0, slice(None), slice(None)
-    else:
-      return slice(None), slice(None), self.layer-1
 
   @property
   def exposuretime(self):
@@ -396,7 +369,7 @@ class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
     self.add_transformation(RectangleWarpingTransformationMultilayer(warps_by_layer))
 
 
-class RectangleReadComponentTiffBase(Rectangle):
+class RectangleReadComponentTiffMultiLayer(Rectangle):
   """
   Rectangle class that reads the image from a component tiff
 
@@ -406,14 +379,35 @@ class RectangleReadComponentTiffBase(Rectangle):
   with_seg: indicates if you want to use the _w_seg.tif which contains some segmentation info from inform
   """
 
+  @property
+  def componenttifffolder(self): return self.__componenttifffolder
+  @componenttifffolder.setter
+  def componenttifffolder(self, componenttifffolder): self.__componenttifffolder = componenttifffolder
+  componenttifffolder: pathlib.Path = pathfield(componenttifffolder, includeintable=False, use_default=False)
+  @property
+  def nlayerscomponenttiff(self): return self.__nlayerscomponenttiff
+  @nlayerscomponenttiff.setter
+  def nlayerscomponenttiff(self, nlayerscomponenttiff): self.__nlayerscomponenttiff = nlayerscomponenttiff
+  nlayerscomponenttiff: int = MetaDataAnnotation(nlayerscomponenttiff, includeintable=False, use_default=False)
+  @property
+  def layerscomponenttiff(self): return self.__layerscomponenttiff
+  @layerscomponenttiff.setter
+  def layerscomponenttiff(self, layerscomponenttiff): self.__layerscomponenttiff = layerscomponenttiff
+  layerscomponenttiff: list = MetaDataAnnotation(layerscomponenttiff, includeintable=False, use_default=False)
+  @property
+  def with_seg(self): return self.__with_seg
+  @with_seg.setter
+  def with_seg(self, with_seg): self.__with_seg = with_seg
+  with_seg: bool = MetaDataAnnotation(with_seg, includeintable=False, use_default=False)
+  @property
+  def nsegmentations(self): return self.__nsegmentations
+  @nsegmentations.setter
+  def nsegmentations(self, nsegmentations): self.__nsegmentations = nsegmentations
+  nsegmentations: int = MetaDataAnnotation(nsegmentations, includeintable=False, use_default=False)
+
   def __post_init__(self, *args, componenttifffolder, layers, nlayers=None, with_seg=False, nsegmentations=None, **kwargs):
     super().__post_init__(*args, **kwargs)
-    self.__componenttifffolder = pathlib.Path(componenttifffolder)
-    self.__layers = layers
-    self.__nlayers = nlayers
-    self.__with_seg = with_seg
-    self.__nsegmentations = nsegmentations
-    if with_seg and nsegmentations is None:
+    if self.with_seg and self.nsegmentations is None:
       raise ValueError("To use segmented component tiffs, you have to provide nsegmentations")
 
   @property
@@ -421,46 +415,8 @@ class RectangleReadComponentTiffBase(Rectangle):
     return self.__componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
 
   @property
-  def layers(self):
-    return self.__layers
-
-  def getimage(self):
-    with tifffile.TiffFile(self.componenttifffile) as f:
-      pages = []
-      shape = None
-      dtype = None
-      segmentationisblank = False
-      #make sure the tiff is self consistent in shape and dtype
-      for page in f.pages:
-        if len(page.shape) == 2:
-          pages.append(page)
-          if shape is None:
-            shape = page.shape
-          elif shape != page.shape:
-            raise ValueError(f"Found pages with different shapes in the component tiff {shape} {page.shape}")
-          if dtype is None:
-            dtype = page.dtype
-          elif dtype != page.dtype:
-            raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
-      expectpages = self.__nlayers
-      if expectpages is not None:
-        if self.__with_seg: expectpages += 1 + 2*self.__nsegmentations
-        if len(pages) != expectpages:
-          #compatibility with inform errors, the segmentation is all blank and sometimes the wrong number of layers
-          if self.__with_seg and len(pages) > self.__nlayers:
-            if all(not np.any(page.asarray()) for page in pages[self.__nlayers:]):
-              segmentationisblank = True
-          if not segmentationisblank:
-            raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
-
-      #make the destination array
-      image = np.ndarray(shape=shape+(len(self.__layers),), dtype=dtype)
-
-      #load the desired layers
-      for i, layer in enumerate(self.__layers):
-        image[:,:,i] = pages[layer-1].asarray()
-
-      return image
+  def layerscomponenttiff(self):
+    return self.__layerscomponenttiff
 
 class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
   """
@@ -479,10 +435,6 @@ class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
   def layer(self):
     layer, = self.layers
     return layer
-
-  def getimage(self):
-    image, = super().getimage().transpose(2, 0, 1)
-    return image
 
 class RectangleCollection(units.ThingWithPscale):
   """

@@ -413,3 +413,101 @@ class ImageLoaderIm3SingleLayer(ImageLoaderIm3Base):
   @property
   def imageslicefrominput(self):
     return slice(None), slice(None)
+
+class ImageLoaderTiff(ImageLoaderBase):
+  def __init__(self, *args, filename, layers, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__filename = filename
+    self.__layers = layers
+
+  @property
+  def filename(self): return self.__filename
+  @property
+  def layers(self): return self.__layers
+
+  def getimage(self):
+    with tifffile.TiffFile(self.filename) as f:
+      pages = f.pages
+      shape, dtype = self.checktiffpages(pages)
+
+      #make the destination array
+      image = np.empty(shape=shape+(len(self.__layers),), dtype=dtype)
+
+      #load the desired layers
+      for i, layer in enumerate(self.layers):
+        image[:,:,i] = pages[layer-1].asarray()
+
+      return image
+
+  def checktiffpages(pages):
+    if not pages:
+      raise ValueError(f"Tiff file {self.filename} doesn't have any pages")
+
+    shapes = {page.shape for page in pages}
+    dtypes = {page.dtype for page in pages}
+    try:
+      shape, = shapes
+    except ValueError:
+      raise ValueError(f"Tiff file {self.filename} has pages with different shapes: {shapes}")
+    try:
+      dtype, = dtypes
+    except ValueError:
+      raise ValueError(f"Tiff file {self.filename} has pages with different dtypes: {dtypes}")
+
+    return shape, dtype
+
+class ImageLoaderTiffSingleLayer(ImageLoaderTiff):
+  def __init__(self, *args, layer, **kwargs):
+    super().__init__(*args, layers=[layer], **kwargs)
+  def getimage(self):
+    image, = super().getimage().transpose(2, 0, 1)
+    return image
+
+class ImageLoaderComponentTiffBase(ImageLoaderTiff):
+  def __init__(self, *args, nlayers, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__nlayers = nlayers
+
+  @property
+  def nlayers(self): return self.__nlayers
+
+  def checktiffpages(pages):
+    pagegroupslices = self.pagegroupslices
+    pageindices = sorted(sum((list(range(slc.start, slc.end)) for slc in pagegroupslices), []))
+    np.testing.assert_array_equal(pageindices, list(range(max(pageindices)+1)))
+
+    npages = len(pages)
+    if npages != len(pageindices):
+      raise ValueError(f"Expected {len(pageindices)} pages, found {npages}")
+
+    alllayers = range(1, npages+1)
+    if set(alllayers) - set(self.layers):
+      raise ValueError("Invalid layers {set(alllayers) - set(self.layers)}")
+
+    layergroups = [list(alllayers[slc]) for slc in pagegroupslices]
+    relevantgroups = (i, group for i, group in enumerate(layergroups) if set(group) & set(self.layers))
+    try:
+      (i, group), = relevantgroups
+    except ValueError:
+      raise ValueError(f"Layers are {self.layers}, expected to find layers in exactly one of these groups: {layergroups}")
+    return super().checktiffpages(pages[pagegroupslices[i]])
+
+  @property
+  @abc.abstractmethod
+  def pagegroupslices(self): pass
+
+class ImageLoaderComponentTiff(ImageLoaderTiff):
+  @property
+  def pagegroupslices(self):
+    return slice(0, self.nlayers), slice(self.nlayers, self.nlayers+1)
+
+class ImageLoaderSegmentedComponentTiff(ImageLoaderTiff):
+  def __init__(self, *args, nsegmentations, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__nsegmentations = nsegmentations
+  @property
+  def pagegroupslices(self):
+    return slice(0, self.nlayers), slice(self.nlayers, self.nlayers+1), slice(self.nlayers+1, self.nlayers+1+self.nsegmentations*2)
+
+class ImageLoaderComponentTiffSingleLayer(ImageLoaderComponentTiff, ImageLoaderTiffSingleLayer): pass
+class ImageLoaderSegmentedComponentTiffSingleLayer(ImageLoaderSegmentedComponentTiff, ImageLoaderTiffSingleLayer): pass
