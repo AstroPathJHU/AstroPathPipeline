@@ -134,7 +134,11 @@ class Rectangle(DataClassWithPscale):
     """
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
 
-class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
+class RectangleWithImageBase(Rectangle):
+  @property
+  def imageloader(self): pass
+
+class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   """
   Rectangle class that reads the image from a sharded im3
   (could be raw, flatw, etc.)
@@ -369,7 +373,7 @@ class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
     self.add_transformation(RectangleWarpingTransformationMultilayer(warps_by_layer))
 
 
-class RectangleReadComponentTiffMultiLayer(Rectangle):
+class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   """
   Rectangle class that reads the image from a component tiff
 
@@ -547,8 +551,6 @@ class RectangleProvideImage(RectangleWithImageBase):
   def __post_init__(self, *args, image, **kwargs):
     self.__image = image
     super().__post_init__(*args, **kwargs)
-  def getimage(self):
-    return self.__image
 
 class RectangleFromOtherRectangle(RectangleWithImageBase):
   """

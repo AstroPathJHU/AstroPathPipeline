@@ -485,7 +485,7 @@ class ImageLoaderComponentTiffBase(ImageLoaderTiff):
       raise ValueError("Invalid layers {set(alllayers) - set(self.layers)}")
 
     layergroups = [list(alllayers[slc]) for slc in pagegroupslices]
-    relevantgroups = (i, group for i, group in enumerate(layergroups) if set(group) & set(self.layers))
+    relevantgroups = ((i, group) for i, group in enumerate(layergroups) if set(group) & set(self.layers))
     try:
       (i, group), = relevantgroups
     except ValueError:
@@ -511,3 +511,9 @@ class ImageLoaderSegmentedComponentTiff(ImageLoaderTiff):
 
 class ImageLoaderComponentTiffSingleLayer(ImageLoaderComponentTiff, ImageLoaderTiffSingleLayer): pass
 class ImageLoaderSegmentedComponentTiffSingleLayer(ImageLoaderSegmentedComponentTiff, ImageLoaderTiffSingleLayer): pass
+
+class ImageLoaderProvideImage(ImageLoaderBase):
+  def __init__(self, *args, image, **kwargs):
+    self.__image = image
+  def getimage(self):
+    return self.__image
