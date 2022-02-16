@@ -5,6 +5,7 @@ from ..utilities.miscfileio import memmapcontext
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
+from .imageloader import ImageLoaderComponentTiff, ImageLoaderComponentTiffSingleLayer, ImageLoaderSegmentedComponentTiff, ImageLoaderSegmentedComponentTiffSingleLayer
 from .logging import printlogger
 from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
 from .rectangletransformation import RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationSinglelayer
@@ -136,6 +137,7 @@ class Rectangle(DataClassWithPscale):
 
 class RectangleWithImageBase(Rectangle):
   @property
+  @abc.abstractmethod
   def imageloader(self): pass
 
 class RectangleReadIm3MultiLayer(RectangleWithImageBase):
@@ -373,7 +375,7 @@ class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
     self.add_transformation(RectangleWarpingTransformationMultilayer(warps_by_layer))
 
 
-class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
+class RectangleReadComponentTiffBase(RectangleWithImageBase):
   """
   Rectangle class that reads the image from a component tiff
 
@@ -398,21 +400,6 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   @layerscomponenttiff.setter
   def layerscomponenttiff(self, layerscomponenttiff): self.__layerscomponenttiff = layerscomponenttiff
   layerscomponenttiff: list = MetaDataAnnotation(layerscomponenttiff, includeintable=False, use_default=False)
-  @property
-  def with_seg(self): return self.__with_seg
-  @with_seg.setter
-  def with_seg(self, with_seg): self.__with_seg = with_seg
-  with_seg: bool = MetaDataAnnotation(with_seg, includeintable=False, use_default=False)
-  @property
-  def nsegmentations(self): return self.__nsegmentations
-  @nsegmentations.setter
-  def nsegmentations(self, nsegmentations): self.__nsegmentations = nsegmentations
-  nsegmentations: int = MetaDataAnnotation(nsegmentations, includeintable=False, use_default=False)
-
-  def __post_init__(self, *args, componenttifffolder, layers, nlayers=None, with_seg=False, nsegmentations=None, **kwargs):
-    super().__post_init__(*args, **kwargs)
-    if self.with_seg and self.nsegmentations is None:
-      raise ValueError("To use segmented component tiffs, you have to provide nsegmentations")
 
   @property
   def componenttifffile(self):
@@ -422,7 +409,34 @@ class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
   def layerscomponenttiff(self):
     return self.__layerscomponenttiff
 
-class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
+  @property
+  def imageloader(self): return self.imageloadertype(**self.imageloaderkwargs)
+  @property
+  @abc.abstractmethod
+  def imageloadertype(self): pass
+  @property
+  @abc.abstractmethod
+  def imageloaderkwargs(self): return {}
+
+class RectangleReadSegmentedComponentTiffBase(RectangleReadComponentTiffBase):
+  @property
+  def nsegmentations(self): return self.__nsegmentations
+  @nsegmentations.setter
+  def nsegmentations(self, nsegmentations): self.__nsegmentations = nsegmentations
+  nsegmentations: int = MetaDataAnnotation(nsegmentations, includeintable=False, use_default=False)
+
+class RectangleReadComponentTiffMultiLayer(RectangleReadComponentTiffBase):
+  @property
+  def imageloadertype(self):
+    return ImageLoaderComponentTiff
+
+  @property
+  def imageloaderkwargs(self):
+    return {
+      **super().imageloaderkwargs,
+    }
+
+class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
   """
   Single layer image read from a component tiff.
   You can also use RectangleReadIm3MultiLayer and write layers=[i],
@@ -439,6 +453,36 @@ class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
   def layer(self):
     layer, = self.layers
     return layer
+
+  @property
+  def imageloadertype(self):
+    return ImageLoaderComponentTiffSingleLayer
+
+  @property
+  def imageloaderkwargs(self):
+    return {
+      **super().imageloaderkwargs,
+    }
+
+class RectangleReadSegmentedComponentTiffMultiLayer(RectangleReadComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffBase):
+  @property
+  def imageloadertype(self):
+    return ImageLoaderSegmentedComponentTiffMultiLayer
+  @property
+  def imageloaderkwargs(self):
+    return {
+      **super().imageloaderkwargs,
+    }
+
+class RectangleReadSegmentedComponentTiffSingleLayer(RectangleReadComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffBase):
+  @property
+  def imageloadertype(self):
+    return ImageLoaderSegmentedComponentTiffSingleLayer
+  @property
+  def imageloaderkwargs(self):
+    return {
+      **super().imageloaderkwargs,
+    }
 
 class RectangleCollection(units.ThingWithPscale):
   """

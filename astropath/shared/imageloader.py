@@ -249,15 +249,17 @@ class ImageLoaderComponentTiffBase(ImageLoaderTiff):
   @abc.abstractmethod
   def pagegroupslices(self): pass
 
-class ImageLoaderComponentTiff(ImageLoaderTiff):
+class ImageLoaderComponentTiff(ImageLoaderComponentTiffBase):
   @property
   def pagegroupslices(self):
     return slice(0, self.nlayers), slice(self.nlayers, self.nlayers+1)
 
-class ImageLoaderSegmentedComponentTiff(ImageLoaderTiff):
+class ImageLoaderSegmentedComponentTiff(ImageLoaderComponentTiffBase):
   def __init__(self, *args, nsegmentations, **kwargs):
     super().__init__(*args, **kwargs)
     self.__nsegmentations = nsegmentations
+  @property
+  def nsegmentations(self): return self.nsegmentations
   @property
   def pagegroupslices(self):
     return slice(0, self.nlayers), slice(self.nlayers, self.nlayers+1), slice(self.nlayers+1, self.nlayers+1+self.nsegmentations*2)

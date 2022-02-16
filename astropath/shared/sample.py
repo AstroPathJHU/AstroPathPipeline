@@ -15,7 +15,7 @@ from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnno
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger, ThingWithLogger
-from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer
+from .rectangle import Rectangle, RectangleCollection, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
@@ -991,8 +991,8 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase, SelectLayer
   def rectangleextrakwargs(self):
     kwargs = {
       **super().rectangleextrakwargs,
-      "imagefolder": self.shardedim3root/self.SlideID,
-      "filetype": self.filetype,
+      "im3folder": self.shardedim3root/self.SlideID,
+      "im3filetype": self.filetype,
       "width": self.fwidth,
       "height": self.fheight,
     }
@@ -1021,7 +1021,7 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
     if self.multilayer:
       return RectangleReadComponentTiffMultiLayer
     else:
-      return RectangleReadComponentTiff
+      return RectangleReadComponentTiffSingleLayer
   @property
   def rectangleextrakwargs(self):
     kwargs = {

@@ -5,7 +5,7 @@ except AttributeError:
   import contextlib2 as contextlib
 
 from ...shared.logging import dummylogger
-from ...shared.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleWithImageBase, RectangleReadIm3MultiLayer
+from ...shared.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleWithImageBase, RectangleReadIm3MultiLayer
 from ...shared.rectangletransformation import RectangleTransformationBase
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation
@@ -96,7 +96,7 @@ class AlignmentRectangle(AlignmentRectangleBase, RectangleReadIm3):
 class AlignmentRectangleMultiLayer(AlignmentRectangleBase, RectangleReadIm3MultiLayer):
   pass
 
-class AlignmentRectangleComponentTiff(AlignmentRectangleBase, RectangleReadComponentTiff):
+class AlignmentRectangleComponentTiff(AlignmentRectangleBase, RectangleReadComponentTiffSingleLayer):
   pass
 
 class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleBase, RectangleReadComponentTiffMultiLayer):

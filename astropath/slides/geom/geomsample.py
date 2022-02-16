@@ -7,7 +7,7 @@ from ...shared.sample import ReadRectanglesDbloadSegmentedComponentTiff, Workflo
 from ...utilities import units
 from ...utilities.tableio import writetable
 from ..align.alignsample import AlignSample
-from ..align.field import FieldReadComponentTiff
+from ..align.field import FieldReadComponentTiffSingleLayer
 
 class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
   """
@@ -24,7 +24,7 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
 
   @property
   def rectanglecsv(self): return "fields"
-  rectangletype = FieldReadComponentTiff
+  rectangletype = FieldReadComponentTiffSingleLayer
 
   @methodtools.lru_cache()
   def getfieldboundaries(self):
