@@ -5,7 +5,7 @@ except AttributeError:
   import contextlib2 as contextlib
 
 from ...shared.logging import dummylogger
-from ...shared.rectangle import RectangleFromOtherRectangle, RectangleProvideImage, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleWithImageBase, RectangleReadIm3MultiLayer
+from ...shared.rectangle import RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, Rectangle, RectangleReadIm3MultiLayer
 from ...shared.rectangletransformation import RectangleTransformationBase
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation
@@ -53,7 +53,7 @@ class ApplyMeanImage(RectangleTransformationBase):
           mean_image = meanimage(allimages)
       self.__meanimage = mean_image
 
-class AlignmentRectangleBase(RectangleWithImageBase):
+class AlignmentRectangleBase(Rectangle):
   """
   Rectangle that divides the image by the
   mean image over all of the rectangles in the set.
@@ -102,16 +102,6 @@ class AlignmentRectangleComponentTiff(AlignmentRectangleBase, RectangleReadCompo
 class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleBase, RectangleReadComponentTiffMultiLayer):
   pass
 
-class AlignmentRectangleProvideImage(AlignmentRectangleBase, RectangleProvideImage):
-  """
-  Alignment rectangle that can be provided with an image (used for warping)
-  """
-  @property
-  def layer(self): return self.__layer
-  @layer.setter
-  def layer(self, layer): self.__layer = layer
-  layer: int = MetaDataAnnotation(layer, includeintable=False, use_default=False)
-
 class ConsolidateBroadbandFilters(RectangleTransformationBase):
   """
   Rectangle transformation that turns a multilayer rectangle image
@@ -158,22 +148,3 @@ class ConsolidateBroadbandFilters(RectangleTransformationBase):
     }
 
     return np.array(list(pcas.values()))
-
-class RectanglePCAByBroadbandFilter(RectangleFromOtherRectangle):
-  """
-  Rectangle that turns its multilayer image
-  into one with fewer layers, one for each broadband filter.  Each
-  layer is extracted from a PCA over all the layers within that filter.
-  """
-  def __post_init__(self, *args, layershifts, transformations=None, **kwargs):
-    if transformations is None: transformations = []
-    self.__pcabroadbandtransformation = ConsolidateBroadbandFilters(layershifts=layershifts)
-    transformations.append(self.__pcabroadbandtransformation)
-    super().__post_init__(*args, transformations=transformations, **kwargs)
-    self.__pcabroadbandtransformation.setbroadbandfilters(broadbandfilters=self.originalrectangle.broadbandfilters)
-
-  def setrectanglelist(self, rectanglelist): pass
-  def using_image_before_flatfield(self): return contextlib.nullcontext()
-  @property
-  def layers(self):
-    return self.originalrectangle.layers

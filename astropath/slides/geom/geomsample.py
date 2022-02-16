@@ -56,7 +56,7 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
     self.logger.info("getting tumor boundaries")
     boundaries = []
     for n, field in enumerate(self.rectangles, start=1):
-      with field.using_image() as im:
+      with field.using_component_tiff() as im:
         zeros = im == 0
         if not np.any(zeros): continue
         polygons = findcontoursaspolygons(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, shiftby=units.nominal_values(field.pxvec), forgdal=True)

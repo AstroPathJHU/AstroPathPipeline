@@ -135,19 +135,7 @@ class Rectangle(DataClassWithPscale):
     """
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
 
-class RectangleWithImageBase(Rectangle):
-  @abc.abstractmethod
-  def makeimageloader(self): pass
-
-  @methodtools.lru_cache()
-  @property
-  def imageloader(self):
-    return self.makeimageloader()
-
-  def using_image(self):
-    return self.imageloader.using_image()
-
-class RectangleReadIm3MultiLayer(RectangleWithImageBase):
+class RectangleReadIm3MultiLayer(Rectangle):
   """
   Rectangle class that reads the image from a sharded im3
   (could be raw, flatw, etc.)
@@ -382,7 +370,7 @@ class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
     self.add_transformation(RectangleWarpingTransformationMultilayer(warps_by_layer))
 
 
-class RectangleReadComponentTiffBase(RectangleWithImageBase):
+class RectangleReadComponentTiffBase(Rectangle):
   """
   Rectangle class that reads the image from a component tiff
 
@@ -412,13 +400,17 @@ class RectangleReadComponentTiffBase(RectangleWithImageBase):
   def componenttifffile(self):
     return self.componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data.tif")
 
-  def makeimageloader(self): return self.imageloadertype(**self.imageloaderkwargs)
+  @methodtools.lru_cache()
+  @property
+  def componenttiffloader(self): return self.componenttiffloadertype(**self.componenttiffloaderkwargs)
+  def using_component_tiff(self):
+    return self.componenttiffloader.using_image()
   @property
   @abc.abstractmethod
-  def imageloadertype(self): pass
+  def componenttiffloadertype(self): pass
   @property
   @abc.abstractmethod
-  def imageloaderkwargs(self): return {
+  def componenttiffloaderkwargs(self): return {
     "nlayers": self.nlayerscomponenttiff,
     "filename": self.componenttifffile,
   }
@@ -434,22 +426,22 @@ class RectangleReadSegmentedComponentTiffBase(RectangleReadComponentTiffBase):
     withoutseg = super().componenttifffile
     return with_stem(withoutseg, withoutseg.stem+"_w_seg")
   @property
-  def imageloaderkwargs(self):
+  def componenttiffloaderkwargs(self):
     return {
-      **super().imageloaderkwargs,
+      **super().componenttiffloaderkwargs,
       "nsegmentations": self.nsegmentations,
     }
 
 
 class RectangleReadComponentTiffMultiLayer(RectangleReadComponentTiffBase):
   @property
-  def imageloadertype(self):
+  def componenttiffloadertype(self):
     return ImageLoaderComponentTiff
 
   @property
-  def imageloaderkwargs(self):
+  def componenttiffloaderkwargs(self):
     return {
-      **super().imageloaderkwargs,
+      **super().componenttiffloaderkwargs,
     }
 
 class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
@@ -469,34 +461,34 @@ class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
     return layercomponenttiff
 
   @property
-  def imageloadertype(self):
+  def componenttiffloadertype(self):
     return ImageLoaderComponentTiffSingleLayer
 
   @property
-  def imageloaderkwargs(self):
+  def componenttiffloaderkwargs(self):
     return {
-      **super().imageloaderkwargs,
+      **super().componenttiffloaderkwargs,
       "layer": self.layercomponenttiff,
     }
 
 class RectangleReadSegmentedComponentTiffMultiLayer(RectangleReadComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffBase):
   @property
-  def imageloadertype(self):
+  def componenttiffloadertype(self):
     return ImageLoaderSegmentedComponentTiffMultiLayer
   @property
-  def imageloaderkwargs(self):
+  def componenttiffloaderkwargs(self):
     return {
-      **super().imageloaderkwargs,
+      **super().componenttiffloaderkwargs,
     }
 
 class RectangleReadSegmentedComponentTiffSingleLayer(RectangleReadComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffBase):
   @property
-  def imageloadertype(self):
+  def componenttiffloadertype(self):
     return ImageLoaderSegmentedComponentTiffSingleLayer
   @property
-  def imageloaderkwargs(self):
+  def componenttiffloaderkwargs(self):
     return {
-      **super().imageloaderkwargs,
+      **super().componenttiffloaderkwargs,
     }
 
 class RectangleCollection(units.ThingWithPscale):
@@ -602,30 +594,6 @@ def rectangleoroverlapfilter(selection, *, compatibility=False):
     return selection
   else:
     raise ValueError(f"Unknown rectangle or overlap selection: {selection}")
-
-class RectangleProvideImage(RectangleWithImageBase):
-  """
-  Rectangle where you just input an image and that will be the image returned by image or using_image.
-  """
-  def __post_init__(self, *args, image, **kwargs):
-    self.__image = image
-    super().__post_init__(*args, **kwargs)
-
-class RectangleFromOtherRectangle(RectangleWithImageBase):
-  """
-  Rectangle where the image comes from another rectangle.
-  The reason you'd want to do this is if you have transformations, but
-  also want the original rectangle to keep its images.
-  """
-  def __post_init__(self, *args, originalrectangle, **kwargs):
-    self.__originalrectangle = originalrectangle
-    super().__post_init__(*args, rectangle=originalrectangle, readingfromfile=False, **kwargs)
-  @property
-  def originalrectangle(self):
-    return self.__originalrectangle
-  def getimage(self):
-    with self.__originalrectangle.using_image() as image:
-      return image
 
 class GeomLoadRectangle(Rectangle):
   """
