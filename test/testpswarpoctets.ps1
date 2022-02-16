@@ -361,6 +361,15 @@ Class testpswarpoctets {
         $externallog = $inp.ProcessLog($inp.pythonmodulename)
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
+        $p2 = (
+            $this.basepath,'\',
+            $this.slideid,
+            '\im3\meanimage\',
+            $this.slideid,
+            '-background_thresholds.csv'
+        ) -join ''
+        $inp.sample.removefile($p2)
+        #
         Write-Host 'test python warpoctets in workflow finished'
         #
     }
