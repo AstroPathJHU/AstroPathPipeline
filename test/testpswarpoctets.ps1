@@ -20,7 +20,6 @@ Class testpswarpoctets {
     [string]$apmodule = $PSScriptRoot + '/../astropath'
     [string]$batchbinfile
     [string]$batchreference
-    [switch]$fast_test = $true
     #
     testpswarpoctets(){
         #
@@ -40,14 +39,14 @@ Class testpswarpoctets {
         Write-Host '---------------------test ps [warpoctets]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        $this.testpswarpoctetsconstruction($task)
+        #$this.testpswarpoctetsconstruction($task)
         $inp = warpoctets $task
         $this.testprocessroot($inp)
-        $this.comparepywarpoctetsinput($inp)
-        $this.runpytaskpyerror($inp)
-        $this.testlogpyerror($inp)
-        $this.runpytaskaperror($inp)
-        $this.testlogaperror($inp)
+        #$this.comparepywarpoctetsinput($inp)
+        #$this.runpytaskpyerror($inp)
+        #$this.testlogpyerror($inp)
+        #$this.runpytaskaperror($inp)
+        #$this.testlogaperror($inp)
         $this.runpytaskexpected($inp)
         $this.testlogsexpected($inp)
         #$this.CleanupTest($inp)
@@ -61,7 +60,8 @@ Class testpswarpoctets {
     importmodule(){
         Import-Module $this.apmodule
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.batchbinfile = $PSScriptRoot + '\data\astropath_processing\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        #$this.batchbinfile = $PSScriptRoot + '\data\astropath_processing\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        #$this.batchbinfile = 'H:\testing\flatfield\flatfield_BatchID_99.bin'
         $this.batchreference = $PSScriptRoot + '\data\reference\batchflatfieldcohort\flatfield_TEST.bin'
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_warpoctets'))
         $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
@@ -175,7 +175,7 @@ Class testpswarpoctets {
         $md_processloc = ($this.processloc, 'astropath_ws', $this.module, $this.slideid, 'warpoctets') -join '\'
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
-        [string]$userpythontask = ('warpingcohort',
+        [string]$userpythontask = ('warpingsample',
             $dpath,
             '--shardedim3root', $rpath,
             '--sampleregex', $this.slideid,
@@ -318,26 +318,47 @@ Class testpswarpoctets {
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         $inp.getmodulename()
-        Write-Host 'Processvars: '$inp.processvars
         #
-        $et_offset_file = $this.basepath,'corrections\best_exposure_time_offsets_Vectra_9_8_2020.csv' -join '\'
-        $des = $this.processloc, $this.slideid, 'warpoctets' -join '\'
+        $des = $this.processloc, $this.slideid, 'warping_cohort' -join '\'
         $inp.sample.createdirs($des)
         #
-        $pythontask = $inp.getpythontask($dpath, $rpath)
-        #$pythontask = $inp.pythonmodulename, $dpath, `
-        #'--shardedim3root',  $rpath, `
+        $import = 'import pathlib; import numpy as np; from astropath.utilities.img_file_io import read_image_from_layer_files, write_image_to_file' -join ' '
+        $task1 = "ff_file = pathlib.Path ('", ($this.batchreference -replace '\\', '/'), "')" -join '' 
+        Write-Host '    Task1:' $task1
+        $task2 = "ff_img = read_image_from_layer_files(ff_file,1004,1344,35,dtype=np.float64)" -join ''
+        Write-Host '    Task2:' $task2
+        $task3 =  "outputdir = pathlib.Path ('", ($des -replace '\\', '/'), "')" -join ''
+        Write-Host '    Task3:' $task3
+        $task4 = "write_image_to_file(ff_img, outputdir/ff_file.name)" -join ''
+        Write-Host '    Task4:' $task4
+        $task = $import, $task1, $task2, $task3, $task4 -join '; '
+        Write-Host '    Task:' $task
+        #
+        $inp.sample.checkconda()
+        conda run -n $inp.sample.pyenv() python -c $task
+        if (!(test-path ($des + '\flatfield_TEST.bin'))){
+            Throw 'Batch flatfield reference file failed to create'
+        }
+
+        #ff_img = read_image_from_layer_files(ff_file,*(dims),dtype=np.float64)
+        #write_image_to_file(ff_img,output_dir/ff_file.name)
+
+        #$pythontask = $inp.getpythontask($dpath, $rpath)
+        $pythontask = $inp.pythonmodulename, $dpath, `
+        '--shardedim3root',  $rpath, `
         #'--sampleregex',  $inp.sample.slideid, `
-        #'--flatfield-file',  $this.batchreference, `
-        #'--octets-only --noGPU', $inp.buildpyopts() -join ' '
-        
+        '--flatfield-file',  ($des + '\flatfield_TEST.bin'), `
+        '--noGPU', $inp.buildpyopts() -join ' '
+        #'--octets-only'
         
         #
-        $addedargs = #'--workingdir', $des, `
-                     '--exposure-time-offset-file', $et_offset_file , `
-                     '--initial-pattern-octets','0', `
-                     '--principal-point-octets','0', `
-                     '--final-pattern-octets','0' -join ' '
+        $addedargs = $inp.sample.slideid
+        #'--workingdir', $des, `
+                     #'--exposure-time-offset-file', $et_offset_file , `
+                     #'--initial-pattern-octets','0', `
+                     #'--principal-point-octets','0', `
+                     #'--ignore-dependencies' #-join ' '
+                     #'--final-pattern-octets','0' -join ' '
         #
         $pythontask = $pythontask, $addedargs -join ' '
         #

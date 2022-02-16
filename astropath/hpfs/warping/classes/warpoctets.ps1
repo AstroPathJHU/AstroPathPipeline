@@ -62,7 +62,7 @@ Class warpoctets : moduletools {
     }
     #
     [void]getmodulename(){
-        $this.pythonmodulename = 'warpingcohort'
+        $this.pythonmodulename = 'warpingsample'
     }
     <# -----------------------------------------
      cleanup
