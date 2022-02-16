@@ -43,17 +43,26 @@ Class warpoctets : moduletools {
     ----------------------------------------- #>
     [void]GetWarpOctets(){
         $this.sample.info("started warp octets")
-        $taskname = 'warpoctets'
+        $this.getmodulename()
         $dpath = $this.sample.basepath
         $rpath = $this.processvars[1]
-        $this.pythonmodulename = 'warpingcohort'
+        $pythontask = getpythontask($dpath, $rpath)
+        $this.runpythontask($this.pythonmodulename, $pythontask)
+        $this.sample.info("finished warp octets")
+    }
+    #
+    [string]getpythontask($dpath, $rpath){
         $pythontask = $this.pythonmodulename, $dpath, `
          '--shardedim3root',  $rpath, `
          '--sampleregex',  $this.sample.slideid, `
          '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), `
          '--octets-only --noGPU', $this.buildpyopts() -join ' '
-        $this.runpythontask($taskname, $pythontask)
-        $this.sample.info("finished warp octets")
+        #
+        return $pythontask
+    }
+    #
+    [void]getmodulename(){
+        $this.pythonmodulename = 'warpingsample'
     }
     <# -----------------------------------------
      cleanup
