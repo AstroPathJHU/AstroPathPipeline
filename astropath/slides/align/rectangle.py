@@ -8,7 +8,6 @@ from ...shared.logging import dummylogger
 from ...shared.rectangle import RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, Rectangle, RectangleReadIm3MultiLayer
 from ...shared.rectangletransformation import RectangleTransformationBase
 from ...utilities import units
-from ...utilities.dataclasses import MetaDataAnnotation
 from .flatfield import meanimage
 
 class ApplyMeanImage(RectangleTransformationBase):

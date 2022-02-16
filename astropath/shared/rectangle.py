@@ -1,12 +1,11 @@
-import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
+import abc, collections, dataclassy, datetime, jxmlease, methodtools, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.config import CONST as UNIV_CONST
-from ..utilities.miscfileio import memmapcontext, with_stem
+from ..utilities.miscfileio import with_stem
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
-from .imageloader import ImageLoaderComponentTiff, ImageLoaderComponentTiffSingleLayer, ImageLoaderSegmentedComponentTiff, ImageLoaderSegmentedComponentTiffSingleLayer
-from .logging import printlogger
+from .imageloader import ImageLoaderComponentTiff, ImageLoaderComponentTiffSingleLayer, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer
 from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
 from .rectangletransformation import RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationSinglelayer
 
@@ -398,7 +397,7 @@ class RectangleReadComponentTiffBase(Rectangle):
 
   @property
   def componenttifffile(self):
-    return self.componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data.tif")
+    return self.componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, "_component_data.tif")
 
   @methodtools.lru_cache()
   @property

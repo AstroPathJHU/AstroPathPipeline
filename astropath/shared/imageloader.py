@@ -24,7 +24,7 @@ class ImageLoaderBase(abc.ABC):
       if self.__debug_load_image_counter > 1:
         for formattedtb in self.__debug_load_image_tracebacks:
           printlogger("loadimage").debug("".join(formattedtb))
-        warnings.warn(f"Loaded image for rectangle {self} {ctr} times")
+        warnings.warn(f"Loaded image for rectangle {self} {self.__debug_load_image_counter} times")
 
   @abc.abstractmethod
   def getimage(self):
