@@ -5,7 +5,7 @@ from ..utilities.miscfileio import with_stem
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
-from .imageloader import ImageLoaderComponentTiff, ImageLoaderComponentTiffSingleLayer, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer
+from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer
 from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
 from .rectangletransformation import RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationSinglelayer
 
@@ -435,7 +435,7 @@ class RectangleReadSegmentedComponentTiffBase(RectangleReadComponentTiffBase):
 class RectangleReadComponentTiffMultiLayer(RectangleReadComponentTiffBase):
   @property
   def componenttiffloadertype(self):
-    return ImageLoaderComponentTiff
+    return ImageLoaderComponentTiffMultiLayer
 
   @property
   def componenttiffloaderkwargs(self):
