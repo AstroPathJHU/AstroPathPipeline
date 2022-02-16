@@ -1,5 +1,5 @@
 import dataclassy, numpy as np
-from ...shared.rectangle import Rectangle, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
+from ...shared.rectangle import Rectangle, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer
 from ...shared.overlap import Overlap
 from ...utilities import units
 from ...utilities.units.dataclasses import distancefield
@@ -128,6 +128,16 @@ class FieldReadComponentTiffSingleLayer(Field, RectangleReadComponentTiffSingleL
 class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLayer):
   """
   A Field that can read multiple layers of the component tiff
+  """
+
+class FieldReadSegmentedComponentTiffSingleLayer(Field, RectangleReadSegmentedComponentTiffSingleLayer):
+  """
+  A Field that can read a single layer of the segmented component tiff
+  """
+
+class FieldReadSegmentedComponentTiffMultiLayer(Field, RectangleReadSegmentedComponentTiffMultiLayer):
+  """
+  A Field that can read multiple layers of the segmented component tiff
   """
 
 class FieldReadIm3(Field, RectangleReadIm3):

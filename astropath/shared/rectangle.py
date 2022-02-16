@@ -1,7 +1,7 @@
 import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities import units
 from ..utilities.config import CONST as UNIV_CONST
-from ..utilities.miscfileio import memmapcontext
+from ..utilities.miscfileio import memmapcontext, with_stem
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
@@ -136,9 +136,16 @@ class Rectangle(DataClassWithPscale):
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
 
 class RectangleWithImageBase(Rectangle):
-  @property
   @abc.abstractmethod
-  def imageloader(self): pass
+  def makeimageloader(self): pass
+
+  @methodtools.lru_cache()
+  @property
+  def imageloader(self):
+    return self.makeimageloader()
+
+  def using_image(self):
+    return self.imageloader.using_image()
 
 class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   """
@@ -403,16 +410,18 @@ class RectangleReadComponentTiffBase(RectangleWithImageBase):
 
   @property
   def componenttifffile(self):
-    return self.__componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
+    return self.componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data.tif")
 
-  @property
-  def imageloader(self): return self.imageloadertype(**self.imageloaderkwargs)
+  def makeimageloader(self): return self.imageloadertype(**self.imageloaderkwargs)
   @property
   @abc.abstractmethod
   def imageloadertype(self): pass
   @property
   @abc.abstractmethod
-  def imageloaderkwargs(self): return {}
+  def imageloaderkwargs(self): return {
+    "nlayers": self.nlayerscomponenttiff,
+    "filename": self.componenttifffile,
+  }
 
 class RectangleReadSegmentedComponentTiffBase(RectangleReadComponentTiffBase):
   @property
@@ -420,6 +429,17 @@ class RectangleReadSegmentedComponentTiffBase(RectangleReadComponentTiffBase):
   @nsegmentations.setter
   def nsegmentations(self, nsegmentations): self.__nsegmentations = nsegmentations
   nsegmentations: int = MetaDataAnnotation(nsegmentations, includeintable=False, use_default=False)
+  @property
+  def componenttifffile(self):
+    withoutseg = super().componenttifffile
+    return with_stem(withoutseg, withoutseg.stem+"_w_seg")
+  @property
+  def imageloaderkwargs(self):
+    return {
+      **super().imageloaderkwargs,
+      "nsegmentations": self.nsegmentations,
+    }
+
 
 class RectangleReadComponentTiffMultiLayer(RectangleReadComponentTiffBase):
   @property
@@ -439,16 +459,14 @@ class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
   but this class gives you a 2D array as the image instead of a 3D array
   with shape[2] = 1.
   """
-  def __post_init__(self, *args, layer, **kwargs):
-    morekwargs = {
-      "layers": (layer,),
-    }
-    super().__post_init__(*args, **kwargs, **morekwargs)
+  @classmethod
+  def transforminitargs(cls, *args, layercomponenttiff, **kwargs):
+    return super().transforminitargs(*args, layerscomponenttiff=(layercomponenttiff,), **kwargs)
 
   @property
-  def layer(self):
-    layer, = self.layers
-    return layer
+  def layercomponenttiff(self):
+    layercomponenttiff, = self.layerscomponenttiff
+    return layercomponenttiff
 
   @property
   def imageloadertype(self):
@@ -458,6 +476,7 @@ class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
   def imageloaderkwargs(self):
     return {
       **super().imageloaderkwargs,
+      "layer": self.layercomponenttiff,
     }
 
 class RectangleReadSegmentedComponentTiffMultiLayer(RectangleReadComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffBase):

@@ -831,59 +831,91 @@ class CellPhenotypeSampleBase(SampleBase):
   def phenotypeQAQCtablesfolder(self):
     return self.phenotypefolder/"Results"/"QA_QC"/"Tables_QA_QC"
 
-class SelectLayersSample(SampleBase):
+class SelectLayersIm3(SampleBase):
   """
-  Base class for any sample that needs a layer selection.
+  Base class for any sample that needs a layer selection for the im3.
   """
-  def __init__(self, *args, layer=None, layers=None, **kwargs):
-    if layer != "setlater" != layers:
-      self.setlayers(layer=layer, layers=layers)
+  def __init__(self, *args, layerim3=None, layersim3=None, **kwargs):
+    if layerim3 != "setlater" != layersim3:
+      self.setlayersim3(layerim3=layerim3, layersim3=layersim3)
     super().__init__(*args, **kwargs)
 
-  def setlayers(self, layer=None, layers=None):
+  def setlayersim3(self, layerim3=None, layersim3=None):
     try:
-      self.__layers
+      self.__layersim3
     except AttributeError:
       pass
     else:
-      raise AttributeError("Already called setlayers for this sample")
-    if self.multilayer:
-      if layer is not None:
-        raise TypeError(f"Can't provide layer for a multilayer sample {type(self).__name__}")
+      raise AttributeError("Already called setlayersim3 for this sample")
+    if self.multilayerim3:
+      if layerim3 is not None:
+        raise TypeError(f"Can't provide layerim3 for a multilayer sample {type(self).__name__}")
     else:
-      if layers is not None:
-        raise TypeError(f"Can't provide layers for a single layer sample {type(self).__name__}")
-      if layer is None:
-        layer = 1
-      self.__layer = layer
-      layers = layer,
+      if layersim3 is not None:
+        raise TypeError(f"Can't provide layersim3 for a single layer sample {type(self).__name__}")
+      if layerim3 is None:
+        layerim3 = 1
+      self.__layerim3 = layerim3
+      layersim3 = layerim3,
 
-    self.__layers = layers
+    self.__layersim3 = layersim3
 
   @property
-  def layers(self):
-    result = self.__layers
-    if result is None: return range(1, self.nlayers+1)
+  def layersim3(self):
+    result = self.__layersim3
+    if result is None: return range(1, self.nlayersim3+1)
     return result
 
   @property
-  def layer(self):
-    if self.multilayer:
-      raise TypeError(f"Can't get layer for a multilayer sample {type(self).__name__}")
-    return self.__layer
+  def layerim3(self):
+    if self.multilayerim3:
+      raise TypeError(f"Can't get layerim3 for a multilayer sample {type(self).__name__}")
+    return self.__layerim3
 
-  @abc.abstractproperty
-  def nlayers(self): pass
+  multilayerim3 = False #can override in subclasses
 
-  multilayer = False #can override in subclasses
+class SelectLayersComponentTiff(SampleBase):
+  """
+  Base class for any sample that needs a layer selection for the component tiff.
+  """
+  def __init__(self, *args, layercomponenttiff=None, layerscomponenttiff=None, **kwargs):
+    if layercomponenttiff != "setlater" != layerscomponenttiff:
+      self.setlayerscomponenttiff(layercomponenttiff=layercomponenttiff, layerscomponenttiff=layerscomponenttiff)
+    super().__init__(*args, **kwargs)
 
-class SelectLayersIm3(SelectLayersSample):
+  def setlayerscomponenttiff(self, layercomponenttiff=None, layerscomponenttiff=None):
+    try:
+      self.__layerscomponenttiff
+    except AttributeError:
+      pass
+    else:
+      raise AttributeError("Already called setlayerscomponenttiff for this sample")
+    if self.multilayercomponenttiff:
+      if layercomponenttiff is not None:
+        raise TypeError(f"Can't provide layercomponenttiff for a multilayer sample {type(self).__name__}")
+    else:
+      if layerscomponenttiff is not None:
+        raise TypeError(f"Can't provide layerscomponenttiff for a single layer sample {type(self).__name__}")
+      if layercomponenttiff is None:
+        layercomponenttiff = 1
+      self.__layercomponenttiff = layercomponenttiff
+      layerscomponenttiff = layercomponenttiff,
+
+    self.__layerscomponenttiff = layerscomponenttiff
+
   @property
-  def nlayers(self): return self.nlayersim3
+  def layerscomponenttiff(self):
+    result = self.__layerscomponenttiff
+    if result is None: return range(1, self.nlayerscomponenttiff+1)
+    return result
 
-class SelectLayersComponentTiff(SelectLayersSample):
   @property
-  def nlayers(self): return self.nlayersunmixed
+  def layercomponenttiff(self):
+    if self.multilayercomponenttiff:
+      raise TypeError(f"Can't get layercomponenttiff for a multilayer sample {type(self).__name__}")
+    return self.__layercomponenttiff
+
+  multilayercomponenttiff = False #can override in subclasses
 
 class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgumentParser):
   """
@@ -935,28 +967,7 @@ class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgume
     if not self.__initedrectangles: self.initrectangles()
     return self.__rectangles
 
-class ReadRectanglesWithLayers(ReadRectanglesBase, SelectLayersSample):
-  """
-  Base class for any sample that reads rectangles
-  and needs a layer selection.
-  """
-  @property
-  def rectangleextrakwargs(self):
-    kwargs = {
-      **super().rectangleextrakwargs,
-      "nlayers": self.nlayers,
-    }
-    if self.multilayer:
-      kwargs.update({
-        "layers": self.layers,
-      })
-    else:
-      kwargs.update({
-        "layer": self.layer,
-      })
-    return kwargs
-
-class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase, SelectLayersIm3):
+class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
   """
   Base class for any sample that loads images from an im3 file.
   filetype: "raw", "flatWarp", or "camWarp"
@@ -995,19 +1006,23 @@ class ReadRectanglesIm3Base(ReadRectanglesWithLayers, Im3SampleBase, SelectLayer
       "im3filetype": self.filetype,
       "width": self.fwidth,
       "height": self.fheight,
+      "nlayersim3": self.nlayersim3,
     }
-    if self.multilayer:
-      pass
+    if self.multilayerim3:
+      kwargs.update({
+        "layersim3": self.layersim3,
+      })
     else:
       kwargs.update({
         "readlayerfile": self.__readlayerfile,
+        "layerim3": self.layerim3,
       })
     return kwargs
 
   @property
   def filetype(self): return self.__filetype
 
-class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComponentTiff):
+class ReadRectanglesComponentTiffBase(ReadRectanglesBase, SelectLayersComponentTiff):
   """
   Base class for any sample that loads images from a component tiff file.
   layer or layers: the layer or layers to read, depending on whether
@@ -1021,12 +1036,19 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
       return RectangleReadComponentTiffSingleLayer
   @property
   def rectangleextrakwargs(self):
-    print(super().rectangleextrakwargs)
     kwargs = {
       **super().rectangleextrakwargs,
       "componenttifffolder": self.componenttiffsfolder,
       "nlayerscomponenttiff": self.nlayersunmixed,
     }
+    if self.multilayercomponenttiff:
+      kwargs.update({
+        "layerscomponenttiff": self.layerscomponenttiff,
+      })
+    else:
+      kwargs.update({
+        "layercomponenttiff": self.layercomponenttiff,
+      })
     return kwargs
 
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
