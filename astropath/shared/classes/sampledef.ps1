@@ -457,6 +457,7 @@ class sampledef : sharedtools{
         $file = $this.basepath + '\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
         #
         $file2 = $this.basepath + '\' + $this.slideid + '\im3\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
+        $file3 = $this.basepath + '\' + $this.slideid + '\im3\warping\octets\image_keys_needed.txt'
         #
         $logfile = $this.basepath + '\' + $this.slideid + '\logfiles\' + $this.slideid + '-warpoctets.log'
         #
@@ -474,6 +475,10 @@ class sampledef : sharedtools{
         }
         #
         if (!(test-path $file) -AND !(test-path $file2)){
+            return $false
+        }
+        #
+        if (!(test-path $file3)){
             return $false
         }
         #

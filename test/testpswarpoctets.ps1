@@ -18,8 +18,8 @@ Class testpswarpoctets {
     [string]$project = '0'
     [string]$batchid = '8'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
-    [string]$batchbinfile
-    [string]$batchreference
+    [string]$pytype = 'sample'
+    [string]$batchreferencefile
     #
     testpswarpoctets(){
         #
@@ -41,13 +41,15 @@ Class testpswarpoctets {
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         #$this.testpswarpoctetsconstruction($task)
         $inp = warpoctets $task
-        $this.testprocessroot($inp)
+        #$this.testprocessroot($inp)
         #$this.comparepywarpoctetsinput($inp)
         #$this.runpytaskpyerror($inp)
         #$this.testlogpyerror($inp)
+        #$this.buildtestflatfield($inp)
         #$this.runpytaskaperror($inp)
         #$this.testlogaperror($inp)
-        $this.runpytaskexpected($inp)
+        #$this.setupsample($inp)
+        #$this.runpytaskexpected($inp)
         $this.testlogsexpected($inp)
         #$this.CleanupTest($inp)
         Write-Host '.'
@@ -60,11 +62,10 @@ Class testpswarpoctets {
     importmodule(){
         Import-Module $this.apmodule
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        #$this.batchbinfile = $PSScriptRoot + '\data\astropath_processing\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
-        #$this.batchbinfile = 'H:\testing\flatfield\flatfield_BatchID_99.bin'
-        $this.batchreference = $PSScriptRoot + '\data\reference\batchflatfieldcohort\flatfield_TEST.bin'
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_warpoctets'))
         $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
+        $batchreferncetestpath = $this.processloc, $this.slideid -join '\'
+        $this.batchreferencefile = ($batchreferncetestpath + '\flatfield_TEST.bin')
     }
     <# --------------------------------------------
     uncpath
@@ -172,24 +173,36 @@ Class testpswarpoctets {
         Write-Host '.'
         Write-Host 'compare python [warpoctets] expected input to actual started'
         #
-        $md_processloc = ($this.processloc, 'astropath_ws', $this.module, $this.slideid, 'warpoctets') -join '\'
+        $md_processloc = (
+            $this.processloc,
+            'astropath_ws',
+            $this.module,
+            $this.slideid,
+            'warpoctets'
+        ) -join '\'
+        #
+        $batchbinfile = $this.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        #
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
-        [string]$userpythontask = ('warpingsample',
+        $taskname = ('warping', $this.pytype) -join ''
+        #
+        [string]$userpythontask = ($taskname,
             $dpath,
+            $this.slideid, #'--sampleregex',
             '--shardedim3root', $rpath,
-            '--sampleregex', $this.slideid,
-            '--flatfield-file',  $this.batchbinfile,
-            '--octets-only',
+            '--flatfield-file',  $batchbinfile,
             '--noGPU',
+            '--no-log',
             '--allow-local-edits',
             '--skip-start-finish')
         #
         $inp.getmodulename()
-        $pythontask = $inp.getpythontask($dpath, $rpath)
+        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath)
+        #
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
             Write-Host 'user defined and [warpoctets] defined tasks do not match:'  -foregroundColor Red
-            Write-Host 'user defined       :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
+            Write-Host 'user defined        :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
             Write-Host '[warpoctets] defined:' [regex]::escape($pythontask)'end' -foregroundColor Red
             Throw ('user defined and [warpoctets] defined tasks do not match')
         }
@@ -210,7 +223,7 @@ Class testpswarpoctets {
         $dpath = $this.basepath
         $inp.getmodulename()
         #
-        $pythontask = $inp.getpythontask($dpath, $rpath) 
+        $pythontask = $inp.('getpythontask' + $this.pytype)($dpath, $rpath) 
         $pythontask = $pythontask, '--blah' -join ' '
         #
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
@@ -223,7 +236,7 @@ Class testpswarpoctets {
     testlogpyerror
     check that the log is parsed correctly
     when run with the input that will throw a
-    python error
+    python error. 
     --------------------------------------------#>
     [void]testlogpyerror($inp){
         #
@@ -232,8 +245,14 @@ Class testpswarpoctets {
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
+        if (!$externallog){
+            Throw 'No external log'
+        }
         Write-Host '    open log output'
         $logoutput = $inp.sample.GetContent($externallog)
+        if (!$logoutput){
+            Throw 'No log output'
+        }
         Write-Host '    test log output'
         #
         try {
@@ -258,18 +277,20 @@ Class testpswarpoctets {
         #
         Write-Host '.'
         Write-Host 'test python warpoctets with error in processing started'
-        $inp.sample.CreateDirs($inp.processloc)
+        $inp.sample.CreateNewDirs($inp.processloc)
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         $inp.getmodulename()
         #
         $des = $this.processloc, $this.slideid, 'warpoctets' -join '\'
-        $pythontask = $inp.pythonmodulename, $dpath, `
-        '--shardedim3root',  $rpath, `
-        '--sampleregex',  $inp.sample.slideid, `
-        '--flatfield-file', $this.batchreference, `
-        '--workingdir', $des, `
-        '--octets-only --noGPU', $inp.buildpyopts() -join ' '
+        $addedargs = (
+            ' --workingdir', $des
+        ) -join ' '
+        #
+        $pythontask = $inp.('getpythontask' + $this.pytype)($dpath, $rpath) 
+        $pythontask = ($pythontask -replace `
+            [regex]::escape($inp.sample.pybatchflatfieldfullpath()), 
+            $this.batchreferencefile) + $addedargs
         #
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
         $this.runpytesttask($inp, $pythontask, $externallog)
@@ -290,8 +311,14 @@ Class testpswarpoctets {
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
+        if (!$externallog){
+            Throw 'No external log'
+        }
         Write-Host '    open log output'
         $logoutput = $inp.sample.GetContent($externallog)
+        if (!$logoutput){
+            Throw 'No log output'
+        }
         Write-Host '    test log output'
         #
         try {
@@ -301,7 +328,7 @@ Class testpswarpoctets {
             $expectedoutput = 'detected error in external task'
             if ($err -notcontains $expectedoutput){
                 Write-Host $logoutput
-                Write-Host $_.Exception.Message
+                Throw $_.Exception.Message
             }
         }
     }
@@ -314,55 +341,24 @@ Class testpswarpoctets {
         #
         Write-Host '.'
         Write-Host 'test python warpoctets in workflow started'
-        $inp.sample.CreateDirs($inp.processloc)
-        $rpath = $PSScriptRoot + '\data\raw'
+        $inp.sample.CreateNewDirs($inp.processloc)
+        $rpath = $this.processloc, $this.slideid, 'rpath' -join '\'
         $dpath = $this.basepath
         $inp.getmodulename()
         #
-        $des = $this.processloc, $this.slideid, 'warping_cohort' -join '\'
-        $inp.sample.createdirs($des)
-        #
-        $import = 'import pathlib; import numpy as np; from astropath.utilities.img_file_io import read_image_from_layer_files, write_image_to_file' -join ' '
-        $task1 = "ff_file = pathlib.Path ('", ($this.batchreference -replace '\\', '/'), "')" -join '' 
-        Write-Host '    Task1:' $task1
-        $task2 = "ff_img = read_image_from_layer_files(ff_file,1004,1344,35,dtype=np.float64)" -join ''
-        Write-Host '    Task2:' $task2
-        $task3 =  "outputdir = pathlib.Path ('", ($des -replace '\\', '/'), "')" -join ''
-        Write-Host '    Task3:' $task3
-        $task4 = "write_image_to_file(ff_img, outputdir/ff_file.name)" -join ''
-        Write-Host '    Task4:' $task4
-        $task = $import, $task1, $task2, $task3, $task4 -join '; '
-        Write-Host '    Task:' $task
-        #
-        $inp.sample.checkconda()
-        conda run -n $inp.sample.pyenv() python -c $task
-        if (!(test-path ($des + '\flatfield_TEST.bin'))){
-            Throw 'Batch flatfield reference file failed to create'
-        }
-
         #ff_img = read_image_from_layer_files(ff_file,*(dims),dtype=np.float64)
         #write_image_to_file(ff_img,output_dir/ff_file.name)
-
-        #$pythontask = $inp.getpythontask($dpath, $rpath)
-        $pythontask = $inp.pythonmodulename, $dpath, `
-        '--shardedim3root',  $rpath, `
-        #'--sampleregex',  $inp.sample.slideid, `
-        '--flatfield-file',  ($des + '\flatfield_TEST.bin'), `
-        '--noGPU', $inp.buildpyopts() -join ' '
-        #'--octets-only'
-        
+        $des = $this.processloc, $this.slideid, 'warpoctets' -join '\'
+        $addedargs = (
+            ' --workingdir', $des
+        ) -join ' '
         #
-        $addedargs = $inp.sample.slideid
-        #'--workingdir', $des, `
-                     #'--exposure-time-offset-file', $et_offset_file , `
-                     #'--initial-pattern-octets','0', `
-                     #'--principal-point-octets','0', `
-                     #'--ignore-dependencies' #-join ' '
-                     #'--final-pattern-octets','0' -join ' '
+        $pythontask = $inp.('getpythontask' + $this.pytype)($dpath, $rpath) 
+        $pythontask = ($pythontask -replace `
+            [regex]::escape($inp.sample.pybatchflatfieldfullpath()), 
+            $this.batchreferencefile) + $addedargs
         #
-        $pythontask = $pythontask, $addedargs -join ' '
-        #
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
+        $externallog = $inp.ProcessLog($inp.pythonmodulename)
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
         Write-Host 'test python warpoctets in workflow finished'
@@ -391,6 +387,100 @@ Class testpswarpoctets {
         }
         #
         Write-Host 'test python expected log output finished'
+        #
+    }
+    #
+    [void]setupsample($inp){
+        #
+        Write-Host '    copy background thresholds'
+        #
+        $p1 = ($this.basepath,
+            '\reference\meanimage\',
+            $this.slideid,
+            '-background_thresholds.csv'
+        ) -join ''
+        #
+        $p2 = ($this.basepath,
+            $this.slideid,
+            'im3\meanimage'
+        ) -join '\'
+        #
+        $inp.sample.copy($p1, $p2)
+        #
+        Write-Host '    creating mock raw directory'
+        #
+        $rpath = (
+            $this.basepath,
+            'raw',
+            $this.slideid
+        ) -join '\'
+        #
+        $rfiles = (get-childitem ($rpath+'\*') '*dat').Name
+        #
+        Write-Host '    Found:' $rfiles.Length ' raw files'
+        Write-Host $rfiles
+        #
+        $dpath = (
+            $this.basepath,
+            $this.slideid,
+            'im3\Scan1\MSI',
+            '*'
+        ) -join '\'
+        $im3files = (get-childitem $dpath '*im3').Name
+        #
+        Write-Host '    Found:' $im3files.Length ' im3 files'
+        #
+        $newrpath = $this.processloc, $this.slideid, 'rpath', $this.slideid -join '\'
+        $inp.sample.CreateNewDirs($newrpath)
+        Write-Host '    New rpath:' $newrpath
+        Write-Host '    Matching files'
+        #
+        foreach($file in $im3files){
+            $rfile = $file -replace 'im3', 'Data.dat'
+            $newrfile = $rfiles -match [regex]::escape($rfile)
+            #
+            if (!$newrfile){
+                $newrfile = $rpath + '\' + $rfiles[0]
+                $inp.sample.copy($newrfile, $newrpath)
+                rename-item ($newrpath + '\' + $rfiles[0]) `
+                    ($file -replace 'im3', 'Data.dat')
+            }
+        }
+        #
+        Write-Host '    copying regular raw files'
+        $inp.sample.copy($rpath, $newrpath, '*')
+        #
+    #
+    }
+    #
+    [void]buildtestflatfield($inp){
+        #
+        Write-Host '.'
+        Write-Host 'build test flatfield started'
+        #
+        $batchreferencepath = $this.basepath + '\reference\batchflatfieldcohort\flatfield_TEST.bin'
+        $batchreferncetestpath = $this.processloc, $this.slideid -join '\'
+        $inp.sample.createdirs($batchreferncetestpath)
+        #
+        $import = 'import pathlib; import numpy as np; from astropath.utilities.img_file_io import read_image_from_layer_files, write_image_to_file' -join ' '
+        $task1 = "ff_file = pathlib.Path ('", ($batchreferencepath -replace '\\', '/'), "')" -join '' 
+        Write-Host '    Task1:' $task1
+        $task2 = "ff_img = read_image_from_layer_files(ff_file,1004,1344,35,dtype=np.float64)" -join ''
+        Write-Host '    Task2:' $task2
+        $task3 =  "outputdir = pathlib.Path ('", ($batchreferncetestpath -replace '\\', '/'), "')" -join ''
+        Write-Host '    Task3:' $task3
+        $task4 = "write_image_to_file(ff_img, outputdir/ff_file.name)" -join ''
+        Write-Host '    Task4:' $task4
+        $task = $import, $task1, $task2, $task3, $task4 -join '; '
+        Write-Host '    Task:' $task
+        #
+        $inp.sample.checkconda()
+        conda run -n $inp.sample.pyenv() python -c $task
+        if (!(test-path $this.batchreferencefile )){
+            Throw 'Batch flatfield reference file failed to create'
+        }
+        #
+        Write-Host 'build test flatfield finished'
         #
     }
     <# --------------------------------------------

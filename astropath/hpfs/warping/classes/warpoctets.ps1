@@ -18,6 +18,8 @@ Usage: $a = [warpoctets]::new($task, $sample)
 #>
 Class warpoctets : moduletools {
     #
+    [string]$pytype = 'sample'
+    #
     warpoctets([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
         $this.flevel = [FileDownloads]::IM3
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
@@ -44,14 +46,32 @@ Class warpoctets : moduletools {
     [void]GetWarpOctets(){
         $this.sample.info("started warp octets")
         $this.getmodulename()
+        $taskname = $this.pythonmodulename
+        #
         $dpath = $this.sample.basepath
         $rpath = $this.processvars[1]
-        $pythontask = getpythontask($dpath, $rpath)
-        $this.runpythontask($this.pythonmodulename, $pythontask)
+        $pythontask = $this.('getpythontask' + $this.pytype)($dpath, $rpath)
+        #
+        $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished warp octets")
     }
     #
-    [string]getpythontask($dpath, $rpath){
+    [string]getpythontasksample($dpath, $rpath){
+        $globalargs = $this.buildpyopts()
+        $pythontask = ($this.pythonmodulename,
+            $dpath,
+            $this.sample.slideid,
+            '--shardedim3root',  $rpath, 
+            '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
+            '--noGPU',
+            '--no-log',
+            $globalargs
+         ) -join ' '
+        #
+        return $pythontask
+    }
+    #
+    [string]getpythontaskcohort($dpath, $rpath){
         $pythontask = $this.pythonmodulename, $dpath, `
          '--shardedim3root',  $rpath, `
          '--sampleregex',  $this.sample.slideid, `
@@ -62,7 +82,7 @@ Class warpoctets : moduletools {
     }
     #
     [void]getmodulename(){
-        $this.pythonmodulename = 'warpingsample'
+        $this.pythonmodulename = ('warping', $this.pytype -join '')
     }
     <# -----------------------------------------
      cleanup

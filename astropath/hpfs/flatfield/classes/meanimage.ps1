@@ -80,6 +80,7 @@ Class meanimage : moduletools {
         $this.sample.info("started mean image sample -- python")
         $this.getmodulename()
         $taskname = $this.pythonmodulename
+        #
         $dpath = $this.sample.basepath + ' '
         $rpath = $this.processvars[1]
         $pythontask = $this.('getpythontask' + $this.pytype)($dpath, $rpath)
@@ -87,6 +88,7 @@ Class meanimage : moduletools {
         $this.runpythontask($taskname, $pythontask)
         $this.sample.info("finished mean image sample -- python")
     }
+    #
     [string]getpythontasksample($dpath, $rpath){
         #
         $globalargs = $this.buildpyopts()

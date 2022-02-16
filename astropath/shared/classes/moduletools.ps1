@@ -361,11 +361,11 @@
             }
             #
             if ($this.sample.module -match 'warpoctets'){
-                $this.parsepycohortlog()
+                $this.parsepysamplelog()
             }
             #
             if ($this.pythonmodulename -match 'cohort'){
-                $this.parsepycohortlog('errors')
+                $this.parsepycohortlog()
             }
         }
         #
@@ -376,11 +376,13 @@
      ------------------------------------------
      Usage: $this.parsepycohortlog()
     ----------------------------------------- #>
-    [void]parsepycohortlog(){
+    [void]parsepysamplelog(){
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
         $sampleoutput | ForEach-Object {
-            $this.sample.message = ($_ -split ';')[3]
-            $this.sample.Writelog()
+            if ($_ -notmatch 'DEBUG'){
+                $this.sample.message = ($_ -split ';')[3]
+                $this.sample.Writelog(2)
+            }
         }
     }
     <# -----------------------------------------
@@ -389,7 +391,7 @@
      ------------------------------------------
      Usage: $this.parsepycohortlog()
     ----------------------------------------- #>
-    [void]parsepycohortlog($errors){
+    [void]parsepycohortlog(){
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
         if ($sampleoutput -match 'Error'){
             Throw 'Python tasked launched but there was an ERROR'

@@ -242,8 +242,14 @@ Class testpsmeanimage {
         Write-Host '.'
         Write-Host 'compare python [meanimage] expected input to actual started'
         #
-        $md_processloc = ($this.processloc, 'astropath_ws',
-             $this.module, $this.slideid, 'meanimage') -join '\'
+        $md_processloc = (
+            $this.processloc,
+            'astropath_ws',
+            $this.module,
+            $this.slideid,
+            'meanimage'
+        ) -join '\'
+        #
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         [string]$userpythontask = (('meanimage', $this.pytype -join ''),
@@ -367,7 +373,7 @@ Class testpsmeanimage {
             $expectedoutput = 'detected error in external task'
             if ($err -notcontains $expectedoutput){
                 Write-Host $logoutput
-                Write-Host $_.Exception.Message
+                Throw $_.Exception.Message
             }
         }
     }
