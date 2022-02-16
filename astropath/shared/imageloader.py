@@ -66,7 +66,7 @@ class ImageLoaderBase(abc.ABC):
       self.__debug_load_image_counter += 1
       if self.__DEBUG_PRINT_TRACEBACK:
         self.__debug_load_image_tracebacks.append(traceback.format_stack())
-      self.__images_cache = self.getimage()
+      self.__image_cache = self.getimage()
     return self.__image_cache
 
   @contextlib.contextmanager
