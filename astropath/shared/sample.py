@@ -981,7 +981,7 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
 
     if readlayerfile is None: readlayerfile = not self.multilayer
 
-    if self.multilayer and readlayerfile:
+    if self.multilayerim3 and readlayerfile:
       raise ValueError(f"Can't read a layer file for a multilayer sample {type(self).__name__}")
 
     self.__readlayerfile = readlayerfile
@@ -994,7 +994,7 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
     return super().nlayers
   @property
   def rectangletype(self):
-    if self.multilayer:
+    if self.multilayerim3:
       return RectangleReadIm3MultiLayer
     else:
       return RectangleReadIm3
@@ -1030,7 +1030,7 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase, SelectLayersComponentT
   """
   @property
   def rectangletype(self):
-    if self.multilayer:
+    if self.multilayercomponenttiff:
       return RectangleReadComponentTiffMultiLayer
     else:
       return RectangleReadComponentTiffSingleLayer
@@ -1486,7 +1486,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
   flatfielding effects, and/or warping effects
   """
 
-  multilayer = True #The original files are multilayer, we're just going to be working with one of them
+  multilayerim3 = True #The original files are multilayer, we're just going to be working with one of them
   rectangletype = RectangleCorrectedIm3SingleLayer
 
   def __init__(self,*args,layer=1,**kwargs) :
@@ -1577,7 +1577,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
   loads the rectangle images from im3 files, and corrects the rectangle images for differences in exposure time, flatfielding effects, and/or warping
   """
 
-  multilayer = True
+  multilayerim3 = True
   rectangletype = RectangleCorrectedIm3MultiLayer
 
   def __init__(self,*args,**kwargs) :
@@ -1806,7 +1806,7 @@ class ReadRectanglesSegmentedComponentTiffBase(ReadRectanglesComponentTiffBase, 
 
   @property
   def rectangletype(self):
-    if self.multilayer:
+    if self.multilayercomponenttiff:
       return RectangleReadSegmentedComponentTiffMultiLayer
     else:
       return RectangleReadSegmentedComponentTiffSingleLayer

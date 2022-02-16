@@ -442,6 +442,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleReadComponentTiffBase):
   def componenttiffloaderkwargs(self):
     return {
       **super().componenttiffloaderkwargs,
+      "layers": self.layerscomponenttiff,
     }
 
 class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
