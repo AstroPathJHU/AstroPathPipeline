@@ -1,11 +1,11 @@
-import collections, contextlib, cv2, more_itertools, numpy as np, sklearn.decomposition
+import abc, collections, contextlib, cv2, methodtools, more_itertools, numpy as np, sklearn.decomposition
 try:
   contextlib.nullcontext
 except AttributeError:
   import contextlib2 as contextlib
 
 from ...shared.logging import dummylogger
-from ...shared.rectangle import RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, Rectangle, RectangleReadIm3MultiLayer
+from ...shared.rectangle import Rectangle, RectangleReadComponentTiffBase, RectangleReadComponentTiffMultiLayer, RectangleReadComponentTiffSingleLayer, RectangleReadIm3Base, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer
 from ...shared.rectangletransformation import RectangleTransformationBase
 from ...utilities import units
 from .flatfield import meanimage
@@ -57,17 +57,22 @@ class AlignmentRectangleBase(Rectangle):
   Rectangle that divides the image by the
   mean image over all of the rectangles in the set.
   """
-  def __post_init__(self, *args, mean_image=None, use_mean_image=True, logger=dummylogger, transformations=None, **kwargs):
-    if transformations is None: transformations = []
+  def __post_init__(self, *args, mean_image=None, use_mean_image=True, logger=dummylogger, **kwargs):
     if use_mean_image:
       self.__meanimagetransformation = ApplyMeanImage(mean_image=mean_image, logger=logger)
-      self.__meanimagetransformationindex = len(transformations)
-      transformations.append(self.__meanimagetransformation)
     else:
       self.__meanimagetransformation = None
-    super().__post_init__(*args, transformations=transformations, **kwargs)
+    super().__post_init__(*args, **kwargs)
     self.__rawimage = None
     self.__logger = logger
+
+  @property
+  @abc.abstractmethod
+  def imageloaderbeforeflatfield(self): pass
+  @methodtools.lru_cache()
+  @property
+  def alignmentimageloader(self):
+    return TransformedImage(self.imageloaderbeforeflatfield, self.__meanimagetransformation)
 
   def setrectanglelist(self, *args, **kwargs):
     if self.__meanimagetransformation is not None:
@@ -83,67 +88,41 @@ class AlignmentRectangleBase(Rectangle):
     return self.__meanimagetransformation.meanimage
 
   def using_image_before_flatfield(self):
-    if self.__meanimagetransformation is None: return contextlib.nullcontext()
-    return self.using_image(self.__meanimagetransformationindex)
+    return self.imageloaderbeforeflatfield.using_image()
   @property
   def image_before_flatfield(self):
-    return self.any_image(self.__meanimagetransformationindex)
+    return self.imageloaderbeforeflatfield.image
+  def using_alignment_image(self):
+    return self.alignmentimageloader.using_image()
+  @property
+  def alignment_image(self):
+    return self.alignmentimageloader.image
 
-class AlignmentRectangle(AlignmentRectangleBase, RectangleReadIm3):
+class AlignmentRectangleIm3MultiLayer(AlignmentRectangleBase, RectangleReadIm3MultiLayer):
+  def __init_subclass__(cls, *args, **kwargs):
+    super().__init_subclass__(*args, **kwargs)
+    if issubclass(cls, RectangleReadComponentTiffBase):
+      raise ValueError("Alignment rectangle has to read im3 or component tiff, not both")
+  @methodtools.lru_cache()
+  @property
+  def imageloaderbeforeflatfield(self):
+    return self.im3loader
+
+class AlignmentRectangleIm3SingleLayer(AlignmentRectangleIm3MultiLayer, RectangleReadIm3SingleLayer):
   pass
 
-class AlignmentRectangleMultiLayer(AlignmentRectangleBase, RectangleReadIm3MultiLayer):
+class AlignmentRectangleComponentTiff(AlignmentRectangleBase, RectangleReadComponentTiffBase):
   pass
 
-class AlignmentRectangleComponentTiff(AlignmentRectangleBase, RectangleReadComponentTiffSingleLayer):
+class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleComponentTiff, RectangleReadComponentTiffMultiLayer):
+  def __init_subclass__(cls, *args, **kwargs):
+    super().__init_subclass__(*args, **kwargs)
+    if issubclass(cls, RectangleReadIm3Base):
+      raise ValueError("Alignment rectangle has to read im3 or component tiff, not both")
+  @methodtools.lru_cache()
+  @property
+  def imageloaderbeforeflatfield(self):
+    return self.componenttiffloader
+
+class AlignmentRectangleComponentTiffSingleLayer(AlignmentRectangleComponentTiff, RectangleReadComponentTiffSingleLayer):
   pass
-
-class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleBase, RectangleReadComponentTiffMultiLayer):
-  pass
-
-class ConsolidateBroadbandFilters(RectangleTransformationBase):
-  """
-  Rectangle transformation that turns a multilayer rectangle image
-  into one with fewer layers, one for each broadband filter.  Each
-  layer is extracted from a PCA over all the layers within that filter.
-  """
-  def __init__(self, layershifts, broadbandfilters=None):
-    self.__layershifts = layershifts
-    self.__broadbandfilters = broadbandfilters
-
-  def setbroadbandfilters(self, broadbandfilters):
-    self.__broadbandfilters = broadbandfilters
-
-  def transform(self, originalimage):
-    if self.__broadbandfilters is None:
-      raise ValueError("Have to call setbroadbandfilters first")
-    shifted = collections.defaultdict(list)
-    for layer, shift, filter in more_itertools.zip_equal(originalimage, self.__layershifts, self.__broadbandfilters):
-      dx, dy = units.nominal_values(shift)
-      shifted[filter].append(
-        cv2.warpAffine(
-          layer,
-          np.array([[1, 0, dx], [0, 1, dy]]),
-          flags=cv2.INTER_CUBIC,
-          borderMode=cv2.BORDER_REPLICATE,
-          dsize=layer.T.shape,
-        )
-      )
-
-    shifted = {k: np.array(v) for k, v in shifted.items()}
-
-    pca = sklearn.decomposition.PCA(n_components=1, copy=False)
-    pcas = {
-      filter:
-      pca.fit_transform(
-        layers
-        .reshape(
-          layers.shape[0], layers.shape[1]*layers.shape[2]
-        ).T
-      ).reshape(
-        layers.shape[1], layers.shape[2]
-      )
-      for filter, layers in shifted.items()
-    }
-
-    return np.array(list(pcas.values()))

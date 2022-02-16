@@ -9,7 +9,7 @@ from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
-from .rectangle import AlignmentRectangle, AlignmentRectangleBase, AlignmentRectangleComponentTiff
+from .rectangle import AlignmentRectangleBase, AlignmentRectangleComponentTiffSingleLayer, AlignmentRectangleIm3SingleLayer
 from .stitch import AffineEntry, ReadStitchResult, stitch
 
 class AlignSampleBase(SampleBase):
@@ -367,15 +367,17 @@ class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
   """
   An alignment set that uses im3 images
   """
-  rectangletype = AlignmentRectangle
-  def __init__(self, *args, filetype="flatWarp", **kwargs):
-    super().__init__(*args, filetype=filetype, **kwargs)
+  rectangletype = AlignmentRectangleIm3SingleLayer
+  def __init__(self, *args, filetype="flatWarp", layer=None, **kwargs):
+    super().__init__(*args, filetype=filetype, layerim3=layer, **kwargs)
 
 class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsComponentTiffBase):
   """
   An alignment set that uses component tiffs
   """
-  rectangletype = AlignmentRectangleComponentTiff
+  rectangletype = AlignmentRectangleComponentTiffSingleLayer
+  def __init__(self, *args, layer=None, **kwargs):
+    super().__init__(*args, layercomponenttiff=layer, **kwargs)
 
 class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase):
   #An alignment set that runs on im3 images and can write results to the dbload folder.

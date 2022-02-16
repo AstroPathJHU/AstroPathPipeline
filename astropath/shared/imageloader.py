@@ -88,6 +88,7 @@ class TransformedImage(ImageLoaderBase):
     self.__transformation = transformation
   def getimage(self):
     with self.__previmageloader.using_image() as im:
+      if self.__transformation is None: return im
       return self.__transformation.transform(im)
 
 class ImageLoaderIm3Base(ImageLoaderBase):

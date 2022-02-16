@@ -134,7 +134,7 @@ class Rectangle(DataClassWithPscale):
     """
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
 
-class RectangleReadIm3MultiLayer(Rectangle):
+class RectangleReadIm3Base(Rectangle):
   """
   Rectangle class that reads the image from a sharded im3
   (could be raw, flatw, etc.)
@@ -172,19 +172,8 @@ class RectangleReadIm3MultiLayer(Rectangle):
   def nlayersim3(self, nlayersim3): self.__nlayersim3 = nlayersim3
   nlayersim3: int = MetaDataAnnotation(nlayersim3, includeintable=False, use_default=False)
   @property
+  @abc.abstractmethod
   def layersim3(self): return self.__layersim3
-  @layersim3.setter
-  def layersim3(self, layersim3): self.__layersim3 = layersim3
-  layersim3: list = MetaDataAnnotation(layersim3, includeintable=False, use_default=False)
-
-  def __post_init__(self, *args, **kwargs):
-    super().__post_init__(*args, **kwargs)
-    if self.layersim3 is None: self.layersim3 = range(1, self.nlayersim3+1)
-    if -1 in self.layersim3:
-      if len(self.layersim3) > 1:
-        raise ValueError(f"layersim3 given are {self.layersim3}: if you want to include -1, meaning all layersim3, that should be the only one in the list")
-      self.layersim3 = range(1, self.nlayersim3+1)
-    self.layersim3 = tuple(self.layersim3)
 
   @property
   def imageshape(self):
@@ -226,7 +215,24 @@ class RectangleReadIm3MultiLayer(Rectangle):
     all = self.allbroadbandfilters
     return [all[layer-1] for layer in self.__layersim3]
 
-class RectangleReadIm3(RectangleReadIm3MultiLayer):
+class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
+  @property
+  def layersim3(self): return self.__layersim3
+  @layersim3.setter
+  def layersim3(self, layersim3): self.__layersim3 = layersim3
+  layersim3: list = MetaDataAnnotation(layersim3, includeintable=False, use_default=False)
+
+  def __post_init__(self, *args, **kwargs):
+    super().__post_init__(*args, **kwargs)
+    if self.layersim3 is None: self.layersim3 = range(1, self.nlayersim3+1)
+    if -1 in self.layersim3:
+      if len(self.layersim3) > 1:
+        raise ValueError(f"layersim3 given are {self.layersim3}: if you want to include -1, meaning all layersim3, that should be the only one in the list")
+      self.layersim3 = range(1, self.nlayersim3+1)
+    self.layersim3 = tuple(self.layersim3)
+
+
+class RectangleReadIm3SingleLayer(RectangleReadIm3Base):
   """
   Single layer image read from a sharded im3.
   You can also use RectangleReadIm3MultiLayer and write layersim3=[i],
@@ -236,30 +242,28 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   """
 
   @property
+  def layerim3(self): return self.__layerim3
+  @layerim3.setter
+  def layerim3(self, layerim3): self.__layerim3 = layerim3
+  layerim3: list = MetaDataAnnotation(layerim3, includeintable=False, use_default=False)
+  @property
   def readlayerfile(self): return self.__readlayerfile
   @readlayerfile.setter
   def readlayerfile(self, readlayerfile): self.__readlayerfile = readlayerfile
   readlayerfile: bool = MetaDataAnnotation(True, includeintable=False, use_default=False)
 
   @classmethod
-  def transforminitargs(cls, *args, layer, readlayerfile=True, **kwargs):
+  def transforminitargs(cls, *args, readlayerfile=True, **kwargs):
     morekwargs = {
-      "layersim3": (layer,),
       "readlayerfile": readlayerfile,
     }
     if readlayerfile and "nlayersim3" not in kwargs:
       morekwargs["nlayersim3"] = 1
     return super().transforminitargs(*args, **kwargs, **morekwargs)
 
-  def __post_init__(self, *args, **kwargs):
-    if self.nlayersim3 != 1 and self.readlayerfile:
-      raise ValueError("Provided nlayersim3!=1, readlayerfile=True")
-    super().__post_init__(*args, **kwargs)
-
   @property
-  def layerim3(self):
-    layerim3, = self.layersim3
-    return layerim3
+  def layersim3(self):
+    return self.layerim3,
 
   @property
   def im3file(self):
