@@ -406,10 +406,6 @@ class RectangleReadComponentTiffBase(RectangleWithImageBase):
     return self.__componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
 
   @property
-  def layerscomponenttiff(self):
-    return self.__layerscomponenttiff
-
-  @property
   def imageloader(self): return self.imageloadertype(**self.imageloaderkwargs)
   @property
   @abc.abstractmethod

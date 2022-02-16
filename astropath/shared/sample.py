@@ -1014,9 +1014,6 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
                    the class uses multilayer images or not
   """
   @property
-  def with_seg(self): return False
-
-  @property
   def rectangletype(self):
     if self.multilayer:
       return RectangleReadComponentTiffMultiLayer
@@ -1024,10 +1021,11 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesWithLayers, SelectLayersComp
       return RectangleReadComponentTiffSingleLayer
   @property
   def rectangleextrakwargs(self):
+    print(super().rectangleextrakwargs)
     kwargs = {
       **super().rectangleextrakwargs,
-      "imagefolder": self.componenttiffsfolder,
-      "with_seg": self.with_seg,
+      "componenttifffolder": self.componenttiffsfolder,
+      "nlayerscomponenttiff": self.nlayersunmixed,
     }
     return kwargs
 
@@ -1766,9 +1764,6 @@ class InformSegmentationSample(SampleWithSegmentations):
 
 class ReadRectanglesSegmentedComponentTiffBase(ReadRectanglesComponentTiffBase, InformSegmentationSample):
   @property
-  def with_seg(self): return True
-
-  @property
   def masklayer(self):
     return self.nlayersunmixed + 1
   def segmentationnucleuslayer(self, segid):
@@ -1787,6 +1782,12 @@ class ReadRectanglesSegmentedComponentTiffBase(ReadRectanglesComponentTiffBase, 
       idx -= self.nsegmentations
     return self.segmentationids[idx-1]
 
+  @property
+  def rectangletype(self):
+    if self.multilayer:
+      return RectangleReadSegmentedComponentTiffMultiLayer
+    else:
+      return RectangleReadSegmentedComponentTiffSingleLayer
   @property
   def rectangleextrakwargs(self):
     kwargs = {
