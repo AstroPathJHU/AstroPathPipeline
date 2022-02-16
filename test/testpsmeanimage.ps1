@@ -40,18 +40,20 @@ Class testpsmeanimage {
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $this.testpsmeanimageconstruction($task)
         $inp = meanimage $task 
-        $this.testprocessroot($inp)
-        $this.testcleanupbase($inp)
-        $this.comparepymeanimageinput($inp)
-        $this.runpytaskpyerror($inp)
-        $this.testlogpyerror($inp)
-        $this.runpytaskaperror($inp)
-        $this.testlogaperror($inp)
-        $this.runpytaskexpected($inp)
-        $this.testlogsexpected($inp)
-        $this.testreturndatapy($inp)
+        # $this.testprocessroot($inp)
+        # $this.testcleanupbase($inp)
+        # $this.comparepymeanimageinput($inp)
+        # $this.runpytaskpyerror($inp)
+        # $this.testlogpyerror($inp)
+        # $this.runpytaskaperror($inp)
+        # $this.testlogaperror($inp)
+        # $this.runpytaskexpected($inp)
+        # $this.testlogsexpected($inp)
+        # $this.runpytaskexpectedapid($inp)
+        # $this.testlogsexpectedapid($inp)
+        # $this.testreturndatapy($inp)
         # $this.testmasks($inp)
-        $this.testcleanup($inp)
+        # $this.testcleanup($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -407,6 +409,85 @@ Class testpsmeanimage {
     run with the correct input.
     --------------------------------------------#>
     [void]testlogsexpected($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test python expected log output started'
+        $inp.getmodulename()
+        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
+        Write-Host '    open log output'
+        $logoutput = $inp.sample.GetContent($externallog)
+        Write-Host '    test log output'
+        #
+        try {
+            $inp.getexternallogs($externallog)
+        } catch {
+            Write-Host '   '$logoutput
+            Throw $_.Exception.Message
+        }
+        #
+        Write-Host 'test python expected log output finished'
+        #
+    }
+    <# --------------------------------------------
+    runpytaskexpected
+    check that the python task completes correctly 
+    when run with the correct input.
+    --------------------------------------------#>
+    [void]runpytaskexpectedapid($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test python meanimage in workflow without apid started'
+        <#
+        Write-Host '    removing sampledef file'
+        $samplefile = '\sampledef.csv'
+        $samplesor = $this.basepath 
+        $sampledes = $this.processloc, $this.slideid, 'test' -join '\'
+        $sor = ($samplesor + $samplefile)
+        $inp.sample.copy($sor, $sampledes)
+        $inp.sample.removefile($sor)
+        #
+        $samplefile1 = '\AstropathSampledef.csv'
+        $samplesor1 = $this.basepath, '\astropath_processing' -join '\'
+        $sampledes1 = $this.processloc, $this.slideid, 'test\test' -join '\'
+        $sor = ($samplesor1 + $samplefile1)
+        $inp.sample.copy($sor, $sampledes1)
+        $inp.sample.removefile($sor)
+        #>
+        $inp.sample.CreateNewDirs($inp.processloc)
+        $rpath = $PSScriptRoot + '\data\raw'
+        $dpath = $this.basepath
+        $inp.getmodulename()
+        #
+        $et_offset_file = $this.basepath,'corrections\best_exposure_time_offsets_Vectra_9_8_2020.csv' -join '\'
+        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath) 
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $inp.sample.createdirs($des)
+        #
+        $addedargs = '--selectrectangles',
+                     '17 18 19 20 23 24 25 26 29 30 31 32 35 36 37 38 39 40', 
+                     '--maskroot', $this.processloc,
+                     '--exposure-time-offset-file', $et_offset_file -join ' '
+                     
+        $pythontask = $pythontask, $addedargs -join ' '
+        #
+        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
+        $this.runpytesttask($inp, $pythontask, $externallog)
+        <#
+        Write-Host '    putting sampledef file back'
+        $sor = ($sampledes + $samplefile)
+        $inp.sample.copy($sor, $samplesor)
+        $sor = ($sampledes1 + $samplefile1)
+        $inp.sample.copy($sor, $samplesor1)
+        #>
+        Write-Host 'test python meanimage in workflow without apid finished'
+        #
+    }
+    <# --------------------------------------------
+    testlogsexpected
+    check that the log is parsed correctly when
+    run with the correct input.
+    --------------------------------------------#>
+    [void]testlogsexpectedapid($inp){
         #
         Write-Host '.'
         Write-Host 'test python expected log output started'

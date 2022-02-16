@@ -166,7 +166,7 @@
     [void]removedir([string]$dir){
         #
         if (test-path $dir){
-            gci $dir -Recurse | Remove-Item -force -Confirm:$false -recurse
+            Get-ChildItem $dir -Recurse | Remove-Item -force -Confirm:$false -recurse
             remove-item $dir -force -Confirm:$false -Recurse
         }
         #
@@ -183,7 +183,7 @@
     [void]removefile([string]$folder, [string] $filespec){
         #
         $filespec = '*' + $filespec
-        $files = gci ($folder+'\*') -Include  $filespec -Recurse 
+        $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
         if ($files ){ Remove-Item $files -force -recurse -Confirm:$false}
         #
     }
