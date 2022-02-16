@@ -17,15 +17,14 @@ class ImageLoaderBase(abc.ABC):
     self.__accessed_image = False
     self.__using_image_counter = 0
     self.__debug_load_image_counter = 0
-    self.__debug_load_image_traceback = []
+    self.__debug_load_image_tracebacks = []
 
   def __del__(self):
     if self._DEBUG:
-      for i, ctr in enumerate(self.__debug_load_images_counter):
-        if ctr > 1:
-          for formattedtb in self.__debug_load_images_tracebacks[i]:
-            printlogger("loadimage").debug("".join(formattedtb))
-          warnings.warn(f"Loaded image {i} for rectangle {self} {ctr} times")
+      if self.__debug_load_image_counter > 1:
+        for formattedtb in self.__debug_load_image_tracebacks:
+          printlogger("loadimage").debug("".join(formattedtb))
+        warnings.warn(f"Loaded image for rectangle {self} {ctr} times")
 
   @abc.abstractmethod
   def getimage(self):
@@ -53,7 +52,7 @@ class ImageLoaderBase(abc.ABC):
     self.__accessed_image = False
     self.__check_delete_image()
 
-  def __check_delete_images(self):
+  def __check_delete_image(self):
     """
     This gets called whenever you delete an image or leave a using_image context.
     It deletes images that are no longer needed in memory.
@@ -226,7 +225,7 @@ class ImageLoaderComponentTiffBase(ImageLoaderTiff):
 
   def checktiffpages(self, pages):
     pagegroupslices = self.pagegroupslices
-    pageindices = sorted(sum((list(range(slc.start, slc.end)) for slc in pagegroupslices), []))
+    pageindices = sorted(sum((list(range(slc.start, slc.stop)) for slc in pagegroupslices), []))
     np.testing.assert_array_equal(pageindices, list(range(max(pageindices)+1)))
 
     npages = len(pages)
@@ -234,8 +233,8 @@ class ImageLoaderComponentTiffBase(ImageLoaderTiff):
       raise ValueError(f"Expected {len(pageindices)} pages, found {npages}")
 
     alllayers = range(1, npages+1)
-    if set(alllayers) - set(self.layers):
-      raise ValueError("Invalid layers {set(alllayers) - set(self.layers)}")
+    if set(self.layers) - set(alllayers):
+      raise ValueError(f"Invalid layers {set(alllayers) - set(self.layers)}")
 
     layergroups = [list(alllayers[slc]) for slc in pagegroupslices]
     relevantgroups = ((i, group) for i, group in enumerate(layergroups) if set(group) & set(self.layers))
@@ -259,7 +258,7 @@ class ImageLoaderSegmentedComponentTiff(ImageLoaderComponentTiffBase):
     super().__init__(*args, **kwargs)
     self.__nsegmentations = nsegmentations
   @property
-  def nsegmentations(self): return self.nsegmentations
+  def nsegmentations(self): return self.__nsegmentations
   @property
   def pagegroupslices(self):
     return slice(0, self.nlayers), slice(self.nlayers, self.nlayers+1), slice(self.nlayers+1, self.nlayers+1+self.nsegmentations*2)
