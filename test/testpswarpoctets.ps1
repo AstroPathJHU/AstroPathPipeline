@@ -39,19 +39,19 @@ Class testpswarpoctets {
         Write-Host '---------------------test ps [warpoctets]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        #$this.testpswarpoctetsconstruction($task)
+        $this.testpswarpoctetsconstruction($task)
         $inp = warpoctets $task
-        #$this.testprocessroot($inp)
-        #$this.comparepywarpoctetsinput($inp)
-        #$this.runpytaskpyerror($inp)
-        #$this.testlogpyerror($inp)
-        #$this.buildtestflatfield($inp)
-        #$this.runpytaskaperror($inp)
-        #$this.testlogaperror($inp)
-        #$this.setupsample($inp)
-        #$this.runpytaskexpected($inp)
+        $this.testprocessroot($inp)
+        $this.comparepywarpoctetsinput($inp)
+        $this.runpytaskpyerror($inp)
+        $this.testlogpyerror($inp)
+        $this.buildtestflatfield($inp)
+        $this.runpytaskaperror($inp)
+        $this.testlogaperror($inp)
+        $this.setupsample($inp)
+        $this.runpytaskexpected($inp)
         $this.testlogsexpected($inp)
-        #$this.CleanupTest($inp)
+        $this.CleanupTest($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -88,6 +88,7 @@ Class testpswarpoctets {
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
+        $inp.sample.start($this.module)
         Write-Host '    warpoctets command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
@@ -257,6 +258,7 @@ Class testpswarpoctets {
         #
         try {
             $inp.getexternallogs($externallog)
+            Throw ''
         } catch {
             $err = $_.Exception.Message
             $expectedoutput = 'Error in launching python task'
@@ -483,7 +485,6 @@ Class testpswarpoctets {
         $task = $import, $task1, $task2, $task3, $task4 -join '; '
         Write-Host '    Task:' $task
         #
-        $inp.sample.checkconda()
         conda run -n $inp.sample.pyenv() python -c $task
         if (!(test-path $this.batchreferencefile )){
             Throw 'Batch flatfield reference file failed to create'

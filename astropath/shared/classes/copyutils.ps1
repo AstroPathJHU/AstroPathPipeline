@@ -17,12 +17,10 @@ class copyutils{
     ----------------------------------------- #>
     [switch]isWindows(){
         #
-        try{
-            (Get-WMIObject win32_operatingsystem).name | out-null
+        if ($env:OS -contains 'Windows_NT'){
             return $true
-        } catch {
-            return $false
         }
+        return $false
         #
     }
     <# -----------------------------------------

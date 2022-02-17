@@ -257,7 +257,6 @@
         #
         $server = $this.defServer()
         $drive = '\\'+$server+'\C$'
-        $condascripts = ''
         #
         $minicondapath = ($drive + '\ProgramData\Miniconda3')
         if (!(test-path $minicondapath )){

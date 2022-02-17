@@ -1,8 +1,8 @@
 ﻿<#
 --------------------------------------------------------
-batchmeanimagecomparison
-Created By: Andrew Jorquera
-Last Edit: 10/27/2021
+batchmicomp
+Benjamin Green, Andrew Jorquera
+Last Edit: 02.16.2022
 --------------------------------------------------------
 #>
 class batchmicomp : moduletools {

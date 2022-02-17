@@ -1,7 +1,7 @@
 ﻿<# -------------------------------------------
  moduletools
- created by: Benjamin Green - JHU
- Last Edit: 10.13.2020
+ Benjamin Green - JHU
+ Last Edit: 02.16.2022
  --------------------------------------------
  Description
  general functions which may be needed by
@@ -379,10 +379,17 @@
     [void]parsepysamplelog(){
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
         $sampleoutput | ForEach-Object {
+            #
             if ($_ -notmatch 'DEBUG'){
                 $this.sample.message = ($_ -split ';')[3]
                 $this.sample.Writelog(2)
             }
+            #
+            if ($_ -match 'ERROR'){
+                $this.sample.message = ($_ -split ';')[3]
+                $this.sample.Writelog(4)
+            }
+            #
         }
     }
     <# -----------------------------------------

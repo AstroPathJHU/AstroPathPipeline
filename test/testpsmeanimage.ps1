@@ -40,20 +40,20 @@ Class testpsmeanimage {
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $this.testpsmeanimageconstruction($task)
         $inp = meanimage $task 
-        # $this.testprocessroot($inp)
-        # $this.testcleanupbase($inp)
-        # $this.comparepymeanimageinput($inp)
-        # $this.runpytaskpyerror($inp)
-        # $this.testlogpyerror($inp)
-        # $this.runpytaskaperror($inp)
-        # $this.testlogaperror($inp)
-        # $this.runpytaskexpected($inp)
-        # $this.testlogsexpected($inp)
+        $this.testprocessroot($inp)
+        $this.testcleanupbase($inp)
+        $this.comparepymeanimageinput($inp)
+        $this.runpytaskpyerror($inp)
+        $this.testlogpyerror($inp)
+        $this.runpytaskaperror($inp)
+        $this.testlogaperror($inp)
+        $this.runpytaskexpected($inp)
+        $this.testlogsexpected($inp)
         # $this.runpytaskexpectedapid($inp)
         # $this.testlogsexpectedapid($inp)
-        # $this.testreturndatapy($inp)
-        # $this.testmasks($inp)
-        # $this.testcleanup($inp)
+        $this.testreturndatapy($inp)
+        $this.testmasks($inp)
+        $this.testcleanup($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -88,6 +88,7 @@ Class testpsmeanimage {
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
+        $inp.sample.start($this.module)
         Write-Host '    meanimage command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog

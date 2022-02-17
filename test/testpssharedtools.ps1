@@ -17,7 +17,7 @@
         #
         Write-Host '---------------------test ps [sharedtools]---------------------'
         $this.importmodule()
-        #$this.testconstructor()
+        $this.testconstructor()
         $tools = sharedtools
         $this.testcondaenvir($tools)
         $this.testcheckgitrepo($tools)
@@ -257,7 +257,11 @@
         Write-Host '.'
         Write-Host 'test that the conda enviroment can be imported'
         #
-        $tools.CheckConda()
+        if ($tools.isWindows){
+            $tools.CheckConda()
+        } else {
+            Invoke-Expression 'meanimagesample -h'
+        }
         #
         if ((get-module).name -notcontains 'Conda'){
             Throw 'Conda not installed correctly'

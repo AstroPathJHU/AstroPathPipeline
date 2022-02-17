@@ -94,7 +94,7 @@ class sampledef : sharedtools{
         }
         $this.project = $batch.Project[0]
         $this.cohort = $batch.Cohort[0]
-        $this.BatchID = $batch.BatchID.padleft(2, '0')
+        $this.BatchID = $batch.BatchID[0].padleft(2, '0')
         $this.slideid = $this.BatchID
         $this.batchslides = $batch
         #
