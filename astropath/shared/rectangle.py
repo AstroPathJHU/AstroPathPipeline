@@ -243,8 +243,6 @@ class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
     super().__post_init__(*args, **kwargs)
     if self.layersim3 is None: self.layersim3 = range(1, self.nlayersim3+1)
     if -1 in self.layersim3:
-      if len(self.layersim3) > 1:
-        raise ValueError(f"layersim3 given are {self.layersim3}: if you want to include -1, meaning all layersim3, that should be the only one in the list")
       self.layersim3 = range(1, self.nlayersim3+1)
     self.layersim3 = tuple(self.layersim3)
 

@@ -18,8 +18,8 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=None,**kwargs) :
-        super().__init__(*args,**kwargs)
+    def __init__(self,*args,layers,workingdir=None,**kwargs) :
+        super().__init__(*args,layersim3=layers,**kwargs)
         self.__workingdir = workingdir
         #if no directory is given for the output
         if self.__workingdir is None :
@@ -92,7 +92,7 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
     def workflowkwargs(self) :
         return {
             **super().workflowkwargs,
-            'layers':self.layers,
+            'layers':self.layersim3,
             'workingdir':self.__workingdir
         }
 

@@ -60,10 +60,10 @@ class TestApplyFlatWCohort(TestBaseCopyInput, TestBaseSaveOutput) :
                 '--njobs','1',
                 '--allow-local-edits',
                 '--ignore-dependencies',
-                '--selectrectangles'
+                '--debug',
+                '--selectrectangles',
+                *(str(rn) for rn in rectangle_ns_with_raw_files),
                 ]
-        for rn in rectangle_ns_with_raw_files :
-            args.append(str(rn))
         ApplyFlatWCohort.runfromargumentparser(args=args)
         #compare the results to the reference files
         try :
