@@ -130,7 +130,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
         result.append(Row(**row, **extrakwargs))
       except (TypeError, ValueError):
         if isinstance(row, collections.OrderedDict): row = dict(row) #compatibility in doctest with python < 3.8
-        raise ValueError(f"Row has bad syntax:\n{filename}\n{f.last.rstrip()}\n{row}\n{extrakwargs}")
+        raise ValueError(f"Row has bad syntax:\n{filename}\n{f.last.rstrip()}\n{Row}\n{row}\n{extrakwargs}")
 
   return result
 

@@ -69,6 +69,10 @@ class AlignmentRectangleBase(Rectangle):
   @property
   @abc.abstractmethod
   def imageloaderbeforeflatfield(self): pass
+  @property
+  @abc.abstractmethod
+  def alignmentlayers(self): pass
+
   @methodtools.lru_cache()
   @property
   def alignmentimageloader(self):
@@ -95,10 +99,10 @@ class AlignmentRectangleBase(Rectangle):
   def using_alignment_image(self):
     return self.alignmentimageloader.using_image()
   @property
-  def alignment_image(self):
+  def alignmentimage(self):
     return self.alignmentimageloader.image
 
-class AlignmentRectangleIm3MultiLayer(AlignmentRectangleBase, RectangleReadIm3MultiLayer):
+class AlignmentRectangleIm3Base(AlignmentRectangleBase, RectangleReadIm3Base):
   def __init_subclass__(cls, *args, **kwargs):
     super().__init_subclass__(*args, **kwargs)
     if issubclass(cls, RectangleReadComponentTiffBase):
@@ -107,14 +111,16 @@ class AlignmentRectangleIm3MultiLayer(AlignmentRectangleBase, RectangleReadIm3Mu
   @property
   def imageloaderbeforeflatfield(self):
     return self.im3loader
+  @property
+  def alignmentlayers(self): return self.layersim3
 
-class AlignmentRectangleIm3SingleLayer(AlignmentRectangleIm3MultiLayer, RectangleReadIm3SingleLayer):
+class AlignmentRectangleIm3MultiLayer(AlignmentRectangleBase, RectangleReadIm3MultiLayer):
   pass
 
-class AlignmentRectangleComponentTiff(AlignmentRectangleBase, RectangleReadComponentTiffBase):
+class AlignmentRectangleIm3SingleLayer(AlignmentRectangleIm3Base, RectangleReadIm3SingleLayer):
   pass
 
-class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleComponentTiff, RectangleReadComponentTiffMultiLayer):
+class AlignmentRectangleComponentTiffBase(AlignmentRectangleBase, RectangleReadComponentTiffBase):
   def __init_subclass__(cls, *args, **kwargs):
     super().__init_subclass__(*args, **kwargs)
     if issubclass(cls, RectangleReadIm3Base):
@@ -124,5 +130,8 @@ class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleComponentTiff,
   def imageloaderbeforeflatfield(self):
     return self.componenttiffloader
 
-class AlignmentRectangleComponentTiffSingleLayer(AlignmentRectangleComponentTiff, RectangleReadComponentTiffSingleLayer):
+class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleComponentTiffBase, RectangleReadComponentTiffMultiLayer):
+  pass
+
+class AlignmentRectangleComponentTiffSingleLayer(AlignmentRectangleComponentTiffBase, RectangleReadComponentTiffSingleLayer):
   pass

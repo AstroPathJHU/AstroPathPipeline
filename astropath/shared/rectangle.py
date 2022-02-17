@@ -451,7 +451,7 @@ class RectangleReadComponentTiffMultiLayer(RectangleReadComponentTiffBase):
 class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
   """
   Single layer image read from a component tiff.
-  You can also use RectangleReadIm3MultiLayer and write layers=[i],
+  You can also use RectangleReadComponentTiffMultiLayer and write layers=[i],
   but this class gives you a 2D array as the image instead of a 3D array
   with shape[2] = 1.
   """
