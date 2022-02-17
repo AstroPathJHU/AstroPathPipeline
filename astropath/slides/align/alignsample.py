@@ -330,7 +330,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
       self.csv("constants"),
       self.csv("overlap"),
       self.csv("rect"),
-      *(r.imagefile for r in self.rectangles),
+      *(r.im3file for r in self.rectangles),
     ]
 
   @classmethod
