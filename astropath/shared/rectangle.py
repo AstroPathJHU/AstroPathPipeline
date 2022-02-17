@@ -5,7 +5,7 @@ from ..utilities.miscfileio import with_stem
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
-from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer
+from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer
 from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
 from .rectangletransformation import RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationSinglelayer
 
@@ -176,7 +176,7 @@ class RectangleReadIm3Base(Rectangle):
   def layersim3(self): return self.__layersim3
 
   @property
-  def imageshape(self):
+  def im3shape(self):
     return [
       floattoint(float(self.height / self.onepixel)),
       floattoint(float(self.width / self.onepixel)),
@@ -215,6 +215,23 @@ class RectangleReadIm3Base(Rectangle):
     all = self.allbroadbandfilters
     return [all[layer-1] for layer in self.__layersim3]
 
+  @methodtools.lru_cache()
+  @property
+  def im3loader(self):
+    return self.im3loadertype(**self.im3loaderkwargs)
+  def using_im3(self):
+    return self.im3loader.using_image()
+  @property
+  @abc.abstractmethod
+  def im3loadertype(self): pass
+  @property
+  @abc.abstractmethod
+  def im3loaderkwargs(self): return {
+    "filename": self.im3file,
+    "width": floattoint(float(self.width / self.onepixel)),
+    "height": floattoint(float(self.height / self.onepixel)),
+  }
+
 class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
   @property
   def layersim3(self): return self.__layersim3
@@ -231,6 +248,15 @@ class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
       self.layersim3 = range(1, self.nlayersim3+1)
     self.layersim3 = tuple(self.layersim3)
 
+  @property
+  def im3loadertype(self):
+    return ImageLoaderIm3MultiLayer
+  @property
+  def im3loaderkwargs(self): return {
+    **super().im3loaderkwargs,
+    "nlayers": self.nlayersim3,
+    "layers": self.layersim3,
+  }
 
 class RectangleReadIm3SingleLayer(RectangleReadIm3Base):
   """
@@ -272,9 +298,9 @@ class RectangleReadIm3SingleLayer(RectangleReadIm3Base):
       folder = result.parent
       basename = result.name
       if basename.endswith(".camWarp") or basename.endswith(".dat"):
-        basename += f"_layer{self.layer:02d}"
+        basename += f"_layer{self.layerim3:02d}"
       elif basename.endswith(UNIV_CONST.FLATW_EXT):
-        basename += f"{self.layer:02d}"
+        basename += f"{self.layerim3:02d}"
       else:
         assert False
       result = folder/basename
@@ -295,6 +321,26 @@ class RectangleReadIm3SingleLayer(RectangleReadIm3Base):
     """
     _, = self.broadbandfilters
     return _
+
+  @property
+  def im3loadertype(self):
+    if self.readlayerfile:
+      return ImageLoaderIm3SingleLayer
+    else:
+      return ImageLoaderIm3MultiLayer
+  @property
+  def im3loaderkwargs(self):
+    result = {
+      **super().im3loaderkwargs,
+    }
+    if self.readlayerfile:
+      result.update({
+      })
+    else:
+      result.update({
+        "nlayers": self.nlayersim3,
+      })
+    return result
 
 class RectangleCorrectedIm3SingleLayer(RectangleReadIm3MultiLayer) :
   """

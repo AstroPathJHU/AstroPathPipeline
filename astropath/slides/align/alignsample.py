@@ -111,7 +111,7 @@ class AlignSampleBase(SampleBase):
         #load all the actual images (calculated by dividing by the mean
         #of the raw images), while the raw images are still in memory
         for r in self.rectangles:
-          self.__images.enter_context(r.using_image())
+          self.__images.enter_context(r.using_alignment_image())
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -239,7 +239,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     if writeimstat:
       self.imagestats = []
       for rectangle in self.rectangles:
-        with rectangle.using_image() as image:
+        with rectangle.using_alignment_image() as image:
           self.imagestats.append(
             ImageStats(
               n=rectangle.n,

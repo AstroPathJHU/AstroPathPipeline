@@ -83,7 +83,8 @@ class ImageLoaderBase(abc.ABC):
       self.__check_delete_image()
 
 class TransformedImage(ImageLoaderBase):
-  def __init__(self, previmageloader, transformation):
+  def __init__(self, previmageloader, transformation, **kwargs):
+    super().__init__(**kwargs)
     self.__previmageloader = previmageloader
     self.__transformation = transformation
   def getimage(self):
@@ -126,7 +127,7 @@ class ImageLoaderIm3Base(ImageLoaderBase):
   @abc.abstractmethod
   def imageslicefrominput(self): pass
 
-class ImageLoaderIm3(ImageLoaderIm3Base):
+class ImageLoaderIm3MultiLayer(ImageLoaderIm3Base):
   def __init__(self, *args, nlayers, width, height, selectlayers=None, **kwargs):
     super().__init__(*args, **kwargs)
     self.__nlayers = nlayers
