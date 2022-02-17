@@ -375,8 +375,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     kwargs = {"selectrectangles": [17], "dbloadroot": thisfolder/"test_for_jenkins"/"alignment", "logroot": thisfolder/"test_for_jenkins"/"alignment"}
     a1 = AlignSample(*args, **kwargs)
     a2 = AlignSample(*args, **kwargs, readlayerfile=False, layer=1)
-    i1 = a1.rectangles[0].image
-    i2 = a2.rectangles[0].image
+    i1 = a1.rectangles[0].alignmentimage
+    i2 = a2.rectangles[0].alignmentimage
     np.testing.assert_array_equal(i1, i2)
 
   def testPolaris(self):

@@ -255,7 +255,7 @@ class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
   def im3loaderkwargs(self): return {
     **super().im3loaderkwargs,
     "nlayers": self.nlayersim3,
-    "layers": self.layersim3,
+    "selectlayers": self.layersim3,
   }
 
 class RectangleReadIm3SingleLayer(RectangleReadIm3Base):
@@ -339,6 +339,7 @@ class RectangleReadIm3SingleLayer(RectangleReadIm3Base):
     else:
       result.update({
         "nlayers": self.nlayersim3,
+        "selectlayers": self.layerim3,
       })
     return result
 
