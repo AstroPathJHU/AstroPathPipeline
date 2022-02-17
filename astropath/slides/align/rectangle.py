@@ -139,8 +139,14 @@ class AlignmentRectangleComponentTiffBase(AlignmentRectangleBase, RectangleReadC
   def imageloaderbeforeflatfield(self):
     return self.componenttiffloader
 
+  @property
+  def alignmentlayers(self):
+    return self.layerscomponenttiff
+
 class AlignmentRectangleComponentTiffMultiLayer(AlignmentRectangleComponentTiffBase, RectangleReadComponentTiffMultiLayer):
   pass
 
 class AlignmentRectangleComponentTiffSingleLayer(AlignmentRectangleComponentTiffBase, RectangleReadComponentTiffSingleLayer):
-  pass
+  @property
+  def alignmentlayer(self):
+    return self.layercomponenttiff
