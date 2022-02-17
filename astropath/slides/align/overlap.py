@@ -102,7 +102,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
     super().__post_init__(*args, **kwargs)
     if layer1 is None:
       try:
-        self.rectangles[0].layer
+        self.rectangles[0].alignmentlayer
       except AttributeError:
         if len(self.rectangles[0].alignmentlayers)==1 :
           layer1 = self.rectangles[0].alignmentlayers[0]
@@ -110,7 +110,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
           raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[0].alignmentlayers}")
     if layer2 is None:
       try:
-        self.rectangles[1].layer
+        self.rectangles[1].alignmentlayer
       except AttributeError:
         if len(self.rectangles[1].alignmentlayers)==1 :
           layer2 = self.rectangles[1].alignmentlayers[0]
@@ -134,6 +134,19 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
   @property
   def ismultilayer(self):
     return any(_ is not None for _ in self.alignmentlayers)
+
+  @property
+  def alignmentlayer(self):
+    """
+    Layer number of the rectangles in the overlap
+    """
+    try:
+      layers = [r.alignmentlayer for r in self.rectangles]
+    except KeyError:
+      raise TypeError("Trying to get layer for overlap whose rectangles don't have a layer assigned")
+    if layers[0] != layers[1]:
+      raise ValueError(f"Rectangles have inconsistent layers: {layers}")
+    return layers[0]
 
   @property
   def images(self):
@@ -330,7 +343,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
       })
     else:
       result.update({
-        "layer": self.layer,
+        "layer": self.alignmentlayer,
       })
     return result
 

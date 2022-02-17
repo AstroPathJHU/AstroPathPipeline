@@ -119,7 +119,15 @@ class AlignmentRectangleIm3MultiLayer(AlignmentRectangleBase, RectangleReadIm3Mu
   pass
 
 class AlignmentRectangleIm3SingleLayer(AlignmentRectangleIm3Base, RectangleReadIm3SingleLayer):
-  pass
+  @property
+  def alignmentlayer(self):
+    #if self.readlayerfile: return None
+    result, = self.alignmentlayers
+    return result
+  @property
+  def alignmentlayers(self):
+    #if self.readlayerfile: return None
+    return super().alignmentlayers
 
 class AlignmentRectangleComponentTiffBase(AlignmentRectangleBase, RectangleReadComponentTiffBase):
   def __init_subclass__(cls, *args, **kwargs):
