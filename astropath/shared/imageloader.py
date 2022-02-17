@@ -112,7 +112,7 @@ class ImageLoaderIm3Base(ImageLoaderBase):
       ))
       result = memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput]
       if not self.__usememmap:
-        im = np.empty_like(result)
+        im = np.empty_like(result, order="C")
         im[:] = result
         result = im
       return result
