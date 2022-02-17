@@ -147,8 +147,10 @@ class ImageLoaderIm3MultiLayer(ImageLoaderIm3Base):
   def imageslicefrominput(self):
     if self.__selectlayers is None:
       layerselection = slice(None)
+    elif isinstance(self.__selectlayers, int):
+      layerselection = self.__selectlayers - 1
     else:
-      layerselection = self.__selectlayers
+      layerselection = tuple(_-1 for _ in self.__selectlayers)
     return slice(None), slice(None), layerselection
 
 class ImageLoaderIm3SingleLayer(ImageLoaderIm3Base):
