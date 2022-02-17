@@ -989,9 +989,9 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
     super().__init__(*args, **kwargs)
 
   @property
-  def nlayers(self):
+  def nlayersim3(self):
     if self.__readlayerfile: return 1
-    return super().nlayers
+    return super().nlayersim3
   @property
   def rectangletype(self):
     if self.multilayerim3:
@@ -1514,7 +1514,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     if self.flatfield_file is not None :
       #read the flatfield correction factors from the file
       flatfield = get_raw_as_hwl(self.flatfield_file,
-                                 self.rectangles[0].imageshapeinoutput[0],self.rectangles[0].imageshapeinoutput[1],self.nlayers,
+                                 self.rectangles[0].imageshapeinoutput[0],self.rectangles[0].imageshapeinoutput[1],self.nlayersim3,
                                  np.float64)
       self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
       for r in self.rectangles :
@@ -1590,7 +1590,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     """
     super().initrectangles()
     #find the median exposure times
-    slide_exp_times = np.zeros(shape=(len(self.rectangles),self.nlayers)) 
+    slide_exp_times = np.zeros(shape=(len(self.rectangles),self.nlayersim3)) 
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir,:] = r.allexposuretimes
     self.__med_ets = np.median(slide_exp_times,axis=0)
@@ -1602,7 +1602,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
         r.add_exposure_time_correction_transformation(self.__med_ets,offsets)
     if self.flatfield_file is not None :
       #read the flatfield correction factors from the file
-      flatfield = get_raw_as_hwl(self.flatfield_file,*(self.rectangles[0].imageshapeinoutput),np.float64)
+      flatfield = get_raw_as_hwl(self.flatfield_file,*(self.rectangles[0].im3shape),np.float64)
       self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
       for r in self.rectangles :
         r.add_flatfield_correction_transformation(flatfield)
@@ -1627,14 +1627,14 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
               for child3 in child2.iter() :
                 if 'name' in child3.attrib and child3.attrib['name']=='Mean' :
                   to_return = []
-                  for li in range(self.nlayers) :
+                  for li in range(self.nlayersim3) :
                     to_return.append(float(child3.text))            
                   return to_return
     #read the offsets from the given LayerOffset file
     else :
       layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
       offsets_to_return = []
-      for ln in range(1,self.nlayers+1) :
+      for ln in range(1,self.nlayersim3+1) :
           this_layer_offset = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==ln]
           if len(this_layer_offset)==1 :
               offsets_to_return.append(this_layer_offset[0])
@@ -1653,7 +1653,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     """
     warpsummaries = readtable(self.warping_file,WarpingSummary)
     warps_by_layer = []
-    for li in range(self.nlayers) :
+    for li in range(self.nlayersim3) :
       warps_by_layer.append(None)
     for ws in warpsummaries :
       if ws.n!=self.rectangles[0].imageshapeinoutput[1] or ws.m!=self.rectangles[0].imageshapeinoutput[0] :
@@ -1666,7 +1666,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
           raise ValueError(f'ERROR: warping summary {self.warping_file} has conflicting entries for image layer {ln}!')
         warps_by_layer[ln-1] = thiswarp
     self.logger.infoonenter(f'Warping corrections will be applied from {self.warping_file}')
-    for li in range(self.nlayers) :
+    for li in range(self.nlayersim3) :
       if warps_by_layer[li] is None :
         warnmsg = f'WARNING: warping summary file {self.warping_file} does not contain any definitions for image layer '
         warnmsg+= f'{li+1} and so warping corrections for this image layer WILL BE SKIPPED!'

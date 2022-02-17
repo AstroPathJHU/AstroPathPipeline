@@ -348,10 +348,8 @@ class RectangleCorrectedIm3SingleLayer(RectangleReadIm3MultiLayer) :
   """
   _DEBUG = False #tend to load these more than once
 
-  def __post_init__(self,*args,transformations=None,**kwargs) :
-    if transformations is None :
-      transformations = []
-    super().__post_init__(*args, transformations=transformations, **kwargs)
+  def __post_init__(self,*args,**kwargs) :
+    super().__post_init__(*args, **kwargs)
 
   def add_exposure_time_correction_transformation(self,med_et,offset) :
     """
@@ -385,11 +383,6 @@ class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
   """
   _DEBUG = False #Tend to use these images more than once per run
   
-  def __post_init__(self, *args, transformations=None, **kwargs) :
-    if transformations is None : 
-      transformations = []
-    super().__post_init__(*args, transformations=transformations, **kwargs)
-
   def add_exposure_time_correction_transformation(self,med_ets,offsets) :
     """
     Add a transformation to a rectangle to correct it for differences in exposure time given:
