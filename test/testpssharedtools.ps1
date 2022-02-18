@@ -34,9 +34,9 @@
     }
     #
     [string]uncpath($str){
-        $r = $str -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
+        $r = $str -replace( '\\', '/')
+        if ($r[0] -ne '/'){
+            $root = ('//' + $env:computername+'/'+$r) -replace ":", "$"
         } else{
             $root = $r -replace ":", "$"
         }
