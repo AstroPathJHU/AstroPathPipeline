@@ -227,7 +227,7 @@
             Throw 'could not copy using robocopy'
         }
         #
-        $files = get-childitem $des
+        $files = get-childitem $des -File
         Write-Host ($files.FullName)
         $nfiles = ($files).Length
         if ($nfiles -ne $n){
