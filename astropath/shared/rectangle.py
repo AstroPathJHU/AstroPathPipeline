@@ -435,7 +435,7 @@ class RectangleCorrectedIm3MultiLayer(RectangleCorrectedIm3Base, RectangleReadIm
   @methodtools.lru_cache()
   @property
   def exposuretimetransformation(self):
-    return RectangleExposureTimeTransformationMultilayer(self.allexposuretimes[self.layerim3-1],
+    return RectangleExposureTimeTransformationMultiLayer(self.allexposuretimes[self.layerim3-1],
                                                self.et_offset)
   def set_med_ets(self, med_ets):
     self.exposuretimetransformation.set_med_ets(med_ets)

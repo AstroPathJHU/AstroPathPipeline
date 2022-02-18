@@ -1,4 +1,4 @@
-import abc, collections, contextlib, cv2, methodtools, more_itertools, numpy as np, sklearn.decomposition
+import abc, contextlib, methodtools, numpy as np
 try:
   contextlib.nullcontext
 except AttributeError:
@@ -8,7 +8,6 @@ from ...shared.logging import dummylogger
 from ...shared.imageloader import TransformedImage
 from ...shared.rectangle import Rectangle, RectangleReadComponentTiffBase, RectangleReadComponentTiffMultiLayer, RectangleReadComponentTiffSingleLayer, RectangleReadIm3Base, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer
 from ...shared.rectangletransformation import RectangleTransformationBase
-from ...utilities import units
 from .flatfield import meanimage
 
 class ApplyMeanImage(RectangleTransformationBase):

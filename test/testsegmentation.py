@@ -1,5 +1,5 @@
 #imports
-import os, pathlib, shutil, unittest
+import os, pathlib, shutil
 import numpy as np
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleNNUNet
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleDeepCell

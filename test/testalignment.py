@@ -1,4 +1,4 @@
-import logging, more_itertools, numpy as np, os, pathlib, re, unittest
+import logging, more_itertools, numpy as np, os, pathlib, re
 from astropath.shared.samplemetadata import SampleDef
 from astropath.slides.align.aligncohort import AlignCohort
 from astropath.slides.align.alignsample import AlignSample, AlignSampleComponentTiff, AlignSampleFromXML, ImageStats
@@ -7,7 +7,7 @@ from astropath.slides.align.field import Field, FieldOverlap
 from astropath.slides.align.stitch import AffineEntry
 from astropath.utilities import units
 from astropath.utilities.misc import re_subs
-from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
