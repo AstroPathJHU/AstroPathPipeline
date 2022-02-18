@@ -259,11 +259,12 @@
         Write-Host '    is Windows: ' $tools.isWindows()
         #
         Invoke-Expression 'pip list'
+        Write-Host $env:path
         #
         if ($tools.isWindows()){
             $tools.CheckConda()
         } else {
-            Invoke-Expression 'python -c astropath.hpfs.flatfield.meanimagecohort -h'
+            Invoke-Expression 'meanimagecohort.exe -h'
         }
         #
         if ((get-module).name -notcontains 'Conda'){
