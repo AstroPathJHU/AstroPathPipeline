@@ -22,22 +22,21 @@ class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,SampleWithSegmen
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=None,**kwargs) :
+    def __init__(self,*args,layercomponenttiff=1,workingdir=None,**kwargs) :
         # only need to load the DAPI layers of the rectangles, so send that to the __init__
-        if kwargs.get('layer') is not None :
+        if layercomponenttiff != 1 :
             raise RuntimeError(f'ERROR: sample layer was set to {kwargs.get("layer")}')
-        kwargs['layer'] = 1 
-        super().__init__(*args,**kwargs)
+        super().__init__(*args,layercomponenttiff=layercomponenttiff,**kwargs)
         self.__workingdirarg = workingdir
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
-                *(r.imagefile for r in self.rectangles),
+                *(r.componenttifffile for r in self.rectangles),
                ]
 
     def run(self,**kwargs) :
-        if not self.__workingdir.is_dir() :
-            self.__workingdir.mkdir(parents=True)
+        if not self.workingdir.is_dir() :
+            self.workingdir.mkdir(parents=True)
         self.runsegmentation(**kwargs)
 
     @methodtools.lru_cache()
@@ -50,22 +49,21 @@ class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,SampleWithSegmen
         return {
             **super().workflowkwargs,
             'workingdir':self.__workingdirarg,
-            'algorithm':self.segmentationalgorithm(),
         }
 
     @property
-    def __workingdir(self):
+    def workingdir(self):
         #set the working directory path based on the algorithm being run (if it wasn't set by a command line arg)
-        return self.output_dir(self.__workingdirarg,self.im3root,self.SlideID,self.segmentationalgorithm())
+        return self.output_dir(self.__workingdirarg,self.im3root,self.SlideID)
 
     #################### CLASS METHODS ####################
 
     @classmethod
-    def output_dir(cls,workingdir,im3root,SlideID,algorithm) :
+    def output_dir(cls,workingdir,im3root,SlideID) :
         #default output is im3folder/segmentation/algorithm
         outputdir = workingdir
         if outputdir is None :
-            outputdir = im3root/SlideID/'im3'/SEG_CONST.SEGMENTATION_DIR_NAME/algorithm
+            outputdir = im3root/SlideID/'im3'/SEG_CONST.SEGMENTATION_DIR_NAME/cls.segmentationalgorithm()
         else :
             if outputdir.name!=SlideID :
                 #put non-default output in a subdirectory named for the slide
@@ -73,12 +71,12 @@ class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,SampleWithSegmen
         return outputdir
 
     @classmethod
-    def getoutputfiles(cls,SlideID,im3root,informdataroot,workingdir,algorithm,**otherworkflowkwargs) :
-        outputdir=cls.output_dir(workingdir,im3root,SlideID,algorithm)
+    def getoutputfiles(cls,SlideID,im3root,informdataroot,workingdir,**otherworkflowkwargs) :
+        outputdir=cls.output_dir(workingdir,im3root,SlideID)
         append = None
-        if algorithm=='nnunet' :
+        if cls.algorithm()=='nnunet' :
             append = NNUNET_SEGMENT_FILE_APPEND
-        elif algorithm=='deepcell' :
+        elif cls.algorithm()=='deepcell' :
             append = DEEPCELL_SEGMENT_FILE_APPEND
         file_stems = [fp.name[:-len('_component_data.tif')] for fp in (informdataroot/SlideID/'inform_data'/'Component_Tiffs').glob('*_component_data.tif')]
         outputfiles = []
@@ -93,7 +91,11 @@ class SegmentationSampleBase(ReadRectanglesComponentTiffFromXML,SampleWithSegmen
 class SegmentationSampleNNUNet(SegmentationSampleBase) :
 
     def __init__(self,*args,**kwargs) :
-        super().__init__(*args,algorithm='nnunet',**kwargs)
+        super().__init__(*args,**kwargs)
+
+    @classmethod
+    def segmentationalgorithm(cls) :
+      return 'nnunet'
 
     @classmethod
     def logmodule(cls) : 
@@ -110,7 +112,7 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
         #make sure that the necessary model files exist
         rebuild_model_files_if_necessary()
         #create the temporary directory that will hold the NIfTI files
-        self.temp_dir = self.__workingdir/'nnunet_nifti_input'
+        self.temp_dir = self.workingdir/'nnunet_nifti_input'
         if not self.temp_dir.is_dir() :
             self.temp_dir.mkdir(parents=True)
         #write a NIfTI file for every rectangle's DAPI layer for input to the algorithm
@@ -120,7 +122,7 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
             #skip any rectangles that already have segmentation input or output
             if ( self.__get_rect_nifti_fp(rect).is_file() or self.__get_rect_segmented_nifti_fp(rect).is_file() 
                 or self.__get_rect_nnunet_segmented_fp(rect).is_file() ) :
-                msg = f'Skipping writing NIfTI file for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
+                msg = f'Skipping writing NIfTI file for {rect.componenttifffile.name} ({ir} of {len(self.rectangles)})'
                 if ( self.__get_rect_segmented_nifti_fp(rect).is_file() or 
                     self.__get_rect_nnunet_segmented_fp(rect).is_file() ) :
                     msg+=' (segmentation output already exists)'
@@ -134,10 +136,10 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
             proc_results = {}
             with self.pool() as pool :
                 for ir,rect,nifti_file_path in rects_to_run :
-                    with rect.using_image() as im :
-                        msg = f'Writing NIfTI file for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
+                    with rect.using_component_tiff() as im :
+                        msg = f'Writing NIfTI file for {rect.componenttifffile.name} ({ir} of {len(self.rectangles)})'
                         self.logger.debug(msg)
-                        proc_results[(ir,rect.imagefile.name)] = pool.apply_async(write_nifti_file_for_rect_im,
+                        proc_results[(ir,rect.componenttifffile.name)] = pool.apply_async(write_nifti_file_for_rect_im,
                                                                                   (im,nifti_file_path))
                 for (ir,rname),res in proc_results.items() :
                     try :
@@ -149,8 +151,8 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
                         raise e
         else :
             for ir,rect,nifti_file_path in rects_to_run :
-                with rect.using_image() as im :
-                    self.logger.debug(f'Writing NIfTI file for {rect.imagefile.name} ({ir} of {len(self.rectangles)})')
+                with rect.using_component_tiff() as im :
+                    self.logger.debug(f'Writing NIfTI file for {rect.componenttifffile.name} ({ir} of {len(self.rectangles)})')
                     write_nifti_file_for_rect_im(im,nifti_file_path)
         #run the nnU-Net nuclear segmentation algorithm
         os.environ['RESULTS_FOLDER'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
@@ -160,7 +162,7 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
         model_folder_name = join(my_network_training_output_dir, '2d', task_name, default_trainer + "__" +
                                  default_plans_identifier)
         try :
-            predict_from_folder(model_folder_name, str(self.temp_dir.resolve()), str(self.__workingdir.resolve()), 
+            predict_from_folder(model_folder_name, str(self.temp_dir.resolve()), str(self.workingdir.resolve()), 
                                 None, False, self.njobs, self.njobs, None, 0, 1, True, overwrite_existing=False, 
                                 mode='normal', overwrite_all_in_gpu=None, mixed_precision=True,
                                 step_size=0.5, checkpoint_name='model_final_checkpoint')
@@ -182,9 +184,9 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
                 proc_results = {}
                 with self.pool() as pool :
                     for ir,rect,segmented_nifti_path,segmented_file_path in rects_to_run :
-                        msg = f'Converting nnU-Net output for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
+                        msg = f'Converting nnU-Net output for {rect.componenttifffile.name} ({ir} of {len(self.rectangles)})'
                         self.logger.debug(msg)
-                        proc_results[(ir,rect.imagefile.name)] = pool.apply_async(convert_nnunet_output,
+                        proc_results[(ir,rect.componenttifffile.name)] = pool.apply_async(convert_nnunet_output,
                                                                                   (segmented_nifti_path,
                                                                                   segmented_file_path))
                     for (ir,rname),res in proc_results.items() :
@@ -197,7 +199,7 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
                             raise e
             else :
                 for ir,rect,segmented_nifti_path,segmented_file_path in rects_to_run :
-                    msg = f'Converting nnU-Net output for {rect.imagefile.name} ({ir} of {len(self.rectangles)})'
+                    msg = f'Converting nnU-Net output for {rect.componenttifffile.name} ({ir} of {len(self.rectangles)})'
                     self.logger.debug(msg)
                     convert_nnunet_output(segmented_nifti_path,segmented_file_path)
             for ir,rect in enumerate(self.rectangles,start=1) :
@@ -209,13 +211,13 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
                         self.__get_rect_segmented_nifti_fp(rect).unlink()
             if completed_files==len(self.rectangles) :
                 shutil.rmtree(self.temp_dir)
-                plans_file = self.__workingdir/'plans.pkl'
+                plans_file = self.workingdir/'plans.pkl'
                 if plans_file.is_file() :
                     plans_file.unlink()
-                postproc_file = self.__workingdir/'postprocessing.json'
+                postproc_file = self.workingdir/'postprocessing.json'
                 if postproc_file.is_file() :
                     postproc_file.unlink()
-                self.logger.info(f'All files segmented using nnU-Net with output in {self.__workingdir}')
+                self.logger.info(f'All files segmented using nnU-Net with output in {self.workingdir}')
             else :
                 msg = f'{completed_files} of {len(self.rectangles)} files segmented using nnU-Net. '
                 msg+= 'Rerun the same command to retry.'
@@ -225,14 +227,14 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     def __get_rect_nifti_fp(self,rect) :
-        return self.temp_dir/f'{rect.imagefile.name[:-4]}_0000.nii.gz'
+        return self.temp_dir/f'{rect.componenttifffile.name[:-4]}_0000.nii.gz'
 
     def __get_rect_segmented_nifti_fp(self,rect) :
-        return self.__workingdir/f'{rect.imagefile.name[:-4]}.nii.gz'
+        return self.workingdir/f'{rect.componenttifffile.name[:-4]}.nii.gz'
 
     def __get_rect_nnunet_segmented_fp(self,rect) :
         seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{NNUNET_SEGMENT_FILE_APPEND}'
-        return self.__workingdir/seg_fn
+        return self.workingdir/seg_fn
 
 class SegmentationSampleDeepCell(SegmentationSampleBase) :
     def __init__(self,*args,**kwargs) :
@@ -260,7 +262,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
             if self.__get_rect_deepcell_segmented_fp(rect).is_file() :
-                msg = f'Skipping {rect.imagefile.name} ({ir} of {len(self.rectangles)}) '
+                msg = f'Skipping {rect.componenttifffile.name} ({ir} of {len(self.rectangles)}) '
                 msg+= '(segmentation output already exists)'
                 self.logger.debug(msg)
                 continue
@@ -268,8 +270,8 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
         completed_files = 0
         try :
             for ir,rect,segmented_file_path in rects_to_run :
-                with rect.using_image() as im :
-                    msg = f'Running DeepCell segmentation for {rect.imagefile.name} '
+                with rect.using_component_tiff() as im :
+                    msg = f'Running DeepCell segmentation for {rect.componenttifffile.name} '
                     msg+= f'({ir} of {len(self.rectangles)})'
                     self.logger.debug(msg)
                     run_deepcell_nuclear_segmentation(im,app,self.pscale,segmented_file_path)
@@ -280,7 +282,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
             raise e
         finally :
             if completed_files==len(self.rectangles) :
-                self.logger.info(f'All files segmented using DeepCell with output in {self.__workingdir}')
+                self.logger.info(f'All files segmented using DeepCell with output in {self.workingdir}')
             else :
                 msg = f'{completed_files} of {len(self.rectangles)} files segmented using DeepCell. '
                 msg+= 'Rerun the same command to retry.'
@@ -290,7 +292,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
 
     def __get_rect_deepcell_segmented_fp(self,rect) :
         seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{DEEPCELL_SEGMENT_FILE_APPEND}'
-        return self.__workingdir/seg_fn
+        return self.workingdir/seg_fn
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
