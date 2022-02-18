@@ -265,8 +265,9 @@
             }
         } else {
             $pymod = "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort"
+            $pyargs = "args = ['//bki04/Clinical_Specimen' '--shardedim3root' '//blah/blah']"
             write-host 'test4'
-            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args=['//bki04/Clinical_Specimen' '--shardedim3root' 'blah'])" -join ";"
+            $testval = $pymod, $pyargs, "MeanImageCohort.runfromargumentparser(args=args)" -join ";"
             #
             $output = python -c $testval
             if ($output -notmatch 'usage'){
