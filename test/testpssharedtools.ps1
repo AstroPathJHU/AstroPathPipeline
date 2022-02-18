@@ -258,6 +258,8 @@
         #
         Write-Host '    is Windows: ' $tools.isWindows()
         #
+        conda info -e
+        #
         if ($tools.isWindows()){
             $tools.CheckConda()
         } else {
