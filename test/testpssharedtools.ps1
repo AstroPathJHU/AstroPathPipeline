@@ -278,7 +278,7 @@
             Write-Host '   '$testval
             #
             $output = python -c $testval
-            if ($output -notmatch 'usage'){
+            if ($output){
                 Throw 'error launching py test wihout conda'
             }
             #
