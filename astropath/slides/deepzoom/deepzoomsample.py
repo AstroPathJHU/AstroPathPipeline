@@ -14,7 +14,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
   of different zoom levels.
   """
 
-  def __init__(self, *args, layers, tilesize=256, **kwargs):
+  def __init__(self, *args, layers=None, tilesize=256, **kwargs):
     """
     tilesize: size of the tiles at each level of the image pyramid
     """
