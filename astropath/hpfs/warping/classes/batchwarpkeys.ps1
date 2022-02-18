@@ -53,7 +53,9 @@ class batchwarpkeys : moduletools {
         $pythontask = $this.pythonmodulename, $dpath, `
         '--shardedim3root',  $rpath, `
         '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), `
-        '--octets-only --noGPU', $this.buildpyopts('cohort') -join ' '
+        '--octets-only --noGPU --no-log',
+        '--ignore-dependencies',
+        $this.buildpyopts('cohort') -join ' '
         #
         return $pythontask
         #
@@ -65,7 +67,9 @@ class batchwarpkeys : moduletools {
         '--shardedim3root',  $rpath, `
         '--sampleregex',  $batchslides, `
         '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), `
-        '--octets-only --noGPU', $this.buildpyopts('cohort') -join ' '
+        '--octets-only --noGPU --no-log',
+        '--ignore-dependencies',
+        $this.buildpyopts('cohort') -join ' '
        #
        return $pythontask
        #

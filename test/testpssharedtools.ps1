@@ -278,9 +278,9 @@
             Write-Host '   '$testval
             #
             $output = python -c $testval
-            #if ($output){
-            #    Throw 'error launching py test wihout conda'
-            #}
+            if ($output -notmatch 'usage'){
+                Throw 'error launching py test wihout conda'
+            }
             #
             Write-Host '    python finished'
             #

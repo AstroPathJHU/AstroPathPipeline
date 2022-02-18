@@ -244,7 +244,17 @@ class sampledef : sharedtools{
     #
     [string]pybatchflatfield(){
         $ids = $this.ImportCorrectionModels($this.mpath)
-        $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
+        if ($this.slideid -notcontains $this.batchid){
+            $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
+        } else  {
+            $file1 = ($ids | Where-Object { $_.BatchID.padleft(2, '0') `
+                -contains $this.batchid}).FlatfieldVersion
+           if ($file1){
+                $file = $file1[0]
+           } else {
+               $file = ''
+           }
+        }
         return $file
     }
     #
