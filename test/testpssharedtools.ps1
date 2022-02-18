@@ -258,7 +258,7 @@
         #
         Write-Host '    is Windows: ' $tools.isWindows()
         #
-        conda info -e
+        pip list
         #
         if ($tools.isWindows()){
             $tools.CheckConda()
