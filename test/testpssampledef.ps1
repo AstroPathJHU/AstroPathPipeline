@@ -32,6 +32,10 @@ Class testpssampledef {
         $this.testsampledefconstruction()
         $sample = sampledef $this.mpath $this.module $this.slideid
         $this.testpaths($sample)
+        $sample = sampledef -mpath $this.mpath -module $this.module -batchid '8' -project '0'
+        $this.testpaths($sample, '08')
+        $sample = sampledef -mpath $this.mpath -module $this.module -batchid '1' -project '0'
+        $this.testpaths($sample, '01')
         Write-Host '.'
         #
     }
@@ -138,6 +142,25 @@ Class testpssampledef {
         Write-Host '    Files in XML folder exist'
         #
         Write-Host 'path tests finished'
+        #
+    }
+    #
+     [void]testpaths($sampledef, $batchid){
+        #
+        Write-Host '.'
+        Write-Host 'path tests batch started batchid:' $batchid
+        #
+        Write-Host '    check basepath'
+        if ($sampledef.basepath -ne $this.basepath){
+            Throw ('base path not defined correctly:', $sampledef.basepath, '~=', $this.basepath -join ' ')
+        }
+        #
+        Write-Host '    check batch'
+        if ($sampledef.slideid -ne $batchid){
+            Throw ('slideid not defined correctly:', $sampledef.slideid, '~=', $batchid -join ' ')
+        }
+        #
+        Write-Host 'path tests batch finished batchid:' $batchid
         #
     }
     #
