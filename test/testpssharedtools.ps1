@@ -261,7 +261,7 @@
         if ($tools.isWindows()){
             $tools.CheckConda()
         } else {
-            Invoke-Expression 'meanimagesample -h'
+            Invoke-Expression 'python -c meanimagesample -h'
         }
         #
         if ((get-module).name -notcontains 'Conda'){
