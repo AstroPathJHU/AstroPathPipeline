@@ -270,7 +270,7 @@
             Write-Host '    OS is not windows test that we can astropath from python'
             #
             $pymod = "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort"
-            $pyargs = "args = ['//bki04/Clinical_Specimen' --shardedim3root '//blah/blah']"
+            $pyargs = "args = ['//bki04/Clinical_Specimen','--shardedim3root','//blah/blah']"
             $testval = $pymod, $pyargs, "MeanImageCohort.runfromargumentparser(args=args)" -join "; "
             #
             Write-Host '   '$pymod
