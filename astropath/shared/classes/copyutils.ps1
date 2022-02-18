@@ -294,7 +294,9 @@ class copyutils{
     processing.
     Edited from 'Get-FileHash' source code
     -----------------------------------------#>
-    [System.Collections.Concurrent.ConcurrentDictionary[string,object]]FileHasher($filelist, [int]$v){
+    [System.Collections.Concurrent.ConcurrentDictionary[string,object]]`
+        FileHasher($filelist, [int]$v){
+            Write-Host'****************************************************************'
         #
         [System.Collections.Concurrent.ConcurrentDictionary[string,object]]$hashes = @{}
         #
@@ -302,7 +304,8 @@ class copyutils{
             #
             $hcopy = $using:hashes
             $Algorithm="MD5"
-            $hasherType = "System.Security.Cryptography.${Algorithm}CryptoServiceProvider" -as [Type]
+            $hasherType = "System.Security.Cryptography.${Algorithm}CryptoServiceProvider" `
+                -as [Type]
             if ($hasherType) {
                 $hasher = $hasherType::New()
             }
@@ -327,9 +330,8 @@ class copyutils{
                 {
                     $stream.Dispose()
                 }
-            }
-        -ThrottleLimit 20
-        }
+             } 
+        } -ThrottleLimit 20
         #
         return ($hashes)
         #
