@@ -34,7 +34,7 @@ class AppliedFlatfieldSample(MeanImageSampleBase,WorkflowSample) :
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
-                *(r.imagefile for r in self.rectangles),
+                *(r.im3file for r in self.rectangles),
                ]
 
     def run(self) :

@@ -128,7 +128,7 @@ class ImageStack(ThingWithLogger) :
         for ri,r in enumerate(rectangles) :
             msg = f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....'
             self.__logger.debug(msg)
-            with r.using_image() as im :
+            with r.using_corrected_im3() as im :
                 normalized_image = im/med_ets if med_ets is not None else im/r.allexposuretimes[np.newaxis,np.newaxis,:]
                 self.__image_stack+=normalized_image
                 self.__image_squared_stack+=np.power(normalized_image,2)
@@ -176,7 +176,7 @@ class ImageStack(ThingWithLogger) :
             msg+= f'({ri+1} of {len(rectangles_to_stack)})....'
             self.__logger.debug(msg)
             imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
-            with r.using_image() as im :
+            with r.using_corrected_im3() as im :
                 normalized_im = im/med_ets if med_ets is not None else im/r.allexposuretimes[np.newaxis,np.newaxis,:]
                 if imkey in keys_with_full_masks :
                     mask_path = maskingdirpath/f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'

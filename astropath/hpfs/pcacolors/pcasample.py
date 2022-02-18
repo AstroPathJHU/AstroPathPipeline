@@ -43,7 +43,7 @@ class PCASample(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML,MaskSampleBa
                     raise ValueError(f'ERROR: tissue mask file {tmfp} not found!')
                 mask = ImageMask.unpack_tissue_mask(tmfp,dims[:-1])
             #add the image to the PCA
-            with r.using_image() as im :
+            with r.using_corrected_im3() as im :
                 #smooth the image VERY gently
                 im = smooth_image_worker(im,1)
                 #mask out any pixels other than the good tissue in every layer

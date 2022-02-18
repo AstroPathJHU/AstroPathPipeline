@@ -176,11 +176,11 @@ class RectangleReadIm3Base(Rectangle):
 
   @property
   def im3shape(self):
-    return [
+    return (
       floattoint(float(self.height / self.onepixel)),
       floattoint(float(self.width / self.onepixel)),
       len(self.layersim3),
-    ]
+    )
 
   @property
   def im3file(self):
