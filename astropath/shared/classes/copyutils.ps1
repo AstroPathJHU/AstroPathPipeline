@@ -296,7 +296,6 @@ class copyutils{
     -----------------------------------------#>
     [System.Collections.Concurrent.ConcurrentDictionary[string,object]]`
         FileHasher($filelist, [int]$v){
-            Write-Host'****************************************************************'
         #
         [System.Collections.Concurrent.ConcurrentDictionary[string,object]]$hashes = @{}
         #
