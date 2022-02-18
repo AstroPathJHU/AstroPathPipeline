@@ -13,12 +13,12 @@ from ...utilities.tableio import readtable, writetable
 from ...utilities.units import ThingWithPscale
 from ...utilities.units.dataclasses import distancefield
 from ..align.alignsample import AlignSample
-from ..align.field import Field, FieldReadComponentTiffMultiLayer
+from ..align.field import Field, FieldReadSegmentedComponentTiffMultiLayer
 
 class GeomLoadField(Field, GeomLoadRectangle):
   pass
 
-class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
+class GeomLoadFieldReadSegmentedComponentTiffMultiLayer(FieldReadSegmentedComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
 class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, DbloadSample, ParallelSample, WorkflowSample, CleanupArgumentParser):
@@ -48,22 +48,22 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
   def __init__(self, *args, **kwargs):
     super().__init__(
       *args,
-      layers="setlater",
+      layerscomponenttiff="setlater",
       **kwargs
     )
-    self.setlayers(
-      layers=[
+    self.setlayerscomponenttiff(
+      layerscomponenttiff=[
         self.segmentationmembranelayer(seg) for seg in self.segmentationorder
       ] + [
         self.segmentationnucleuslayer(seg) for seg in self.segmentationorder
       ],
     )
 
-  multilayer = True
+  multilayercomponenttiff = True
 
   @property
   def rectanglecsv(self): return "fields"
-  rectangletype = GeomLoadFieldReadComponentTiffMultiLayer
+  rectangletype = GeomLoadFieldReadSegmentedComponentTiffMultiLayer
   @property
   def rectangleextrakwargs(self):
     return {
@@ -86,9 +86,9 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
       "nfields": len(self.rectangles),
       "minarea": minarea,
       "logger": self.logger,
-      "layers": self.layers,
-      "celltypes": [self.celltype(imlayernumber) for imlayernumber in self.layers],
-      "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layers],
+      "layers": self.layerscomponenttiff,
+      "celltypes": [self.celltype(imlayernumber) for imlayernumber in self.layerscomponenttiff],
+      "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layerscomponenttiff],
       "pscale": self.pscale,
       "unitsargs": units.currentargs(),
     })
@@ -118,7 +118,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
       logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
       geomload = []
       pxvec = units.nominal_values(field.pxvec)
-      with field.using_image() as im:
+      with field.using_component_tiff() as im:
         im = im.astype(np.uint32)
         for imlayernumber, imlayer, celltype, ismembranelayer in more_itertools.zip_equal(layers, im.transpose(2, 0, 1), celltypes, arelayersmembrane):
           properties = skimage.measure.regionprops(imlayer)
@@ -153,7 +153,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
     return super().inputfiles(**kwargs) + [
       self.csv("constants"),
       self.csv("fields"),
-      *(r.imagefile for r in self.rectangles),
+      *(r.componenttifffile for r in self.rectangles),
     ]
 
   @classmethod
