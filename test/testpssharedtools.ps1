@@ -257,9 +257,8 @@
         Write-Host 'test that the conda enviroment can be imported'
         #
         Write-Host '    is Windows: ' $tools.isWindows()
-        Write-Host $env:os
         #
-        if ($tools.isWindows){
+        if ($tools.isWindows()){
             $tools.CheckConda()
         } else {
             Invoke-Expression 'meanimagesample -h'
