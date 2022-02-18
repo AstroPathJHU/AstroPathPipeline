@@ -341,75 +341,100 @@ class RectangleReadIm3SingleLayer(RectangleReadIm3Base):
       })
     return result
 
-class RectangleCorrectedIm3SingleLayer(RectangleReadIm3MultiLayer) :
+class RectangleCorrectedIm3Base(RectangleReadIm3Base) :
   """
   Class for Rectangles whose multilayer im3 data should have one layer extracted and corrected
   for differences in exposure time, flatfielding effects, and warping effects (and or all can be omitted)
+
+  To correct for differences in exposure time:
+    med_et = the median exposure time of the image layer in question across the whole sample
+    offset = the dark current offset to use for correcting the image layer of interest
+  To correct for flatfield:
+    flatfield = the flatfield array
+  To correct for warp:
+    warp = the warping object
   """
   _DEBUG = False #tend to load these more than once
 
-  def __post_init__(self,*args,**kwargs) :
+  def __post_init__(self, *args, med_et=None, offset=None, flatfield=None, warp=None, **kwargs) :
     super().__post_init__(*args, **kwargs)
+    self.__med_et = med_et
+    self.__offset = offset
+    self.__flatfield = flatfield
+    self.__warp = warp
 
-  def add_exposure_time_correction_transformation(self,med_et,offset) :
-    """
-    Add a transformation to a rectangle to correct it for differences in exposure time given:
+  @property
+  def med_et(self): return med_et
+  @property
+  def offset(self): return offset
+  @property
+  def flatfield(self): return flatfield
+  @property
+  def warp(self): return warp
 
-    med_et = the median exposure time of the image layer in question across the whole sample
-    offset = the dark current offset to use for correcting the image layer of interest
-    """
-    if med_et is not None and offset is not None :
-      self.add_transformation(RectangleExposureTimeTransformationSingleLayer(self.allexposuretimes[self.layers[0]-1],
-                                                                             med_et,offset))
+  @property
+  @abc.abstractmethod
+  def exposuretimetransformation(self): pass
+  @property
+  @abc.abstractmethod
+  def flatfieldtransformation(self): pass
+  @property
+  @abc.abstractmethod
+  def warpingtransformation(self): pass
 
-  def add_flatfield_correction_transformation(self,flatfield_layer) :
-    """
-    Add a transformation to a rectangle to correct it with a given flatfield layer
-    """
-    if flatfield_layer is not None :
-      self.add_transformation(RectangleFlatfieldTransformationSinglelayer(flatfield_layer))
+  @methodtools.lru_cache()
+  @property
+  def correctedim3loader(self):
+    loader = self.im3loader
 
-  def add_warping_correction_transformation(self,warp) :
-    """
-    Add a transformation to a rectangle to correct its image layer with a given warping pattern
-    """
-    if warp is not None :
-      self.add_transformation(RectangleWarpingTransformationSinglelayer(warp))
+    if not (self.__med_et is self.__offset is None):
+      assert self.__med_et is not None is not self.__offset
+      transformation = self.exposuretimetransformation
+      loader = TransformedImage(loader, transformation)
 
-class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
+    if self.__flatfield is not None:
+      transformation = self.flatfieldtransformation
+      loader = TransformedImage(loader, transformation)
+
+    if self.__warp is not None:
+      transformation = self.warpingtransformation
+      loader = TransformedImage(loader, transformation)
+
+    return loader
+
+class RectangleCorrectedIm3SingleLayer(RectangleCorrectedIm3Base, RectangleReadIm3SingleLayer) :
+  """
+  Class for Rectangles whose single layer im3 data should be corrected for differences in exposure time,
+  flatfielding effects, and/or warping effects (any or all can be omitted)
+  """
+
+  @property
+  def exposuretimetransformation(self):
+    return RectangleExposureTimeTransformationSingleLayer(self.allexposuretimes[self.layerim3-1],
+                                                          self.med_et,self.offset)
+  @property
+  def flatfieldtransformation(self):
+    return RectangleFlatfieldTransformationSinglelayer(self.flatfield)
+  @property
+  def warpingtransformation(self):
+    return RectangleWarpingTransformationSinglelayer(self.warp)
+
+class RectangleCorrectedIm3MultiLayer(RectangleCorrectedIm3Base, RectangleReadIm3MultiLayer):
   """
   Class for Rectangles whose multilayer im3 data should be corrected for differences in exposure time,
   flatfielding effects, and/or warping effects (any or all can be omitted)
   """
-  _DEBUG = False #Tend to use these images more than once per run
-  
-  def add_exposure_time_correction_transformation(self,med_ets,offsets) :
-    """
-    Add a transformation to a rectangle to correct it for differences in exposure time given:
 
-    med_ets = the median exposure times in the rectangle's slide 
-    offsets = the list of dark current offsets for the rectangle's slide
-    """
-    if (med_ets is not None) and (offsets is not None) :
-      self.add_transformation(RectangleExposureTimeTransformationMultiLayer(self.allexposuretimes,med_ets,offsets))
-
-  def add_flatfield_correction_transformation(self,flatfield) :
-    """
-    Add a transformation to a rectangle to correct it with a given flatfield
-
-    flatfield = the flatfield correction factor image to apply
-    """
-    if flatfield is not None:
-      self.add_transformation(RectangleFlatfieldTransformationMultilayer(flatfield))
-
-  def add_warping_correction_transformation(self,warps_by_layer) :
-    """
-    Add a transformation to a rectangle to correct it with given warping patterns
-
-    warps_by_layer = a list of the warping objects to use in each image layer
-    """
-    self.add_transformation(RectangleWarpingTransformationMultilayer(warps_by_layer))
-
+  @property
+  def exposuretimetransformation(self):
+    return RectangleExposureTimeTransformation(self.allexposuretimes[self.layerim3-1],
+                                                          self.med_et,self.offset)
+  @property
+  def flatfieldtransformation(self):
+    return RectangleFlatfieldTransformation(self.flatfield)
+  @property
+  def warpingtransformation(self):
+    return RectangleWarpingTransformation(self.warp)
 
 class RectangleReadComponentTiffBase(Rectangle):
   """
