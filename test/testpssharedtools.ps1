@@ -264,7 +264,7 @@
         if ($tools.isWindows()){
             $tools.CheckConda()
         } else {
-            Invoke-Expression 'meanimagecohort.exe -h'
+            python -c 'import astropath; astropath.hpfs.flatfield.meanimagecohort -h'
         }
         #
         if ((get-module).name -notcontains 'Conda'){
