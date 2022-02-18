@@ -88,8 +88,9 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
-                *(r.imagefile for r in self.rectangles),
-                self.bg_threshold_filepath,
+                # below commented out to allow warpingcohort to run in the current workflow
+                #*(r.imagefile for r in self.rectangles),
+                #self.bg_threshold_filepath,
                ]
         
     #################### CLASS VARIABLES + PROPERTIES ####################
