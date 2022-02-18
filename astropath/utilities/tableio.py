@@ -68,6 +68,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
     ValueError: Row has bad syntax:
     ...
     B,2,4.5
+    <class 'astropath.utilities.tableio.Point'>
     {'ID': 'B', 'x': 2, 'y': '4.5'}
     {'readingfromfile': True, 'extrakwargs': {...}}
 
