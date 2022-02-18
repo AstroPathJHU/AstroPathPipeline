@@ -265,11 +265,21 @@
             }
         } else {
             $pymod = "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort"
+            $args = (
+                "[",
+                "//bki04/Clinical_Specimen",
+                "--shardedroot blahdeblah'"
+            ) -join "'"
             write-host 'test4'
-            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args=['//bki04/Clinical_Specimen' '--sharedim3root' 'blah'])" -join ";"
-            python -c $testval
+            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args=['//bki04/Clinical_Specimen' '--shardedim3root' 'blah'])" -join ";"
+            #
+            $output = python -c $testval
+            if ($output -notmatch 'usage'){
+                Throw 'error launching py test wihout conda'
+            }
+            #
             write-host 'test5'
-            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args='//bki04/Clinical_Specimen --sharedim3root blah')" -join ";"
+            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args='//bki04/Clinical_Specimen --shardedim3root blah')" -join ";"
             python -c $testval        
         }
         #
