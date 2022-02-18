@@ -261,18 +261,22 @@
         if ($tools.isWindows()){
             $tools.CheckConda()
         } else {
+            $pymod = 'from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort'
             write-host 'test1'
-            python -c 'from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort.runfromargumentparser()'
-            
+            $testval = $pymod, 'MeanImageCohort.runfromargumentparser()' -join ';'
+            python $testval
             write-host 'test2'
-            python -c "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort"
+            $testval = $pymod, 'MeanImageCohort.runfromargumentparser(args = "-h")' -join ';'
+            python -c $testval
             write-host 'test3'
-            python -c "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort -h"
+            $testval = $pymod, 'MeanImageCohort.runfromargumentparser(args = -h)' -join ';'
+            python -c $testval
             write-host 'test4'
-            python -c "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort '-h'"
+            $testval = $pymod, 'MeanImageCohort.runfromargumentparser(args = "//bki04/Clinical_Specimen" --blah)' -join ';'
+            python -c $testval
             write-host 'test5'
-            python -c 'from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort'
-        }
+            $testval = $pymod, 'MeanImageCohort.runfromargumentparser(args = "//bki04/Clinical_Specimen --blah")' -join ';'
+            python -c $testval        }
         #
         if ((get-module).name -notcontains 'Conda'){
             Throw 'Conda not installed correctly'
