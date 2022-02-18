@@ -80,6 +80,8 @@
         #
         Write-Host '    '$logpath
         #
+        $tools.createdirs($logpath)
+        #
         if (!(test-path $logpath)){
             Throw 'could not create folder in data'
         }
@@ -264,15 +266,23 @@
                 Throw 'Conda not installed correctly'
             }
         } else {
+            #
+            Write-Host '    OS is not windows test that we can astropath from python'
+            #
             $pymod = "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort"
             $pyargs = "args = ['//bki04/Clinical_Specimen' '--shardedim3root' '//blah/blah']"
-            write-host 'test4'
             $testval = $pymod, $pyargs, "MeanImageCohort.runfromargumentparser(args=args)" -join ";"
+            #
+            Write-Host '   '$pymod
+            Write-Host '   '$pyargs
+            Write-Host '   '$testval
             #
             $output = python -c $testval
             if ($output -notmatch 'usage'){
                 Throw 'error launching py test wihout conda'
             }
+            #
+            Write-Host '    python finished'
             #
             write-host $output
             #     
