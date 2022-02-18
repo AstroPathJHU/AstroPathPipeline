@@ -30,7 +30,7 @@ class PCASample(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML,MaskSampleBa
         #loop over the rectangles
         for ir,r in enumerate(self.rectangles,start=1) :
             self.logger.debug(f'Adding {r.file.replace(".im3","")} to PCA ({ir}/{len(self.rectangles)})...')
-            dims = r.imageshapeinoutput
+            dims = r.im3shape
             #find the mask to use for this image
             fmfp = self.maskfolder/r.file.replace('.im3','_full_mask.bin')
             if fmfp.is_file() :
