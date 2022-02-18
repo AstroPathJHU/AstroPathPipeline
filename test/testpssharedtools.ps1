@@ -265,18 +265,14 @@
             write-host 'test1'
             $testval = $pymod, "MeanImageCohort.runfromargumentparser(args=['-h'])" -join ";"
             python -c $testval
-            write-host 'test2'
-            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args='-h')" -join ';'
-            python -c $testval
-            write-host 'test3'
-            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args=-h)" -join ";"
-            python -c $testval
+
             write-host 'test4'
-            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args='//bki04/Clinical_Specimen' --blah)" -join ";"
+            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args=['//bki04/Clinical_Specimen' '--blah'])" -join ";"
             python -c $testval
             write-host 'test5'
-            $testval = $pymod, 'MeanImageCohort.runfromargumentparser(args="//bki04/Clinical_Specimen --blah")' -join ';'
-            python -c $testval        }
+            $testval = $pymod, "MeanImageCohort.runfromargumentparser(args='//bki04/Clinical_Specimen --blah')" -join ";"
+            python -c $testval        
+        }
         #
         if ((get-module).name -notcontains 'Conda'){
             Throw 'Conda not installed correctly'
