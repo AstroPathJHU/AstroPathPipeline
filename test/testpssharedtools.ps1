@@ -261,9 +261,8 @@
         if ($tools.isWindows()){
             $tools.CheckConda()
         } else {
-            python -c 'from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort -h'
-            $mylist = pip list 
-            Write-Host ($mylist).tostring()
+            python -c 'from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort.runfromargumentparser(args="--h")'
+            python -c 'from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort "--h"'
         }
         #
         if ((get-module).name -notcontains 'Conda'){
