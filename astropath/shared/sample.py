@@ -1486,13 +1486,12 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
   flatfielding effects, and/or warping effects
   """
 
-  multilayerim3 = True #The original files are multilayer, we're just going to be working with one of them
+  multilayerim3 = False #The original files are multilayer, we're just going to be working with one of them
   rectangletype = RectangleCorrectedIm3SingleLayer
 
   def __init__(self,*args,layer=1,**kwargs) :
     self.__layer = layer
-    kwargs['layers']=[self.__layer]
-    super().__init__(*args,**kwargs)
+    super().__init__(*args,layerim3=layer,readlayerfile=False,**kwargs)
     self.__med_et = None
 
   def initrectangles(self) :
@@ -1515,7 +1514,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
         r.set_warp(self.__get_warping_objects_by_layer())
 
   @methodtools.lru_cache()
-  def __get_exposure_time_offset(self) :
+  def __read_exposure_time_offset(self) :
     if self.skip_et_corrections or self.et_offset_file is None :
       return None
 
@@ -1562,7 +1561,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
       return None
 
     flatfield = get_raw_as_hwl(self.flatfield_file,
-                               self.rectangles[0].imageshapeinoutput[0],self.rectangles[0].imageshapeinoutput[1],self.nlayersim3,
+                               self.rectangles[0].im3shape[0],self.rectangles[0].im3shape[1],self.nlayersim3,
                                np.float64)
     self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
     return flatfield[:,:,self.__layer-1]
@@ -1571,7 +1570,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
   def rectangleextrakwargs(self):
     return {
       **super().rectangleextrakwargs,
-      "et_offset": self.__read_exposure_time_offsets(),
+      "et_offset": self.__read_exposure_time_offset(),
       "use_flatfield": self.flatfield_file is not None,
       "use_warp": self.warping_file is not None,
     }
@@ -1678,7 +1677,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     for ws in warpsummaries :
       if ws.n!=self.rectangles[0].im3shape[1] or ws.m!=self.rectangles[0].im3shape[0] :
         errmsg = f'ERROR: a warp with dimensions ({ws.m},{ws.n}) cannot be applied to images with '
-        errmsg+= f'dimensions ({",".join(self.rectangles[0].imageshapeinoutput[:2])})!'
+        errmsg+= f'dimensions ({",".join(self.rectangles[0].im3shape[:2])})!'
         raise ValueError(errmsg)
       thiswarp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
       for ln in range(ws.first_layer_n,ws.last_layer_n+1) :
