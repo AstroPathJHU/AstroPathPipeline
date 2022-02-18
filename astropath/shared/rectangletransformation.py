@@ -25,14 +25,14 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
     self._exp_times = np.array(ets)
     self._med_ets = None
     self._offsets = np.array(offsets)
-    if not (len(self._exp_times)==len(self._med_ets)==len(self._offsets)) :
-      errmsg = f'ERROR: exposure times (length {len(self._exp_times)}), median exposure times (length {len(self._med_ets)}),'
-      errmsg+= f' and dark current offsets (length {len(self._offsets)}) must all be the same length!'
-      raise ValueError(errmsg)
     self._nlayers = len(self._exp_times)
 
   def set_med_ets(self, med_ets):
     self._med_ets = med_ets
+    if not (len(self._exp_times)==len(self._med_ets)==len(self._offsets)) :
+      errmsg = f'ERROR: exposure times (length {len(self._exp_times)}), median exposure times (length {len(self._med_ets)}),'
+      errmsg+= f' and dark current offsets (length {len(self._offsets)}) must all be the same length!'
+      raise ValueError(errmsg)
   
   def transform(self, originalimage) :
     if self._med_ets is None:

@@ -123,7 +123,7 @@ class Rectangle(DataClassWithPscale):
       raise ValueError("Can't get the exposure times unless you provide the xml folder or exposures csv")
     if None is not exposures1 != exposures2 is not None:
       raise ValueError(f"Found inconsistent exposure times from exposures.csv and from xml file:\n{exposures1}\n{exposures2}")
-    return exposures1 if exposures1 is not None else exposures2
+    return np.array(exposures1 if exposures1 is not None else exposures2)
 
   @methodtools.lru_cache()
   @property
@@ -435,8 +435,8 @@ class RectangleCorrectedIm3MultiLayer(RectangleCorrectedIm3Base, RectangleReadIm
   @methodtools.lru_cache()
   @property
   def exposuretimetransformation(self):
-    return RectangleExposureTimeTransformationMultiLayer(self.allexposuretimes[self.layerim3-1],
-                                               self.et_offset)
+    return RectangleExposureTimeTransformationMultiLayer(self.allexposuretimes[tuple(_-1 for _ in self.layersim3),],
+                                                         self.et_offset)
   def set_med_ets(self, med_ets):
     self.exposuretimetransformation.set_med_ets(med_ets)
   @methodtools.lru_cache()
