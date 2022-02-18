@@ -1505,26 +1505,20 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     for ir,r in enumerate(self.rectangles) :
         slide_exp_times[ir] = r.allexposuretimes[self.__layer-1]
     self.__med_et = np.median(slide_exp_times)
-    if (not self.skip_et_corrections) and (self.et_offset_file is not None) :
-      #read the exposure time offsets
-      offset = self.__get_exposure_time_offset()
-      #add the exposure time correction to every rectangle's transformations
-      for r in self.rectangles :
-        r.add_exposure_time_correction_transformation(self.__med_et,offset)
-    if self.flatfield_file is not None :
-      #read the flatfield correction factors from the file
-      flatfield = get_raw_as_hwl(self.flatfield_file,
-                                 self.rectangles[0].imageshapeinoutput[0],self.rectangles[0].imageshapeinoutput[1],self.nlayersim3,
-                                 np.float64)
-      self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
-      for r in self.rectangles :
-        r.add_flatfield_correction_transformation(flatfield[:,:,self.__layer-1])
-    if self.warping_file is not None :
-      warp = self.__get_warping_object()
-      for r in self.rectangles :
-        r.add_warping_correction_transformation(warp)
+    for r in self.rectangles :
+        r.set_med_et(self.__med_et)
+    if self.flatfield_file is not None:
+      for r in self.rectangles:
+        r.set_flatfield(self.__get_flatfield())
+    if self.warping_file is not None:
+      for r in self.rectangles:
+        r.set_warp(self.__get_warping_objects_by_layer())
 
+  @methodtools.lru_cache()
   def __get_exposure_time_offset(self) :
+    if self.skip_et_corrections or self.et_offset_file is None :
+      return None
+
     self.logger.infoonenter(f'Copying exposure time offset for {self.SlideID} layer {self.__layer} from file {self.et_offset_file}')
     #read the offset from the Full.xml file
     if self.et_offset_file==self.fullxmlfile :
@@ -1545,10 +1539,14 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
         raise ValueError(f'ERROR: found {len(offsets_to_return)} entries for layer {self.__layer} in file {self.et_offset_file}')
       return offsets_to_return[0]
 
+  @methodtools.lru_cache()
   def __get_warping_object(self) :
     """
     Read a WarpingSummary .csv file and return the CameraWarp object to use for correcting image layers
     """
+    if self.warping_file is None:
+      return None
+
     warpsummaries = readtable(self.warping_file,WarpingSummary)
     relevant_warps = [ws for ws in warpsummaries if self.__layer in range(ws.first_layer_n,ws.last_layer_n+1)]
     if len(relevant_warps)!=1 :
@@ -1557,6 +1555,26 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     warp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
     self.logger.infoonenter(f'Warping corrections will be applied from {self.__warping_file}')
     return warp
+
+  @methodtools.lru_cache()
+  def __get_flatfield(self):
+    if self.flatfield_file is None:
+      return None
+
+    flatfield = get_raw_as_hwl(self.flatfield_file,
+                               self.rectangles[0].imageshapeinoutput[0],self.rectangles[0].imageshapeinoutput[1],self.nlayersim3,
+                               np.float64)
+    self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
+    return flatfield[:,:,self.__layer-1]
+
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "et_offset": self.__read_exposure_time_offsets(),
+      "use_flatfield": self.flatfield_file is not None,
+      "use_warp": self.warping_file is not None,
+    }
 
   @classmethod
   def makeargumentparser(cls):
@@ -1595,26 +1613,24 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
         slide_exp_times[ir,:] = r.allexposuretimes
     self.__med_ets = np.median(slide_exp_times,axis=0)
     if (not self.skip_et_corrections) and (self.et_offset_file is not None) :
-      #read the exposure time offsets
-      offsets = self.__read_exposure_time_offsets()
       #add the exposure time correction to every rectangle's transformations
       for r in self.rectangles :
-        r.add_exposure_time_correction_transformation(self.__med_ets,offsets)
-    if self.flatfield_file is not None :
-      #read the flatfield correction factors from the file
-      flatfield = get_raw_as_hwl(self.flatfield_file,*(self.rectangles[0].im3shape),np.float64)
-      self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
-      for r in self.rectangles :
-        r.add_flatfield_correction_transformation(flatfield)
-    if self.warping_file is not None :
-      warps_by_layer = self.__get_warping_objects_by_layer()
-      for r in self.rectangles :
-        r.add_warping_correction_transformation(warps_by_layer)
+        r.set_med_ets(self.__med_ets)
+    if self.flatfield_file is not None:
+      for r in self.rectangles:
+        r.set_flatfield(self.__get_flatfield())
+    if self.warping_file is not None:
+      for r in self.rectangles:
+        r.set_warp(self.__get_warping_objects_by_layer())
 
+  @methodtools.lru_cache()
   def __read_exposure_time_offsets(self) :
     """
     Read in the offset factors for exposure time corrections from the file defined by command line args
     """
+    if self.skip_et_corrections or self.et_offset_file is None :
+      return None
+
     self.logger.infoonenter(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
     #read the offset from the Full.xml file
     if self.et_offset_file==self.fullxmlfile :
@@ -1647,16 +1663,20 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
               raise ValueError(f'ERROR: more than one entry found in LayerOffset file {self.et_offset_file} for layer {ln}!')
       return offsets_to_return
 
+  @methodtools.lru_cache()
   def __get_warping_objects_by_layer(self) :
     """
     Read a WarpingSummary .csv file and return a list of CameraWarp objects to use for correcting images, one per layer
     """
+    if self.warping_file is None:
+      return None
+
     warpsummaries = readtable(self.warping_file,WarpingSummary)
     warps_by_layer = []
     for li in range(self.nlayersim3) :
       warps_by_layer.append(None)
     for ws in warpsummaries :
-      if ws.n!=self.rectangles[0].imageshapeinoutput[1] or ws.m!=self.rectangles[0].imageshapeinoutput[0] :
+      if ws.n!=self.rectangles[0].im3shape[1] or ws.m!=self.rectangles[0].im3shape[0] :
         errmsg = f'ERROR: a warp with dimensions ({ws.m},{ws.n}) cannot be applied to images with '
         errmsg+= f'dimensions ({",".join(self.rectangles[0].imageshapeinoutput[:2])})!'
         raise ValueError(errmsg)
@@ -1673,11 +1693,29 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
         self.logger.warningonenter(warnmsg)
     return warps_by_layer
 
+  @methodtools.lru_cache()
+  def __get_flatfield(self):
+    if self.flatfield_file is None:
+      return None
+
+    flatfield = get_raw_as_hwl(self.flatfield_file,*(self.rectangles[0].im3shape),np.float64)
+    self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
+    return flatfield
+
   @property
   def med_ets(self) :
     if self.et_offset_file is not None and self.__med_ets is None :
       self.initrectangles()
     return self.__med_ets
+
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "et_offset": self.__read_exposure_time_offsets(),
+      "use_flatfield": self.flatfield_file is not None,
+      "use_warp": self.warping_file is not None,
+    }
 
 class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRectanglesFromXML):
   """

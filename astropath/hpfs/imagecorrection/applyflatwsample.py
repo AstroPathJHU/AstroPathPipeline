@@ -38,12 +38,12 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
-                *(r.imagefile for r in self.rectangles),
+                *(r.im3file for r in self.rectangles),
                ]
 
-    def run(self) :
-        layers = self.layers
-        if layers==range(1,self.nlayers+1) :
+    def run(self, debug=False) :
+        layers = self.layersim3
+        if frozenset(layers)==frozenset(range(1,self.nlayersim3+1)) :
             layers = [-1]
         msg_append = f'{self.applied_corrections_string} and'
         if -1 in layers :
@@ -62,7 +62,7 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
                 with self.pool() as pool :
                     for ri,r in enumerate(self.rectangles,start=1) :
                         msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
-                        with r.using_image() as im :
+                        with r.using_corrected_im3() as im :
                             proc_results[(r.n,r.file)] = pool.apply_async(write_out_corrected_image_files,
                                                                           (im,r.file.rstrip(UNIV_CONST.IM3_EXT),
                                                                            layers,outextstem))
@@ -71,6 +71,7 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
                         try :
                             res.get()
                         except Exception as e :
+                            if debug: raise
                             warnmsg = f'WARNING: writing out corrected images for rectangle {rn} '
                             warnmsg+= f'({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed with the error "{e}"'
                             self.logger.warning(warnmsg)
@@ -78,10 +79,11 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
                 for ri,r in enumerate(self.rectangles,start=1) :
                     msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
                     try :
-                        with r.using_image() as im :
+                        with r.using_corrected_im3() as im :
                             write_out_corrected_image_files(im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers,outextstem)
                             self.logger.debug(msg)
                     except Exception as e :
+                        if debug: raise
                         warnmsg = f'WARNING: writing out corrected images for rectangle {r.n} '
                         warnmsg+= f'({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed with the error "{e}"'
                         self.logger.warning(warnmsg) 

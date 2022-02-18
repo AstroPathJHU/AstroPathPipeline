@@ -126,6 +126,9 @@ class ImageLoaderIm3Base(ImageLoaderBase):
   @property
   @abc.abstractmethod
   def imageslicefrominput(self): pass
+  @property
+  def imageshapeinoutput(self):
+    return np.empty(self.imageshapeininput).transpose(self.imagetransposefrominput)[self.imageslicefrominput]
 
 class ImageLoaderIm3MultiLayer(ImageLoaderIm3Base):
   def __init__(self, *args, nlayers, width, height, selectlayers=None, **kwargs):

@@ -5,9 +5,8 @@ from ..utilities.miscfileio import with_stem
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
-from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer
-from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
-from .rectangletransformation import RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationSinglelayer
+from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
+from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
 
 class Rectangle(DataClassWithPscale):
   """
@@ -347,8 +346,8 @@ class RectangleCorrectedIm3Base(RectangleReadIm3Base) :
   for differences in exposure time, flatfielding effects, and warping effects (and or all can be omitted)
 
   To correct for differences in exposure time:
-    med_et = the median exposure time of the image layer in question across the whole sample
-    offset = the dark current offset to use for correcting the image layer of interest
+    et_offset = the dark current offset to use for correcting the image layer of interest
+    have to also call set_med_et to set the median exposure time of the image layer in question across the whole sample
   To correct for flatfield:
     flatfield = the flatfield array
   To correct for warp:
@@ -356,21 +355,18 @@ class RectangleCorrectedIm3Base(RectangleReadIm3Base) :
   """
   _DEBUG = False #tend to load these more than once
 
-  def __post_init__(self, *args, med_et=None, offset=None, flatfield=None, warp=None, **kwargs) :
+  def __post_init__(self, *args, et_offset=None, use_flatfield=False, use_warp=None, **kwargs) :
     super().__post_init__(*args, **kwargs)
-    self.__med_et = med_et
-    self.__offset = offset
-    self.__flatfield = flatfield
-    self.__warp = warp
+    self.__et_offset = et_offset
+    self.__use_flatfield = use_flatfield
+    self.__use_warp = use_warp
 
   @property
-  def med_et(self): return med_et
+  def et_offset(self): return self.__et_offset
   @property
-  def offset(self): return offset
+  def use_flatfield(self): return self.__use_flatfield
   @property
-  def flatfield(self): return flatfield
-  @property
-  def warp(self): return warp
+  def use_warp(self): return self.__use_warp
 
   @property
   @abc.abstractmethod
@@ -378,29 +374,35 @@ class RectangleCorrectedIm3Base(RectangleReadIm3Base) :
   @property
   @abc.abstractmethod
   def flatfieldtransformation(self): pass
+  def set_flatfield(self, flatfield):
+    self.flatfieldtransformation.set_flatfield(flatfield)
   @property
   @abc.abstractmethod
   def warpingtransformation(self): pass
+  def set_warp(self, warp):
+    self.warpingtransformation.set_warp(warp)
 
   @methodtools.lru_cache()
   @property
   def correctedim3loader(self):
     loader = self.im3loader
 
-    if not (self.__med_et is self.__offset is None):
-      assert self.__med_et is not None is not self.__offset
+    if self.__et_offset is not None:
       transformation = self.exposuretimetransformation
       loader = TransformedImage(loader, transformation)
 
-    if self.__flatfield is not None:
+    if self.__use_flatfield:
       transformation = self.flatfieldtransformation
       loader = TransformedImage(loader, transformation)
 
-    if self.__warp is not None:
+    if self.__use_warp:
       transformation = self.warpingtransformation
       loader = TransformedImage(loader, transformation)
 
     return loader
+
+  def using_corrected_im3(self):
+    return self.correctedim3loader.using_image()
 
 class RectangleCorrectedIm3SingleLayer(RectangleCorrectedIm3Base, RectangleReadIm3SingleLayer) :
   """
@@ -408,16 +410,21 @@ class RectangleCorrectedIm3SingleLayer(RectangleCorrectedIm3Base, RectangleReadI
   flatfielding effects, and/or warping effects (any or all can be omitted)
   """
 
+  @methodtools.lru_cache()
   @property
   def exposuretimetransformation(self):
     return RectangleExposureTimeTransformationSingleLayer(self.allexposuretimes[self.layerim3-1],
-                                                          self.med_et,self.offset)
+                                                          self.et_offset)
+  def set_med_et(self, med_et):
+    self.exposuretimetransformation.set_med_et(med_et)
+  @methodtools.lru_cache()
   @property
   def flatfieldtransformation(self):
-    return RectangleFlatfieldTransformationSinglelayer(self.flatfield)
+    return RectangleFlatfieldTransformationSinglelayer()
+  @methodtools.lru_cache()
   @property
   def warpingtransformation(self):
-    return RectangleWarpingTransformationSinglelayer(self.warp)
+    return RectangleWarpingTransformationSinglelayer()
 
 class RectangleCorrectedIm3MultiLayer(RectangleCorrectedIm3Base, RectangleReadIm3MultiLayer):
   """
@@ -425,16 +432,21 @@ class RectangleCorrectedIm3MultiLayer(RectangleCorrectedIm3Base, RectangleReadIm
   flatfielding effects, and/or warping effects (any or all can be omitted)
   """
 
+  @methodtools.lru_cache()
   @property
   def exposuretimetransformation(self):
-    return RectangleExposureTimeTransformation(self.allexposuretimes[self.layerim3-1],
-                                                          self.med_et,self.offset)
+    return RectangleExposureTimeTransformationMultilayer(self.allexposuretimes[self.layerim3-1],
+                                               self.et_offset)
+  def set_med_ets(self, med_ets):
+    self.exposuretimetransformation.set_med_ets(med_ets)
+  @methodtools.lru_cache()
   @property
   def flatfieldtransformation(self):
-    return RectangleFlatfieldTransformation(self.flatfield)
+    return RectangleFlatfieldTransformationMultilayer()
+  @methodtools.lru_cache()
   @property
   def warpingtransformation(self):
-    return RectangleWarpingTransformation(self.warp)
+    return RectangleWarpingTransformationMultilayer()
 
 class RectangleReadComponentTiffBase(Rectangle):
   """
