@@ -261,7 +261,16 @@
         if ($tools.isWindows()){
             $tools.CheckConda()
         } else {
+            write-host 'test1'
             python -c 'from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort.runfromargumentparser()'
+            
+            write-host 'test2'
+            python -c "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort"
+            write-host 'test3'
+            python -c "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort -h"
+            write-host 'test4'
+            python -c "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort '-h'"
+            write-host 'test5'
             python -c 'from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort;MeanImageCohort'
         }
         #
