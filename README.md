@@ -32,15 +32,17 @@ installing packages (whether through conda or pip) or before running code.
 
 At least the following dependencies should be installed through Anaconda.
 ```pwsh
-conda install -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git
+conda install -c conda-forge pyopencl gdal cvxpy numba 'numpy>=1.16.6,<1.20.0' 'ecos!=2.0.8' git jupyter
 ```
 (`pyopencl`, `gdal`, and `cvxpy` have C++ dependencies.
 `numba` requires a specific numpy version, and installing it here
 avoids unpleasant interactions between conda and pip.
+The explicit `numpy` version is for compatibility with deepcell.
 `ecos!=2.0.8` is a workaround for a [bug](https://github.com/embotech/ecos/issues/201)
 in the ecos distribution on conda.
 `git` may or may not be needed, depending if you
-have it installed separately on your computer.)
+have it installed separately on your computer.
+`jupyter` is needed for deepcell.)
 
 Many of the other dependencies can also be installed through Anaconda if you want,
 but we have found that they work just as well when installing with pip.
@@ -57,8 +59,17 @@ If you want to continue developing the code after installing, run instead
 ```bash
 pip install --editable .
 ```
+You can also add optional dependencies by specifying them in brackets,
+as in `pip install (--editable) .[gdal,deepcell]`.
+The optional dependencies include:
+* `deepcell` - needed to run the DeepCell segmentation algorithm.
+* `gdal` - needed for polygon handling, which is used in the `geom`, `geomcell`, `stitchmask`, and `csvscan` steps.
+* `nnunet` - needed to run the nnU-Net segmentation algorithm
+* `test` - these packages are not needed for the actual AstroPath workflow but are used in various unit tests
+* `vips` - used in the `zoom` and `deepzoom` steps of the pipeline
+To install all optional dependencies, just specify `[all]`.
 
-Once the code is installed using either of those lines, you can run
+Once the code is installed, you can run
 ```python
 import astropath
 ```

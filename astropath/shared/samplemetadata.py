@@ -60,7 +60,7 @@ class SampleDef(MyDataClassFrozen):
           if row.SlideID == kwargs["SlideID"]:
             return cls.transforminitargs(root=root, samp=row)
 
-    if "SlideID" in kwargs and root is not None is not Project:
+    if "SlideID" in kwargs and root is not None is not Project and apidfile is None:
       apidfile = root/"upkeep_and_progress"/f"AstropathAPIDdef_{Project:d}.csv"
       if not apidfile.exists(): apidfile = None
 
