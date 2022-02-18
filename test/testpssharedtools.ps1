@@ -62,7 +62,6 @@
         Write-Host '.'
         Write-Host 'start get info for git versioning'
         Write-Host '    root: ' $tools.defRoot()
-        Write-Host '    is Windows: ' $tools.isWindows()
         Write-Host '    Git repo path: ' $tools.pypackagepath() 
         Write-Host '    Git installed: ' $tools.checkgitinstalled()
         Write-Host '    Git repo: ' $tools.checkgitrepo()
@@ -256,6 +255,9 @@
         #
         Write-Host '.'
         Write-Host 'test that the conda enviroment can be imported'
+        #
+        Write-Host '    is Windows: ' $tools.isWindows()
+        Write-Host $env:os
         #
         if ($tools.isWindows){
             $tools.CheckConda()
