@@ -258,7 +258,7 @@
         #
         Write-Host '    is Windows: ' $tools.isWindows()
         #
-        & pip list
+        Invoke-Expression 'pip list'
         #
         if ($tools.isWindows()){
             $tools.CheckConda()
