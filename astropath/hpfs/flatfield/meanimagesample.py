@@ -512,14 +512,17 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
 
     @property
     def workflowkwargs(self) :
-        return{**super().workflowkwargs,'skip_masking':self.skip_masking}
+        return{**super().workflowkwargs,'skip_masking':self.skip_masking,'workingdir':self.workingdirpath}
 
     #################### CLASS METHODS ####################
 
     @classmethod
-    def getoutputfiles(cls,SlideID,root,skip_masking,**otherworkflowkwargs) :
+    def getoutputfiles(cls,SlideID,root,skip_masking,workingdir=None,**otherworkflowkwargs) :
         outputfiles = []
-        meanimagedir = root/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
+        if workingdir is None:
+            meanimagedir = root/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
+        else:
+            meanimagedir = workingdir
         outputfiles.append(meanimagedir/f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
         outputfiles.append(meanimagedir/f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
         outputfiles.append(meanimagedir/f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
