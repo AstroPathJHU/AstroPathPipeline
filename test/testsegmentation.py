@@ -1,9 +1,9 @@
 #imports
-import os, pathlib, shutil
+import os, pathlib, shutil, unittest
 import numpy as np
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleNNUNet
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleDeepCell
-from .testbase import expectedFailureIf, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 slide_ID = 'M21_1'
@@ -54,14 +54,14 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
     @property
     def outputfilenames(self) :
         root = folder/'test_for_jenkins'/'segmentation'/'root'
-        all_fps = [root/'logfiles'/'segmentationnnunet.log', root/slide_ID/'logfiles'/f'{slide_ID}_segmentationnnunet.log']
+        all_fps = [root/'logfiles'/'segmentationnnunet.log', root/slide_ID/'logfiles'/f'{slide_ID}-segmentationnnunet.log']
         oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
         outputdir = root/slide_ID/'im3'/'segmentation'/'nnunet'
         for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
             all_fps.append(outputdir/f'{fns}_nnunet_nuclear_segmentation.npz')
         return all_fps
 
-    @expectedFailureIf(int(os.environ.get("JENKINS_NO_NNUNET", 0))) #nnU-Net is not installed on jenkins
+    @unittest.skipIf(int(os.environ.get("JENKINS_NO_NNUNET", 0)), "nnU-Net is not installed on jenkins")
     def test_segmentation_nnunet(self) :
         #run the segmentation cohort with the nnU-Net algorithm
         args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
@@ -85,7 +85,6 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
             raise
         finally :
             self.removeoutput()
-            shutil.rmtree(folder/'test_for_jenkins'/'segmentation')
 
 class TestSegmentationDeepCell(TestSegmentationBase) :
     """
@@ -95,7 +94,7 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
     @property
     def outputfilenames(self) :
         root = folder/'test_for_jenkins'/'segmentation'/'root'
-        all_fps = [root/'logfiles'/'segmentationdeepcell.log', root/slide_ID/'logfiles'/f'{slide_ID}_segmentationdeepcell.log']
+        all_fps = [root/'logfiles'/'segmentationdeepcell.log', root/slide_ID/'logfiles'/f'{slide_ID}-segmentationdeepcell.log']
         oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
         outputdir = root/slide_ID/'im3'/'segmentation'/'deepcell'
         for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
@@ -124,4 +123,3 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
             raise
         finally :
             self.removeoutput()
-            shutil.rmtree(folder/'test_for_jenkins'/'segmentation')
