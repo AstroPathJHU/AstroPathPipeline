@@ -826,7 +826,7 @@ class WorkflowCohort(Cohort):
         yield
 
   @contextlib.contextmanager
-  def handlesampleiniterror(self, samp, *, print_errors, **kwargs):
+  def handlesampleiniterror(self, samp, *, print_errors=False, **kwargs):
     if print_errors:
       try:
         yield

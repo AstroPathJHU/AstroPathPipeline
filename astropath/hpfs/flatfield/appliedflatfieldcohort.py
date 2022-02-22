@@ -34,7 +34,7 @@ class AppliedFlatfieldSample(MeanImageSampleBase,WorkflowSample) :
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
-                *(r.imagefile for r in self.rectangles),
+                *(r.im3file for r in self.rectangles),
                ]
 
     def run(self) :
@@ -99,7 +99,7 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
         #figure out the image dimensions to give to the flatfield and corrected mean image
         for sample in self.samples() :
             if len(sample.rectangles)>0 :
-                image_dimensions = sample.rectangles[0].imageshapeinoutput
+                image_dimensions = sample.rectangles[0].im3shape
                 break
         self.__flatfield = Flatfield(image_dimensions,self.logger)
         self.__corrected_meanimage = CorrectedMeanImage(image_dimensions,self.logger)

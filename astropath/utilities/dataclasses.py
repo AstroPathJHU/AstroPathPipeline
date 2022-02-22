@@ -167,6 +167,12 @@ class MyDataClass(DataClassTransformArgs, DataClassWithMetaData, metaclass=MyDat
   def __post_init__(self, *, readingfromfile=False, extrakwargs={}):
     pass
 
+  def __setattr__(self, attr, value):
+    try:
+      return super().__setattr__(attr, value)
+    except AttributeError:
+      raise AttributeError(f"Error setting attribute {attr} = {value}")
+
 @dataclass(meta=MyDataClassMeta, frozen=True)
 class MyDataClassFrozen(MyDataClass):
   """

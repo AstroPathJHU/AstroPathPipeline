@@ -58,19 +58,6 @@ class Overlap(DataClassWithPscale):
     self.rectangles = p1rect, p2rect
 
   @property
-  def layer(self):
-    """
-    Layer number of the rectangles in the overlap
-    """
-    try:
-      layers = [r.layer for r in self.rectangles]
-    except KeyError:
-      raise TypeError("Trying to get layer for overlap whose rectangles don't have a layer assigned")
-    if layers[0] != layers[1]:
-      raise ValueError(f"Rectangles have inconsistent layers: {layers}")
-    return layers[0]
-
-  @property
   def x1vec(self):
     """
     [x1, y1] as a numpy array

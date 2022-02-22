@@ -43,7 +43,7 @@ class ImageStack(ThingWithLogger) :
                          (if None then masking will be skipped)
         """
         self.__logger.info(f'Stacking {len(rectangles)} images')
-        img_dims = rectangles[0].imageshapeinoutput
+        img_dims = rectangles[0].im3shape
         if img_dims!=self.__image_stack.shape :
             errmsg = f'ERROR: called stack_images with rectangles that have dimensions {img_dims} '
             errmsg+= f'but an image stack with dimensions {self.__image_stack.shape}!'
@@ -66,7 +66,7 @@ class ImageStack(ThingWithLogger) :
         #make sure the dimensions match
         if get_image_hwl_from_xml_file(sample.root,sample.SlideID)!=self.__image_stack.shape :
             errmsg = 'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have '
-            errmsg+= f'dimensions {sample.rectangles[0].imageshapeinoutput} but an image stack with '
+            errmsg+= f'dimensions {sample.rectangles[0].im3shape} but an image stack with '
             errmsg+= f'dimensions {self.__image_stack.shape}'
             raise ValueError(errmsg)
         #read and add the images from the sample
@@ -123,12 +123,12 @@ class ImageStack(ThingWithLogger) :
         Simply add all the images to the image_stack and image_squared_stack without masking them
         """
         n_images_read = 0
-        n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
+        n_images_stacked_by_layer = np.zeros((rectangles[0].im3shape[-1]),dtype=np.uint64)
         field_logs = []
         for ri,r in enumerate(rectangles) :
             msg = f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....'
             self.__logger.debug(msg)
-            with r.using_image() as im :
+            with r.using_corrected_im3() as im :
                 normalized_image = im/med_ets if med_ets is not None else im/r.allexposuretimes[np.newaxis,np.newaxis,:]
                 self.__image_stack+=normalized_image
                 self.__image_squared_stack+=np.power(normalized_image,2)
@@ -169,14 +169,14 @@ class ImageStack(ThingWithLogger) :
         #for every image that will be stacked, read its masking file, normalize and mask its image, 
         #and add the masked image/mask to the respective stacks
         n_images_read = 0
-        n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
+        n_images_stacked_by_layer = np.zeros((rectangles[0].im3shape[-1]),dtype=np.uint64)
         field_logs = []
         for ri,r in enumerate(rectangles_to_stack) :
             msg = f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack '
             msg+= f'({ri+1} of {len(rectangles_to_stack)})....'
             self.__logger.debug(msg)
             imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
-            with r.using_image() as im :
+            with r.using_corrected_im3() as im :
                 normalized_im = im/med_ets if med_ets is not None else im/r.allexposuretimes[np.newaxis,np.newaxis,:]
                 if imkey in keys_with_full_masks :
                     mask_path = maskingdirpath/f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
@@ -216,7 +216,7 @@ class MeanImage(ImageStack) :
         if len(rectangles)<1 :
             return []
         if self.__n_images_stacked_by_layer is None :
-            self.__n_images_stacked_by_layer = np.zeros((rectangles[0].imageshapeinoutput[-1]),dtype=np.uint64)
+            self.__n_images_stacked_by_layer = np.zeros((rectangles[0].im3shape[-1]),dtype=np.uint64)
         n_images_read, n_images_stacked_by_layer, field_logs = super().stack_rectangle_images(rectangles,
                                                                                               *otherstackimagesargs)
         self.n_images_read+=n_images_read

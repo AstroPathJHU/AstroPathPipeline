@@ -69,7 +69,8 @@ class TestMeanImage(TestBaseSaveOutput) :
                 '--sampleregex',SlideID,
                 '--maskroot',os.fspath(folder/'test_for_jenkins'/'mean_image'),
                 '--workingdir',os.fspath(self.meanimage_dir),
-                '--selectrectangles'
+                '--debug',
+                '--selectrectangles',
                 ]
         for rn in rectangle_ns_with_raw_files :
             args.append(str(rn))

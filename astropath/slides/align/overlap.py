@@ -102,38 +102,51 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
     super().__post_init__(*args, **kwargs)
     if layer1 is None:
       try:
-        self.rectangles[0].layer
+        self.rectangles[0].alignmentlayer
       except AttributeError:
-        if len(self.rectangles[0].layers)==1 :
-          layer1 = self.rectangles[0].layers[0]
+        if len(self.rectangles[0].alignmentlayers)==1 :
+          layer1 = self.rectangles[0].alignmentlayers[0]
         else :
-          raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[0].layers}")
+          raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[0].alignmentlayers}")
     if layer2 is None:
       try:
-        self.rectangles[1].layer
+        self.rectangles[1].alignmentlayer
       except AttributeError:
-        if len(self.rectangles[1].layers)==1 :
-          layer2 = self.rectangles[1].layers[0]
+        if len(self.rectangles[1].alignmentlayers)==1 :
+          layer2 = self.rectangles[1].alignmentlayers[0]
         else :
-          raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[1].layers}")
+          raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[1].alignmentlayers}")
     self.__layers = layer1, layer2
 
   def __hash__(self):
     if not self.ismultilayer: return super().__hash__()
-    return hash((super().__hash__(), self.layers))
+    return hash((super().__hash__(), self.alignmentlayers))
   def __eq__(self, other):
-    return super().__eq__(other) and self.layers == other.layers
+    return super().__eq__(other) and self.alignmentlayers == other.alignmentlayers
 
   @property
-  def layers(self): return self.__layers
+  def alignmentlayers(self): return self.__layers
   @property
-  def layer1(self): return self.__layers[0]
+  def alignmentlayer1(self): return self.__layers[0]
   @property
-  def layer2(self): return self.__layers[1]
+  def alignmentlayer2(self): return self.__layers[1]
   @methodtools.lru_cache()
   @property
   def ismultilayer(self):
-    return any(_ is not None for _ in self.layers)
+    return any(_ is not None for _ in self.alignmentlayers)
+
+  @property
+  def alignmentlayer(self):
+    """
+    Layer number of the rectangles in the overlap
+    """
+    try:
+      layers = [r.alignmentlayer for r in self.rectangles]
+    except KeyError:
+      raise TypeError("Trying to get layer for overlap whose rectangles don't have a layer assigned")
+    if layers[0] != layers[1]:
+      raise ValueError(f"Rectangles have inconsistent layers: {layers}")
+    return layers[0]
 
   @property
   def images(self):
@@ -141,8 +154,8 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
     The images for the two HPFs
     """
     images = [None, None]
-    with self.rectangles[0].using_image() as images[0], self.rectangles[1].using_image() as images[1]:
-      result = tuple(image[:, :] if layer is None else image[:, :, r.layers.index(layer)] for r, image, layer in more_itertools.zip_equal(self.rectangles, images, self.layers))
+    with self.rectangles[0].using_alignment_image() as images[0], self.rectangles[1].using_alignment_image() as images[1]:
+      result = tuple(image[:, :] if layer is None else image[:, :, r.alignmentlayers.index(layer)] for r, image, layer in more_itertools.zip_equal(self.rectangles, images, self.alignmentlayers))
       for i in result: i.flags.writeable = False
       return result
 
@@ -325,12 +338,12 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
     }
     if self.ismultilayer:
       result.update({
-        "layer1": self.layers[0],
-        "layer2": self.layers[1],
+        "layer1": self.alignmentlayers[0],
+        "layer2": self.alignmentlayers[1],
       })
     else:
       result.update({
-        "layer": self.layer,
+        "layer": self.alignmentlayer,
       })
     return result
 
@@ -338,7 +351,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
     """
     is this overlap between (p1, p2) the inverse of another overlap (p2, p1)?
     """
-    return (inverse.p1, inverse.p2) == (self.p2, self.p1) and inverse.layers == tuple(reversed(self.layers))
+    return (inverse.p1, inverse.p2) == (self.p2, self.p1) and inverse.alignmentlayers == tuple(reversed(self.alignmentlayers))
 
   def getinversealignment(self, inverse):
     """

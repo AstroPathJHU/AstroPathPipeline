@@ -30,7 +30,7 @@ class PCASample(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML,MaskSampleBa
         #loop over the rectangles
         for ir,r in enumerate(self.rectangles,start=1) :
             self.logger.debug(f'Adding {r.file.replace(".im3","")} to PCA ({ir}/{len(self.rectangles)})...')
-            dims = r.imageshapeinoutput
+            dims = r.im3shape
             #find the mask to use for this image
             fmfp = self.maskfolder/r.file.replace('.im3','_full_mask.bin')
             if fmfp.is_file() :
@@ -43,7 +43,7 @@ class PCASample(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML,MaskSampleBa
                     raise ValueError(f'ERROR: tissue mask file {tmfp} not found!')
                 mask = ImageMask.unpack_tissue_mask(tmfp,dims[:-1])
             #add the image to the PCA
-            with r.using_image() as im :
+            with r.using_corrected_im3() as im :
                 #smooth the image VERY gently
                 im = smooth_image_worker(im,1)
                 #mask out any pixels other than the good tissue in every layer

@@ -44,7 +44,7 @@ class AlignmentOverlapForWarping(AlignmentOverlap) :
         or when they change. The point is to try and do these calculations as infrequently as possible.
         Reading the images is what takes the longest
         """
-        self.__images = self.rectangles[0].image,self.rectangles[1].image
+        self.__images = self.rectangles[0].alignmentimage,self.rectangles[1].alignmentimage
         if (not hasattr(self,f'_{self.__class__.__name__}__imageshape')) or self.__images[0].shape!=self.__imageshape :
                 self.__imageshape = self.__images[0].shape
                 self.__cutimage_slices = tuple(self.cutimageslices)
