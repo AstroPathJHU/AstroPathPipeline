@@ -72,10 +72,12 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ThingWithLogger, units
   def tiffs(self):
     return list(self.tifffolder.glob("*_seg_maps.tif"))
 
-  def runHPF(self, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, minarea):
+  @staticmethod
+  def runHPF(i, field, *, logger, outputfolder, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, minarea, nfields):
     geomload = []
     onepixel = field.onepixel
-    outputfile = self.outputfolder/field.tifffile.name.with_suffix(".csv")
+    outputfile = outputfolder/field.tifffile.with_suffix(".csv").name
+    logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
     if outputfile.exists(): return
     with tifffile.TiffFile(field.tifffile) as f:
       nuclei, _, membranes = f.pages
@@ -91,7 +93,7 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ThingWithLogger, units
 
           celllabel = cellproperties.label
           if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-          polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=field.pxvec, mxbox=field.mxbox, pscale=field.pscale, logger=self.logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+          polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=field.pxvec, mxbox=field.mxbox, pscale=field.pscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
           if polygon is None: continue
           if polygon.area < minarea: continue
 
@@ -126,8 +128,15 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ThingWithLogger, units
   def run(self, minarea=None, **kwargs):
     if minarea is None:
       minarea = 3*self.onemicron**2
-    for field in self.fields:
-      self.runHPF(field, minarea=minarea, **kwargs)
+    runHPFkwargs = {
+      "minarea": minarea,
+      "logger": self.logger,
+      "nfields": len(self.fields),
+      "outputfolder": self.outputfolder,
+      **kwargs
+    }
+    for i, field in enumerate(self.fields, start=1):
+      self.runHPF(i, field, **runHPFkwargs)
 
   @classmethod
   def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
@@ -154,8 +163,6 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     p.add_argument("--output-folder", type=pathlib.Path, required=True, help="Folder for the output csvs")
     p.add_argument("--log-folder", type=pathlib.Path, required=True, help="Folder for the log files")
     return p
-
-
 
 def main(args=None):
   return MotifGeomCell.runfromargumentparser(args=args)
