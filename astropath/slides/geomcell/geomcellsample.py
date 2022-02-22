@@ -6,7 +6,7 @@ from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
-from ...shared.sample import DbloadSample, GeomSampleBase, ParallelSample, ReadRectanglesDbloadComponentTiff, WorkflowSample
+from ...shared.sample import DbloadSample, GeomSampleBase, ParallelSample, ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample
 from ...utilities import units
 from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
@@ -21,7 +21,7 @@ class GeomLoadField(Field, GeomLoadRectangle):
 class GeomLoadFieldReadComponentTiffMultiLayer(FieldReadComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSample, ParallelSample, WorkflowSample, CleanupArgumentParser):
+class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, DbloadSample, ParallelSample, WorkflowSample, CleanupArgumentParser):
   @property
   def segmentationorder(self):
     return sorted(
@@ -48,7 +48,6 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadComponentTiff, DbloadSa
   def __init__(self, *args, **kwargs):
     super().__init__(
       *args,
-      with_seg=True,
       layers="setlater",
       **kwargs
     )

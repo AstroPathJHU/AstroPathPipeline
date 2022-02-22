@@ -40,20 +40,20 @@ Class testpsmeanimage {
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $this.testpsmeanimageconstruction($task)
         $inp = meanimage $task 
-        # $this.testprocessroot($inp)
-        # $this.testcleanupbase($inp)
-        # $this.comparepymeanimageinput($inp)
-        # $this.runpytaskpyerror($inp)
-        # $this.testlogpyerror($inp)
-        # $this.runpytaskaperror($inp)
-        # $this.testlogaperror($inp)
-        # $this.runpytaskexpected($inp)
-        # $this.testlogsexpected($inp)
+        $this.testprocessroot($inp)
+        $this.testcleanupbase($inp)
+        $this.comparepymeanimageinput($inp)
+        $this.runpytaskpyerror($inp)
+        $this.testlogpyerror($inp)
+        $this.runpytaskaperror($inp)
+        $this.testlogaperror($inp)
+        $this.runpytaskexpected($inp)
+        $this.testlogsexpected($inp)
         # $this.runpytaskexpectedapid($inp)
         # $this.testlogsexpectedapid($inp)
-        # $this.testreturndatapy($inp)
-        # $this.testmasks($inp)
-        # $this.testcleanup($inp)
+        $this.testreturndatapy($inp)
+        $this.testmasks($inp)
+        $this.testcleanup($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -88,6 +88,7 @@ Class testpsmeanimage {
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
+        $inp.sample.start($this.module)
         Write-Host '    meanimage command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
@@ -431,6 +432,25 @@ Class testpsmeanimage {
             Throw $_.Exception.Message
         }
         #
+        # check that blank lines didn't write to the log
+        #
+        $loglines = import-csv $inp.sample.mainlog `
+            -Delimiter ';' `
+            -header 'Project','Cohort','slideid','Message','Date' 
+        if ($inp.sample.module -match 'batch'){
+            $ID= $inp.sample.BatchID
+        } else {
+            $ID = $inp.sample.slideid
+        }
+        #
+        $savelog = $loglines |
+                    where-object {($_.Slideid -match $ID) -and 
+                        ($_.Message -match '')} |
+                    Select-Object -Last 1 
+        if ($savelog){
+            Throw 'blank log output exists'
+        }
+        #
         Write-Host 'test python expected log output finished'
         #
     }
@@ -580,16 +600,15 @@ Class testpsmeanimage {
             $this.slideid,
             'im3',
             'meanimage',
-            'image_masking'
+            'image_masking\*'
         ) -join '\'
         #
-        $returnpath = (
-            $this.basepath,
-            $this.slideid, 
-            'im3\meanimage\image_masking'
-        ) -join '\'
+        Write-Host '   '$masking_processloc
         #
-        $this.comparepaths($masking_processloc, $returnpath, $inp)
+        $files = get-childitem $masking_processloc -include '*.bin'
+        if (!($files)){
+            Throw 'masks not created; check process loc'
+        }
         #
         Write-Host 'test mask output finished'
         #

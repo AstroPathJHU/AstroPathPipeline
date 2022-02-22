@@ -17,7 +17,7 @@
         #
         Write-Host '---------------------test ps [sharedtools]---------------------'
         $this.importmodule()
-        #$this.testconstructor()
+        $this.testconstructor()
         $tools = sharedtools
         $this.testcondaenvir($tools)
         $this.testcheckgitrepo($tools)
@@ -34,9 +34,9 @@
     }
     #
     [string]uncpath($str){
-        $r = $str -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
+        $r = $str -replace( '\\', '/')
+        if ($r[0] -ne '/'){
+            $root = ('//' + $env:computername+'/'+$r) -replace ":", "$"
         } else{
             $root = $r -replace ":", "$"
         }
@@ -62,7 +62,6 @@
         Write-Host '.'
         Write-Host 'start get info for git versioning'
         Write-Host '    root: ' $tools.defRoot()
-        Write-Host '    is Windows: ' $tools.isWindows()
         Write-Host '    Git repo path: ' $tools.pypackagepath() 
         Write-Host '    Git installed: ' $tools.checkgitinstalled()
         Write-Host '    Git repo: ' $tools.checkgitrepo()
@@ -80,6 +79,8 @@
         $logpath = $PSScriptRoot + '\data\logfiles'
         #
         Write-Host '    '$logpath
+        #
+        $tools.createdirs($logpath)
         #
         if (!(test-path $logpath)){
             Throw 'could not create folder in data'
@@ -226,7 +227,7 @@
             Throw 'could not copy using robocopy'
         }
         #
-        $files = get-childitem $des
+        $files = get-childitem $des -File
         Write-Host ($files.FullName)
         $nfiles = ($files).Length
         if ($nfiles -ne $n){
@@ -257,11 +258,36 @@
         Write-Host '.'
         Write-Host 'test that the conda enviroment can be imported'
         #
-        $tools.CheckConda()
+        Write-Host '    is Windows: ' $tools.isWindows()
         #
-        if ((get-module).name -notcontains 'Conda'){
-            Throw 'Conda not installed correctly'
+        if ($tools.isWindows()){
+            $tools.CheckConda()
+            if ((get-module).name -notcontains 'Conda'){
+                Throw 'Conda not installed correctly'
+            }
+        } else {
+            #
+            Write-Host '    OS is not windows test that we can astropath from python'
+            #
+            $pymod = "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort"
+            $pyargs = "args = ['-h']"
+            $testval = $pymod, $pyargs, "MeanImageCohort.runfromargumentparser(args=args)" -join "; "
+            #
+            Write-Host '   '$pymod
+            Write-Host '   '$pyargs
+            Write-Host '   '$testval
+            #
+            $output = python -c $testval
+            if ($output -notmatch 'usage'){
+                Throw 'error launching py test wihout conda'
+            }
+            #
+            Write-Host '    python finished'
+            #
+            write-host $output
+            #     
         }
+        #
     }
 }
 

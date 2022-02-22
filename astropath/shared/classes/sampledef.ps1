@@ -91,10 +91,16 @@ class sampledef : sharedtools{
         #
         if (!$batch){
             Throw 'Not a valid batchid'
+        } elseif ($batch.Count -eq 1){
+            $this.project = $batch.Project
+            $this.cohort = $batch.Cohort
+            $this.BatchID = $batch.BatchID.padleft(2, '0')
+        } else{
+            $this.project = $batch.Project[0]
+            $this.cohort = $batch.Cohort[0]
+            $this.BatchID = $batch.BatchID[0].padleft(2, '0')
         }
-        $this.project = $batch.Project[0]
-        $this.cohort = $batch.Cohort[0]
-        $this.BatchID = $batch.BatchID.padleft(2, '0')
+        #
         $this.slideid = $this.BatchID
         $this.batchslides = $batch
         #
@@ -238,7 +244,17 @@ class sampledef : sharedtools{
     #
     [string]pybatchflatfield(){
         $ids = $this.ImportCorrectionModels($this.mpath)
-        $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
+        if ($this.slideid -notcontains $this.batchid){
+            $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
+        } else  {
+            $file1 = ($ids | Where-Object { $_.BatchID.padleft(2, '0') `
+                -contains $this.batchid}).FlatfieldVersion
+           if ($file1){
+                $file = $file1[0]
+           } else {
+               $file = ''
+           }
+        }
         return $file
     }
     #
@@ -454,12 +470,8 @@ class sampledef : sharedtools{
     #
     [switch]testwarpoctets(){
         #
-        $file = $this.basepath + '\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
-        #
-        $file2 = $this.basepath + '\' + $this.slideid + '\im3\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
-        $file3 = $this.basepath + '\' + $this.slideid + '\im3\warping\octets\image_keys_needed.txt'
-        #
-        $logfile = $this.basepath + '\' + $this.slideid + '\logfiles\' + $this.slideid + '-warpoctets.log'
+        $logfile = $this.basepath, '\', $this.slideid,
+            '\logfiles\', $this.slideid, '-warpoctets.log' -join ''
         #
         if (test-path $logfile){
             $log = $this.importlogfile($logfile)
@@ -467,21 +479,36 @@ class sampledef : sharedtools{
                 return $true
             }
         }
-        #
         $p = ($this.meanimagefolder() + '\' + $this.slideid + '-mask_stack.bin')
         #
-        if (test-path $p){
+        if (!(test-path $p)){
             return $true
         }
         #
+        $this.testwarpoctetsfiles($this.slideid)
+        #
+        return $true
+    }
+    #
+    [switch]testwarpoctetsfiles(){
+        #
+        $file = $this.basepath, '\warping\octets\',
+            $this.slideid, '-all_overlap_octets.csv' -join ''
+       #
+       $file2 = $this.basepath, '\', $this.slideid,
+            '\im3\warping\octets\', $this.slideid, '-all_overlap_octets.csv' -join ''
+       <#
+       $file3 = $this.basepath, '\', $slideid,
+        '\im3\warping\octets\image_keys_needed.txt' -join ''
+       #>
         if (!(test-path $file) -AND !(test-path $file2)){
             return $false
         }
-        #
+        <#
         if (!(test-path $file3)){
             return $false
         }
-        #
+        #>
         return $true
     }
     #

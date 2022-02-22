@@ -57,7 +57,7 @@ function ConvertIm3Path{
         # extract additional sample information like shape, etc
         # optional inputs are applied
         #
-        if ($all -or $dat) { Invoke-IM3Convert $images $flatw -BIN }
+        if ($all -or $dat) { Invoke-IM3Convert -images $images -dest $flatw -BIN }
         #
         if ($all -or $xml) {
             Write-Host $images
@@ -321,9 +321,13 @@ function Invoke-IM3Convert {
     # extracts the binary bit map
     #
     if ($BIN) {
-        $images | foreach-object {
-            & $code $_ DAT -x $dat -o $dest 2>&1>> "$dest\doShred.log"
-        }
+        #
+        $log = $dest + '\doShred.log'
+        #
+        $images | foreach-object -Parallel {
+            & $using:code $_ DAT -x $using:dat -o $using:dest # 2>&1>> $log
+        } -ThrottleLimit 10 | Out-File -append $log
+        #
     }
     #
     # extracts the xml file for the exposure times

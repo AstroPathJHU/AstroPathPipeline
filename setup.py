@@ -102,14 +102,12 @@ setupkwargs = dict(
   install_requires = [
     "contextlib2>=0.6.0; python_version < '3.7'",
     "dataclassy>=0.10.0",
-    "deepcell>=0.11.0",
     "imagecodecs",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",
     "methodtools",
     "more_itertools>=8.3.0",
     "networkx",
-    "nnunet>=1.6.0",
     "numba",
     "numpy>=1.17.0",
     "opencv-python",
@@ -127,10 +125,11 @@ setupkwargs = dict(
     "uncertainties",
   ],
   extras_require = {
-    "cvxpy": ["cvxpy"],
+    "deepcell": ["deepcell>=0.11.0"],
     "gdal": ["gdal>=3.3.0"],
     "gpu": ["pyopencl", "reikna"],
-    "test": ["beautifulsoup4", "flake8", "gitpython", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
+    "nnunet": ["nnunet>=1.6.0"],
+    "test": ["beautifulsoup4", "cvxpy", "flake8", "gitpython", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
     "vips": ["pyvips"],
   },
   package_data = {
