@@ -3,6 +3,7 @@ from abc import abstractmethod
 import numpy as np
 from sklearn.decomposition import IncrementalPCA
 from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.miscmath import floattoint
 from ...utilities.img_file_io import smooth_image_worker
 from ...shared.overlap import Overlap
 from ...shared.image_masking.image_mask import ImageMask
@@ -28,7 +29,9 @@ class PCASampleBase(ReadRectanglesBase,MaskSampleBase) :
         """
         Calculate the PCA using all of the rectangle images
         """
-        dims = (self.fheight,self.fwidth,self.flayers)
+        dims = (floattoint(float(self.fheight / self.onepixel)),
+                floattoint(float(self.fwidth / self.onepixel)),
+                self.flayers)
         #loop over the rectangles
         for ir,r in enumerate(self.rectangles,start=1) :
             self.logger.debug(f'Adding {r.file.replace(".im3","")} to PCA ({ir}/{len(self.rectangles)})...')
