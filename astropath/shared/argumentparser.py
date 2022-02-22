@@ -498,7 +498,7 @@ class XMLPolygonFileArgumentParser(RunFromArgumentParser):
       "annotationsxmlregex": parsed_args_dict.pop("annotations_xml_regex"),
     }
 
-class ParallelArgumentParser(RunFromArgumentParser):
+class ParallelArgumentParser(InitAndRunFromArgumentParserBase):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)

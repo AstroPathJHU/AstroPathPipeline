@@ -1,21 +1,14 @@
-import contextlib, fractions, methodtools, numpy as np, pathlib, re, skimage.measure, tifffile
-from ...shared.argumentparser import ArgumentParserWithVersionRequirement
+import contextlib, fractions, job_lock, methodtools, multiprocessing as mp, numpy as np, pathlib, re, skimage.measure, tifffile
+from ...shared.argumentparser import ArgumentParserWithVersionRequirement, ParallelArgumentParser
 from ...shared.logging import printlogger, ThingWithLogger
 from ...utilities import units
 from ...utilities.tableio import writetable
 from .geomcellsample import CellGeomLoad, PolygonFinder
 
 class MiniField(units.ThingWithPscale):
-  def __init__(self, hpfid, tifffile):
+  def __init__(self, hpfid, tifffilename):
     self.hpfid = hpfid
-    self.tifffile = tifffile
-
-  @property
-  def n(self): return self.hpfid
-
-  @methodtools.lru_cache()
-  @property
-  def imageinfo(self):
+    self.tifffile = tifffilename
     with tifffile.TiffFile(self.tifffile) as f:
       pscales = set()
       shapes = set()
@@ -29,19 +22,20 @@ class MiniField(units.ThingWithPscale):
       shape, = shapes
       shape = np.array(shape) * units.onepixel(pscale)
       height, width = shape
-    return pscale, width, height
+    self.__pscale = pscale
+    self.__width = width
+    self.__height = height
 
   @property
-  def pscale(self):
-    return self.imageinfo[0]
-  @property
-  def width(self):
-    return self.imageinfo[1]
-  @property
-  def height(self):
-    return self.imageinfo[2]
+  def n(self): return self.hpfid  
 
-  @methodtools.lru_cache()
+  @property
+  def pscale(self): return self.__pscale
+  @property
+  def width(self): return self.__width
+  @property
+  def height(self): return self.__height
+
   @property
   def pxvec(self):
     match = re.match(r"[0-9A-Za-z_]+_\[([0-9]+),([0-9]+)\]_binary_seg_maps\.tif", self.tifffile.name)
@@ -57,12 +51,21 @@ class MiniField(units.ThingWithPscale):
   def mxbox(self):
     return np.array([self.py, self.px, self.py+self.height, self.px+self.width])
 
-class MotifGeomCell(ArgumentParserWithVersionRequirement, ThingWithLogger, units.ThingWithPscale):
-  def __init__(self, *, tifffolder, logfolder, outputfolder, **kwargs):
+class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser, ThingWithLogger, units.ThingWithPscale):
+  def __init__(self, *, tifffolder, logfolder, outputfolder, njobs=None, **kwargs):
     super().__init__(**kwargs)
     self.tifffolder = pathlib.Path(tifffolder)
     self.logfolder = pathlib.Path(logfolder)
     self.outputfolder = pathlib.Path(outputfolder)
+    self.__njobs = njobs
+
+  @property
+  def njobs(self):
+    return self.__njobs
+  def pool(self):
+    nworkers = mp.cpu_count()
+    if self.njobs is not None: nworkers = min(nworkers, self.njobs)
+    return mp.get_context().Pool(nworkers)
 
   @property
   def logger(self):
@@ -77,42 +80,44 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     geomload = []
     onepixel = field.onepixel
     outputfile = outputfolder/field.tifffile.with_suffix(".csv").name
-    logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
-    if outputfile.exists(): return
-    with tifffile.TiffFile(field.tifffile) as f:
-      nuclei, _, membranes = f.pages
-      nuclei = nuclei.asarray()
-      membranes = membranes.asarray()
-      for celltype, imlayer in (0, membranes), (2, nuclei):
-        properties = skimage.measure.regionprops(imlayer)
-        ismembranelayer = imlayer is membranes
-        for cellproperties in properties:
-          if not np.any(cellproperties.image):
-            assert False
-            continue
-
-          celllabel = cellproperties.label
-          if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-          polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=field.pxvec, mxbox=field.mxbox, pscale=field.pscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
-          if polygon is None: continue
-          if polygon.area < minarea: continue
-
-          box = np.array(cellproperties.bbox).reshape(2, 2)[:,::-1] * onepixel * 1.0
-          box += field.pxvec
-          box = box // onepixel * onepixel
-
-          geomload.append(
-            CellGeomLoad(
-              field=field.n,
-              ctype=celltype,
-              n=celllabel,
-              box=box,
-              poly=polygon,
-              pscale=field.pscale,
+    lockfile = outputfile.with_suffix(".lock")
+    with job_lock.JobLock(lockfile, outputfiles=[outputfile]) as lock:
+      if not lock: return
+      logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
+      with tifffile.TiffFile(field.tifffile) as f:
+        nuclei, _, membranes = f.pages
+        nuclei = nuclei.asarray()
+        membranes = membranes.asarray()
+        for celltype, imlayer in (0, membranes), (2, nuclei):
+          properties = skimage.measure.regionprops(imlayer)
+          ismembranelayer = imlayer is membranes
+          for cellproperties in properties:
+            if not np.any(cellproperties.image):
+              assert False
+              continue
+  
+            celllabel = cellproperties.label
+            if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
+            polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=field.pxvec, mxbox=field.mxbox, pscale=field.pscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+            if polygon is None: continue
+            if polygon.area < minarea: continue
+  
+            box = np.array(cellproperties.bbox).reshape(2, 2)[:,::-1] * onepixel * 1.0
+            box += field.pxvec
+            box = box // onepixel * onepixel
+  
+            geomload.append(
+              CellGeomLoad(
+                field=field.n,
+                ctype=celltype,
+                n=celllabel,
+                box=box,
+                poly=polygon,
+                pscale=field.pscale,
+              )
             )
-          )
-
-    writetable(outputfile, geomload)
+  
+      writetable(outputfile, geomload)
 
   @methodtools.lru_cache()
   @property
@@ -133,10 +138,20 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ThingWithLogger, units
       "logger": self.logger,
       "nfields": len(self.fields),
       "outputfolder": self.outputfolder,
-      **kwargs
+      **kwargs,
     }
-    for i, field in enumerate(self.fields, start=1):
-      self.runHPF(i, field, **runHPFkwargs)
+    print(runHPFkwargs)
+    if self.njobs is None or self.njobs > 1:
+      with self.pool() as pool:
+        results = [
+          pool.apply_async(self.runHPF, args=(i, field), kwds=runHPFkwargs)
+          for i, field in enumerate(self.fields, start=1)
+        ]
+        for r in results:
+          r.get()
+    else:
+      for i, field in enumerate(self.fields, start=1):
+        self.runHPF(i, field, **runHPFkwargs)
 
   @classmethod
   def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
