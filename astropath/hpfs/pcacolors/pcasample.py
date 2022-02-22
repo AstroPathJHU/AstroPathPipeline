@@ -6,7 +6,9 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.img_file_io import smooth_image_worker
 from ...shared.overlap import Overlap
 from ...shared.image_masking.image_mask import ImageMask
-from ...shared.sample import ReadRectanglesBase, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase
+from ...shared.sample import ReadRectanglesBase, MaskSampleBase
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML
+from ...shared.sample import ReadRectanglesOverlapsComponentTiffFromXML
 
 class PCASampleBase(ReadRectanglesBase,MaskSampleBase) :
     """
@@ -62,10 +64,18 @@ class PCASampleBase(ReadRectanglesBase,MaskSampleBase) :
 
 class PCASampleCorrectedIm3(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML,PCASampleBase) :
     """
-    Class to work with a PCA across all of a slide's images
+    Class to work with a PCA across all of a slide's raw images
     The PCA is calculated using images after correction for 
     exposure time and flatfielding effects
     """
 
     def get_image_for_rectangle(self, rect):
         return rect.using_corrected_im3()
+
+class PCASampleComponentTiff(ReadRectanglesOverlapsComponentTiffFromXML,PCASampleBase) :
+    """
+    Class to work with a PCA across all of a slide's component .tiff images
+    """
+
+    def get_image_for_rectangle(self, rect):
+        return rect.using_component_tiff()
