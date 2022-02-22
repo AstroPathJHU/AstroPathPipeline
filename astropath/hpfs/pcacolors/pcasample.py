@@ -79,6 +79,8 @@ class PCASampleComponentTiff(ReadRectanglesOverlapsComponentTiffFromXML,PCASampl
     """
     Class to work with a PCA across all of a slide's component .tiff images
     """
+    
+    multilayercomponenttiff = True
 
     def get_image_for_rectangle(self, rect):
         return rect.using_component_tiff()
