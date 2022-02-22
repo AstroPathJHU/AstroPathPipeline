@@ -28,10 +28,10 @@ class PCASampleBase(ReadRectanglesBase,MaskSampleBase) :
         """
         Calculate the PCA using all of the rectangle images
         """
+        dims = (self.fheight,self.fwidth,self.flayers)
         #loop over the rectangles
         for ir,r in enumerate(self.rectangles,start=1) :
             self.logger.debug(f'Adding {r.file.replace(".im3","")} to PCA ({ir}/{len(self.rectangles)})...')
-            dims = r.im3shape
             #find the mask to use for this image
             fmfp = self.maskfolder/r.file.replace('.im3','_full_mask.bin')
             if fmfp.is_file() :
@@ -48,7 +48,7 @@ class PCASampleBase(ReadRectanglesBase,MaskSampleBase) :
                 #smooth the image VERY gently
                 im = smooth_image_worker(im,1)
                 #mask out any pixels other than the good tissue in every layer
-                im = im.reshape(dims[0]*dims[1],dims[2])
+                im = im.reshape(im.shape[0]*im.shape[1],im.shape[2])
                 mask = mask.flatten()
                 masked_im = np.delete(im,np.where(mask==0),axis=0)
                 if masked_im.shape[0]>0 :
