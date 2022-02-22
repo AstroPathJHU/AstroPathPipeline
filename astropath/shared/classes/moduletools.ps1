@@ -369,7 +369,7 @@
     [void]fixmlids(){
         #
         $xml = $this.sample.xmlfolder() +'\*'
-        $xmlid = $this.sample.slideid + '_*.xml'
+        $xmlid = $this.sample.slideid + '*.xml'
         $sampleidxmls = Get-ChildItem $xml -exclude $xmlid  -include '*.xml'
         #
         if ($sampleidxmls){

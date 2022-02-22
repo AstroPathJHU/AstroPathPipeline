@@ -3,7 +3,8 @@
         [Parameter()][string]$module = '',
         [Parameter()][PSCredential]$Credential = [PSCredential]::Empty, 
         [Parameter()][string]$mpath='\\bki04\astropath_processing',
-        [Parameter()][string]$project
+        [Parameter()][string]$project,
+        [Parameter()][switch]$test
     )
     #
     if($Credential -eq [PSCredential]::Empty){
@@ -20,7 +21,9 @@
         }
     } else{
         #
-        if (($PSBoundParameters.ContainsKey('project'))){
+        if ($test){
+            $q = [dispatcher]::new($mpath, $module, '', '', $test, $Credential)
+        } elseif (($PSBoundParameters.ContainsKey('project'))){
             $q = [dispatcher]::new($mpath, $module, $project, $Credential)
         } else {
             $q = [dispatcher]::new($mpath, $module, $Credential)

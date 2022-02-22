@@ -1,6 +1,6 @@
 ﻿<# -------------------------------------------
  testpsmeanimage
- created by: Andrew Jorquera
+ Benjamin Green, Andrew Jorquera
  Last Edit: 01.18.2022
  --------------------------------------------
  Description

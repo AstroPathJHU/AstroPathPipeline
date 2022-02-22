@@ -15,6 +15,7 @@
     [string]$module = 'shredxml'
     [string]$slideid = 'M21_1'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
+    [string]$slideid2 = 'M55_1'
     
     #
     testpslogger(){
@@ -27,6 +28,7 @@
         Write-Host ($log.project_data | out-string)
         #
         $this.testwritestartmessage($log)
+        $this.testeditsampleid($log)
         Write-Host '.'
         #
     }
@@ -101,6 +103,28 @@
         #
         Write-Host 'write to log tests finished'
         #
+    }
+    #
+    [void]testeditsampleid($log){
+        #
+        Write-Host "."
+        Write-Host "test changing the slideid in the logger"
+        #
+        Write-Host '   '$this.slideid
+        Write-Host '        old slideid:' $log.slideid
+        Write-Host '        old basepath:' $log.basepath
+        Write-Host '        old main log:' $log.mainlog
+        Write-Host '        old slide log:' $log.slidelog
+        #
+        Write-Host '   '$this.slideid2
+        $slides = $log.importslideids($this.mpath)
+        $log.Sample($this.slideid2, $this.mpath, $slides)
+        #
+        Write-Host '        new slideid:' $log.slideid
+        Write-Host '        new basepath:' $log.basepath
+        Write-Host '        new main log:' $log.mainlog
+        Write-Host '        new slide log:' $log.slidelog
+        Write-Host "test changing the slideid in the logger finished"
     }
     #
 }
