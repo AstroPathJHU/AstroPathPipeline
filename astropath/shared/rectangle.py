@@ -133,7 +133,13 @@ class Rectangle(DataClassWithPscale):
     """
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
 
-class RectangleReadIm3Base(Rectangle):
+class RectangleWithImageLoaderBase(Rectangle):
+  def __post_init__(self, *args, _DEBUG=True, _DEBUG_PRINT_TRACEBACK=False, **kwargs):
+    super().__post_init__(*args, **kwargs)
+    self._DEBUG = _DEBUG
+    self._DEBUG_PRINT_TRACEBACK = _DEBUG_PRINT_TRACEBACK
+
+class RectangleReadIm3Base(RectangleWithImageLoaderBase):
   """
   Rectangle class that reads the image from a sharded im3
   (could be raw, flatw, etc.)
@@ -229,6 +235,8 @@ class RectangleReadIm3Base(Rectangle):
     "filename": self.im3file,
     "width": floattoint(float(self.width / self.onepixel)),
     "height": floattoint(float(self.height / self.onepixel)),
+    "_DEBUG": self._DEBUG,
+    "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
   }
 
 class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
@@ -353,7 +361,6 @@ class RectangleCorrectedIm3Base(RectangleReadIm3Base) :
   To correct for warp:
     warp = the warping object
   """
-  _DEBUG = False #tend to load these more than once
 
   def __post_init__(self, *args, et_offset=None, use_flatfield=False, use_warp=None, **kwargs) :
     super().__post_init__(*args, **kwargs)
@@ -387,17 +394,22 @@ class RectangleCorrectedIm3Base(RectangleReadIm3Base) :
   def correctedim3loader(self):
     loader = self.im3loader
 
+    kwargs = {
+      "_DEBUG": self._DEBUG,
+      "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
+    }
+
     if self.__et_offset is not None:
       transformation = self.exposuretimetransformation
-      loader = TransformedImage(loader, transformation)
+      loader = TransformedImage(loader, transformation, **kwargs)
 
     if self.__use_flatfield:
       transformation = self.flatfieldtransformation
-      loader = TransformedImage(loader, transformation)
+      loader = TransformedImage(loader, transformation, **kwargs)
 
     if self.__use_warp:
       transformation = self.warpingtransformation
-      loader = TransformedImage(loader, transformation)
+      loader = TransformedImage(loader, transformation, **kwargs)
 
     return loader
 
@@ -448,7 +460,7 @@ class RectangleCorrectedIm3MultiLayer(RectangleCorrectedIm3Base, RectangleReadIm
   def warpingtransformation(self):
     return RectangleWarpingTransformationMultilayer()
 
-class RectangleReadComponentTiffBase(Rectangle):
+class RectangleReadComponentTiffBase(RectangleWithImageLoaderBase):
   """
   Rectangle class that reads the image from a component tiff
 
@@ -491,6 +503,8 @@ class RectangleReadComponentTiffBase(Rectangle):
   def componenttiffloaderkwargs(self): return {
     "nlayers": self.nlayerscomponenttiff,
     "filename": self.componenttifffile,
+    "_DEBUG": self._DEBUG,
+    "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
   }
 
 class RectangleReadSegmentedComponentTiffBase(RectangleReadComponentTiffBase):

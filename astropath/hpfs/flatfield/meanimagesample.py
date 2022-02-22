@@ -104,6 +104,13 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             exp_time_hists_and_bins.append((newhist,newbins))
         return exp_time_hists_and_bins
 
+    @property
+    def rectangleextrakwargs(self):
+      return {
+        **super().rectangleextrakwargs,
+        "_DEBUG": False, #need to load images multiple times
+      }
+
     #################### CLASS METHODS ####################
 
     @classmethod

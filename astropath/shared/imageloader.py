@@ -5,12 +5,10 @@ from .logging import printlogger
 class ImageLoaderBase(abc.ABC):
   #if _DEBUG is true, then when the image loader is deleted, it will print
   #a warning if its image has been loaded multiple times, for debug
-  #purposes.  If __DEBUG_PRINT_TRACEBACK is also true, it will print the
+  #purposes.  If _DEBUG_PRINT_TRACEBACK is also true, it will print the
   #tracebacks for each of the times the image was loaded.
-  _DEBUG = True
-  __DEBUG_PRINT_TRACEBACK = False
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, _DEBUG=True, _DEBUG_PRINT_TRACEBACK=False, **kwargs):
     super().__init__(*args, **kwargs)
     self.__image_cache = None
     self.__cached_contextmanager_stack = contextlib.ExitStack()
@@ -18,13 +16,20 @@ class ImageLoaderBase(abc.ABC):
     self.__using_image_counter = 0
     self.__debug_load_image_counter = 0
     self.__debug_load_image_tracebacks = []
+    self._DEBUG = _DEBUG
+    self._DEBUG_PRINT_TRACEBACK = _DEBUG_PRINT_TRACEBACK
 
   def __del__(self):
     if self._DEBUG:
       if self.__debug_load_image_counter > 1:
-        for formattedtb in self.__debug_load_image_tracebacks:
-          printlogger("loadimage").debug("".join(formattedtb))
         warnings.warn(f"Loaded image for rectangle {self} {self.__debug_load_image_counter} times")
+        logger = printlogger("loadimage")
+        for formattedtb in self.__debug_load_image_tracebacks:
+          logger.debug("Traceback (most recent call last):")
+          for item in formattedtb:
+            for line in item.rstrip().split("\n"):
+              logger.debug(line.replace(";", ""))
+          logger.debug()
 
   @abc.abstractmethod
   def getimage(self):
@@ -64,7 +69,7 @@ class ImageLoaderBase(abc.ABC):
   def __image(self):
     if self.__image_cache is None:
       self.__debug_load_image_counter += 1
-      if self.__DEBUG_PRINT_TRACEBACK:
+      if self._DEBUG_PRINT_TRACEBACK:
         self.__debug_load_image_tracebacks.append(traceback.format_stack())
       self.__image_cache = self.getimage()
     return self.__image_cache
