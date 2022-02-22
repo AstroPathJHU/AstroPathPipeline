@@ -8,11 +8,14 @@ Last Edit: 02.16.2022
 class batchwarpkeys : moduletools {
     #
     [string]$project
-    [switch]$all = $true
+    [switch]$all = $false
+    [array]$batchslides
     #
     batchwarpkeys([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
         $this.processloc = $this.sample.basepath + '\flatfield\' + $this.sample.batchID
         $this.sample.createdirs($this.processloc)
+        $spdir = $this.sample.mpath + '\warping\octets'
+        $this.sample.createdirs($spdir)
     }
     <# -----------------------------------------
      RunBatchMeanImageComparison
@@ -21,6 +24,7 @@ class batchwarpkeys : moduletools {
      Usage: $this.RunBatchMeanImageComparison()
     ----------------------------------------- #>
     [void]Runbatchwarpkeys(){
+        $this.getslideidregex()
         $this.Getbatchwarpkeys()
     }
     <# -----------------------------------------
@@ -36,42 +40,59 @@ class batchwarpkeys : moduletools {
         $rpath = '\\' + $this.sample.project_data.fwpath
         $this.getmodulename()
         #
-        if ($this.all){
-            $pythontask = $this.getpythontask($dpath, $rpath)
-        } else{
-            $batchslides = $this.sample.batchslides.slideid -join '|'
-            $pythontask = $this.getpythontask($dpath, $rpath, $batchslides)
-        }
+        $pythontask = $this.getpythontask($dpath, $rpath)
         #
         $this.runpythontask($taskname, $pythontask)
         $this.silentcleanup()
         #
     }
     #
-    [string]getpythontask($dpath, $rpath){
+    [void]getslideidregex(){
         #
-        $pythontask = $this.pythonmodulename, $dpath, `
-        '--shardedim3root',  $rpath, `
-        '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), `
-        '--octets-only --noGPU --no-log',
-        '--ignore-dependencies',
-        $this.buildpyopts('cohort') -join ' '
+        $this.sample.info('selecting samples for sample regex')
         #
-        return $pythontask
+        $nbatchslides = @()
+        $sid = $this.sample.slideid
+        #
+        if ($this.all){
+            $aslides = $this.sample.importslideids($this.sample.mpath)
+            $aslides = $aslides | where-object {$_.Project -match $this.sample.project}
+            $slides = $aslides.SlideID
+        } else {
+            $slides = $this.sample.batchslides.slideid
+        }
+        #
+        foreach ($slide in $slides){
+            $this.sample.slideid = $slide
+            if ($this.sample.testwarpoctetsfiles()){
+                $nbatchslides += $slide
+            }
+        }
+        #
+        $this.sample.slideid = $sid
+        $this.sample.info(([string]$nbatchslides.length +
+             ' sample(s) selected for sampleregex'))
+        $this.batchslides = $nbatchslides
         #
     }
     #
-    [string]getpythontask($dpath, $rpath, $batchslides){
+    [string]getpythontask($dpath, $rpath){
         #
-        $pythontask = $this.pythonmodulename, $dpath, `
-        '--shardedim3root',  $rpath, `
-        '--sampleregex',  $batchslides, `
-        '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), `
-        '--octets-only --noGPU --no-log',
-        '--ignore-dependencies',
-        $this.buildpyopts('cohort') -join ' '
+        $this.sample.info('start find keys')
+        #
+        $pythontask = (
+            $this.pythonmodulename, $dpath, 
+            '--shardedim3root',  $rpath, 
+            '--sampleregex',  ('"'+($this.batchslides -join '|')+'"'), 
+            '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
+            '--octets-only --noGPU --no-log',
+            '--ignore-dependencies',
+            $this.buildpyopts('cohort')
+         ) -join ' '
        #
        return $pythontask
+        #
+        $this.sample.info('finished find keys')
        #
     }
     #

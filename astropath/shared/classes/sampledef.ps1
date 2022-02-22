@@ -470,12 +470,8 @@ class sampledef : sharedtools{
     #
     [switch]testwarpoctets(){
         #
-        $file = $this.basepath + '\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
-        #
-        $file2 = $this.basepath + '\' + $this.slideid + '\im3\warping\octets\' + $this.slideid + '-all_overlap_octets.csv'
-        $file3 = $this.basepath + '\' + $this.slideid + '\im3\warping\octets\image_keys_needed.txt'
-        #
-        $logfile = $this.basepath + '\' + $this.slideid + '\logfiles\' + $this.slideid + '-warpoctets.log'
+        $logfile = $this.basepath, '\', $this.slideid,
+            '\logfiles\', $this.slideid, '-warpoctets.log' -join ''
         #
         if (test-path $logfile){
             $log = $this.importlogfile($logfile)
@@ -483,21 +479,36 @@ class sampledef : sharedtools{
                 return $true
             }
         }
-        #
         $p = ($this.meanimagefolder() + '\' + $this.slideid + '-mask_stack.bin')
         #
-        if (test-path $p){
+        if (!(test-path $p)){
             return $true
         }
         #
+        $this.testwarpoctetsfiles($this.slideid)
+        #
+        return $true
+    }
+    #
+    [switch]testwarpoctetsfiles(){
+        #
+        $file = $this.basepath, '\warping\octets\',
+            $this.slideid, '-all_overlap_octets.csv' -join ''
+       #
+       $file2 = $this.basepath, '\', $this.slideid,
+            '\im3\warping\octets\', $this.slideid, '-all_overlap_octets.csv' -join ''
+       <#
+       $file3 = $this.basepath, '\', $slideid,
+        '\im3\warping\octets\image_keys_needed.txt' -join ''
+       #>
         if (!(test-path $file) -AND !(test-path $file2)){
             return $false
         }
-        #
+        <#
         if (!(test-path $file3)){
             return $false
         }
-        #
+        #>
         return $true
     }
     #

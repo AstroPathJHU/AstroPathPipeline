@@ -432,6 +432,25 @@ Class testpsmeanimage {
             Throw $_.Exception.Message
         }
         #
+        # check that blank lines didn't write to the log
+        #
+        $loglines = import-csv $inp.sample.mainlog `
+            -Delimiter ';' `
+            -header 'Project','Cohort','slideid','Message','Date' 
+        if ($inp.sample.module -match 'batch'){
+            $ID= $inp.sample.BatchID
+        } else {
+            $ID = $inp.sample.slideid
+        }
+        #
+        $savelog = $loglines |
+                    where-object {($_.Slideid -match $ID) -and 
+                        ($_.Message -match '')} |
+                    Select-Object -Last 1 
+        if ($savelog){
+            Throw 'blank log output exists'
+        }
+        #
         Write-Host 'test python expected log output finished'
         #
     }
@@ -581,16 +600,15 @@ Class testpsmeanimage {
             $this.slideid,
             'im3',
             'meanimage',
-            'image_masking'
+            'image_masking\*'
         ) -join '\'
         #
-        $returnpath = (
-            $this.basepath,
-            $this.slideid, 
-            'im3\meanimage\image_masking'
-        ) -join '\'
+        Write-Host '   '$masking_processloc
         #
-        $this.comparepaths($masking_processloc, $returnpath, $inp)
+        $files = get-childitem $masking_processloc -include '*.bin'
+        if (!($files)){
+            Throw 'masks not created; check process loc'
+        }
         #
         Write-Host 'test mask output finished'
         #

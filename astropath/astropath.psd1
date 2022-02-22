@@ -83,7 +83,8 @@ PowerShellVersion = '7.0'
                       'hpfs\shredxml\classes\shredxml.ps1',
                       'hpfs\merge\classes\merge.ps1',
                       'hpfs\warping\classes\warpoctets.ps1',
-                      'hpfs\warping\classes\batchwarpkeys.ps1'
+                      'hpfs\warping\classes\batchwarpkeys.ps1',
+                      'hpfs\warping\classes\batchwarpfits.ps1'
                       )
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess

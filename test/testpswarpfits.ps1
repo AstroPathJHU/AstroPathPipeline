@@ -1,13 +1,13 @@
 <# -------------------------------------------
- testpsbatchwarpkeys
+ testpswarpfits
  Benjamin Green, Andrew Jorquera
  Last Edit: 01.18.2022
  --------------------------------------------
  Description
- test if the methods of batchwarpkeys are 
+ test if the methods of warpfits are 
  functioning as intended
  -------------------------------------------#>
- Class testpsbatchwarpkeys{
+ Class testpswarpfits{
     #
     [string]$mpath 
     [string]$processloc
@@ -18,13 +18,13 @@
     [string]$apmodule = $PSScriptRoot + '/../astropath'
     [string]$slideid
     #
-    testpsbatchwarpkeys(){
+    testpswarpfits(){
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_meanimage'))
         $this.launchtests()
     }
     #
-    testpsbatchwarpkeys($dryrun){
+    testpswarpfits($dryrun){
         $this.mpath = '\\bki04\astropath_processing'
         $this.processloc = '\\bki08\e$'
         $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
@@ -35,16 +35,15 @@
     }
     #
     launchtests(){
-        Write-Host '---------------------test ps [batchwarpkeys]---------------------'
+        Write-Host '---------------------test ps [warpfits]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        #$this.testpsbatchwarpkeysconstruction($task)
-        $inp = batchwarpkeys $task  
+        #$this.testpswarpfitsconstruction($task)
+        $inp = batchwarpfits $task  
         #$this.testprocessroot($inp)
         #$this.testslidelist($inp)
         #$this.testshreddatim($inp)
-        #$this.runpywarpkeysexpectedall($inp)
-        $this.runpywarpkeysexpectedbatch($inp)
+        $this.runpywarpfitsexpected($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -77,14 +76,14 @@
     [void]testpswarpfitsconstruction($task){
         #
         Write-Host "."
-        Write-Host 'test [batchwarpkeys] constructors started'
+        Write-Host 'test [warpfits] constructors started'
         #
         $log = logger $this.mpath $this.module $this.batchid $this.project 
         #
         try {
-            batchwarpkeys  $task | Out-Null
+            batchwarpfits  $task | Out-Null
         } catch {
-            Throw ('[batchwarpkeys] construction with [1] input(s) failed. ' + $_.Exception.Message)
+            Throw ('[warpfits] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
         <#
         try {
@@ -93,28 +92,83 @@
             Throw ('[meanimage] construction with [2] input(s) failed. ' + $_.Exception.Message)
         }
         #>
-        Write-Host 'test [batchwarpkeys] constructors finished'
+        Write-Host 'test [warpfits] constructors finished'
         #
     }
+    <#---------------------------------------------
+    testprocessroot
+    ---------------------------------------------#>
     [void]testprocessroot($inp){
-        Write-Host '.'
-        Write-host 'test creating sample dir started'
-        Write-Host '    process location:' $inp.processloc
-       # $inp.sample.createdirs($inp.processloc)
-        $spdir = $inp.sample.mpath + '\warping\octets'
-       # $inp.sample.createdirs($spdir)
-        write-host '    testing dir:' $spdir
         #
-        Write-Host '    slide id:' $inp.sample.slideid
-        Write-host 'test creating sample dir finished'
+        Write-Host "."
+        Write-Host 'test processing root started'
+        Write-Host $inp.processloc
+        Write-Host $inp.processvars[0]
+        Write-Host $inp.processvars[1]
+        if (!(test-path $inp.processloc)){
+            Throw ('did not make processloc: ' + $inp.processloc)
+        }
+        Write-Host 'test processing root finished'
+        #
     }
-    #
-    [void]runpywarpkeysexpectedall($inp){
+    <#---------------------------------------------
+    testslidelist
+    ---------------------------------------------#>
+    [void]testslidelist($inp){
         #
+        Write-Host "."
+        Write-Host 'test building slide list started'
+        Write-Host '    test one batch slidelist'
+        #
+        $inp.getslideidregex()
+        Write-Host '    slides in batch list:'
+        Write-Host '   '$inp.batchslides
+        Write-Host '    slide id is:' $inp.sample.slideid
+        #
+        Write-Host '    test all slides slidelist'
+        $inp.all = $true
+        $inp.getslideidregex()
+        Write-Host '    slides in batch list:'
+        Write-Host '   '$inp.batchslides
+        Write-Host '    slide id is:' $inp.sample.slideid
+        Write-Host 'test building slide list finished'
+        #
+    }
+    <#---------------------------------------------
+    testshreddatim
+    ---------------------------------------------#>
+    [void] testshreddatim($inp){
+        #
+        Write-Host "."
+        Write-Host 'test shred dat on images started'
+        Write-Host '    get slide list from one slideid:' $this.slideid
+        Write-Host '    open image keys text'
+        $image_keys_file = $inp.sample.mpath + '\warping\octets\image_keys_needed.txt'
+        $image_keys = $inp.sample.GetContent($image_keys_file)
+        #
+        Write-Host '    get keys for this file'
+        $images= $inp.getslidekeypaths('M10_2', $image_keys)
+        Write-Host '    keys:'
+        Write-Host '   '$images
+        #
+        $inp.shreddat('M10_2', $images)
+        #
+        Write-Host '    get keys for all slides in the batch'
+        $inp.getwarpdats()
+        write-host 'get warp dats finished'
+        #
+    }
+    <#---------------------------------------------
+    runpywarpfitsexpected
+    ---------------------------------------------#>
+    [void]runpywarpfitsexpected($inp){
+        #
+        Write-Host "."
+        Write-Host 'test py task started'
+        $taskname = 'batchwarpfits'
         $inp.getmodulename()
-        $dpath = $inp.sample.basepath
-        $rpath = '\\' + $inp.sample.project_data.fwpath
-        $taskname = 'batchwarpkeys'
+        $dpath = $inp.processvars[0]
+        $rpath = $inp.processvars[1]
         $inp.all = $true
         $inp.getslideidregex()
         #
@@ -129,7 +183,7 @@
         # $batchslides = $inp.sample.batchslides.slideid -join '|'
         # $pythontask = $inp.getpythontask($dpath, $rpath, $batchslides)
         #
-        Write-Host 'running: '
+        Write-Host '    running: '
         Write-Host $pythontask
         Write-Host $externallog
         #
@@ -138,44 +192,12 @@
         Invoke-Expression $pythontask *>> $externallog
         conda deactivate 
         #
-    }
-    #
-    [void]runpywarpkeysexpectedbatch($inp){
-        #
-        $warpdirectory = $inp.sample.mpath + '\warping\octets'
-        $inp.sample.copy($warpdirectory, ($inp.processloc+'\octets'), '*')
-        $inp.sample.CreateNewDirs($warpdirectory)
-        #
-        $inp.getmodulename()
-        $dpath = $inp.sample.basepath
-        $rpath = '\\' + $inp.sample.project_data.fwpath
-        $taskname = 'batchwarpkeys'
-        $inp.all = $false
-        $inp.getslideidregex()
-        #
-        Write-Host $inp.sample.pybatchflatfieldfullpath()
-        if (!(Test-Path $inp.sample.pybatchflatfieldfullpath())){
-            Throw ('flatfield file does not exist: ' + $inp.sample.pybatchflatfieldfullpath())
-        }
-        #
-        $pythontask = $inp.getpythontask($dpath, $rpath)
-        $externallog = $inp.processlog($taskname)
-        #
-        # $batchslides = $inp.sample.batchslides.slideid -join '|'
-        # $pythontask = $inp.getpythontask($dpath, $rpath, $batchslides)
-        #
-        Write-Host 'running: '
-        Write-Host $pythontask
-        Write-Host $externallog
-        #
-        $inp.sample.checkconda()
-        conda activate $inp.sample.pyenv()
-        Invoke-Expression $pythontask *>> $externallog
-        conda deactivate 
+        Write-Host 'test py task finished'
         #
     }
-#
-}
-#
-[testpsbatchwarpkeys]::new($dryrun) | Out-Null
+ }
+# $inp.runbatchwarpkeys()
+ [testpswarpfits]::new($true) | Out-NUll
+ exit 0
+
 

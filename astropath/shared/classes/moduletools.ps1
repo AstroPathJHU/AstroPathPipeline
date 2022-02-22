@@ -26,6 +26,7 @@
     [string]$funclocation
     [array]$logoutput
     [string]$pythonmodulename
+    [array]$batchslides
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
@@ -208,6 +209,15 @@
         $this.ConvertPath('shreddat')
     }
     <# -----------------------------------------
+     ShredDat
+        Extract data.dat files
+     ------------------------------------------
+     Usage: $this.ShredDat()
+    ----------------------------------------- #>
+    [void]ShredDat($slideid, [array]$images){
+        $this.ConvertPath('shreddat', $slideid, $images)
+    }
+    <# -----------------------------------------
      ShredXML
         Extract xml files
      ------------------------------------------
@@ -247,12 +257,56 @@
             ConvertIM3Path $this.processvars[0] $this.processvars[1] `
                 $this.sample.slideid -shred -xml -verbose 4>&1 >> $externallog
         } 
+        #
+        $this.parseconvertpathlog($externallog, $type)
+        #
+    }
+    #
+    [void]ConvertPath($type, [array]$images){
+        $this.sample.info(($type + " data started"))
+        $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
+        if ($type -match 'inject'){
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $this.sample.slideid -images:$images -inject -verbose 4>&1 >> $externallog
+        } elseif($type -match 'shreddat') {
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $this.sample.slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
+        } elseif($type -match 'shredxml') {
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $this.sample.slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
+        } 
+        #
+        $this.parseconvertpathlog($externallog, $type)
+        #
+    }
+    #
+    [void]ConvertPath($type, $slideid, [array]$images){
+        $this.sample.info(($type + " data started"))
+        $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
+        if ($type -match 'inject'){
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $slideid -images:$images -inject -verbose 4>&1 >> $externallog
+        } elseif($type -match 'shreddat') {
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
+        } elseif($type -match 'shredxml') {
+            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                $slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
+        } 
+        #
+        $this.parseconvertpathlog($externallog, $type)
+        #
+    }
+    #   
+    [void]parseconvertpathlog($externallog, $type){
+        #
         $log = $this.sample.GetContent($externallog) |
-             where-object  {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 
-             foreach-object {$_.trim()}
+        where-object  {$_ -notlike '.*' -and $_ -notlike '*PM*' -and $_ -notlike '*AM*'} | 
+        foreach-object {$_.trim()}
         $this.sample.info($log)
         remove-item $externallog -force -ea Continue
         $this.sample.info(($type + " data finished"))
+        #
     }
     <# -----------------------------------------
      fixM2
@@ -281,6 +335,58 @@
         }
         #
     }
+    <# -----------------------------------------
+     fixSIDs
+     Fix all filenames that were created due to an error.
+     In these cases the file names were 
+     not correctly changed from the original .im3 file
+     to the slideid
+     ------------------------------------------
+     Usage: $this.fixSIDs()
+    ----------------------------------------- #>
+    [void]fixSIDs(){
+        #
+        $this.sample.info("Fix M# files")
+        $msi = $this.sample.MSIfolder() +'\*'
+        $slideid = $this.sample.slideid + '_*.im3'
+        $sampleidim3s = Get-ChildItem $msi -exclude $slideid  -include '*.im3'
+        #
+        if ($sampleidim3s){
+            $this.sample.warning(('found '+$sampleidim3s.count+
+                ' slides that appear to have scan ids not apids'))
+            $sampleidim3s | foreach-object{
+                $newname = $this.sample.slideid + '_[' + ($_.name -split "_\[")[1]
+                $warn = $_.fullname, 'renamed to', $newname -join ' '
+                $this.sample.warning($warn)
+                #
+                rename-item $_.fullname $newname
+                #
+            }
+        }
+        #
+    }
+    #
+    [void]fixmlids(){
+        #
+        $xml = $this.sample.xmlfolder() +'\*'
+        $xmlid = $this.sample.slideid + '_*.xml'
+        $sampleidxmls = Get-ChildItem $xml -exclude $xmlid  -include '*.xml'
+        #
+        if ($sampleidxmls){
+            $this.sample.warning(('found '+$sampleidxmls.count+
+                ' xmls that appear to have scan ids not apids'))
+            $sampleidxmls | foreach-object{
+                $newname = $this.sample.slideid + '_[' + ($_.name -split "_\[")[1]
+                $warn = $_.fullname, 'renamed to', $newname -join ' '
+                $this.sample.warning($warn)
+                #
+                rename-item $_.fullname $newname
+                #
+            }
+        }
+        #
+    }
+
     #
     [void]runmatlabtask($taskname, $matlabtask){
         #
@@ -364,8 +470,14 @@
                 $this.parsepysamplelog()
             }
             #
-            if ($this.pythonmodulename -match 'cohort'){
-                $this.parsepycohortlog()
+            if ($this.pythonmodulename -match 'cohort' ){
+                if ( 
+                    $this.module -notmatch 'batch'    
+                ){
+                    $this.parsepycohortlog()
+                } else {
+                    $this.parsepycohortbatchlog()
+                }
             }
         }
         #
@@ -402,6 +514,26 @@
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
         if ($sampleoutput -match 'Error'){
             Throw 'Python tasked launched but there was an ERROR'
+        }
+    }
+    <# -----------------------------------------
+     parsepycohortbatchlog
+        parsepycohortbatchlog
+     ------------------------------------------
+     Usage: $this.parsepycohortbatchlog()
+    ----------------------------------------- #>
+    [void]parsepycohortbatchlog(){
+        $this.logoutput | ForEach-Object{
+            $cslide = ($_ -split ';')[2] 
+            $mess = ($_ -split ';')[3]
+            if ($this.batchslides -match $cslide -and
+                    $mess -notmatch 'DEBUG'
+            ){
+                #
+                $this.sample.message = ($_ -split ';')[3]
+                $this.sample.Writelog(4)
+                #
+            }
         }
     }
     <# -----------------------------------------
