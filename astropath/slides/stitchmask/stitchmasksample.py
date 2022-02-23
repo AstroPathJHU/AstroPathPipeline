@@ -10,7 +10,7 @@ from ...utilities.img_file_io import im3writeraw
 from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
 from ..align.alignsample import AlignSample
-from ..align.field import Field, FieldReadComponentTiff
+from ..align.field import Field, FieldReadSegmentedComponentTiffSingleLayer
 from ..zoom.zoomsamplebase import ZoomSampleBase
 
 class MaskField(Field, MaskRectangle): pass
@@ -192,20 +192,20 @@ class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadSegmentedComp
   because the mask is discrete)
   """
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, layer="setlater", **kwargs)
-    self.setlayers(layer=self.masklayer)
+    super().__init__(*args, layercomponenttiff="setlater", **kwargs)
+    self.setlayerscomponenttiff(layercomponenttiff=self.masklayer)
 
   @classmethod
   def logmodule(self): return "stitchinformmask"
 
   multilayer = False
-  rectangletype = FieldReadComponentTiff
+  rectangletype = FieldReadSegmentedComponentTiffSingleLayer
 
   def inputfiles(self, **kwargs):
     result = [self.csv("fields")]
     if result[0].exists():
       result += [
-        r.imagefile for r in self.rectangles
+        r.componenttifffile for r in self.rectangles
       ]
     result += super().inputfiles(**kwargs)
     return result
@@ -213,7 +213,7 @@ class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadSegmentedComp
   @property
   def backgroundvalue(self): return self.nsegmentations
   def getHPFmask(self, field):
-    with field.using_image() as im:
+    with field.using_component_tiff() as im:
       return im
 
 class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSample):

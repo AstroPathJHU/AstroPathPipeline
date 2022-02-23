@@ -9,7 +9,7 @@ from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
-from .rectangle import AlignmentRectangle, AlignmentRectangleBase, AlignmentRectangleComponentTiff
+from .rectangle import AlignmentRectangleBase, AlignmentRectangleComponentTiffSingleLayer, AlignmentRectangleIm3SingleLayer
 from .stitch import AffineEntry, ReadStitchResult, stitch
 
 class AlignSampleBase(SampleBase):
@@ -111,7 +111,7 @@ class AlignSampleBase(SampleBase):
         #load all the actual images (calculated by dividing by the mean
         #of the raw images), while the raw images are still in memory
         for r in self.rectangles:
-          self.__images.enter_context(r.using_image())
+          self.__images.enter_context(r.using_alignment_image())
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -239,7 +239,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     if writeimstat:
       self.imagestats = []
       for rectangle in self.rectangles:
-        with rectangle.using_image() as image:
+        with rectangle.using_alignment_image() as image:
           self.imagestats.append(
             ImageStats(
               n=rectangle.n,
@@ -330,7 +330,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
       self.csv("constants"),
       self.csv("overlap"),
       self.csv("rect"),
-      *(r.imagefile for r in self.rectangles),
+      *(r.im3file for r in self.rectangles),
     ]
 
   @classmethod
@@ -367,15 +367,17 @@ class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
   """
   An alignment set that uses im3 images
   """
-  rectangletype = AlignmentRectangle
-  def __init__(self, *args, filetype="flatWarp", **kwargs):
-    super().__init__(*args, filetype=filetype, **kwargs)
+  rectangletype = AlignmentRectangleIm3SingleLayer
+  def __init__(self, *args, filetype="flatWarp", layer=None, **kwargs):
+    super().__init__(*args, filetype=filetype, layerim3=layer, **kwargs)
 
 class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsComponentTiffBase):
   """
   An alignment set that uses component tiffs
   """
-  rectangletype = AlignmentRectangleComponentTiff
+  rectangletype = AlignmentRectangleComponentTiffSingleLayer
+  def __init__(self, *args, layer=None, **kwargs):
+    super().__init__(*args, layercomponenttiff=layer, **kwargs)
 
 class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase):
   #An alignment set that runs on im3 images and can write results to the dbload folder.

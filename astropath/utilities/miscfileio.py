@@ -30,7 +30,7 @@ def rmtree_missing_ok(path, **kwargs):
 
 def is_relative_to(path1, path2):
   """
-  Like pathlib.Path.is_relative_to but backported to older python versions
+  Like pathlib.PurePath.is_relative_to but backported to older python versions
   """
   if sys.version_info >= (3, 9):
     return path1.is_relative_to(path2)
@@ -39,6 +39,14 @@ def is_relative_to(path1, path2):
     return True
   except ValueError:
     return False
+
+def with_stem(path, stem):
+  """
+  Like pathlib.PurePath.stem but backported to older python versions
+  """
+  if sys.version_info >= (3, 9):
+    return path.with_stem(stem)
+  return path.with_name(stem+path.suffix)
 
 def commonroot(*paths, __niter=0):
   """

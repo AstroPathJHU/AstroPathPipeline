@@ -26,10 +26,11 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
        libvips to merge them together into the wsi
   """
   rectangletype = FieldReadComponentTiffMultiLayer
+  multilayercomponenttiff = True
 
-  def __init__(self, *args, tifflayers="color", **kwargs):
+  def __init__(self, *args, layers=None, tifflayers="color", **kwargs):
     self.__tifflayers = tifflayers
-    super().__init__(*args, **kwargs)
+    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
 
   @property
   def tifflayers(self): return self.__tifflayers
@@ -49,7 +50,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
     onepixel = self.onepixel
     self.logger.info("allocating memory for the global array")
-    bigimageshape = tuple((self.ntiles * self.zoomtilesize)[::-1]) + (len(self.layers),)
+    bigimageshape = tuple((self.ntiles * self.zoomtilesize)[::-1]) + (len(self.layerscomponenttiff),)
     fortiff = []
     with contextlib.ExitStack() as stack:
       if usememmap:
@@ -72,7 +73,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       for i, field in enumerate(self.rectangles, start=1):
         self.logger.debug("%d / %d", i, nrectangles)
         #load the image file
-        with field.using_image() as image:
+        with field.using_component_tiff() as image:
           #scale the intensity
           image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
 
@@ -143,7 +144,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
       #save the wsi
       self.wsifolder.mkdir(parents=True, exist_ok=True)
-      for i, layer in enumerate(self.layers):
+      for i, layer in enumerate(self.layerscomponenttiff):
         filename = self.wsifilename(layer)
         self.logger.info(f"saving {filename.name}")
         slc = bigimage[:, :, i]
@@ -166,7 +167,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")], dtype=dtype)
 
   @property
-  def colormatrix(self): return self._colormatrix(dtype=np.float16)[tuple(np.array(self.layers)-1), :]
+  def colormatrix(self): return self._colormatrix(dtype=np.float16)[tuple(np.array(self.layerscomponenttiff)-1), :]
 
   @property
   def needtifflayers(self):
@@ -223,7 +224,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     Run zoom by saving one big tile at a time
     (afterwards you can call wsi_vips to save the wsi)
     """
-    if all(self.wsifilename(l).exists() for l in self.layers): return None
+    if all(self.wsifilename(l).exists() for l in self.layerscomponenttiff): return None
     onepixel = self.onepixel
     buffer = -(-self.rectangles[0].shape // onepixel).astype(int) * onepixel
     nrectangles = len(self.rectangles)
@@ -236,7 +237,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       Helper class to save the big tiles.
 
       The class also inherits from ExitStack so that you can use it
-      to enter using_image contexts for rectangles.
+      to enter using_component_tiff contexts for rectangles.
       """
       def __init__(self, tilex, tiley, tilesize, bufferx, buffery):
         super().__init__()
@@ -268,8 +269,8 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     #  with tile:
     #    for each rectangle that overlaps the tile:
     #      for each other tile that we haven't gotten to yet that overlaps the rectangle:
-    #        othertile.enter_context(rectangle.using_image())
-    #      with rectangle.using_image():
+    #        othertile.enter_context(rectangle.using_component_tiff())
+    #      with rectangle.using_component_tiff():
     #        fill the image into this tile
 
     #in this way, we load each image in the first tile that uses it,
@@ -295,7 +296,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
             floattoint(float(tile.primaryxmin/self.onepixel)):floattoint(float(tile.primaryxmax/self.onepixel)),
           ]
 
-          for layer in self.layers:
+          for layer in self.layerscomponenttiff:
             if self.wsifilename(layer).exists() and layer != 1: continue
             filename = self.bigfilename(layer, tile.tilex, tile.tiley)
             with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
@@ -336,11 +337,11 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               if othertilen == tilen: assert othertile is tile
               if othertilen <= tilen: continue
               if othertile.overlapsrectangle(globalx1=globalx1, globalx2=globalx2, globaly1=globaly1, globaly2=globaly2):
-                othertile.enter_context(field.using_image())
+                othertile.enter_context(field.using_component_tiff())
 
-            if tileimage is None: tileimage = np.zeros(shape=tuple((self.zoomtilesize + 2*floattoint((buffer/onepixel).astype(float)))[::-1]) + (len(self.layers),), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=tuple((self.zoomtilesize + 2*floattoint((buffer/onepixel).astype(float)))[::-1]) + (len(self.layerscomponenttiff),), dtype=np.uint8)
 
-            with field.using_image() as image:
+            with field.using_component_tiff() as image:
               image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
 
               #find where it should sit in the tile
@@ -418,7 +419,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         meanintensitydenominator += np.count_nonzero(tilemask)
 
         #save the tile images
-        for layer in self.layers:
+        for layer in self.layerscomponenttiff:
           wsifilename = self.wsifilename(layer)
           filename = self.bigfilename(layer, tile.tilex, tile.tiley)
           with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
@@ -442,7 +443,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     fortiff = []
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
-    for layer in self.layers:
+    for layer in self.layerscomponenttiff:
       wsifilename = self.wsifilename(layer)
       if wsifilename.exists():
         self.logger.info(f"{wsifilename.name} already exists")
@@ -498,13 +499,13 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
-      *(r.imagefile for r in self.rectangles),
+      *(r.componenttifffile for r in self.rectangles),
       self.csv("fields"),
     ]
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layers, "tifflayers": self.tifflayers, **super().workflowkwargs}
+    return {"layers": self.layerscomponenttiff, "tifflayers": self.tifflayers, **super().workflowkwargs}
 
   @classmethod
   def getworkinprogressfiles(cls, SlideID, *, zoomroot, **otherworkflowkwargs):

@@ -1,5 +1,5 @@
 #imports
-import os, pathlib, shutil, unittest
+import os, pathlib, unittest
 import numpy as np
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleNNUNet
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleDeepCell
@@ -53,9 +53,10 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
 
     @property
     def outputfilenames(self) :
+        root = folder/'test_for_jenkins'/'segmentation'/'root'
+        all_fps = [root/'logfiles'/'segmentationnnunet.log', root/slide_ID/'logfiles'/f'{slide_ID}-segmentationnnunet.log']
         oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
-        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'nnunet'
-        all_fps = []
+        outputdir = root/slide_ID/'im3'/'segmentation'/'nnunet'
         for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
             all_fps.append(outputdir/f'{fns}_nnunet_nuclear_segmentation.npz')
         return all_fps
@@ -84,7 +85,6 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
             raise
         finally :
             self.removeoutput()
-            shutil.rmtree(folder/'test_for_jenkins'/'segmentation')
 
 class TestSegmentationDeepCell(TestSegmentationBase) :
     """
@@ -93,9 +93,10 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
 
     @property
     def outputfilenames(self) :
+        root = folder/'test_for_jenkins'/'segmentation'/'root'
+        all_fps = [root/'logfiles'/'segmentationdeepcell.log', root/slide_ID/'logfiles'/f'{slide_ID}-segmentationdeepcell.log']
         oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
-        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'deepcell'
-        all_fps = []
+        outputdir = root/slide_ID/'im3'/'segmentation'/'deepcell'
         for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
             all_fps.append(outputdir/f'{fns}_deepcell_nuclear_segmentation.npz')
         return all_fps
@@ -122,4 +123,3 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
             raise
         finally :
             self.removeoutput()
-            shutil.rmtree(folder/'test_for_jenkins'/'segmentation')

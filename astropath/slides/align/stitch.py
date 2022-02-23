@@ -826,7 +826,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
   def readtables(self, *filenames, adjustoverlaps=True):
     affinefilename, fieldsfilename, fieldoverlapfilename = filenames
 
-    layer, = {_.layer for _ in self.rectangles}
+    layer, = {_.alignmentlayer for _ in self.rectangles}
     fields = self.readtable(fieldsfilename, Field)
     affines = self.readtable(affinefilename, AffineEntry)
     nclip, = {_.nclip for _ in self.overlaps}

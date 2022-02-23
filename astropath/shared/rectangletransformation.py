@@ -21,17 +21,22 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
   The three lists must have lengths equal to the number of image layers.
   """
 
-  def __init__(self, ets, med_ets, offsets) :
+  def __init__(self, ets, offsets) :
     self._exp_times = np.array(ets)
-    self._med_ets = np.array(med_ets)
+    self._med_ets = None
     self._offsets = np.array(offsets)
+    self._nlayers = len(self._exp_times)
+
+  def set_med_ets(self, med_ets):
+    self._med_ets = med_ets
     if not (len(self._exp_times)==len(self._med_ets)==len(self._offsets)) :
       errmsg = f'ERROR: exposure times (length {len(self._exp_times)}), median exposure times (length {len(self._med_ets)}),'
       errmsg+= f' and dark current offsets (length {len(self._offsets)}) must all be the same length!'
       raise ValueError(errmsg)
-    self._nlayers = len(self._exp_times)
   
   def transform(self, originalimage) :
+    if self._med_ets is None:
+      raise ValueError("Have to call set_med_ets before transforming")
     if self._nlayers!=originalimage.shape[-1] :
       errmsg = f'ERROR: image with shape {originalimage.shape} cannot be corrected for exposure time '
       errmsg+= f'using a setup for images with {self._nlayers} layers!'
@@ -62,12 +67,17 @@ class RectangleExposureTimeTransformationSingleLayer(RectangleTransformationBase
   Any images given to the transform function must only have one layer!
   """
 
-  def __init__(self, et, med_et, offset) :
+  def __init__(self, et, offset) :
     self._exp_time = et
-    self._med_et = med_et
+    self._med_et = None
     self._offset = offset
   
+  def set_med_et(self, med_et):
+    self._med_et = med_et
+  
   def transform(self, originalimage) :
+    if self._med_et is None:
+      raise ValueError("Have to call set_med_et before transforming")
     if (len(originalimage.shape)==3 and originalimage.shape[2]!=1) or len(originalimage.shape)>3 :
       errmsg = f'ERROR: image layer with shape {originalimage.shape} cannot be corrected for exposure time '
       errmsg+= 'using a setup for single layer images!'
@@ -89,10 +99,15 @@ class RectangleFlatfieldTransformationMultilayer(RectangleTransformationBase):
   flatfield: flatfield correction factors (must be same dimensions as images to correct)
   """
 
-  def __init__(self, flatfield) :
+  def __init__(self, flatfield=None) :
     self._flatfield = flatfield
-  
+
+  def set_flatfield(self, flatfield):
+    self._flatfield = flatfield
+
   def transform(self, originalimage) :
+    if self._flatfield is None:
+      raise ValueError("Have to set the flatfield before transforming")
     if not self._flatfield.shape==originalimage.shape :
       errmsg = f'ERROR: shape mismatch (flatfield.shape = {self._flatfield.shape}, originalimage.shape '
       errmsg+= f'= {originalimage.shape}) in RectangleFlatfieldTransformationMultilayer.transform!'
@@ -109,10 +124,15 @@ class RectangleFlatfieldTransformationSinglelayer(RectangleTransformationBase):
   flatfield_layer: flatfield correction factors
   """
 
-  def __init__(self, flatfield_layer) :
+  def __init__(self, flatfield_layer=None) :
     self._flatfield = flatfield_layer
+
+  def set_flatfield(self, flatfield):
+    self._flatfield = flatfield
   
   def transform(self, originalimage) :
+    if self._flatfield is None:
+      raise ValueError("Have to set the flatfield before transforming")
     if ( (len(originalimage.shape)==3 and (originalimage.shape[2]!=1 or self._flatfield.shape!=originalimage.shape[:-1])) or 
          (len(originalimage.shape)==2 and self._flatfield.shape!=originalimage.shape) or (len(originalimage.shape)>3) ) :
       errmsg = f'ERROR: shape mismatch (flatfield.shape = {self._flatfield.shape}, originalimage.shape '
@@ -135,10 +155,15 @@ class RectangleWarpingTransformationMultilayer(RectangleTransformationBase) :
   Applies a set of defined warping objects to an image and returns the result
   """
 
-  def __init__(self,warps_by_layer) :
+  def __init__(self,warps_by_layer=None) :
     self._warps_by_layer = warps_by_layer
 
+  def set_warp(self, warp):
+    self._warps_by_layer = warp
+  
   def transform(self, originalimage) :
+    if self._warps_by_layer is None:
+      raise ValueError("Have to set the warp before transforming")
     corr_img = np.empty_like(originalimage)
     for li in range(originalimage.shape[-1]) :
       if self._warps_by_layer[li] is None :
@@ -155,10 +180,15 @@ class RectangleWarpingTransformationSinglelayer(RectangleTransformationBase) :
   Applies a warping object to an image layer and returns the result
   """
 
-  def __init__(self,warp) :
+  def __init__(self,warp=None) :
     self._warp = warp
 
+  def set_warp(self, warp):
+    self._warp = warp
+  
   def transform(self, originalimage) :
+    if self._warp is None:
+      raise ValueError("Have to set the warp before transforming")
     corr_img = np.empty_like(originalimage)
     if originalimage.shape[0]!=self._warp.m or originalimage.shape[1]!=self._warp.n :
       errmsg = f'ERROR: RectangleWarpingTransformationSinglelayer was passed an image with shape {originalimage.shape} '

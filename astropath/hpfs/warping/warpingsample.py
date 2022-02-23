@@ -23,11 +23,11 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=None,useGPU=True,gputhread=None,gpufftdict=None,**kwargs) :
-        super().__init__(*args,**kwargs)
+    def __init__(self,*args,workingdir=None,useGPU=True,gputhread=None,gpufftdict=None,layers=None,**kwargs) :
+        super().__init__(*args,layersim3=layers,**kwargs)
         #make sure the user is only specifying a single layer
-        if len(self.layers)!=1 :
-            errmsg = f'ERROR: a WarpingSample can only be run for one layer at a time but layers = {self.layers}'
+        if len(self.layersim3)!=1 :
+            errmsg = f'ERROR: a WarpingSample can only be run for one layer at a time but layers = {self.layersim3}'
             raise RuntimeError(errmsg)
         if self.et_offset_file is None :
             raise RuntimeError('ERROR: must supply an exposure time offset file to fit for warping!')
@@ -155,7 +155,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         self.logger.debug(msg)
         #get the background threshold for this layer of this sample
         bg_thresholds = readtable(self.bg_threshold_filepath,ThresholdTableEntry)
-        this_layer_bgts = [bgt for bgt in bg_thresholds if bgt.layer_n==self.layers[0]]
+        this_layer_bgts = [bgt for bgt in bg_thresholds if bgt.layer_n==self.layersim3[0]]
         if len(this_layer_bgts)!=1 :
             errmsg = f'ERROR: invalid set of background thresholds for {self.SlideID} found '
             errmsg+= f'in {self.bg_threshold_filepath}!'
@@ -196,7 +196,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
                     self.logger.debug(msg)
                     break
             if n_good_overlaps==8 :
-                new_octet = OverlapOctet(self.SlideID,self.layers[0],
+                new_octet = OverlapOctet(self.SlideID,self.layersim3[0],
                                          bg_threshold.counts_threshold,bg_threshold.counts_per_ms_threshold,
                                          r.n,
                                          *([overlaps_by_tag[ot].n for ot in range(1,10) if ot!=5]),
