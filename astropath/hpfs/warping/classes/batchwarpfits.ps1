@@ -1,6 +1,6 @@
 <#
 --------------------------------------------------------
-batchmeanimagecomparison
+batchwarpfits
 Benjamin Green, Andrew Jorquera
 Last Edit: 02.16.2022
 --------------------------------------------------------

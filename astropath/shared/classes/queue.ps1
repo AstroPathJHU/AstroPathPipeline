@@ -106,17 +106,22 @@ class queue : vminformqueue{
         $slidesnotcomplete = @()
         $c = 1
         $ctotal = $cleanedslides.count
+        if (!($cleanedslides)){
+            return $slidesnotcomplete
+        }
+        #
+        $log = [mylogger]::new($this.mpath, $this.module, $cleanedslides[0].slideid)
         #
         foreach($slide in $cleanedslides){
             #
             $p = [math]::Round(100 * ($c / $ctotal))
             Write-Progress -Activity "Checking slides" `
-                           -Status "$p% Complete:" `
-                           -PercentComplete $p `
-                           -CurrentOperation $slide.slideid
+                           -Status ("$p% Complete : Checking " + $slide.slideid) `
+                           -PercentComplete $p 
             $c += 1 
             #
-            $log = [mylogger]::new($this.mpath, $this.module, $slide.slideid)
+            $log.Sample($slide.slideid, $this.mpath, $cleanedslides)
+            $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project)
             #
             if ($this.module -match 'batch'){
                 $log.slidelog = $log.mainlog
@@ -211,6 +216,14 @@ class queue : vminformqueue{
         }
         #
     }
+    [mylogger]updatelogger([mylogger]$log, $module){
+        #
+        $log.module = $module
+        $log.deflogpaths()
+        $log.vers = $log.GetVersion($this.mpath, $module, $log.project)
+        return $log
+        #
+    }
     <# -----------------------------------------
      checktransfer
      check that the transfer process has completed
@@ -228,7 +241,7 @@ class queue : vminformqueue{
     ----------------------------------------- #>
     [int]checktransfer([mylogger]$log){
         #
-        $log = [mylogger]::new($this.mpath, 'transfer', $log.slideid)
+        $log = $this.updatelogger($log, 'transfer')
         #
         if (!($log.vers -match '0.0.1') -and 
             $this.checklog($log, $true)){
@@ -240,7 +253,7 @@ class queue : vminformqueue{
         $file = $log.CheckSumsfile()
         $file2 = $log.qptifffile()
         $file3 = $log.annotationxml()
-        $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count
+        $im3s = (get-childitem ($log.Scanfolder() + '\MSI\*') *im3).Count
         #
         #if (!(test-path $file)){
         #    return 2
@@ -279,7 +292,7 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'shredxml', $log.slideid)
+        $log = $this.updatelogger($log, 'shredxml')
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -312,7 +325,7 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'meanimage', $log.slideid)
+        $log = $this.updatelogger($log, 'meanimage')
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -355,7 +368,7 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'batchmicomp', $log.slideid)
+        $log = $this.updatelogger($log, 'batchmicomp')
         $log.slidelog = $log.mainlog
         if ($this.checklog($log, $true)){
             return 2
@@ -401,7 +414,7 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'batchflatfield', $log.slideid)
+        $log = $this.updatelogger($log, 'batchflatfield')
         #
         # if the version is not 0.0.1 in batchflatfield, do meanimagecomparison
         # instead
@@ -461,7 +474,7 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'warpoctets', $log.slideid)
+        $log = $this.updatelogger($log, 'warpoctets')
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -494,7 +507,7 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'imagecorrection', $log.slideid)
+        $log = $this.updatelogger($log, 'imagecorrection')
         if ($this.checklog($log, $true)){
             return 2
         }
