@@ -140,7 +140,7 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
       "outputfolder": self.outputfolder,
       **kwargs,
     }
-    print(runHPFkwargs)
+    self.outputfolder.mkdir(parents=True, exist_ok=True)
     if self.njobs is None or self.njobs > 1:
       with self.pool() as pool:
         results = [
