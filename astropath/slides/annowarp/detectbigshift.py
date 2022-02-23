@@ -9,7 +9,7 @@ class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, scale="zoomeds
   def __init__(self, *args, shiftthresholdmicrons=100, filetype="flatWarp", **kwargs):
     self.qptifflayer = 1
     self.im3layer = 1
-    super().__init__(*args, filetype=filetype, layer=self.im3layer, **kwargs)
+    super().__init__(*args, filetype=filetype, layerim3=self.im3layer, **kwargs)
     self.__shiftthresholdmicrons = shiftthresholdmicrons
     if len(self.rectangles) != 1:
       raise ValueError("Please specify a rectangle in selectrectangles")
@@ -25,7 +25,7 @@ class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, scale="zoomeds
   def getshift(self):
     if self.__shift is not None: return self.__shift
     r, = self.rectangles
-    with self, r.using_image() as im, self.using_qptiff() as fqptiff:
+    with self, r.using_im3() as im, self.using_qptiff() as fqptiff:
       im = PIL.Image.fromarray(im)
       zoomlevel = fqptiff.zoomlevels[0]
       qptiff = zoomlevel[self.qptifflayer-1].asarray()

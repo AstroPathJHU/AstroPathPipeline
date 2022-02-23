@@ -41,7 +41,10 @@ class MeanImageCohort(CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, 
 
     @property
     def workflowkwargs(self) :
-        return{**super().workflowkwargs,'skip_masking':self.skip_masking}
+        result = {**super().workflowkwargs,'skip_masking':self.skip_masking}
+        if self.workingdir is not None :
+            result['workingdir'] = self.workingdir
+        return result
 
 def main(args=None) :
     MeanImageCohort.runfromargumentparser(args)

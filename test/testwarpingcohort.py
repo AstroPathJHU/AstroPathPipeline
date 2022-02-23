@@ -95,6 +95,7 @@ class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
                 '--final-pattern-octets','0',
                 '--octets-only',
                 '--noGPU',
+                '--debug',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
@@ -132,6 +133,7 @@ class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
                 '--principal-point-octets','2',
                 '--final-pattern-octets','2',
                 '--noGPU',
+                '--debug',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')

@@ -14,14 +14,14 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
   of different zoom levels.
   """
 
-  def __init__(self, *args, tilesize=256, **kwargs):
+  def __init__(self, *args, layers=None, tilesize=256, **kwargs):
     """
     tilesize: size of the tiles at each level of the image pyramid
     """
-    super().__init__(*args, **kwargs)
+    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
     self.__tilesize = tilesize
 
-  multilayer = True
+  multilayercomponenttiff = True
 
   @classmethod
   def logmodule(self): return "deepzoom"
@@ -222,7 +222,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     Write the csv file that lists all the png files to load
     """
     lst = []
-    for layer in self.layers:
+    for layer in self.layerscomponenttiff:
       folder = self.layerfolder(layer)
       for zoomfolder in sorted(folder.iterdir()):
         zoom = int(re.match("Z([0-9]*)", zoomfolder.name).group(1))
@@ -240,7 +240,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     """
     Run the full deepzoom pipeline
     """
-    for layer in self.layers:
+    for layer in self.layerscomponenttiff:
       folder = self.layerfolder(layer)
       if folder.exists():
         for i in range(10):
@@ -278,7 +278,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
-      *(self.wsifilename(layer) for layer in self.layers),
+      *(self.wsifilename(layer) for layer in self.layerscomponenttiff),
     ]
 
   @classmethod
@@ -291,7 +291,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layers, "tifflayers": None, **super().workflowkwargs}
+    return {"layers": self.layerscomponenttiff, "tifflayers": None, **super().workflowkwargs}
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, root, informdataroot, deepzoomroot, layers, checkimages=False, **otherworkflowkwargs):

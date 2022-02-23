@@ -1,4 +1,4 @@
-import logging, more_itertools, numpy as np, os, pathlib, re, unittest
+import logging, more_itertools, numpy as np, os, pathlib, re
 from astropath.shared.samplemetadata import SampleDef
 from astropath.slides.align.aligncohort import AlignCohort
 from astropath.slides.align.alignsample import AlignSample, AlignSampleComponentTiff, AlignSampleFromXML, ImageStats
@@ -7,7 +7,7 @@ from astropath.slides.align.field import Field, FieldOverlap
 from astropath.slides.align.stitch import AffineEntry
 from astropath.utilities import units
 from astropath.utilities.misc import re_subs
-from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, expectedFailureIf, temporarilyremove, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -272,47 +272,6 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       assertAlmostEqual(o1.result.covyy, o2.result.covyy, rtol=1e-5)
       assertAlmostEqual(o1.result.covxy, o2.result.covxy, rtol=1e-5)
 
-  @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
-  def testPscale(self, SlideID="M21_1"):
-    a1 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-    readfilename = thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/f"{SlideID}_align.csv"
-    stitchfilenames = [thisfolder/"data"/"reference"/"alignment"/SlideID/"dbload"/_.name for _ in a1.stitchfilenames]
-    a1.readalignments(filename=readfilename)
-    a1.readstitchresult(filenames=stitchfilenames)
-
-    constantsfile = a1.dbload/f"{SlideID}_constants.csv"
-    with open(constantsfile) as f:
-      constantscontents = f.read()
-    newconstantscontents = constantscontents.replace(str(a1.pscale), str(a1.pscale * (1+1e-6)))
-    assert newconstantscontents != constantscontents
-
-    with temporarilyremove(thisfolder/"data"/SlideID/"inform_data"/"Component_Tiffs"), temporarilyreplace(constantsfile, newconstantscontents), temporarilyremove(thisfolder/"data"/SlideID/"im3"/"xml"):
-      a2 = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
-      assert a1.pscale != a2.pscale
-      with a2:
-        a2.getDAPI(writeimstat=False)
-        a2.align(debug=True)
-        a2.stitch()
-
-    pscale1 = a1.pscale
-    pscale2 = a2.pscale
-    rtol = 1e-5
-    atol = 1e-7
-
-    for o1, o2 in zip(a1.overlaps, a2.overlaps):
-      x1, y1 = units.pixels(units.nominal_values(o1.stitchresult), pscale=pscale1)
-      x2, y2 = units.pixels(units.nominal_values(o2.stitchresult), pscale=pscale2)
-      assertAlmostEqual(x1, x2, rtol=rtol, atol=atol)
-      assertAlmostEqual(y1, y2, rtol=rtol, atol=atol)
-
-    for T1, T2 in zip(np.ravel(units.nominal_values(a1.T)), np.ravel(units.nominal_values(a2.T))):
-      assertAlmostEqual(T1, T2, rtol=rtol, atol=atol)
-
-  @unittest.skipIf(int(os.environ.get("JENKINS_PARALLEL", 0)), "temporarilyremove messes with other tests run in parallel")
-  def testPscaleFastUnits(self, SlideID="M21_1"):
-    with units.setup_context("fast"):
-      self.testPscale(SlideID=SlideID)
-
   def testCohort(self, units="safe"):
     SlideID = "M21_1"
     args = [os.fspath(thisfolder/"data"), "--shardedim3root", os.fspath(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--logroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
@@ -375,9 +334,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     kwargs = {"selectrectangles": [17], "dbloadroot": thisfolder/"test_for_jenkins"/"alignment", "logroot": thisfolder/"test_for_jenkins"/"alignment"}
     a1 = AlignSample(*args, **kwargs)
     a2 = AlignSample(*args, **kwargs, readlayerfile=False, layer=1)
-    i1 = a1.rectangles[0].image
-    i2 = a2.rectangles[0].image
-    np.testing.assert_array_equal(i1, i2)
+    with a1.rectangles[0].using_alignment_image() as i1, a2.rectangles[0].using_alignment_image() as i2:
+      np.testing.assert_array_equal(i1, i2)
 
   def testPolaris(self):
     self.testAlignment(SlideID="YZ71", xmlfolders=[thisfolder/"data"/"raw"])
