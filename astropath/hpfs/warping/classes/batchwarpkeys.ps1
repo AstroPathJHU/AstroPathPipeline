@@ -12,10 +12,9 @@ class batchwarpkeys : moduletools {
     [array]$batchslides
     #
     batchwarpkeys([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
-        $this.processloc = $this.sample.basepath + '\flatfield\' + $this.sample.batchID
-        $this.sample.createdirs($this.processloc)
-        $spdir = $this.sample.mpath + '\warping\octets'
-        $this.sample.createdirs($spdir)
+        $this.processloc = $this.sample.warpbatchfolder() 
+        $this.sample.createnewdirs($this.processloc)
+        $this.sample.createnewdirs(($this.processloc+ '\octets'))
     }
     <# -----------------------------------------
      RunBatchMeanImageComparison
@@ -87,6 +86,7 @@ class batchwarpkeys : moduletools {
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
             '--octets-only --noGPU --no-log',
             '--ignore-dependencies',
+            '--workingdir', $this.sample.warpbatchfolder(),
             $this.buildpyopts('cohort')
          ) -join ' '
        #

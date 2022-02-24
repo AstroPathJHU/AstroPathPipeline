@@ -291,6 +291,10 @@
         #
         # check if conda is a
         #
+        if (!$this.isWindows()){
+            return
+        }
+        #
         $server = $this.defServer()
         $drive = '\\'+$server+'\C$'
         #

@@ -94,10 +94,14 @@ Class testpswarpoctets {
         Write-Host '    external log:' $externallog
         Write-Host '    launching task'
         #
-        $inp.sample.checkconda()
-        etenv $inp.sample.pyenv()
-        Invoke-Expression $pythontask *>> $externallog
-        exenv
+        if ($inp.sample.isWindows()){
+            $inp.sample.checkconda()
+            etenv $inp.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            exenv
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
         #
     }
     <# --------------------------------------------
@@ -485,7 +489,11 @@ Class testpswarpoctets {
         $task = $import, $task1, $task2, $task3, $task4 -join '; '
         Write-Host '    Task:' $task
         #
-        conda run -n $inp.sample.pyenv() python -c $task
+        if ($inp.sample.isWindows()){
+            conda run -n $inp.sample.pyenv() python -c $task
+        } else{
+            python -c $task
+        }
         if (!(test-path $this.batchreferencefile )){
             Throw 'Batch flatfield reference file failed to create'
         }

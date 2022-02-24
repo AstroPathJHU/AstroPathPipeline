@@ -109,10 +109,14 @@ Class testpsmeanimage {
         Write-Host '    external log:' $externallog
         Write-Host '    launching task'
         #
-        $inp.sample.checkconda()
-        etenv $inp.sample.pyenv()
-        Invoke-Expression $pythontask *>> $externallog
-        exenv
+        if ($inp.sample.isWindows()){
+            $inp.sample.checkconda()
+            etenv $inp.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            exenv
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
         #
     }
     <# --------------------------------------------

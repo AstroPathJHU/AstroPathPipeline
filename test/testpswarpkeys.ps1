@@ -96,15 +96,11 @@
         Write-Host 'test [batchwarpkeys] constructors finished'
         #
     }
+    #
     [void]testprocessroot($inp){
         Write-Host '.'
         Write-host 'test creating sample dir started'
         Write-Host '    process location:' $inp.processloc
-       # $inp.sample.createdirs($inp.processloc)
-        $spdir = $inp.sample.mpath + '\warping\octets'
-       # $inp.sample.createdirs($spdir)
-        write-host '    testing dir:' $spdir
-        #
         Write-Host '    slide id:' $inp.sample.slideid
         Write-host 'test creating sample dir finished'
     }
@@ -141,10 +137,6 @@
     }
     #
     [void]runpywarpkeysexpectedbatch($inp){
-        #
-        $warpdirectory = $inp.sample.mpath + '\warping\octets'
-        $inp.sample.copy($warpdirectory, ($inp.processloc+'\octets'), '*')
-        $inp.sample.CreateNewDirs($warpdirectory)
         #
         $inp.getmodulename()
         $dpath = $inp.sample.basepath
