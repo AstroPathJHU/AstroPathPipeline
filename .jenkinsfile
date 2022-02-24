@@ -30,11 +30,11 @@ pipeline {
     stage('ps module install') {
       steps {
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
-	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
-	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
+        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
+        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
         sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
-	sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
+        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
       }
     }
 
@@ -185,11 +185,11 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
                   }
                 }
-		stage('test meanimage ps workflow') {
-		  steps {
-		    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1	
-		  }
-		}
+                stage('test meanimage ps workflow') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'	
+                  }
+                }
               }
             }
 

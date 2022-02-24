@@ -425,7 +425,6 @@
         if (test-path $this.sample.annotationxml()){
             $xmlfile = $this.sample.getcontent($this.sample.annotationxml())
             if ([regex]::Escape($xmlfile) -notmatch 'Acquired'){
-                write-host $xmlfile
                 $this.sample.warning('No "Acquired" Fields in annotation xmls, including "Flagged for Acquisition" Fields.')
                 $this.sample.warning('Note some fields may have failed but this cannot be determined from xml file!')
                 $str = ' --include-hpfs-flagged-for-acquisition'
