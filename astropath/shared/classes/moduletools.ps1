@@ -406,13 +406,34 @@
      Usage: $this.buildpyopts()
     ----------------------------------------- #>
     [string]buildpyopts(){
-        $str = '--allow-local-edits --skip-start-finish'
+        $str = '--allow-local-edits --skip-start-finish',
+            $this.pyoptsnoaxquiredannos() -join ''
         return $str
     }
+    #
     [string]buildpyopts($opt){
         $project = $this.sample.project.PadLeft(2,  '0')
-        $str = '--allow-local-edits --use-apiddef --project', $project -join ' '
+        $str = ('--allow-local-edits --use-apiddef --project',
+            $project -join ' '), $this.pyoptsnoaxquiredannos() -join ''
         return $str
+    }
+    #
+    [string]pyoptsnoaxquiredannos(){
+        #
+        $str = ''
+        #
+        if (test-path $this.sample.annotationxml()){
+            $xmlfile = $this.sample.getcontent($this.sample.annotationxml())
+            if ([regex]::Escape($xmlfile) -notmatch 'Acquired'){
+                write-host $xmlfile
+                $this.sample.warning('No "Acquired" Fields in annotation xmls, including "Flagged for Acquisition" Fields.')
+                $this.sample.warning('Note some fields may have failed but this cannot be determined from xml file!')
+                $str = ' --include-hpfs-flagged-for-acquisition'
+            }
+        }
+        #
+        return $str
+        #
     }
     #
     [void]runpythontask($taskname, $pythontask){
@@ -436,7 +457,17 @@
     }
     <# -----------------------------------------
      checkexternalerrors
-        checkexternalerrors
+        check if there were external errors
+        when launching python. These errors
+        could be in the input, that 
+        sample wasn't set up correctly,
+        that the dependencies aren't correct.
+        if the task started correctly, (detected
+        by the correct astropath formatting in the 
+        log message) external task names don't match
+        our module name, we have to parse the 
+        external and forward the messages to the
+        astropath sample logs. 
      ------------------------------------------
      Usage: $this.checkexternalerrors()
     ----------------------------------------- #>
