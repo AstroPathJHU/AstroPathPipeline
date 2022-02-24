@@ -27,6 +27,7 @@ pipeline {
         }
       }
 
+      stages{
         stage('ps module install') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
@@ -281,3 +282,4 @@ pipeline {
       }
     }
   }
+}
