@@ -39,8 +39,8 @@ class MiniField(units.ThingWithPscale):
   @property
   def pxvec(self):
     match = re.match(r"[0-9A-Za-z_]+_\[([0-9]+),([0-9]+)\]_binary_seg_maps\.tif", self.tifffile.name)
-    x = int(match.group(1)) * self.onepixel
-    y = int(match.group(2)) * self.onepixel
+    x = int(match.group(1)) * self.onemicron
+    y = int(match.group(2)) * self.onemicron
     return np.array([x, y])
   @property
   def px(self): return self.pxvec[0]
