@@ -271,7 +271,7 @@
             #
             $output = (Invoke-Expression 'meanimagesample -h')
             Write-Host $output
-            if ($output -notmatch 'usage'){
+            if ([regex]::escape($output) -notmatch 'usage'){
                 Throw 'error launching py test wihout conda'
             }
             #

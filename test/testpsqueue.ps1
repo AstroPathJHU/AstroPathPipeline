@@ -33,11 +33,11 @@ Class testpsqueue {
         $this.importmodule()
         #
         $inp = queue  $this.mpath $this.module
-        #$this.teststartmess($inp)
-        #$this.testchecktransfer($inp)
-        #$this.testcheckshredxml($inp)
+        $this.teststartmess($inp)
+        $this.testchecktransfer($inp)
+        $this.testcheckshredxml($inp)
         $this.testbuildqueue($inp)
-        #$this.testextractqueue($inp)
+        $this.testextractqueue($inp)
         Write-Host '.'
     }
     #
@@ -189,5 +189,5 @@ Class testpsqueue {
 #
 # launch test and exit if no error found
 #
-[testpsqueue]::new($true) | Out-Null
+[testpsqueue]::new() | Out-Null
 exit 0

@@ -43,6 +43,7 @@ pipeline {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsqueue.ps1'
           }
         }
 
@@ -65,7 +66,8 @@ pipeline {
             stage('workflow') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
-                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1' 	
+                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
+                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsworkflow.ps1' 	 	
               }
             }
 
