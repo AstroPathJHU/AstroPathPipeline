@@ -282,9 +282,11 @@
             Write-Host '   '$testval
             #
             $output = python -c $testval
-            if ($output -notmatch 'usage'){
-                Throw 'error launching py test wihout conda'
-            }
+            Write-Host $output
+            #if ($output -notmatch 'usage'){
+            #    Write-Host $output
+            #    Throw 'error launching py test wihout conda'
+            #}
             #
             Invoke-Expression 'meanimagesample -h'
             & meanimagesample -h
