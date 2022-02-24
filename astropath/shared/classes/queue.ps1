@@ -104,7 +104,7 @@ class queue : vminformqueue{
     [array]defNotCompletedSlides($cleanedslides){
         #
         $slidesnotcomplete = @()
-        $c = 1
+        $c = 0
         $ctotal = $cleanedslides.count
         if (!($cleanedslides)){
             return $slidesnotcomplete
@@ -120,8 +120,8 @@ class queue : vminformqueue{
                            -PercentComplete $p 
             $c += 1 
             #
-            $log.Sample($slide.slideid, $this.mpath, $cleanedslides)
-            $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project)
+            $log.Sample($slide.slideid, $this.mpath, $this.module, $cleanedslides)
+            $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project, 'short')
             #
             if ($this.module -match 'batch'){
                 $log.slidelog = $log.mainlog
@@ -166,7 +166,8 @@ class queue : vminformqueue{
             return $true
         }
         #
-        $loglines = $this.opencsvfile($log.slidelog, ';', @('Project','Cohort','slideid','Message','Date'))
+        $loglines = $this.opencsvfile($log.slidelog, ';',
+            @('Project','Cohort','slideid','Message','Date'))
         #
         # parse log
         #
@@ -194,7 +195,6 @@ class queue : vminformqueue{
         $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
         $d2 = ($loglines |
                  Where-Object {
-                    ($_.Message -match $vers) -and 
                     $_.Message -match $statustypes[1] -and
                      ($_.Slideid -match $ID)
                  }).Date |
@@ -220,7 +220,7 @@ class queue : vminformqueue{
         #
         $log.module = $module
         $log.deflogpaths()
-        $log.vers = $log.GetVersion($this.mpath, $module, $log.project)
+        $log.vers = $log.GetVersion($this.mpath, $module, $log.project, 'short')
         return $log
         #
     }

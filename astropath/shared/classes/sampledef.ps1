@@ -56,6 +56,17 @@ class sampledef : sharedtools{
         $this.defbase($mpath)
     }
     #
+    Sample(
+        [string]$slideid="",
+        [string]$mpath,
+        [string]$module,
+        [PSCustomObject]$slides
+    ){
+        $this.module = $module
+        $this.ParseAPIDdef($slideid, $slides)
+        $this.defbase($mpath) 
+    }
+    #
     Batch(
         [string]$batchid="",
         [string]$mpath,

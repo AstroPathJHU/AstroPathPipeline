@@ -23,6 +23,7 @@
         #
         if ($test){
             $q = [dispatcher]::new($mpath, $module, '', '', $test, $Credential)
+            return $q
         } elseif (($PSBoundParameters.ContainsKey('project'))){
             $q = [dispatcher]::new($mpath, $module, $project, $Credential)
         } else {
@@ -30,4 +31,5 @@
         }
         #
     }
+    #
 }

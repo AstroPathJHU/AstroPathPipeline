@@ -21,6 +21,8 @@ Class testpsmeanimage {
     #
     testpsmeanimage(){
         #
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
+        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
         $this.launchtests()
         #
     }
@@ -29,7 +31,18 @@ Class testpsmeanimage {
         #
         $this.slideid = $slideid
         $this.project = $project
-        $this.launchtests
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
+        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
+        $this.launchtests()
+        #
+    }
+    #
+    testpsmeanimage($project, $slideid, $dryrun){
+        #
+        $this.slideid = $slideid
+        $this.project = $project
+        $this.mpath = '\\bki04\astropath_processing'
+        $this.launchtests()
         #
     }
     #
@@ -38,10 +51,10 @@ Class testpsmeanimage {
         Write-Host '---------------------test ps [meanimage]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        $this.testpsmeanimageconstruction($task)
+        #$this.testpsmeanimageconstruction($task)
         $inp = meanimage $task 
-        $this.testprocessroot($inp)
-        $this.testcleanupbase($inp)
+        #$this.testprocessroot($inp)
+        #$this.testcleanupbase($inp)
         $this.comparepymeanimageinput($inp)
         $this.runpytaskpyerror($inp)
         $this.testlogpyerror($inp)
@@ -51,9 +64,11 @@ Class testpsmeanimage {
         $this.testlogsexpected($inp)
         # $this.runpytaskexpectedapid($inp)
         # $this.testlogsexpectedapid($inp)
-        $this.testreturndatapy($inp)
-        $this.testmasks($inp)
-        $this.testcleanup($inp)
+        $this.runpytaskexpectednoxml($inp)
+        $this.testlogsexpectednoxml($inp)
+        #$this.testreturndatapy($inp)
+        #$this.testmasks($inp)
+        #$this.testcleanup($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -62,10 +77,10 @@ Class testpsmeanimage {
     and define global variables
     --------------------------------------------#>
     importmodule(){
+        #
         Import-Module $this.apmodule
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_meanimage'))
-        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
+        #
     }
     <# --------------------------------------------
     uncpath
@@ -445,7 +460,7 @@ Class testpsmeanimage {
         #
         $savelog = $loglines |
                     where-object {($_.Slideid -match $ID) -and 
-                        ($_.Message -match '')} |
+                        ($_.Message -eq '')} |
                     Select-Object -Last 1 
         if ($savelog){
             Throw 'blank log output exists'
@@ -514,6 +529,75 @@ Class testpsmeanimage {
     run with the correct input.
     --------------------------------------------#>
     [void]testlogsexpectedapid($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test python expected log output started'
+        $inp.getmodulename()
+        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
+        Write-Host '    open log output'
+        $logoutput = $inp.sample.GetContent($externallog)
+        Write-Host '    test log output'
+        #
+        try {
+            $inp.getexternallogs($externallog)
+        } catch {
+            Write-Host '   '$logoutput
+            Throw $_.Exception.Message
+        }
+        #
+        Write-Host 'test python expected log output finished'
+        #
+    }
+    <# --------------------------------------------
+    runpytaskexpectednoxml
+    check that the python task completes correctly 
+    when run with the correct input.
+    --------------------------------------------#>
+    [void]runpytaskexpectednoxml($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test python meanimage in workflow without xml annos started'
+        $inp.sample.CreateNewDirs($inp.processloc)
+        $rpath = $PSScriptRoot + '\data\raw'
+        $dpath = $this.basepath
+        $inp.getmodulename()
+        #
+        Write-Host '    removing annotations from xml file'
+        $sorxml = $inp.sample.annotationxml()
+        $desxml = $this.processloc, $this.slideid, 'test' -join '\'
+        $inp.sample.copy($sorxml, $desxml)
+        $xmlfile = $inp.sample.getcontent($sorxml)
+        $xmlfile2 = $xmlfile -replace 'Acquired', 'Blah'
+        $inp.sample.setfile($sorxml, $xmlfile2)
+        #
+        $et_offset_file = $this.basepath,'corrections\best_exposure_time_offsets_Vectra_9_8_2020.csv' -join '\'
+        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath) 
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $inp.sample.createdirs($des)
+        #
+        $addedargs = '--selectrectangles',
+                     '17 18 19 20 23 24 25 26 29 30 31 32 35 36 37 38 39 40', 
+                     '--maskroot', $this.processloc,
+                     '--exposure-time-offset-file', $et_offset_file -join ' '
+                     
+        $pythontask = $pythontask, $addedargs -join ' '
+        #
+        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
+        $this.runpytesttask($inp, $pythontask, $externallog)
+        #
+        Write-Host '    putting sampledef file back'
+        $sorxml = $inp.sample.Scanfolder()
+        $inp.sample.copy($desxml, $sorxml, 'annotations.xml')
+        #
+        Write-Host 'test python meanimage in workflow without apid finished'
+        #
+    }
+    <# --------------------------------------------
+    testlogsexpected
+    check that the log is parsed correctly when
+    run with the correct input.
+    --------------------------------------------#>
+    [void]testlogsexpectednoxml($inp){
         #
         Write-Host '.'
         Write-Host 'test python expected log output started'

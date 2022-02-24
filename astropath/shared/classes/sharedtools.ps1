@@ -15,6 +15,8 @@
     [string]$package = 'astropath'
     [array]$modules
     [switch]$checkpyenvswitch = $false
+    [PSCustomObject]$configfile
+    [switch]$teststatus = $false
     #
     sharedtools(){}
     #
@@ -25,8 +27,15 @@
     }
     #
     [string]pyenv(){
-        $str = $this.pyinstalllocation() + $this.package + 'workflow'
+        #
+        if ($this.teststatus){
+            $str = $this.pyinstalllocation() + $this.package + 'workflow-test'
+        } else {
+            $str = $this.pyinstalllocation() + $this.package + 'workflow'
+        }
+        #
         return $str
+        #
     }
     #
     [string]pyinstalllog(){
@@ -70,9 +79,11 @@
     ----------------------------------------- #>
     [string]GetVersion($mpath, $module, $project){
         #
-        $configfile = $this.ImportConfigInfo($mpath)
+        if (!$this.configfile){
+            $this.configfile = $this.ImportConfigInfo($mpath)
+        }
         #
-        $projectconfig = $configfile | 
+        $projectconfig = $this.configfile | 
             Where-Object {$_.Project -eq $project}
         if (!$projectconfig){
             Throw ('Project not found for project number: '  + $project)
@@ -88,6 +99,31 @@
         }
         # 
         $vers = $this.getfullversion()
+        return $vers
+        #
+    }
+    #
+    [string]GetVersion($mpath, $module, $project, $short){
+        #
+        if (!$this.configfile){
+            $this.configfile = $this.ImportConfigInfo($mpath)
+        }
+        #
+        $projectconfig = $this.configfile | 
+            Where-Object {$_.Project -eq $project}
+        if (!$projectconfig){
+            Throw ('Project not found for project number: '  + $project)
+        }    
+        #
+        $vers = $projectconfig.($module+'version')    
+        if (!$vers){
+            Throw 'No version number found'
+        }
+        #
+        if ($this.apversionchecks($mpath, $module, $vers)){
+            return ("v" + $vers)
+        }
+        # 
         return $vers
         #
     }
@@ -335,14 +371,18 @@
         $this.checkconda()
         $this.createdirs($this.pyinstalllocation())
         conda create -y -p $this.pyenv() python=3.8 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR CREATED `r`n"))
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR CREATED; $time `r`n"))
         conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED; $time  `r`n"))
         conda install -y -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git `
               2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE  `r`n"))
-        pip -q install $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE; $time  `r`n"))
+        pip install $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE; $time `r`n"))
         conda deactivate 2>&1 >> $this.pyinstalllog()
     }
     <# -----------------------------------------
@@ -355,9 +395,11 @@
         try{
             $this.checkconda()
             conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
-            pip -q install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
-            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
+            $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED; $time  `r`n"))
+            pip install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
+            $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE; $time `r`n"))
             conda deactivate 2>&1 >> $this.pyinstalllog()
         } catch {
             $this.createpyenvir()

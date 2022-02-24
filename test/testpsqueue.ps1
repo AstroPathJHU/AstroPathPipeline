@@ -13,7 +13,7 @@ Class testpsqueue {
     [string]$mpath 
     [string]$process_loc
     [string]$slideid = "M21_1"
-    [string]$module = 'shredxml'
+    [string]$module = 'meanimage'
     #
     testpsqueue(){
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
@@ -22,6 +22,7 @@ Class testpsqueue {
     }
     #
     testpsqueue($dryrun){
+        $this.slideid = "AP0180025"
         $this.mpath = '\\bki04\astropath_processing'
         $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
         $this.launchtests()
@@ -32,10 +33,11 @@ Class testpsqueue {
         $this.importmodule()
         #
         $inp = queue  $this.mpath $this.module
+        #$this.teststartmess($inp)
         #$this.testchecktransfer($inp)
         #$this.testcheckshredxml($inp)
-        #$this.testbuildqueue($inp)
-        $this.testextractqueue($inp)
+        $this.testbuildqueue($inp)
+        #$this.testextractqueue($inp)
         Write-Host '.'
     }
     #
@@ -85,7 +87,16 @@ Class testpsqueue {
         Write-Host 'test build queue start'
         #
         $slides = $inp.importslideids($this.mpath)
-        Write-Host '   '($slides | Format-Table | Out-String).Trim()
+        #
+        $projects = @('18')
+        #
+        $cleanedslides = $slides | 
+            Where-Object {$projects -contains $_.Project}
+        Write-Host '    checking:' 
+        Write-Host ($cleanedslides | Format-Table | Out-String).Trim()
+        $tasks = $inp.defNotCompletedSlides($cleanedslides)
+        Write-Host '    tasks:' $tasks.slideid
+        #
         Write-Host 'test build queue fin'
         #
     }
@@ -99,6 +110,78 @@ Class testpsqueue {
         Write-Host '   '$inp.cleanedtasks
         #
         Write-Host 'extract queue fin'
+        #
+    }
+    #
+    [void]teststartmess($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test task started detection started'
+        #
+        $slides = $inp.importslideids($this.mpath)
+        Write-Host '    create logger'
+        $log = logger $this.mpath $this.module 'AP0170012'
+        #
+        Write-Host '    "update" log'
+        $log.Sample($this.slideid, $this.mpath, $slides)
+        Write-Host '    "update" vers'
+        $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project, 'short')
+        #
+        #$log.start($this.module)
+        #
+        Write-Host '    slide log path:' $log.slidelog
+        #
+        Write-Host '    reading log'
+        $loglines = $inp.opencsvfile($log.slidelog, ';',
+             @('Project','Cohort','slideid','Message','Date'))
+        #
+        # parse log
+        #
+        $statustypes = @('START:','ERROR:','FINISH:')
+        $savelog = @()
+        $vers = $log.vers -replace 'v', ''
+        $vers = ($vers -split '\.')[0,1,2] -join '.'
+        #
+        if ($log.slidelog -match [regex]::Escape($log.mainlog)){
+            $ID= $log.BatchID
+        } else {
+            $ID = $log.slideid
+        }
+        #
+        Write-Host '    log id:' $ID
+        Write-Host '    log vers:' $vers
+        #
+        foreach ($statustype in $statustypes){
+            $savelog += $loglines |
+                    where-object {
+                        ($_.Message -match $vers) -and 
+                         ($_.Slideid -match $ID) -and 
+                         ($_.Message -match $statustype)
+                    } |
+                    Select-Object -Last 1 
+        }
+        #
+        $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
+        $d2 = ($loglines |
+                 Where-Object {
+                    $_.Message -match $statustypes[1] -and
+                     ($_.Slideid -match $ID)
+                 }).Date |
+               Select-Object -Last 1 
+        $d3 = ($savelog | Where-Object {$_.Message -match $statustypes[2]}).Date
+        #
+        Write-Host '    start date:' $d1
+        Write-Host '    error line:' $d2
+        Write-Host '    fin date:' $d3
+        #
+        Write-Host '    test 1:' (!$d1)
+        Write-Host '    test 2:' ($d1 -le $d2 -and $d3 -ge $d2) 
+        Write-Host '    test 3:' (!$false -and ($d3 -gt $d1))
+        Write-Host '    test 4:' ($false -and !($d3 -gt $d1))
+        #
+        Write-Host '    log status:' $inp.checklog($log, $false)
+        #
+        Write-Host 'test task started detection fin'
         #
     }
     #
