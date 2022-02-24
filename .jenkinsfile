@@ -27,16 +27,16 @@ pipeline {
         }
       }
 
-    stage('ps module install') {
-      steps {
-        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
-        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
-        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
-        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
-        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
-        sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
-      }
-    }
+        stage('ps module install') {
+          steps {
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
+          }
+        }
 
         stage('pip install') {
           steps {
@@ -122,17 +122,17 @@ pipeline {
               }
             }
 
-	  stage('segmaps') {
-	    steps {
-	     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
-	    }
-	  }
-
-          stage('geom') {
-            steps {
-              sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeom'
+            stage('segmaps') {
+              steps {
+              sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
+              }
             }
-          }
+
+            stage('geom') {
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeom'
+              }
+            }
 
             stage('geomcell') {
               steps {
@@ -164,11 +164,11 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
                   }
                 }
-	        stage('test ps warping workflow'){
-	          steps{
-	            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
-	          }
-	        }
+                stage('test ps warping workflow'){
+                  steps{
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
+                  }
+                }
               }
             }
 
@@ -281,4 +281,3 @@ pipeline {
       }
     }
   }
-}
