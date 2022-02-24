@@ -268,15 +268,15 @@
         } else {
             #
             Write-Host '    OS is not windows test that we can astropath from python'
-            <#
-            $pymod = "from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort"
+            #
+            $pymod = "from astropath.hpfs.flatfield.meanimagesample import MeanImageSample"
             $pyargs = "args = ['-h']"
-            $testval = $pymod, $pyargs, "MeanImageCohort.runfromargumentparser(args=args)" -join "; "
-            #>
+            $testval = $pymod, $pyargs, "MeanImageSample.runfromargumentparser(args=args)" -join "; "
+            <#
             $pymod = "import astropath"
             $pyargs = "args = ['-h']"
             $testval = $pymod, $pyargs, "astropath.hpfs.flatfield.MeanImageCohort.runfromargumentparser(args=args)" -join "; "
-            #
+            #>
             Write-Host '   '$pymod
             Write-Host '   '$pyargs
             Write-Host '   '$testval
@@ -285,6 +285,9 @@
             if ($output -notmatch 'usage'){
                 Throw 'error launching py test wihout conda'
             }
+            #
+            Invoke-Expression 'meanimagesample -h'
+            & meanimagesample -h
             #
             Write-Host '    python finished'
             #

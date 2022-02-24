@@ -27,6 +27,12 @@ pipeline {
         }
       }
 
+      stage('pip install') {
+        steps {
+          sh 'pip install .[all]'
+        }
+      }
+
       stages{
         stage('ps module install') {
           steps {
@@ -36,12 +42,6 @@ pipeline {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
-          }
-        }
-
-        stage('pip install') {
-          steps {
-            sh 'pip install .[all]'
           }
         }
 
