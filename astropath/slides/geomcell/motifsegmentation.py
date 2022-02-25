@@ -71,10 +71,6 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
   def logger(self):
     return printlogger("motifgeomcell")
 
-  @property
-  def tiffs(self):
-    return list(self.tifffolder.glob("*_seg_maps.tif"))
-
   @staticmethod
   def runHPF(i, field, *, logger, outputfolder, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, minarea, nfields):
     geomload = []

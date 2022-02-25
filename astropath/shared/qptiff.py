@@ -111,6 +111,10 @@ class QPTiffZoomLevel(tuple, units.ThingWithQpscale):
     yposition = fractions.Fraction(*self.tags["YPosition"])
     return units.Distance(**{kw: yposition}, pscale=self.yresolution)
 
+  @property
+  def position(self):
+    return np.array([self.xposition, self.yposition])
+
 class QPTiff(tifffile.TiffFile, units.ThingWithApscale):
   """
   Class that handles a qptiff file
