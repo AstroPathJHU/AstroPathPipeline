@@ -12,19 +12,33 @@ class MiniField(units.ThingWithPscale):
     with tifffile.TiffFile(self.tifffile) as f:
       pscales = set()
       shapes = set()
+      positions = set()
       for page in f.pages:
         xresolution = page.tags["XResolution"].value
-        pscales.add(fractions.Fraction(*xresolution) / 10000)
+        xresolution = fractions.Fraction(*xresolution) / 10000
+        xposition = page.tags["XPosition"].value
+        xposition = float(fractions.Fraction(*xposition))
+        xposition = units.Distance(centimeters=xposition, pscale=xresolution)
         yresolution = page.tags["YResolution"].value
-        pscales.add(fractions.Fraction(*yresolution) / 10000)
+        yresolution = fractions.Fraction(*yresolution) / 10000
+        yposition = page.tags["YPosition"].value
+        yposition = float(fractions.Fraction(*yposition))
+        yposition = units.Distance(centimeters=yposition, pscale=yresolution)
+        pscales.add(xresolution)
+        pscales.add(yresolution)
+        positions.add((xposition, yposition))
         shapes.add(page.shape)
+
       pscale, = pscales
       shape, = shapes
       shape = np.array(shape) * units.onepixel(pscale)
       height, width = shape
+      position, = positions
+      position = np.array(position)
     self.__pscale = pscale
     self.__width = width
     self.__height = height
+    self.__position = position
 
   @property
   def n(self): return self.hpfid  
@@ -35,13 +49,12 @@ class MiniField(units.ThingWithPscale):
   def width(self): return self.__width
   @property
   def height(self): return self.__height
+  @property
+  def position(self): return self.__position
 
   @property
   def pxvec(self):
-    match = re.match(r"[0-9A-Za-z_]+_\[([0-9]+),([0-9]+)\]_binary_seg_maps\.tif", self.tifffile.name)
-    x = int(match.group(1)) * self.onemicron
-    y = int(match.group(2)) * self.onemicron
-    return np.array([x, y])
+    return self.position
   @property
   def px(self): return self.pxvec[0]
   @property
