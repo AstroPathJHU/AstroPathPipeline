@@ -7,10 +7,6 @@ Last Edit: 02.16.2022
 #>
 class batchwarpkeys : moduletools {
     #
-    [string]$project
-    [switch]$all = $false
-    [array]$batchslides
-    #
     batchwarpkeys([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
         $this.processloc = $this.sample.warpbatchfolder() 
         $this.sample.createnewdirs($this.processloc)
@@ -23,8 +19,11 @@ class batchwarpkeys : moduletools {
      Usage: $this.RunBatchMeanImageComparison()
     ----------------------------------------- #>
     [void]Runbatchwarpkeys(){
+        #
         $this.getslideidregex()
+        $this.getbatchwarpoctets()
         $this.Getbatchwarpkeys()
+        #
     }
     <# -----------------------------------------
      GetBatchMeanImageComparison
@@ -46,43 +45,19 @@ class batchwarpkeys : moduletools {
         #
     }
     #
-    [void]getslideidregex(){
-        #
-        $this.sample.info('selecting samples for sample regex')
-        #
-        $nbatchslides = @()
-        $sid = $this.sample.slideid
+    [void]getbatchwarpoctets(){
         #
         if ($this.all){
-            $aslides = $this.sample.importslideids($this.sample.mpath)
-            $aslides = $aslides | where-object {$_.Project -match $this.sample.project}
-            $slides = $aslides.SlideID
-        } else {
-            $slides = $this.sample.batchslides.slideid
+            return
         }
-        #
-        foreach ($slide in $slides){
-            $this.sample.slideid = $slide
-            if ($this.sample.testwarpoctetsfiles()){
-                $nbatchslides += $slide
-            }
-        }
-        #
-        $this.sample.slideid = $sid
-        $this.sample.info(([string]$nbatchslides.length +
-             ' sample(s) selected for sampleregex'))
-        $this.batchslides = $nbatchslides
-        #
-    }
-    #
-    [void]getbatchwarpoctets(){
         #
         $this.sample.info('copying batch octets to working dir')
         $sid = $this.sample.slideid
         #
         $this.batchslides | ForEach-Object{
            $this.sample.slideid = $_
-           $this.sample.copy($this.sample.warpoctetsfile(), $this.sample.warpbatchoctetsfolder())
+           $this.sample.copy($this.sample.warpoctetsfile(),
+            $this.sample.warpbatchoctetsfolder())
         }
         #
         $this.sample.slideid = $sid
@@ -93,16 +68,15 @@ class batchwarpkeys : moduletools {
         #
         $this.sample.info('start find keys')
         #
-        $pythontask = (
+        $pythontask = ((
             $this.pythonmodulename, $dpath, 
             '--shardedim3root',  $rpath, 
             '--sampleregex',  ('"'+($this.batchslides -join '|')+'"'), 
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
             '--octets-only --noGPU --no-log',
             '--ignore-dependencies',
-            '--workingdir', $this.sample.warpbatchfolder(),
             $this.buildpyopts('cohort')
-         ) -join ' '
+         ) -join ' '), $this.workingdir() -join ''
        #
        return $pythontask
         #
@@ -110,8 +84,29 @@ class batchwarpkeys : moduletools {
        #
     }
     #
+    [string]workingdir(){
+        if ($this.all){
+            return ''
+        } else {
+            return (' --workingdir ' + $this.sample.warpbatchfolder())
+        }
+    }
+    #
     [void]getmodulename(){
         $this.pythonmodulename = 'warpingcohort'
+    }
+    <# -----------------------------------------
+     cleanup
+     cleanup the data directory
+     ------------------------------------------
+     Usage: $this.cleanup()
+    ----------------------------------------- #>
+    [void]cleanup(){
+        #
+        $this.sample.info("cleanup started")
+        $this.silentcleanup()
+        $this.sample.info("cleanup finished")
+        #
     }
     <# -----------------------------------------
      silentcleanup
@@ -123,5 +118,16 @@ class batchwarpkeys : moduletools {
         #
         $this.sample.removedir($this.processloc)
         #
+    }
+    <# -----------------------------------------
+    datavalidation
+    Validation of output data
+    ------------------------------------------
+    Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
+        if (!$this.sample.testbatchwarpkeys()){
+            throw 'Output files are not correct'
+        }
     }
 }

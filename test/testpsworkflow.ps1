@@ -120,7 +120,7 @@ Class testpsworkflow {
         #
          $sb = {
                 param($workertasklog)
-                powershell -noprofile -executionpolicy bypass -command `
+                pwsh -noprofile -executionpolicy bypass -command `
                     "&{Write-Host 'Launched'; Start-Sleep -s (1*60)}" *>> $workertasklog
             }
         #

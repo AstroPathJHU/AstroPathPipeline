@@ -27,6 +27,7 @@
     [array]$logoutput
     [string]$pythonmodulename
     [array]$batchslides
+    [switch]$all = $false
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
@@ -610,5 +611,36 @@
             Throw 'detected error in external task'
         }
         #
+    
     }
+    #
+    [void]getslideidregex(){
+        #
+        $this.sample.info('selecting samples for sample regex')
+        #
+        $nbatchslides = @()
+        $sid = $this.sample.slideid
+        #
+        if ($this.all){
+            $aslides = $this.sample.importslideids($this.sample.mpath)
+            $aslides = $aslides | where-object {$_.Project -match $this.sample.project}
+            $slides = $aslides.SlideID
+        } else {
+            $slides = $this.sample.batchslides.slideid
+        }
+        #
+        foreach ($slide in $slides){
+            $this.sample.slideid = $slide
+            if ($this.sample.testwarpoctetsfiles()){
+                $nbatchslides += $slide
+            }
+        }
+        #
+        $this.sample.slideid = $sid
+        $this.sample.info(([string]$nbatchslides.length +
+                ' sample(s) selected for sampleregex'))
+        $this.batchslides = $nbatchslides
+        #
+    }
+    #
  }

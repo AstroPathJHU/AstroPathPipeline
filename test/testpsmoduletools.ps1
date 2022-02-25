@@ -15,6 +15,7 @@
     [string]$module = 'shredxml'
     [string]$slideid = 'M21_1'
     [string]$project = '0'
+    [string]$batchid = '8'
     [string]$apmodule = $PSScriptRoot + '\..\astropath'
     #
     testpsmoduletools(){
@@ -25,6 +26,8 @@
         #
         $task = ($this.project, $this.slideid, $this.process_loc, $this.mpath)
         $inp = meanimage $task
+        #
+        $this.testslidelist()
         #
         $this.TestPaths($inp)
         Write-Host '.'
@@ -75,6 +78,36 @@
         }
         #
         Write-Host 'Passed Paths Testing'
+        #
+    }
+    #
+    <#---------------------------------------------
+    testslidelist
+    ---------------------------------------------#>
+    [void]testslidelist(){
+        #
+        Write-Host "."
+        Write-Host 'test building slide list started'
+        Write-Host '    test one batch slidelist'
+        #
+        $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
+        $inp = batchwarpkeys $task  
+        #
+        $inp.getslideidregex()
+        Write-Host '    slides in batch list:'
+        Write-Host '   '$inp.batchslides
+        Write-Host '    slide id is:' $inp.sample.slideid
+        if ($inp.sample.slideid -notcontains $this.batchid.PadLeft(2,0)){
+            Throw 'slide id wrong'
+        }
+        #
+        Write-Host '    test all slides slidelist'
+        $inp.all = $true
+        $inp.getslideidregex()
+        Write-Host '    slides in batch list:'
+        Write-Host '   '$inp.batchslides
+        Write-Host '    slide id is:' $inp.sample.slideid
+        Write-Host 'test building slide list finished'
         #
     }
     #
