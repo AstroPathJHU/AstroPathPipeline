@@ -487,6 +487,39 @@ class queue : vminformqueue{
         #
     }
     <# -----------------------------------------
+     checkwarpoctets
+     check that the meanimage module has completed
+     and all products exist
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkmeanimage(log, dependency)
+    ----------------------------------------- #>
+    [int]checkbatchwarpkeys([mylogger]$log, $dependency){
+        #
+        if (!($this.checkwarpoctets($log, $true) -eq 3)){
+            return 1
+        }
+        #
+        $log = $this.updatelogger($log, 'batchwarpkeys')
+        if ($this.checklog($log, $true)){
+            return 2
+        }
+        #
+        if (!$log.testbatchwarpkeys()){
+            return 2
+        }
+        #
+        return 3
+        #
+    }
+    <# -----------------------------------------
      checkimagecorrection
      check that the imagecorrection module has completed
      and all products exist

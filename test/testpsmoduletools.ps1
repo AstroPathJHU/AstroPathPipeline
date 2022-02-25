@@ -97,7 +97,8 @@
         Write-Host '    slides in batch list:'
         Write-Host '   '$inp.batchslides
         Write-Host '    slide id is:' $inp.sample.slideid
-        if ($inp.sample.slideid -notcontains $this.batchid.PadLeft(2,0)){
+        Write-Host '    batch id is:' $this.batchid
+        if ($inp.sample.slideid -notcontains $this.batchid.PadLeft(2,'0')){
             Throw 'slide id wrong'
         }
         #

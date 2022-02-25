@@ -50,6 +50,7 @@
         #$this.testshreddatim($inp)
         #$this.runpywarpfitsexpectedall($inp)
         $this.runpywarpfitsexpectedbatch($inp)
+        $this.testlogsexpected($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -230,6 +231,32 @@
         }
         #
         Write-Host 'test py task finished'
+        #
+    }
+    <# --------------------------------------------
+    testlogsexpected
+    check that the log is parsed correctly when
+    run with the correct input.
+    --------------------------------------------#>
+    [void]testlogsexpected($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test python expected log output started'
+        $inp.getmodulename()
+        $inp.getslideidregex()
+        $externallog = $inp.ProcessLog('batchwarpkeys') 
+        Write-Host '    open log output'
+        $logoutput = $inp.sample.GetContent($externallog)
+        Write-Host '    test log output'
+        #
+        try {
+            $inp.getexternallogs($externallog)
+        } catch {
+            Write-Host '   '$logoutput
+            Throw $_.Exception.Message
+        }
+        #
+        Write-Host 'test python expected log output finished'
         #
     }
  }
