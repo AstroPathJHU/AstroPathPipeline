@@ -19,13 +19,24 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
   @property
   def qptiffinfo(self):
     with QPTiff(self.qptifffile) as qptiff:
-      return qptiff.apscale, qptiff.position
+      return qptiff.apscale, qptiff.position, len(qptiff.zoomlevels[0])
   @property
   def pscale(self):
     return self.qptiffinfo[0]
   @property
   def qptiffposition(self):
     return self.qptiffinfo[1]
+  @property
+  def layersqptiff(self):
+    return range(1, self.qptiffinfo[2]+1)
+  @property
+  def tilesize(self): return 256
+
+  def layerfolder(self, layer):
+    """
+    Folder where the image pyramid for a given layer will go
+    """
+    return self.deepzoomfolder/f"L{layer:d}_files"
 
   @property
   def logger(self):
@@ -51,8 +62,8 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     dest = destfolder.with_name(destfolder.name.replace("_files", ""))
 
     #open the qptiff in vips, shift, and save the deepzoom
-    qptiffimage = pyvips.Image.tiffload(self.qptifffile, page=layer-1, n=1)
-    shift = floattoint(np.round(float(self.qptiffposition / self.onepixel)))
+    qptiffimage = pyvips.Image.tiffload(os.fspath(self.qptifffile), page=layer-1, n=1)
+    shift = floattoint(np.round((self.qptiffposition / self.onepixel).astype(float)))
     np.testing.assert_array_less(0, shift)
     shiftx, shifty = shift
     shifted = qptiffimage.embed(shiftx, shifty, qptiffimage.width+shiftx, qptiffimage.height+shifty)
@@ -222,7 +233,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     Write the csv file that lists all the png files to load
     """
     lst = []
-    for layer in self.layerscomponenttiff:
+    for layer in self.layersqptiff:
       folder = self.layerfolder(layer)
       for zoomfolder in sorted(folder.iterdir()):
         zoom = int(re.match("Z([0-9]*)", zoomfolder.name).group(1))
@@ -240,7 +251,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     """
     Run the full deepzoom pipeline
     """
-    for layer in self.layerscomponenttiff:
+    for layer in self.layersqptiff:
       folder = self.layerfolder(layer)
       if folder.exists():
         for i in range(10):
@@ -272,6 +283,8 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
 
     self.writezoomlist()
 
+  def run(self, **kwargs):
+    return self.deepzoom(**kwargs)
 
   @classmethod
   def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):

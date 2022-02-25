@@ -1,4 +1,4 @@
-import fractions, methodtools, tifffile
+import fractions, methodtools, numpy as np, tifffile
 
 from ..utilities import units
 
@@ -156,3 +156,10 @@ class QPTiff(tifffile.TiffFile, units.ThingWithApscale):
     y position of the most zoomed in zoom level
     """
     return self.zoomlevels[0].yposition
+
+  @property
+  def position(self):
+    """
+    position of the most zoomed in zoom level
+    """
+    return np.array([self.xposition, self.yposition])
