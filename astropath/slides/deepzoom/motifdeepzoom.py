@@ -29,7 +29,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     return self.qptiffinfo[1]
   @property
   def layersqptiff(self):
-    return [1]#range(1, self.qptiffinfo[2]+1)
+    return range(1, self.qptiffinfo[2]+1)
   @property
   def tilesize(self): return 256
 
