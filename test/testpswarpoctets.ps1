@@ -60,6 +60,7 @@ Class testpswarpoctets {
     and define global variables
     --------------------------------------------#>
     importmodule(){
+        Write-Host 'importing module ....'
         Import-Module $this.apmodule
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_warpoctets'))
@@ -178,15 +179,14 @@ Class testpswarpoctets {
         Write-Host '.'
         Write-Host 'compare python [warpoctets] expected input to actual started'
         #
-        $md_processloc = (
-            $this.processloc,
-            'astropath_ws',
-            $this.module,
-            $this.slideid,
-            'warpoctets'
-        ) -join '\'
+        $md_processloc = ($this.processloc, 'astropath_ws', $this.module,
+            $this.slideid,'warpoctets') -join '\'
         #
         $batchbinfile = $this.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        #
+        $sor = $this.mpath + '\AstroPathCorrectionModelsTemplate.csv'
+        $newname = 'AstroPathCorrectionModels.csv'
+        rename-item $sor $newname
         #
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
@@ -409,38 +409,25 @@ Class testpswarpoctets {
         #
         Write-Host '    copy background thresholds'
         #
-        $p1 = ($this.basepath,
-            '\reference\meanimage\',
-            $this.slideid,
-            '-background_thresholds.csv'
-        ) -join ''
+        $p1 = ($this.basepath, '\reference\meanimage\',
+         $this.slideid, '-background_thresholds.csv') -join ''
         #
-        $p2 = ($this.basepath,
-            $this.slideid,
-            'im3\meanimage'
-        ) -join '\'
+        $p2 = ($this.basepath, $this.slideid,
+            'im3\meanimage') -join '\'
         #
         $inp.sample.copy($p1, $p2)
         #
         Write-Host '    creating mock raw directory'
         #
-        $rpath = (
-            $this.basepath,
-            'raw',
-            $this.slideid
-        ) -join '\'
+        $rpath = ($this.basepath, 'raw', $this.slideid) -join '\'
         #
         $rfiles = (get-childitem ($rpath+'\*') '*dat').Name
         #
         Write-Host '    Found:' $rfiles.Length ' raw files'
         Write-Host $rfiles
         #
-        $dpath = (
-            $this.basepath,
-            $this.slideid,
-            'im3\Scan1\MSI',
-            '*'
-        ) -join '\'
+        $dpath = ($this.basepath, $this.slideid,
+            'im3\Scan1\MSI', '*') -join '\'
         $im3files = (get-childitem $dpath '*im3').Name
         #
         Write-Host '    Found:' $im3files.Length ' im3 files'

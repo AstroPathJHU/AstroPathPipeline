@@ -350,6 +350,10 @@ class sampledef : sharedtools{
         $path = $this.basepath +'\warping\Batch_' + $this.BatchID
         return $path
     }
+    [string]warpbatchoctetsfolder(){
+        $path = $this.basepath +'\warping\Batch_' + $this.BatchID + '\octets'
+        return $path
+    }
     #
     [void]testim3folder(){
         if (!(test-path $this.im3folder())){

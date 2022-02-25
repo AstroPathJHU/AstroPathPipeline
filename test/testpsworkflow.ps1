@@ -17,6 +17,8 @@ Class testpsworkflow {
         #
         # Setup Testing
         #
+        Write-Host '---------------------test ps [workflow]---------------------'
+        #
         $this.importmodule()
         #
         $password = ConvertTo-SecureString "MyPlainTextPassword" -AsPlainText -Force
@@ -32,6 +34,7 @@ Class testpsworkflow {
     }
     #
     [void]importmodule(){
+        Write-Host 'importing module ....'
         $module = $PSScriptRoot + '/../astropath'
         Import-Module $module 
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
@@ -41,13 +44,13 @@ Class testpsworkflow {
     [void]testconstructors([PSCredential]$cred){
         #
         Write-Host '[astropathworkflow] construction tests started'
-        #
+       <#
         try {
             astropathworkflow -Credential $cred -test | Out-NULL
         } catch {
             Throw ('[astropathworkflow] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
-        #
+        #>
         try {
             astropathworkflow -Credential $cred -mpath $this.mpath -test | Out-NULL
         } catch {

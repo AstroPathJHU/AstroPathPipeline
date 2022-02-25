@@ -82,7 +82,7 @@ class batchwarpkeys : moduletools {
         #
         $this.batchslides | ForEach-Object{
            $this.sample.slideid = $_
-           $this.sample.copy($this.sample.warpoctetsfile(), $this.sample.warpbatchfolder())
+           $this.sample.copy($this.sample.warpoctetsfile(), $this.sample.warpbatchoctetsfolder())
         }
         #
         $this.sample.slideid = $sid
