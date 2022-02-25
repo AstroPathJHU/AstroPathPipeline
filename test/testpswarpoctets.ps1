@@ -42,6 +42,7 @@ Class testpswarpoctets {
         $this.testpswarpoctetsconstruction($task)
         $inp = warpoctets $task
         $this.testprocessroot($inp)
+        $this.testcorrectionfile($inp)
         $this.comparepywarpoctetsinput($inp)
         $this.runpytaskpyerror($inp)
         $this.testlogpyerror($inp)
@@ -185,10 +186,6 @@ Class testpswarpoctets {
         #
         $batchbinfile = $this.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
         #
-        $sor = $this.mpath + '\AstroPathCorrectionModelsTemplate.csv'
-        $newname = 'AstroPathCorrectionModels.csv'
-        rename-item $sor $newname
-        #
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         $taskname = ('warping', $this.pytype) -join ''
@@ -214,6 +211,31 @@ Class testpswarpoctets {
         }
         Write-Host 'python [warpoctets] input matches -- finished'
         #
+    }
+    [void]testcorrectionfile($INP){
+        #
+        if ($inp.sample.pybatchflatfield()){
+            return
+        }
+        #
+        $p2 = $inp.sample.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $micomp_data = $inp.sample.ImportCorrectionModels($inp.sample.mpath)
+        $newobj = [PSCustomObject]@{
+            SlideID = $inp.sample.slideid
+            Project = $inp.sample.project
+            Cohort = $inp.sample.cohort
+            BatchID = $inp.sample.batchid
+            FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
+            WarpingFile = 'None'
+        }
+        #
+        $micomp_data += $newobj
+        #
+        $micomp_data | Export-CSV $p2 -NoTypeInformation
+        $p3 = $inp.sample.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        $inp.sample.SetFile($p3, 'blah de blah')
+        ##
     }
     <# --------------------------------------------
     runpytaskpyerror
