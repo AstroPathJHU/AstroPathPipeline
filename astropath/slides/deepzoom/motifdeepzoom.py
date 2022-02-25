@@ -9,11 +9,12 @@ from ...utilities.tableio import writetable
 from .deepzoomsample import DeepZoomFile
 
 class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units.ThingWithPscale):
-  def __init__(self, *, qptifffile, deepzoomfolder, logfolder, **kwargs):
+  def __init__(self, *, qptifffile, deepzoomfolder, logfolder, SlideID, **kwargs):
     super().__init__(**kwargs)
     self.qptifffile = pathlib.Path(qptifffile)
     self.deepzoomfolder = pathlib.Path(deepzoomfolder)
     self.logfolder = pathlib.Path(logfolder)
+    self.SlideID = SlideID
 
   @methodtools.lru_cache()
   @property
@@ -28,7 +29,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     return self.qptiffinfo[1]
   @property
   def layersqptiff(self):
-    return range(1, self.qptiffinfo[2]+1)
+    return [1]#range(1, self.qptiffinfo[2]+1)
   @property
   def tilesize(self): return 256
 
@@ -302,6 +303,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
       "qptifffile": parsed_args_dict.pop("qptiff"),
       "deepzoomfolder": parsed_args_dict.pop("deepzoom_folder"),
       "logfolder": parsed_args_dict.pop("log_folder"),
+      "SlideID": parsed_args_dict.pop("SlideID"),
     }
 
   @classmethod
@@ -310,6 +312,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     p.add_argument("--qptiff", type=pathlib.Path, required=True, help="The qptiff file")
     p.add_argument("--deepzoom-folder", type=pathlib.Path, required=True, help="Folder for the deepzoom output")
     p.add_argument("--log-folder", type=pathlib.Path, required=True, help="Folder for the log files")
+    p.add_argument("SlideID", help="ID of this slide for the zoomlist.csv")
     return p
 
 def main(args=None):
