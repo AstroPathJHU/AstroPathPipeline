@@ -75,6 +75,20 @@ class batchwarpkeys : moduletools {
         #
     }
     #
+    [void]getbatchwarpoctets(){
+        #
+        $this.sample.info('copying batch octets to working dir')
+        $sid = $this.sample.slideid
+        #
+        $this.batchslides | ForEach-Object{
+           $this.sample.slideid = $_
+           $this.sample.copy($this.sample.warpoctetsfile(), $this.sample.warpbatchfolder())
+        }
+        #
+        $this.sample.slideid = $sid
+        #
+    }
+    #
     [string]getpythontask($dpath, $rpath){
         #
         $this.sample.info('start find keys')

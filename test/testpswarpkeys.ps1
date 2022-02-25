@@ -150,6 +150,8 @@
             Throw ('flatfield file does not exist: ' + $inp.sample.pybatchflatfieldfullpath())
         }
         #
+        $inp.getbatchwarpoctets()
+        #
         $pythontask = $inp.getpythontask($dpath, $rpath)
         $externallog = $inp.processlog($taskname)
         #

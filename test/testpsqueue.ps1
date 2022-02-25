@@ -88,7 +88,7 @@ Class testpsqueue {
         #
         $slides = $inp.importslideids($this.mpath)
         #
-        $projects = @('18')
+        $projects = @('0')
         #
         $cleanedslides = $slides | 
             Where-Object {$projects -contains $_.Project}
@@ -120,7 +120,7 @@ Class testpsqueue {
         #
         $slides = $inp.importslideids($this.mpath)
         Write-Host '    create logger'
-        $log = logger $this.mpath $this.module 'AP0170012'
+        $log = logger $this.mpath $this.module 'L1_1'
         #
         Write-Host '    "update" log'
         $log.Sample($this.slideid, $this.mpath, $slides)
