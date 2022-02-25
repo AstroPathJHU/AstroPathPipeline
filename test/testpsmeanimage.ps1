@@ -69,6 +69,7 @@ Class testpsmeanimage {
         #$this.testreturndatapy($inp)
         #$this.testmasks($inp)
         #$this.testcleanup($inp)
+        $inp.sample.finish(($this.module+'test'))
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -78,6 +79,8 @@ Class testpsmeanimage {
     --------------------------------------------#>
     importmodule(){
         #
+        Write-Host "."
+        Write-Host 'importing module ....'
         Import-Module $this.apmodule
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_meanimage'))
         #
@@ -103,7 +106,7 @@ Class testpsmeanimage {
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
-        $inp.sample.start($this.module)
+        $inp.sample.start(($this.module+'test'))
         Write-Host '    meanimage command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog

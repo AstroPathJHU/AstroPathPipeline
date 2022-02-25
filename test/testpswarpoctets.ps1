@@ -52,6 +52,7 @@ Class testpswarpoctets {
         $this.runpytaskexpected($inp)
         $this.testlogsexpected($inp)
         $this.CleanupTest($inp)
+        $inp.sample.finish(($this.module+'test'))
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -89,7 +90,7 @@ Class testpswarpoctets {
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
-        $inp.sample.start($this.module)
+        $inp.sample.start(($this.module+'test'))
         Write-Host '    warpoctets command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog

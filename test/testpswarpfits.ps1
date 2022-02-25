@@ -12,7 +12,7 @@
     [string]$mpath 
     [string]$processloc
     [string]$basepath
-    [string]$module = 'meanimage'
+    [string]$module = 'batchwarpfits'
     [string]$batchid = '6'
     [string]$project = '1'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
@@ -51,6 +51,7 @@
         #$this.runpywarpfitsexpectedall($inp)
         $this.runpywarpfitsexpectedbatch($inp)
         $this.testlogsexpected($inp)
+        $inp.sample.finish(($this.module+'test'))
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -59,6 +60,7 @@
     and define global variables
     --------------------------------------------#>
     importmodule(){
+        Write-Host "."
         Write-Host 'importing module ....'
         Import-Module $this.apmodule
     }
@@ -83,7 +85,7 @@
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
-        $inp.sample.start($this.module)
+        $inp.sample.start(($this.module+'test'))
         Write-Host '    command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
@@ -261,7 +263,7 @@
     }
  }
  #
- [testpswarpfits]::new() | Out-NUll
+ [testpswarpfits]::new($dryrun) | Out-NUll
  exit 0
 
 

@@ -12,7 +12,7 @@
     [string]$mpath 
     [string]$processloc
     [string]$basepath
-    [string]$module = 'meanimage'
+    [string]$module = 'batchwarpkeys'
     [string]$batchid = '6'
     [string]$project = '1'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
@@ -48,8 +48,9 @@
         #$this.testslidelist($inp)
         #$this.testshreddatim($inp)
         #$this.runpywarpkeysexpectedall($inp)
-        $this.runpywarpkeysexpectedbatch($inp)
-        #$this.testlogsexpected($inp)
+        #$this.runpywarpkeysexpectedbatch($inp)
+        $this.testlogsexpected($inp)
+        $inp.sample.finish(($this.module+'test'))
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -58,6 +59,7 @@
     and define global variables
     --------------------------------------------#>
     importmodule(){
+        Write-Host "."
         Write-Host 'importing module ....'
         Import-Module $this.apmodule
     }
@@ -82,7 +84,7 @@
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
-        $inp.sample.start($this.module)
+        $inp.sample.start(($this.module+'test'))
         Write-Host '    warp keys command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
@@ -217,6 +219,7 @@
         Write-Host '    open log output'
         $logoutput = $inp.sample.GetContent($externallog)
         Write-Host '    test log output'
+        Write-Host '   '$inp.sample.module
         #
         try {
             $inp.getexternallogs($externallog)

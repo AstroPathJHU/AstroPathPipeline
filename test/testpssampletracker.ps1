@@ -80,7 +80,7 @@
         Write-Host '    Modules:' $sampletracker.modules 
         #
         $cmodules = @('batchflatfield','batchmicomp','imagecorrection','meanimage','mergeloop',`
-            'segmaps','shredxml','transfer','vminform','warpoctets')
+            'segmaps','shredxml','transfer','vminform','warpoctets','batchwarpkeys')
         $out = Compare-Object -ReferenceObject $sampletracker.modules  -DifferenceObject $cmodules
         if ($out){
             Throw ('module lists in [sampletracker] does not match, this may indicate new modules or a typo:' + $out)

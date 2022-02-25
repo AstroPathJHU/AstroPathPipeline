@@ -507,7 +507,7 @@
             #
             if ($this.pythonmodulename -match 'cohort' ){
                 if ( 
-                    $this.module -notmatch 'batch'    
+                    $this.sample.module -notmatch 'batch'    
                 ){
                     $this.parsepycohortlog()
                 } else {
@@ -562,7 +562,9 @@
             $cslide = ($_ -split ';')[2] 
             $mess = ($_ -split ';')[3]
             if ($this.batchslides -match $cslide -and
-                    $mess -notmatch 'DEBUG'
+                    $mess -notmatch 'DEBUG:' -or
+                    $mess -notmatch 'FINISH:' -or
+                    $mess -notmatch 'START:'
             ){
                 #
                 $this.sample.message = ($_ -split ';')[3]

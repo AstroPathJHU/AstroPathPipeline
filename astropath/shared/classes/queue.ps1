@@ -369,7 +369,6 @@ class queue : vminformqueue{
         }
         #
         $log = $this.updatelogger($log, 'batchmicomp')
-        $log.slidelog = $log.mainlog
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -419,18 +418,22 @@ class queue : vminformqueue{
         # if the version is not 0.0.1 in batchflatfield, do meanimagecomparison
         # instead
         if ($log.vers -notmatch '0.0.1'){
-            #
+            <#
             if (!($this.checkbatchmicomp($log, $true) -eq 3)){
+                return 1
+            }
+            #>
+            if (!($this.checkmeanimage($log, $true) -eq 3)){
                 return 1
             }
             #
             $ids = $this.ImportCorrectionModels($this.mpath)
             if ($ids.slideid -notcontains $log.slideid){
-                return 2
+                return 1
             }
             #
             if (!$log.testpybatchflatfield()){
-                return 2
+                return 1
             }
             #
         } else {
@@ -487,9 +490,9 @@ class queue : vminformqueue{
         #
     }
     <# -----------------------------------------
-     checkwarpoctets
-     check that the meanimage module has completed
-     and all products exist
+     checkbatchwarpkeys
+     check that the batch warp keys module has completed
+     and all products exist for the batch
     ------------------------------------------
      Input: 
         - log[mylogger]: astropath log object

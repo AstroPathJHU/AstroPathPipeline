@@ -29,10 +29,14 @@ Class testpsshredxml {
         $this.ShredXMLTest($inp)
         $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
+        $inp.sample.finish(($this.module+'test'))
+        Write-Host "."
         #
     }
     #
     importmodule(){
+        Write-Host "."
+        Write-Host 'importing module ....'
         $module = $PSScriptRoot + '/../astropath'
         Import-Module $module -EA SilentlyContinue
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
@@ -40,6 +44,7 @@ Class testpsshredxml {
     }
     #
     [void]ShredXMLTest($inp){
+        Write-Host "."
         Write-Host 'Starting Shred XML Test'
         #
         $inp.ShredXML()
@@ -63,6 +68,7 @@ Class testpsshredxml {
     }
     #
     [void]ReturnDataTest($inp){
+        Write-Host "."
         Write-Host 'Starting Return Data Test'
         #
         $inp.returndata()
@@ -87,6 +93,7 @@ Class testpsshredxml {
     }
     #
     [void]CleanupTest($inp){
+        Write-Host "."
         Write-Host 'Starting Cleanup Test'
         #
         $inp.cleanup()
@@ -102,7 +109,7 @@ Class testpsshredxml {
 #
 # launch test and exit if no error found
 #
-$test = [testpsshredxml]::new()
+[testpsshredxml]::new() | Out-Null
 exit 0
 
 #Remove temporary processing directory
