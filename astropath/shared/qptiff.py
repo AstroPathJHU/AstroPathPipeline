@@ -170,7 +170,7 @@ class QPTiff(tifffile.TiffFile, units.ThingWithApscale):
         pageindices = []
       pages.append(page)
       pageindices.append(i)
-    if pages: result.append(QPTiffZoomLevel(filename=self.filehandle.name, pages=pages, pageindices=pageindices))
+    if pages: result.append(QPTiffZoomLevel(filename=self.filehandle.path, pages=pages, pageindices=pageindices))
     return result
 
   @property
