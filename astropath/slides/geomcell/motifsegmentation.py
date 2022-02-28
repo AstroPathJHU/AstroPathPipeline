@@ -1,4 +1,4 @@
-import contextlib, fractions, job_lock, methodtools, multiprocessing as mp, numpy as np, pathlib, re, skimage.measure, tifffile
+import fractions, job_lock, methodtools, multiprocessing as mp, numpy as np, pathlib, skimage.measure, tifffile
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement, ParallelArgumentParser
 from ...shared.logging import printlogger, ThingWithLogger
 from ...utilities import units
