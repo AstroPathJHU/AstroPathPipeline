@@ -41,6 +41,7 @@
         $this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
         $this.testupdate($sampletracker, 'batchmicomp', 'warpoctets')
         $this.cleanup($sampletracker)
+        $this.addcorrectionfile($sampletracker)
         Write-Host '.'
         #
     }
@@ -420,6 +421,15 @@
         $sampletracker.SetFile($p3, 'blah de blah')
     }
     # 
+    [void]addcorrectionfile($sampletracker){
+        $p = $this.mpath + '\AstroPathCorrectionModelsTemplate.csv'
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $sampletracker.removefile($p2)
+        $data = $sampletracker.opencsvfile($p)
+        $data | Export-CSV $p2  -NoTypeInformation
+    }
+    #
 }
 #
 # launch test and exit if no error found
