@@ -97,6 +97,8 @@ Class testpswarpoctets {
         Write-Host '    external log:' $externallog
         Write-Host '    launching task'
         #
+        $pythontask = $pythontask -replace '\\','/'
+        #
         if ($inp.sample.isWindows()){
             $inp.sample.checkconda()
             etenv $inp.sample.pyenv()
@@ -246,7 +248,8 @@ Class testpswarpoctets {
     [void]runpytaskpyerror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python warpoctets with error input started'
+        Write-Host 'test python [warpoctets] with error input started'
+        $inp.sample.CreateNewDirs($inp.processloc)
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         $inp.getmodulename()
@@ -257,7 +260,7 @@ Class testpswarpoctets {
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
-        Write-Host 'test python warpoctets with error input finished'
+        Write-Host 'test python [warpoctets] with error input finished'
         #
     }
     <# --------------------------------------------
@@ -269,7 +272,7 @@ Class testpswarpoctets {
     [void]testlogpyerror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python with error input started'
+        Write-Host 'test python LOG with error input started'
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
@@ -294,6 +297,8 @@ Class testpswarpoctets {
                 Throw $_.Exception.Message
             }
         }
+        #
+        Write-Host 'test python LOG with error input FINISHED'
         #
     }
     <# --------------------------------------------
@@ -336,7 +341,7 @@ Class testpswarpoctets {
     [void]testlogaperror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python with error input started'
+        Write-Host 'test python with error in PROCESSING started'
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
@@ -360,6 +365,8 @@ Class testpswarpoctets {
                 Throw $_.Exception.Message
             }
         }
+        #
+        Write-Host 'test python with error in PROCESSING FINISHED'
     }
     <# --------------------------------------------
     runpytaskexpected

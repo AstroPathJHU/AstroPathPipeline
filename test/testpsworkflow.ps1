@@ -100,7 +100,7 @@ Class testpsworkflow {
         }
         #
         $testj = get-job -Name ($jobname + '-test')
-        wait-job $testj -timeout 65
+        wait-job $testj -timeout 180
         #
         if(!($j.State -match 'Completed')){
              Throw 'orphaned task monitor did not close correctly'

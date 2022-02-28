@@ -51,10 +51,10 @@ Class testpsmeanimage {
         Write-Host '---------------------test ps [meanimage]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        #$this.testpsmeanimageconstruction($task)
+        $this.testpsmeanimageconstruction($task)
         $inp = meanimage $task 
-        #$this.testprocessroot($inp)
-        #$this.testcleanupbase($inp)
+        $this.testprocessroot($inp)
+        $this.testcleanupbase($inp)
         $this.comparepymeanimageinput($inp)
         $this.runpytaskpyerror($inp)
         $this.testlogpyerror($inp)
@@ -66,9 +66,9 @@ Class testpsmeanimage {
         # $this.testlogsexpectedapid($inp)
         $this.runpytaskexpectednoxml($inp)
         $this.testlogsexpectednoxml($inp)
-        #$this.testreturndatapy($inp)
-        #$this.testmasks($inp)
-        #$this.testcleanup($inp)
+        $this.testreturndatapy($inp)
+        $this.testmasks($inp)
+        $this.testcleanup($inp)
         $inp.sample.finish(($this.module+'test'))
         Write-Host '.'
     }
@@ -111,6 +111,8 @@ Class testpsmeanimage {
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
         Write-Host '    launching task'
+        #
+        $pythontask = $pythontask -replace '\\','/'
         #
         if ($inp.sample.isWindows()){
             $inp.sample.checkconda()
@@ -306,6 +308,7 @@ Class testpsmeanimage {
         #
         Write-Host '.'
         Write-Host 'test python meanimage with error input started'
+        $inp.sample.CreateNewDirs($inp.processloc)
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         $inp.getmodulename()
