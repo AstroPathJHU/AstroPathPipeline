@@ -22,7 +22,7 @@ Class testpsqueue {
     }
     #
     testpsqueue($dryrun){
-        $this.slideid = "AP0180025"
+        $this.slideid = "M1_1"
         $this.mpath = '\\bki04\astropath_processing'
         $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
         $this.launchtests()
@@ -33,18 +33,21 @@ Class testpsqueue {
         $this.importmodule()
         #
         $inp = queue  $this.mpath $this.module
-        #$this.teststartmess($inp)
-        #$this.testchecktransfer($inp)
-        #$this.testcheckshredxml($inp)
+        $this.teststartmess($inp)
+        $this.testchecktransfer($inp)
+        $this.testcheckshredxml($inp)
+        $this.testcheckmeanimage($inp)
+        $this.testcheckbatchflatfield($inp)
+        $this.testcheckwarpoctets($inp)
+        $this.testcheckbatchwarpkeys($inp)
         $this.testbuildqueue($inp)
-        #$this.testextractqueue($inp)
+        $this.testextractqueue($inp)
         Write-Host '.'
     }
     #
     [void]importmodule(){
         Write-Host '.'
         Write-Host 'importing astropath ....'
-        #$module = '\\bki08\e$\working_code\dev\AstroPathPipelinePrivate\astropath'
         $apmodule = $PSScriptRoot + '/../astropath'
         Import-Module $apmodule -EA SilentlyContinue
     }
@@ -55,11 +58,11 @@ Class testpsqueue {
         $log = logger $this.mpath 'shredxml' $this.slideid
         #
         $inp.updatelogger($log, 'transfer')
-        #
+        <#
         if ($log.vers -notmatch '0.0.1'){
             Throw 'version number wrong'
         }
-        #
+        #>
         Write-Host '    log version:' $log.vers 
         Write-Host '    check log output:' $inp.checklog($log, $true)
         #
@@ -77,8 +80,66 @@ Class testpsqueue {
         Write-Host '    log version:' $log.vers 
         Write-Host '    check log output:' $inp.checklog($log, $true)
         #
-        Write-Host '    check transfer output:' $inp.checkshredxml($log, $false)
+        Write-Host '    check shredxml output:' $inp.checkshredxml($log, $false)
         Write-Host 'testing check shredxml fin'
+    }
+    #
+    [void]testcheckmeanimage($inp){
+        Write-Host '.'
+        Write-Host 'testing check meanimage started'
+        $log = logger $this.mpath 'meanimage' $this.slideid
+        #
+        $inp.updatelogger($log, 'meanimage')
+        #
+        Write-Host '    log version:' $log.vers 
+        Write-Host '    check log output:' $inp.checklog($log, $true)
+        #
+        Write-Host '    check meanimage output:' $inp.checkmeanimage($log, $false)
+        Write-Host 'testing check meanimage fin'
+    }
+    #
+    [void]testcheckbatchflatfield($inp){
+        Write-Host '.'
+        Write-Host 'testing check batchflatfield started'
+        $log = logger $this.mpath 'batchflatfield' $this.slideid
+        #
+        $inp.updatelogger($log, 'batchflatfield')
+        #
+        Write-Host '    log version:' $log.vers 
+        #Write-Host '    check log output:' $inp.checklog($log, $true)
+        #
+        Write-Host '    check batchflatfield output:' $inp.checkbatchflatfield($log, $true)
+        Write-Host 'testing check batchflatfield fin'
+    }
+    #
+    [void]testcheckwarpoctets($inp){
+        Write-Host '.'
+        Write-Host 'testing check warpoctets started'
+        $log = logger $this.mpath 'warpoctets' $this.slideid
+        #
+        $inp.updatelogger($log, 'warpoctets')
+        #
+        Write-Host '    log version:' $log.vers 
+        Write-Host '    check log output:' $inp.checklog($log, $true)
+        #
+        Write-Host '    check warpoctets output:' $inp.checkwarpoctets($log, $false)
+        Write-Host 'testing check warpoctets fin'
+    }
+    #
+    [void]testcheckbatchwarpkeys($inp){
+        Write-Host '.'
+        Write-Host 'testing check batchwarpkeys started'
+        $log = logger $this.mpath 'batchwarpkeys' $this.slideid
+        #
+        $inp.updatelogger($log, 'batchwarpkeys')
+        #
+        Write-Host '    log version:' $log.vers 
+        Write-Host '    log message:' $log.slidelog
+        Write-Host '    log message:' $log.mainlog
+        Write-Host '    check log output:' $inp.checklog($log, $true)
+        #
+        Write-Host '    check batchwarpkeys output:' $inp.checkbatchwarpkeys($log, $false)
+        Write-Host 'testing check batchwarpkeys fin'
     }
     #
     [void]testbuildqueue($inp){
@@ -88,7 +149,7 @@ Class testpsqueue {
         #
         $slides = $inp.importslideids($this.mpath)
         #
-        $projects = @('18')
+        $projects = @('0')
         #
         $cleanedslides = $slides | 
             Where-Object {$projects -contains $_.Project}
@@ -120,7 +181,7 @@ Class testpsqueue {
         #
         $slides = $inp.importslideids($this.mpath)
         Write-Host '    create logger'
-        $log = logger $this.mpath $this.module 'AP0170012'
+        $log = logger $this.mpath $this.module 'L1_1'
         #
         Write-Host '    "update" log'
         $log.Sample($this.slideid, $this.mpath, $slides)
@@ -189,5 +250,5 @@ Class testpsqueue {
 #
 # launch test and exit if no error found
 #
-[testpsqueue]::new($true) | Out-Null
+[testpsqueue]::new() | Out-Null
 exit 0

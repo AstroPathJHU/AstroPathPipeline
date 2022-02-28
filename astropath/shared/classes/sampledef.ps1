@@ -151,8 +151,12 @@ class sampledef : sharedtools{
     [void]deflogpaths(){
         #
         $this.mainlog = $this.basepath + '\logfiles\' + $this.module + '.log'
-        $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
-             $this.slideid + '-' + $this.module + '.log'
+        if ($this.module -match 'batch'){
+            $this.slidelog = $this.mainlog
+        } else {
+            $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
+                $this.slideid + '-' + $this.module + '.log'
+        }
         #
     }
     #
@@ -340,6 +344,21 @@ class sampledef : sharedtools{
         return $path
     }
     #
+    [string]warpoctetsfile(){
+        $file2 = $this.basepath, '\', $this.slideid,
+            '\im3\warping\octets\', $this.slideid, '-all_overlap_octets.csv' -join ''
+        return $file2
+    }
+    #
+    [string]warpbatchfolder(){
+        $path = $this.basepath +'\warping\Batch_' + $this.BatchID
+        return $path
+    }
+    [string]warpbatchoctetsfolder(){
+        $path = $this.basepath +'\warping\Batch_' + $this.BatchID + '\octets'
+        return $path
+    }
+    #
     [void]testim3folder(){
         if (!(test-path $this.im3folder())){
             Throw "im3 folder not found for:" + $this.im3folder()
@@ -496,9 +515,8 @@ class sampledef : sharedtools{
             return $true
         }
         #
-        $this.testwarpoctetsfiles($this.slideid)
+        return $this.testwarpoctetsfiles()
         #
-        return $true
     }
     #
     [switch]testwarpoctetsfiles(){
@@ -520,6 +538,26 @@ class sampledef : sharedtools{
             return $false
         }
         #>
+        return $true
+    }
+    #
+    [switch]testbatchwarpkeys(){
+        #
+        $p =  $this.warpbatchoctetsfolder()
+        #
+        if (!(test-path $p)){
+                return $false
+        }
+        $files = @('final_pattern_octets_selected.csv', 'initial_pattern_octets_selected.csv',
+            'image_keys_needed.txt','principal_point_octets_selected.csv')
+        #
+        foreach ($file in $files) {
+            $fullpath = $p + '\' + $file
+            if (!(test-path $fullpath)){
+                return $false
+            }
+        }
+        #
         return $true
     }
     #

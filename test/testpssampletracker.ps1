@@ -41,6 +41,7 @@
         $this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
         $this.testupdate($sampletracker, 'batchmicomp', 'warpoctets')
         $this.cleanup($sampletracker)
+        $this.addcorrectionfile($sampletracker)
         Write-Host '.'
         #
     }
@@ -80,7 +81,7 @@
         Write-Host '    Modules:' $sampletracker.modules 
         #
         $cmodules = @('batchflatfield','batchmicomp','imagecorrection','meanimage','mergeloop',`
-            'segmaps','shredxml','transfer','vminform','warpoctets')
+            'segmaps','shredxml','transfer','vminform','warpoctets','batchwarpkeys')
         $out = Compare-Object -ReferenceObject $sampletracker.modules  -DifferenceObject $cmodules
         if ($out){
             Throw ('module lists in [sampletracker] does not match, this may indicate new modules or a typo:' + $out)
@@ -420,6 +421,15 @@
         $sampletracker.SetFile($p3, 'blah de blah')
     }
     # 
+    [void]addcorrectionfile($sampletracker){
+        $p = $this.mpath + '\AstroPathCorrectionModelsTemplate.csv'
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $sampletracker.removefile($p2)
+        $data = $sampletracker.opencsvfile($p)
+        $data | Export-CSV $p2  -NoTypeInformation
+    }
+    #
 }
 #
 # launch test and exit if no error found

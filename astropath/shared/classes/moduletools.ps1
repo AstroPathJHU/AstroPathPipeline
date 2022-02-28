@@ -27,6 +27,7 @@
     [array]$logoutput
     [string]$pythonmodulename
     [array]$batchslides
+    [switch]$all = $false
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
@@ -425,7 +426,6 @@
         if (test-path $this.sample.annotationxml()){
             $xmlfile = $this.sample.getcontent($this.sample.annotationxml())
             if ([regex]::Escape($xmlfile) -notmatch 'Acquired'){
-                write-host $xmlfile
                 $this.sample.warning('No "Acquired" Fields in annotation xmls, including "Flagged for Acquisition" Fields.')
                 $this.sample.warning('Note some fields may have failed but this cannot be determined from xml file!')
                 $str = ' --include-hpfs-flagged-for-acquisition'
@@ -439,10 +439,14 @@
     [void]runpythontask($taskname, $pythontask){
         #
         $externallog = $this.ProcessLog($taskname)
-        $this.sample.checkconda()
-        conda activate $this.sample.pyenv()
-        Invoke-Expression $pythontask *>> $externallog
-        conda deactivate 
+        if ($this.sample.isWindows()){
+            $this.sample.checkconda()
+            conda activate $this.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            conda deactivate 
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
         $this.getexternallogs($externallog)
         #
     }
@@ -503,7 +507,7 @@
             #
             if ($this.pythonmodulename -match 'cohort' ){
                 if ( 
-                    $this.module -notmatch 'batch'    
+                    $this.sample.module -notmatch 'batch'    
                 ){
                     $this.parsepycohortlog()
                 } else {
@@ -557,8 +561,15 @@
         $this.logoutput | ForEach-Object{
             $cslide = ($_ -split ';')[2] 
             $mess = ($_ -split ';')[3]
-            if ($this.batchslides -match $cslide -and
-                    $mess -notmatch 'DEBUG'
+            if (
+                ($this.batchslides -match $cslide -and
+                    $mess -notmatch 'DEBUG:' -and
+                    $mess -notmatch 'FINISH:' -and
+                    $mess -notmatch 'START:') -or
+                ($cslide -match 'project'-and
+                    $mess -notmatch 'DEBUG:' -and
+                    $mess -notmatch 'FINISH:' -and
+                    $mess -notmatch 'START:')
             ){
                 #
                 $this.sample.message = ($_ -split ';')[3]
@@ -607,5 +618,36 @@
             Throw 'detected error in external task'
         }
         #
+    
     }
+    #
+    [void]getslideidregex(){
+        #
+        $this.sample.info('selecting samples for sample regex')
+        #
+        $nbatchslides = @()
+        $sid = $this.sample.slideid
+        #
+        if ($this.all){
+            $aslides = $this.sample.importslideids($this.sample.mpath)
+            $aslides = $aslides | where-object {$_.Project -match $this.sample.project}
+            $slides = $aslides.SlideID
+        } else {
+            $slides = $this.sample.batchslides.slideid
+        }
+        #
+        foreach ($slide in $slides){
+            $this.sample.slideid = $slide
+            if ($this.sample.testwarpoctetsfiles()){
+                $nbatchslides += $slide
+            }
+        }
+        #
+        $this.sample.slideid = $sid
+        $this.sample.info(([string]$nbatchslides.length +
+                ' sample(s) selected for sample regex'))
+        $this.batchslides = $nbatchslides
+        #
+    }
+    #
  }

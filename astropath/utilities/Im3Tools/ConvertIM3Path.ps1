@@ -60,7 +60,6 @@ function ConvertIm3Path{
         if ($all -or $dat) { Invoke-IM3Convert -images $images -dest $flatw -BIN }
         #
         if ($all -or $xml) {
-            Write-Host $images
             Invoke-IM3Convert $images $flatw -XML
         }
         #

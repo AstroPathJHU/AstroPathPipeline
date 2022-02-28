@@ -42,6 +42,7 @@ Class testpswarpoctets {
         $this.testpswarpoctetsconstruction($task)
         $inp = warpoctets $task
         $this.testprocessroot($inp)
+        $this.testcorrectionfile($inp)
         $this.comparepywarpoctetsinput($inp)
         $this.runpytaskpyerror($inp)
         $this.testlogpyerror($inp)
@@ -52,6 +53,7 @@ Class testpswarpoctets {
         $this.runpytaskexpected($inp)
         $this.testlogsexpected($inp)
         $this.CleanupTest($inp)
+        $inp.sample.finish(($this.module+'-test'))
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -60,6 +62,7 @@ Class testpswarpoctets {
     and define global variables
     --------------------------------------------#>
     importmodule(){
+        Write-Host 'importing module ....'
         Import-Module $this.apmodule
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_warpoctets'))
@@ -88,16 +91,22 @@ Class testpswarpoctets {
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
-        $inp.sample.start($this.module)
+        $inp.sample.start(($this.module+'-test'))
         Write-Host '    warpoctets command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
         Write-Host '    launching task'
         #
-        $inp.sample.checkconda()
-        etenv $inp.sample.pyenv()
-        Invoke-Expression $pythontask *>> $externallog
-        exenv
+        $pythontask = $pythontask -replace '\\','/'
+        #
+        if ($inp.sample.isWindows()){
+            $inp.sample.checkconda()
+            etenv $inp.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            exenv
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
         #
     }
     <# --------------------------------------------
@@ -174,13 +183,8 @@ Class testpswarpoctets {
         Write-Host '.'
         Write-Host 'compare python [warpoctets] expected input to actual started'
         #
-        $md_processloc = (
-            $this.processloc,
-            'astropath_ws',
-            $this.module,
-            $this.slideid,
-            'warpoctets'
-        ) -join '\'
+        $md_processloc = ($this.processloc, 'astropath_ws', $this.module,
+            $this.slideid,'warpoctets') -join '\'
         #
         $batchbinfile = $this.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
         #
@@ -210,6 +214,31 @@ Class testpswarpoctets {
         Write-Host 'python [warpoctets] input matches -- finished'
         #
     }
+    [void]testcorrectionfile($INP){
+        #
+        if ($inp.sample.pybatchflatfield()){
+            return
+        }
+        #
+        $p2 = $inp.sample.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $micomp_data = $inp.sample.ImportCorrectionModels($inp.sample.mpath)
+        $newobj = [PSCustomObject]@{
+            SlideID = $inp.sample.slideid
+            Project = $inp.sample.project
+            Cohort = $inp.sample.cohort
+            BatchID = $inp.sample.batchid
+            FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
+            WarpingFile = 'None'
+        }
+        #
+        $micomp_data += $newobj
+        #
+        $micomp_data | Export-CSV $p2 -NoTypeInformation
+        $p3 = $inp.sample.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        $inp.sample.SetFile($p3, 'blah de blah')
+        ##
+    }
     <# --------------------------------------------
     runpytaskpyerror
     check that the python task completes correctly 
@@ -219,7 +248,8 @@ Class testpswarpoctets {
     [void]runpytaskpyerror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python warpoctets with error input started'
+        Write-Host 'test python [warpoctets] with error input started'
+        $inp.sample.CreateNewDirs($inp.processloc)
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         $inp.getmodulename()
@@ -230,7 +260,7 @@ Class testpswarpoctets {
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
-        Write-Host 'test python warpoctets with error input finished'
+        Write-Host 'test python [warpoctets] with error input finished'
         #
     }
     <# --------------------------------------------
@@ -242,7 +272,7 @@ Class testpswarpoctets {
     [void]testlogpyerror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python with error input started'
+        Write-Host 'test python LOG with error input started'
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
@@ -267,6 +297,8 @@ Class testpswarpoctets {
                 Throw $_.Exception.Message
             }
         }
+        #
+        Write-Host 'test python LOG with error input FINISHED'
         #
     }
     <# --------------------------------------------
@@ -309,7 +341,7 @@ Class testpswarpoctets {
     [void]testlogaperror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python with error input started'
+        Write-Host 'test python with error in PROCESSING started'
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
@@ -333,6 +365,8 @@ Class testpswarpoctets {
                 Throw $_.Exception.Message
             }
         }
+        #
+        Write-Host 'test python with error in PROCESSING FINISHED'
     }
     <# --------------------------------------------
     runpytaskexpected
@@ -405,38 +439,25 @@ Class testpswarpoctets {
         #
         Write-Host '    copy background thresholds'
         #
-        $p1 = ($this.basepath,
-            '\reference\meanimage\',
-            $this.slideid,
-            '-background_thresholds.csv'
-        ) -join ''
+        $p1 = ($this.basepath, '\reference\meanimage\',
+         $this.slideid, '-background_thresholds.csv') -join ''
         #
-        $p2 = ($this.basepath,
-            $this.slideid,
-            'im3\meanimage'
-        ) -join '\'
+        $p2 = ($this.basepath, $this.slideid,
+            'im3\meanimage') -join '\'
         #
         $inp.sample.copy($p1, $p2)
         #
         Write-Host '    creating mock raw directory'
         #
-        $rpath = (
-            $this.basepath,
-            'raw',
-            $this.slideid
-        ) -join '\'
+        $rpath = ($this.basepath, 'raw', $this.slideid) -join '\'
         #
         $rfiles = (get-childitem ($rpath+'\*') '*dat').Name
         #
         Write-Host '    Found:' $rfiles.Length ' raw files'
         Write-Host $rfiles
         #
-        $dpath = (
-            $this.basepath,
-            $this.slideid,
-            'im3\Scan1\MSI',
-            '*'
-        ) -join '\'
+        $dpath = ($this.basepath, $this.slideid,
+            'im3\Scan1\MSI', '*') -join '\'
         $im3files = (get-childitem $dpath '*im3').Name
         #
         Write-Host '    Found:' $im3files.Length ' im3 files'
@@ -485,7 +506,11 @@ Class testpswarpoctets {
         $task = $import, $task1, $task2, $task3, $task4 -join '; '
         Write-Host '    Task:' $task
         #
-        conda run -n $inp.sample.pyenv() python -c $task
+        if ($inp.sample.isWindows()){
+            conda run -n $inp.sample.pyenv() python -c $task
+        } else{
+            python -c $task
+        }
         if (!(test-path $this.batchreferencefile )){
             Throw 'Batch flatfield reference file failed to create'
         }
