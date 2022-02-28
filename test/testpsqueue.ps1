@@ -39,7 +39,7 @@ Class testpsqueue {
         #$this.testcheckmeanimage($inp)
         #$this.testcheckbatchflatfield($inp)
         #$this.testcheckwarpoctets($inp)
-        $this.testcheckbatchwarpkeys($inp)
+        #$this.testcheckbatchwarpkeys($inp)
         #$this.testbuildqueue($inp)
         #$this.testextractqueue($inp)
         Write-Host '.'

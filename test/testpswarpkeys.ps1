@@ -42,13 +42,11 @@
         Write-Host '---------------------test ps [batchwarpkeys]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        #$this.testpsbatchwarpkeysconstruction($task)
+        $this.testpsbatchwarpkeysconstruction($task)
         $inp = batchwarpkeys $task  
-        #$this.testprocessroot($inp)
-        #$this.testslidelist($inp)
-        #$this.testshreddatim($inp)
+        $this.testprocessroot($inp)
         #$this.runpywarpkeysexpectedall($inp)
-        #$this.runpywarpkeysexpectedbatch($inp)
+        $this.runpywarpkeysexpectedbatch($inp)
         $this.testlogsexpected($inp)
         $inp.sample.finish(($this.module+'test'))
         Write-Host '.'
@@ -104,12 +102,12 @@
     testpswarpfitsconstruction
     test that the meanimage object can be constucted
     --------------------------------------------#>
-    [void]testpswarpfitsconstruction($task){
+    [void]testpsbatchwarpkeysconstruction($task){
         #
         Write-Host "."
         Write-Host 'test [batchwarpkeys] constructors started'
         #
-        $log = logger $this.mpath $this.module $this.batchid $this.project 
+        $log = logger $this.mpath $this.module -batchid:$this.batchid -project:$this.project 
         #
         try {
             batchwarpkeys  $task | Out-Null
@@ -131,10 +129,10 @@
         Write-Host '.'
         Write-host 'test creating sample dir started'
         Write-Host '    process location:' $inp.processloc
-        $testprocloc = $this.basepath + '\warping\Batch_' + $this.batchid
+        $testprocloc = $this.basepath + '\warping\Batch_' + ($this.batchid).PadLeft(2,'0')
         if (!($inp.processloc -contains $testprocloc)){
             Write-Host '    test process loc:' $testprocloc
-            Throw 'test process loc does not match [batchwarpfits] loc'
+            Throw 'test process loc does not match [batchwarpkeys] loc'
         }
         Write-Host '    slide id:' $inp.sample.slideid
         Write-host 'test creating sample dir finished'
