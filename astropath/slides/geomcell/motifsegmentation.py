@@ -88,7 +88,7 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
   def runHPF(i, field, *, logger, outputfolder, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, minarea, nfields):
     geomload = []
     onepixel = field.onepixel
-    outputfile = outputfolder/field.tifffile.with_suffix(".csv").name
+    outputfile = outputfolder/field.tifffile.with_suffix(".csv").name.replace(",", ".")
     lockfile = outputfile.with_suffix(".lock")
     with job_lock.JobLock(lockfile, outputfiles=[outputfile]) as lock:
       if not lock: return
