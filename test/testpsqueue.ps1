@@ -33,22 +33,21 @@ Class testpsqueue {
         $this.importmodule()
         #
         $inp = queue  $this.mpath $this.module
-        #$this.teststartmess($inp)
-        #$this.testchecktransfer($inp)
-        #$this.testcheckshredxml($inp)
-        #$this.testcheckmeanimage($inp)
-        #$this.testcheckbatchflatfield($inp)
-        #$this.testcheckwarpoctets($inp)
-        #$this.testcheckbatchwarpkeys($inp)
-        #$this.testbuildqueue($inp)
-        #$this.testextractqueue($inp)
+        $this.teststartmess($inp)
+        $this.testchecktransfer($inp)
+        $this.testcheckshredxml($inp)
+        $this.testcheckmeanimage($inp)
+        $this.testcheckbatchflatfield($inp)
+        $this.testcheckwarpoctets($inp)
+        $this.testcheckbatchwarpkeys($inp)
+        $this.testbuildqueue($inp)
+        $this.testextractqueue($inp)
         Write-Host '.'
     }
     #
     [void]importmodule(){
         Write-Host '.'
         Write-Host 'importing astropath ....'
-        #$module = '\\bki08\e$\working_code\dev\AstroPathPipelinePrivate\astropath'
         $apmodule = $PSScriptRoot + '/../astropath'
         Import-Module $apmodule -EA SilentlyContinue
     }
@@ -251,5 +250,5 @@ Class testpsqueue {
 #
 # launch test and exit if no error found
 #
-[testpsqueue]::new($dryrun) | Out-Null
+[testpsqueue]::new() | Out-Null
 exit 0

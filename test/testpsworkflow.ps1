@@ -29,7 +29,7 @@ Class testpsworkflow {
         $inp = astropathworkflow -Credential $cred -mpath $this.mpath -test
         $inp.workerloglocation = $PSScriptRoot + '\data\workflowlogs\'
         $inp.createdirs($inp.workerloglocation)
-        $this.testdefworkerlist($inp)
+       # $this.testdefworkerlist($inp)
         #
     }
     #
