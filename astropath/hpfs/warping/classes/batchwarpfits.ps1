@@ -8,8 +8,8 @@ Last Edit: 02.16.2022
 class batchwarpfits : moduletools {
     #
     batchwarpfits([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
-        $this.processloc = '\\' + $this.sample.project_data.fwpath +
-            '\warpfits\Batch_' + $this.sample.BatchID
+       # $this.processloc = '\\' + $this.sample.project_data.fwpath +
+       #     '\warpfits\Batch_' + $this.sample.BatchID
         $this.processvars[0] = $this.sample.basepath
         $this.processvars[1] = $this.processloc
         $this.sample.createnewdirs($this.processloc)
@@ -40,6 +40,11 @@ class batchwarpfits : moduletools {
         $this.sample.info('shredding neccessary files to flatw\warpfits')
 
         $image_keys = $this.sample.GetContent($this.getkeysloc())
+        #
+        if (!$image_keys){
+            Throw ('no keys found in: ' + $this.getkeysloc())
+        }
+        #
         $this.batchslides | foreach-object{
             $this.sample.info(('shredding files for: '+ $_))
             $images = $this.getslidekeypaths($_, $image_keys)

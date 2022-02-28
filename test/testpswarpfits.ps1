@@ -46,7 +46,6 @@
         $this.testpswarpfitsconstruction($task)
         $inp = batchwarpfits $task  
         $this.testprocessroot($inp)
-        $this.testslidelist($inp)
         $this.testshreddatim($inp)
         #$this.runpywarpfitsexpectedall($inp)
         $this.runpywarpfitsexpectedbatch($inp)
@@ -153,15 +152,18 @@
         Write-Host '    get slide list from one slideid:' $this.slideid
         Write-Host '    open image keys text'
         $image_keys_file = $inp.getkeysloc()
+        Write-Host '        keys file:' $image_keys_file
         $image_keys = $inp.sample.GetContent($image_keys_file)
         #
+        $inp.getslideidregex()
+        #
         Write-Host '    get keys for this file'
-        $images= $inp.getslidekeypaths('M10_2', $image_keys)
+        $images= $inp.getslidekeypaths($inp.batchslides[0], $image_keys)
         Write-Host '    keys:'
         Write-Host '   '$images
         #
         if ($this.dryrun){
-            $inp.shreddat('M10_2', $images)
+            $inp.shreddat($inp.batchslides[0], $images)
             Write-Host '    get keys for all slides in the batch'
             $inp.getwarpdats()
         }
