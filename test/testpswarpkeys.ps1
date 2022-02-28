@@ -48,7 +48,7 @@
         #$this.runpywarpkeysexpectedall($inp)
         $this.runpywarpkeysexpectedbatch($inp)
         $this.testlogsexpected($inp)
-        $inp.sample.finish(($this.module+'test'))
+        $inp.sample.finish(($this.module+'-test'))
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -82,11 +82,13 @@
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
-        $inp.sample.start(($this.module+'test'))
+        $inp.sample.start(($this.module+'-test'))
         Write-Host '    warp keys command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
         Write-Host '    launching task'
+        #
+        $pythontask = $pythontask -replace '\\','/'
         #
         if ($inp.sample.isWindows()){
             $inp.sample.checkconda()
@@ -173,13 +175,14 @@
     [void]runpywarpkeysexpectedbatch($inp){
         #
         Write-Host "."
-        Write-Host 'test py task started for a'
+        Write-Host 'test py task started for [batchwarpkeys] expected output started'
         #
         $taskname = 'batchwarpkeys'
         $inp.getmodulename()
         $dpath = $inp.sample.basepath
         $rpath = '\\' + $inp.sample.project_data.fwpath
         $inp.getslideidregex()
+        $inp.sample.createNewdirs(($inp.processloc+ '\octets'))
         #
         Write-Host $inp.sample.pybatchflatfieldfullpath()
         if (!(Test-Path $inp.sample.pybatchflatfieldfullpath())){
@@ -199,7 +202,7 @@
             Write-Host '   '$externallog
         }
         #
-        Write-Host 'test py task finished'
+        Write-Host 'test py task started for [batchwarpkeys] expected output finished'
         #
     }
     <# --------------------------------------------
@@ -210,14 +213,14 @@
     [void]testlogsexpected($inp){
         #
         Write-Host '.'
-        Write-Host 'test python expected log output started'
+        Write-Host 'test py task started for [batchwarpkeys] LOG expected output started'
         $inp.getmodulename()
         $inp.getslideidregex()
         $externallog = $inp.ProcessLog('batchwarpkeys') 
         Write-Host '    open log output'
         $logoutput = $inp.sample.GetContent($externallog)
         Write-Host '    test log output'
-        Write-Host '   '$inp.sample.module
+        Write-Host '   '$logoutput
         #
         try {
             $inp.getexternallogs($externallog)
@@ -226,7 +229,7 @@
             Throw $_.Exception.Message
         }
         #
-        Write-Host 'test python expected log output finished'
+        Write-Host 'test py task started for [batchwarpkeys] LOG expected output finished'
         #
     }
 #

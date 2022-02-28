@@ -75,7 +75,11 @@ Class testpsworkflow {
     }
     #
     [void]Testdefworkerlist($inp){
+        #
+        Write-Host "."
         Write-Host 'Starting worker list tests'
+        #
+        Write-Host "    Defining worker list"
         #
         $inp.defworkerlist()
         #
@@ -83,13 +87,21 @@ Class testpsworkflow {
             Throw 'Some workers tagged as running when they are not'
         }
         #
+        Write-Host '    create a test job'
+        #
         $this.StartTestJob($inp)
+        #
+        Write-Host '    launch orphan monitor for test job'
+        #
         $inp.CheckOrphan()
         #
         $currentworker = $inp.workers[0]
         $jobname = $inp.defjobname($currentworker)
         #
         $j = get-job -Name $jobname
+        #
+        Write-Host '    job name:' $jobname
+        #
         if (!($j) -OR (!($inp.workers.Status -match 'RUNNING'))){
             Throw 'orphaned task monitor failed to launch'
         }
@@ -102,6 +114,8 @@ Class testpsworkflow {
         $testj = get-job -Name ($jobname + '-test')
         wait-job $testj -timeout 180
         #
+        write-host '    job state:' $j.State
+        #
         if(!($j.State -match 'Completed')){
              Throw 'orphaned task monitor did not close correctly'
         }
@@ -113,7 +127,7 @@ Class testpsworkflow {
     }
     #
     [void]StartTestJob($inp){
-        Write-Host 'Starting test job'
+        Write-Host '    Starting test job'
         #
         $currentworker = $inp.workers[0]
         $jobname = $inp.defjobname($currentworker)
@@ -146,7 +160,7 @@ Class testpsworkflow {
             Throw ('log not created: ' + $inp.workertasklog($jobname))
         }
         #
-        Write-Host 'Test job launched'
+        Write-Host '    Test job launched'
     }
     #
 }

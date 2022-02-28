@@ -9,8 +9,6 @@ class batchwarpkeys : moduletools {
     #
     batchwarpkeys([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
         $this.processloc = $this.sample.warpbatchfolder() 
-        $this.sample.createdirs($this.processloc)
-        $this.sample.createdirs(($this.processloc+ '\octets'))
     }
     <# -----------------------------------------
      RunBatchMeanImageComparison
@@ -20,6 +18,8 @@ class batchwarpkeys : moduletools {
     ----------------------------------------- #>
     [void]Runbatchwarpkeys(){
         #
+        $this.sample.createNewdirs($this.processloc)
+        $this.sample.createNewdirs(($this.processloc+ '\octets'))
         $this.getslideidregex()
         $this.getbatchwarpoctets()
         $this.Getbatchwarpkeys()

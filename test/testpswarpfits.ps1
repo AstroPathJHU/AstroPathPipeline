@@ -43,11 +43,11 @@
         Write-Host '---------------------test ps [warpfits]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        #$this.testpswarpfitsconstruction($task)
+        $this.testpswarpfitsconstruction($task)
         $inp = batchwarpfits $task  
-        #$this.testprocessroot($inp)
-        #$this.testslidelist($inp)
-        #$this.testshreddatim($inp)
+        $this.testprocessroot($inp)
+        $this.testslidelist($inp)
+        $this.testshreddatim($inp)
         #$this.runpywarpfitsexpectedall($inp)
         $this.runpywarpfitsexpectedbatch($inp)
         $this.testlogsexpected($inp)
@@ -85,11 +85,13 @@
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
-        $inp.sample.start(($this.module+'test'))
+        $inp.sample.start(($this.module+'-test'))
         Write-Host '    command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
         Write-Host '    launching task'
+        #
+        $pythontask = $pythontask -replace '\\','/'
         #
         if ($inp.sample.isWindows()){
             $inp.sample.checkconda()
@@ -109,8 +111,6 @@
         #
         Write-Host "."
         Write-Host 'test [warpfits] constructors started'
-        #
-        $log = logger $this.mpath $this.module $this.batchid $this.project 
         #
         try {
             batchwarpfits  $task | Out-Null
@@ -152,7 +152,7 @@
         Write-Host 'test shred dat on images started'
         Write-Host '    get slide list from one slideid:' $this.slideid
         Write-Host '    open image keys text'
-        $image_keys_file = $this.getkeysloc()
+        $image_keys_file = $inp.getkeysloc()
         $image_keys = $inp.sample.GetContent($image_keys_file)
         #
         Write-Host '    get keys for this file'
@@ -194,6 +194,8 @@
         $externallog = $inp.processlog($taskname)
         #
         if ($this.dryrun){
+            Write-Host '    get keys for all slides'
+            $inp.getwarpdats()
             $this.runpytesttask($inp, $pythontask, $externallog)
         }  else {
             Write-Host '   '$pythontask

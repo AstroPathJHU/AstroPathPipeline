@@ -12,7 +12,7 @@ class batchwarpfits : moduletools {
             '\warpfits\Batch_' + $this.sample.BatchID
         $this.processvars[0] = $this.sample.basepath
         $this.processvars[1] = $this.processloc
-        $this.sample.createdirs($this.processloc)
+        $this.sample.createnewdirs($this.processloc)
     }
     #
     <# -----------------------------------------

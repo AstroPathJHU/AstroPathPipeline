@@ -561,10 +561,15 @@
         $this.logoutput | ForEach-Object{
             $cslide = ($_ -split ';')[2] 
             $mess = ($_ -split ';')[3]
-            if ($this.batchslides -match $cslide -and
-                    $mess -notmatch 'DEBUG:' -or
-                    $mess -notmatch 'FINISH:' -or
-                    $mess -notmatch 'START:'
+            if (
+                ($this.batchslides -match $cslide -and
+                    $mess -notmatch 'DEBUG:' -and
+                    $mess -notmatch 'FINISH:' -and
+                    $mess -notmatch 'START:') -or
+                ($cslide -match 'project'-and
+                    $mess -notmatch 'DEBUG:' -and
+                    $mess -notmatch 'FINISH:' -and
+                    $mess -notmatch 'START:')
             ){
                 #
                 $this.sample.message = ($_ -split ';')[3]
@@ -640,7 +645,7 @@
         #
         $this.sample.slideid = $sid
         $this.sample.info(([string]$nbatchslides.length +
-                ' sample(s) selected for sampleregex'))
+                ' sample(s) selected for sample regex'))
         $this.batchslides = $nbatchslides
         #
     }
