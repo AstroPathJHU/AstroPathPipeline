@@ -1,4 +1,4 @@
-import fractions, methodtools, tifffile
+import fractions, methodtools, numpy as np, tifffile
 
 from ..utilities import units
 
@@ -111,6 +111,10 @@ class QPTiffZoomLevel(tuple, units.ThingWithQpscale):
     yposition = fractions.Fraction(*self.tags["YPosition"])
     return units.Distance(**{kw: yposition}, pscale=self.yresolution)
 
+  @property
+  def position(self):
+    return np.array([self.xposition, self.yposition])
+
 class QPTiff(tifffile.TiffFile, units.ThingWithApscale):
   """
   Class that handles a qptiff file
@@ -152,3 +156,10 @@ class QPTiff(tifffile.TiffFile, units.ThingWithApscale):
     y position of the most zoomed in zoom level
     """
     return self.zoomlevels[0].yposition
+
+  @property
+  def position(self):
+    """
+    position of the most zoomed in zoom level
+    """
+    return np.array([self.xposition, self.yposition])
