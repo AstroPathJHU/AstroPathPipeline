@@ -1,4 +1,4 @@
-import abc, contextlib, dataclassy, numbers, numpy as np, pathlib, shutil, tempfile, unittest, more_itertools
+import abc, contextlib, dataclassy, more_itertools, numbers, numpy as np, pathlib, PIL.Image, shutil, tempfile, unittest
 
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable
@@ -28,6 +28,10 @@ def compare_two_csv_files(filedir,reffiledir,filename,dataclass,checkorder=True,
   targetrows = readtable(reffiledir/filename, dataclass, checkorder=checkorder, checknewlines=checknewlines, extrakwargs=extrakwargs)
   for row, target in more_itertools.zip_equal(rows, targetrows):
     assertAlmostEqual(row, target, rtol=rtol)
+
+def compare_two_images(image, ref):
+  with PIL.Image.open(image) as im, PIL.Image.open(ref) as refim:
+    np.testing.assert_array_equal(np.asarray(im), np.asarray(refim))
 
 def expectedFailureIf(condition):
   if condition:

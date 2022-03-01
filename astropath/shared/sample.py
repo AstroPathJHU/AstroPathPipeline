@@ -418,7 +418,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return layers
 
   @methodtools.lru_cache()
-  def getXMLplan(self):
+  def getXMLplan(self, includehpfsflaggedforacquisition=False):
     """
     Read the annotations xml file to get the structure of the
     image as well as the microscope name (really the name of the
@@ -429,7 +429,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       xmlfolder = self.xmlfolder
     except FileNotFoundError:
       xmlfolder = None
-    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale)
+    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
   @property
@@ -1155,9 +1155,13 @@ class XMLLayoutReader(SampleBase):
   """
   Base class for any sample that reads the HPF layout from the XML metadata.
   """
-  def __init__(self, *args, checkim3s=False, **kwargs):
+  def __init__(self, *args, checkim3s=False, includehpfsflaggedforacquisition=False, **kwargs):
     self.__checkim3s = checkim3s
+    self.__includehpfsflaggedforacquisition = includehpfsflaggedforacquisition
     super().__init__(*args, **kwargs)
+
+  def getXMLplan(self):
+    return super().getXMLplan(includehpfsflaggedforacquisition=self.__includehpfsflaggedforacquisition)
 
   @methodtools.lru_cache()
   def getrectanglelayout(self):
@@ -1199,7 +1203,7 @@ class XMLLayoutReader(SampleBase):
     Fix any _M2 in the rectangle filenames
     """
     for rectangle in rectangles[:]:
-      if "_M2" in rectangle.file:
+      if rectangle.file is not None and "_M2" in rectangle.file:
         duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
         if not duplicates:
           rectangle.file = rectangle.file.replace("_M2", "")
@@ -1294,6 +1298,20 @@ class XMLLayoutReader(SampleBase):
           )
         )
     return overlaps
+
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--include-hpfs-flagged-for-acquisition", action="store_true", help="include HPFs that are flagged for acquisition but not marked as acquired in the xml file")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "includehpfsflaggedforacquisition": parsed_args_dict.pop("include_hpfs_flagged_for_acquisition"),
+    }
+
 
 class SampleWithAnnotationInfos(SampleBase, ThingWithAnnotationInfos):
   def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
