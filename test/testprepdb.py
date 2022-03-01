@@ -1,4 +1,4 @@
-import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, re
+import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, re, shutil
 from astropath.shared.csvclasses import Batch, Constant, ExposureTime, QPTiffCsv, ROIGlobals
 from astropath.shared.logging import getlogger
 from astropath.shared.overlap import Overlap
@@ -188,6 +188,10 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
         checkwindowsnewlines(log)
     except:
       if removeoutput:
+        #don't save empty files that were created in setUp for testing the dependency check
+        for folder in dbloadroot.iterdir():
+          if folder.name != SlideID and folder.is_dir():
+            shutil.rmtree(folder)
         self.saveoutput()
       raise
     finally:
