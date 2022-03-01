@@ -22,38 +22,16 @@ from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class QPTiffSample(SampleBase, units.ThingWithImscale):
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-
-    self.__nentered = 0
-    self.__using_qptiff_context = None
-    self.__qptiff = None
-
-  def __enter__(self):
-    result = super().__enter__()
-    self.__using_qptiff_context = self.enter_context(contextlib.ExitStack())
-    return result
-
+  @property
+  def qptiff(self):
+    return
   @contextlib.contextmanager
   def using_qptiff(self):
     """
     Context manager for opening the qptiff
     """
-    if self.__nentered == 0:
-      #if they're not currently open
-      self.__qptiff = self.__using_qptiff_context.enter_context(QPTiff(self.qptifffilename))
-    self.__nentered += 1
-    try:
-      if self.__nentered == 1:
-        self.__imageinfo #access it now to make sure it's cached
-      yield self.__qptiff
-    finally:
-      self.__nentered -= 1
-      if self.__nentered == 0:
-        #if we don't have any other copies of this context manager going,
-        #close the qptiff and free the memory
-        self.__qptiff = None
-        self.__using_qptiff_context.close()
+    with contextlib.ExitStack() as stack:
+      yield stack.enter_context(QPTiff(self.qptifffilename))
 
   @methodtools.lru_cache()
   @property
@@ -185,7 +163,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     """
     Context manager for opening the wsi and qptiff images
     """
-    with self.using_wsi(layer=self.wsilayer) as wsi, self.using_qptiff() as qptiff:
+    with self.using_wsi(layer=self.wsilayer) as wsi, self.using_qptiff() as fqptiff, fqptiff.zoomlevels[0].using_image(layer=self.qptifflayer) as qptiff:
       yield wsi, qptiff
 
   @property
@@ -215,12 +193,10 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
           this function it's quicker (default: False)
     """
     if self.__images is not None: return self.__images
-    with self.using_images() as (wsi, fqptiff):
-      #load the images
-      zoomlevel = fqptiff.zoomlevels[0]
-      qptiff = PIL.Image.fromarray(zoomlevel[self.qptifflayer-1].asarray())
-
+    #load the images
+    with self.using_images() as (wsi, qptiff):
       #scale them so that they're at the same scale
+      qptiff = PIL.Image.fromarray(qptiff)
       wsisize = np.array(wsi.size, dtype=np.uint)
       qptiffsize = np.array(qptiff.size, dtype=np.uint)
       wsisize //= self.ppscale

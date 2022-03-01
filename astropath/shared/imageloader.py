@@ -275,11 +275,10 @@ class ImageLoaderSegmentedComponentTiffMultiLayer(ImageLoaderComponentTiffBase):
   def pagegroupslices(self):
     return slice(0, self.nlayers), slice(self.nlayers, self.nlayers+1), slice(self.nlayers+1, self.nlayers+1+self.nsegmentations*2)
 
+class ImageLoaderQPTiffMultiLayer(ImageLoaderTiff):
+  def checktiffpages(self, pages):
+    return super().checktiffpages(pages=[pages[layer-1] for layer in self.layers])
+
 class ImageLoaderComponentTiffSingleLayer(ImageLoaderComponentTiffMultiLayer, ImageLoaderTiffSingleLayer): pass
 class ImageLoaderSegmentedComponentTiffSingleLayer(ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderTiffSingleLayer): pass
-
-class ImageLoaderProvideImage(ImageLoaderBase):
-  def __init__(self, *args, image, **kwargs):
-    self.__image = image
-  def getimage(self):
-    return self.__image
+class ImageLoaderQPTiffSingleLayer(ImageLoaderQPTiffMultiLayer, ImageLoaderTiffSingleLayer): pass

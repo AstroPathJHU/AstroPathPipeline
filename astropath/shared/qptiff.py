@@ -1,13 +1,22 @@
-import fractions, methodtools, numpy as np, tifffile
+import collections, fractions, methodtools, numpy as np, pathlib, tifffile
 
 from ..utilities import units
+from .imageloader import ImageLoaderQPTiffMultiLayer, ImageLoaderQPTiffSingleLayer
 
-class QPTiffZoomLevel(tuple, units.ThingWithQpscale):
+class QPTiffZoomLevel(collections.abc.Sequence, units.ThingWithQpscale):
   """
   Class that holds a zoom level of a qptiff object
   You can iterate over the 5 component image layers
     (which correspond to the broadband filters)
   """
+  def __init__(self, *, filename, pages, pageindices):
+    self.__filename = pathlib.Path(filename)
+    self.__pages = pages
+    self.__pageindices = pageindices
+  def __getitem__(self, item):
+    return self.__pages[item]
+  def __len__(self):
+    return len(self.__pages)
   @methodtools.lru_cache()
   @property
   def tags(self):
@@ -115,6 +124,30 @@ class QPTiffZoomLevel(tuple, units.ThingWithQpscale):
   def position(self):
     return np.array([self.xposition, self.yposition])
 
+  @methodtools.lru_cache()
+  def __imageloader(self, *, layers, layer):
+    if (layers is None) + (layer is None) != 1:
+      raise ValueError("Have to provide exactly one of layers or layer")
+
+    for layer in (layers if layers is not None else [layer]):
+      if not (1 <= layer <= len(self)):
+        raise ValueError(f"Invalid layer {layer}, has to be between 1 and {len(self)}")
+
+    kwargs = {"filename": self.__filename}
+    if layers is not None:
+      return ImageLoaderQPTiffMultiLayer(**kwargs, layers=[self.__pageindices[layer-1] for layer in layers])
+    else:
+      return ImageLoaderQPTiffSingleLayer(**kwargs, layer=self.__pageindices[layer-1])
+
+  def imageloader(self, *, layers=None, layer=None):
+    """
+    Multiple layers of functions to make the lru_cache work
+    """
+    return self.__imageloader(layers=layers, layer=layer)
+
+  def using_image(self, *, layers=None, layer=None):
+    return self.imageloader(layers=layers, layer=layer).using_image()
+
 class QPTiff(tifffile.TiffFile, units.ThingWithApscale):
   """
   Class that handles a qptiff file
@@ -125,16 +158,19 @@ class QPTiff(tifffile.TiffFile, units.ThingWithApscale):
     Gives a QPTiffZoomLevel for each 5 pages in the qptiff
     """
     pages = []
+    pageindices = []
     lastwidth = None
     result = []
-    for page in self.pages:
+    for i, page in enumerate(self.pages, start=1):
       if page.tags["SamplesPerPixel"].value != 1: continue
       if page.imagewidth != lastwidth:
         lastwidth = page.imagewidth
-        if pages: result.append(QPTiffZoomLevel(pages))
+        if pages: result.append(QPTiffZoomLevel(filename=self.filehandle.path, pages=pages, pageindices=pageindices))
         pages = []
+        pageindices = []
       pages.append(page)
-    if pages: result.append(QPTiffZoomLevel(pages))
+      pageindices.append(i)
+    if pages: result.append(QPTiffZoomLevel(filename=self.filehandle.path, pages=pages, pageindices=pageindices))
     return result
 
   @property
