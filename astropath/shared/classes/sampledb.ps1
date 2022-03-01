@@ -67,7 +67,7 @@ class sampledb : sharedtools {
             $sampletracker.ParseAPIDdef($slide.slideid, $slides)
             $sampletracker.defbase()
             $sampletracker.defmodulestatus()
-            $this.sampledb.($slide.slideid) = $sampletracker
+            $this.sampledb.($slide.slideid) = $sampletracker.moduleinfo
         }
         #
         write-progress -Activity "Checking slides" -Status "100% Complete:" -Completed
@@ -88,16 +88,17 @@ class sampledb : sharedtools {
         $queue = [System.Collections.Queue]::new()
         1..$slides.Count | ForEach-Object { $queue.Enqueue($_) }
         $syncQueue = [System.Collections.Queue]::synchronized($queue)
+        $sampletracker = [sampletracker]::new($this.mpath)
         #
         $parpool = $slides | ForEach-Object -AsJob -ThrottleLimit 6 -Parallel {
             $sdbcopy = $using:this.sampledb
             $sqcopy = $using:syncQueue
-            $vmqcopy = $using:this.vmq
             # might need to import module here??
             #
-            $sampletracker = [sampletracker]::new($_.mpath, $_.slideid, $vmqcopy)
+            $sampletracker.ParseAPIDdef($_.slideid, $slides)
+            $sampletracker.defbase()
             $sampletracker.defmodulestatus()
-            $sdbcopy.($_.slideid) = $sampletracker
+            $sdbcopy.($_.slideid) = $sampletracker.moduleinfo
             #
             $sqCopy.Dequeue()
         }
