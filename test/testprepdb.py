@@ -1,4 +1,4 @@
-import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, re, shutil
+import contextlib, csv, itertools, job_lock, logging, more_itertools, os, pathlib, re, shutil
 from astropath.shared.csvclasses import Batch, Constant, ExposureTime, QPTiffCsv, ROIGlobals
 from astropath.shared.logging import getlogger
 from astropath.shared.overlap import Overlap
