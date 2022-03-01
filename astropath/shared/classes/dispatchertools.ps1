@@ -119,6 +119,8 @@ class DispatcherTools : queue {
             }
         } catch {
             Write-Host $_.Exception.Message
+            Write-Host 'ID:' $ID[1]
+            Write-Host 'Project:' $ID[0]
             return
         }
         #

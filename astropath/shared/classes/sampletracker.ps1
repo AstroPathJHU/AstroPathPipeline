@@ -15,16 +15,17 @@ class sampletracker : dependencies {
         $this.getmodulenames()
     }
     #
-    sampletracker($mpath, $slideid): base ($mpath, $slideid){
-        $this.getmodulenames()
-    }
-    #
-    sampletracker($mpath, $slideid, $vmq): base ($mpath, $slideid){
+    sampletracker($mpath, $vmq): base ($mpath){
         $this.getmodulenames()
         $this.vmq = $vmq
     }
     #
-    sampletracker($mpath, $modules, $slideid, $vmq): base ($mpath, $slideid){
+    sampletracker($mpath, $vmq, $slideid): base ($mpath, $slideid){
+        $this.getmodulenames()
+        $this.vmq = $vmq
+    }
+    #
+    sampletracker($mpath, $modules, $vmq, $slideid): base ($mpath, $slideid){
         $this.modules = $modules
         $this.vmq = $vmq
     }
