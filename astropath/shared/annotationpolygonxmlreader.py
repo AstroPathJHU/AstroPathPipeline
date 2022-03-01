@@ -1,4 +1,4 @@
-import abc, argparse, collections, hashlib, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
+import abc, argparse, collections, contextlib, hashlib, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.miscmath import floattoint
