@@ -53,6 +53,7 @@ class sampledb : sharedtools {
         #
         $c = 1
         $ctotal = $slides.count
+        $sampletracker = [sampletracker]::new($this.mpath)
         #
         foreach($slide in $slides){
             #
@@ -63,7 +64,8 @@ class sampledb : sharedtools {
                             -CurrentOperation $slide.slideid
             $c += 1 
             #
-            $sampletracker = [sampletracker]::new($this.mpath, $slide.slideid, $this.vmq)
+            $sampletracker.ParseAPIDdef($slide.slideid, $slides)
+            $sampletracker.defbase()
             $sampletracker.defmodulestatus()
             $this.sampledb.($slide.slideid) = $sampletracker
         }

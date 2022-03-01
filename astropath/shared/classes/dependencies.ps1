@@ -9,6 +9,8 @@
  -------------------------------------------#>
  class dependencies : sampledef {
     #
+    dependencies($mpath): base ($mpath){}
+    #
     dependencies($mpath, $slideid): base ($mpath, '', $slideid){}
     #
     # dependencies($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}

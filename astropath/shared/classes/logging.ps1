@@ -49,7 +49,7 @@ class mylogger : sampledef {
         $this.getlogger()
     }
     #
-    mylogger($mpath, $module, $slideid, $project) : base($mpath, $module, $slideid, $project){
+    mylogger($mpath, $module, $batchid, $project) : base($mpath, $module, $batchid, $project){
         $this.level = 4
         $this.getlogger()
     }

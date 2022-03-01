@@ -120,7 +120,7 @@ class queue : vminformqueue{
                            -PercentComplete $p 
             $c += 1 
             #
-            $log.Sample($slide.slideid, $this.mpath, $this.module, $cleanedslides)
+            $log.Sample($slide.slideid, $this.module, $cleanedslides)
             $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project, 'short')
             #
             if ($this.module -match 'batch'){
