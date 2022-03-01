@@ -117,7 +117,7 @@ class batchwarpkeys : moduletools {
     ----------------------------------------- #>
     [void]silentcleanup(){
         #
-        $this.sample.removedir($this.processloc)
+      #  $this.sample.removedir($this.processloc)
         #
     }
     <# -----------------------------------------

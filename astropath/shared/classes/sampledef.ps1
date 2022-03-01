@@ -12,16 +12,24 @@ class sampledef : sharedtools{
     [string]$BatchID
     [string]$basepath
     [PSCustomObject]$project_data
+    [PSCustomObject]$full_project_dat
     [PSCustomObject]$batchslides
     [string]$mainlog
     [string]$slidelog
     [hashtable]$moduleinfo = @{}
+
     #
     sampledef(){}
+    #
+    sampledef($mpath){
+        $this.mpath = $mpath
+        $this.defbase()
+    }
     #
     sampledef($mpath, $module){
         $this.mpath = $mpath
         $this.module = $module 
+        $this.defbase()
     }
     #
     sampledef($mpath, $module, $slideid){
@@ -38,42 +46,42 @@ class sampledef : sharedtools{
     #
     sampledefslide($slideid){
         $slides = $this.importslideids($this.mpath)
-        $this.Sample($slideid, $this.mpath, $slides)
+        $this.Sample($slideid, $slides)
     }
     #
     sampledefbatch($batchid, $project){
         $this.project = $project
         $slides = $this.importslideids($this.mpath)
-        $this.Batch($batchid, $this.mpath, $slides)
+        $this.Batch($batchid, $slides)
     }
     #
     Sample(
         [string]$slideid="",
-        [string]$mpath,
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdef($slideid, $slides)
-        $this.defbase($mpath)
+        $this.defbase()
+        $this.deflogpaths()
     }
     #
     Sample(
         [string]$slideid="",
-        [string]$mpath,
         [string]$module,
         [PSCustomObject]$slides
     ){
         $this.module = $module
         $this.ParseAPIDdef($slideid, $slides)
-        $this.defbase($mpath) 
+        $this.defbase() 
+        $this.deflogpaths()
     }
     #
     Batch(
         [string]$batchid="",
-        [string]$mpath,
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdefbatch($batchid, $slides)
-        $this.defbase($mpath)
+        $this.defbase()
+        $this.deflogpaths()
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
@@ -117,20 +125,15 @@ class sampledef : sharedtools{
         #
     }
     #
-    [void]defbase([string]$mpath){
-        $this.mpath = $mpath
-        $project_dat = $this.importcohortsinfo($this.mpath)
-        $project_dat = $project_dat | 
-                Where-Object -FilterScript {$_.Project -eq $this.project}
-        <#
-                #Adjust if testing on jenkins
-        if ($project_dat.dpath -match '/var/lib/jenkins') {
-            $this.basepath = $project_dat.dpath + '/' + $project_dat.dname
+    [void]defbase(){
+        #
+        if (!$this.full_project_dat){
+            $this.full_project_dat = $this.importcohortsinfo($this.mpath)
         }
-        else {
-            $this.basepath = '\\' + $project_dat.dpath + '\' + $project_dat.dname
-        }
-        more robust path editing #>
+        #
+        $project_dat = $this.full_project_dat| 
+                    Where-Object -FilterScript {$_.Project -eq $this.project}
+        #
         $r = $project_dat.dpath -replace( '/', '\')
         if ($r[0] -ne '\'){
             $root = '\\' + $project_dat.dpath 
@@ -142,7 +145,11 @@ class sampledef : sharedtools{
         #
         $this.project_data = $project_dat
         #
-        $this.deflogpaths()
+    }
+    #
+    [void]defbase([string]$mpath){
+        $this.mpath = $mpath
+        $this.defbase()
         #
     }
     #
@@ -542,6 +549,26 @@ class sampledef : sharedtools{
     }
     #
     [switch]testbatchwarpkeys(){
+        #
+        $p =  $this.warpbatchoctetsfolder()
+        #
+        if (!(test-path $p)){
+                return $false
+        }
+        $files = @('final_pattern_octets_selected.csv', 'initial_pattern_octets_selected.csv',
+            'image_keys_needed.txt','principal_point_octets_selected.csv')
+        #
+        foreach ($file in $files) {
+            $fullpath = $p + '\' + $file
+            if (!(test-path $fullpath)){
+                return $false
+            }
+        }
+        #
+        return $true
+    }
+    #
+    [switch]testbatchwarpfits(){
         #
         $p =  $this.warpbatchoctetsfolder()
         #
