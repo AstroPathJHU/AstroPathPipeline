@@ -906,7 +906,7 @@ class SelectLayersComponentTiff(SampleBase):
   @property
   def layerscomponenttiff(self):
     result = self.__layerscomponenttiff
-    if result is None: return range(1, self.nlayerscomponenttiff+1)
+    if result is None: return range(1, self.nlayersunmixed+1)
     return result
 
   @property
