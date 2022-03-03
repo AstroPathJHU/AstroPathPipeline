@@ -4,7 +4,6 @@ from ...shared.logging import printlogger, ThingWithLogger
 from ...shared.qptiff import QPTiff
 from ...utilities import units
 from ...utilities.miscfileio import rm_missing_ok
-from ...utilities.miscmath import floattoint
 from ...utilities.tableio import writetable
 from .deepzoomsample import DeepZoomFile
 
