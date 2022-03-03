@@ -34,7 +34,7 @@ Class informinput {
     [int]$err
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     #
-    informinput([array]$task,[launchmodule]$sample) {
+    informinput([array]$task, [launchmodule]$sample) {
         #
         $this.sample = $sample
         $this.abx = $task[2].trim()
