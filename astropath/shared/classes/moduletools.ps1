@@ -12,6 +12,7 @@
     FLATFIELD = 2
     BATCHID = 4
     XML = 8
+    FLATWIM3 = 16
  }
  #
  Class moduletools{
@@ -94,6 +95,7 @@
             $this.DownloadIm3s()
             $this.DownloadBatchID()
             $this.DownloadXML()
+            $this.DownloadFlatwIm3s()
             $this.sample.info("Download Files finished")
         }
     }
@@ -195,6 +197,26 @@
             $this.sample.copy($sor, $des, 'xml', 30)
             if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
                 Throw 'xmls did not download correctly'
+            }
+        }
+        #
+    }
+    <# -----------------------------------------
+     DownloadFlatwIm3s
+     download the flatw IM3 files to the processing
+     dir
+     ------------------------------------------
+     Usage: $this.DownloadFlatwIm3s()
+    ----------------------------------------- #>
+    [void]DownloadFlatwIm3s(){
+        #
+        if (($this.flevel -band [FileDownloads]::FLATWIM3) -eq 
+            [FileDownloads]::FLATWIM3){
+            $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\flatw'
+            $sor = $this.sample.flatwim3folder()
+            $this.sample.copy($sor, $des, 'im3', 30)
+            if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
+                Throw 'flatw im3s did not download correctly'
             }
         }
         #
