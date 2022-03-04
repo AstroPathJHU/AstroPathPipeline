@@ -15,7 +15,7 @@ from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnno
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger, ThingWithLogger
-from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer
+from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
@@ -1051,6 +1051,34 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase, SelectLayersComponentT
       })
     return kwargs
 
+class ReadRectanglesComponentAndIHCTiffBase(ReadRectanglesBase, SelectLayersComponentTiff) :
+  """
+  Base class for any sample that loads images from an IHC .tif file
+  """
+  @property
+  def rectangletype(self):
+    if self.multilayercomponenttiff:
+      return RectangleReadComponentMultiLayerAndIHCTiff
+    else:
+      return RectangleReadComponentSingleLayerAndIHCTiff
+  @property
+  def rectangleextrakwargs(self):
+    kwargs =  {
+      **super().rectangleextrakwargs,
+      'componenttifffolder': self.componenttiffsfolder,
+      'ihctifffolder':self.ihctiffsfolder,
+      'nlayerscomponenttiff': self.nlayersunmixed,
+      }
+    if self.multilayercomponenttiff:
+      kwargs.update({
+        "layerscomponenttiff": self.layerscomponenttiff,
+      })
+    else:
+      kwargs.update({
+        "layercomponenttiff": self.layercomponenttiff,
+      })
+    return kwargs
+
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
   """
   Base class for any sample that reads rectangles and overlaps from any source.
@@ -1738,6 +1766,12 @@ class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRe
   """
   Base class for any sample that reads rectangles from the XML metadata
   and loads the rectangle images from component tiff files.
+  """
+
+class ReadRectanglesComponentAndIHCTiffFromXML(ReadRectanglesComponentAndIHCTiffBase, ReadRectanglesFromXML) :
+  """
+  Base class for any sample that reads rectangles from the XML metadata 
+  and loads the rectangle images from IHC .tif files
   """
 
 class ReadRectanglesOverlapsFromXML(ReadRectanglesOverlapsBase, ReadRectanglesFromXML):
