@@ -1,7 +1,8 @@
 #imports
 from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.cohort import ParallelCohort, WorkflowCohort
-from .segmentationsample import SegmentationSampleBase, SegmentationSampleNNUNet, SegmentationSampleDeepCell
+from .segmentationsample import SegmentationSampleBase, SegmentationSampleNNUNet
+from .segmentationsample import SegmentationSampleDeepCell, SegmentationSampleMesmer
 
 class SegmentationCohortBase(ParallelCohort,WorkflowCohort,WorkingDirArgumentParser) :
     sampleclass = SegmentationSampleBase

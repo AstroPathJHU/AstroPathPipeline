@@ -102,6 +102,7 @@ setupkwargs = dict(
     
   ],
   install_requires = [
+    "batchgenerators",
     "contextlib2>=0.6.0; python_version < '3.7'",
     "dataclassy>=0.10.0",
     "imagecodecs",
