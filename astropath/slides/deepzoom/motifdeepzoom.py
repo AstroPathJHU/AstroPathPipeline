@@ -61,9 +61,14 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     #vips adds that
     dest = destfolder.with_name(destfolder.name.replace("_files", ""))
 
-    #open the qptiff in vips and save the deepzoom
+    #open the qptiff in vips, shift, and save the deepzoom
     qptiffimage = pyvips.Image.tiffload(os.fspath(self.qptifffile), page=layer-1, n=1)
-    qptiffimage.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
+    shift = floattoint(np.round((self.qptiffposition / self.onepixel).astype(float)))
+    np.testing.assert_array_less(0, shift)
+    shiftx, shifty = shift
+    shifted = qptiffimage.embed(shiftx, shifty, qptiffimage.width+shiftx, qptiffimage.height+shifty)
+
+    shifted.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
 
   def prunezoom(self, layer):
     """
