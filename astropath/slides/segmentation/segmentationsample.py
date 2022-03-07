@@ -335,17 +335,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
             mesmer_batch_images = []
             mesmer_batch_segmented_filepaths = []
             for ir,rect,segmented_file_path in rects_to_run :
-                #run segmentations for a whole batch
-                if (len(mesmer_batch_images)>=MESMER_GROUP_SIZE) or (ir==len(rects_to_run)-1) :
-                    msg = f'Running Mesmer segmentation for the current group of {len(mesmer_batch_images)} images'
-                    self.logger.debug(msg)
-                    run_mesmer_segmentation(np.array(mesmer_batch_images),
-                                            app,
-                                            self.pscale,
-                                            mesmer_batch_segmented_filepaths)
-                    mesmer_batch_images = []
-                    mesmer_batch_segmented_filepaths = []
-                #otherwise add to the batch
+                #add to the batch
                 msg = f'Adding {rect.ihctifffile.name} ({ir} of {len(self.rectangles)}) to the next group of images....'
                 self.logger.debug(msg)
                 with rect.using_component_tiff() as im :
@@ -356,6 +346,16 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
                 im_for_mesmer = np.array([dapi_layer,membrane_layer]).transpose(1,2,0)
                 mesmer_batch_images.append(im_for_mesmer)
                 mesmer_batch_segmented_filepaths.append(segmented_file_path)
+                #run segmentations for a whole batch
+                if (len(mesmer_batch_images)>=MESMER_GROUP_SIZE) or (ir==len(rects_to_run)) :
+                    msg = f'Running Mesmer segmentation for the current group of {len(mesmer_batch_images)} images'
+                    self.logger.debug(msg)
+                    run_mesmer_segmentation(np.array(mesmer_batch_images),
+                                            app,
+                                            self.pscale,
+                                            mesmer_batch_segmented_filepaths)
+                    mesmer_batch_images = []
+                    mesmer_batch_segmented_filepaths = []
             for rect in self.rectangles :
                 if self.__get_rect_segmented_fp(rect).is_file() :
                     completed_files+=1
