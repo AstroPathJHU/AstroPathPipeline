@@ -1,5 +1,6 @@
 #imports
 import methodtools, os, shutil
+import numpy as np
 from batchgenerators.utilities.file_and_folder_operations import join
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.optionalimports import deepcell, nnunet
@@ -14,7 +15,7 @@ from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation,
 NNUNET_SEGMENT_FILE_APPEND = 'nnunet_nuclear_segmentation.npz'
 DEEPCELL_SEGMENT_FILE_APPEND = 'deepcell_nuclear_segmentation.npz'
 MESMER_SEGMENT_FILE_APPEND = 'mesmer_segmentation.npz'
-MESMER_GROUP_SIZE = 20
+MESMER_GROUP_SIZE = 12
 
 class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWithSegmentations,
                              WorkflowSample,ParallelSample,WorkingDirArgumentParser) :
@@ -266,12 +267,12 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
         rects_to_run = []
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
-            if self.__get_rect_deepcell_segmented_fp(rect).is_file() :
+            if self.__get_rect_segmented_fp(rect).is_file() :
                 msg = f'Skipping {rect.componenttifffile.name} ({ir} of {len(self.rectangles)}) '
                 msg+= '(segmentation output already exists)'
                 self.logger.debug(msg)
                 continue
-            rects_to_run.append((ir,rect,self.__get_rect_deepcell_segmented_fp(rect)))
+            rects_to_run.append((ir,rect,self.__get_rect_segmented_fp(rect)))
         completed_files = 0
         try :
             for ir,rect,segmented_file_path in rects_to_run :
@@ -281,7 +282,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
                     self.logger.debug(msg)
                     run_deepcell_nuclear_segmentation(im,app,self.pscale,segmented_file_path)
             for rect in self.rectangles :
-                if self.__get_rect_deepcell_segmented_fp(rect).is_file() :
+                if self.__get_rect_segmented_fp(rect).is_file() :
                     completed_files+=1
         except Exception as e :
             raise e
@@ -293,7 +294,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
                 msg+= 'Rerun the same command to retry.'
                 self.logger.info(msg)
 
-    def __get_rect_deepcell_segmented_fp(self,rect) :
+    def __get_rect_segmented_fp(self,rect) :
         seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{DEEPCELL_SEGMENT_FILE_APPEND}'
         return self.workingdir/seg_fn
 
@@ -315,6 +316,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
         Run nuclear segmentation using DeepCell's nuclear segmentation algorithm
         """
         Mesmer = deepcell.applications.Mesmer
+        pca_vec_to_dot = np.expand_dims(SEG_CONST.IHC_PCA_BLACK_COMPONENT,0).T
         self.logger.debug('Running whole-cell and nuclear segmentation with Mesmer....')
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but Mesmer segmentation cannot be run in parallel.')
@@ -322,12 +324,12 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
         rects_to_run = []
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
-            if self.__get_rect_mesmer_segmented_fp(rect).is_file() :
-                msg = f'Skipping {rect.componenttifffile.name} ({ir} of {len(self.rectangles)}) '
+            if self.__get_rect_segmented_fp(rect).is_file() :
+                msg = f'Skipping {rect.ihctifffile.name} ({ir} of {len(self.rectangles)}) '
                 msg+= '(segmentation output already exists)'
                 self.logger.debug(msg)
                 continue
-            rects_to_run.append((ir,rect,self.__get_rect_deepcell_segmented_fp(rect)))
+            rects_to_run.append((ir,rect,self.__get_rect_segmented_fp(rect)))
         completed_files = 0
         try :
             mesmer_batch_images = []
@@ -340,15 +342,20 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
                     run_mesmer_segmentation(mesmer_batch_images,app,self.pscale,mesmer_batch_segmented_filepaths)
                     mesmer_batch_images = []
                     mesmer_batch_segmented_filepaths = []
+                #otherwise add to the batch
+                msg = f'Adding {rect.ihctifffile.name} ({ir} of {len(self.rectangles)}) to the next group of images....'
+                self.logger.debug(msg)
                 with rect.using_component_tiff() as im :
                     dapi_layer = im
-        #            msg = f'Running DeepCell segmentation for {rect.componenttifffile.name} '
-        #            msg+= f'({ir} of {len(self.rectangles)})'
-        #            self.logger.debug(msg)
-        #            run_deepcell_nuclear_segmentation(im,app,self.pscale,segmented_file_path)
-        #    for rect in self.rectangles :
-        #        if self.__get_rect_deepcell_segmented_fp(rect).is_file() :
-        #            completed_files+=1
+                with rect.using_ihc_tiff() as im :
+                    im_membrane = -1.0*(np.dot(im,pca_vec_to_dot))[:,:,0]
+                    membrane_layer = (im_membrane-np.min(im_membrane))/SEG_CONST.IHC_MEMBRANE_LAYER_NORM
+                im_for_mesmer = np.array([dapi_layer,membrane_layer]).transpose(1,2,0)
+                mesmer_batch_images.append(im_for_mesmer)
+                mesmer_batch_segmented_filepaths.append(segmented_file_path)
+            for rect in self.rectangles :
+                if self.__get_rect_segmented_fp(rect).is_file() :
+                    completed_files+=1
         except Exception as e :
             raise e
         finally :
@@ -362,7 +369,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
-    def __get_rect_mesmer_segmented_fp(self,rect) :
+    def __get_rect_segmented_fp(self,rect) :
         seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{MESMER_SEGMENT_FILE_APPEND}'
         return self.workingdir/seg_fn
 
