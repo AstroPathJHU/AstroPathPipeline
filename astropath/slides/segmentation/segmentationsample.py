@@ -334,7 +334,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
         try :
             mesmer_batch_images = []
             mesmer_batch_segmented_filepaths = []
-            for ir,rect,segmented_file_path in rects_to_run :
+            for realir,(ir,rect,segmented_file_path) in enumerate(rects_to_run,start=1) :
                 #add to the batch
                 msg = f'Adding {rect.ihctifffile.name} ({ir} of {len(self.rectangles)}) to the next group of images....'
                 self.logger.debug(msg)
@@ -347,7 +347,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
                 mesmer_batch_images.append(im_for_mesmer)
                 mesmer_batch_segmented_filepaths.append(segmented_file_path)
                 #run segmentations for a whole batch
-                if (len(mesmer_batch_images)>=MESMER_GROUP_SIZE) or (ir==len(rects_to_run)) :
+                if (len(mesmer_batch_images)>=MESMER_GROUP_SIZE) or (realir==len(rects_to_run)) :
                     msg = f'Running Mesmer segmentation for the current group of {len(mesmer_batch_images)} images'
                     self.logger.debug(msg)
                     run_mesmer_segmentation(np.array(mesmer_batch_images),
