@@ -339,7 +339,10 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
                 if (len(mesmer_batch_images)>=MESMER_GROUP_SIZE) or (ir==len(rects_to_run)-1) :
                     msg = f'Running Mesmer segmentation for the current group of {len(mesmer_batch_images)} images'
                     self.logger.debug(msg)
-                    run_mesmer_segmentation(mesmer_batch_images,app,self.pscale,mesmer_batch_segmented_filepaths)
+                    run_mesmer_segmentation(np.array(mesmer_batch_images),
+                                            app,
+                                            self.pscale,
+                                            mesmer_batch_segmented_filepaths)
                     mesmer_batch_images = []
                     mesmer_batch_segmented_filepaths = []
                 #otherwise add to the batch

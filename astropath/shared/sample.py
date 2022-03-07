@@ -134,6 +134,13 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     return self.informdataroot/self.SlideID/"inform_data"/"Component_Tiffs"
 
+  @property
+  def ihctiffsfolder(self):
+    """
+    The sample's IHC tiffs folder
+    """
+    return self.informdataroot/self.SlideID/"IHC"/"HPFs"
+
   def __getimageinfofromcomponenttiff(self):
     """
     Find the pscale and image dimensions from the component tiff.
