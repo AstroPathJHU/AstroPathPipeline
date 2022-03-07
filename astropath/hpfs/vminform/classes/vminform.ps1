@@ -179,7 +179,7 @@ Class informinput {
         $processoutputlog =  $this.outpath + "\processoutput.log"
         $arginput = " -a",  $this.algpath, `
                     "-o",  $this.informoutpath, `
-                    "-i", $this.image_list_file -join ' ' 
+                    "-i", $this.image_list_file -join ' '
         $this.sample.info("Start inForm Batch Process")
         $prc = Start-Process $this.informpath `
                 -NoNewWindow `
@@ -188,6 +188,20 @@ Class informinput {
                 -ArgumentList $arginput `
                 *>> $processoutputlog
         #
+    }
+    #
+    [string]getinformtask() {
+        $processoutputlog =  $this.outpath + "\processoutput.log"
+        $arginput = " -a",  $this.algpath, `
+                    "-o",  $this.informoutpath, `
+                    "-i", $this.image_list_file -join ' '
+        $task = $this.informpath,
+                '-NoNewWindow',
+                '-RedirectStandardError', $this.informprocesserrorlog,
+                '-PassThru',
+                '-ArgumentList',  $arginput,
+                '*>>', $processoutputlog -join ' '
+        return $task
     }
     <# -----------------------------------------
      WatchBatchInForm

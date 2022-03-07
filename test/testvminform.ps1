@@ -43,7 +43,8 @@ Class testvminform {
         $inp = vminform $task
         $this.testoutputdir($inp)
         $this.testimagelist($inp)
-        $this.testruninform($inp)
+        $this.comparevminforminput($inp)
+        #$this.testruninform($inp)
         #$this.testreturndata($inp)
         Write-Host '.'
     }
@@ -192,24 +193,64 @@ Class testvminform {
         Write-Host 'test create image list finished'
         #
     }
+    <# --------------------------------------------
+    comparevminforminput
+    check that vminform input is what is expected
+    from the vminform module object
+    --------------------------------------------#>
+    [void]comparevminforminput($inp){
+        #
+        Write-Host '.'
+        Write-Host 'compare [vminform] expected input to actual started'
+        #
+        $informoutpath = $this.outpath, $this.procedure -join '\'
+        $md_imageloc = $this.outpath, 'image_list.tmp' -join '\'
+        $algpath = $this.basepath, 'tmp_inform_data', 'Project_Development', $this.algorithm -join '\'
+        $informpath = '"'+"C:\Program Files\Akoya\inForm\" + $this.informver + "\inForm.exe"+'"'
+        $informprocesserrorlog =  $this.outpath, "informprocesserror.log" -join '\'
+        #
+        $processoutputlog =  $this.outpath + '\processoutput.log'
+        $arginput = ' -a',  $algpath, `
+                    '-o',  $informoutpath, `
+                    '-i', $md_imageloc -join ' '
+        #
+        [string]$userinformtask = $informpath,
+                                  '-NoNewWindow',
+                                  '-RedirectStandardError', $informprocesserrorlog,
+                                  '-PassThru',
+                                  '-ArgumentList',  $arginput,
+                                  '*>>', $processoutputlog -join ' '
+        #
+        $informtask = $inp.getinformtask()
+        #
+        if (!([regex]::escape($userinformtask) -eq [regex]::escape($informtask))){
+            Write-Host 'user defined and [vminform] defined tasks do not match:'  -foregroundColor Red
+            Write-Host 'user defined      :' [regex]::escape($userinformtask)'end'  -foregroundColor Red
+            Write-Host '[vminform] defined:' [regex]::escape($informtask)'end' -foregroundColor Red
+            Throw ('user defined and [vminform] defined tasks do not match')
+        }
+        Write-Host '[vminform] input matches -- finished'
+        #
+    }
     #
     [void]testruninform($inp){
         #
         Write-Host '.'
         Write-Host 'test run on inform started'
         #
-        while(($inp.err -le 5) -AND ($inp.err -ge 0)){
-            $inp.StartInForm()
-            $inp.WatchBatchInForm()
-            $inp.CheckErrors()
-            if (($inp.err -le 5) -and ($inp.err -gt 0)){
-                $inp.sample.warning("Task will restart. Attempt "+ $inp.err)
-            } elseif ($inp.err -gt 5){
-                Throw "Could not complete task after 5 attempts"
-            } elseif ($inp.err -eq -1){
-                $inp.sample.info("inForm Batch Process Finished Successfully")
-            }
-        }
+        #$usertask = '-a' + $this.algorithm
+        ##while(($inp.err -le 5) -AND ($inp.err -ge 0)){
+            #$inp.StartInForm()
+            #$inp.WatchBatchInForm()
+            #$inp.CheckErrors()
+            #if (($inp.err -le 5) -and ($inp.err -gt 0)){
+            #    $inp.sample.warning("Task will restart. Attempt "+ $inp.err)
+            #} elseif ($inp.err -gt 5){
+            #    Throw "Could not complete task after 5 attempts"
+            #} elseif ($inp.err -eq -1){
+            #    $inp.sample.info("inForm Batch Process Finished Successfully")
+            #}
+        ##}
         #
         Write-Host 'test run on inform finished'
         #
