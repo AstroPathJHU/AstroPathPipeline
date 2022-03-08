@@ -22,8 +22,10 @@
         $this.testapidfiles() | Out-Null
         $this.testapidfiles($tools)
         $this.testconfiginfo($tools)
+        $this.testcorrectioninfo($tools)
         $this.correctcohortsinfo($tools)
         $this.testcohortsinfo($tools)
+        $this.addbatchflatfieldexamples($tools)
         Write-Host '.'
         #
     }
@@ -129,6 +131,18 @@
         #
     }
     #
+    [void]testcorrectioninfo($tools){
+        $ids = $tools.ImportCorrectionModels($this.mpath)
+        #
+        Write-Host '    test models csv exists:' (test-path ($this.mpath + '\AstroPathCorrectionModels.csv'))
+        #
+        if (!$ids){
+            Throw 'correction models is empty!!'
+        }
+        Write-Host '    correction models file:'
+        Write-Host '    ' ($ids | Format-Table | Out-String)
+    }
+    #
     # the cohorts info file have to be relative to the 
     # particular branch which mean they also need to be 
     # dynamically updated
@@ -168,6 +182,27 @@
             $root = $r -replace ":", "$"
         }
         return $root
+    }
+    #
+    [void]addbatchflatfieldexamples($sampletracker){
+        #
+        $p2 = $sampletracker.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $micomp_data = $sampletracker.ImportCorrectionModels($sampletracker.mpath)
+        $newobj = [PSCustomObject]@{
+            SlideID = $sampletracker.slideid
+            Project = $sampletracker.project
+            Cohort = $sampletracker.cohort
+            BatchID = $sampletracker.batchid
+            FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
+            WarpingFile = 'None'
+        }
+        #
+        $micomp_data += $newobj
+        #
+        $micomp_data | Export-CSV $p2 -NoTypeInformation
+        $p3 = $sampletracker.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        $sampletracker.SetFile($p3, 'blah de blah')
     }
     #
 }

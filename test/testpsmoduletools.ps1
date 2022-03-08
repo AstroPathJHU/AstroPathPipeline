@@ -154,8 +154,6 @@
     #
     [void]removewarpoctetsdep($inp){
         #
-        Start-Sleep -s 2
-        #
         $inp.getslideidregex()
         $inp.batchslides | ForEach-Object{
             $des = $this.basepath, $_, 'im3', 'warping' -join '\'

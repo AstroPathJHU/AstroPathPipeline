@@ -44,9 +44,9 @@
         Write-Host '---------------------test ps [batchwarpkeys]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        $this.testpsbatchwarpkeysconstruction($task)
+        #$this.testpsbatchwarpkeysconstruction($task)
         $inp = batchwarpkeys $task  
-        $this.testprocessroot($inp)
+        #$this.testprocessroot($inp)
         $this.testwarpkeysinputbatch($inp, 'batch')
         $this.runpywarpkeysexpected($inp, 'batch')
         $this.testlogsexpected($inp, 'batch')
@@ -55,6 +55,7 @@
         $this.runpywarpkeysexpected($inp, 'all')
         $this.testlogsexpected($inp, 'all')
         $inp.sample.finish(($this.module+'-test'))
+        #
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -204,21 +205,23 @@
         $flatwpath = '\\' + $inp.sample.project_data.fwpath
         $this.addwarpoctetsdep($inp)
         if ($type -contains 'all'){
+            $inp.all = $true
             $slides = $this.slidelist
+            $wd = ''
         } else {
             $slides = '"M21_1"'
+            $wd = ' --workingdir', ($this.basepath + '\warping\Batch_'+ $this.batchid.PadLeft(2,'0')) -join ' '
         }
         #
         $task = $this.getmoduletask($inp)
-        $userpythontask = ('warpingcohort',
+        $userpythontask = (('warpingcohort',
             $this.basepath, 
             '--shardedim3root', $flatwpath,
             '--sampleregex', $slides,
             '--flatfield-file', ($this.mpath + '\flatfield\flatfield_'+$this.pybatchflatfieldtest+'.bin'),
             '--octets-only --noGPU --no-log --ignore-dependencies --allow-local-edits',
-            '--use-apiddef --project', $this.project.PadLeft(2,'0'),
-            '--workingdir', ($this.basepath + '\warping\Batch_'+ $this.batchid.PadLeft(2,'0'))
-        ) -join ' '
+            '--use-apiddef --project', $this.project.PadLeft(2,'0')
+        ) -join ' ') + $wd
         #
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($task[0]))){
             Write-Host 'user defined and [warpoctets] defined tasks do not match:'  -foregroundColor Red
@@ -239,9 +242,8 @@
         if ($type -contains 'all'){
             $inp.all = $true# uses all slide from the cohort, 
             #   output goes to the mpath\warping\octets folder
-        } else {
-            $inp.sample.createNewdirs(($inp.processloc+ '\octets'))
-        } 
+        }
+        $inp.sample.createNewdirs(($inp.processloc+ '\octets'))
         #
         $this.addwarpoctetsdep($inp)
         #
@@ -276,15 +278,14 @@
         Write-Host '    open log output'
         $logoutput = $inp.sample.GetContent($externallog)
         Write-Host '    test log output'
-        Write-Host '   '$logoutput
         #
         try {
             $inp.getexternallogs($externallog)
         } catch {
-            if ($type -contains 'batch' -and
+            if (
                 $logoutput -match ' 250 are needed to run all three sets of fit groups!'
             ){
-                Write-Host 'test run passed'
+                Write-Host '    test run passed'
             } else{
                 Write-Host '   '$logoutput
                 Throw $_.Exception.Message

@@ -572,8 +572,12 @@
                     $mess -notmatch 'START:')
             ){
                 #
-                $this.sample.message = ($_ -split ';')[3]
-                $this.sample.Writelog(4)
+                if (!$mess){
+                    $this.sample.error($_)                    
+                } else {
+                    $this.sample.message = $mess
+                    $this.sample.Writelog(4)
+                }
                 #
             }
         }

@@ -41,7 +41,7 @@
         $this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
         $this.testupdate($sampletracker, 'batchmicomp', 'warpoctets')
         $this.cleanup($sampletracker)
-        $this.addcorrectionfile($sampletracker)
+        $this.addbatchflatfieldexamples($sampletracker)
         Write-Host '.'
         #
     }
