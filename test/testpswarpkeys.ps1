@@ -49,7 +49,11 @@
         $this.testprocessroot($inp)
         $this.testwarpkeysinputbatch($inp, 'batch')
         $this.runpywarpkeysexpected($inp, 'batch')
-        $this.testlogsexpected($inp)
+        $this.testlogsexpected($inp, 'batch')
+        #
+        $this.testwarpkeysinputbatch($inp, 'all')
+        $this.runpywarpkeysexpected($inp, 'all')
+        $this.testlogsexpected($inp, 'all')
         $inp.sample.finish(($this.module+'-test'))
         Write-Host '.'
     }
@@ -262,7 +266,7 @@
     check that the log is parsed correctly when
     run with the correct input.
     --------------------------------------------#>
-    [void]testlogsexpected($inp){
+    [void]testlogsexpected($inp, $type){
         #
         Write-Host '.'
         Write-Host 'test py task started for [batchwarpkeys] LOG expected output started'
@@ -277,8 +281,14 @@
         try {
             $inp.getexternallogs($externallog)
         } catch {
-            Write-Host '   '$logoutput
-            Throw $_.Exception.Message
+            if ($type -contains 'batch' -and
+                $logoutput -match ' 250 are needed to run all three sets of fit groups!'
+            ){
+                Write-Host 'test run passed'
+            } else{
+                Write-Host '   '$logoutput
+                Throw $_.Exception.Message
+            }
         }
         #
         Write-Host 'test py task started for [batchwarpkeys] LOG expected output finished'
