@@ -151,8 +151,8 @@
         $paths_data = $tools.OpencsvFileConfirm($paths_csv_template)
         $paths_data[0].Dpath = $p 
         $paths_data[1].Dpath = $p + '\data'
-        $paths_data[0].FWpath = $p  + '\flatw'
-        $paths_data[1].FWpath = $p  + '\data\flatw'
+        $paths_data[0].FWpath = ($p  + '\flatw') -replace '\\\\', ''
+        $paths_data[1].FWpath = ($p  + '\data\flatw') -replace '\\\\', ''
         $paths_data | Export-CSV $paths_csv_file
         #
         $internal_apids = $tools.ImportCohortsInfo($this.mpath)

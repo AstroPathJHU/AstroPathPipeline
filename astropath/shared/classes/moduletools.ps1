@@ -623,11 +623,6 @@
     #
     [void]getslideidregex(){
         #
-        $this.sample.info('selecting samples for sample regex')
-        #
-        $nbatchslides = @()
-        $sid = $this.sample.slideid
-        #
         if ($this.all){
             $aslides = $this.sample.importslideids($this.sample.mpath)
             $aslides = $aslides | where-object {$_.Project -match $this.sample.project}
@@ -636,11 +631,28 @@
             $slides = $this.sample.batchslides.slideid
         }
         #
-        foreach ($slide in $slides){
-            $this.sample.slideid = $slide
-            if ($this.sample.testwarpoctetsfiles()){
-                $nbatchslides += $slide
+        $this.batchslides = $slides
+        #
+    }
+    #
+    [void]getslideidregex($cmodule){
+        #
+        $this.sample.info('selecting samples for sample regex')
+        #
+        $nbatchslides = @()
+        $sid = $this.sample.slideid
+        #
+        $this.getslideidregex()
+        #
+        if (@('batchwarpkeys', 'batchwarpfits') -match $cmodule){
+            foreach ($slide in $this.batchslides){
+                $this.sample.slideid = $slide
+                if ($this.sample.testwarpoctetsfiles()){
+                    $nbatchslides += $slide
+                }
             }
+        } else {
+            $nbatchslides = $this.batchslides
         }
         #
         $this.sample.slideid = $sid

@@ -101,7 +101,7 @@ class sampledef : sharedtools{
     [void]ParseAPIDdefbatch([string]$mbatchid, [PSCustomObject]$slides){
         #
         if ($mbatchid[0] -match '0'){
-            $mbatchid = $mbatchid[1]
+            [string]$mbatchid = $mbatchid[1]
         }
         #
         $batch = $slides | 
@@ -265,12 +265,15 @@ class sampledef : sharedtools{
     [string]pybatchflatfield(){
         $ids = $this.ImportCorrectionModels($this.mpath)
         if ($this.slideid -notcontains $this.batchid){
-            $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
+            $file = ($ids | Where-Object { $_.slideid `
+                    -contains $this.slideid}).FlatfieldVersion
         } else  {
             $file1 = ($ids | Where-Object { $_.BatchID.padleft(2, '0') `
                 -contains $this.batchid}).FlatfieldVersion
-           if ($file1){
+           if ($file1.Count -ne 1){
                 $file = $file1[0]
+           } elseif ($file1.Count -eq 1){
+               $file = $file1
            } else {
                $file = ''
            }
