@@ -252,8 +252,6 @@ Class testpsmeanimage {
         $inp.sample.copy($des, $sor, '*')
         $this.comparepaths($des, $sor, $inp)
         #
-        $inp.sample.removedir($des)
-        #
         Write-Host 'test cleanup base method finished'
 
     }
@@ -741,6 +739,12 @@ Class testpsmeanimage {
         }
         Write-Host '    cleanup method complete'
         Write-Host '    delete the testing_meanimage folder'
+        #
+        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        #
+        $inp.sample.copy($des, $sor, '*')
+        $this.comparepaths($des, $sor, $inp)
         #
         $inp.sample.removedir($this.processloc)
         #

@@ -15,7 +15,6 @@
     [string]$package = 'astropath'
     [array]$modules
     [switch]$checkpyenvswitch = $false
-    [PSCustomObject]$configfile
     [switch]$teststatus = $false
     #
     sharedtools(){}
@@ -79,11 +78,8 @@
     ----------------------------------------- #>
     [string]GetVersion($mpath, $module, $project){
         #
-        if (!$this.configfile){
-            $this.configfile = $this.ImportConfigInfo($mpath)
-        }
-        #
-        $projectconfig = $this.configfile | 
+        $this.ImportConfigInfo($mpath) | Out-Null
+        $projectconfig = $this.config_data | 
             Where-Object {$_.Project -eq $project}
         if (!$projectconfig){
             Throw ('Project not found for project number: '  + $project)
@@ -105,11 +101,9 @@
     #
     [string]GetVersion($mpath, $module, $project, $short){
         #
-        if (!$this.configfile){
-            $this.configfile = $this.ImportConfigInfo($mpath)
-        }
+        $this.ImportConfigInfo($mpath) | Out-Null
         #
-        $projectconfig = $this.configfile | 
+        $projectconfig = $this.config_data | 
             Where-Object {$_.Project -eq $project}
         if (!$projectconfig){
             Throw ('Project not found for project number: '  + $project)
@@ -424,6 +418,25 @@
         #
     }
     <# -----------------------------------------
+     TaskFileWatcher
+     Create a file watcher 
+     ------------------------------------------
+     Input: 
+        -file: full file path
+     ------------------------------------------
+     Usage: $this.TaskFileWatcher(file, slideid, module)
+    ----------------------------------------- #>
+    [string]TaskFileWatcher($file, $slideid, $module){
+        #
+        $fpath = Split-Path $file
+        $fname = Split-Path $file -Leaf
+        $SI = $module, $slideid -join '-'
+        #
+        $SI = $this.FileWatcher($fpath, $fname, $SI)
+        return $SI
+        #
+    }
+    <# -----------------------------------------
      FileWatcher
      Create a file watcher 
      ------------------------------------------
@@ -441,16 +454,7 @@
         return $SI
         #
     }
-    <# -----------------------------------------
-     FileWatcher
-     Create a file watcher 
-     ------------------------------------------
-     Input: 
-        -fpath: file path
-        -fname: file name
-     ------------------------------------------
-     Usage: $this.FileWatcher(fpath, fname)
-    ----------------------------------------- #>
+    #
     [string]FileWatcher($fpath, $fname){
         #
         $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
@@ -462,6 +466,20 @@
             -SourceIdentifier ($fpath + '\' + $fname) | Out-Null
         #
         return ($fpath + '\' + $fname)
+        #
+    }
+    #
+    [string]FileWatcher($fpath, $fname, $SI){
+        #
+        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+        $newwatcher.Filter = $fname
+        $newwatcher.NotifyFilter = 'LastWrite'
+        #
+        Register-ObjectEvent $newwatcher `
+            -EventName Changed `
+            -SourceIdentifier $SI | Out-Null
+        #
+        return $SI
         #
     }
     <# -----------------------------------------

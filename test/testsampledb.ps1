@@ -46,7 +46,6 @@
         #                
     }
     #
-    [void]
 }
 #
 # launch test and exit if no error found

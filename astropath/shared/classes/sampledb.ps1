@@ -59,7 +59,7 @@ class sampledb : sharedtools {
             #
             $p = [math]::Round(100 * ($c / $ctotal))
             Write-Progress -Activity "Checking slides" `
-                            -Status "$p% Complete:" `
+                            -Status ("$p% Complete: Slide " +  $slide.slideid)`
                             -PercentComplete $p `
                             -CurrentOperation $slide.slideid
             $c += 1 

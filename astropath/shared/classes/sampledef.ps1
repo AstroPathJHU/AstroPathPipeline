@@ -12,7 +12,6 @@ class sampledef : sharedtools{
     [string]$BatchID
     [string]$basepath
     [PSCustomObject]$project_data
-    [PSCustomObject]$full_project_dat
     [PSCustomObject]$batchslides
     [string]$mainlog
     [string]$slidelog
@@ -128,9 +127,7 @@ class sampledef : sharedtools{
     #
     [void]defbase(){
         #
-        if (!$this.full_project_dat){
-            $this.full_project_dat = $this.importcohortsinfo($this.mpath)
-        }
+        $this.importcohortsinfo($this.mpath) | Out-Null
         #
         $project_dat = $this.full_project_dat| 
                     Where-Object -FilterScript {$_.Project -eq $this.project}

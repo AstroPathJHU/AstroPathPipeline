@@ -34,7 +34,7 @@ class sampletracker : dependencies {
         #
         $this.modules | ForEach-Object {
             $this.deflogpaths($_)
-            #$this.FileWatcher($this.moduleinfo.($_).slidelog)
+            #$this.FileWatcher($this.moduleinfo.($_).mainlog, $this.slideid, $_)
             $this.getlogstatus($_)
         }
         #

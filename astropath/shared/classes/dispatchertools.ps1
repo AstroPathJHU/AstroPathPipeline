@@ -113,7 +113,7 @@ class DispatcherTools : queue {
         #
         try{
             if ($this.module -match 'batch'){
-                $log = [mylogger]::new($this.mpath, $this.module, $ID[1], $ID[0])
+                $log = [mylogger]::new($this.mpath, $this.module, $ID[1], ($ID[0] -replace '"', ''))
             } else {
                 $log = [mylogger]::new($this.mpath, $this.module, $ID[1])
             }
