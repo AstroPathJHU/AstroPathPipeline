@@ -7,7 +7,7 @@ from ...utilities.tableio import writetable
 from .geomcellsample import CellGeomLoad, PolygonFinder
 
 class MiniField(units.ThingWithPscale):
-  def __init__(self, hpfid, tifffilename, shift):
+  def __init__(self, hpfid, tifffilename, pscale, shift):
     self.hpfid = hpfid
     self.tifffile = tifffilename
     with tifffile.TiffFile(self.tifffile) as f:
@@ -16,21 +16,19 @@ class MiniField(units.ThingWithPscale):
       positions = set()
       for page in f.pages:
         xresolution = page.tags["XResolution"].value
-        xresolution = fractions.Fraction(*xresolution) / 10000
+        xresolution = float(fractions.Fraction(*xresolution) / 10000)
+        yresolution = page.tags["YResolution"].value
+        yresolution = float(fractions.Fraction(*yresolution) / 10000)
+        np.testing.assert_allclose([pscale, pscale], [xresolution, yresolution], atol=1e-10, rtol=0)
         xposition = page.tags["XPosition"].value
         xposition = float(fractions.Fraction(*xposition))
-        xposition = units.Distance(centimeters=xposition, pscale=xresolution)
-        yresolution = page.tags["YResolution"].value
-        yresolution = fractions.Fraction(*yresolution) / 10000
+        xposition = units.Distance(centimeters=xposition, pscale=pscale)
         yposition = page.tags["YPosition"].value
         yposition = float(fractions.Fraction(*yposition))
-        yposition = units.Distance(centimeters=yposition, pscale=yresolution)
-        pscales.add(xresolution)
-        pscales.add(yresolution)
+        yposition = units.Distance(centimeters=yposition, pscale=pscale)
         positions.add((xposition, yposition))
         shapes.add(page.shape)
 
-      pscale, = pscales
       shape, = shapes
       shape = np.array(shape) * units.onepixel(pscale)
       height, width = shape
@@ -133,19 +131,22 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
   @methodtools.lru_cache()
   @property
   def fields(self):
-    return [MiniField(hpfid, tifffile, shift=self.shiftqptiff) for hpfid, tifffile in enumerate(sorted(self.tifffolder.glob("*_binary_seg_maps.tif")), start=1)]
+    return [MiniField(hpfid, tifffile, pscale=self.pscale, shift=self.shiftqptiff) for hpfid, tifffile in enumerate(sorted(self.tifffolder.glob("*_binary_seg_maps.tif")), start=1)]
 
   @methodtools.lru_cache()
   @property
+  def constantsdict(self):
+    return constantsdict(self.dbloadfolder/"constants.csv")
+    
+  @property
   def shiftqptiff(self):
-    constants = constantsdict(self.dbloadfolder/"constants.csv")
-    return np.array([constants["shiftx"], constants["shifty"]])
+    constants = self.constantsdict
+    return np.array([constants["xshift"], constants["yshift"]])
 
   @methodtools.lru_cache()
   @property
   def pscale(self):
-    pscale, = {f.pscale for f in self.fields}
-    return pscale
+    return float(self.constantsdict["pscale"])
 
   def run(self, minarea=None, **kwargs):
     if minarea is None:
