@@ -32,7 +32,7 @@
         Write-Host '---------------------test ps [sampletracker]---------------------'
         $this.importmodule()
         $this.testsampletrackerconstructors()
-        $sampletracker = sampletracker -mpath $this.mpath -slideid $this.slideid
+        $sampletracker = sampletracker -mpath $this.mpath
         $this.cleanup($sampletracker)
         $sampletracker.defmodulestatus()
         $this.testmodules($sampletracker)
@@ -58,10 +58,10 @@
         Write-Host 'test [sampletracker] constructors started'
         #
         try{
-            sampletracker -mpath $this.mpath -slideid $this.slideid | Out-Null
+            sampletracker -mpath $this.mpath | Out-Null
             # $sampletracker.removewatchers()
         } catch {
-            Throw ('[sampletracker] construction with [2] input(s) failed. ' + $_.Exception.Message)
+            Throw ('[sampletracker] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
         #
         Write-Host 'test [sampletracker] constructors finished'
