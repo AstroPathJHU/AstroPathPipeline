@@ -22,10 +22,10 @@
         $this.testapidfiles() | Out-Null
         $this.testapidfiles($tools)
         $this.testconfiginfo($tools)
+        $this.addbatchflatfieldexamples($tools)
         $this.testcorrectioninfo($tools)
         $this.correctcohortsinfo($tools)
         $this.testcohortsinfo($tools)
-        $this.addbatchflatfieldexamples($tools)
         Write-Host '.'
         #
     }
