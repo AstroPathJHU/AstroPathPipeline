@@ -1,40 +1,38 @@
 import fractions, job_lock, methodtools, multiprocessing as mp, numpy as np, pathlib, skimage.measure, tifffile
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement, ParallelArgumentParser
+from ...shared.csvclasses import constantsdict
 from ...shared.logging import printlogger, ThingWithLogger
 from ...utilities import units
 from ...utilities.tableio import writetable
 from .geomcellsample import CellGeomLoad, PolygonFinder
 
 class MiniField(units.ThingWithPscale):
-  def __init__(self, hpfid, tifffilename):
+  def __init__(self, hpfid, tifffilename, pscale, shift):
     self.hpfid = hpfid
     self.tifffile = tifffilename
     with tifffile.TiffFile(self.tifffile) as f:
-      pscales = set()
       shapes = set()
       positions = set()
       for page in f.pages:
         xresolution = page.tags["XResolution"].value
-        xresolution = fractions.Fraction(*xresolution) / 10000
+        xresolution = float(fractions.Fraction(*xresolution) / 10000)
+        yresolution = page.tags["YResolution"].value
+        yresolution = float(fractions.Fraction(*yresolution) / 10000)
+        np.testing.assert_allclose([pscale, pscale], [xresolution, yresolution], atol=1e-10, rtol=0)
         xposition = page.tags["XPosition"].value
         xposition = float(fractions.Fraction(*xposition))
-        xposition = units.Distance(centimeters=xposition, pscale=xresolution)
-        yresolution = page.tags["YResolution"].value
-        yresolution = fractions.Fraction(*yresolution) / 10000
+        xposition = units.Distance(centimeters=xposition, pscale=pscale)
         yposition = page.tags["YPosition"].value
         yposition = float(fractions.Fraction(*yposition))
-        yposition = units.Distance(centimeters=yposition, pscale=yresolution)
-        pscales.add(xresolution)
-        pscales.add(yresolution)
+        yposition = units.Distance(centimeters=yposition, pscale=pscale)
         positions.add((xposition, yposition))
         shapes.add(page.shape)
 
-      pscale, = pscales
       shape, = shapes
       shape = np.array(shape) * units.onepixel(pscale)
       height, width = shape
       position, = positions
-      position = np.array(position)
+      position = np.array(position) + shift
     self.__pscale = pscale
     self.__width = width
     self.__height = height
@@ -65,11 +63,12 @@ class MiniField(units.ThingWithPscale):
     return np.array([self.py, self.px, self.py+self.height, self.px+self.width])
 
 class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser, ThingWithLogger, units.ThingWithPscale):
-  def __init__(self, *, tifffolder, logfolder, outputfolder, njobs=None, **kwargs):
+  def __init__(self, *, tifffolder, logfolder, outputfolder, dbloadfolder, njobs=None, **kwargs):
     super().__init__(**kwargs)
     self.tifffolder = pathlib.Path(tifffolder)
     self.logfolder = pathlib.Path(logfolder)
     self.outputfolder = pathlib.Path(outputfolder)
+    self.dbloadfolder = pathlib.Path(dbloadfolder)
     self.__njobs = njobs
 
   @property
@@ -131,13 +130,22 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
   @methodtools.lru_cache()
   @property
   def fields(self):
-    return [MiniField(hpfid, tifffile) for hpfid, tifffile in enumerate(sorted(self.tifffolder.glob("*_binary_seg_maps.tif")), start=1)]
+    return [MiniField(hpfid, tifffile, pscale=self.pscale, shift=self.shiftqptiff) for hpfid, tifffile in enumerate(sorted(self.tifffolder.glob("*_binary_seg_maps.tif")), start=1)]
+
+  @methodtools.lru_cache()
+  @property
+  def constantsdict(self):
+    return constantsdict(self.dbloadfolder/"constants.csv")
+    
+  @property
+  def shiftqptiff(self):
+    constants = self.constantsdict
+    return np.array([constants["xshift"], constants["yshift"]])
 
   @methodtools.lru_cache()
   @property
   def pscale(self):
-    pscale, = {f.pscale for f in self.fields}
-    return pscale
+    return float(self.constantsdict["pscale"])
 
   def run(self, minarea=None, **kwargs):
     if minarea is None:
@@ -177,6 +185,7 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "tifffolder": parsed_args_dict.pop("tiff_folder"),
       "outputfolder": parsed_args_dict.pop("output_folder"),
+      "dbloadfolder": parsed_args_dict.pop("dbload_folder"),
       "logfolder": parsed_args_dict.pop("log_folder"),
     }
 
@@ -185,6 +194,7 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--tiff-folder", type=pathlib.Path, required=True, help="Folder with the segmented tiffs")
     p.add_argument("--output-folder", type=pathlib.Path, required=True, help="Folder for the output csvs")
+    p.add_argument("--dbload-folder", type=pathlib.Path, required=True, help="Folder with the dbload csvs")
     p.add_argument("--log-folder", type=pathlib.Path, required=True, help="Folder for the log files")
     return p
 

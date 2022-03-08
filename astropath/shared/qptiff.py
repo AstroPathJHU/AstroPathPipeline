@@ -1,4 +1,4 @@
-import collections, fractions, methodtools, numpy as np, pathlib, tifffile
+import collections, fractions, jxmlease, methodtools, numpy as np, pathlib, tifffile
 
 from ..utilities import units
 from .imageloader import ImageLoaderQPTiffMultiLayer, ImageLoaderQPTiffSingleLayer
@@ -6,7 +6,7 @@ from .imageloader import ImageLoaderQPTiffMultiLayer, ImageLoaderQPTiffSingleLay
 class QPTiffZoomLevel(collections.abc.Sequence, units.ThingWithQpscale):
   """
   Class that holds a zoom level of a qptiff object
-  You can iterate over the 5 component image layers
+  You can iterate over the component image layers
     (which correspond to the broadband filters)
   """
   def __init__(self, *, filename, pages, pageindices):
@@ -21,7 +21,7 @@ class QPTiffZoomLevel(collections.abc.Sequence, units.ThingWithQpscale):
   @property
   def tags(self):
     """
-    The tiff tags that are common to all 5 pages.
+    The tiff tags that are common to all pages.
     """
     result = {}
     for key in self[0].tags.keys():
@@ -148,6 +148,19 @@ class QPTiffZoomLevel(collections.abc.Sequence, units.ThingWithQpscale):
   def using_image(self, *, layers=None, layer=None):
     return self.imageloader(layers=layers, layer=layer).using_image()
 
+  @staticmethod
+  def __camerashapepixels(page):
+    xml = jxmlease.parse(page.tags["ImageDescription"].value)
+    roi = xml["PerkinElmer-QPI-ImageDescription"]["CameraSettings"]["ROI"]
+    return int(str(roi["Width"])), int(str(roi["Height"]))
+
+  @methodtools.lru_cache()
+  @property
+  def camerashape(self):
+    shape, = {self.__camerashapepixels(page) for page in self}
+    return np.array(shape) * self.oneqppixel
+
+
 class QPTiff(tifffile.TiffFile, units.ThingWithApscale):
   """
   Class that handles a qptiff file
@@ -155,7 +168,7 @@ class QPTiff(tifffile.TiffFile, units.ThingWithApscale):
   @property
   def zoomlevels(self):
     """
-    Gives a QPTiffZoomLevel for each 5 pages in the qptiff
+    Gives a QPTiffZoomLevel for each set of pages in the qptiff
     """
     pages = []
     pageindices = []
