@@ -105,6 +105,8 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
         "binningy": "pixels",
         "xshift": "microns",
         "yshift": "microns",
+        "cwidth": "pixels",
+        "cheight": "pixels",
       }[name]
     if description is None:
       description = {
@@ -127,6 +129,8 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
         "binningy": "the number of adjacent pixels coadded",
         "xshift": "x shift of the coordinate system",
         "yshift": "y shift of the coordinate system",
+        "cwidth": "camera field width",
+        "cheight": "camera field height",
       }[name]
     return super().transforminitargs(name=name, value=value, unit=unit, description=description, **kwargs)
 

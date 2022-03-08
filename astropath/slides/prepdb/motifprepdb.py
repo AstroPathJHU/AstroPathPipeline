@@ -24,27 +24,31 @@ class MotifPrepDb(ArgumentParserWithVersionRequirement, ThingWithLogger, units.T
   @property
   def qptiffinfo(self):
     with QPTiff(self.qptifffile) as qptiff:
-      return (
-        qptiff.apscale,
-        None,#qptiff.qpscale,
-        qptiff.position,
-        len(qptiff.zoomlevels[0])
-      )
+      return {
+        "apscale": qptiff.apscale,
+        "qpscale": None,
+        "position": qptiff.position,
+        "nlayers": len(qptiff.zoomlevels[0]),
+        "camerashape": qptiff.zoomlevels[0].camerashape,
+      }
   @property
   def pscale(self):
-    return self.qptiffinfo[0]
+    return self.qptiffinfo["apscale"]
   @property
   def apscale(self):
-    return self.qptiffinfo[0]
+    return self.qptiffinfo["apscale"]
   @property
   def qpscale(self):
-    return self.qptiffinfo[1]
+    return self.qptiffinfo["qpscale"]
   @property
   def qptiffposition(self):
-    return self.qptiffinfo[2]
+    return self.qptiffinfo["position"]
   @property
   def flayers(self):
-    return self.qptiffinfo[3]
+    return self.qptiffinfo["nlayers"]
+  @property
+  def camerashape(self):
+    return self.qptiffinfo["camerashape"]
   @methodtools.lru_cache()
   @property
   def HPFsize(self):
@@ -101,6 +105,16 @@ class MotifPrepDb(ArgumentParserWithVersionRequirement, ThingWithLogger, units.T
       #  value=self.qpscale,
       #  **pscales,
       #),
+      Constant(
+        name='cwidth',
+        value=self.camerashape[0],
+        **pscales,
+      ),
+      Constant(
+        name='cheight',
+        value=self.camerashape[1],
+        **pscales,
+      ),
       Constant(
         name='apscale',
         value=self.apscale,
