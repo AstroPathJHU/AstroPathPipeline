@@ -178,30 +178,13 @@ class ImageLoaderIm3SingleLayer(ImageLoaderIm3Base):
   def imageslicefrominput(self):
     return slice(None), slice(None)
 
-class ImageLoaderTiff(ImageLoaderBase):
-  def __init__(self, *args, filename, layers, **kwargs):
+class ImageLoaderTiffBase(ImageLoaderBase) :
+  def __init__(self, *args, filename, **kwargs):
     super().__init__(*args, **kwargs)
     self.__filename = filename
-    self.__layers = layers
-
+  
   @property
   def filename(self): return self.__filename
-  @property
-  def layers(self): return self.__layers
-
-  def getimage(self):
-    with tifffile.TiffFile(self.filename) as f:
-      pages = f.pages
-      shape, dtype = self.checktiffpages(pages)
-
-      #make the destination array
-      image = np.empty(shape=shape+(len(self.__layers),), dtype=dtype)
-
-      #load the desired layers
-      for i, layer in enumerate(self.layers):
-        image[:,:,i] = pages[layer-1].asarray()
-
-      return image
 
   def checktiffpages(self, pages):
     if not pages:
@@ -219,6 +202,39 @@ class ImageLoaderTiff(ImageLoaderBase):
       raise ValueError(f"Tiff file {self.filename} has pages with different dtypes: {dtypes}")
 
     return shape, dtype
+
+class ImageLoaderHasSingleLayerTiff(ImageLoaderTiffBase) :
+  def getimage(self):
+    with tifffile.TiffFile(self.filename) as f:
+      pages = f.pages
+      shape, dtype = self.checktiffpages(pages)
+      #make the destination array
+      image = np.empty(shape=shape, dtype=dtype)
+      #load the single layer
+      image = pages[0].asarray()
+      return image
+
+class ImageLoaderTiff(ImageLoaderTiffBase):
+  def __init__(self, *args, layers, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__layers = layers
+
+  @property
+  def layers(self): return self.__layers
+
+  def getimage(self):
+    with tifffile.TiffFile(self.filename) as f:
+      pages = f.pages
+      shape, dtype = self.checktiffpages(pages)
+
+      #make the destination array
+      image = np.empty(shape=shape+(len(self.__layers),), dtype=dtype)
+
+      #load the desired layers
+      for i, layer in enumerate(self.layers):
+        image[:,:,i] = pages[layer-1].asarray()
+
+      return image
 
 class ImageLoaderTiffSingleLayer(ImageLoaderTiff):
   def __init__(self, *args, layer, **kwargs):
@@ -275,11 +291,10 @@ class ImageLoaderSegmentedComponentTiffMultiLayer(ImageLoaderComponentTiffBase):
   def pagegroupslices(self):
     return slice(0, self.nlayers), slice(self.nlayers, self.nlayers+1), slice(self.nlayers+1, self.nlayers+1+self.nsegmentations*2)
 
+class ImageLoaderQPTiffMultiLayer(ImageLoaderTiff):
+  def checktiffpages(self, pages):
+    return super().checktiffpages(pages=[pages[layer-1] for layer in self.layers])
+
 class ImageLoaderComponentTiffSingleLayer(ImageLoaderComponentTiffMultiLayer, ImageLoaderTiffSingleLayer): pass
 class ImageLoaderSegmentedComponentTiffSingleLayer(ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderTiffSingleLayer): pass
-
-class ImageLoaderProvideImage(ImageLoaderBase):
-  def __init__(self, *args, image, **kwargs):
-    self.__image = image
-  def getimage(self):
-    return self.__image
+class ImageLoaderQPTiffSingleLayer(ImageLoaderQPTiffMultiLayer, ImageLoaderTiffSingleLayer): pass

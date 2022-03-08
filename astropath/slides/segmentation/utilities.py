@@ -149,3 +149,16 @@ def run_deepcell_nuclear_segmentation(im,app,pscale,segmented_file_path) :
     output_img[boundaries] = 1
     np.savez_compressed(segmented_file_path,output_img)
     assert segmented_file_path.is_file()
+
+def run_mesmer_segmentation(batch_ims,app,pscale,batch_segmented_file_paths) :
+    """
+    Run Mesmer whole-cell and nuclear segmentationss for a given batch of images 
+    with a given application and write out the output
+    """
+    labeled_batch_ims = app.predict(batch_ims,image_mpp=1./pscale,compartment='both')
+    for bi in range(batch_ims.shape[0]) :
+        labeled_img = labeled_batch_ims[bi,:,:,:]
+        np.savez_compressed(batch_segmented_file_paths[bi],labeled_img)
+    for bi in range(batch_ims.shape[0]) :
+        assert batch_segmented_file_paths[bi].is_file()
+    pass

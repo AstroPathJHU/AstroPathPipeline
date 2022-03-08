@@ -184,16 +184,16 @@
         return $root
     }
     #
-    [void]addbatchflatfieldexamples($sampletracker){
+    [void]addbatchflatfieldexamples($tools){
         #
-        $p2 = $sampletracker.mpath + '\AstroPathCorrectionModels.csv'
+        $p2 = $tools.mpath + '\AstroPathCorrectionModels.csv'
         #
-        $micomp_data = $sampletracker.ImportCorrectionModels($sampletracker.mpath)
+        $micomp_data = $tools.ImportCorrectionModels($tools.mpath)
         $newobj = [PSCustomObject]@{
-            SlideID = $sampletracker.slideid
-            Project = $sampletracker.project
-            Cohort = $sampletracker.cohort
-            BatchID = $sampletracker.batchid
+            SlideID = $tools.slideid
+            Project = $tools.project
+            Cohort = $tools.cohort
+            BatchID = $tools.batchid
             FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
             WarpingFile = 'None'
         }
@@ -201,8 +201,8 @@
         $micomp_data += $newobj
         #
         $micomp_data | Export-CSV $p2 -NoTypeInformation
-        $p3 = $sampletracker.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
-        $sampletracker.SetFile($p3, 'blah de blah')
+        $p3 = $tools.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        $tools.SetFile($p3, 'blah de blah')
     }
     #
 }
