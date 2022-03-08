@@ -1,6 +1,6 @@
 import collections, errno, methodtools, numpy as np, os, pathlib, PIL, pyvips, re, shutil
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement
-from ...shaed.csvclasses import constantsdict
+from ...shared.csvclasses import constantsdict
 from ...shared.logging import printlogger, ThingWithLogger
 from ...shared.qptiff import QPTiff
 from ...utilities import units
@@ -49,7 +49,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
   @property
   def shiftqptiff(self):
     constants = constantsdict(self.dbloadfolder/"constants.csv")
-    return np.array([constants["shiftx"], constants["shifty"]])
+    return np.array([constants["xshift"], constants["yshift"]])
 
   def deepzoom_vips(self, layer):
     """
@@ -72,7 +72,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
 
     #open the qptiff in vips, shift, and save the deepzoom
     qptiffimage = pyvips.Image.tiffload(os.fspath(self.qptifffile), page=layer-1, n=1)
-    shift = floattoint(np.round((self.qptiffposition / self.onepixel).astype(float))) + self.shiftqptiff
+    shift = floattoint(np.round(((self.qptiffposition + self.shiftqptiff) / self.onepixel).astype(float)))
     np.testing.assert_array_less(0, shift)
     shiftx, shifty = shift
     shifted = qptiffimage.embed(shiftx, shifty, qptiffimage.width+shiftx, qptiffimage.height+shifty)
