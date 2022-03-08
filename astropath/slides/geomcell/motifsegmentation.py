@@ -1,12 +1,13 @@
 import fractions, job_lock, methodtools, multiprocessing as mp, numpy as np, pathlib, skimage.measure, tifffile
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement, ParallelArgumentParser
+from ...shared.csvclasses import constantsdict
 from ...shared.logging import printlogger, ThingWithLogger
 from ...utilities import units
 from ...utilities.tableio import writetable
 from .geomcellsample import CellGeomLoad, PolygonFinder
 
 class MiniField(units.ThingWithPscale):
-  def __init__(self, hpfid, tifffilename):
+  def __init__(self, hpfid, tifffilename, shift):
     self.hpfid = hpfid
     self.tifffile = tifffilename
     with tifffile.TiffFile(self.tifffile) as f:
@@ -34,7 +35,7 @@ class MiniField(units.ThingWithPscale):
       shape = np.array(shape) * units.onepixel(pscale)
       height, width = shape
       position, = positions
-      position = np.array(position)
+      position = np.array(position) + shift
     self.__pscale = pscale
     self.__width = width
     self.__height = height
@@ -65,11 +66,12 @@ class MiniField(units.ThingWithPscale):
     return np.array([self.py, self.px, self.py+self.height, self.px+self.width])
 
 class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser, ThingWithLogger, units.ThingWithPscale):
-  def __init__(self, *, tifffolder, logfolder, outputfolder, njobs=None, **kwargs):
+  def __init__(self, *, tifffolder, logfolder, outputfolder, dbloadfolder, njobs=None, **kwargs):
     super().__init__(**kwargs)
     self.tifffolder = pathlib.Path(tifffolder)
     self.logfolder = pathlib.Path(logfolder)
     self.outputfolder = pathlib.Path(outputfolder)
+    self.dbloadfolder = pathlib.Path(dbloadfolder)
     self.__njobs = njobs
 
   @property
@@ -131,7 +133,13 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
   @methodtools.lru_cache()
   @property
   def fields(self):
-    return [MiniField(hpfid, tifffile) for hpfid, tifffile in enumerate(sorted(self.tifffolder.glob("*_binary_seg_maps.tif")), start=1)]
+    return [MiniField(hpfid, tifffile, shift=self.shiftqptiff) for hpfid, tifffile in enumerate(sorted(self.tifffolder.glob("*_binary_seg_maps.tif")), start=1)]
+
+  @methodtools.lru_cache()
+  @property
+  def shiftqptiff(self):
+    constants = constantsdict(self.dbloadfolder/"constants.csv")
+    return np.array([constants["shiftx"], constants["shifty"]])
 
   @methodtools.lru_cache()
   @property
@@ -177,6 +185,7 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "tifffolder": parsed_args_dict.pop("tiff_folder"),
       "outputfolder": parsed_args_dict.pop("output_folder"),
+      "dbloadfolder": parsed_args_dict.pop("dbload_folder"),
       "logfolder": parsed_args_dict.pop("log_folder"),
     }
 
@@ -185,6 +194,7 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--tiff-folder", type=pathlib.Path, required=True, help="Folder with the segmented tiffs")
     p.add_argument("--output-folder", type=pathlib.Path, required=True, help="Folder for the output csvs")
+    p.add_argument("--dbload-folder", type=pathlib.Path, required=True, help="Folder with the dbload csvs")
     p.add_argument("--log-folder", type=pathlib.Path, required=True, help="Folder for the log files")
     return p
 

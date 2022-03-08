@@ -103,6 +103,8 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
         "gainfactor": "",
         "binningx": "pixels",
         "binningy": "pixels",
+        "xshift": "microns",
+        "yshift": "microns",
       }[name]
     if description is None:
       description = {
@@ -123,6 +125,8 @@ class Constant(DataClassWithDistances, units.ThingWithPscale, units.ThingWithAps
         "gainfactor": "the gain of the A/D amplifier for the im3 files",
         "binningx": "the number of adjacent pixels coadded",
         "binningy": "the number of adjacent pixels coadded",
+        "xshift": "x shift of the coordinate system",
+        "yshift": "y shift of the coordinate system",
       }[name]
     return super().transforminitargs(name=name, value=value, unit=unit, description=description, **kwargs)
 

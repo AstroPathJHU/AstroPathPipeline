@@ -1,4 +1,4 @@
-import methodtools, pathlib, tifffile
+import methodtools, numpy as np, pathlib, tifffile
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement
 from ...shared.csvclasses import Constant
 from ...shared.logging import printlogger, ThingWithLogger
@@ -7,12 +7,18 @@ from ...utilities import units
 from ...utilities.tableio import writetable
 
 class MotifPrepDb(ArgumentParserWithVersionRequirement, ThingWithLogger, units.ThingWithPscale, units.ThingWithApscale, units.ThingWithQpscale):
-  def __init__(self, *, qptifffile, dbloadfolder, tifffolder, logfolder, **kwargs):
+  def __init__(self, *, qptifffile, dbloadfolder, tifffolder, logfolder, shiftqptiffpixels, **kwargs):
     super().__init__(**kwargs)
     self.qptifffile = pathlib.Path(qptifffile)
     self.dbloadfolder = pathlib.Path(dbloadfolder)
     self.tifffolder = pathlib.Path(tifffolder)
     self.logfolder = pathlib.Path(logfolder)
+    self.shiftqptiffpixels = np.array(shiftqptiffpixels)
+    np.testing.assert_array_equal(self.shiftqptiffpixels.shape, [2])
+
+  @property
+  def shiftqptiff(self):
+    return self.shiftqptiffpixels * self.onepixel
 
   @methodtools.lru_cache()
   @property
@@ -80,6 +86,16 @@ class MotifPrepDb(ArgumentParserWithVersionRequirement, ThingWithLogger, units.T
         value=self.qptiffposition[1],
         **pscales,
       ),
+      Constant(
+        name='xshift',
+        value=self.shiftqptiff[0],
+        **pscales,
+      ),
+      Constant(
+        name='yshift',
+        value=self.shiftqptiff[1],
+        **pscales,
+      ),
       #Constant(
       #  name='qpscale',
       #  value=self.qpscale,
@@ -131,6 +147,7 @@ class MotifPrepDb(ArgumentParserWithVersionRequirement, ThingWithLogger, units.T
       "dbloadfolder": parsed_args_dict.pop("dbload_folder"),
       "tifffolder": parsed_args_dict.pop("tiff_folder"),
       "logfolder": parsed_args_dict.pop("log_folder"),
+      "shiftqptiffpixels": parsed_args_dict.pop("shift_qptiff_pixels"),
     }
 
   @classmethod
@@ -140,6 +157,7 @@ class MotifPrepDb(ArgumentParserWithVersionRequirement, ThingWithLogger, units.T
     p.add_argument("--dbload-folder", type=pathlib.Path, required=True, help="Folder for the dbload output")
     p.add_argument("--tiff-folder", type=pathlib.Path, required=True, help="Folder where the tiff files are stored")
     p.add_argument("--log-folder", type=pathlib.Path, required=True, help="Folder for the log files")
+    p.add_argument("--shift-qptiff-pixels", type=float, nargs=2, required=True, help="Shift the coordinate system of the qptiff by this amount (in pixels)")
     return p
 
 def main(args=None):

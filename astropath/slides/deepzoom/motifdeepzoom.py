@@ -1,16 +1,19 @@
 import collections, errno, methodtools, numpy as np, os, pathlib, PIL, pyvips, re, shutil
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement
+from ...shaed.csvclasses import constantsdict
 from ...shared.logging import printlogger, ThingWithLogger
 from ...shared.qptiff import QPTiff
 from ...utilities import units
 from ...utilities.miscfileio import rm_missing_ok
+from ...utilities.miscmath import floattoint
 from ...utilities.tableio import writetable
 from .deepzoomsample import DeepZoomFile
 
 class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units.ThingWithPscale):
-  def __init__(self, *, qptifffile, deepzoomfolder, logfolder, SlideID, **kwargs):
+  def __init__(self, *, qptifffile, deepzoomfolder, dbloadfolder, logfolder, SlideID, **kwargs):
     super().__init__(**kwargs)
     self.qptifffile = pathlib.Path(qptifffile)
+    self.dbloadfolder = pathlib.Path(dbloadfolder)
     self.deepzoomfolder = pathlib.Path(deepzoomfolder)
     self.logfolder = pathlib.Path(logfolder)
     self.SlideID = SlideID
@@ -42,6 +45,12 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
   def logger(self):
     return printlogger("motifdeepzoom")
 
+  @methodtools.lru_cache()
+  @property
+  def shiftqptiff(self):
+    constants = constantsdict(self.dbloadfolder/"constants.csv")
+    return np.array([constants["shiftx"], constants["shifty"]])
+
   def deepzoom_vips(self, layer):
     """
     Use vips to create the image pyramid.  This is an out of the box
@@ -63,7 +72,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
 
     #open the qptiff in vips, shift, and save the deepzoom
     qptiffimage = pyvips.Image.tiffload(os.fspath(self.qptifffile), page=layer-1, n=1)
-    shift = floattoint(np.round((self.qptiffposition / self.onepixel).astype(float)))
+    shift = floattoint(np.round((self.qptiffposition / self.onepixel).astype(float))) + self.shiftqptiff
     np.testing.assert_array_less(0, shift)
     shiftx, shifty = shift
     shifted = qptiffimage.embed(shiftx, shifty, qptiffimage.width+shiftx, qptiffimage.height+shifty)
@@ -302,6 +311,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
       "qptifffile": parsed_args_dict.pop("qptiff"),
       "deepzoomfolder": parsed_args_dict.pop("deepzoom_folder"),
       "logfolder": parsed_args_dict.pop("log_folder"),
+      "dbloadfolder": parsed_args_dict.pop("dbload_folder"),
       "SlideID": parsed_args_dict.pop("SlideID"),
     }
 
@@ -311,6 +321,7 @@ class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units
     p.add_argument("--qptiff", type=pathlib.Path, required=True, help="The qptiff file")
     p.add_argument("--deepzoom-folder", type=pathlib.Path, required=True, help="Folder for the deepzoom output")
     p.add_argument("--log-folder", type=pathlib.Path, required=True, help="Folder for the log files")
+    p.add_argument("--dbload-folder", type=pathlib.Path, required=True, help="Folder with the dbload csvs")
     p.add_argument("SlideID", help="ID of this slide for the zoomlist.csv")
     return p
 
