@@ -5,7 +5,7 @@ from ..utilities.miscfileio import with_stem
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
-from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
+from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
 from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
 
 class Rectangle(DataClassWithPscale):
@@ -460,6 +460,33 @@ class RectangleCorrectedIm3MultiLayer(RectangleCorrectedIm3Base, RectangleReadIm
   def warpingtransformation(self):
     return RectangleWarpingTransformationMultilayer()
 
+class RectangleReadIHCTiff(RectangleWithImageLoaderBase) :
+  """
+  Rectangle class that reads the image from an IHC .tif
+  """
+
+  @property
+  def ihctifffolder(self): return self.__ihctifffolder
+  @ihctifffolder.setter
+  def ihctifffolder(self, ihctifffolder): self.__ihctifffolder = ihctifffolder
+  ihctifffolder: pathlib.Path = pathfield(ihctifffolder, includeintable=False, use_default=False)  
+
+  @property
+  def ihctifffile(self):
+    return self.ihctifffolder/self.file.replace(UNIV_CONST.IM3_EXT, '_IHC.tif')
+
+  @methodtools.lru_cache()
+  @property
+  def ihctiffloader(self): return ImageLoaderHasSingleLayerTiff(**self.ihctiffloaderkwargs)
+  def using_ihc_tiff(self):
+    return self.ihctiffloader.using_image()
+  @property
+  def ihctiffloaderkwargs(self): return {
+    "filename": self.ihctifffile,
+    "_DEBUG": self._DEBUG,
+    "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
+  }
+
 class RectangleReadComponentTiffBase(RectangleWithImageLoaderBase):
   """
   Rectangle class that reads the image from a component tiff
@@ -583,6 +610,11 @@ class RectangleReadSegmentedComponentTiffSingleLayer(RectangleReadComponentTiffS
     return {
       **super().componenttiffloaderkwargs,
     }
+
+class RectangleReadComponentSingleLayerAndIHCTiff(RectangleReadComponentTiffSingleLayer,RectangleReadIHCTiff) :
+  pass
+class RectangleReadComponentMultiLayerAndIHCTiff(RectangleReadComponentTiffMultiLayer,RectangleReadIHCTiff) :
+  pass
 
 class RectangleCollection(units.ThingWithPscale):
   """
