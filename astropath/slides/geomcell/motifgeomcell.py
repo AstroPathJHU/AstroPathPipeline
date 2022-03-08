@@ -11,7 +11,6 @@ class MiniField(units.ThingWithPscale):
     self.hpfid = hpfid
     self.tifffile = tifffilename
     with tifffile.TiffFile(self.tifffile) as f:
-      pscales = set()
       shapes = set()
       positions = set()
       for page in f.pages:
