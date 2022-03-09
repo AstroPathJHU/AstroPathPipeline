@@ -17,7 +17,7 @@ Usage: $a = [informinput]::new($task, $sample)
        $a.RunBatchInForm()
 --------------------------------------------------------
 #>
-Class informinput {
+Class informinput : moduletools {
     #
     [string]$stringin
     [string]$abx
@@ -34,7 +34,9 @@ Class informinput {
     [int]$err
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     #
-    informinput([array]$task, [launchmodule]$sample) {
+    informinput([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
+        #
+        $this.flevel = [FileDownloads]::FLATWIM3
         #
         $this.sample = $sample
         $this.abx = $task[2].trim()
@@ -46,6 +48,9 @@ Class informinput {
         $this.informpath = '"'+"C:\Program Files\Akoya\inForm\" + 
             $task[4].trim() + "\inForm.exe"+'"'
         $this.informbatchlog = $this.informoutpath + "\Batch.log"
+        $this.processvars[0] = $this.outpath
+        $this.processvars[1] = $this.outpath
+        $this.processvars[2] = $this.outpath
         #
         $this.TestPaths()
         $this.KillinFormProcess()
@@ -76,7 +81,8 @@ Class informinput {
     ----------------------------------------- #>
     [void]RunBatchInForm(){
         #
-        $this.DownloadIm3()
+        $this.sample.createnewdirs($this.outpath)
+        $this.DownloadFiles()
         while(($this.err -le 5) -AND ($this.err -ge 0)){
             #
             $this.CreateOutputDir()

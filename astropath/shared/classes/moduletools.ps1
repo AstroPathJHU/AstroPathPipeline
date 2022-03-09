@@ -33,7 +33,7 @@
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
         $this.vers = $this.sample.GetVersion(
-            $this.sample.mpath, $this.sample.module, $task[0])   
+            $this.sample.mpath, $this.sample.module, $this.sample.project)  
     }
     <# -----------------------------------------
     BuildProcessLocPath
