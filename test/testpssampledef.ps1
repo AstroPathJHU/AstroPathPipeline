@@ -32,6 +32,8 @@ Class testpssampledef {
         $this.importmodule()
         $this.testsampledefconstruction()
         $sample = sampledef $this.mpath $this.module $this.slideid
+        $this.testbatchflatfieldexamples($sample)
+        $sample.ImportCorrectionModels($this.mpath, $true)
         $this.testpaths($sample)
         $sample = sampledef -mpath $this.mpath -module $this.module -batchid '8' -project '0'
         $this.testpaths($sample, '08')
@@ -212,6 +214,28 @@ Class testpssampledef {
         }
         #
         Write-Host 'path tests batch finished batchid:' $batchid
+        #
+    }
+    #
+    [void]testbatchflatfieldexamples($sampledef){
+        #
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $micomp_data = $sampledef.ImportCorrectionModels($sampledef.mpath)
+        $newobj = [PSCustomObject]@{
+            SlideID = $sampledef.slideid
+            Project = $sampledef.project
+            Cohort = $sampledef.cohort
+            BatchID = $sampledef.batchid
+            FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
+            WarpingFile = 'None'
+        }
+        #
+        $micomp_data += $newobj
+        #
+        $micomp_data | Export-CSV $p2 -NoTypeInformation
+        $p3 = $sampledef.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        $sampledef.SetFile($p3, 'blah de blah')
         #
     }
     #

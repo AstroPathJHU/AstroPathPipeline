@@ -34,7 +34,12 @@
         $this.testsampletrackerconstructors()
         $sampletracker = sampletracker -mpath $this.mpath
         $this.cleanup($sampletracker)
+        Write-Host '.'
+        Write-Host 'defining module status started'
+        $sampletracker.project = '0'
+        $sampletracker.defbase()
         $sampletracker.defmodulestatus()
+        Write-Host 'defining module status finished'
         $this.testmodules($sampletracker)
         $this.teststatus($sampletracker)
         $this.testupdate($sampletracker, 'shredxml', 'meanimage')
@@ -303,10 +308,13 @@
     #
     [void]cleanup($sampletracker){
         #
+        Write-Host '.'
+        Write-Host 'clearing logs started'
         $sampletracker.removefile($sampletracker.slidelogbase('shredxml'))
         $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
         $sampletracker.removefile($sampletracker.mainlogbase('batchmicomp'))
         $sampletracker.removefile($sampletracker.slidelogbase('warpoctets'))
+        Write-Host 'clearing logs finished'
         #
     }
     #
