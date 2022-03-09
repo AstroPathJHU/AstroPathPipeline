@@ -191,7 +191,15 @@
     #
     [void]addbatchflatfieldexamples($tools){
         #
-        $p2 = $tools.mpath + '\AstroPathCorrectionModels.csv'
+        Write-Host '.'
+        Write-Host 'Add Correction Models file
+        #
+        $p = $this.mpath + '\AstroPathCorrectionModelsTemplate.csv'
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $tools.removefile($p2)
+        $data = $tools.opencsvfile($p)
+        $data | Export-CSV $p2  -NoTypeInformation
         #
         $micomp_data = $tools.ImportCorrectionModels($tools.mpath)
         $newobj = [PSCustomObject]@{
