@@ -45,6 +45,7 @@
         }
         #
         Write-Host ("mpath: " + $this.mpath)
+        Write-Host (get-childitem $this.mpath | Format-Table | Out-String)
         #
 
     }
@@ -132,6 +133,10 @@
     }
     #
     [void]testcorrectioninfo($tools){
+        #
+        Write-Host '.'
+        Write-Host 'Testing import correction models method. Output below:'
+        #
         $ids = $tools.ImportCorrectionModels($this.mpath)
         #
         Write-Host '    test models csv exists:' (test-path ($this.mpath + '\AstroPathCorrectionModels.csv'))
