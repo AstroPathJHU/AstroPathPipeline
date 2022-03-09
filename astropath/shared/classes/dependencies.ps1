@@ -23,7 +23,7 @@
             $this.moduleinfo.($cmodule).status = $logoutput[1].Message
         } elseif ($logoutput) {
             #
-            $statusval = ($this.('check'+$cmodule)($false))
+            $statusval = ($this.('check'+$cmodule)())
             if ($statusval -eq 1){
                 $this.moduleinfo.($cmodule).status = 'WAITING'
             } elseif ($statusval -eq 2){
@@ -75,7 +75,7 @@
         #
         $startdate = ($this.selectlogline($loglines, $ID, 'START', $vers)).Date
         $finishdate = ($this.selectlogline($loglines, $ID, 'FINISH', $vers)).Date
-        $errorline = $this.selectlogline($loglines, $ID, 'ERROR', $vers)
+        $errorline = $this.selectlogline($loglines, $ID, 'ERROR')
         #
         return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
         #
@@ -93,7 +93,7 @@
         #
         $startdate = ($this.selectlogline($loglines, $ID, 'START', $vers, $antibody)).Date
         $finishdate = ($this.selectlogline($loglines, $ID, 'FINISH', $vers, $antibody)).Date
-        $errorline = $this.selectlogline($loglines, $ID, 'ERROR', $vers, $antibody)
+        $errorline = $this.selectlogline($loglines, $ID, 'ERROR', '', $antibody)
         #
         return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
         #
@@ -168,12 +168,12 @@
         - dependency[switch]: true or false
      ------------------------------------------
      Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
+     returns 2 if current module needs to be run,
      returns 3 if current module is complete
      ------------------------------------------
      Usage: $this.checktransfer(log, dependency)
     ----------------------------------------- #>
-    [int]checktransfer($dependency){
+    [int]checktransfer(){
         #
         if (!($this.moduleinfo.transfer.version -match '0.0.1') -and 
             $this.checklog('transfer', $true)){
@@ -218,20 +218,13 @@
      ------------------------------------------
      Usage: $this.checkshredxml(log, dependency)
     ----------------------------------------- #>
-    [int]checkshredxml($dependency){
+    [int]checkshredxml(){
         #
-        #if (!($this.checktransfer($true) -eq 3)){
-        #    return 1
-        #}
         if ($this.moduleinfo.transfer.status -ne 'FINISHED'){
             return 1
         }
-        <#
+        #
         if ($this.checklog('shredxml', $true)){
-            return 2
-        }
-        #>
-        if (!(test-path $this.moduleinfo.shredxml.slidelog)){
             return 2
         }
         #
@@ -257,21 +250,13 @@
      ------------------------------------------
      Usage: $this.checkmeanimage(log, dependency)
     ----------------------------------------- #>
-    [int]checkmeanimage($dependency){
-        <#
-        if (!($this.checkshredxml($true) -eq 3)){
-            return 1
-        }
-        #>
+    [int]checkmeanimage(){
+        #
         if ($this.moduleinfo.shredxml.status -ne 'FINISHED'){
             return 1
         }
-        <#
+        #
         if ($this.checklog('meanimage', $true)){
-            return 2
-        }
-        #>
-        if (!(test-path $this.moduleinfo.meanimage.slidelog)){
             return 2
         }
         #
@@ -297,13 +282,12 @@
      ------------------------------------------
      Usage: $this.checkmeanimagecomparison(log, dependency)
     ----------------------------------------- #>
-    [int]checkbatchmicomp($dependency){
+    [int]checkbatchmicomp(){
         #
         # if task is not a dependency and the version is
         # 0.0.1 then just checkout
         #
         if (
-            !$dependency -and
              $this.moduleinfo.batchmicomp.vers -match '0.0.1'
             ){
             return 4
@@ -339,27 +323,19 @@
      ------------------------------------------
      Usage: $this.checkbatchflatfield(log, dependency)
     ----------------------------------------- #>
-    [int]checkbatchflatfield($dependency){
+    [int]checkbatchflatfield(){
         #
-        # if task is not a dependency and the version is
-        # not 0.0.1 then just checkout
-        #
-        if (
-            !$dependency -and
-             $this.moduleinfo.batchflatfield.vers -notmatch '0.0.1'
-            ){
-            return 4
-        }
-        #
-        # if the version is not 0.0.1 in batchflatfield, do meanimagecomparison
-        # instead
         if ($this.moduleinfo.batchflatfield.vers -notmatch '0.0.1'){
             <#
             if (!($this.checkbatchmicomp($true) -eq 3)){
                 return 1
             }
-            #>
+            #
             if ($this.moduleinfo.batchmicomp.status -ne 'FINISHED'){
+                return 1
+            }
+            #>
+            if ($this.moduleinfo.meanimage.status -ne 'FINISHED'){
                 return 1
             }
             #
@@ -381,14 +357,11 @@
             if ($this.moduleinfo.meanimage.status -ne 'FINISHED'){
                 return 1
             }
-            <#
+            #
             if ($this.checklog('batchflatfield', $true)){
                 return 2
             }
-            #>
-            if (!(test-path $this.moduleinfo.batchflatfield.slidelog)){
-                return 2
-            }
+            #
             #
             if (!$this.testbatchflatfield()){
                 return 2
@@ -414,21 +387,91 @@
      ------------------------------------------
      Usage: $this.checkmeanimage(log, dependency)
     ----------------------------------------- #>
-    [int]checkwarpoctets($dependency){
+    [int]checkwarpoctets(){
         #
-        if (!($this.checkbatchflatfield($true) -eq 3)){
+        if ($this.moduleinfo.batchflatfield.status -ne 'FINISHED'){
             return 1
         }
-        <#
-        if ($this.checklog('warpoctets', $true)){
-            return 2
+        #
+        if ($this.moduleinfo.warpoctets.vers -notmatch '0.0.1'){
+            return 3
         }
-        #>
-        if (!(test-path $this.moduleinfo.warpoctets.slidelog)){
+        #
+        if ($this.checklog('warpoctets', $true)){
             return 2
         }
         #
         if (!$this.testwarpoctets()){
+            return 2
+        }
+        #
+        return 3
+        #
+    }
+    <# -----------------------------------------
+     checkbatchwarpkeys
+     check that the batch warp keys module has completed
+     and all products exist for the batch
+    ------------------------------------------
+     Input: 
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module needs to be run,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkbatchwarpkeys(dependency)
+    ----------------------------------------- #>
+    [int]checkbatchwarpkeys(){
+        #
+        if ($this.moduleinfo.warpoctets.status -ne 'FINISHED'){
+            return 1
+        }
+        #
+        if ($this.moduleinfo.batchwarpkeys.vers -notmatch '0.0.1'){
+            return 3
+        }
+        #
+        if ($this.checklog('batchwarpkeys', $true)){
+            return 2
+        }
+        #
+        if (!$this.testbatchwarpkeys()){
+            return 2
+        }
+        #
+        return 3
+        #
+    }
+    <# -----------------------------------------
+     checkbatchwarpfits
+     check that the batch warp fits module has completed
+     and all products exist for the batch
+    ------------------------------------------
+     Input: 
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module needs to be run,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkbatchwarpfits(dependency)
+    ----------------------------------------- #>
+    [int]checkbatchwarpfits(){
+        #
+        if ($this.moduleinfo.batchwarpkeys.status -ne 'FINISHED'){
+            return 1
+        }
+        #
+        if ($this.moduleinfo.batchwarpfits.vers -notmatch '0.0.1'){
+            return 3
+        }
+        #
+        if ($this.checklog('batchwarpfits', $true)){
+            return 2
+        }
+        #
+        if (!$this.testbatchwarpfits()){
             return 2
         }
         #
@@ -450,21 +493,13 @@
      ------------------------------------------
      Usage: $this.checkimagecorrection(log, dependency)
     ----------------------------------------- #>
-    [int]checkimagecorrection($dependency){
-        <#
-        if (!($this.checkbatchflatfield($true) -eq 3)){
+    [int]checkimagecorrection(){
+        #
+        if ($this.moduleinfo.batchwarpfits.status -ne 'FINISHED'){
             return 1
         }
         #
         if ($this.checklog('imagecorrection', $true)){
-            return 2
-        }
-        #>
-        if ($this.moduleinfo.batchflatfield.status -ne 'FINISHED'){
-            return 1
-        }
-        #
-        if (!(test-path $this.moduleinfo.imagecorrection.slidelog)){
             return 2
         }
         #
@@ -476,20 +511,8 @@
     }
     <# -----------------------------------------
      checkvminform
-     check that the vminform module has completed
-     and all products exist
-    ------------------------------------------
-     Input: 
-        - log[mylogger]: astropath log object
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkvminform(log, dependency)
     ----------------------------------------- #>
-    [void]checkvminform(){
+    [void]checkvminform($dependency){
         #
         $this.informvers = '2.6.0'
         #
@@ -530,7 +553,7 @@
      ------------------------------------------
      Usage: $this.checkvminform(dependency)
     ----------------------------------------- #>
-    [int]checkvminform($dependency){
+    [int]checkvminform(){
         #
         return 4
         #
@@ -548,7 +571,7 @@
      ------------------------------------------
      Usage: $this.checkmergeloop(dependency)
     ----------------------------------------- #>
-    [int]checkmergeloop($dependency){
+    [int]checkmergeloop(){
         #
         return 4
         #
@@ -566,7 +589,7 @@
      ------------------------------------------
      Usage: $this.checksegmaps(dependency)
     ----------------------------------------- #>
-    [int]checksegmaps($dependency){
+    [int]checksegmaps(){
         #
         return 4
         #

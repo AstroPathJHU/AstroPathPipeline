@@ -1,4 +1,4 @@
-import argparse, numpy as np, pathlib, PIL, shutil, tempfile
+import argparse, numpy as np, pathlib, shutil, tempfile
 from astropath.slides.annowarp.annowarpsample import AnnoWarpSampleAstroPathTissueMask
 from astropath.slides.annowarp.visualization import showannotation
 from astropath.shared.csvclasses import Annotation, AnnotationInfo, Region
@@ -32,10 +32,9 @@ def makeplots():
       annotations = A.readtable(A.annotationscsv, Annotation, extrakwargs={"annotationinfos": annotationinfos})
       warpedregions = A.readtable(A.regionscsv, Region, extrakwargs={"annotations": annotations})
 
-      with A.using_images() as (wsi, fqptiff):
-        zoomlevel = fqptiff.zoomlevels[0]
-        qptiff = PIL.Image.fromarray(zoomlevel[A.qptifflayer-1].asarray())
+      with A.using_images() as (wsi, qptiff):
         wsi = np.asarray(wsi)
+        qptiff = np.asarray(qptiff)
 
       oneqppixel = units.onepixel(A.apscale)
       ylim = np.array((9500, 10500)) * oneqppixel

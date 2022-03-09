@@ -15,7 +15,7 @@ from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnno
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger, ThingWithLogger
-from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer
+from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
@@ -133,6 +133,13 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     The sample's component tiffs folder
     """
     return self.informdataroot/self.SlideID/"inform_data"/"Component_Tiffs"
+
+  @property
+  def ihctiffsfolder(self):
+    """
+    The sample's IHC tiffs folder
+    """
+    return self.informdataroot/self.SlideID/"IHC"/"HPFs"
 
   def __getimageinfofromcomponenttiff(self):
     """
@@ -906,7 +913,7 @@ class SelectLayersComponentTiff(SampleBase):
   @property
   def layerscomponenttiff(self):
     result = self.__layerscomponenttiff
-    if result is None: return range(1, self.nlayerscomponenttiff+1)
+    if result is None: return range(1, self.nlayersunmixed+1)
     return result
 
   @property
@@ -1041,6 +1048,34 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase, SelectLayersComponentT
       "componenttifffolder": self.componenttiffsfolder,
       "nlayerscomponenttiff": self.nlayersunmixed,
     }
+    if self.multilayercomponenttiff:
+      kwargs.update({
+        "layerscomponenttiff": self.layerscomponenttiff,
+      })
+    else:
+      kwargs.update({
+        "layercomponenttiff": self.layercomponenttiff,
+      })
+    return kwargs
+
+class ReadRectanglesComponentAndIHCTiffBase(ReadRectanglesBase, SelectLayersComponentTiff) :
+  """
+  Base class for any sample that loads images from an IHC .tif file
+  """
+  @property
+  def rectangletype(self):
+    if self.multilayercomponenttiff:
+      return RectangleReadComponentMultiLayerAndIHCTiff
+    else:
+      return RectangleReadComponentSingleLayerAndIHCTiff
+  @property
+  def rectangleextrakwargs(self):
+    kwargs =  {
+      **super().rectangleextrakwargs,
+      'componenttifffolder': self.componenttiffsfolder,
+      'ihctifffolder':self.ihctiffsfolder,
+      'nlayerscomponenttiff': self.nlayersunmixed,
+      }
     if self.multilayercomponenttiff:
       kwargs.update({
         "layerscomponenttiff": self.layerscomponenttiff,
@@ -1738,6 +1773,12 @@ class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRe
   """
   Base class for any sample that reads rectangles from the XML metadata
   and loads the rectangle images from component tiff files.
+  """
+
+class ReadRectanglesComponentAndIHCTiffFromXML(ReadRectanglesComponentAndIHCTiffBase, ReadRectanglesFromXML) :
+  """
+  Base class for any sample that reads rectangles from the XML metadata 
+  and loads the rectangle images from IHC .tif files
   """
 
 class ReadRectanglesOverlapsFromXML(ReadRectanglesOverlapsBase, ReadRectanglesFromXML):

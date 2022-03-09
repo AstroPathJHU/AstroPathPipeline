@@ -1,4 +1,29 @@
 ﻿class aptabletools : fileutils {
+    #
+    [PSCustomObject]$full_project_dat
+    [PSCustomObject]$config_data
+    [PSCustomObject]$micomp_data
+    [PSCustomObject]$corrmodels_data
+    [PSCustomObject]$ffmodels_data
+    [PSCustomObject]$slide_data
+    #
+    importaptables($mpath){
+        $this.importcohortsinfo($mpath)
+        $this.importconfiginfo($mpath)
+        $this.importslideids($mpath)
+        $this.ImportFlatfieldModels($mpath)
+        $this.ImportCorrectionModels($mpath)
+        $this.ImportMICOMP($mpath)
+    }
+    #
+    importaptables($mpath, $forceupdate){
+        $this.importcohortsinfo($mpath, $forceupdate)
+        $this.importconfiginfo($mpath, $forceupdate)
+        $this.importslideids($mpath, $forceupdate)
+        $this.ImportFlatfieldModels($mpath, $forceupdate)
+        $this.ImportCorrectionModels($mpath, $forceupdate)
+        $this.ImportMICOMP($mpath, $forceupdate)
+    }
     <# -----------------------------------------
      ImportCohortsInfo
      open the cohort info for the astropath
@@ -12,7 +37,7 @@
      ------------------------------------------
      Usage: ImportCohortsInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportCohortsInfo([string] $mpath){
+    [PSCustomObject]ImportCohortsInfo([string] $mpath, $forceupdate){
         #
         $cohort_csv_file = $mpath + '\AstropathCohortsProgress.csv'
         #
@@ -22,9 +47,19 @@
         #
         $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
         #
-        $project_data = $this.MergeCustomObject( $project_data, $paths_data, 'Project')
+        $this.full_project_dat = $this.MergeCustomObject( $project_data, $paths_data, 'Project')
         #
-        return $project_data
+        return $this.full_project_dat
+        #
+    }
+    #
+    [PSCustomObject]ImportCohortsInfo([string] $mpath){
+        #
+        if(!$this.full_project_dat){
+            $this.importcohortsinfo($mpath, $true) | Out-NULL
+        }
+        #
+        return $this.full_project_dat
         #
     }
     <# -----------------------------------------
@@ -39,13 +74,20 @@
      ------------------------------------------
      Usage: ImportCohortsInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportConfigInfo([string] $mpath){
+    [PSCustomObject]ImportConfigInfo([string] $mpath, $forceupdate){
         #
         $config_csv_file = $mpath + '\AstropathConfig.csv'
+        $this.config_data = $this.OpencsvFileConfirm($config_csv_file)
+        return $this.config_data
         #
-        $config_data = $this.OpencsvFileConfirm($config_csv_file)
+    }
+    #
+    [PSCustomObject]ImportConfigInfo([string] $mpath){
         #
-        return $config_data
+        if(!$this.config_data){
+            $this.ImportConfigInfo($mpath, $true) | Out-Null
+        }
+        return $this.config_data
         #
     }
     <# -----------------------------------------
@@ -59,12 +101,20 @@
      ------------------------------------------
      Usage: ImportSlideIDs(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportSlideIDs([string] $mpath){
+    [PSCustomObject]ImportSlideIDs([string] $mpath, $forceupdate){
         #
         $defpath = $mpath + '\AstropathAPIDdef.csv'
+        $this.slide_data = $this.OpencsvFileConfirm($defpath)
+        return $this.slide_data 
         #
-        $slide_ids = $this.OpencsvFileConfirm($defpath)
-        return $slide_ids
+    }
+    #
+    [PSCustomObject]ImportSlideIDs([string] $mpath){
+        #
+        if(!$this.slide_data){
+            $this.ImportSlideIDs($mpath, $true) | Out-Null
+        }
+        return $this.slide_data
         #
     }
     <# -----------------------------------------
@@ -78,12 +128,20 @@
      ------------------------------------------
      Usage: ImportFlatfieldModels(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportFlatfieldModels([string] $mpath){
+    [PSCustomObject]ImportFlatfieldModels([string] $mpath, $forceupdate){
         #
         $defpath = $mpath + '\AstroPathFlatfieldModels.csv'
+        $this.ffmodels_data = $this.opencsvfile($defpath)
+        return $this.ffmodels_data
         #
-        $slide_ids = $this.opencsvfile($defpath)
-        return $slide_ids
+     }
+     #
+    [PSCustomObject]ImportFlatfieldModels([string] $mpath){
+        #
+        if(!$this.ffmodels_data){
+            $this.ImportFlatfieldModels($mpath, $true) | Out-NUll
+        }
+        return $this.ffmodels_data
         #
      }
     <# -----------------------------------------
@@ -172,13 +230,22 @@
      ------------------------------------------
      Usage: ImportCohortsInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportCorrectionModels([string] $mpath){
+    [PSCustomObject]ImportCorrectionModels([string] $mpath, $forceupdate){
         #
         $config_csv_file = $mpath + '\AstroPathCorrectionModels.csv'
+        $this.corrmodels_data = $this.opencsvfile($config_csv_file)
         #
-        $config_data = $this.opencsvfile($config_csv_file)
+        return $this.corrmodels_data 
         #
-        return $config_data
+    }
+    #
+    [PSCustomObject]ImportCorrectionModels([string] $mpath){
+        #
+        if (!$this.corrmodels_data){
+            $this.ImportCorrectionModels($mpath, $true) | Out-NULL
+        }
+        #
+        return $this.corrmodels_data 
         #
     }
     <# -----------------------------------------
@@ -193,15 +260,27 @@
      ------------------------------------------
      Usage: ImportMICOMP(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportMICOMP([string] $mpath){
+    #
+    [PSCustomObject]ImportMICOMP([string] $mpath, $forceupdate){
         #
         $micomp_csv_file = $mpath + '\meanimagecomparison\meanimagecomparison_table.csv'
+        $this.micomp_data = $this.opencsvfile($micomp_csv_file)
         #
-        $micomp_data = $this.opencsvfile($micomp_csv_file)
-        #
-        return $micomp_data
+        return $this.micomp_data
         #
     }
+    #
+    [PSCustomObject]ImportMICOMP([string] $mpath){
+        #
+        if (!$this.micomp_data){
+            $this.importmicomp($mpath, $true) | Out-NULL
+        }
+        #
+        return $this.micomp_data
+        #
+    }
+
+
     <# -----------------------------------------
      Importlogfile
      import and return a log file object
@@ -234,8 +313,21 @@
         - [antibody]: the antibody to match for vminform
         - [algorithm]: the algorithm to match for vminform
      ------------------------------------------
-     Usage: Importlogfile($fpath)
+     Usage: selectlogline($fpath)
     ----------------------------------------- #>
+    [PSCustomObject]selectlogline([PSCustomObject] $loglines, [string] $ID, [string] $status){    
+        #
+        $logline = $loglines |
+                where-object {
+                        ($_.Slideid -match $ID) -and 
+                        ($_.Message -match $status)
+                } |
+                Select-Object -Last 1
+        #
+        return $logline
+        #
+    }
+    #
     [PSCustomObject]selectlogline([PSCustomObject] $loglines, [string] $ID, [string] $status, [string] $vers){    
         #
         $logline = $loglines |

@@ -69,6 +69,9 @@ setupkwargs = dict(
       "geomsample=astropath.slides.geom.geomsample:main",
       "geomcellcohort=astropath.slides.geomcell.geomcellcohort:main",
       "geomcellsample=astropath.slides.geomcell.geomcellsample:main",
+      "motifdeepzoom=astropath.slides.deepzoom.motifdeepzoom:main",
+      "motifgeomcell=astropath.slides.geomcell.motifgeomcell:main",
+      "motifprepdb=astropath.slides.prepdb.motifprepdb:main",
       "prepdbcohort=astropath.slides.prepdb.prepdbcohort:main",
       "prepdbsample=astropath.slides.prepdb.prepdbsample:main",
       "read_annotation_xml=astropath.shared.annotationpolygonxmlreader:writeannotationcsvs",
@@ -79,8 +82,10 @@ setupkwargs = dict(
       "mergeannotationxmlscohort=astropath.slides.annotationinfo.annotationinfo:mergeannotationxmlscohort",
       "mergeannotationxmlssample=astropath.slides.annotationinfo.annotationinfo:mergeannotationxmlssample",
       "segmentationsampledeepcell=astropath.slides.segmentation.segmentationsample:segmentationsampledeepcell",
+      "segmentationsamplemesmer=astropath.slides.segmentation.segmentationsample:segmentationsamplemesmer",
       "segmentationsamplennunet=astropath.slides.segmentation.segmentationsample:segmentationsamplennunet",
       "segmentationcohortdeepcell=astropath.slides.segmentation.segmentationcohort:segmentationcohortdeepcell",
+      "segmentationcohortmesmer=astropath.slides.segmentation.segmentationcohort:segmentationcohortmesmer",
       "segmentationcohortnnunet=astropath.slides.segmentation.segmentationcohort:segmentationcohortnnunet",
       "stitchastropathtissuemasksample=astropath.slides.stitchmask.stitchmasksample:astropathtissuemain",
       "stitchinformmasksample=astropath.slides.stitchmask.stitchmasksample:informmain",
@@ -100,6 +105,7 @@ setupkwargs = dict(
     
   ],
   install_requires = [
+    "batchgenerators",
     "contextlib2>=0.6.0; python_version < '3.7'",
     "dataclassy>=0.10.0",
     "imagecodecs",

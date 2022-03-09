@@ -111,6 +111,18 @@ class ArgumentParserWithVersionRequirement(InitAndRunFromArgumentParserBase):
     return "commit"
 
   @classmethod
+  def makeargumentparser(cls, **kwargs):
+    """
+    Create an argument parser to run on the command line
+    """
+    p = super().makeargumentparser(**kwargs)
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--no-dev-version", help="refuse to run unless the package version is tagged.", action="store_const", const="tag", dest="version_requirement")
+    g.add_argument("--allow-dev-version", help="ok to run even if the package is at a dev version (default if using a log file).", action="store_const", const="commit", dest="version_requirement")
+    g.add_argument("--allow-local-edits", help="ok to run even if there are local edits on top of the git commit (default if not writing to a log file).", action="store_const", const="any", dest="version_requirement")
+    return p
+
+  @classmethod
   def argsdictsfromargumentparser(cls, parsed_args_dict):
     """
     Get the kwargs dicts needed to run from the argparse dict
@@ -124,6 +136,15 @@ class ArgumentParserWithVersionRequirement(InitAndRunFromArgumentParserBase):
     cls.checkversion(version_requirement)
 
     return dicts
+
+  @classmethod
+  def misckwargsfromargumentparser(cls, parsed_args_dict):
+    dct = parsed_args_dict
+    misckwargs = {
+      **super().misckwargsfromargumentparser(parsed_args_dict),
+      "version_requirement": dct.pop("version_requirement"),
+    }
+    return misckwargs
 
   @staticmethod
   def checkversion(version_requirement):
@@ -167,10 +188,6 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
     g.add_argument("--no-log", action="store_true", help="do not write to log files.")
     p.add_argument("--skip-start-finish", action="store_true", help="do not write the START: and FINISH: lines to the log (this should only be used if external code writes those lines).")
     p.add_argument("--print-threshold", choices=("all", "info", "warning", "error", "critical", "none"), default="all", help="minimum level of log messages that should be printed to stderr (default: all)")
-    g = p.add_mutually_exclusive_group()
-    g.add_argument("--no-dev-version", help="refuse to run unless the package version is tagged.", action="store_const", const="tag", dest="version_requirement")
-    g.add_argument("--allow-dev-version", help="ok to run even if the package is at a dev version (default if using a log file).", action="store_const", const="commit", dest="version_requirement")
-    g.add_argument("--allow-local-edits", help="ok to run even if there are local edits on top of the git commit (default if not writing to a log file).", action="store_const", const="any", dest="version_requirement")
     return p
 
   @classmethod
@@ -200,7 +217,6 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
     misckwargs = {
       **super().misckwargsfromargumentparser(parsed_args_dict),
       "units": dct.pop("units"),
-      "version_requirement": dct.pop("version_requirement"),
     }
     return misckwargs
 
@@ -482,7 +498,7 @@ class XMLPolygonFileArgumentParser(RunFromArgumentParser):
       "annotationsxmlregex": parsed_args_dict.pop("annotations_xml_regex"),
     }
 
-class ParallelArgumentParser(RunFromArgumentParser):
+class ParallelArgumentParser(InitAndRunFromArgumentParserBase):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)

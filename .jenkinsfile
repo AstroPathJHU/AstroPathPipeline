@@ -43,7 +43,7 @@ pipeline {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1' 	
+          //  sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1' 	
           }
         }
 
@@ -171,6 +171,7 @@ pipeline {
                 stage('test ps warping workflow'){
                   steps{
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpkeys.ps1'
                   }
                 }
               }

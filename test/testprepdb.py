@@ -1,4 +1,4 @@
-import contextlib, csv, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, PIL.Image, re
+import contextlib, csv, itertools, job_lock, logging, more_itertools, os, pathlib, re, shutil
 from astropath.shared.csvclasses import Batch, Constant, ExposureTime, QPTiffCsv, ROIGlobals
 from astropath.shared.logging import getlogger
 from astropath.shared.overlap import Overlap
@@ -8,7 +8,7 @@ from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities.miscfileio import checkwindowsnewlines
 from astropath.utilities.version.git import thisrepo
-from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
+from .testbase import assertAlmostEqual, compare_two_images, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -170,13 +170,15 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
           raise type(e)("Error in "+filename)
 
       if not skipqptiff:
-        with PIL.Image.open(dbloadroot/SlideID/"dbload"/f"{SlideID}_qptiff.jpg") as img:
+        jpg = dbloadroot/SlideID/"dbload"/f"{SlideID}_qptiff.jpg"
+        def refjpg(i): return thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/f"{SlideID}_qptiff_{i}.jpg"
+        try:
+          compare_two_images(jpg, refjpg(1))
+        except AssertionError:
           try:
-            with PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/f"{SlideID}_qptiff_1.jpg") as targetimg:
-              np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+            compare_two_images(jpg, refjpg(2))
           except AssertionError:
-            with PIL.Image.open(thisfolder/"data"/"reference"/"prepdb"/SlideID/"dbload"/f"{SlideID}_qptiff_2.jpg") as targetimg:
-              np.testing.assert_array_equal(np.asarray(img), np.asarray(targetimg))
+            compare_two_images(jpg, refjpg(3))
 
       logs = (
         dbloadroot/"logfiles"/"prepdb.log",
@@ -186,6 +188,10 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
         checkwindowsnewlines(log)
     except:
       if removeoutput:
+        #don't save empty files that were created in setUp for testing the dependency check
+        for folder in dbloadroot.iterdir():
+          if folder.name != SlideID and folder.is_dir():
+            shutil.rmtree(folder)
         self.saveoutput()
       raise
     finally:

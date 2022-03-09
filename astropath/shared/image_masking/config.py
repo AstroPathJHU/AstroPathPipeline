@@ -111,7 +111,7 @@ class Const :
         """
         intensity in counts/ms required to flag saturation in each layer group for 43-layer images
         """
-        return [100,50,250,250,150,100,50]
+        return [100,50,250,250,150,100,100]
     @property
     def SATURATION_FLAG_STRING(self) :
         """

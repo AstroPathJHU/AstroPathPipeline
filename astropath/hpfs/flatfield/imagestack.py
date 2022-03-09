@@ -180,7 +180,7 @@ class ImageStack(ThingWithLogger) :
                 normalized_im = im/med_ets if med_ets is not None else im/r.allexposuretimes[np.newaxis,np.newaxis,:]
                 if imkey in keys_with_full_masks :
                     mask_path = maskingdirpath/f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
-                    mask = ImageMask.onehot_mask_from_full_mask_file(mask_path,self.__image_stack.shape)
+                    mask = ImageMask.onehot_mask_from_full_mask_file_no_blur(mask_path,self.__image_stack.shape)
                     layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
                 else :
                     mask_path = maskingdirpath/f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'

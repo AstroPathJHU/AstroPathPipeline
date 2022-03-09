@@ -267,7 +267,7 @@
             }
         } else {
             #
-            Write-Host '    OS is not windows test that we can run astropath from python'
+            Write-Host '    OS is not windows test. That we can run astropath from python'
             #
             $output = (Invoke-Expression 'meanimagesample -h')
             Write-Host $output

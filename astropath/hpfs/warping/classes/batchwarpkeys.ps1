@@ -20,7 +20,7 @@ class batchwarpkeys : moduletools {
         #
         $this.sample.createNewdirs($this.processloc)
         $this.sample.createNewdirs(($this.processloc+ '\octets'))
-        $this.getslideidregex()
+        $this.getslideidregex('batchwarpkeys')
         $this.getbatchwarpoctets()
         $this.Getbatchwarpkeys()
         $this.datavalidation()

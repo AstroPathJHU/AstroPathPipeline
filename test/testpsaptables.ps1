@@ -22,6 +22,8 @@
         $this.testapidfiles() | Out-Null
         $this.testapidfiles($tools)
         $this.testconfiginfo($tools)
+        $this.addbatchflatfieldexamples($tools)
+        $this.testcorrectioninfo($tools)
         $this.correctcohortsinfo($tools)
         $this.testcohortsinfo($tools)
         Write-Host '.'
@@ -43,6 +45,7 @@
         }
         #
         Write-Host ("mpath: " + $this.mpath)
+        Write-Host (get-childitem $this.mpath | Format-Table | Out-String)
         #
 
     }
@@ -129,6 +132,22 @@
         #
     }
     #
+    [void]testcorrectioninfo($tools){
+        #
+        Write-Host '.'
+        Write-Host 'Testing import correction models method. Output below:'
+        #
+        $ids = $tools.ImportCorrectionModels($this.mpath)
+        #
+        Write-Host '    test models csv exists:' (test-path ($this.mpath + '\AstroPathCorrectionModels.csv'))
+        #
+        if (!$ids){
+            Throw 'correction models is empty!!'
+        }
+        Write-Host '    correction models file:'
+        Write-Host '    ' ($ids | Format-Table | Out-String)
+    }
+    #
     # the cohorts info file have to be relative to the 
     # particular branch which mean they also need to be 
     # dynamically updated
@@ -151,8 +170,8 @@
         $paths_data = $tools.OpencsvFileConfirm($paths_csv_template)
         $paths_data[0].Dpath = $p 
         $paths_data[1].Dpath = $p + '\data'
-        $paths_data[0].FWpath = $p  + '\flatw'
-        $paths_data[1].FWpath = $p  + '\data\flatw'
+        $paths_data[0].FWpath = ($p  + '\flatw') -replace '\\\\', ''
+        $paths_data[1].FWpath = ($p  + '\data\flatw') -replace '\\\\', ''
         $paths_data | Export-CSV $paths_csv_file
         #
         $internal_apids = $tools.ImportCohortsInfo($this.mpath)
@@ -168,6 +187,20 @@
             $root = $r -replace ":", "$"
         }
         return $root
+    }
+    #
+    [void]addbatchflatfieldexamples($tools){
+        #
+        Write-Host '.'
+        Write-Host 'Add Correction Models file'
+        #
+        $p = $this.mpath + '\AstroPathCorrectionModelsTemplate.csv'
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $tools.removefile($p2)
+        $data = $tools.opencsvfile($p)
+        $data | Export-CSV $p2  -NoTypeInformation
+        #
     }
     #
 }

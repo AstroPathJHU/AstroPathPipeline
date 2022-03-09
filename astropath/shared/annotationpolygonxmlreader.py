@@ -1,4 +1,4 @@
-import abc, argparse, collections, hashlib, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
+import abc, argparse, collections, contextlib, hashlib, itertools, jxmlease, matplotlib.patches, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, pathlib, re
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.miscmath import floattoint
@@ -522,38 +522,38 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
 
           if saveimage and self.__annotationimagefolder is not None:
             poly = SimplePolygon(vertices=regionvertices)
-            if annotation.isonwsi:
-              raise ValueError("saving images is not implemented on wsi")
-            else:
-              with QPTiff(self.qptifffilename) as fqptiff:
-                zoomlevel = fqptiff.zoomlevels[0]
-                img = zoomlevel[0].asarray()
-            pixel = self.oneannopixel
-            xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
-            xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
-            xybuffer = (xymax - xymin) / 20
-            xymin -= xybuffer
-            xymax += xybuffer
-            (xmin, ymin), (xmax, ymax) = xymin, xymax
-            fig, ax = plt.subplots(1, 1)
-            plt.imshow(
-              img[
-                floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
-                floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
-              ],
-              extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
-            )
-            ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=annotation.annoscale))
+            with contextlib.ExitStack() as stack:
+              if annotation.isonwsi:
+                raise ValueError("saving images is not implemented on wsi")
+              else:
+                fqptiff = stack.enter_context(QPTiff(self.qptifffilename))
+                img = stack.enter_context(fqptiff.zoomlevels[0].using_image(layer=0))
+              pixel = self.oneannopixel
+              xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
+              xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
+              xybuffer = (xymax - xymin) / 20
+              xymin -= xybuffer
+              xymax += xybuffer
+              (xmin, ymin), (xmax, ymax) = xymin, xymax
+              fig, ax = plt.subplots(1, 1)
+              plt.imshow(
+                img[
+                  floattoint(float(ymin//pixel)):floattoint(float(ymax//pixel)),
+                  floattoint(float(xmin//pixel)):floattoint(float(xmax//pixel)),
+                ],
+                extent=[float(xmin//pixel), float(xmax//pixel), float(ymax//pixel), float(ymin//pixel)],
+              )
+              ax.add_patch(poly.matplotlibpolygon(fill=False, color="red", imagescale=annotation.annoscale))
 
-            if badimage:
-              openvertex1 = poly.vertexarray[0]
-              openvertex2 = poly.vertexarray[{1: 1, len(regionvertices): -1}[longestidx]]
-              boxxmin, boxymin = np.min([openvertex1, openvertex2], axis=0) - xybuffer/2
-              boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
-              ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
+              if badimage:
+                openvertex1 = poly.vertexarray[0]
+                openvertex2 = poly.vertexarray[{1: 1, len(regionvertices): -1}[longestidx]]
+                boxxmin, boxymin = np.min([openvertex1, openvertex2], axis=0) - xybuffer/2
+                boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
+                ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
 
-            fig.savefig(self.__annotationimagefolder/node.xmlpath.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__annotationimagefiletype}").name)
-            plt.close(fig)
+              fig.savefig(self.__annotationimagefolder/node.xmlpath.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__annotationimagefiletype}").name)
+              plt.close(fig)
 
           areacutoff = node.areacutoff
           if areacutoff is not None: areacutoff = units.convertpscale(areacutoff, annotation.annoscale, pscale, power=2)

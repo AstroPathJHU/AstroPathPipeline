@@ -32,16 +32,21 @@
         Write-Host '---------------------test ps [sampletracker]---------------------'
         $this.importmodule()
         $this.testsampletrackerconstructors()
-        $sampletracker = sampletracker -mpath $this.mpath -slideid $this.slideid
+        $sampletracker = sampletracker -mpath $this.mpath
         $this.cleanup($sampletracker)
+        Write-Host '.'
+        Write-Host 'defining module status started'
+        $sampletracker.project = '0'
+        $sampletracker.defbase()
         $sampletracker.defmodulestatus()
+        Write-Host 'defining module status finished'
         $this.testmodules($sampletracker)
         $this.teststatus($sampletracker)
         $this.testupdate($sampletracker, 'shredxml', 'meanimage')
         $this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
         $this.testupdate($sampletracker, 'batchmicomp', 'warpoctets')
         $this.cleanup($sampletracker)
-        $this.addcorrectionfile($sampletracker)
+        $this.addbatchflatfieldexamples($sampletracker)
         Write-Host '.'
         #
     }
@@ -58,10 +63,10 @@
         Write-Host 'test [sampletracker] constructors started'
         #
         try{
-            sampletracker -mpath $this.mpath -slideid $this.slideid | Out-Null
+            sampletracker -mpath $this.mpath | Out-Null
             # $sampletracker.removewatchers()
         } catch {
-            Throw ('[sampletracker] construction with [2] input(s) failed. ' + $_.Exception.Message)
+            Throw ('[sampletracker] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
         #
         Write-Host 'test [sampletracker] constructors finished'
@@ -303,10 +308,13 @@
     #
     [void]cleanup($sampletracker){
         #
+        Write-Host '.'
+        Write-Host 'clearing logs started'
         $sampletracker.removefile($sampletracker.slidelogbase('shredxml'))
         $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
         $sampletracker.removefile($sampletracker.mainlogbase('batchmicomp'))
         $sampletracker.removefile($sampletracker.slidelogbase('warpoctets'))
+        Write-Host 'clearing logs finished'
         #
     }
     #
