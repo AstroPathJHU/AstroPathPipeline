@@ -17,9 +17,10 @@ Class testvminform {
     [string]$slideid = 'M21_1'
     [string]$procedure = 'CD8'
     [string]$algorithm = 'CD8_Phenotype.ifp'
-    [string]$informver = '2.6.0'
+    [string]$informver = '2.4.8'
     [string]$outpath = "C:\Users\Public\BatchProcessing"
     [string]$apmodule = $PSScriptRoot + '/../astropath'
+    [string]$referenceim3
     #
     testvminform(){
         #
@@ -41,11 +42,12 @@ Class testvminform {
         $task = ($this.basepath, $this.slideid, $this.procedure, $this.algorithm, $this.informver, $this.mpath)
         ###$this.testvminformconstruction($task)
         $inp = vminform $task
-        $this.testoutputdir($inp)
-        $this.testimagelist($inp)
-        $this.comparevminforminput($inp)
-        #$this.testruninform($inp)
-        #$this.testreturndata($inp)
+        ###$this.testoutputdir($inp)
+        ###$this.testimagelist($inp)
+        ###$this.comparevminforminput($inp)
+        $this.testkillinformprocess($inp)
+        #$this.testruninformexpected($inp)
+        #$this.testruninformbatcherror($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -58,6 +60,7 @@ Class testvminform {
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_vminform'))
         $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
+        $this.referenceim3 = $this.basepath, 'M21_1\im3\Scan1\MSI\M21_1_[45093,13253].im3' -join '\'
     }
     <# --------------------------------------------
     uncpath
@@ -177,10 +180,10 @@ Class testvminform {
         Write-Host 'test create image list started'
         #
         $md_imageloc = ($this.outpath, 'image_list.tmp') -join '\'
+        Write-Host '    creating image list file:' $md_imageloc
         #
-        $inp.DownloadIm3()
+        $inp.DownloadFiles()
         $inp.CreateImageList()
-        Write-Host '    flatwim3folder:' $inp.sample.flatwim3folder()
         if (!([regex]::escape($md_imageloc) -contains [regex]::escape($inp.image_list_file))){
             Write-Host 'vminform module process location not defined correctly:'
             Write-Host $md_imageloc '~='
@@ -190,6 +193,8 @@ Class testvminform {
         if (!(test-path $md_imageloc)){
             Throw 'process working directory not created'
         }
+        #
+        $inp.sample.CreateNewDirs($this.outpath)
         Write-Host 'test create image list finished'
         #
     }
@@ -232,62 +237,123 @@ Class testvminform {
         Write-Host '[vminform] input matches -- finished'
         #
     }
-    #
-    [void]testruninform($inp){
+    <# --------------------------------------------
+    testkillinformprocess
+    test that the inform path can be found and
+    that it can be shut down correctly
+    --------------------------------------------#>
+    [void]testkillinformprocess($inp){
         #
         Write-Host '.'
-        Write-Host 'test run on inform started'
+        Write-Host 'test kill inform process started'
         #
-        #$usertask = '-a' + $this.algorithm
-        ##while(($inp.err -le 5) -AND ($inp.err -ge 0)){
-            #$inp.StartInForm()
-            #$inp.WatchBatchInForm()
-            #$inp.CheckErrors()
-            #if (($inp.err -le 5) -and ($inp.err -gt 0)){
-            #    $inp.sample.warning("Task will restart. Attempt "+ $inp.err)
-            #} elseif ($inp.err -gt 5){
-            #    Throw "Could not complete task after 5 attempts"
-            #} elseif ($inp.err -eq -1){
-            #    $inp.sample.info("inForm Batch Process Finished Successfully")
-            #}
-        ##}
+        $this.setupexpected($inp)
         #
-        Write-Host 'test run on inform finished'
+        $inp.StartInForm()
+        $inp.KillinFormProcess()
+        Write-Host 'inform process successfully ended - starting inform again'
+        #
+        $inp.StartInForm()
+        $inp.WatchBatchInForm()
+        $inp.CheckErrors()
+        $inp.KillinFormProcess()
+        #
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
+        $inp.sample.CreateNewDirs($this.outpath)
+        Write-Host 'test kill inform process finished'
         #
     }
     <# --------------------------------------------
-    testreturndata
-    test that the processing directory gets deleted.
-    Also remove the 'testing_warpoctets' folder
-    for the next run.
+    testruninformexpected
+    test that inform is run correctly when run 
+    with the correct input.
     --------------------------------------------#>
-    [void]testreturndata($inp){
+    [void]testruninformexpected($inp){
         #
         Write-Host '.'
-        Write-Host 'test cleanup method started'
+        Write-Host 'test run on inform with expected outcome started'
         #
-        $cleanuppath = (
-            $this.processloc,
-            'astropath_ws',
-            $this.module,
-            $this.slideid
-        ) -join '\'
+        $this.setupexpected($inp)
         #
-        Write-Host '    running cleanup method'
-        $inp.cleanup()
-        #
-        if (Test-Path $cleanuppath) {
-            Throw (
-                'dir still exists -- cleanup test failed:', 
-                $cleanuppath
-            ) -join ' '
+        while(($inp.err -le 5) -AND ($inp.err -ge 0)){
+            $inp.StartInForm()
+            $inp.WatchBatchInForm()
+            $inp.CheckErrors()
+            if (($inp.err -le 5) -and ($inp.err -gt 0)){
+                $inp.sample.warning("Task will restart. Attempt "+ $inp.err)
+            } elseif ($inp.err -gt 5){
+                Throw "Could not complete task after 5 attempts"
+            } elseif ($inp.err -eq -1){
+                $inp.sample.info("inForm Batch Process Finished Successfully")
+            }
         }
-        Write-Host '    cleanup method complete'
-        Write-Host '    delete the testing_warpoctets folder'
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         #
-        $inp.sample.removedir($this.processloc)
+        Write-Host 'test run on inform with expected outcome finished'
         #
-        Write-Host 'test cleanup method finished'
+    }
+    <# --------------------------------------------
+    setupexpected
+    helper function to help setup the processing
+    directory to be able to start inform session
+    with expected outcome
+    --------------------------------------------#>
+    [void]setupexpected($inp) {
+        #
+        Write-Host '    copying reference im3 file to flatw folder:' $this.referenceim3
+        $inp.sample.copy($this.referenceim3, $inp.sample.flatwim3folder())
+        #
+        $inp.CreateOutputDir()
+        $inp.DownloadFiles()
+        $inp.CreateImageList()
+        #
+    }
+    <# --------------------------------------------
+    testruninformbatcherror
+    check that the inform task completes correctly 
+    when run with the input that will throw a
+    inform batch error
+    --------------------------------------------#>
+    [void]testruninformbatcherror($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test run on inform with batch error started'
+        #
+        $this.setupbatcherror($inp)
+        #
+        while(($inp.err -le 5) -AND ($inp.err -ge 0)){
+            $inp.StartInForm()
+            $inp.WatchBatchInForm()
+            $inp.CheckErrors()
+            if (($inp.err -le 5) -and ($inp.err -gt 0)){
+                $inp.sample.warning("Task will restart. Attempt "+ $inp.err)
+            } elseif ($inp.err -gt 5){
+                Throw "Could not complete task after 5 attempts"
+            } elseif ($inp.err -eq -1){
+                $inp.sample.info("inForm Batch Process Finished Successfully")
+            }
+        }
+        $inp.sample.removefile($this.sample.flatwim3folder(), '.im3')
+        #
+        Write-Host 'test run on inform with batch error finished'
+        #
+    }
+    <# --------------------------------------------
+    setupbatcherror
+    helper function to help setup the processing
+    directory to be able to start inform session
+    with batch error outcome
+    --------------------------------------------#>
+    [void]setupbatcherror($inp) {
+        #
+        $referenceim3s = $this.basepath, 'M21_1\im3\Scan1\MSI' -join '\'
+        Write-Host '    copying reference im3 files to flatw folder:'
+        $inp.sample.copy($referenceim3s, $inp.sample.flatwim3folder(), '.im3', 30)
+        #
+        $inp.CreateOutputDir()
+        $inp.DownloadFiles()
+        $inp.CreateImageList()
+        #
     }
     #
 }
