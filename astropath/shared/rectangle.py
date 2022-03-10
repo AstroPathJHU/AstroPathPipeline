@@ -5,8 +5,9 @@ from ..utilities.miscfileio import with_stem
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
+from .image_masking.maskloader import ThingWithMask, ThingWithTissueMask
 from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
-from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
+from .rectangletransformation import AsTypeTransformation, RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
 
 class Rectangle(DataClassWithPscale):
   """
@@ -732,7 +733,13 @@ class GeomLoadRectangle(Rectangle):
   def geomloadcsv(self):
     return self.__geomfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_cellGeomLoad.csv")
 
-class MaskRectangle(Rectangle):
+class MaskRectangleBase(Rectangle, ThingWithMask):
+  pass
+
+class TissueMaskRectangleBase(MaskRectangleBase, ThingWithTissueMask):
+  pass
+
+class AstroPathMaskRectangle(MaskRectangleBase):
   """
   Rectangle that has mask files, e.g. _tissue_mask.bin
   You have to provide the folder where those files live.
@@ -741,11 +748,40 @@ class MaskRectangle(Rectangle):
     self.__maskfolder = pathlib.Path(maskfolder)
     super().__post_init__(*args, **kwargs)
   @property
+  def maskfolder(self):
+    return self.__maskfolder
+
+class AstroPathTissueMaskRectangle(AstroPathMaskRectangle, TissueMaskRectangleBase):
+  @property
   def tissuemaskfile(self):
-    return self.__maskfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_tissue_mask.bin")
+    return self.maskfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_tissue_mask.bin")
+  @property
+  def maskloader(self):
+    return ImageLoaderBin(
+      filename=self.tissuemaskfile,
+      dimensions=(
+        floattoint(float(self.height/self.onepixel)),
+        floattoint(float(self.width/self.onepixel)),
+      )
+    )
+
+  @property
+  def tissuemasktransformation(self):
+    return AsTypeTransformation(bool)
+
+class FullMaskRectangle(MaskRectangleBase):
   @property
   def fullmaskfile(self):
     return self.__maskfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_full_mask.bin")
+  @property
+  def maskloader(self):
+    return ImageLoaderBin(
+      filename=self.fullmaskfile,
+      dimensions=(
+        floattoint(float(self.height/self.onepixel)),
+        floattoint(float(self.width/self.onepixel)),
+      )
+    )
 
 class PhenotypedRectangle(Rectangle):
   """

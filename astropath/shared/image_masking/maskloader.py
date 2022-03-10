@@ -4,123 +4,27 @@ from ..contours import findcontoursaspolygons
 from ..logging import ThingWithLogger
 from .image_mask import ImageMask
 
-class MaskLoader(contextlib.ExitStack):
-  """
-  Base class for a mask that can be loaded from a file
-  """
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.__using_mask_count = 0
-
+class ThingWithMask(abc.ABC):
+  @property
   @abc.abstractmethod
-  def maskfilename(self): pass
+  def maskloader(self): pass
+  def using_mask(self): return self.maskloader.using_image()
 
-  def readmask(self, **filekwargs):
-    """
-    Read the mask and return it
-    """
-    filename = self.maskfilename(**filekwargs)
-
-    filetype = filename.suffix
-    if filetype == ".npz":
-      dct = np.load(filename)
-      return dct["mask"]
-    elif filetype == ".bin":
-      return ImageMask.unpack_tissue_mask(
-        filename, tuple((self.ntiles * self.zoomtilesize)[::-1])
-      )
-    else:
-      raise ValueError("Don't know how to deal with mask file type {filetype}")
-
-  @contextlib.contextmanager
-  def using_mask(self):
-    """
-    Context manager for using the mask.  When you enter it for the first time
-    it will load the mask. If you enter it again it won't have to load it again.
-    When all enters have a matching exit, it will remove it from memory.
-    """
-    if self.__using_mask_count == 0:
-      self.__mask = self.readmask()
-    self.__using_mask_count += 1
-    try:
-      yield self.__mask
-    finally:
-      self.__using_mask_count -= 1
-      if self.__using_mask_count == 0:
-        del self.__mask
-
-class TissueMaskLoader(units.ThingWithPscale, MaskLoader):
-  """
-  Base class for a MaskLoader that has a mask for tissue,
-  which can be obtained from the main mask. (e.g. if the
-  main mask has multiple classifications, the tissue mask
-  could be mask == 1)
-  """
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-
-    self.__using_tissuemask_count = 0
-    self.__using_tissuemask_uint8_count = 0
-    self.__using_tissuemask_zoomed_count = collections.defaultdict(lambda: 0)
-
-    self.__tissuemask_zoomed = {}
-
+class ThingWithTissueMask(ThingWithMask):
+  @property
   @abc.abstractmethod
-  def tissuemask(self, mask):
-    """
-    Get the tissue mask from the main mask
-    """
+  def tissuemasktransformation(self): pass
+  @property
+  def tissuemaskloader(self):
+    return TransformedImage(self.maskloader, self.tissuemasktransformation)
+  def using_tissuemask(self): return self.tissuemaskloader.using_image()
 
-  @contextlib.contextmanager
-  def using_tissuemask(self):
-    with contextlib.ExitStack() as stack:
-      if self.__using_tissuemask_count == 0:
-        self.__tissuemask = self.tissuemask(stack.enter_context(self.using_mask()))
-      self.__using_tissuemask_count += 1
-      try:
-        yield self.__tissuemask
-      finally:
-        self.__using_tissuemask_count -= 1
-        if self.__using_tissuemask_count == 0:
-          del self.__tissuemask
-
-  @contextlib.contextmanager
-  def using_tissuemask_uint8(self):
-    with contextlib.ExitStack() as stack:
-      if self.__using_tissuemask_uint8_count == 0:
-        self.__tissuemask_uint8 = stack.enter_context(self.using_tissuemask()).astype(np.uint8)
-      self.__using_tissuemask_uint8_count += 1
-      try:
-        yield self.__tissuemask_uint8
-      finally:
-        self.__using_tissuemask_uint8_count -= 1
-        if self.__using_tissuemask_uint8_count == 0:
-          del self.__tissuemask_uint8
-
-  @contextlib.contextmanager
-  def using_tissuemask_zoomed(self, zoomfactor):
-    if zoomfactor == 1:
-      with self.using_tissuemask() as mask:
-        yield mask
-      return
-
-    with contextlib.ExitStack() as stack:
-      if self.__using_tissuemask_zoomed_count[zoomfactor] == 0:
-        self.__tissuemask_zoomed[zoomfactor] = (skimage.transform.downscale_local_mean(stack.enter_context(self.using_tissuemask()), (zoomfactor, zoomfactor)) > 0.5)
-      self.__using_tissuemask_zoomed_count[zoomfactor] += 1
-      try:
-        yield self.__tissuemask_zoomed[zoomfactor]
-      finally:
-        self.__using_tissuemask_zoomed_count[zoomfactor] -= 1
-        if self.__using_tissuemask_zoomed_count[zoomfactor] == 0:
-          del self.__tissuemask_zoomed[zoomfactor]
-
-class TissueMaskLoaderWithPolygons(TissueMaskLoader, ThingWithLogger, contextlib.ExitStack):
+class ThingWithTissueMaskPolygons(ThingWithTissueMask, ThingWithLogger, contextlib.ExitStack):
   @methodtools.lru_cache()
   def __tissuemaskpolygons_and_area_cutoff(self, *, zoomfactor, epsilon):
     self.logger.debug("finding tissue mask as polygons")
     self.logger.debug("  loading mask")
-    with self.using_tissuemask_zoomed(zoomfactor) as mask:
+    with self.using_tissuemask(zoomfactor) as mask:
       imagescale = self.pscale/zoomfactor
       self.logger.debug("  cropping the mask to regions that contain tissue")
       xindices, yindices = np.where(mask)
@@ -168,18 +72,15 @@ class TissueMaskLoaderWithPolygons(TissueMaskLoader, ThingWithLogger, contextlib
 
       return polygons, areacutoff
 
-  def tissuemaskpolygons(self, *, zoomfactor=1, epsilon=None):
+  def tissuemaskpolygons(self, *, epsilon=None):
     """
     Get the outline of the tissue mask as gdal polygons.
 
-    zoomfactor: zoom in by this amount for calculating the polygons
-                (however the results can be off by zoomfactor*1 pixel)
-                default: 1 (no zoom)
     epsilon: Smooth the polygon with the Ramer-Douglas-Peucker algorithm
              with this epsilon (default: 2 pixels)
     """
     if epsilon is None: epsilon = 2*self.onepixel
-    return self.__tissuemaskpolygons_and_area_cutoff(zoomfactor=zoomfactor, epsilon=epsilon)[0]
-  def tissuemaskpolygonareacutoff(self, *, zoomfactor=1, epsilon=None):
+    return self.__tissuemaskpolygons_and_area_cutoff(epsilon=epsilon)[0]
+  def tissuemaskpolygonareacutoff(self, *, epsilon=None):
     if epsilon is None: epsilon = 2*self.onepixel
-    return self.__tissuemaskpolygons_and_area_cutoff(zoomfactor=zoomfactor, epsilon=epsilon)[1]
+    return self.__tissuemaskpolygons_and_area_cutoff(epsilon=epsilon)[1]
