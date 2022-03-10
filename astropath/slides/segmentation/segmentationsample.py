@@ -15,7 +15,7 @@ from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation,
 NNUNET_SEGMENT_FILE_APPEND = 'nnunet_nuclear_segmentation.npz'
 DEEPCELL_SEGMENT_FILE_APPEND = 'deepcell_nuclear_segmentation.npz'
 MESMER_SEGMENT_FILE_APPEND = 'mesmer_segmentation.npz'
-MESMER_GROUP_SIZE = 12
+MESMER_GROUP_SIZE = 48
 
 class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWithSegmentations,
                              WorkflowSample,ParallelSample,WorkingDirArgumentParser) :
