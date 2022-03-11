@@ -14,6 +14,7 @@ class ThingWithTissueMask(ThingWithMask):
   @property
   @abc.abstractmethod
   def tissuemasktransformation(self): pass
+  @methodtools.lru_cache()
   @property
   def tissuemaskloader(self):
     return TransformedImage(self.maskloader, self.tissuemasktransformation)

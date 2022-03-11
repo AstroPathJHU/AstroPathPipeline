@@ -760,6 +760,7 @@ class AstroPathTissueMaskRectangle(AstroPathMaskRectangle, TissueMaskRectangleBa
   @property
   def tissuemaskfile(self):
     return self.maskfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_tissue_mask.bin")
+  @methodtools.lru_cache()
   @property
   def maskloader(self):
     return ImageLoaderBin(
@@ -778,6 +779,7 @@ class FullMaskRectangle(MaskRectangleBase):
   @property
   def fullmaskfile(self):
     return self.__maskfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_full_mask.bin")
+  @methodtools.lru_cache()
   @property
   def maskloader(self):
     return ImageLoaderBin(

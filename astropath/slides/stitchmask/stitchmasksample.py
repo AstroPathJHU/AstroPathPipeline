@@ -1,4 +1,4 @@
-import abc, numpy as np, pathlib
+import abc, methodtools, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMask, ThingWithTissueMaskPolygons
@@ -40,6 +40,7 @@ class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgum
     folder = self.maskfolder
     return folder/filename
 
+  @methodtools.lru_cache()
   @property
   def maskloader(self):
     if self.maskfilesuffix == ".npz":
