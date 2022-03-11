@@ -136,28 +136,6 @@ Class informinput : moduletools {
         #
     }
     <# -----------------------------------------
-     DownloadIm3
-     Download the im3s to process to reduce network
-     strain and frequent network errors while 
-     processing
-     ------------------------------------------
-     Usage: $this.DownloadIm3()
-    ----------------------------------------- #>
-    [void]DownloadIm3(){
-        #
-        $this.sample.info("Download im3s")
-        $this.sample.createnewdirs($this.outpath)
-        #
-        $des = $this.outpath +'\'+$this.sample.slideid+'\im3\flatw'
-        $sor = $this.sample.flatwim3folder()
-        #
-        $this.sample.copy($sor, $des, 'im3', 30)
-        if(!(((gci ($sor+'\*') -Include '*im3').Count) -eq (gci $des).count)){
-            Throw 'im3s did not download correctly'
-        }
-        #
-    }
-    <# -----------------------------------------
      CreateImageList
      Create a list of images for inForm to process
      and save it to the processing directory
