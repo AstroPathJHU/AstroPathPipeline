@@ -165,12 +165,31 @@ Class informinput : moduletools {
                     "-o",  $this.informoutpath, `
                     "-i", $this.image_list_file -join ' '
         $this.sample.info("Start inForm Batch Process")
-        $prc = Start-Process $this.informpath `
+        Start-Process $this.informpath `
                 -NoNewWindow `
                 -RedirectStandardError $this.informprocesserrorlog `
                 -PassThru `
                 -ArgumentList $arginput `
-                *>> $processoutputlog
+                *>> $processoutputlog | Out-Null
+        #
+        # let inform open and close temporary license window
+        #
+        foreach ($count in 1..20) {
+            $process = get-process | where-object {$_.MainWindowTitle -eq 'License Information'}
+                if ($process) {
+                    $process | ForEach-Object{$_.CloseMainWindow()} | out-null
+                    break
+                }
+            Start-Sleep 1
+        }
+        #
+        foreach ($count in 1..20) {
+            $process = get-process -name inform -EA SilentlyContinue
+            if ($process) {
+                break
+            }
+            Start-Sleep 1
+        }
         #
     }
     #
@@ -202,14 +221,6 @@ Class informinput : moduletools {
     ----------------------------------------- #>
     [void]WatchBatchInForm(){
         #
-        # let inform open and close temporary license window
-        #
-        Start-Sleep 20
-        get-process |
-            where-object {$_.MainWindowTitle -eq 'License Information'} |
-            %{$_.CloseMainWindow()} | out-null
-        Start-Sleep 20
-        #
         if (!(test-path $this.informbatchlog) -or 
             !(get-process -name inform -EA SilentlyContinue)){
                 $this.sample.warning('inForm did not properly start')
@@ -224,8 +235,7 @@ Class informinput : moduletools {
         #
         while($value){
             #
-            if ((gci $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-10)){
-                $this.KillinFormProcess()
+            if ((Get-ChildItem $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-10)){
                 $this.sample.warning('Timeout reached for batch run')
                 if (get-process -name inform -EA SilentlyContinue){
                     Throw 'Could not close failed inForm'
@@ -238,6 +248,7 @@ Class informinput : moduletools {
             }
             #
         }
+        $this.KillinFormProcess()
         #
     }
    <# -----------------------------------------
