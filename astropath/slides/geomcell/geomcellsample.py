@@ -6,7 +6,7 @@ from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
-from ...shared.sample import DbloadSample, GeomSampleBase, ParallelSample, ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample
+from ...shared.sample import DbloadSample, GeomSampleBase, InformSegmentationSample, ParallelSample, ReadRectanglesDbloadSegmentedComponentTiff, SampleWithSegmentations, WorkflowSample
 from ...utilities import units
 from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
@@ -21,30 +21,7 @@ class GeomLoadField(Field, GeomLoadRectangle):
 class GeomLoadFieldReadSegmentedComponentTiffMultiLayer(FieldReadSegmentedComponentTiffMultiLayer, GeomLoadRectangle):
   pass
 
-class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, DbloadSample, ParallelSample, WorkflowSample, CleanupArgumentParser):
-  @property
-  def segmentationorder(self):
-    return sorted(
-      self.segmentationids,
-      key=lambda x: -2*(x=="Tumor")-(x=="Immune")
-    )
-
-  def celltype(self, layer):
-    segid = self.segmentationidfromlayer(layer)
-    membrane = self.ismembranelayer(layer)
-    nucleus = self.isnucleuslayer(layer)
-    assert membrane ^ nucleus
-    if membrane and segid == "Tumor": return 0
-    if membrane and segid == "Immune": return 1
-    if nucleus and segid == "Tumor": return 2
-    if nucleus and segid == "Immune": return 3
-    if isinstance(segid, int) and segid >= 3:
-      if membrane: nucleusmembranebit = 0
-      if nucleus: nucleusmembranebit = 2
-      #shift all bits besides the first to the left, and put in the nucleus/membrane bit
-      return (((segid-1) & ~0b1) << 1) | ((segid-1) & 0b1) | nucleusmembranebit
-    assert False, (membrane, nucleus, segid)
-
+class GeomCellSampleBase(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, DbloadSample, SampleWithSegmentations, ParallelSample, WorkflowSample, CleanupArgumentParser):
   def __init__(self, *args, **kwargs):
     super().__init__(
       *args,
@@ -70,17 +47,16 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
       **super().rectangleextrakwargs,
       "geomfolder": self.geomfolder,
     }
-
-  @classmethod
-  def logmodule(self):
-    return "geomcell"
+  @property
+  def geomsubfolder(self):
+    return self.geomfolder/self.segmentationalgorithm()
 
   @classmethod
   def defaultunits(cls):
     return "fast_microns"
 
   def rungeomcell(self, *, minarea=None, **kwargs):
-    self.geomfolder.mkdir(exist_ok=True, parents=True)
+    self.geomsubfolder.mkdir(exist_ok=True, parents=True)
     if minarea is None: minarea = (3 * self.onemicron)**2
     kwargs.update({
       "nfields": len(self.rectangles),
@@ -91,6 +67,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
       "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layerscomponenttiff],
       "pscale": self.pscale,
       "unitsargs": units.currentargs(),
+      "segmentationalgorithm": self.segmentationalgorithm(),
     })
     if self.njobs is None or self.njobs > 1:
       with self.pool() as pool:
@@ -109,8 +86,9 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
     self.rungeomcell(**kwargs)
 
   @staticmethod
-  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, unitsargs):
-    with units.setup_context(*unitsargs), job_lock.JobLock(field.geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[field.geomloadcsv], checkoutputfiles=not rerun) as lock:
+  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, unitsargs, segmentationalgorithm):
+    geomloadcsv = field.geomloadcsv(segmentationalgorithm)
+    with units.setup_context(*unitsargs), job_lock.JobLock(geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[geomloadcsv], checkoutputfiles=not rerun) as lock:
       if not lock: return
       if _onlydebug and not any(fieldn == field.n for fieldn, celltype, celllabel in _debugdraw): return
       onepixel = units.onepixel(pscale)
@@ -147,7 +125,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
               )
             )
 
-      writetable(field.geomloadcsv, geomload, rowclass=CellGeomLoad)
+      writetable(geomloadcsv, geomload, rowclass=CellGeomLoad)
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
@@ -158,7 +136,7 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
 
   @classmethod
   def getworkinprogressfiles(cls, SlideID, *, geomroot, **otherworkflowkwargs):
-    geomfolder = geomroot/SlideID/"geom"
+    geomfolder = geomroot/SlideID/"geom"/cls.segmentationalgorithm()
     return geomfolder.glob("*.csv")
 
   @property
@@ -174,12 +152,41 @@ class GeomCellSample(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff,
     constants = constantsdict(constantscsv)
     rectangles = readtable(fieldscsv, GeomLoadField, extrakwargs={"pscale": constants["pscale"], "geomfolder": geomroot/SlideID/"geom"})
     return [
-      *(r.geomloadcsv for r in rectangles if selectrectangles(r)),
+      *(r.geomloadcsv(cls.segmentationalgorithm()) for r in rectangles if selectrectangles(r)),
     ]
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
     return [AlignSample] + super().workflowdependencyclasses(**kwargs)
+
+class GeomCellSampleInform(GeomCellSampleBase, InformSegmentationSample):
+  @classmethod
+  def logmodule(self):
+    return "geomcell"
+
+  @property
+  def segmentationorder(self):
+    return sorted(
+      self.segmentationids,
+      key=lambda x: -2*(x=="Tumor")-(x=="Immune")
+    )
+
+  def celltype(self, layer):
+    segid = self.segmentationidfromlayer(layer)
+    membrane = self.ismembranelayer(layer)
+    nucleus = self.isnucleuslayer(layer)
+    assert membrane ^ nucleus
+    if membrane and segid == "Tumor": return 0
+    if membrane and segid == "Immune": return 1
+    if nucleus and segid == "Tumor": return 2
+    if nucleus and segid == "Immune": return 3
+    if isinstance(segid, int) and segid >= 3:
+      if membrane: nucleusmembranebit = 0
+      if nucleus: nucleusmembranebit = 2
+      #shift all bits besides the first to the left, and put in the nucleus/membrane bit
+      return (((segid-1) & ~0b1) << 1) | ((segid-1) & 0b1) | nucleusmembranebit
+    assert False, (membrane, nucleus, segid)
+
 
 class CellGeomLoad(DataClassWithPolygon):
   field: int
@@ -538,8 +545,5 @@ class PolygonFinder(ThingWithPscale):
     plt.show()
     self.logger.debug(f"{polygon}: {self.loginfo}")
 
-def main(args=None):
-  GeomCellSample.runfromargumentparser(args)
-
-if __name__ == "__main__":
-  main()
+def inform(args=None):
+  GeomCellSampleInform.runfromargumentparser(args)

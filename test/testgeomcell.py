@@ -1,7 +1,7 @@
 import csv, itertools, logging, more_itertools, os, pathlib, re
 
-from astropath.slides.geomcell.geomcellcohort import GeomCellCohort
-from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
+from astropath.slides.geomcell.geomcellcohort import GeomCellCohortInform
+from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSampleInform
 from astropath.utilities.version.git import thisrepo
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
@@ -15,9 +15,9 @@ class TestGeomCell(TestBaseSaveOutput):
   def outputfilenames(self):
     return [
       *(
-        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/filename.name
+        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/"inform"/filename.name
         for SlideID in ("M206",)
-        for filename in (thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom").iterdir()
+        for filename in (thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom"/"inform").iterdir()
       ),
       thisfolder/"test_for_jenkins"/"geomcell"/"logfiles"/"geomcell.log",
       *(
@@ -30,10 +30,10 @@ class TestGeomCell(TestBaseSaveOutput):
     root = thisfolder/"data"
     geomroot = thisfolder/"test_for_jenkins"/"geomcell"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--logroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--njobs", "2"]
-    s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, logroot=geomroot, selectrectangles=[1], printthreshold=logging.CRITICAL+1, reraiseexceptions=False, uselogfiles=True)
+    s = GeomCellSampleInform(root=root, samp=SlideID, geomroot=geomroot, logroot=geomroot, selectrectangles=[1], printthreshold=logging.CRITICAL+1, reraiseexceptions=False, uselogfiles=True)
     with s.logger:
       raise ValueError
-    geomloadcsv = s.rectangles[0].geomloadcsv
+    geomloadcsv = s.rectangles[0].geomloadcsv("inform")
     geomloadcsv.parent.mkdir(exist_ok=True, parents=True)
     geomloadcsv.touch()
     with s.logger:
@@ -64,10 +64,10 @@ class TestGeomCell(TestBaseSaveOutput):
 
     geomloadcsv.touch()
     #should not run anything because the csv already exists
-    GeomCellCohort.runfromargumentparser(args=args)
+    GeomCellCohortInform.runfromargumentparser(args=args)
     #this shouldn't run anything either because the last cleanup was with the current commit
-    GeomCellCohort.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
-    with open(s.rectangles[0].geomloadcsv) as f:
+    GeomCellCohortInform.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
+    with open(geomloadcsv) as f:
       assert not f.read().strip()
 
     contents = contents.replace("Finished cleaning up", "")
@@ -75,12 +75,12 @@ class TestGeomCell(TestBaseSaveOutput):
       f.write(contents)
     #now there's no log message indicating a successful cleanup, so the last cleanup
     #was the first run of the log, which is testrequirecommit.parents[0]
-    GeomCellCohort.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
+    GeomCellCohortInform.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
 
     try:
       for filename, reffilename in more_itertools.zip_equal(
-        sorted(s.geomfolder.iterdir()),
-        sorted((thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom").iterdir()),
+        sorted(s.geomsubfolder.iterdir()),
+        sorted((thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom"/"inform").iterdir()),
       ):
         self.assertEqual(filename.name, reffilename.name)
   

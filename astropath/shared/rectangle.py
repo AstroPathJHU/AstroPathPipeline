@@ -734,9 +734,8 @@ class GeomLoadRectangle(Rectangle):
   def __post_init__(self, *args, geomfolder, **kwargs):
     self.__geomfolder = pathlib.Path(geomfolder)
     super().__post_init__(*args, **kwargs)
-  @property
-  def geomloadcsv(self):
-    return self.__geomfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_cellGeomLoad.csv")
+  def geomloadcsv(self, segmentationalgorithm):
+    return self.__geomfolder/segmentationalgorithm/self.file.replace(UNIV_CONST.IM3_EXT, "_cellGeomLoad.csv")
 
 class MaskRectangleBase(Rectangle, ThingWithMask):
   pass

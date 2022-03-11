@@ -16,7 +16,7 @@ from ..align.stitch import AffineEntry
 from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
-from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSample
+from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSampleInform
 from ...utilities.tableio import TableReader
 
 class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
@@ -55,6 +55,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
     p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex", default=[])
+    p.add_argument("--segmentation-algorithm", action="append", choices="inform", help="load cell geometry csvs from these segmentation algorithms", metavar="algorithm", dest="segmentation_algorithms")
     return p
 
   @classmethod
@@ -63,6 +64,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "checkcsvs": parsed_args_dict.pop("checkcsvs"),
       "ignorecsvs": parsed_args_dict.pop("ignore_csvs"),
+      "segmentationalgorithms": parsed_args_dict.pop("segmentation_algorithms"),
     }
     return kwargs
 
@@ -82,10 +84,15 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       "phenotypefolder": self.phenotypefolder,
     }
 
+  @property
+  def geomsubfolders(self):
+    return se
+
   def processcsv(self, *args, **kwargs):
     return super().processcsv(*args, SlideID=self.SlideID, **kwargs)
 
-  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[], segmentationalgorithms=None):
+    if not segmentationalgorithms: segmentationalgorithms = ["inform"]
     toload = []
     expectcsvs = {
       self.csv(_) for _ in (
@@ -111,12 +118,12 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       )
     }
     expectcsvs |= {
-      r.geomloadcsv for r in self.rectangles
+      r.geomloadcsv(algo) for r in self.rectangles for algo in segmentationalgorithms
     }
 
-    def hasanycells(rectangle):
+    def hasanycells(rectangle, algorithm):
       try:
-        with open(rectangle.geomloadcsv) as f:
+        with open(rectangle.geomloadcsv(algorithm)) as f:
           next(f)
           next(f)
       except (FileNotFoundError, StopIteration):
@@ -124,7 +131,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       else:
         return True
     expectcsvs |= {
-      r.phenotypecsv for r in self.rectangles if hasanycells(r)
+      r.phenotypecsv for r in self.rectangles if any(hasanycells(r, algo) for algo in segmentationalgorithms)
     }
 
     meanimagecsvs = {
@@ -142,7 +149,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
         "globals",
       )
     } | {
-      r.phenotypeQAQCcsv for r in self.rectangles if hasanycells(r)
+      r.phenotypeQAQCcsv for r in self.rectangles if any(hasanycells(r, algo) for algo in segmentationalgorithms)
     } | annotationinfocsvs | meanimagecsvs
     goodcsvs = set()
     unknowncsvs = set()
@@ -204,7 +211,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
           "regions": 500000,
           "tumorGeometry": 500000,
         }.get(match.group(1), None)
-      elif csv.parent == self.geomfolder:
+      elif csv.parent.parent == self.geomfolder:
         csvclass = CellGeomLoad
         tablename = "CellGeom"
         extrakwargs = {}
@@ -247,7 +254,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [AnnoWarpSampleInformTissueMask, GeomCellSample, GeomSample] + super().workflowdependencyclasses(**kwargs)
+    return [AnnoWarpSampleInformTissueMask, GeomCellSampleInform, GeomSample] + super().workflowdependencyclasses(**kwargs)
 
   def run(self, *args, **kwargs): return self.runcsvscan(*args, **kwargs)
 
