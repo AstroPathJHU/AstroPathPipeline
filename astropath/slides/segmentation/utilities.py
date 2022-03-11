@@ -2,7 +2,6 @@
 import shutil
 import numpy as np, SimpleITK as sitk
 from hashlib import sha512
-from skimage.segmentation import find_boundaries
 from .config import SEG_CONST
 
 def split_model_files(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR,
