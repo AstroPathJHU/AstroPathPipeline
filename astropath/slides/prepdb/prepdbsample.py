@@ -298,7 +298,7 @@ class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
       self.writeqptiffcsv()
       self.writeqptiffjpg()
 
-  run = writemetadata
+  def run(self, *args, **kwargs): return self.writemetadata(*args, **kwargs)
 
   def inputfiles(self, *, _skipqptiff=False, **kwargs):
     result = super().inputfiles(**kwargs) + [

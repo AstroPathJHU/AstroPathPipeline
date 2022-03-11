@@ -166,7 +166,7 @@ class ImageMask() :
     @staticmethod
     def unpack_tissue_mask(filepath,dimensions) :
         if not pathlib.Path(filepath).is_file() :
-            raise ValueError(f'ERROR: tissue mask file {filepath} does not exist!')
+            raise FileNotFoundError(f'ERROR: tissue mask file {filepath} does not exist!')
         packed_mask = np.memmap(filepath,dtype=np.uint8,mode='r')
         return (np.unpackbits(packed_mask)).reshape(dimensions)
 
@@ -174,7 +174,7 @@ class ImageMask() :
     @staticmethod
     def onehot_mask_from_full_mask_file(filepath,dimensions) :
         if not pathlib.Path(filepath).is_file() :
-            raise ValueError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
+            raise FileNotFoundError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
         if dimensions[-1]==35 :
             layergroups = UNIV_CONST.LAYER_GROUPS_35
         elif dimensions[-1]==43 :
@@ -192,7 +192,7 @@ class ImageMask() :
     @staticmethod
     def onehot_mask_from_full_mask_file_no_blur(filepath,dimensions) :
         if not pathlib.Path(filepath).is_file() :
-            raise ValueError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
+            raise FileNotFoundError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
         if dimensions[-1]==35 :
             layergroups = UNIV_CONST.LAYER_GROUPS_35
         elif dimensions[-1]==43 :

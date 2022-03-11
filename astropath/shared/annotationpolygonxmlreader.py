@@ -5,7 +5,7 @@ from ..utilities.miscmath import floattoint
 from ..utilities.tableio import boolasintfield, readtable, writetable
 from ..utilities.units.dataclasses import distancefield, DataClassWithAnnoscale
 from .csvclasses import Annotation, AnnotationInfo, Region, Vertex
-from .image_masking.maskloader import TissueMaskLoaderWithPolygons
+from .image_masking.maskloader import ThingWithTissueMaskPolygons
 from .logging import dummylogger, printlogger, ThingWithLogger
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
@@ -624,7 +624,7 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
   @property
   def SampleID(self): return 0
 
-class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, TissueMaskLoaderWithPolygons):
+class XMLPolygonAnnotationReaderWithOutline(XMLPolygonAnnotationReader, ThingWithTissueMaskPolygons):
   def getannotationnode(self, info):
     if info.isfrommask:
       return AnnotationNodeFromPolygons("outline", self.tissuemaskpolygons(), color=self.allowedannotation("outline").color, annoscale=self.pscale, areacutoff=self.tissuemaskpolygonareacutoff())
