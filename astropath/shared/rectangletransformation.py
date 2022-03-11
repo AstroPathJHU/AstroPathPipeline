@@ -199,3 +199,15 @@ class RectangleWarpingTransformationSinglelayer(RectangleTransformationBase) :
     self._warp.warpLayerInPlace(layer_in_umat,layer_out_umat)
     corr_img = layer_out_umat.get()
     return corr_img
+
+class ImageTransformation(RectangleTransformationBase):
+  def __init__(self, transformation):
+    self.__transformation = transformation
+  def transform(self, originalimage):
+    return self.__transformation(originalimage)
+
+class AsTypeTransformation(RectangleTransformationBase):
+  def __init__(self, dtype):
+    self.__dtype = dtype
+  def transform(self, originalimage):
+    return originalimage.astype(self.__dtype)

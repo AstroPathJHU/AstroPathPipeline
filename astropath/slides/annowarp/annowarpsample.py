@@ -856,7 +856,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     #has to come after writevertices
     self.writeannotations()
 
-  run = runannowarp
+  def run(self, *args, **kwargs):
+    return self.runannowarp(*args, **kwargs)
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
@@ -940,7 +941,19 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSampleWithPolygons,
 
       return np.count_nonzero(maskslice) / maskslice.size >= self.mintissuefraction
 
+  def runannowarp(self, *args, **kwargs):
+    """
+    Load the tissue mask once to avoid duplicate loading
+    """
+    with self.using_tissuemask():
+      return super().runannowarp(*args, **kwargs)
+
   def align(self, *args, **kwargs):
+    """
+    Load the tissue mask once to avoid duplicate loading
+    (when the full chain is run through runannowarp() this is
+    not necessary, but doesn't hurt anything)
+    """
     with self.using_tissuemask():
       return super().align(*args, **kwargs)
 
