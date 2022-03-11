@@ -1,6 +1,7 @@
 import abc, collections, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.measure, skimage.transform
 from ...utilities import units
 from ..contours import findcontoursaspolygons
+from ..imageloader import TransformedImage
 from ..logging import ThingWithLogger
 from .image_mask import ImageMask
 

@@ -6,7 +6,7 @@ from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .image_masking.maskloader import ThingWithMask, ThingWithTissueMask
-from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
+from .imageloader import ImageLoaderBin, ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
 from .rectangletransformation import AsTypeTransformation, RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
 
 class Rectangle(DataClassWithPscale):
@@ -140,7 +140,22 @@ class RectangleWithImageLoaderBase(Rectangle):
     self._DEBUG = _DEBUG
     self._DEBUG_PRINT_TRACEBACK = _DEBUG_PRINT_TRACEBACK
 
-class RectangleReadIm3Base(RectangleWithImageLoaderBase):
+class RectangleWithImageSize(Rectangle):
+  """
+  width, height: the shape of the HPF image (!= w, h, which are rounded)
+  """
+  @property
+  def width(self): return self.__width
+  @width.setter
+  def width(self, width): self.__width = width
+  width: units.Distance = distancefield(width, includeintable=False, pixelsormicrons="pixels", use_default=False)
+  @property
+  def height(self): return self.__height
+  @height.setter
+  def height(self, height): self.__height = height
+  height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels", use_default=False)
+
+class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize):
   """
   Rectangle class that reads the image from a sharded im3
   (could be raw, flatw, etc.)
@@ -162,16 +177,6 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase):
   @im3filetype.setter
   def im3filetype(self, im3filetype): self.__im3filetype = im3filetype
   im3filetype: str = MetaDataAnnotation(im3filetype, includeintable=False, use_default=False)
-  @property
-  def width(self): return self.__width
-  @width.setter
-  def width(self, width): self.__width = width
-  width: units.Distance = distancefield(width, includeintable=False, pixelsormicrons="pixels", use_default=False)
-  @property
-  def height(self): return self.__height
-  @height.setter
-  def height(self, height): self.__height = height
-  height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels", use_default=False)
   @property
   def nlayersim3(self): return self.__nlayersim3
   @nlayersim3.setter
@@ -739,7 +744,7 @@ class MaskRectangleBase(Rectangle, ThingWithMask):
 class TissueMaskRectangleBase(MaskRectangleBase, ThingWithTissueMask):
   pass
 
-class AstroPathMaskRectangle(MaskRectangleBase):
+class AstroPathMaskRectangle(MaskRectangleBase, RectangleWithImageSize):
   """
   Rectangle that has mask files, e.g. _tissue_mask.bin
   You have to provide the folder where those files live.

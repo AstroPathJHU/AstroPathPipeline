@@ -6,6 +6,7 @@ from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMas
 from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
 from ...shared.logging import ThingWithLogger
 from ...shared.rectangle import MaskRectangleBase, AstroPathTissueMaskRectangle
+from ...shared.rectangletransformation import ImageTransformation
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, MaskWorkflowSampleBase
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.miscmath import floattoint
@@ -107,7 +108,7 @@ class InformMaskSample(TissueMaskSample):
   def maskfilestem(cls): return "inform_mask"
   @property
   def tissuemasktransformation(self):
-    return RectangleTransformation(lambda mask: mask < self.nsegmentations)
+    return ImageTransformation(lambda mask: mask < self.nsegmentations)
 
 class AstroPathTissueMaskSample(TissueMaskSample):
   """
@@ -119,7 +120,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   def maskfilestem(cls): return "tissue_mask"
   @property
   def tissuemasktransformation(self):
-    return RectangleTransformation(lambda mask: mask.astype(bool))
+    return ImageTransformation(lambda mask: mask.astype(bool))
 
 class StitchMaskSample(WriteMaskSampleBase):
   """
@@ -246,6 +247,8 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
     return {
       **super().rectangleextrakwargs,
       "maskfolder": self.maskfolder,
+      "width": self.fwidth,
+      "height": self.fheight,
     }
 
   def inputfiles(self, **kwargs):
@@ -259,13 +262,7 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
   @property
   def backgroundvalue(self): return False
   def getHPFmask(self, field):
-    return ImageMask.unpack_tissue_mask(
-        field.tissuemaskfile,
-        (
-          floattoint(float(self.fheight/self.onepixel)),
-          floattoint(float(self.fwidth/self.onepixel)),
-        )
-      )
+    with field.using_tissuemask() as mask: return mask
 
 def astropathtissuemain(args=None):
   StitchAstroPathTissueMaskSample.runfromargumentparser(args=args)
