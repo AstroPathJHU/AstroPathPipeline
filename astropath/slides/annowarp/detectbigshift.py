@@ -81,4 +81,4 @@ class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, scale="zoomeds
       self.__shift = dxvec
       return self.__shift
 
-  run = getshift
+  def run(self, *args, **kwargs): return self.getshift(*args, **kwargs)

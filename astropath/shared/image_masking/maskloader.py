@@ -17,7 +17,7 @@ class ThingWithTissueMask(ThingWithMask):
   @methodtools.lru_cache()
   @property
   def tissuemaskloader(self):
-    return TransformedImage(self.maskloader, self.tissuemasktransformation)
+    return TransformedImage(self.maskloader, self.tissuemasktransformation, _DEBUG_PRINT_TRACEBACK=True)
   def using_tissuemask(self): return self.tissuemaskloader.using_image()
 
 class ThingWithTissueMaskPolygons(ThingWithTissueMask, ThingWithLogger, contextlib.ExitStack):

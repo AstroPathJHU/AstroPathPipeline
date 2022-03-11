@@ -85,7 +85,7 @@ class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
     else:
       raise ValueError("Don't know how to deal with mask file type {filetype}")
 
-  run = writemask
+  def run(self, *args, **kwargs): return self.writemask(*args, **kwargs)
 
   @abc.abstractmethod
   def createmask(self): "create the mask"

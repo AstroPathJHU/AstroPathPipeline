@@ -133,7 +133,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     self.dbload.mkdir(exist_ok=True)
     self.writecsv("loadfiles", loadfiles, header=False)
 
-  run = runcsvscan
+  def run(self, *args, **kwargs): return self.runcsvscan(*args, **kwargs)
 
   @property
   def globalcsvs(self):
