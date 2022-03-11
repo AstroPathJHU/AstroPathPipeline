@@ -1,7 +1,6 @@
 import abc, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
-from ...shared.image_masking.image_mask import ImageMask
 from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMask, ThingWithTissueMaskPolygons
 from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
 from ...shared.logging import ThingWithLogger

@@ -1,9 +1,8 @@
-import abc, collections, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.measure, skimage.transform
+import abc, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.measure, skimage.transform
 from ...utilities import units
 from ..contours import findcontoursaspolygons
 from ..imageloader import TransformedImage
 from ..logging import ThingWithLogger
-from .image_mask import ImageMask
 
 class ThingWithMask(abc.ABC):
   @property
@@ -22,11 +21,11 @@ class ThingWithTissueMask(ThingWithMask):
 
 class ThingWithTissueMaskPolygons(ThingWithTissueMask, ThingWithLogger, contextlib.ExitStack):
   @methodtools.lru_cache()
-  def __tissuemaskpolygons_and_area_cutoff(self, *, zoomfactor, epsilon):
+  def __tissuemaskpolygons_and_area_cutoff(self, *, epsilon):
     self.logger.debug("finding tissue mask as polygons")
     self.logger.debug("  loading mask")
-    with self.using_tissuemask(zoomfactor) as mask:
-      imagescale = self.pscale/zoomfactor
+    with self.using_tissuemask() as mask:
+      imagescale = self.pscale
       self.logger.debug("  cropping the mask to regions that contain tissue")
       xindices, yindices = np.where(mask)
       minx = np.min(xindices)
