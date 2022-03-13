@@ -84,10 +84,6 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       "phenotypefolder": self.phenotypefolder,
     }
 
-  @property
-  def geomsubfolders(self):
-    return se
-
   def processcsv(self, *args, **kwargs):
     return super().processcsv(*args, SlideID=self.SlideID, **kwargs)
 
