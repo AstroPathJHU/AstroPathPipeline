@@ -1,4 +1,4 @@
-import cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
+import abc, contextlib, cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...utilities.config import CONST as UNIV_CONST
 from ...shared.argumentparser import CleanupArgumentParser
 from ...shared.contours import findcontoursaspolygons
@@ -18,29 +18,19 @@ from ..align.field import Field, FieldReadSegmentedComponentTiffMultiLayer
 class GeomLoadField(Field, GeomLoadRectangle):
   pass
 
-class GeomLoadFieldReadSegmentedComponentTiffMultiLayer(FieldReadSegmentedComponentTiffMultiLayer, GeomLoadRectangle):
-  pass
+class GeomCellField(GeomLoadField):
+  @abc.abstractmethod
+  def using_segmentation_layers(self): pass
 
-class GeomCellSampleBase(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, DbloadSample, SampleWithSegmentations, ParallelSample, WorkflowSample, CleanupArgumentParser):
-  def __init__(self, *args, **kwargs):
-    super().__init__(
-      *args,
-      layerscomponenttiff="setlater",
-      **kwargs
-    )
-    self.setlayerscomponenttiff(
-      layerscomponenttiff=[
-        self.segmentationmembranelayer(seg) for seg in self.segmentationorder
-      ] + [
-        self.segmentationnucleuslayer(seg) for seg in self.segmentationorder
-      ],
-    )
+class GeomCellFieldInform(FieldReadSegmentedComponentTiffMultiLayer, GeomLoadRectangle):
+  @contextlib.contextmanager
+  def using_segmentation_layers(self):
+    with self.using_component_tiff() as im:
+      yield im.astype(np.uint32).transpose(2, 0, 1)
 
-  multilayercomponenttiff = True
-
+class GeomCellSampleBase(GeomSampleBase, DbloadSample, SampleWithSegmentations, ParallelSample, WorkflowSample, CleanupArgumentParser):
   @property
   def rectanglecsv(self): return "fields"
-  rectangletype = GeomLoadFieldReadSegmentedComponentTiffMultiLayer
   @property
   def rectangleextrakwargs(self):
     return {
@@ -55,6 +45,13 @@ class GeomCellSampleBase(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentT
   def defaultunits(cls):
     return "fast_microns"
 
+  @property
+  @abc.abstractmethod
+  def celltypesbylayer(self): pass
+  @property
+  @abc.abstractmethod
+  def arelayersmembrane(self): pass
+
   def rungeomcell(self, *, minarea=None, **kwargs):
     self.geomsubfolder.mkdir(exist_ok=True, parents=True)
     if minarea is None: minarea = (3 * self.onemicron)**2
@@ -62,9 +59,8 @@ class GeomCellSampleBase(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentT
       "nfields": len(self.rectangles),
       "minarea": minarea,
       "logger": self.logger,
-      "layers": self.layerscomponenttiff,
-      "celltypes": [self.celltype(imlayernumber) for imlayernumber in self.layerscomponenttiff],
-      "arelayersmembrane": [self.ismembranelayer(imlayernumber) for imlayernumber in self.layerscomponenttiff],
+      "celltypes": self.celltypesbylayer,
+      "arelayersmembrane": self.arelayersmembrane,
       "pscale": self.pscale,
       "unitsargs": units.currentargs(),
       "segmentationalgorithm": self.segmentationalgorithm(),
@@ -86,7 +82,7 @@ class GeomCellSampleBase(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentT
     self.rungeomcell(**kwargs)
 
   @staticmethod
-  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, layers, celltypes, arelayersmembrane, pscale, unitsargs, segmentationalgorithm):
+  def rungeomcellfield(i, field, *, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, rerun=False, minarea, nfields, logger, celltypes, arelayersmembrane, pscale, unitsargs, segmentationalgorithm):
     geomloadcsv = field.geomloadcsv(segmentationalgorithm)
     with units.setup_context(*unitsargs), job_lock.JobLock(geomloadcsv.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[geomloadcsv], checkoutputfiles=not rerun) as lock:
       if not lock: return
@@ -96,9 +92,8 @@ class GeomCellSampleBase(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentT
       logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
       geomload = []
       pxvec = units.nominal_values(field.pxvec)
-      with field.using_component_tiff() as im:
-        im = im.astype(np.uint32)
-        for imlayernumber, imlayer, celltype, ismembranelayer in more_itertools.zip_equal(layers, im.transpose(2, 0, 1), celltypes, arelayersmembrane):
+      with field.using_segmentation_layers() as imlayers:
+        for imlayer, celltype, ismembranelayer in more_itertools.zip_equal(imlayers, celltypes, arelayersmembrane):
           properties = skimage.measure.regionprops(imlayer)
           for cellproperties in properties:
             if not np.any(cellproperties.image):
@@ -159,7 +154,24 @@ class GeomCellSampleBase(GeomSampleBase, ReadRectanglesDbloadSegmentedComponentT
   def workflowdependencyclasses(cls, **kwargs):
     return [AlignSample] + super().workflowdependencyclasses(**kwargs)
 
-class GeomCellSampleInform(GeomCellSampleBase, InformSegmentationSample):
+class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, InformSegmentationSample):
+  rectangletype = GeomCellFieldInform
+  multilayercomponenttiff = True
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(
+      *args,
+      layerscomponenttiff="setlater",
+      **kwargs
+    )
+    self.setlayerscomponenttiff(
+      layerscomponenttiff=[
+        self.segmentationmembranelayer(seg) for seg in self.segmentationorder
+      ] + [
+        self.segmentationnucleuslayer(seg) for seg in self.segmentationorder
+      ],
+    )
+
   @classmethod
   def logmodule(self):
     return "geomcell"
@@ -187,6 +199,13 @@ class GeomCellSampleInform(GeomCellSampleBase, InformSegmentationSample):
       return (((segid-1) & ~0b1) << 1) | ((segid-1) & 0b1) | nucleusmembranebit
     assert False, (membrane, nucleus, segid)
 
+  @property
+  def celltypesbylayer(self):
+    return [self.celltype(imlayernumber) for imlayernumber in self.layerscomponenttiff]
+
+  @property
+  def arelayersmembrane(self):
+    return [self.ismembranelayer(imlayernumber) for imlayernumber in self.layerscomponenttiff]
 
 class CellGeomLoad(DataClassWithPolygon):
   field: int
