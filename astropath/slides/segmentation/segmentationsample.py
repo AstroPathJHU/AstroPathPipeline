@@ -279,7 +279,8 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
             deepcell_batch_segmented_filepaths = []
             for realir,(ir,rect,segmented_file_path) in enumerate(rects_to_run,start=1) :
                 #add to the batch
-                msg = f'Adding {rect.ihctifffile.name} ({ir} of {len(self.rectangles)}) to the next group of images....'
+                msg = f'Adding {rect.componenttifffile.name} ({ir} of {len(self.rectangles)}) '
+                msg+= 'to the next group of images....'
                 self.logger.debug(msg)
                 with rect.using_component_tiff() as im :
                     dapi_layer = im
