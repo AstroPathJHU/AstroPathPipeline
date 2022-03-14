@@ -120,11 +120,10 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollec
       ])/120
 
       shape = *zoomlevel.shape, 3
-      finalimg = np.zeros(shape)
 
-      for i, page in enumerate(zoomlevel[:5]):
-        img = page.asarray()
-        finalimg += np.tensordot(img, mix[:,i], axes=0)
+      with zoomlevel.using_image(layers=(1, 2, 3, 4, 5)) as img:
+        finalimg = np.tensordot(img, mix, axes=[2, 1])
+      np.testing.assert_array_equal(finalimg.shape, shape)
 #    finalimg /= np.max(finalimg)
     finalimg[finalimg > 1] = 1
     qptiffimg = skimage.img_as_ubyte(finalimg)

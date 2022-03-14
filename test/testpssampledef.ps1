@@ -14,6 +14,7 @@ Class testpssampledef {
     [string]$basepath
     [string]$module = 'shredxml'
     [string]$slideid = 'M21_1'
+    [string]$pybatchflatfieldtest = 'melanoma_batches_3_5_6_7_8_9_v2'
     #
     testpssampledef(){
         $this.launchtests()
@@ -31,6 +32,8 @@ Class testpssampledef {
         $this.importmodule()
         $this.testsampledefconstruction()
         $sample = sampledef $this.mpath $this.module $this.slideid
+        $this.testbatchflatfieldexamples($sample)
+        $sample.ImportCorrectionModels($this.mpath, $true)
         $this.testpaths($sample)
         $sample = sampledef -mpath $this.mpath -module $this.module -batchid '8' -project '0'
         $this.testpaths($sample, '08')
@@ -141,6 +144,18 @@ Class testpssampledef {
         }
         Write-Host '    Files in XML folder exist'
         #
+        $ids = $sampledef.ImportCorrectionModels($this.mpath)
+        Write-Host '    correction models file:'
+        Write-Host '    ' ($ids | Format-Table | Out-String)
+        #
+        Write-Host '    sample py batch flatfield:' $sampledef.pybatchflatfield() 
+        Write-Host '    test py batch flatfield:  ' $this.pybatchflatfieldtest
+        if (!([regex]::escape($sampledef.pybatchflatfield()) `
+                -contains [regex]::escape($this.pybatchflatfieldtest))){
+            Throw 'py batch flatfield not detected correctly'
+
+        }
+        #
         Write-Host 'path tests finished'
         #
     }
@@ -160,7 +175,67 @@ Class testpssampledef {
             Throw ('slideid not defined correctly:', $sampledef.slideid, '~=', $batchid -join ' ')
         }
         #
+        Write-Host '    check py batch flatfield'
+        #
+        $ids = $sampledef.ImportCorrectionModels($this.mpath)
+        Write-Host '        correction models file:'
+        Write-Host '        ' ($ids | Format-Table | Out-String)
+        #
+        Write-Host '        sample py batch flatfield:' $sampledef.pybatchflatfield() 
+        Write-Host '        test py batch flatfield:  ' $this.pybatchflatfieldtest
+        if (!([regex]::escape($sampledef.pybatchflatfield()) `
+                -contains [regex]::escape($this.pybatchflatfieldtest))){
+            Throw 'py batch flatfield not detected correctly'
+
+        }
+        if (!(Test-Path $sampledef.pybatchflatfieldfullpath())){
+            Throw ('flatfield file does not exist: ' + 
+                $sampledef.pybatchflatfieldfullpath())
+        }
+        #
+        Write-Host '    check batchslides'
+        #
+        $slides = $sampledef.importslideids($this.mpath)
+        Write-Host '        slides:' ($slides | Format-Table |  Out-String)
+        #
+        if ($batchid[0] -match '0'){
+            [string]$batchid = $batchid[1]
+        }
+        #
+        $batch = $slides | 
+            Where-Object -FilterScript {$_.BatchID -eq $batchid.trim() -and 
+                $_.Project -eq $sampledef.project.trim()}
+        #
+        Write-Host '        batch:' ($batch | Format-Table | Out-String)
+        Write-Host '        '($sampledef.batchslides | Format-Table | Out-String)
+        #
+        if (!$sampledef.batchslides){
+            Throw 'no batch slides found!!'
+        }
+        #
         Write-Host 'path tests batch finished batchid:' $batchid
+        #
+    }
+    #
+    [void]testbatchflatfieldexamples($sampledef){
+        #
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $micomp_data = $sampledef.ImportCorrectionModels($sampledef.mpath)
+        $newobj = [PSCustomObject]@{
+            SlideID = $sampledef.slideid
+            Project = $sampledef.project
+            Cohort = $sampledef.cohort
+            BatchID = $sampledef.batchid
+            FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
+            WarpingFile = 'None'
+        }
+        #
+        $micomp_data += $newobj
+        #
+        $micomp_data | Export-CSV $p2 -NoTypeInformation
+        $p3 = $sampledef.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        $sampledef.SetFile($p3, 'blah de blah')
         #
     }
     #

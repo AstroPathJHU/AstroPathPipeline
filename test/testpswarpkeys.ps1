@@ -12,26 +12,32 @@
     [string]$mpath 
     [string]$processloc
     [string]$basepath
-    [string]$module = 'meanimage'
-    [string]$batchid = '6'
-    [string]$project = '1'
+    [string]$module = 'batchwarpkeys'
+    [string]$batchid = '8'
+    [string]$project = '0'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
-    [string]$slideid
+    [string]$slideid = 'M21_1'
+    [switch]$dryrun = $false
+    [string]$pybatchflatfieldtest = 'melanoma_batches_3_5_6_7_8_9_v2'
+    [string]$slidelist = '"L1_1|M148|M206|M21_1|M55_1|YZ71|ZW2|MA12"'
     #
     testpsbatchwarpkeys(){
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_meanimage'))
+        $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_warpkeys'))
+        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
         $this.launchtests()
     }
     #
     testpsbatchwarpkeys($dryrun){
         $this.mpath = '\\bki04\astropath_processing'
         $this.processloc = '\\bki08\e$'
-        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
+        $this.basepath = '\\bki04\Clinical_Specimen'
         $this.batchid = '6'
         $this.project = '1'
         $this.slideid = 'M10_2'
+        $this.dryrun = $true
         $this.launchtests()
+        #
     }
     #
     launchtests(){
@@ -41,10 +47,15 @@
         #$this.testpsbatchwarpkeysconstruction($task)
         $inp = batchwarpkeys $task  
         #$this.testprocessroot($inp)
-        #$this.testslidelist($inp)
-        #$this.testshreddatim($inp)
-        #$this.runpywarpkeysexpectedall($inp)
-        $this.runpywarpkeysexpectedbatch($inp)
+        $this.testwarpkeysinputbatch($inp, 'batch')
+        $this.runpywarpkeysexpected($inp, 'batch')
+        $this.testlogsexpected($inp, 'batch')
+        #
+        $this.testwarpkeysinputbatch($inp, 'all')
+        $this.runpywarpkeysexpected($inp, 'all')
+        $this.testlogsexpected($inp, 'all')
+        $inp.sample.finish(($this.module+'-test'))
+        #
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -53,6 +64,7 @@
     and define global variables
     --------------------------------------------#>
     importmodule(){
+        Write-Host "."
         Write-Host 'importing module ....'
         Import-Module $this.apmodule
     }
@@ -71,15 +83,40 @@
         return $root
     }
     <# --------------------------------------------
+    runpytesttask
+    helper function to run the python task provided
+    and export it to the exteral log provided
+    --------------------------------------------#>
+    [void]runpytesttask($inp, $pythontask, $externallog){
+        #
+        $inp.sample.start(($this.module+'-test'))
+        Write-Host '    warp keys command:'
+        Write-Host '   '$pythontask  
+        Write-Host '    external log:' $externallog
+        Write-Host '    launching task'
+        #
+        $pythontask = $pythontask -replace '\\','/'
+        #
+        if ($inp.sample.isWindows()){
+            $inp.sample.checkconda()
+            etenv $inp.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            exenv
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
+        #
+    }
+    <# --------------------------------------------
     testpswarpfitsconstruction
     test that the meanimage object can be constucted
     --------------------------------------------#>
-    [void]testpswarpfitsconstruction($task){
+    [void]testpsbatchwarpkeysconstruction($task){
         #
         Write-Host "."
         Write-Host 'test [batchwarpkeys] constructors started'
         #
-        $log = logger $this.mpath $this.module $this.batchid $this.project 
+        $log = logger $this.mpath $this.module -batchid:$this.batchid -project:$this.project 
         #
         try {
             batchwarpkeys  $task | Out-Null
@@ -96,86 +133,171 @@
         Write-Host 'test [batchwarpkeys] constructors finished'
         #
     }
+    #
     [void]testprocessroot($inp){
         Write-Host '.'
         Write-host 'test creating sample dir started'
         Write-Host '    process location:' $inp.processloc
-       # $inp.sample.createdirs($inp.processloc)
-        $spdir = $inp.sample.mpath + '\warping\octets'
-       # $inp.sample.createdirs($spdir)
-        write-host '    testing dir:' $spdir
-        #
+        $testprocloc = $this.basepath + '\warping\Batch_' + ($this.batchid).PadLeft(2,'0')
+        if (!($inp.processloc -contains $testprocloc)){
+            Write-Host '    test process loc:' $testprocloc
+            Throw 'test process loc does not match [batchwarpkeys] loc'
+        }
         Write-Host '    slide id:' $inp.sample.slideid
         Write-host 'test creating sample dir finished'
     }
     #
-    [void]runpywarpkeysexpectedall($inp){
+    [void]addwarpoctetsdep($inp){
+        if ($this.dryrun){
+            return
+        }
         #
+        $sor = $this.basepath, 'reference', 'warpingcohort',
+        'M21_1-all_overlap_octets.csv' -join '\'
+        #
+        $inp.getslideidregex()
+        #
+        $inp.batchslides | ForEach-Object{
+            $des = $this.basepath, $_, 'im3', 'warping', 'octets' -join '\'
+            $inp.sample.copy($sor, $des)
+            rename-item ($des + '\M21_1-all_overlap_octets.csv') `
+                ($_ + '-all_overlap_octets.csv') -EA stop
+        }
+    }
+    #
+    [void]removewarpoctetsdep($inp){
+        if ($this.dryrun){
+            return
+        }
+        #
+        $inp.getslideidregex()
+        $inp.batchslides | ForEach-Object{
+            $des = $this.basepath, $_, 'im3', 'warping' -join '\'
+            $inp.sample.removedir($des)
+        }
+    }
+    #
+    [array]getmoduletask($inp){
+        #
+        $taskname = 'batchwarpkeys'
         $inp.getmodulename()
         $dpath = $inp.sample.basepath
         $rpath = '\\' + $inp.sample.project_data.fwpath
-        $taskname = 'batchwarpkeys'
-        $inp.all = $true
-        $inp.getslideidregex()
         #
-        Write-Host $inp.sample.pybatchflatfieldfullpath()
-        if (!(Test-Path $inp.sample.pybatchflatfieldfullpath())){
-            Throw ('flatfield file does not exist: ' + $inp.sample.pybatchflatfieldfullpath())
-        }
+        $inp.getslideidregex()
         #
         $pythontask = $inp.getpythontask($dpath, $rpath)
         $externallog = $inp.processlog($taskname)
         #
-        # $batchslides = $inp.sample.batchslides.slideid -join '|'
-        # $pythontask = $inp.getpythontask($dpath, $rpath, $batchslides)
-        #
-        Write-Host 'running: '
-        Write-Host $pythontask
-        Write-Host $externallog
-        #
-        $inp.sample.checkconda()
-        conda activate $inp.sample.pyenv()
-        Invoke-Expression $pythontask *>> $externallog
-        conda deactivate 
+        return @($pythontask, $externallog)
         #
     }
     #
-    [void]runpywarpkeysexpectedbatch($inp){
+    [void]testwarpkeysinputbatch($inp, $type){
         #
-        $warpdirectory = $inp.sample.mpath + '\warping\octets'
-        $inp.sample.copy($warpdirectory, ($inp.processloc+'\octets'), '*')
-        $inp.sample.CreateNewDirs($warpdirectory)
-        #
-        $inp.getmodulename()
-        $dpath = $inp.sample.basepath
-        $rpath = '\\' + $inp.sample.project_data.fwpath
-        $taskname = 'batchwarpkeys'
-        $inp.all = $false
-        $inp.getslideidregex()
-        #
-        Write-Host $inp.sample.pybatchflatfieldfullpath()
-        if (!(Test-Path $inp.sample.pybatchflatfieldfullpath())){
-            Throw ('flatfield file does not exist: ' + $inp.sample.pybatchflatfieldfullpath())
+        if ($this.dryrun){
+            return
         }
         #
-        $pythontask = $inp.getpythontask($dpath, $rpath)
-        $externallog = $inp.processlog($taskname)
+        Write-Host "."
+        Write-Host 'test for [batchwarpkeys] expected input started' 
         #
-        # $batchslides = $inp.sample.batchslides.slideid -join '|'
-        # $pythontask = $inp.getpythontask($dpath, $rpath, $batchslides)
+        $flatwpath = '\\' + $inp.sample.project_data.fwpath
+        $this.addwarpoctetsdep($inp)
+        if ($type -contains 'all'){
+            $inp.all = $true
+            $slides = $this.slidelist
+            $wd = ''
+        } else {
+            $slides = '"M21_1"'
+            $wd = ' --workingdir', ($this.basepath + '\warping\Batch_'+ $this.batchid.PadLeft(2,'0')) -join ' '
+        }
         #
-        Write-Host 'running: '
-        Write-Host $pythontask
-        Write-Host $externallog
+        $task = $this.getmoduletask($inp)
+        $userpythontask = (('warpingcohort',
+            $this.basepath, 
+            '--shardedim3root', $flatwpath,
+            '--sampleregex', $slides,
+            '--flatfield-file', ($this.mpath + '\flatfield\flatfield_'+$this.pybatchflatfieldtest+'.bin'),
+            '--octets-only --noGPU --no-log --ignore-dependencies --allow-local-edits',
+            '--use-apiddef --project', $this.project.PadLeft(2,'0')
+        ) -join ' ') + $wd
         #
-        $inp.sample.checkconda()
-        conda activate $inp.sample.pyenv()
-        Invoke-Expression $pythontask *>> $externallog
-        conda deactivate 
+        if (!([regex]::escape($userpythontask) -eq [regex]::escape($task[0]))){
+            Write-Host 'user defined and [warpoctets] defined tasks do not match:'  -foregroundColor Red
+            Write-Host 'user defined        :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
+            Write-Host '[warpoctets] defined:' [regex]::escape($task[0])'end' -foregroundColor Red
+            Throw ('user defined and [warpoctets] defined tasks do not match')
+        }
+        #
+        $this.removewarpoctetsdep($inp)
+        #
+    }
+    #
+    [void]runpywarpkeysexpected($inp, $type){
+        #
+        Write-Host "."
+        Write-Host 'test for [batchwarpkeys] expected output' $type ' slides started'
+        #
+        if ($type -contains 'all'){
+            $inp.all = $true# uses all slide from the cohort, 
+            #   output goes to the mpath\warping\octets folder
+        }
+        $inp.sample.createNewdirs(($inp.processloc+ '\octets'))
+        #
+        $this.addwarpoctetsdep($inp)
+        #
+        $task = $this.getmoduletask($inp)
+        $inp.getbatchwarpoctets()
+        #
+        if ($this.dryrun){
+            $this.runpytesttask($inp, $task[0], $task[1])
+        } else {
+            $this.runpytesttask($inp, $task[0], $task[1])
+            Write-Host '   '$task[0]
+            Write-Host '   '$task[1]
+        }
+        #
+        $this.removewarpoctetsdep($inp)
+        #
+        Write-Host 'test for [batchwarpkeys] expected output' $type ' slides finished'
+        #
+    }
+    <# --------------------------------------------
+    testlogsexpected
+    check that the log is parsed correctly when
+    run with the correct input.
+    --------------------------------------------#>
+    [void]testlogsexpected($inp, $type){
+        #
+        Write-Host '.'
+        Write-Host 'test py task started for [batchwarpkeys] LOG expected output started'
+        $inp.getmodulename()
+        $inp.getslideidregex()
+        $externallog = $inp.ProcessLog('batchwarpkeys') 
+        Write-Host '    open log output'
+        $logoutput = $inp.sample.GetContent($externallog)
+        Write-Host '    test log output'
+        #
+        try {
+            $inp.getexternallogs($externallog)
+        } catch {
+            if (
+                $logoutput -match ' 250 are needed to run all three sets of fit groups!'
+            ){
+                Write-Host '    test run passed'
+            } else{
+                Write-Host '   '$logoutput
+                Throw $_.Exception.Message
+            }
+        }
+        #
+        Write-Host 'test py task started for [batchwarpkeys] LOG expected output finished'
         #
     }
 #
 }
 #
-[testpsbatchwarpkeys]::new($dryrun) | Out-Null
+[testpsbatchwarpkeys]::new() | Out-Null
+exit 0
 

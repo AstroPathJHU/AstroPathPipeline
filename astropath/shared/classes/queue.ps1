@@ -104,7 +104,7 @@ class queue : vminformqueue{
     [array]defNotCompletedSlides($cleanedslides){
         #
         $slidesnotcomplete = @()
-        $c = 1
+        $c = 0
         $ctotal = $cleanedslides.count
         if (!($cleanedslides)){
             return $slidesnotcomplete
@@ -120,8 +120,8 @@ class queue : vminformqueue{
                            -PercentComplete $p 
             $c += 1 
             #
-            $log.Sample($slide.slideid, $this.mpath, $cleanedslides)
-            $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project)
+            $log.Sample($slide.slideid, $this.module, $cleanedslides)
+            $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project, 'short')
             #
             if ($this.module -match 'batch'){
                 $log.slidelog = $log.mainlog
@@ -166,7 +166,8 @@ class queue : vminformqueue{
             return $true
         }
         #
-        $loglines = $this.opencsvfile($log.slidelog, ';', @('Project','Cohort','slideid','Message','Date'))
+        $loglines = $this.opencsvfile($log.slidelog, ';',
+            @('Project','Cohort','slideid','Message','Date'))
         #
         # parse log
         #
@@ -194,7 +195,6 @@ class queue : vminformqueue{
         $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
         $d2 = ($loglines |
                  Where-Object {
-                    ($_.Message -match $vers) -and 
                     $_.Message -match $statustypes[1] -and
                      ($_.Slideid -match $ID)
                  }).Date |
@@ -220,7 +220,7 @@ class queue : vminformqueue{
         #
         $log.module = $module
         $log.deflogpaths()
-        $log.vers = $log.GetVersion($this.mpath, $module, $log.project)
+        $log.vers = $log.GetVersion($this.mpath, $module, $log.project, 'short')
         return $log
         #
     }
@@ -369,7 +369,6 @@ class queue : vminformqueue{
         }
         #
         $log = $this.updatelogger($log, 'batchmicomp')
-        $log.slidelog = $log.mainlog
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -419,18 +418,22 @@ class queue : vminformqueue{
         # if the version is not 0.0.1 in batchflatfield, do meanimagecomparison
         # instead
         if ($log.vers -notmatch '0.0.1'){
-            #
+            <#
             if (!($this.checkbatchmicomp($log, $true) -eq 3)){
+                return 1
+            }
+            #>
+            if (!($this.checkmeanimage($log, $true) -eq 3)){
                 return 1
             }
             #
             $ids = $this.ImportCorrectionModels($this.mpath)
             if ($ids.slideid -notcontains $log.slideid){
-                return 2
+                return 1
             }
             #
             if (!$log.testpybatchflatfield()){
-                return 2
+                return 1
             }
             #
         } else {
@@ -486,6 +489,72 @@ class queue : vminformqueue{
         return 3
         #
     }
+    <# -----------------------------------------
+     checkbatchwarpkeys
+     check that the batch warp keys module has completed
+     and all products exist for the batch
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkmeanimage(log, dependency)
+    ----------------------------------------- #>
+    [int]checkbatchwarpkeys([mylogger]$log, $dependency){
+        #
+        if (!($this.checkwarpoctets($log, $true) -eq 3)){
+            return 1
+        }
+        #
+        $log = $this.updatelogger($log, 'batchwarpkeys')
+        if ($this.checklog($log, $true)){
+            return 2
+        }
+        #
+        if (!$log.testbatchwarpkeys()){
+            return 2
+        }
+        #
+        return 3
+        #
+    }
+<# -----------------------------------------
+ checkbatchwarpkeys
+ check that the batch warp keys module has completed
+ and all products exist for the batch
+------------------------------------------
+ Input: 
+    - log[mylogger]: astropath log object
+    - dependency[switch]: true or false
+ ------------------------------------------
+ Output: returns 1 if dependency fails, 
+ returns 2 if current module is still running,
+ returns 3 if current module is complete
+ ------------------------------------------
+ Usage: $this.checkmeanimage(log, dependency)
+----------------------------------------- #>
+[int]checkbatchwarpfits([mylogger]$log, $dependency){
+    #
+    if (!($this.checkbatchwarpkeys($log, $true) -eq 3)){
+        return 1
+    }
+    #
+    $log = $this.updatelogger($log, 'batchwarpfits')
+    if ($this.checklog($log, $true)){
+        return 2
+    }
+    <#
+    if (!$log.testbatchwarpfits()){
+        return 2
+    }
+    #>
+    return 3
+    #
+}
     <# -----------------------------------------
      checkimagecorrection
      check that the imagecorrection module has completed

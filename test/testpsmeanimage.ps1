@@ -21,6 +21,8 @@ Class testpsmeanimage {
     #
     testpsmeanimage(){
         #
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
+        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
         $this.launchtests()
         #
     }
@@ -29,7 +31,18 @@ Class testpsmeanimage {
         #
         $this.slideid = $slideid
         $this.project = $project
-        $this.launchtests
+        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
+        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
+        $this.launchtests()
+        #
+    }
+    #
+    testpsmeanimage($project, $slideid, $dryrun){
+        #
+        $this.slideid = $slideid
+        $this.project = $project
+        $this.mpath = '\\bki04\astropath_processing'
+        $this.launchtests()
         #
     }
     #
@@ -51,9 +64,12 @@ Class testpsmeanimage {
         $this.testlogsexpected($inp)
         # $this.runpytaskexpectedapid($inp)
         # $this.testlogsexpectedapid($inp)
+        $this.runpytaskexpectednoxml($inp)
+        $this.testlogsexpectednoxml($inp)
         $this.testreturndatapy($inp)
         $this.testmasks($inp)
         $this.testcleanup($inp)
+        $inp.sample.finish(($this.module+'-test'))
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -62,10 +78,12 @@ Class testpsmeanimage {
     and define global variables
     --------------------------------------------#>
     importmodule(){
+        #
+        Write-Host "."
+        Write-Host 'importing module ....'
         Import-Module $this.apmodule
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_meanimage'))
-        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
+        #
     }
     <# --------------------------------------------
     uncpath
@@ -88,16 +106,22 @@ Class testpsmeanimage {
     --------------------------------------------#>
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
-        $inp.sample.start($this.module)
+        $inp.sample.start(($this.module+'-test'))
         Write-Host '    meanimage command:'
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
         Write-Host '    launching task'
         #
-        $inp.sample.checkconda()
-        etenv $inp.sample.pyenv()
-        Invoke-Expression $pythontask *>> $externallog
-        exenv
+        $pythontask = $pythontask -replace '\\','/'
+        #
+        if ($inp.sample.isWindows()){
+            $inp.sample.checkconda()
+            etenv $inp.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            exenv
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
         #
     }
     <# --------------------------------------------
@@ -228,8 +252,6 @@ Class testpsmeanimage {
         $inp.sample.copy($des, $sor, '*')
         $this.comparepaths($des, $sor, $inp)
         #
-        $inp.sample.removedir($des)
-        #
         Write-Host 'test cleanup base method finished'
 
     }
@@ -283,7 +305,8 @@ Class testpsmeanimage {
     [void]runpytaskpyerror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python meanimage with error input started'
+        Write-Host 'test python [meanimage] with error input started'
+        $inp.sample.CreateNewDirs($inp.processloc)
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
         $inp.getmodulename()
@@ -294,7 +317,7 @@ Class testpsmeanimage {
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
-        Write-Host 'test python meanimage  with error input finished'
+        Write-Host 'test python [meanimage]  with error input finished'
         #
     }
     <# --------------------------------------------
@@ -306,7 +329,7 @@ Class testpsmeanimage {
     [void]testlogpyerror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python with error input started'
+        Write-Host 'test python [meanimage] LOG with error input started'
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
@@ -325,6 +348,8 @@ Class testpsmeanimage {
             }
         }
         #
+        Write-Host 'test python [meanimage] LOG with error input finished'
+        #
     }
     <# --------------------------------------------
     runpytaskaperror
@@ -335,7 +360,7 @@ Class testpsmeanimage {
     [void]runpytaskaperror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python meanimage with error in processing started'
+        Write-Host 'test python [meanimage] with error in processing started'
         $inp.sample.CreateDirs($inp.processloc)
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
@@ -347,7 +372,7 @@ Class testpsmeanimage {
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
-        Write-Host 'test python meanimage  with error in processing finished'
+        Write-Host 'test python [meanimage]  with error in processing finished'
         #
     }
     <# --------------------------------------------
@@ -359,7 +384,7 @@ Class testpsmeanimage {
     [void]testlogaperror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python with error input started'
+        Write-Host 'test python [meanimage] LOG with error in processing started'
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
@@ -377,6 +402,9 @@ Class testpsmeanimage {
                 Throw $_.Exception.Message
             }
         }
+        #
+        Write-Host 'test python [meanimage] LOG with error in processing finished'
+        #
     }
     <# --------------------------------------------
     runpytaskexpected
@@ -386,7 +414,7 @@ Class testpsmeanimage {
     [void]runpytaskexpected($inp){
         #
         Write-Host '.'
-        Write-Host 'test python meanimage in workflow started'
+        Write-Host 'test python [meanimage] in workflow started'
         $inp.sample.CreateDirs($inp.processloc)
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
@@ -407,7 +435,7 @@ Class testpsmeanimage {
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
-        Write-Host 'test python meanimage in workflow finished'
+        Write-Host 'test python [m]eanimage] in workflow finished'
         #
     }
     <# --------------------------------------------
@@ -418,7 +446,7 @@ Class testpsmeanimage {
     [void]testlogsexpected($inp){
         #
         Write-Host '.'
-        Write-Host 'test python expected log output started'
+        Write-Host 'test python [meanimage] LOG in workflow started'
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         Write-Host '    open log output'
@@ -445,13 +473,13 @@ Class testpsmeanimage {
         #
         $savelog = $loglines |
                     where-object {($_.Slideid -match $ID) -and 
-                        ($_.Message -match '')} |
+                        ($_.Message -eq '')} |
                     Select-Object -Last 1 
         if ($savelog){
             Throw 'blank log output exists'
         }
         #
-        Write-Host 'test python expected log output finished'
+        Write-Host 'test python [meanimage] LOG in workflow finished'
         #
     }
     <# --------------------------------------------
@@ -462,8 +490,8 @@ Class testpsmeanimage {
     [void]runpytaskexpectedapid($inp){
         #
         Write-Host '.'
-        Write-Host 'test python meanimage in workflow without apid started'
-        <#
+        Write-Host 'test python [meanimage] in workflow without apid started'
+        #
         Write-Host '    removing sampledef file'
         $samplefile = '\sampledef.csv'
         $samplesor = $this.basepath 
@@ -478,7 +506,7 @@ Class testpsmeanimage {
         $sor = ($samplesor1 + $samplefile1)
         $inp.sample.copy($sor, $sampledes1)
         $inp.sample.removefile($sor)
-        #>
+        #
         $inp.sample.CreateNewDirs($inp.processloc)
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
@@ -498,14 +526,14 @@ Class testpsmeanimage {
         #
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         $this.runpytesttask($inp, $pythontask, $externallog)
-        <#
+        #
         Write-Host '    putting sampledef file back'
         $sor = ($sampledes + $samplefile)
         $inp.sample.copy($sor, $samplesor)
         $sor = ($sampledes1 + $samplefile1)
         $inp.sample.copy($sor, $samplesor1)
-        #>
-        Write-Host 'test python meanimage in workflow without apid finished'
+        #
+        Write-Host 'test python [meanimage] in workflow without apid finished'
         #
     }
     <# --------------------------------------------
@@ -516,7 +544,7 @@ Class testpsmeanimage {
     [void]testlogsexpectedapid($inp){
         #
         Write-Host '.'
-        Write-Host 'test python expected log output started'
+        Write-Host 'test python [meanimage] LOG in workflow without apid started'
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         Write-Host '    open log output'
@@ -530,7 +558,76 @@ Class testpsmeanimage {
             Throw $_.Exception.Message
         }
         #
-        Write-Host 'test python expected log output finished'
+        Write-Host 'test python [meanimage] LOG in workflow without apid finished'
+        #
+    }
+    <# --------------------------------------------
+    runpytaskexpectednoxml
+    check that the python task completes correctly 
+    when run with the correct input.
+    --------------------------------------------#>
+    [void]runpytaskexpectednoxml($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test python [meanimage] in workflow without xml annos started'
+        $inp.sample.CreateNewDirs($inp.processloc)
+        $rpath = $PSScriptRoot + '\data\raw'
+        $dpath = $this.basepath
+        $inp.getmodulename()
+        #
+        Write-Host '    removing annotations from xml file'
+        $sorxml = $inp.sample.annotationxml()
+        $desxml = $this.processloc, $this.slideid, 'test' -join '\'
+        $inp.sample.copy($sorxml, $desxml)
+        $xmlfile = $inp.sample.getcontent($sorxml)
+        $xmlfile2 = $xmlfile -replace 'Acquired', 'Blah'
+        $inp.sample.setfile($sorxml, $xmlfile2)
+        #
+        $et_offset_file = $this.basepath,'corrections\best_exposure_time_offsets_Vectra_9_8_2020.csv' -join '\'
+        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath) 
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $inp.sample.createdirs($des)
+        #
+        $addedargs = '--selectrectangles',
+                     '17 18 19 20 23 24 25 26 29 30 31 32 35 36 37 38 39 40', 
+                     '--maskroot', $this.processloc,
+                     '--exposure-time-offset-file', $et_offset_file -join ' '
+                     
+        $pythontask = $pythontask, $addedargs -join ' '
+        #
+        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
+        $this.runpytesttask($inp, $pythontask, $externallog)
+        #
+        Write-Host '    putting sampledef file back'
+        $sorxml = $inp.sample.Scanfolder()
+        $inp.sample.copy($desxml, $sorxml, 'annotations.xml')
+        #
+        Write-Host 'test python [meanimage] in workflow without apid finished'
+        #
+    }
+    <# --------------------------------------------
+    testlogsexpected
+    check that the log is parsed correctly when
+    run with the correct input.
+    --------------------------------------------#>
+    [void]testlogsexpectednoxml($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test python [meanimage] LOG in workflow without apid started'
+        $inp.getmodulename()
+        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
+        Write-Host '    open log output'
+        $logoutput = $inp.sample.GetContent($externallog)
+        Write-Host '    test log output'
+        #
+        try {
+            $inp.getexternallogs($externallog)
+        } catch {
+            Write-Host '   '$logoutput
+            Throw $_.Exception.Message
+        }
+        #
+        Write-Host 'test python [meanimage] LOG in workflow without apid finished'
         #
     }
     <# --------------------------------------------
@@ -642,6 +739,12 @@ Class testpsmeanimage {
         }
         Write-Host '    cleanup method complete'
         Write-Host '    delete the testing_meanimage folder'
+        #
+        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        #
+        $inp.sample.copy($des, $sor, '*')
+        $this.comparepaths($des, $sor, $inp)
         #
         $inp.sample.removedir($this.processloc)
         #

@@ -7,32 +7,26 @@ Last Edit: 02.16.2022
 #>
 class batchwarpfits : moduletools {
     #
-    [string]$project
-    [switch]$all = $false
     batchwarpfits([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
-        $this.processloc = '\\' + $this.sample.project_data.fwpath + '\warpfits'
+       # $this.processloc = '\\' + $this.sample.project_data.fwpath +
+       #     '\warpfits\Batch_' + $this.sample.BatchID
         $this.processvars[0] = $this.sample.basepath
         $this.processvars[1] = $this.processloc
-        $this.sample.createdirs($this.processloc)
-        $this.flevel = [FileDownloads]::IM3 
+        $this.sample.createnewdirs($this.processloc)
     }
     #
-    batchwarpfits([array]$task,[launchmodule]$sample, $all) : base ([array]$task,[launchmodule]$sample){
-        $this.processloc = '\\' + $this.sample.project_data.fwpath + '\warpfits'
-        $this.processvars[0] = $this.sample.basepath
-        $this.processvars[1] = $this.processloc
-        $this.sample.createdirs($this.processloc)
-        $this.flevel = [FileDownloads]::IM3 
-    }
     <# -----------------------------------------
      Runbatchwarpfits
      ------------------------------------------
      Usage: $this.Runbatchwarpfits()
     ----------------------------------------- #>
     [void]Runbatchwarpfits(){
+        #
         $this.getslideidregex()
         $this.getwarpdats()
         $this.Getbatchwarpfits()
+        $this.cleanup()
+        #
     }
     <# -----------------------------------------
      getwarpdats
@@ -44,8 +38,13 @@ class batchwarpfits : moduletools {
     [void]getwarpdats(){
         #
         $this.sample.info('shredding neccessary files to flatw\warpfits')
-        $image_keys_file = $this.sample.mpath + '\warping\octets\image_keys_needed.txt'
-        $image_keys = $this.sample.GetContent($image_keys_file)
+
+        $image_keys = $this.sample.GetContent($this.getkeysloc())
+        #
+        if (!$image_keys){
+            Throw ('no keys found in: ' + $this.getkeysloc())
+        }
+        #
         $this.batchslides | foreach-object{
             $this.sample.info(('shredding files for: '+ $_))
             $images = $this.getslidekeypaths($_, $image_keys)
@@ -53,6 +52,15 @@ class batchwarpfits : moduletools {
                 $this.shreddat($_, $images)
             }
         }
+    }
+    #
+    [string]getkeysloc(){
+        if ($this.all){
+            $image_keys_file = $this.sample.mpath + '\warping\octets\image_keys_needed.txt'
+        } else {
+            $image_keys_file = $this.sample.warpbatchoctetsfolder() + '\image_keys_needed.txt'
+        }
+        return $image_keys_file
     }
     <# -----------------------------------------
      getslidekeypaths
@@ -98,7 +106,7 @@ class batchwarpfits : moduletools {
         #
         $this.sample.info('start fits')
         #
-        $pythontask = (
+        $pythontask = ((
             $this.pythonmodulename,
             $dpath,
             '--shardedim3root',  $rpath, 
@@ -107,7 +115,7 @@ class batchwarpfits : moduletools {
             '--noGPU --no-log',
             '--ignore-dependencies',
             $this.buildpyopts('cohort') 
-        ) -join ' '
+        ) -join ' '), $this.workingdir() -join ''
         #
         $this.sample.info('fits finished')
        #
@@ -115,37 +123,29 @@ class batchwarpfits : moduletools {
        #
     }
     #
-    [void]getslideidregex(){
-        #
-        $this.sample.info('selecting samples for sample regex')
-        #
-        $nbatchslides = @()
-        $sid = $this.sample.slideid
-        #
+    [string]workingdir(){
         if ($this.all){
-            $aslides = $this.sample.importslideids($this.sample.mpath)
-            $aslides = $aslides | where-object {$_.Project -match $this.sample.project}
-            $slides = $aslides.SlideID
+            return ''
         } else {
-            $slides = $this.sample.batchslides.slideid
+            return (' --workingdir ' + $this.sample.warpbatchfolder())
         }
-        #
-        foreach ($slide in $slides){
-            $this.sample.slideid = $slide
-            if ($this.sample.testwarpoctetsfiles()){
-                $nbatchslides += $slide
-            }
-        }
-        #
-        $this.sample.slideid = $sid
-        $this.sample.info(([string]$nbatchslides.length +
-             ' sample(s) selected for sampleregex'))
-        $this.batchslides = $nbatchslides
-        #
     }
     #
     [void]getmodulename(){
         $this.pythonmodulename = 'warpingcohort'
+    }
+    <# -----------------------------------------
+     cleanup
+     cleanup the data directory
+     ------------------------------------------
+     Usage: $this.cleanup()
+    ----------------------------------------- #>
+    [void]cleanup(){
+        #
+        $this.sample.info("cleanup started")
+        $this.silentcleanup()
+        $this.sample.info("cleanup finished")
+        #
     }
     <# -----------------------------------------
      silentcleanup
@@ -157,5 +157,16 @@ class batchwarpfits : moduletools {
         #
         $this.sample.removedir($this.processloc)
         #
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
+        if (!$this.sample.testbatchwarpfits()){
+            throw 'Output files are not correct'
+        }
     }
 }

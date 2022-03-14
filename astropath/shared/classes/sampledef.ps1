@@ -16,12 +16,19 @@ class sampledef : sharedtools{
     [string]$mainlog
     [string]$slidelog
     [hashtable]$moduleinfo = @{}
+
     #
     sampledef(){}
+    #
+    sampledef($mpath){
+        $this.mpath = $mpath
+        $this.defbase()
+    }
     #
     sampledef($mpath, $module){
         $this.mpath = $mpath
         $this.module = $module 
+        $this.defbase()
     }
     #
     sampledef($mpath, $module, $slideid){
@@ -38,31 +45,42 @@ class sampledef : sharedtools{
     #
     sampledefslide($slideid){
         $slides = $this.importslideids($this.mpath)
-        $this.Sample($slideid, $this.mpath, $slides)
+        $this.Sample($slideid, $slides)
     }
     #
     sampledefbatch($batchid, $project){
         $this.project = $project
         $slides = $this.importslideids($this.mpath)
-        $this.Batch($batchid, $this.mpath, $slides)
+        $this.Batch($batchid, $slides)
     }
     #
     Sample(
         [string]$slideid="",
-        [string]$mpath,
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdef($slideid, $slides)
-        $this.defbase($mpath)
+        $this.defbase()
+        $this.deflogpaths()
+    }
+    #
+    Sample(
+        [string]$slideid="",
+        [string]$module,
+        [PSCustomObject]$slides
+    ){
+        $this.module = $module
+        $this.ParseAPIDdef($slideid, $slides)
+        $this.defbase() 
+        $this.deflogpaths()
     }
     #
     Batch(
         [string]$batchid="",
-        [string]$mpath,
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdefbatch($batchid, $slides)
-        $this.defbase($mpath)
+        $this.defbase()
+        $this.deflogpaths()
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
@@ -70,7 +88,8 @@ class sampledef : sharedtools{
                 Where-Object -FilterScript {$_.SlideID -eq $slideid.trim()}
         #
         if (!$slide){
-            Throw ($slideid.trim() + ' is not a valid slideid. Check the APID tables and\or confirm the SlideID.')
+            Throw ($slideid.trim() +
+             ' is not a valid slideid. Check the APID tables and\or confirm the SlideID.')
         }
         $this.slideid = $slide.SlideID.trim()
         $this.project = $slide.Project
@@ -82,7 +101,7 @@ class sampledef : sharedtools{
     [void]ParseAPIDdefbatch([string]$mbatchid, [PSCustomObject]$slides){
         #
         if ($mbatchid[0] -match '0'){
-            $mbatchid = $mbatchid[1]
+            [string]$mbatchid = $mbatchid[1]
         }
         #
         $batch = $slides | 
@@ -106,20 +125,13 @@ class sampledef : sharedtools{
         #
     }
     #
-    [void]defbase([string]$mpath){
-        $this.mpath = $mpath
-        $project_dat = $this.importcohortsinfo($this.mpath)
-        $project_dat = $project_dat | 
-                Where-Object -FilterScript {$_.Project -eq $this.project}
-        <#
-                #Adjust if testing on jenkins
-        if ($project_dat.dpath -match '/var/lib/jenkins') {
-            $this.basepath = $project_dat.dpath + '/' + $project_dat.dname
-        }
-        else {
-            $this.basepath = '\\' + $project_dat.dpath + '\' + $project_dat.dname
-        }
-        more robust path editing #>
+    [void]defbase(){
+        #
+        $this.importcohortsinfo($this.mpath) | Out-Null
+        #
+        $project_dat = $this.full_project_dat| 
+                    Where-Object -FilterScript {$_.Project -eq $this.project}
+        #
         $r = $project_dat.dpath -replace( '/', '\')
         if ($r[0] -ne '\'){
             $root = '\\' + $project_dat.dpath 
@@ -131,7 +143,11 @@ class sampledef : sharedtools{
         #
         $this.project_data = $project_dat
         #
-        $this.deflogpaths()
+    }
+    #
+    [void]defbase([string]$mpath){
+        $this.mpath = $mpath
+        $this.defbase()
         #
     }
     #
@@ -140,8 +156,12 @@ class sampledef : sharedtools{
     [void]deflogpaths(){
         #
         $this.mainlog = $this.basepath + '\logfiles\' + $this.module + '.log'
-        $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
-             $this.slideid + '-' + $this.module + '.log'
+        if ($this.module -match 'batch'){
+            $this.slidelog = $this.mainlog
+        } else {
+            $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
+                $this.slideid + '-' + $this.module + '.log'
+        }
         #
     }
     #
@@ -245,12 +265,15 @@ class sampledef : sharedtools{
     [string]pybatchflatfield(){
         $ids = $this.ImportCorrectionModels($this.mpath)
         if ($this.slideid -notcontains $this.batchid){
-            $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
+            $file = ($ids | Where-Object { $_.slideid `
+                    -contains $this.slideid}).FlatfieldVersion
         } else  {
             $file1 = ($ids | Where-Object { $_.BatchID.padleft(2, '0') `
                 -contains $this.batchid}).FlatfieldVersion
-           if ($file1){
+           if ($file1.Count -ne 1){
                 $file = $file1[0]
+           } elseif ($file1.Count -eq 1){
+               $file = $file1
            } else {
                $file = ''
            }
@@ -326,6 +349,21 @@ class sampledef : sharedtools{
     [string]mergeconfigfile(){
         $path = $this.basepath + '\Batch\MergeConfig_' + 
             $this.BatchID
+        return $path
+    }
+    #
+    [string]warpoctetsfile(){
+        $file2 = $this.basepath, '\', $this.slideid,
+            '\im3\warping\octets\', $this.slideid, '-all_overlap_octets.csv' -join ''
+        return $file2
+    }
+    #
+    [string]warpbatchfolder(){
+        $path = $this.basepath +'\warping\Batch_' + $this.BatchID
+        return $path
+    }
+    [string]warpbatchoctetsfolder(){
+        $path = $this.basepath +'\warping\Batch_' + $this.BatchID + '\octets'
         return $path
     }
     #
@@ -485,9 +523,8 @@ class sampledef : sharedtools{
             return $true
         }
         #
-        $this.testwarpoctetsfiles($this.slideid)
+        return $this.testwarpoctetsfiles()
         #
-        return $true
     }
     #
     [switch]testwarpoctetsfiles(){
@@ -509,6 +546,46 @@ class sampledef : sharedtools{
             return $false
         }
         #>
+        return $true
+    }
+    #
+    [switch]testbatchwarpkeys(){
+        #
+        $p =  $this.warpbatchoctetsfolder()
+        #
+        if (!(test-path $p)){
+                return $false
+        }
+        $files = @('final_pattern_octets_selected.csv', 'initial_pattern_octets_selected.csv',
+            'image_keys_needed.txt','principal_point_octets_selected.csv')
+        #
+        foreach ($file in $files) {
+            $fullpath = $p + '\' + $file
+            if (!(test-path $fullpath)){
+                return $false
+            }
+        }
+        #
+        return $true
+    }
+    #
+    [switch]testbatchwarpfits(){
+        #
+        $p =  $this.warpbatchoctetsfolder()
+        #
+        if (!(test-path $p)){
+                return $false
+        }
+        $files = @('final_pattern_octets_selected.csv', 'initial_pattern_octets_selected.csv',
+            'image_keys_needed.txt','principal_point_octets_selected.csv')
+        #
+        foreach ($file in $files) {
+            $fullpath = $p + '\' + $file
+            if (!(test-path $fullpath)){
+                return $false
+            }
+        }
+        #
         return $true
     }
     #

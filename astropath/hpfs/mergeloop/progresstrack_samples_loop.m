@@ -51,7 +51,11 @@ for i1 = 1:height(ss)
     %
     % next we look at the annotations files for the number of expected im3
     %
-    [expectim3num{i1}] = getAnnotations(Scanpath,['Scan',num2str(ScanNum{i1})],sname);
+    try
+        [expectim3num{i1}] = getAnnotations(Scanpath,['Scan',num2str(ScanNum{i1})],sname);
+    catch
+        [expectim3num{i1}] = 0;
+    end
     %
     % determine when MSI folder was created as Scan date tracker
     %

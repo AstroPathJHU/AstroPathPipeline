@@ -15,6 +15,7 @@
     [string]$package = 'astropath'
     [array]$modules
     [switch]$checkpyenvswitch = $false
+    [switch]$teststatus = $false
     #
     sharedtools(){}
     #
@@ -25,8 +26,15 @@
     }
     #
     [string]pyenv(){
-        $str = $this.pyinstalllocation() + $this.package + 'workflow'
+        #
+        if ($this.teststatus){
+            $str = $this.pyinstalllocation() + $this.package + 'workflow-test'
+        } else {
+            $str = $this.pyinstalllocation() + $this.package + 'workflow'
+        }
+        #
         return $str
+        #
     }
     #
     [string]pyinstalllog(){
@@ -70,9 +78,8 @@
     ----------------------------------------- #>
     [string]GetVersion($mpath, $module, $project){
         #
-        $configfile = $this.ImportConfigInfo($mpath)
-        #
-        $projectconfig = $configfile | 
+        $this.ImportConfigInfo($mpath) | Out-Null
+        $projectconfig = $this.config_data | 
             Where-Object {$_.Project -eq $project}
         if (!$projectconfig){
             Throw ('Project not found for project number: '  + $project)
@@ -88,6 +95,29 @@
         }
         # 
         $vers = $this.getfullversion()
+        return $vers
+        #
+    }
+    #
+    [string]GetVersion($mpath, $module, $project, $short){
+        #
+        $this.ImportConfigInfo($mpath) | Out-Null
+        #
+        $projectconfig = $this.config_data | 
+            Where-Object {$_.Project -eq $project}
+        if (!$projectconfig){
+            Throw ('Project not found for project number: '  + $project)
+        }    
+        #
+        $vers = $projectconfig.($module+'version')    
+        if (!$vers){
+            Throw 'No version number found'
+        }
+        #
+        if ($this.apversionchecks($mpath, $module, $vers)){
+            return ("v" + $vers)
+        }
+        # 
         return $vers
         #
     }
@@ -255,6 +285,10 @@
         #
         # check if conda is a
         #
+        if (!$this.isWindows()){
+            return
+        }
+        #
         $server = $this.defServer()
         $drive = '\\'+$server+'\C$'
         #
@@ -335,14 +369,18 @@
         $this.checkconda()
         $this.createdirs($this.pyinstalllocation())
         conda create -y -p $this.pyenv() python=3.8 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR CREATED `r`n"))
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR CREATED; $time `r`n"))
         conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED; $time  `r`n"))
         conda install -y -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git `
               2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE  `r`n"))
-        pip -q install $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE; $time  `r`n"))
+        pip install $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE; $time `r`n"))
         conda deactivate 2>&1 >> $this.pyinstalllog()
     }
     <# -----------------------------------------
@@ -355,9 +393,11 @@
         try{
             $this.checkconda()
             conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
-            pip -q install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
-            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
+            $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED; $time  `r`n"))
+            pip install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
+            $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE; $time `r`n"))
             conda deactivate 2>&1 >> $this.pyinstalllog()
         } catch {
             $this.createpyenvir()
@@ -378,6 +418,25 @@
         #
     }
     <# -----------------------------------------
+     TaskFileWatcher
+     Create a file watcher 
+     ------------------------------------------
+     Input: 
+        -file: full file path
+     ------------------------------------------
+     Usage: $this.TaskFileWatcher(file, slideid, module)
+    ----------------------------------------- #>
+    [string]TaskFileWatcher($file, $slideid, $module){
+        #
+        $fpath = Split-Path $file
+        $fname = Split-Path $file -Leaf
+        $SI = $module, $slideid -join '-'
+        #
+        $SI = $this.FileWatcher($fpath, $fname, $SI)
+        return $SI
+        #
+    }
+    <# -----------------------------------------
      FileWatcher
      Create a file watcher 
      ------------------------------------------
@@ -395,16 +454,7 @@
         return $SI
         #
     }
-    <# -----------------------------------------
-     FileWatcher
-     Create a file watcher 
-     ------------------------------------------
-     Input: 
-        -fpath: file path
-        -fname: file name
-     ------------------------------------------
-     Usage: $this.FileWatcher(fpath, fname)
-    ----------------------------------------- #>
+    #
     [string]FileWatcher($fpath, $fname){
         #
         $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
@@ -416,6 +466,20 @@
             -SourceIdentifier ($fpath + '\' + $fname) | Out-Null
         #
         return ($fpath + '\' + $fname)
+        #
+    }
+    #
+    [string]FileWatcher($fpath, $fname, $SI){
+        #
+        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+        $newwatcher.Filter = $fname
+        $newwatcher.NotifyFilter = 'LastWrite'
+        #
+        Register-ObjectEvent $newwatcher `
+            -EventName Changed `
+            -SourceIdentifier $SI | Out-Null
+        #
+        return $SI
         #
     }
     <# -----------------------------------------

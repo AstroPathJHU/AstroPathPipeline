@@ -8,10 +8,11 @@ class AnnotationXMLReader(units.ThingWithPscale):
   """
   Class to read the annotations from an xml file
   """
-  def __init__(self, filename, *, pscale, xmlfolder=None):
+  def __init__(self, filename, *, pscale, includehpfsflaggedforacquisition=True, xmlfolder=None):
     self.__filename = filename
     self.__pscale = pscale
     self.__xmlfolder = xmlfolder
+    self.__includehpfsflaggedforacquisition = includehpfsflaggedforacquisition
 
   @property
   def pscale(self): return self.__pscale
@@ -51,7 +52,10 @@ class AnnotationXMLReader(units.ThingWithPscale):
             del rectangles[:]
             maxdepth = field.nestdepth
 
-          if not field.isacquired: continue
+          if not (
+            field.isacquired
+            or field.isflaggedforacquisition and self.__includehpfsflaggedforacquisition
+          ): continue
           rectangles.append(
             Rectangle(
               n=len(rectangles)+1,
@@ -62,16 +66,16 @@ class AnnotationXMLReader(units.ThingWithPscale):
               w=field.w,
               h=field.h,
               t=field.time,
-              file=field.im3path.name,
+              file=field.im3path.name if field.im3path is not None else None,
               pscale=self.pscale,
               readingfromfile=False,
               xmlfolder=self.__xmlfolder,
             )
           )
-          if microscopename is None:
+          if microscopename is None is not annotation.microscopename:
             microscopename = str(annotation.microscopename)
           elif microscopename != annotation.microscopename:
-            raise ValueError("Found multiple different microscope names '{microscopename}' '{annotation.microscopename}'")
+            raise ValueError(f"Found multiple different microscope names '{microscopename}' '{annotation.microscopename}'")
 
     return rectangles, globals, perimeters, microscopename
 
@@ -159,18 +163,31 @@ class RectangleAnnotation(AnnotationBase):
     """
     return self.history[-1]["Type"] == "Acquired"
   @property
+  def isflaggedforacquisition(self):
+    """
+    Was this HPF flagged for acquisition?
+    """
+    return self.isacquired or any(hist["Type"] == "FlaggedForAcquisition" for hist in self.history)
+  @property
+  def acquisitionnode(self):
+    if self.isacquired:
+      return self.history[-1]
+    elif self.isflaggedforacquisition:
+      return [hist for hist in self.history if hist["Type"] == "FlaggedForAcquisition"][-1]
+  @property
   def im3path(self):
     """
     Path to the im3 file
     """
-    return pathlib.PureWindowsPath(self.history[-1]["Im3Path"])
+    if not self.isacquired: return None
+    return pathlib.PureWindowsPath(self.acquisitionnode["Im3Path"])
   @property
   def microscopename(self):
     """
     Name of the computer operating the microscope
     """
     if not self.isacquired: return None
-    return self.history[-1]["UserName"]
+    return self.acquisitionnode["UserName"]
   @property
   def x(self):
     """
@@ -212,7 +229,7 @@ class RectangleAnnotation(AnnotationBase):
     """
     time stamp when the HPF was acquired
     """
-    return dateutil.parser.parse(self.history[-1]["TimeStamp"])
+    return dateutil.parser.parse(self.acquisitionnode["TimeStamp"])
 
   @property
   def globals(self): "RectangleAnnotations don't have global variables"

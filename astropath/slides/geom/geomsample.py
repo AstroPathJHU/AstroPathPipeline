@@ -7,7 +7,7 @@ from ...shared.sample import ReadRectanglesDbloadSegmentedComponentTiff, Workflo
 from ...utilities import units
 from ...utilities.tableio import writetable
 from ..align.alignsample import AlignSample
-from ..align.field import FieldReadComponentTiff
+from ..align.field import FieldReadSegmentedComponentTiffSingleLayer
 
 class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
   """
@@ -16,15 +16,15 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
   by inform to csv files.
   """
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, layer="setlater", **kwargs)
-    self.setlayers(layer=self.masklayer)
+    super().__init__(*args, layercomponenttiff="setlater", **kwargs)
+    self.setlayerscomponenttiff(layercomponenttiff=self.masklayer)
 
   @classmethod
   def logmodule(self): return "geom"
 
   @property
   def rectanglecsv(self): return "fields"
-  rectangletype = FieldReadComponentTiff
+  rectangletype = FieldReadSegmentedComponentTiffSingleLayer
 
   @methodtools.lru_cache()
   def getfieldboundaries(self):
@@ -56,7 +56,7 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
     self.logger.info("getting tumor boundaries")
     boundaries = []
     for n, field in enumerate(self.rectangles, start=1):
-      with field.using_image() as im:
+      with field.using_component_tiff() as im:
         zeros = im == 0
         if not np.any(zeros): continue
         polygons = findcontoursaspolygons(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, shiftby=units.nominal_values(field.pxvec), forgdal=True)
@@ -87,7 +87,7 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
     ]
     if not all(_.exists() for _ in result): return result
     result += [
-      *(r.imagefile for r in self.rectangles),
+      *(r.componenttifffile for r in self.rectangles),
     ]
     result += super().inputfiles(**kwargs)
     return result

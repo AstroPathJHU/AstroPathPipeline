@@ -82,12 +82,12 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         return self.__image_masking_dirpath
     @property
     def mask_layer_groups(self) :
-        if self.nlayers==35 :
+        if self.nlayersim3==35 :
             return UNIV_CONST.LAYER_GROUPS_35
-        elif self.nlayers==43 :
+        elif self.nlayersim3==43 :
             return UNIV_CONST.LAYER_GROUPS_43
         else :
-            errmsg = f'ERROR: no defined list of broadband filter breaks for images with {self.nlayers} layers!'
+            errmsg = f'ERROR: no defined list of broadband filter breaks for images with {self.nlayersim3} layers!'
             raise ValueError(errmsg)
     @methodtools.lru_cache()
     @property
@@ -103,6 +103,13 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             newhist,newbins = np.histogram(all_exp_times[lgi],bins=60)
             exp_time_hists_and_bins.append((newhist,newbins))
         return exp_time_hists_and_bins
+
+    @property
+    def rectangleextrakwargs(self):
+      return {
+        **super().rectangleextrakwargs,
+        "_DEBUG": False, #need to load images multiple times
+      }
 
     #################### CLASS METHODS ####################
 
@@ -168,7 +175,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                     msg = f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} '
                     msg+= f'({ri+1} of {len(self.rectangles)})....'
                     self.logger.debug(msg)
-                    with r.using_image() as im :
+                    with r.using_corrected_im3() as im :
                         r_key = (r.n,r.file)
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         proc_results[r_key] = pool.apply_async(return_new_mask_labelled_regions,
@@ -190,7 +197,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                 msg = f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....'
                 self.logger.debug(msg)
                 try :
-                    with r.using_image() as im :
+                    with r.using_corrected_im3() as im :
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         new_lmrs=return_new_mask_labelled_regions(im,r.file.rstrip(UNIV_CONST.IM3_EXT),
                                                                   background_thresholds,
@@ -246,7 +253,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         self.logger.info(f'Reading background thresholds for {self.SlideID} from file {threshold_file_path}')
         background_thresholds_read = readtable(threshold_file_path,ThresholdTableEntry)
         background_thresholds_to_return = []
-        for li in range(self.nlayers) :
+        for li in range(self.nlayersim3) :
             layer_counts_threshold = [t.counts_threshold for t in background_thresholds_read if t.layer_n==li+1]
             if len(layer_counts_threshold)>1 :
                 errmsg = f'ERROR: conflicting background thresholds for layer {li+1} listed in {threshold_file_path}'
@@ -284,7 +291,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         #choose the best thresholds based on those results and make some plots of the distributions
         self.logger.debug('Finding best thresholds based on those found for individual images')
         chosen_thresholds = []
-        for li in range(self.nlayers) :
+        for li in range(self.nlayersim3) :
             valid_layer_thresholds = image_bgts_by_layer[:,li][image_bgts_by_layer[:,li]!=0]
             if len(valid_layer_thresholds)<1 :
                 errmsg = f"ERROR: not enough image background thresholds were found in layer {li+1} for "
@@ -321,8 +328,8 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         Will spawn a pool of multiprocessing processes if n_threads is greater than 1
         """
         #start up the lists that will be returned (and the list of datatable entries to write out)
-        image_background_thresholds_by_layer = np.zeros((len(self.tissue_edge_rects),self.nlayers),dtype=np.uint16)
-        tissue_edge_layer_hists = np.zeros((np.iinfo(np.uint16).max+1,self.nlayers),dtype=np.uint64)
+        image_background_thresholds_by_layer = np.zeros((len(self.tissue_edge_rects),self.nlayersim3),dtype=np.uint16)
+        tissue_edge_layer_hists = np.zeros((np.iinfo(np.uint16).max+1,self.nlayersim3),dtype=np.uint64)
         rectangle_data_table_entries = []
         #run the thresholding/histogram function in multiple parallel processes
         if (self.njobs is not None) and (self.njobs>1) :
@@ -332,7 +339,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                     msg = f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} '
                     msg+= f'({ri+1} of {len(self.tissue_edge_rects)})....'
                     self.logger.debug(msg)
-                    with r.using_image() as im :
+                    with r.using_corrected_im3() as im :
                         r_key = (r.n,r.file)
                         proc_results[r_key] = pool.apply_async(get_background_thresholds_and_pixel_hists_for_rectangle_image,(im,))
                 for (rn,rfile),res in proc_results.items() :
@@ -364,7 +371,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                 msg+= f'({ri+1} of {len(self.tissue_edge_rects)})....'
                 self.logger.debug(msg)
                 try :
-                    with r.using_image() as im :
+                    with r.using_corrected_im3() as im :
                         thresholds, hists = get_background_thresholds_and_pixel_hists_for_rectangle_image(im)
                     for li,t in enumerate(thresholds) :
                         if self.et_offset_file is not None :
@@ -431,7 +438,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                     msg = f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots '
                     msg+= f'({ri+1} of {len(rects_to_plot)})....'
                     self.logger.debug(msg)
-                    with r.using_image() as im :
+                    with r.using_corrected_im3() as im :
                         r_key = (r.n,r.file)
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         proc_results[r_key] = pool.apply_async(save_plots_for_image,
@@ -453,7 +460,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                 msg+= f'({ri+1} of {len(rects_to_plot)})....'
                 self.logger.debug(msg)
                 try :
-                    with r.using_image() as im :
+                    with r.using_corrected_im3() as im :
                         save_plots_for_image(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                              self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
                                              r.allexposuretimes,
@@ -476,11 +483,11 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
         #start up the meanimage
-        self.__meanimage = MeanImage(self.rectangles[0].imageshapeinoutput,self.logger)
+        self.__meanimage = MeanImage(self.rectangles[0].im3shape,self.logger)
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
-                *(r.imagefile for r in self.rectangles),
+                *(r.im3file for r in self.rectangles),
                ]
 
     def run(self) :
@@ -512,14 +519,17 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
 
     @property
     def workflowkwargs(self) :
-        return{**super().workflowkwargs,'skip_masking':self.skip_masking}
+        return{**super().workflowkwargs,'skip_masking':self.skip_masking,'workingdir':self.workingdirpath}
 
     #################### CLASS METHODS ####################
 
     @classmethod
-    def getoutputfiles(cls,SlideID,root,skip_masking,**otherworkflowkwargs) :
+    def getoutputfiles(cls,SlideID,root,skip_masking,workingdir=None,**otherworkflowkwargs) :
         outputfiles = []
-        meanimagedir = root/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
+        if workingdir is None:
+            meanimagedir = root/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
+        else:
+            meanimagedir = workingdir
         outputfiles.append(meanimagedir/f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
         outputfiles.append(meanimagedir/f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
         outputfiles.append(meanimagedir/f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')

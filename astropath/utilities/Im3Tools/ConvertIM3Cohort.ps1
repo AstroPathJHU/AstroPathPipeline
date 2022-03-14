@@ -16,8 +16,7 @@ Function ConvertIM3Cohort {
         IF (!$ii -or $sub.Name -like "Control*") {
             Continue
         }
-        $code = $PSScriptRoot + '\ConvertIM3Path.ps1'
-        & $code $root $output_dir $sub -s -a
+        ConvertIM3Path $root $output_dir $sub.Name -shred -all
     }
     #
 }

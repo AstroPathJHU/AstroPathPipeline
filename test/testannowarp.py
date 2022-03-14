@@ -45,13 +45,13 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
   @classmethod
   def setUpClass(cls):
-    super().setUpClass()
     from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
     assembleqptiff()
     from .testzoom import gunzipreference
     gunzipreference("M206")
     from .data.M206.im3.meanimage.image_masking.hackmask import hackmask
     hackmask()
+    super().setUpClass()
 
   @property
   def outputfilenames(self):

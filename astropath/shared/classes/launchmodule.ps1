@@ -16,6 +16,8 @@ class launchmodule : mylogger{
             $this.sampledefslide($val[1])            
 
         }
+        #
+        $this.teststatus = $true
         $this.getlogger()
         $this.start($module+'-test')
         #

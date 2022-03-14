@@ -83,6 +83,7 @@ class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
                 '--sampleregex',slideID,
                 '--image-set-split','sequential',
                 '--skip-masking',
+                '--debug',
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')

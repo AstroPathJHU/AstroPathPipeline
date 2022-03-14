@@ -15,6 +15,7 @@
     [string]$module = 'shredxml'
     [string]$slideid = 'M21_1'
     [string]$project = '0'
+    [string]$batchid = '8'
     [string]$apmodule = $PSScriptRoot + '\..\astropath'
     #
     testpsmoduletools(){
@@ -25,6 +26,8 @@
         #
         $task = ($this.project, $this.slideid, $this.process_loc, $this.mpath)
         $inp = meanimage $task
+        #
+        $this.testslidelist()
         #
         $this.TestPaths($inp)
         Write-Host '.'
@@ -76,6 +79,86 @@
         #
         Write-Host 'Passed Paths Testing'
         #
+    }
+    #
+    <#---------------------------------------------
+    testslidelist
+    ---------------------------------------------#>
+    [void]testslidelist(){
+        #
+        Write-Host "."
+        Write-Host 'test building slide list started'
+        #
+        $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
+        $inp = batchwarpkeys $task  
+        #
+        Write-Host '    test one batch slidelist no dep'
+        $inp.getslideidregex()
+        Write-Host '    slides in batch list:'
+        Write-Host '   '$inp.batchslides
+        Write-Host '    slide id is:' $inp.sample.slideid
+        Write-Host '    batch id is:' $this.batchid
+        if ($inp.sample.slideid -notcontains $this.batchid.PadLeft(2,'0')){
+            Throw 'slide id wrong'
+        }
+        #
+        Write-Host '    test one batch slidelist'
+        #
+        $this.addwarpoctetsdep($inp)
+        #
+        $inp.getslideidregex('batchwarpkeys')
+        #
+        Write-Host '    slides in batch list:'
+        Write-Host '   '$inp.batchslides
+        Write-Host '    slide id is:' $inp.sample.slideid
+        Write-Host '    batch id is:' $this.batchid
+        if ($inp.sample.slideid -notcontains $this.batchid.PadLeft(2,'0')){
+            Throw 'slide id wrong'
+        }
+        #
+        if (!$inp.batchslides){
+            Throw 'no batch slides found!!!'
+        }
+        #
+        Write-Host '    test all slides slidelist'
+        $inp.all = $true
+        $this.addwarpoctetsdep($inp)
+        $inp.getslideidregex('batchwarpkeys')
+        Write-Host '    slides in batch list:'
+        Write-Host '   '$inp.batchslides
+        Write-Host '    slide id is:' $inp.sample.slideid
+        Write-Host 'test building slide list finished'
+        #
+        if (!$inp.batchslides){
+            Throw 'no batch slides found!!!'
+        }
+        #
+        $this.removewarpoctetsdep($inp)
+        #
+        Write-Host 'test building slide list finished'
+    }
+    #
+    [void]addwarpoctetsdep($inp){
+        #
+        $sor = $this.basepath, 'reference', 'warpingcohort',
+         'M21_1-all_overlap_octets.csv' -join '\'
+        #
+        $inp.getslideidregex()
+        #
+        $inp.batchslides | ForEach-Object{
+            $des = $this.basepath, $_, 'im3', 'warping', 'octets' -join '\'
+            $inp.sample.copy($sor, $des)
+            rename-item ($des + '\M21_1-all_overlap_octets.csv') ($_ + '-all_overlap_octets.csv') -EA stop
+        }
+    }
+    #
+    [void]removewarpoctetsdep($inp){
+        #
+        $inp.getslideidregex()
+        $inp.batchslides | ForEach-Object{
+            $des = $this.basepath, $_, 'im3', 'warping' -join '\'
+            $inp.sample.removedir($des)
+        }
     }
     #
 }

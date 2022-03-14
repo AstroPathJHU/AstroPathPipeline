@@ -11,16 +11,21 @@ class sampletracker : dependencies {
     #
     [vminformqueue]$vmq
     #
-    sampletracker($mpath, $slideid): base ($mpath, $slideid){
+    sampletracker($mpath): base ($mpath){
         $this.getmodulenames()
     }
     #
-    sampletracker($mpath, $slideid, $vmq): base ($mpath, $slideid){
+    sampletracker($mpath, $vmq): base ($mpath){
         $this.getmodulenames()
         $this.vmq = $vmq
     }
     #
-    sampletracker($mpath, $modules, $slideid, $vmq): base ($mpath, $slideid){
+    sampletracker($mpath, $vmq, $slideid): base ($mpath, $slideid){
+        $this.getmodulenames()
+        $this.vmq = $vmq
+    }
+    #
+    sampletracker($mpath, $modules, $vmq, $slideid): base ($mpath, $slideid){
         $this.modules = $modules
         $this.vmq = $vmq
     }
@@ -29,7 +34,7 @@ class sampletracker : dependencies {
         #
         $this.modules | ForEach-Object {
             $this.deflogpaths($_)
-            #$this.FileWatcher($this.moduleinfo.($_).slidelog)
+            #$this.FileWatcher($this.moduleinfo.($_).mainlog, $this.slideid, $_)
             $this.getlogstatus($_)
         }
         #

@@ -1,14 +1,16 @@
 #imports
-import os, pathlib, shutil, unittest
+import os, pathlib, unittest
 import numpy as np
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleNNUNet
 from astropath.slides.segmentation.segmentationsample import SegmentationSampleDeepCell
+from astropath.slides.segmentation.segmentationsample import SegmentationSampleMesmer
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 slide_ID = 'M21_1'
 rectangle_ns_with_comp_tiff_files_nnunet = [18,23,40]
 rectangle_ns_with_comp_tiff_files_deepcell = [1,17,18,23,40]
+rectangle_ns_with_comp_tiff_files_mesmer = [1,17,18,23,40]
 
 class TestSegmentationBase(TestBaseCopyInput, TestBaseSaveOutput) :
     """
@@ -29,6 +31,12 @@ class TestSegmentationBase(TestBaseCopyInput, TestBaseSaveOutput) :
             newcomptiffs.mkdir(parents=True)
         for fp in oldcomptiffs.glob('*') :
             yield fp,newcomptiffs
+        oldihctiffs = folder/'data'/slide_ID/'IHC'/'HPFs'
+        newihctiffs = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'IHC'/'HPFs'
+        if not newihctiffs.is_dir() :
+            newihctiffs.mkdir(parents=True)
+        for fp in oldihctiffs.glob('*') :
+            yield fp,newihctiffs
         oldscan1 = folder/'data'/slide_ID/'im3'/'Scan1'
         newscan1 = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'Scan1'
         if not newscan1.is_dir() :
@@ -53,16 +61,17 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
 
     @property
     def outputfilenames(self) :
+        root = folder/'test_for_jenkins'/'segmentation'/'root'
+        all_fps = [root/'logfiles'/'segmentationnnunet.log', root/slide_ID/'logfiles'/f'{slide_ID}-segmentationnnunet.log']
         oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
-        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'nnunet'
-        all_fps = []
+        outputdir = root/slide_ID/'im3'/'segmentation'/'nnunet'
         for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
             all_fps.append(outputdir/f'{fns}_nnunet_nuclear_segmentation.npz')
         return all_fps
 
     @unittest.skipIf(int(os.environ.get("JENKINS_NO_NNUNET", 0)), "nnU-Net is not installed on jenkins")
     def test_segmentation_nnunet(self) :
-        #run the segmentation cohort with the nnU-Net algorithm
+        #run the segmentation sample with the nnU-Net algorithm
         args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
                 slide_ID,
                 '--njobs','3',
@@ -84,7 +93,6 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
             raise
         finally :
             self.removeoutput()
-            shutil.rmtree(folder/'test_for_jenkins'/'segmentation')
 
 class TestSegmentationDeepCell(TestSegmentationBase) :
     """
@@ -93,15 +101,17 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
 
     @property
     def outputfilenames(self) :
+        root = folder/'test_for_jenkins'/'segmentation'/'root'
+        all_fps = [root/'logfiles'/'segmentationdeepcell.log', 
+                   root/slide_ID/'logfiles'/f'{slide_ID}-segmentationdeepcell.log']
         oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
-        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'deepcell'
-        all_fps = []
+        outputdir = root/slide_ID/'im3'/'segmentation'/'deepcell'
         for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
             all_fps.append(outputdir/f'{fns}_deepcell_nuclear_segmentation.npz')
         return all_fps
 
     def test_segmentation_deepcell(self) :
-        #run the segmentation cohort with the nnU-Net algorithm
+        #run the segmentation sample with the DeepCell algorithm
         args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
                 slide_ID,
                 '--allow-local-edits',
@@ -122,4 +132,42 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
             raise
         finally :
             self.removeoutput()
-            shutil.rmtree(folder/'test_for_jenkins'/'segmentation')
+
+class TestSegmentationMesmer(TestSegmentationBase) :
+    """
+    Class to use for testing the Mesmer segmentation algorithm
+    """
+
+    @property
+    def outputfilenames(self) :
+        root = folder/'test_for_jenkins'/'segmentation'/'root'
+        all_fps = [root/'logfiles'/'segmentationmesmer.log',
+                   root/slide_ID/'logfiles'/f'{slide_ID}-segmentationmesmer.log']
+        oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
+        outputdir = root/slide_ID/'im3'/'segmentation'/'mesmer'
+        for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
+            all_fps.append(outputdir/f'{fns}_mesmer_segmentation.npz')
+        return all_fps
+
+    def test_segmentation_deepcell(self) :
+        #run the segmentation sample with the Mesmer algorithm
+        args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
+                slide_ID,
+                '--allow-local-edits',
+                '--selectrectangles'
+                ]
+        for rn in rectangle_ns_with_comp_tiff_files_mesmer :
+            args.append(str(rn))
+        SegmentationSampleMesmer.runfromargumentparser(args=args)
+        #compare the results to the reference files
+        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
+        try :
+            for fp in (folder/'data'/'reference'/'segmentation'/'mesmer').glob('*') :
+                refa = (np.load(fp))['arr_0']
+                testa = (np.load(outputdir/fp.name))['arr_0']
+                np.testing.assert_allclose(testa,refa)
+        except :
+            self.saveoutput()
+            raise
+        finally :
+            self.removeoutput()

@@ -28,6 +28,7 @@
     [array]$logoutput
     [string]$pythonmodulename
     [array]$batchslides
+    [switch]$all = $false
     #
     moduletools([array]$task,[launchmodule]$sample){
         $this.sample = $sample
@@ -428,22 +429,46 @@
      Usage: $this.buildpyopts()
     ----------------------------------------- #>
     [string]buildpyopts(){
-        $str = '--allow-local-edits --skip-start-finish'
+        $str = '--allow-local-edits --skip-start-finish',
+            $this.pyoptsnoaxquiredannos() -join ''
         return $str
     }
+    #
     [string]buildpyopts($opt){
         $project = $this.sample.project.PadLeft(2,  '0')
-        $str = '--allow-local-edits --use-apiddef --project', $project -join ' '
+        $str = ('--allow-local-edits --use-apiddef --project',
+            $project -join ' '), $this.pyoptsnoaxquiredannos() -join ''
         return $str
+    }
+    #
+    [string]pyoptsnoaxquiredannos(){
+        #
+        $str = ''
+        #
+        if (test-path $this.sample.annotationxml()){
+            $xmlfile = $this.sample.getcontent($this.sample.annotationxml())
+            if ([regex]::Escape($xmlfile) -notmatch 'Acquired'){
+                $this.sample.warning('No "Acquired" Fields in annotation xmls, including "Flagged for Acquisition" Fields.')
+                $this.sample.warning('Note some fields may have failed but this cannot be determined from xml file!')
+                $str = ' --include-hpfs-flagged-for-acquisition'
+            }
+        }
+        #
+        return $str
+        #
     }
     #
     [void]runpythontask($taskname, $pythontask){
         #
         $externallog = $this.ProcessLog($taskname)
-        $this.sample.checkconda()
-        conda activate $this.sample.pyenv()
-        Invoke-Expression $pythontask *>> $externallog
-        conda deactivate 
+        if ($this.sample.isWindows()){
+            $this.sample.checkconda()
+            conda activate $this.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            conda deactivate 
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
         $this.getexternallogs($externallog)
         #
     }
@@ -458,7 +483,17 @@
     }
     <# -----------------------------------------
      checkexternalerrors
-        checkexternalerrors
+        check if there were external errors
+        when launching python. These errors
+        could be in the input, that 
+        sample wasn't set up correctly,
+        that the dependencies aren't correct.
+        if the task started correctly, (detected
+        by the correct astropath formatting in the 
+        log message) external task names don't match
+        our module name, we have to parse the 
+        external and forward the messages to the
+        astropath sample logs. 
      ------------------------------------------
      Usage: $this.checkexternalerrors()
     ----------------------------------------- #>
@@ -494,7 +529,7 @@
             #
             if ($this.pythonmodulename -match 'cohort' ){
                 if ( 
-                    $this.module -notmatch 'batch'    
+                    $this.sample.module -notmatch 'batch'    
                 ){
                     $this.parsepycohortlog()
                 } else {
@@ -548,12 +583,23 @@
         $this.logoutput | ForEach-Object{
             $cslide = ($_ -split ';')[2] 
             $mess = ($_ -split ';')[3]
-            if ($this.batchslides -match $cslide -and
-                    $mess -notmatch 'DEBUG'
+            if (
+                ($this.batchslides -match $cslide -and
+                    $mess -notmatch 'DEBUG:' -and
+                    $mess -notmatch 'FINISH:' -and
+                    $mess -notmatch 'START:') -or
+                ($cslide -match 'project'-and
+                    $mess -notmatch 'DEBUG:' -and
+                    $mess -notmatch 'FINISH:' -and
+                    $mess -notmatch 'START:')
             ){
                 #
-                $this.sample.message = ($_ -split ';')[3]
-                $this.sample.Writelog(4)
+                if (!$mess){
+                    $this.sample.error($_)                    
+                } else {
+                    $this.sample.message = $mess
+                    $this.sample.Writelog(4)
+                }
                 #
             }
         }
@@ -598,5 +644,48 @@
             Throw 'detected error in external task'
         }
         #
+    
     }
+    #
+    [void]getslideidregex(){
+        #
+        if ($this.all){
+            $aslides = $this.sample.importslideids($this.sample.mpath)
+            $aslides = $aslides | where-object {$_.Project -match $this.sample.project}
+            $slides = $aslides.SlideID
+        } else {
+            $slides = $this.sample.batchslides.slideid
+        }
+        #
+        $this.batchslides = $slides
+        #
+    }
+    #
+    [void]getslideidregex($cmodule){
+        #
+        $this.sample.info('selecting samples for sample regex')
+        #
+        $nbatchslides = @()
+        $sid = $this.sample.slideid
+        #
+        $this.getslideidregex()
+        #
+        if (@('batchwarpkeys', 'batchwarpfits') -match $cmodule){
+            foreach ($slide in $this.batchslides){
+                $this.sample.slideid = $slide
+                if ($this.sample.testwarpoctetsfiles()){
+                    $nbatchslides += $slide
+                }
+            }
+        } else {
+            $nbatchslides = $this.batchslides
+        }
+        #
+        $this.sample.slideid = $sid
+        $this.sample.info(([string]$nbatchslides.length +
+                ' sample(s) selected for sample regex'))
+        $this.batchslides = $nbatchslides
+        #
+    }
+    #
  }

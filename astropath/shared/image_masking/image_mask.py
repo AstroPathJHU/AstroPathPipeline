@@ -188,6 +188,28 @@ class ImageMask() :
             return_mask[:,:,lgb[0]-1:lgb[1]][read_mask[:,:,lgi+1]==1] = 1
         return return_mask
 
+    #get a one-hot, fully-layered mask from a given blur/saturation mask filepath, ignoring regions flagged for blur
+    @staticmethod
+    def onehot_mask_from_full_mask_file_no_blur(filepath,dimensions) :
+        if not pathlib.Path(filepath).is_file() :
+            raise ValueError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
+        if dimensions[-1]==35 :
+            layergroups = UNIV_CONST.LAYER_GROUPS_35
+        elif dimensions[-1]==43 :
+            layergroups = UNIV_CONST.LAYER_GROUPS_43
+        else :
+            errmsg = f'ERROR: no defined list of broadband filter breaks for images with {dimensions[-1]} layers!'
+            raise ValueError(errmsg)
+        read_mask = get_raw_as_hwl(filepath,*(dimensions[:-1]),len(layergroups)+1,dtype=np.uint8)
+        max_blur_index = np.max(read_mask[:,:,0])
+        return_mask = np.zeros(dimensions,dtype=np.uint8)
+        for lgi,lgb in enumerate(layergroups) :
+            tissue_or_blur_slice = np.logical_or(read_mask[:,:,lgi+1]==1,
+                                                 np.logical_and(read_mask[:,:,lgi+1]>1,
+                                                                read_mask[:,:,lgi+1]<=max_blur_index))
+            return_mask[:,:,lgb[0]-1:lgb[1]][tissue_or_blur_slice] = 1
+        return return_mask
+
     #################### PRIVATE HELPER FUNCTIONS ####################
 
     def __get_image_tissue_mask(self) :

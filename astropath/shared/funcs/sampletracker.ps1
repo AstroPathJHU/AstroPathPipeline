@@ -5,7 +5,7 @@
     )
     #
     if (!($PSBoundParameters.ContainsKey('project'))){
-        return [sampletracker]::new($mpath, $slideid)
+        return [sampletracker]::new($mpath)
     }
     #
     # return [sampletracker]::new($mpath, $module, $slideid, $project)

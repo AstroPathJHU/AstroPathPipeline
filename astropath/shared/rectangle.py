@@ -1,13 +1,12 @@
-import abc, collections, contextlib, dataclassy, datetime, jxmlease, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib, tifffile, traceback, warnings
+import abc, collections, dataclassy, datetime, jxmlease, methodtools, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.config import CONST as UNIV_CONST
-from ..utilities.miscfileio import memmapcontext
+from ..utilities.miscfileio import with_stem
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
-from .logging import printlogger
-from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleFlatfieldTransformationMultilayer, RectangleWarpingTransformationMultilayer
-from .rectangletransformation import RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationSinglelayer
+from .imageloader import ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
+from .rectangletransformation import RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
 
 class Rectangle(DataClassWithPscale):
   """
@@ -124,7 +123,7 @@ class Rectangle(DataClassWithPscale):
       raise ValueError("Can't get the exposure times unless you provide the xml folder or exposures csv")
     if None is not exposures1 != exposures2 is not None:
       raise ValueError(f"Found inconsistent exposure times from exposures.csv and from xml file:\n{exposures1}\n{exposures2}")
-    return exposures1 if exposures1 is not None else exposures2
+    return np.array(exposures1 if exposures1 is not None else exposures2)
 
   @methodtools.lru_cache()
   @property
@@ -134,197 +133,34 @@ class Rectangle(DataClassWithPscale):
     """
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
 
-class RectangleWithImageBase(Rectangle):
-  """
-  Base class for any kind of rectangle that has a way of getting an image.
-  To get the image and keep it indefinitely, you can access `rectangle.image`.
-  However, you might also want to do instead
-  ```
-  with rectangle.using_image() as im:
-    ... #do stuff with im
-  ```
-  This frees up the memory of im after the with block is finished.
-
-  Subclasses have to implement `getimage`, which loads the image from
-  an im3 or component tiff or somewhere else.
-
-  A rectangle can also have transformations, which are applied to the
-  raw image to make the final image returned by `using_image()` or `image`.
-  They should inherit from RectangleTransformationBase.
-  """
-
-  #if _DEBUG is true, then when the rectangle is deleted, it will print
-  #a warning if its image has been loaded multiple times, for debug
-  #purposes.  If __DEBUG_PRINT_TRACEBACK is also true, it will print the
-  #tracebacks for each of the times the image was loaded.
-  _DEBUG = True
-  def __DEBUG_PRINT_TRACEBACK(self, i):
-    return False
-
-  def __post_init__(self, *args, transformations=[], **kwargs):
-    self.__transformations = transformations
-    self.__images_cache = [None for _ in range(self.nimages)]
-    self.__accessed_image = np.zeros(dtype=bool, shape=self.nimages)
-    self.__using_image_counter = np.zeros(dtype=int, shape=self.nimages)
-    self.__debug_load_images_counter = np.zeros(dtype=int, shape=self.nimages)
-    self.__debug_load_images_tracebacks = [[] for _ in range(self.nimages)]
+class RectangleWithImageLoaderBase(Rectangle):
+  def __post_init__(self, *args, _DEBUG=True, _DEBUG_PRINT_TRACEBACK=False, **kwargs):
     super().__post_init__(*args, **kwargs)
+    self._DEBUG = _DEBUG
+    self._DEBUG_PRINT_TRACEBACK = _DEBUG_PRINT_TRACEBACK
 
-  def __del__(self):
-    if self._DEBUG:
-      for i, ctr in enumerate(self.__debug_load_images_counter):
-        if ctr > 1:
-          for formattedtb in self.__debug_load_images_tracebacks[i]:
-            printlogger("rectangle").debug("".join(formattedtb))
-          warnings.warn(f"Loaded image {i} for rectangle {self} {ctr} times")
-
-  def add_transformation(self,new_transformation) :
-    """
-    Add a new transformation to this Rectangle post-initialization
-    Helpful in case a Rectangle needs to be transformed after calculating something from the whole set of Rectangles
-    
-    new_transformation: the new transformation to add (should inherit from RectangleTransformationBase)
-    """
-    old_nimages = self.nimages
-    old_nimages = old_nimages #make pyflakes happy
-    self.__transformations.append(new_transformation)
-    self.__images_cache.append(None)
-    self.__accessed_image = np.append(self.__accessed_image,0)
-    self.__using_image_counter = np.append(self.__using_image_counter,0)
-    self.__debug_load_images_counter = np.append(self.__debug_load_images_counter,0)
-    self.__debug_load_images_tracebacks.append([])
-
-  @abc.abstractmethod
-  def getimage(self):
-    """
-    Override this function in subclasses that actually implement
-    a way of loading the image
-    """
-
-  @property
-  def nimages(self):
-    return len(self.__transformations)+1
-
-  #do not override any of these functions or call them from super()
-  #override getimage() instead and call super().getimage()
-
-  def any_image(self, index):
-    """
-    any_image(-1) gives the actual image
-    any_image(-2) gives the previous image, immediately before the last transformation
-    The image gets saved indefinitely until you call delete_any_image
-    etc.
-    """
-    self.__accessed_image[index] = True
-    return self.__image(index)
-
-  def delete_any_image(self, index):
-    """
-    Call this to free the memory from an image accessed by any_image
-    """
-    self.__accessed_image[index] = False
-    self.__check_delete_images()
-
-  @property
-  def image(self):
-    """
-    Gives the HPF image.
-    It gets saved in memory until you call `del rectangle.image`
-    """
-    return self.any_image(-1)
-  @image.deleter
-  def image(self):
-    self.delete_any_image(-1)
-    self.__check_delete_images()
-
-  @property
-  def all_images(self):
-    return [self.any_image(i) for i in range(len(self.__images_cache))]
-  def delete_all_images(self, index):
-    """
-    Free up the memory from all previously accessed images
-    """
-    self.__accessed_image[:] = False
-    self.__check_delete_images()
-
-  def __check_delete_images(self):
-    """
-    This gets called whenever you delete an image or leave a using_image context.
-    It deletes images that are no longer needed in memory.
-    """
-    for i, (ctr, usingproperty) in enumerate(zip(self.__using_image_counter, self.__accessed_image)):
-      if not ctr and not usingproperty:
-        self.__images_cache[i] = None
-
-  def __image(self, i):
-    if self.__images_cache[i] is None:
-      self.__debug_load_images_counter[i] += 1
-      if self.__DEBUG_PRINT_TRACEBACK(i):
-        self.__debug_load_images_tracebacks[i].append(traceback.format_stack())
-      if i < 0: i = self.nimages + i
-      if i == 0:
-        self.__images_cache[i] = self.getimage()
-      else:
-        with self.using_image(i-1) as previous:
-          self.__images_cache[i] = self.__transformations[i-1].transform(previous)
-    return self.__images_cache[i]
-
-  @contextlib.contextmanager
-  def using_image(self, index=-1):
-    """
-    Use this in a with statement to load the image for the HPF.
-    It gets freed from memory when the with statement ends.
-    """
-    self.__using_image_counter[index] += 1
-    try:
-      yield self.__image(index)
-    finally:
-      self.__using_image_counter[index] -= 1
-      self.__check_delete_images()
-  @contextlib.contextmanager
-  def using_all_images(self):
-    with contextlib.ExitStack() as stack:
-      for i in range(len(self.__images_cache)):
-        stack.enter_context(self.using_image(i))
-      yield stack
-
-  @property
-  def _imshowextent(self):
-    return self.x, self.x+self.w, self.y+self.h, self.y
-  def imshow(self, *, imagescale=None, xlim=(), ylim=()):
-    """
-    Convenience function to show the image.
-    """
-    if imagescale is None: imagescale = self.pscale
-    extent = units.convertpscale(self._imshowextent, self.pscale, imagescale)
-    xlim = (np.array(xlim) / units.onepixel(imagescale)).astype(float)
-    ylim = (np.array(ylim) / units.onepixel(imagescale)).astype(float)
-    with self.using_image() as im:
-      plt.imshow(im, extent=(extent / units.onepixel(imagescale)).astype(float))
-      plt.xlim(*xlim)
-      plt.ylim(*ylim)
-
-class RectangleReadIm3MultiLayer(RectangleWithImageBase):
+class RectangleReadIm3Base(RectangleWithImageLoaderBase):
   """
   Rectangle class that reads the image from a sharded im3
   (could be raw, flatw, etc.)
 
-  imagefolder: folder where the im3 image is located
-  filetype: flatWarp, camWarp, or raw (determines the file extension)
+  im3folder: folder where the im3 image is located
+  im3filetype: flatWarp, camWarp, or raw (determines the file extension)
   width, height: the shape of the HPF image
-  nlayers: the number of layers in the *input* file
-  layers: which layers you actually want to access
+  nlayersim3: the number of layersim3 in the *input* file
+  layersim3: which layersim3 you actually want to access
   """
+
   @property
-  def imagefolder(self): return self.__imagefolder
-  @imagefolder.setter
-  def imagefolder(self, imagefolder): self.__imagefolder = imagefolder
-  imagefolder: pathlib.Path = pathfield(imagefolder, includeintable=False, use_default=False)
+  def im3folder(self): return self.__im3folder
+  @im3folder.setter
+  def im3folder(self, im3folder): self.__im3folder = im3folder
+  im3folder: pathlib.Path = pathfield(im3folder, includeintable=False, use_default=False)
   @property
-  def filetype(self): return self.__filetype
-  @filetype.setter
-  def filetype(self, filetype): self.__filetype = filetype
-  filetype: str = MetaDataAnnotation(filetype, includeintable=False, use_default=False)
+  def im3filetype(self): return self.__im3filetype
+  @im3filetype.setter
+  def im3filetype(self, im3filetype): self.__im3filetype = im3filetype
+  im3filetype: str = MetaDataAnnotation(im3filetype, includeintable=False, use_default=False)
   @property
   def width(self): return self.__width
   @width.setter
@@ -336,95 +172,111 @@ class RectangleReadIm3MultiLayer(RectangleWithImageBase):
   def height(self, height): self.__height = height
   height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels", use_default=False)
   @property
-  def nlayers(self): return self.__nlayers
-  @nlayers.setter
-  def nlayers(self, nlayers): self.__nlayers = nlayers
-  nlayers: int = MetaDataAnnotation(nlayers, includeintable=False, use_default=False)
+  def nlayersim3(self): return self.__nlayersim3
+  @nlayersim3.setter
+  def nlayersim3(self, nlayersim3): self.__nlayersim3 = nlayersim3
+  nlayersim3: int = MetaDataAnnotation(nlayersim3, includeintable=False, use_default=False)
   @property
-  def layers(self): return self.__layers
-  @layers.setter
-  def layers(self, layers): self.__layers = layers
-  layers: list = MetaDataAnnotation(layers, includeintable=False, use_default=False)
+  @abc.abstractmethod
+  def layersim3(self): return self.__layersim3
 
   @property
-  def imageshape(self):
-    return [
+  def im3shape(self):
+    return (
       floattoint(float(self.height / self.onepixel)),
       floattoint(float(self.width / self.onepixel)),
-      self.nlayers if -1 in self.layers else len(self.layers),
-    ]
+      len(self.layersim3),
+    )
 
   @property
-  def imagefile(self):
+  def im3file(self):
     """
     The full file path to the image file
     """
-    if self.__filetype=="flatWarp" :
+    if self.__im3filetype=="flatWarp" :
       ext = UNIV_CONST.FLATW_EXT
-    elif self.__filetype=="camWarp" :
+    elif self.__im3filetype=="camWarp" :
       ext = ".camWarp"
-    elif self.__filetype=="raw" :
+    elif self.__im3filetype=="raw" :
       ext = UNIV_CONST.RAW_EXT
     else :
-      raise ValueError(f"requested file type {self.__filetype} not recognized")
+      raise ValueError(f"requested file type {self.__im3filetype} not recognized")
 
-    return self.__imagefolder/self.file.replace(UNIV_CONST.IM3_EXT, ext)
-
-  @property
-  def imageshapeininput(self):
-    return self.__nlayers, floattoint(float(self.__width / self.onepixel)), floattoint(float(self.__height / self.onepixel))
-  @property
-  def imagetransposefrominput(self):
-    #it's saved as (layers, width, height), we want (height, width, layers)
-    return (2, 1, 0)
-  @property
-  def imageslicefrominput(self):
-    return slice(None), slice(None), slice(None) if -1 in self.__layers else tuple(_-1 for _ in self.__layers)
-  @property
-  def imageshapeinoutput(self):
-    return (np.empty((self.imageshapeininput)).transpose(self.imagetransposefrominput)[self.imageslicefrominput]).shape
-
-  def getimage(self):
-    image = np.ndarray(shape=self.imageshape, dtype=np.uint16)
-
-    with open(self.imagefile, "rb") as f:
-      #use fortran order, like matlab!
-      with memmapcontext(
-        f,
-        dtype=np.uint16,
-        shape=tuple(self.imageshapeininput),
-        order="F",
-        mode="r"
-      ) as memmap:
-        image[:] = memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput]
-
-    return image
+    return self.im3folder/self.file.replace(UNIV_CONST.IM3_EXT, ext)
 
   @property
   def exposuretimes(self):
     """
-    The exposure times for the HPF layers you access
+    The exposure times for the HPF layersim3 you access
     """
     all = self.allexposuretimes
-    return [all[layer-1] for layer in self.__layers]
+    return [all[layer-1] for layer in self.__layersim3]
 
   @property
   def broadbandfilters(self):
     """
-    The broadband filter ids (numbered from 1) of the layers you access
+    The broadband filter ids (numbered from 1) of the layersim3 you access
     """
     all = self.allbroadbandfilters
-    return [all[layer-1] for layer in self.__layers]
+    return [all[layer-1] for layer in self.__layersim3]
 
-class RectangleReadIm3(RectangleReadIm3MultiLayer):
+  @methodtools.lru_cache()
+  @property
+  def im3loader(self):
+    return self.im3loadertype(**self.im3loaderkwargs)
+  def using_im3(self):
+    return self.im3loader.using_image()
+  @property
+  @abc.abstractmethod
+  def im3loadertype(self): pass
+  @property
+  @abc.abstractmethod
+  def im3loaderkwargs(self): return {
+    "filename": self.im3file,
+    "width": floattoint(float(self.width / self.onepixel)),
+    "height": floattoint(float(self.height / self.onepixel)),
+    "_DEBUG": self._DEBUG,
+    "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
+  }
+
+class RectangleReadIm3MultiLayer(RectangleReadIm3Base):
+  @property
+  def layersim3(self): return self.__layersim3
+  @layersim3.setter
+  def layersim3(self, layersim3): self.__layersim3 = layersim3
+  layersim3: list = MetaDataAnnotation(layersim3, includeintable=False, use_default=False)
+
+  def __post_init__(self, *args, **kwargs):
+    super().__post_init__(*args, **kwargs)
+    if self.layersim3 is None: self.layersim3 = range(1, self.nlayersim3+1)
+    if -1 in self.layersim3:
+      self.layersim3 = range(1, self.nlayersim3+1)
+    self.layersim3 = tuple(self.layersim3)
+
+  @property
+  def im3loadertype(self):
+    return ImageLoaderIm3MultiLayer
+  @property
+  def im3loaderkwargs(self): return {
+    **super().im3loaderkwargs,
+    "nlayers": self.nlayersim3,
+    "selectlayers": self.layersim3,
+  }
+
+class RectangleReadIm3SingleLayer(RectangleReadIm3Base):
   """
   Single layer image read from a sharded im3.
-  You can also use RectangleReadIm3MultiLayer and write layers=[i],
+  You can also use RectangleReadIm3MultiLayer and write layersim3=[i],
   but this class gives you a 2D array as the image instead of a 3D array
   with shape[0] = 1.
   Also, in this class you can read a layer file (e.g. fw01).
   """
 
+  @property
+  def layerim3(self): return self.__layerim3
+  @layerim3.setter
+  def layerim3(self, layerim3): self.__layerim3 = layerim3
+  layerim3: list = MetaDataAnnotation(layerim3, includeintable=False, use_default=False)
   @property
   def readlayerfile(self): return self.__readlayerfile
   @readlayerfile.setter
@@ -432,66 +284,33 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
   readlayerfile: bool = MetaDataAnnotation(True, includeintable=False, use_default=False)
 
   @classmethod
-  def transforminitargs(cls, *args, layer, readlayerfile=True, **kwargs):
+  def transforminitargs(cls, *args, readlayerfile=True, **kwargs):
     morekwargs = {
-      "layers": (layer,),
       "readlayerfile": readlayerfile,
     }
-    if readlayerfile and "nlayers" not in kwargs:
-      morekwargs["nlayers"] = 1
+    if readlayerfile and "nlayersim3" not in kwargs:
+      morekwargs["nlayersim3"] = 1
     return super().transforminitargs(*args, **kwargs, **morekwargs)
 
-  def __post_init__(self, *args, **kwargs):
-    if self.nlayers != 1 and self.readlayerfile:
-      raise ValueError("Provided nlayers!=1, readlayerfile=True")
-    super().__post_init__(*args, **kwargs)
+  @property
+  def layersim3(self):
+    return self.layerim3,
 
   @property
-  def layer(self):
-    layer, = self.layers
-    return layer
-
-  @property
-  def imageshape(self):
-    return super().imageshape[:-1]
-
-  @property
-  def imagefile(self):
-    result = super().imagefile
+  def im3file(self):
+    result = super().im3file
     if self.readlayerfile:
       folder = result.parent
       basename = result.name
       if basename.endswith(".camWarp") or basename.endswith(".dat"):
-        basename += f"_layer{self.layer:02d}"
+        basename += f"_layer{self.layerim3:02d}"
       elif basename.endswith(UNIV_CONST.FLATW_EXT):
-        basename += f"{self.layer:02d}"
+        basename += f"{self.layerim3:02d}"
       else:
         assert False
       result = folder/basename
 
     return result
-
-  @property
-  def imageshapeininput(self):
-    result = super().imageshapeininput
-    if self.readlayerfile:
-      assert result[0] == 1
-      return result[0], result[2], result[1]
-    return result
-  @property
-  def imagetransposefrominput(self):
-    if self.readlayerfile:
-      #it's saved as (height, width), which is what we want
-      return (0, 1, 2)
-    else:
-      #it's saved as (layers, width, height), we want (height, width, layers)
-      return (2, 1, 0)
-  @property
-  def imageslicefrominput(self):
-    if self.readlayerfile:
-      return 0, slice(None), slice(None)
-    else:
-      return slice(None), slice(None), self.layer-1
 
   @property
   def exposuretime(self):
@@ -508,170 +327,294 @@ class RectangleReadIm3(RectangleReadIm3MultiLayer):
     _, = self.broadbandfilters
     return _
 
-class RectangleCorrectedIm3SingleLayer(RectangleReadIm3MultiLayer) :
+  @property
+  def im3loadertype(self):
+    if self.readlayerfile:
+      return ImageLoaderIm3SingleLayer
+    else:
+      return ImageLoaderIm3MultiLayer
+  @property
+  def im3loaderkwargs(self):
+    result = {
+      **super().im3loaderkwargs,
+    }
+    if self.readlayerfile:
+      result.update({
+      })
+    else:
+      result.update({
+        "nlayers": self.nlayersim3,
+        "selectlayers": self.layerim3,
+      })
+    return result
+
+class RectangleCorrectedIm3Base(RectangleReadIm3Base) :
   """
   Class for Rectangles whose multilayer im3 data should have one layer extracted and corrected
   for differences in exposure time, flatfielding effects, and warping effects (and or all can be omitted)
+
+  To correct for differences in exposure time:
+    et_offset = the dark current offset to use for correcting the image layer of interest
+    have to also call set_med_et to set the median exposure time of the image layer in question across the whole sample
+  To correct for flatfield:
+    flatfield = the flatfield array
+  To correct for warp:
+    warp = the warping object
   """
-  _DEBUG = False #tend to load these more than once
 
-  def __post_init__(self,*args,transformations=None,**kwargs) :
-    if transformations is None :
-      transformations = []
-    super().__post_init__(*args, transformations=transformations, **kwargs)
+  def __post_init__(self, *args, et_offset=None, use_flatfield=False, use_warp=None, **kwargs) :
+    super().__post_init__(*args, **kwargs)
+    self.__et_offset = et_offset
+    self.__use_flatfield = use_flatfield
+    self.__use_warp = use_warp
 
-  def add_exposure_time_correction_transformation(self,med_et,offset) :
-    """
-    Add a transformation to a rectangle to correct it for differences in exposure time given:
+  @property
+  def et_offset(self): return self.__et_offset
+  @property
+  def use_flatfield(self): return self.__use_flatfield
+  @property
+  def use_warp(self): return self.__use_warp
 
-    med_et = the median exposure time of the image layer in question across the whole sample
-    offset = the dark current offset to use for correcting the image layer of interest
-    """
-    if med_et is not None and offset is not None :
-      self.add_transformation(RectangleExposureTimeTransformationSingleLayer(self.allexposuretimes[self.layers[0]-1],
-                                                                             med_et,offset))
+  @property
+  @abc.abstractmethod
+  def exposuretimetransformation(self): pass
+  @property
+  @abc.abstractmethod
+  def flatfieldtransformation(self): pass
+  def set_flatfield(self, flatfield):
+    self.flatfieldtransformation.set_flatfield(flatfield)
+  @property
+  @abc.abstractmethod
+  def warpingtransformation(self): pass
+  def set_warp(self, warp):
+    self.warpingtransformation.set_warp(warp)
 
-  def add_flatfield_correction_transformation(self,flatfield_layer) :
-    """
-    Add a transformation to a rectangle to correct it with a given flatfield layer
-    """
-    if flatfield_layer is not None :
-      self.add_transformation(RectangleFlatfieldTransformationSinglelayer(flatfield_layer))
+  @methodtools.lru_cache()
+  @property
+  def correctedim3loader(self):
+    loader = self.im3loader
 
-  def add_warping_correction_transformation(self,warp) :
-    """
-    Add a transformation to a rectangle to correct its image layer with a given warping pattern
-    """
-    if warp is not None :
-      self.add_transformation(RectangleWarpingTransformationSinglelayer(warp))
+    kwargs = {
+      "_DEBUG": self._DEBUG,
+      "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
+    }
 
-class RectangleCorrectedIm3MultiLayer(RectangleReadIm3MultiLayer):
+    if self.__et_offset is not None:
+      transformation = self.exposuretimetransformation
+      loader = TransformedImage(loader, transformation, **kwargs)
+
+    if self.__use_flatfield:
+      transformation = self.flatfieldtransformation
+      loader = TransformedImage(loader, transformation, **kwargs)
+
+    if self.__use_warp:
+      transformation = self.warpingtransformation
+      loader = TransformedImage(loader, transformation, **kwargs)
+
+    return loader
+
+  def using_corrected_im3(self):
+    return self.correctedim3loader.using_image()
+
+class RectangleCorrectedIm3SingleLayer(RectangleCorrectedIm3Base, RectangleReadIm3SingleLayer) :
+  """
+  Class for Rectangles whose single layer im3 data should be corrected for differences in exposure time,
+  flatfielding effects, and/or warping effects (any or all can be omitted)
+  """
+
+  @methodtools.lru_cache()
+  @property
+  def exposuretimetransformation(self):
+    return RectangleExposureTimeTransformationSingleLayer(self.allexposuretimes[self.layerim3-1],
+                                                          self.et_offset)
+  def set_med_et(self, med_et):
+    self.exposuretimetransformation.set_med_et(med_et)
+  @methodtools.lru_cache()
+  @property
+  def flatfieldtransformation(self):
+    return RectangleFlatfieldTransformationSinglelayer()
+  @methodtools.lru_cache()
+  @property
+  def warpingtransformation(self):
+    return RectangleWarpingTransformationSinglelayer()
+
+class RectangleCorrectedIm3MultiLayer(RectangleCorrectedIm3Base, RectangleReadIm3MultiLayer):
   """
   Class for Rectangles whose multilayer im3 data should be corrected for differences in exposure time,
   flatfielding effects, and/or warping effects (any or all can be omitted)
   """
-  _DEBUG = False #Tend to use these images more than once per run
-  
-  def __post_init__(self, *args, transformations=None, **kwargs) :
-    if transformations is None : 
-      transformations = []
-    super().__post_init__(*args, transformations=transformations, **kwargs)
 
-  def add_exposure_time_correction_transformation(self,med_ets,offsets) :
-    """
-    Add a transformation to a rectangle to correct it for differences in exposure time given:
+  @methodtools.lru_cache()
+  @property
+  def exposuretimetransformation(self):
+    return RectangleExposureTimeTransformationMultiLayer(self.allexposuretimes[tuple(_-1 for _ in self.layersim3),],
+                                                         self.et_offset)
+  def set_med_ets(self, med_ets):
+    self.exposuretimetransformation.set_med_ets(med_ets)
+  @methodtools.lru_cache()
+  @property
+  def flatfieldtransformation(self):
+    return RectangleFlatfieldTransformationMultilayer()
+  @methodtools.lru_cache()
+  @property
+  def warpingtransformation(self):
+    return RectangleWarpingTransformationMultilayer()
 
-    med_ets = the median exposure times in the rectangle's slide 
-    offsets = the list of dark current offsets for the rectangle's slide
-    """
-    if (med_ets is not None) and (offsets is not None) :
-      self.add_transformation(RectangleExposureTimeTransformationMultiLayer(self.allexposuretimes,med_ets,offsets))
+class RectangleReadIHCTiff(RectangleWithImageLoaderBase) :
+  """
+  Rectangle class that reads the image from an IHC .tif
+  """
 
-  def add_flatfield_correction_transformation(self,flatfield) :
-    """
-    Add a transformation to a rectangle to correct it with a given flatfield
+  @property
+  def ihctifffolder(self): return self.__ihctifffolder
+  @ihctifffolder.setter
+  def ihctifffolder(self, ihctifffolder): self.__ihctifffolder = ihctifffolder
+  ihctifffolder: pathlib.Path = pathfield(ihctifffolder, includeintable=False, use_default=False)  
 
-    flatfield = the flatfield correction factor image to apply
-    """
-    if flatfield is not None:
-      self.add_transformation(RectangleFlatfieldTransformationMultilayer(flatfield))
+  @property
+  def ihctifffile(self):
+    return self.ihctifffolder/self.file.replace(UNIV_CONST.IM3_EXT, '_IHC.tif')
 
-  def add_warping_correction_transformation(self,warps_by_layer) :
-    """
-    Add a transformation to a rectangle to correct it with given warping patterns
+  @methodtools.lru_cache()
+  @property
+  def ihctiffloader(self): return ImageLoaderHasSingleLayerTiff(**self.ihctiffloaderkwargs)
+  def using_ihc_tiff(self):
+    return self.ihctiffloader.using_image()
+  @property
+  def ihctiffloaderkwargs(self): return {
+    "filename": self.ihctifffile,
+    "_DEBUG": self._DEBUG,
+    "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
+  }
 
-    warps_by_layer = a list of the warping objects to use in each image layer
-    """
-    self.add_transformation(RectangleWarpingTransformationMultilayer(warps_by_layer))
-
-
-class RectangleReadComponentTiffMultiLayer(RectangleWithImageBase):
+class RectangleReadComponentTiffBase(RectangleWithImageLoaderBase):
   """
   Rectangle class that reads the image from a component tiff
 
-  imagefolder: folder where the component tiff is located
+  componenttifffolder: folder where the component tiff is located
   nlayers: the number of layers in the *input* file (optional, just used as a sanity check)
   layers: which layers you actually want to access
   with_seg: indicates if you want to use the _w_seg.tif which contains some segmentation info from inform
   """
 
-  def __post_init__(self, *args, imagefolder, layers, nlayers=None, with_seg=False, nsegmentations=None, **kwargs):
-    super().__post_init__(*args, **kwargs)
-    self.__imagefolder = pathlib.Path(imagefolder)
-    self.__layers = layers
-    self.__nlayers = nlayers
-    self.__with_seg = with_seg
-    self.__nsegmentations = nsegmentations
-    if with_seg and nsegmentations is None:
-      raise ValueError("To use segmented component tiffs, you have to provide nsegmentations")
+  @property
+  def componenttifffolder(self): return self.__componenttifffolder
+  @componenttifffolder.setter
+  def componenttifffolder(self, componenttifffolder): self.__componenttifffolder = componenttifffolder
+  componenttifffolder: pathlib.Path = pathfield(componenttifffolder, includeintable=False, use_default=False)
+  @property
+  def nlayerscomponenttiff(self): return self.__nlayerscomponenttiff
+  @nlayerscomponenttiff.setter
+  def nlayerscomponenttiff(self, nlayerscomponenttiff): self.__nlayerscomponenttiff = nlayerscomponenttiff
+  nlayerscomponenttiff: int = MetaDataAnnotation(nlayerscomponenttiff, includeintable=False, use_default=False)
+  @property
+  def layerscomponenttiff(self): return self.__layerscomponenttiff
+  @layerscomponenttiff.setter
+  def layerscomponenttiff(self, layerscomponenttiff): self.__layerscomponenttiff = layerscomponenttiff
+  layerscomponenttiff: list = MetaDataAnnotation(layerscomponenttiff, includeintable=False, use_default=False)
 
   @property
-  def imagefile(self):
-    return self.__imagefolder/self.file.replace(UNIV_CONST.IM3_EXT, f"_component_data{'_w_seg' if self.__with_seg else ''}.tif")
+  def componenttifffile(self):
+    return self.componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, "_component_data.tif")
+
+  @methodtools.lru_cache()
+  @property
+  def componenttiffloader(self): return self.componenttiffloadertype(**self.componenttiffloaderkwargs)
+  def using_component_tiff(self):
+    return self.componenttiffloader.using_image()
+  @property
+  @abc.abstractmethod
+  def componenttiffloadertype(self): pass
+  @property
+  @abc.abstractmethod
+  def componenttiffloaderkwargs(self): return {
+    "nlayers": self.nlayerscomponenttiff,
+    "filename": self.componenttifffile,
+    "_DEBUG": self._DEBUG,
+    "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
+  }
+
+class RectangleReadSegmentedComponentTiffBase(RectangleReadComponentTiffBase):
+  @property
+  def nsegmentations(self): return self.__nsegmentations
+  @nsegmentations.setter
+  def nsegmentations(self, nsegmentations): self.__nsegmentations = nsegmentations
+  nsegmentations: int = MetaDataAnnotation(nsegmentations, includeintable=False, use_default=False)
+  @property
+  def componenttifffile(self):
+    withoutseg = super().componenttifffile
+    return with_stem(withoutseg, withoutseg.stem+"_w_seg")
+  @property
+  def componenttiffloaderkwargs(self):
+    return {
+      **super().componenttiffloaderkwargs,
+      "nsegmentations": self.nsegmentations,
+    }
+
+
+class RectangleReadComponentTiffMultiLayer(RectangleReadComponentTiffBase):
+  @property
+  def componenttiffloadertype(self):
+    return ImageLoaderComponentTiffMultiLayer
 
   @property
-  def layers(self):
-    return self.__layers
+  def componenttiffloaderkwargs(self):
+    return {
+      **super().componenttiffloaderkwargs,
+      "layers": self.layerscomponenttiff,
+    }
 
-  def getimage(self):
-    with tifffile.TiffFile(self.imagefile) as f:
-      pages = []
-      shape = None
-      dtype = None
-      segmentationisblank = False
-      #make sure the tiff is self consistent in shape and dtype
-      for page in f.pages:
-        if len(page.shape) == 2:
-          pages.append(page)
-          if shape is None:
-            shape = page.shape
-          elif shape != page.shape:
-            raise ValueError(f"Found pages with different shapes in the component tiff {shape} {page.shape}")
-          if dtype is None:
-            dtype = page.dtype
-          elif dtype != page.dtype:
-            raise ValueError(f"Found pages with different dtypes in the component tiff {dtype} {page.dtype}")
-      expectpages = self.__nlayers
-      if expectpages is not None:
-        if self.__with_seg: expectpages += 1 + 2*self.__nsegmentations
-        if len(pages) != expectpages:
-          #compatibility with inform errors, the segmentation is all blank and sometimes the wrong number of layers
-          if self.__with_seg and len(pages) > self.__nlayers:
-            if all(not np.any(page.asarray()) for page in pages[self.__nlayers:]):
-              segmentationisblank = True
-          if not segmentationisblank:
-            raise IOError(f"Wrong number of pages {len(pages)} in the component tiff, expected {expectpages}")
-
-      #make the destination array
-      image = np.ndarray(shape=shape+(len(self.__layers),), dtype=dtype)
-
-      #load the desired layers
-      for i, layer in enumerate(self.__layers):
-        image[:,:,i] = pages[layer-1].asarray()
-
-      return image
-
-class RectangleReadComponentTiff(RectangleReadComponentTiffMultiLayer):
+class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
   """
   Single layer image read from a component tiff.
-  You can also use RectangleReadIm3MultiLayer and write layers=[i],
+  You can also use RectangleReadComponentTiffMultiLayer and write layers=[i],
   but this class gives you a 2D array as the image instead of a 3D array
   with shape[2] = 1.
   """
-  def __post_init__(self, *args, layer, **kwargs):
-    morekwargs = {
-      "layers": (layer,),
-    }
-    super().__post_init__(*args, **kwargs, **morekwargs)
+  @classmethod
+  def transforminitargs(cls, *args, layercomponenttiff, **kwargs):
+    return super().transforminitargs(*args, layerscomponenttiff=(layercomponenttiff,), **kwargs)
 
   @property
-  def layer(self):
-    layer, = self.layers
-    return layer
+  def layercomponenttiff(self):
+    layercomponenttiff, = self.layerscomponenttiff
+    return layercomponenttiff
 
-  def getimage(self):
-    image, = super().getimage().transpose(2, 0, 1)
-    return image
+  @property
+  def componenttiffloadertype(self):
+    return ImageLoaderComponentTiffSingleLayer
+
+  @property
+  def componenttiffloaderkwargs(self):
+    return {
+      **super().componenttiffloaderkwargs,
+      "layer": self.layercomponenttiff,
+    }
+
+class RectangleReadSegmentedComponentTiffMultiLayer(RectangleReadComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffBase):
+  @property
+  def componenttiffloadertype(self):
+    return ImageLoaderSegmentedComponentTiffMultiLayer
+  @property
+  def componenttiffloaderkwargs(self):
+    return {
+      **super().componenttiffloaderkwargs,
+    }
+
+class RectangleReadSegmentedComponentTiffSingleLayer(RectangleReadComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffBase):
+  @property
+  def componenttiffloadertype(self):
+    return ImageLoaderSegmentedComponentTiffSingleLayer
+  @property
+  def componenttiffloaderkwargs(self):
+    return {
+      **super().componenttiffloaderkwargs,
+    }
+
+class RectangleReadComponentSingleLayerAndIHCTiff(RectangleReadComponentTiffSingleLayer,RectangleReadIHCTiff) :
+  pass
+class RectangleReadComponentMultiLayerAndIHCTiff(RectangleReadComponentTiffMultiLayer,RectangleReadIHCTiff) :
+  pass
 
 class RectangleCollection(units.ThingWithPscale):
   """
@@ -776,32 +719,6 @@ def rectangleoroverlapfilter(selection, *, compatibility=False):
     return selection
   else:
     raise ValueError(f"Unknown rectangle or overlap selection: {selection}")
-
-class RectangleProvideImage(RectangleWithImageBase):
-  """
-  Rectangle where you just input an image and that will be the image returned by image or using_image.
-  """
-  def __post_init__(self, *args, image, **kwargs):
-    self.__image = image
-    super().__post_init__(*args, **kwargs)
-  def getimage(self):
-    return self.__image
-
-class RectangleFromOtherRectangle(RectangleWithImageBase):
-  """
-  Rectangle where the image comes from another rectangle.
-  The reason you'd want to do this is if you have transformations, but
-  also want the original rectangle to keep its images.
-  """
-  def __post_init__(self, *args, originalrectangle, **kwargs):
-    self.__originalrectangle = originalrectangle
-    super().__post_init__(*args, rectangle=originalrectangle, readingfromfile=False, **kwargs)
-  @property
-  def originalrectangle(self):
-    return self.__originalrectangle
-  def getimage(self):
-    with self.__originalrectangle.using_image() as image:
-      return image
 
 class GeomLoadRectangle(Rectangle):
   """

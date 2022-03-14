@@ -1,8 +1,8 @@
 #imports
 from ...shared.rectangle import RectangleCorrectedIm3SingleLayer
-from ...slides.align.rectangle import AlignmentRectangleBase
+from ...slides.align.rectangle import AlignmentRectangleIm3SingleLayer
 
-class AlignmentRectangleForWarping(RectangleCorrectedIm3SingleLayer,AlignmentRectangleBase) :
+class AlignmentRectangleForWarping(RectangleCorrectedIm3SingleLayer,AlignmentRectangleIm3SingleLayer) :
     """
     Rectangles that are used to fit warping; streamlined to hold images in memory
     """
@@ -12,9 +12,9 @@ class AlignmentRectangleForWarping(RectangleCorrectedIm3SingleLayer,AlignmentRec
         self.__single_image = None
     
     @property
-    def image(self) :
+    def alignmentimage(self) :
         if self.__single_image is None :
-            self.__single_image = super().image
+            self.__single_image = super().alignmentimage
             if len(self.__single_image.shape)==3 :
                 if self.__single_image.shape[2]==1 :
                     self.__single_image = self.__single_image[:,:,0]
@@ -26,6 +26,6 @@ class AlignmentRectangleForWarping(RectangleCorrectedIm3SingleLayer,AlignmentRec
                 raise ValueError(errmsg)
         return self.__single_image
     
-    @image.setter
+    @alignmentimage.setter
     def image(self,im) :
         self.__single_image = im

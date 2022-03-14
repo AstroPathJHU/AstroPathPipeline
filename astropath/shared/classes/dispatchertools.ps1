@@ -101,14 +101,16 @@ class DispatcherTools : queue {
         # log for a finishing message
         #
         try{
-            $log = [mylogger]::new($this.mpath, $this.module, $ID[1])
+            if ($this.module -match 'batch'){
+                $log = [mylogger]::new($this.mpath, $this.module, $ID[1], ($ID[0] -replace '"', ''))
+            } else {
+                $log = [mylogger]::new($this.mpath, $this.module, $ID[1])
+            }
         } catch {
             Write-Host $_.Exception.Message
+            Write-Host 'ID:' $ID[1]
+            Write-Host 'Project:' $ID[0]
             return
-        }
-        #
-        if ($this.module -match 'batch'){
-            $log.slidelog = $log.mainlog
         }
         #
         if(!($this.checklog($log, $false))){

@@ -1,33 +1,40 @@
-import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
-
-from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
-from ...utilities.dataclasses import MyDataClass
+import collections, errno, methodtools, numpy as np, os, pathlib, PIL, re, shutil
+from ...shared.argumentparser import ArgumentParserWithVersionRequirement
+from ...shared.csvclasses import constantsdict
+from ...shared.logging import printlogger, ThingWithLogger
+from ...shared.qptiff import QPTiff
+from ...utilities import units
 from ...utilities.miscfileio import rm_missing_ok
+from ...utilities.miscmath import floattoint
 from ...utilities.optionalimports import pyvips
-from ...utilities.tableio import pathfield, readtable, writetable
-from ..zoom.zoomsample import ZoomSample
+from ...utilities.tableio import writetable
+from .deepzoomsample import DeepZoomFile
 
-class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
-  """
-  The deepzoom step takes the whole slide image and produces an image pyramid
-  of different zoom levels.
-  """
+class MotifDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units.ThingWithPscale):
+  def __init__(self, *, qptifffile, deepzoomfolder, dbloadfolder, logfolder, SlideID, **kwargs):
+    super().__init__(**kwargs)
+    self.qptifffile = pathlib.Path(qptifffile)
+    self.dbloadfolder = pathlib.Path(dbloadfolder)
+    self.deepzoomfolder = pathlib.Path(deepzoomfolder)
+    self.logfolder = pathlib.Path(logfolder)
+    self.SlideID = SlideID
 
-  def __init__(self, *args, layers=None, tilesize=256, **kwargs):
-    """
-    tilesize: size of the tiles at each level of the image pyramid
-    """
-    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
-    self.__tilesize = tilesize
-
-  multilayercomponenttiff = True
-
-  @classmethod
-  def logmodule(self): return "deepzoom"
-
+  @methodtools.lru_cache()
   @property
-  def tilesize(self): return self.__tilesize
+  def qptiffinfo(self):
+    with QPTiff(self.qptifffile) as qptiff:
+      return qptiff.apscale, qptiff.position, len(qptiff.zoomlevels[0])
+  @property
+  def pscale(self):
+    return self.qptiffinfo[0]
+  @property
+  def qptiffposition(self):
+    return self.qptiffinfo[1]
+  @property
+  def layersqptiff(self):
+    return range(1, self.qptiffinfo[2]+1)
+  @property
+  def tilesize(self): return 256
 
   def layerfolder(self, layer):
     """
@@ -35,16 +42,25 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     """
     return self.deepzoomfolder/f"L{layer:d}_files"
 
+  @property
+  def logger(self):
+    return printlogger("motifdeepzoom")
+
+  @methodtools.lru_cache()
+  @property
+  def shiftqptiff(self):
+    constants = constantsdict(self.dbloadfolder/"constants.csv")
+    return np.array([constants["xshift"], constants["yshift"]])
+
   def deepzoom_vips(self, layer):
     """
     Use vips to create the image pyramid.  This is an out of the box
     functionality of vips.
     """
     self.logger.info("running vips for layer %d", layer)
-    filename = self.wsifilename(layer)
 
-    #create the output folder and make sure it's empty
     self.deepzoomfolder.mkdir(parents=True, exist_ok=True)
+
     destfolder = self.layerfolder(layer)
     if destfolder.exists():
       for subfolder in destfolder.iterdir():
@@ -55,9 +71,14 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     #vips adds that
     dest = destfolder.with_name(destfolder.name.replace("_files", ""))
 
-    #open the wsi in vips and save the deepzoom
-    wsi = pyvips.Image.new_from_file(os.fspath(filename))
-    wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
+    #open the qptiff in vips, shift, and save the deepzoom
+    qptiffimage = pyvips.Image.tiffload(os.fspath(self.qptifffile), page=layer-1, n=1)
+    shift = floattoint(np.round(((self.qptiffposition + self.shiftqptiff) / self.onepixel).astype(float)))
+    np.testing.assert_array_less(0, shift)
+    shiftx, shifty = shift
+    shifted = qptiffimage.embed(shiftx, shifty, qptiffimage.width+shiftx, qptiffimage.height+shifty)
+
+    shifted.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
 
   def prunezoom(self, layer):
     """
@@ -222,7 +243,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     Write the csv file that lists all the png files to load
     """
     lst = []
-    for layer in self.layerscomponenttiff:
+    for layer in self.layersqptiff:
       folder = self.layerfolder(layer)
       for zoomfolder in sorted(folder.iterdir()):
         zoom = int(re.match("Z([0-9]*)", zoomfolder.name).group(1))
@@ -240,7 +261,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     """
     Run the full deepzoom pipeline
     """
-    for layer in self.layerscomponenttiff:
+    for layer in self.layersqptiff:
       folder = self.layerfolder(layer)
       if folder.exists():
         for i in range(10):
@@ -272,73 +293,41 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
     self.writezoomlist()
 
-  def run(self, *, cleanup=False, **kwargs):
-    if cleanup: self.cleanup()
-    self.deepzoom(**kwargs)
-
-  def inputfiles(self, **kwargs):
-    return super().inputfiles(**kwargs) + [
-      *(self.wsifilename(layer) for layer in self.layerscomponenttiff),
-    ]
+  def run(self, **kwargs):
+    return self.deepzoom(**kwargs)
 
   @classmethod
-  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, **workflowkwargs):
-    deepzoomfolder = deepzoomroot/SlideID
-    return itertools.chain(
-      deepzoomfolder.glob("L*_files/Z*/*.png"),
-      deepzoomfolder.glob("L*.dzi"),
-    )
-
-  @property
-  def workflowkwargs(self):
-    return {"layers": self.layerscomponenttiff, "tifflayers": None, **super().workflowkwargs}
+  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
+    if misckwargs:
+      raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
+    sample = cls(**initkwargs)
+    with sample:
+      sample.run(**runkwargs)
+    return sample
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, informdataroot, deepzoomroot, layers, checkimages=False, **otherworkflowkwargs):
-    zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
-    if layers is None:
-      nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs")
-      layers = range(1, nlayers+1)
-    result = [
-      zoomlist,
-      *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),
-    ]
-    if checkimages and zoomlist.exists():
-      files = readtable(zoomlist, DeepZoomFile)
-      result += [file.name for file in files]
-    return result
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "qptifffile": parsed_args_dict.pop("qptiff"),
+      "deepzoomfolder": parsed_args_dict.pop("deepzoom_folder"),
+      "logfolder": parsed_args_dict.pop("log_folder"),
+      "dbloadfolder": parsed_args_dict.pop("dbload_folder"),
+      "SlideID": parsed_args_dict.pop("SlideID"),
+    }
 
   @classmethod
-  def workflowdependencyclasses(cls, **kwargs):
-    return [ZoomSample] + super().workflowdependencyclasses(**kwargs)
-
-@functools.total_ordering
-class DeepZoomFile(MyDataClass):
-  """
-  Metadata for a png file for the zoomlist.csv
-
-  sample: the SlideID
-  zoom: the zoom level
-  marker: the layer number
-  x, y: the x and y index of the tile
-  name: the png filename
-  """
-  sample: str
-  zoom: int
-  marker: int
-  x: int
-  y: int
-  name: pathlib.Path = pathfield()
-
-  def __lt__(self, other):
-    """
-    The ordering goes by zoom level, then layer, then x, then y.
-    This is used to sort for the csv file.
-    """
-    return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--qptiff", type=pathlib.Path, required=True, help="The qptiff file")
+    p.add_argument("--deepzoom-folder", type=pathlib.Path, required=True, help="Folder for the deepzoom output")
+    p.add_argument("--log-folder", type=pathlib.Path, required=True, help="Folder for the log files")
+    p.add_argument("--dbload-folder", type=pathlib.Path, required=True, help="Folder with the dbload csvs")
+    p.add_argument("SlideID", help="ID of this slide for the zoomlist.csv")
+    return p
 
 def main(args=None):
-  DeepZoomSample.runfromargumentparser(args)
+  return MotifDeepZoom.runfromargumentparser(args=args)
 
 if __name__ == "__main__":
   main()

@@ -166,7 +166,7 @@
     [void]removedir([string]$dir){
         #
         if (test-path $dir){
-            Get-ChildItem $dir -Recurse | Remove-Item -force -Confirm:$false -recurse
+            Get-ChildItem -Directory $dir | Remove-Item -force -Confirm:$false -recurse
             remove-item $dir -force -Confirm:$false -Recurse
         }
         #
