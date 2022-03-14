@@ -128,9 +128,9 @@ Class informinput : moduletools {
     ----------------------------------------- #>
     [void]KillinFormProcess(){
         #
-        $value = get-process -name inform -EA SilentlyContinue |
+        get-process -name inform -EA SilentlyContinue |
                                     Stop-Process -Force -EA stop
-        $value2 = get-process -name rserve -EA SilentlyContinue |
+        get-process -name rserve -EA SilentlyContinue |
                     Stop-Process -Force -EA stop
         Start-Sleep 20
         #
@@ -146,8 +146,8 @@ Class informinput : moduletools {
         #
         $this.sample.info("Compile image list")
         $p = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw\*'
-        $this.image_list = gci -Path $p -include *.im3 |
-             % {$_.FullName} |
+        $this.image_list = Get-ChildItem -Path $p -include *.im3 |
+             ForEach-Object {$_.FullName} |
             foreach-object {$_+"`r`n"}
         $this.sample.setfile($this.image_list_file, $this.image_list)
         #
@@ -299,15 +299,15 @@ Class informinput : moduletools {
         foreach($informtype in $informtypes){
             #
             $informtype = '*'+$informtype
-            $ofiles = gci $o -Include ('*'+$informtype)
+            $ofiles = Get-ChildItem $o -Include ('*'+$informtype)
             $nfiles = $ofiles.Length
             if ($nfiles -ne 0){
-                $this.sample.info("inForm created "+$nfiles+" of "+`
-                    $this.image_list.Length+" "+$informtype+" files")
+                $this.sample.info("inForm created " + $nfiles + " of " +
+                    $this.image_list.Length + " " + $informtype + " files")
                 #
-                $b = ($ofiles| Measure Length -Minimum).Minimum
+                $b = ($ofiles| Measure-Object Length -Minimum).Minimum
                 if ($b -eq 0kb){
-                    $this.sample.warning("Some "+$informtype+" files appear to be corrupt")
+                    $this.sample.warning("Some " + $informtype + " files appear to be corrupt")
                     $this.err = $this.err + 1
                     return
                 }
