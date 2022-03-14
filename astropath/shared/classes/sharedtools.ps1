@@ -370,17 +370,21 @@
         $this.createdirs($this.pyinstalllocation())
         conda create -y -p $this.pyenv() python=3.8 2>&1 >> $this.pyinstalllog()
         $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR CREATED; $time `r`n"))
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+            " CONDA ENVIR CREATED; $time `r`n"))
         conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
         $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED; $time  `r`n"))
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+            " CONDA ENVIR ACTIVATED; $time  `r`n"))
         conda install -y -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git `
               2>&1 >> $this.pyinstalllog()
         $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE; $time  `r`n"))
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+            " CONDA ENVIR INSTALLS COMPLETE; $time  `r`n"))
         pip install $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
         $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE; $time `r`n"))
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+            " PIP INSTALLS COMPLETE; $time `r`n"))
         conda deactivate 2>&1 >> $this.pyinstalllog()
     }
     <# -----------------------------------------
@@ -394,10 +398,12 @@
             $this.checkconda()
             conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
             $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED; $time  `r`n"))
-            pip install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+                " CONDA ENVIR ACTIVATED; $time  `r`n"))
+            pip install -U $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
             $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE; $time `r`n"))
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+                " PIP INSTALLS COMPLETE; $time `r`n"))
             conda deactivate 2>&1 >> $this.pyinstalllog()
         } catch {
             $this.createpyenvir()
@@ -539,7 +545,7 @@
         $project_dat = $project_dat | 
                 Where-Object {$project -contains $_.Project}
         $this.modules = ($project_dat | Get-Member -MemberType NoteProperty).Name `
-          -notmatch ('version', 'Delete','Dname','Cohorts','Space_TB','Project' -join '|')
+          -notmatch ('version', 'Delete', 'Dname', 'Cohorts', 'Space_TB', 'Project' -join '|')
         $modulestatus = $project_dat | Select-Object -Property $this.modules 
         return $modulestatus
         #

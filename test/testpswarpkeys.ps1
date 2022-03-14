@@ -166,11 +166,16 @@
     }
     #
     [void]removewarpoctetsdep($inp){
+        #
         if ($this.dryrun){
             return
         }
         #
+        write-Host '    Removing warping directories'
+        #
         $inp.getslideidregex()
+        Write-Host '    Slides:' $inp.batchslides
+        #
         $inp.batchslides | ForEach-Object{
             $des = $this.basepath, $_, 'im3', 'warping' -join '\'
             $inp.sample.removedir($des)
@@ -223,10 +228,11 @@
             '--use-apiddef --project', $this.project.PadLeft(2,'0')
         ) -join ' ') + $wd
         #
+        Write-Host 'user defined        :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
+        Write-Host '[warpoctets] defined:' [regex]::escape($task[0])'end' -foregroundColor Red
+        #
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($task[0]))){
             Write-Host 'user defined and [warpoctets] defined tasks do not match:'  -foregroundColor Red
-            Write-Host 'user defined        :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
-            Write-Host '[warpoctets] defined:' [regex]::escape($task[0])'end' -foregroundColor Red
             Throw ('user defined and [warpoctets] defined tasks do not match')
         }
         #
@@ -237,7 +243,7 @@
     [void]runpywarpkeysexpected($inp, $type){
         #
         Write-Host "."
-        Write-Host 'test for [batchwarpkeys] expected output' $type ' slides started'
+        Write-Host 'test for [batchwarpkeys] expected output' $type 'slides started'
         #
         if ($type -contains 'all'){
             $inp.all = $true# uses all slide from the cohort, 
