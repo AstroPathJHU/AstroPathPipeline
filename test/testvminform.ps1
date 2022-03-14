@@ -40,14 +40,18 @@ Class testvminform {
         Write-Host '---------------------test ps [vminform]---------------------'
         $this.importmodule()
         $task = ($this.basepath, $this.slideid, $this.procedure, $this.algorithm, $this.informver, $this.mpath)
-        ###$this.testvminformconstruction($task)
+        #$this.testvminformconstruction($task)
         $inp = vminform $task
-        ###$this.testoutputdir($inp)
-        ###$this.testimagelist($inp)
-        ###$this.comparevminforminput($inp)
+        <#
+        $this.testoutputdir($inp)
+        $this.testimagelist($inp)
+        $this.comparevminforminput($inp)
         $this.testkillinformprocess($inp)
-        #$this.testruninformexpected($inp)
-        #$this.testruninformbatcherror($inp)
+        #>
+        $this.runinformexpected($inp)
+        $this.testlogexpected($inp)
+        $this.runinformbatcherror($inp)
+        $this.testlogbatcherror($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -77,11 +81,13 @@ Class testvminform {
         return $root
     }
     <# --------------------------------------------
-    comparepaths
+    comparepathsexclude
     helper function that uses the copy utils
     file hasher to quickly compare two directories
+    excludes certain files types to avoid failed
+    comparisons due to timestamps in files
     --------------------------------------------#>
-    [void]comparepaths($patha, $pathb, $inp){
+    [void]comparepathsexclude($patha, $pathb, $inp, $filetype){
         #
         Write-Host '    Comparing paths:'
         Write-Host '   '$patha
@@ -94,14 +100,14 @@ Class testvminform {
             Throw ('path does not exist:', $pathb -join ' ')
         }
         #
-        $lista = Get-ChildItem $patha -file
-        $listb = Get-ChildItem $pathb -file
-        #
+        $lista = Get-ChildItem $patha -recurse -exclude $filetype -file
+        $listb = Get-ChildItem $pathb -recurse -exclude $filetype -file
         $hasha = $inp.sample.FileHasher($lista)
         $hashb = $inp.sample.FileHasher($listb)
         $comparison = Compare-Object -ReferenceObject $($hasha.Values) `
                 -DifferenceObject $($hashb.Values)
         if ($comparison){
+            Write-Host 'Comparison:' $comparison
             Throw 'file contents do not match'
         }
         #
@@ -247,49 +253,46 @@ Class testvminform {
         Write-Host '.'
         Write-Host 'test kill inform process started'
         #
-        $this.setupexpected($inp)
-        #
+        $this.setupbatcherror($inp)
         $inp.StartInForm()
+        Write-Host '    inform process started - running kill inform'
         $inp.KillinFormProcess()
-        Write-Host 'inform process successfully ended - starting inform again'
+        Write-Host '    inform process ended - emptying output directory'
+        $log = $inp.sample.GetContent($inp.informprocesserrorlog)
+        Write-Host '    inform process log output:'
+        Write-Host $log
         #
+        Write-Host '    starting inform again'
+        $this.setupbatcherror($inp)
         $inp.StartInForm()
+        Write-Host '    inform process started - waiting'
         $inp.WatchBatchInForm()
-        $inp.CheckErrors()
-        $inp.KillinFormProcess()
+        $log = $inp.sample.GetContent($inp.informprocesserrorlog)
+        Write-Host '    inform process log output:'
+        Write-Host $log
         #
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         $inp.sample.CreateNewDirs($this.outpath)
+        #
         Write-Host 'test kill inform process finished'
         #
     }
     <# --------------------------------------------
-    testruninformexpected
+    runinformexpected
     test that inform is run correctly when run 
     with the correct input.
     --------------------------------------------#>
-    [void]testruninformexpected($inp){
+    [void]runinformexpected($inp){
         #
         Write-Host '.'
-        Write-Host 'test run on inform with expected outcome started'
+        Write-Host 'run on inform with expected outcome started'
         #
         $this.setupexpected($inp)
         #
-        while(($inp.err -le 5) -AND ($inp.err -ge 0)){
-            $inp.StartInForm()
-            $inp.WatchBatchInForm()
-            $inp.CheckErrors()
-            if (($inp.err -le 5) -and ($inp.err -gt 0)){
-                $inp.sample.warning("Task will restart. Attempt "+ $inp.err)
-            } elseif ($inp.err -gt 5){
-                Throw "Could not complete task after 5 attempts"
-            } elseif ($inp.err -eq -1){
-                $inp.sample.info("inForm Batch Process Finished Successfully")
-            }
-        }
-        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
+        $inp.StartInForm()
+        $inp.WatchBatchInForm()
         #
-        Write-Host 'test run on inform with expected outcome finished'
+        Write-Host 'run on inform with expected outcome finished'
         #
     }
     <# --------------------------------------------
@@ -300,42 +303,70 @@ Class testvminform {
     --------------------------------------------#>
     [void]setupexpected($inp) {
         #
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
+        $inp.sample.CreateNewDirs($this.outpath)
+        #
         Write-Host '    copying reference im3 file to flatw folder:' $this.referenceim3
         $inp.sample.copy($this.referenceim3, $inp.sample.flatwim3folder())
         #
+        $inp.KillinFormProcess()
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
         $inp.CreateImageList()
         #
     }
     <# --------------------------------------------
-    testruninformbatcherror
+    testlogexpected
+    check that the log is parsed correctly when
+    run with the correct input. 
+    --------------------------------------------#>
+    [void]testlogexpected($inp) {
+        #
+        Write-Host '.'
+        Write-Host 'test inform logs with expected outcome started'
+        #
+        Write-Host '    comparing output with reference'
+        $reference = $inp.sample.basepath + '\reference\vminform\expected'
+        $excluded = @('*.log', '*.ifp')
+        $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
+        Write-Host '    compare successful'
+        #
+        Write-Host '    Inform Batch Log:' $inp.informbatchlog
+        Write-Host '    open log output'
+        $logoutput = $inp.sample.GetContent($inp.informbatchlog)
+        Write-Host '    test log output'
+
+        $completestring = 'Batch process is completed'
+        if ($logoutput -match $completestring) {
+            $errormessage = $logoutput.Where({$_ -match $completestring}, 'SkipUntil')
+            Write-Host '    Error message:'
+            $inp.sample.error(($errormessage | Select-Object -skip 1))
+        }
+        else {
+            throw 'error in inform task - batch process did not complete'
+        }
+        $inp.sample.CreateNewDirs($this.outpath)
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
+        Write-Host 'test inform logs with expected outcome finished'
+        #
+    }
+    <# --------------------------------------------
+    runinformbatcherror
     check that the inform task completes correctly 
     when run with the input that will throw a
     inform batch error
     --------------------------------------------#>
-    [void]testruninformbatcherror($inp){
+    [void]runinformbatcherror($inp){
         #
         Write-Host '.'
-        Write-Host 'test run on inform with batch error started'
+        Write-Host 'run on inform with batch error started'
         #
         $this.setupbatcherror($inp)
         #
-        while(($inp.err -le 5) -AND ($inp.err -ge 0)){
-            $inp.StartInForm()
-            $inp.WatchBatchInForm()
-            $inp.CheckErrors()
-            if (($inp.err -le 5) -and ($inp.err -gt 0)){
-                $inp.sample.warning("Task will restart. Attempt "+ $inp.err)
-            } elseif ($inp.err -gt 5){
-                Throw "Could not complete task after 5 attempts"
-            } elseif ($inp.err -eq -1){
-                $inp.sample.info("inForm Batch Process Finished Successfully")
-            }
-        }
-        $inp.sample.removefile($this.sample.flatwim3folder(), '.im3')
+        $inp.StartInForm()
+        $inp.WatchBatchInForm()
         #
-        Write-Host 'test run on inform with batch error finished'
+        Write-Host 'run on inform with batch error finished'
         #
     }
     <# --------------------------------------------
@@ -346,13 +377,55 @@ Class testvminform {
     --------------------------------------------#>
     [void]setupbatcherror($inp) {
         #
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
+        $inp.sample.CreateNewDirs($this.outpath)
+        #
         $referenceim3s = $this.basepath, 'M21_1\im3\Scan1\MSI' -join '\'
-        Write-Host '    copying reference im3 files to flatw folder:'
+        Write-Host '    copying reference im3 files to flatw folder'
         $inp.sample.copy($referenceim3s, $inp.sample.flatwim3folder(), '.im3', 30)
         #
+        $inp.KillinFormProcess()
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
         $inp.CreateImageList()
+        #
+    }
+    <# --------------------------------------------
+    testlogbatcherror
+    check that the log is parsed correctly
+    when run with the input that will throw an
+    inform batch error.
+    writes error log to the main sample log,
+    skipping the non-error first line
+    --------------------------------------------#>
+    [void]testlogbatcherror($inp) {
+        #
+        Write-Host '.'
+        Write-Host 'test inform logs with batch error started'
+        #
+        Write-Host 'comparing output with reference'
+        $reference = $inp.sample.basepath + '\reference\vminform\batcherror'
+        $excluded = @('*.log', '*.ifp')
+        $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
+        Write-Host '    compare successful'
+        #
+        Write-Host '    Inform Batch Log:' $inp.informbatchlog
+        Write-Host '    open log output'
+        $logoutput = $inp.sample.GetContent($inp.informbatchlog)
+        Write-Host '    test log output'
+
+        $completestring = 'Batch process is completed'
+        if ($logoutput -match $completestring) {
+            $errormessage = $logoutput.Where({$_ -match $completestring}, 'SkipUntil')
+            Write-Host '    Error message:'
+            $inp.sample.error(($errormessage | Select-Object -skip 1))
+        }
+        else {
+            throw 'error in inform task - batch process did not complete'
+        }
+        $inp.sample.CreateNewDirs($this.outpath)
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
+        Write-Host 'test inform logs with batch errors finished'
         #
     }
     #
