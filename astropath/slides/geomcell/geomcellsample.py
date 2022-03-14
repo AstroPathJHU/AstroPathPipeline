@@ -207,6 +207,9 @@ class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComp
   def arelayersmembrane(self):
     return [self.ismembranelayer(imlayernumber) for imlayernumber in self.layerscomponenttiff]
 
+class GeomCellSampleDeepCell(GeomCellSampleBase):
+  pass
+
 class CellGeomLoad(DataClassWithPolygon):
   field: int
   ctype: int
@@ -566,3 +569,5 @@ class PolygonFinder(ThingWithPscale):
 
 def inform(args=None):
   GeomCellSampleInform.runfromargumentparser(args)
+def deepcell(args=None):
+  GeomCellSampleDeepCell.runfromargumentparser(args)

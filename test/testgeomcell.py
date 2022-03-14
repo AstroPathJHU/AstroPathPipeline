@@ -1,7 +1,7 @@
 import csv, itertools, logging, more_itertools, os, pathlib, re
 
-from astropath.slides.geomcell.geomcellcohort import GeomCellCohortInform
-from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSampleInform
+from astropath.slides.geomcell.geomcellcohort import GeomCellCohortDeepCell, GeomCellCohortInform
+from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSampleDeepCell, GeomCellSampleInform
 from astropath.utilities.version.git import thisrepo
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
@@ -26,14 +26,19 @@ class TestGeomCell(TestBaseSaveOutput):
       ),
     ]
 
-  def testGeomCell(self, SlideID="M206", units="safe"):
+  def testGeomCell(self, SlideID="M206", units="safe", algorithm="inform"):
+    samplecls, cohortcls = {
+      "inform": (GeomCellSampleInform, GeomCellCohortInform),
+      "deepcell": (GeomCellSampleDeepCell, GeomCellCohortDeepCell),
+    }[algorithm]
+
     root = thisfolder/"data"
     geomroot = thisfolder/"test_for_jenkins"/"geomcell"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--logroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--njobs", "2"]
-    s = GeomCellSampleInform(root=root, samp=SlideID, geomroot=geomroot, logroot=geomroot, selectrectangles=[1], printthreshold=logging.CRITICAL+1, reraiseexceptions=False, uselogfiles=True)
+    s = samplecls(root=root, samp=SlideID, geomroot=geomroot, logroot=geomroot, selectrectangles=[1], printthreshold=logging.CRITICAL+1, reraiseexceptions=False, uselogfiles=True)
     with s.logger:
       raise ValueError
-    geomloadcsv = s.rectangles[0].geomloadcsv("inform")
+    geomloadcsv = s.rectangles[0].geomloadcsv(algorithm)
     geomloadcsv.parent.mkdir(exist_ok=True, parents=True)
     geomloadcsv.touch()
     with s.logger:
@@ -64,9 +69,9 @@ class TestGeomCell(TestBaseSaveOutput):
 
     geomloadcsv.touch()
     #should not run anything because the csv already exists
-    GeomCellCohortInform.runfromargumentparser(args=args)
+    cohortcls.runfromargumentparser(args=args)
     #this shouldn't run anything either because the last cleanup was with the current commit
-    GeomCellCohortInform.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
+    cohortcls.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
     with open(geomloadcsv) as f:
       assert not f.read().strip()
 
@@ -75,12 +80,12 @@ class TestGeomCell(TestBaseSaveOutput):
       f.write(contents)
     #now there's no log message indicating a successful cleanup, so the last cleanup
     #was the first run of the log, which is testrequirecommit.parents[0]
-    GeomCellCohortInform.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
+    cohortcls.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
 
     try:
       for filename, reffilename in more_itertools.zip_equal(
         sorted(s.geomsubfolder.iterdir()),
-        sorted((thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom"/"inform").iterdir()),
+        sorted((thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom"/algorithm).iterdir()),
       ):
         self.assertEqual(filename.name, reffilename.name)
   
@@ -100,8 +105,14 @@ class TestGeomCell(TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  def testGeomCellFastUnitsPixels(self, SlideID="M206", **kwargs):
-    self.testGeomCell(SlideID=SlideID, units="fast_pixels", **kwargs)
+  def testGeomCellFastUnitsPixels(self, **kwargs):
+    self.testGeomCell(units="fast_pixels", **kwargs)
 
-  def testGeomCellFastUnitsMicrons(self, SlideID="M206", **kwargs):
-    self.testGeomCell(SlideID=SlideID, units="fast_microns", **kwargs)
+  def testGeomCellFastUnitsMicrons(self, **kwargs):
+    self.testGeomCell(units="fast_microns", **kwargs)
+
+  def testGeomCellDeepCell(self, **kwargs):
+    self.testGeomCell(algorithm="deepcell", **kwargs)
+
+  def testGeomCellDeepCellFastUnits(self, **kwargs):
+    self.testGeomCellDeepCell(units="fast_microns", **kwargs)
