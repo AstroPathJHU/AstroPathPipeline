@@ -390,7 +390,7 @@ RUN sudo ldconfig
 RUN sudo pip3 install --upgrade pip
 
 ARG GITHUB_TOKEN
-ARG ASTROPATH_DEPENDENCY_COMMIT=2c56dcfd05825aa6c74092409e6cdc7b6b10ed42
+ARG ASTROPATH_DEPENDENCY_COMMIT=2c497d1f4b4bd0a012399732b78fbcabe5af2654
 
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
