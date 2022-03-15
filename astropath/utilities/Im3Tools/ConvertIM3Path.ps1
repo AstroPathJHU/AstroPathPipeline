@@ -322,8 +322,9 @@ function Invoke-IM3Convert {
     if ($BIN) {
         #
         $log = $dest + '\doShred.log'
+        $cnt = 0
         #
-        while($images){
+        while($images -and ($cnt -lt 5)){
             $images | foreach-object -Parallel {
                 & $using:code $_ DAT -x $using:dat -o $using:dest # 2>&1>> $log
             } -ThrottleLimit 5| Out-File -append $log
@@ -331,6 +332,7 @@ function Invoke-IM3Convert {
             Start-Sleep 2
             #
             $images = SEARCH-FAILED $images $dest '.Data.dat' 
+            $cnt += 1
         }
         #
     }
