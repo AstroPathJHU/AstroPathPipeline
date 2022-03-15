@@ -175,7 +175,7 @@ pipeline {
                 }
               }
             }
-            
+           /* 
             stage('meanimage') {
               stages {
                 stage('test meanimage') {
@@ -189,13 +189,14 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
                   }
                 }
+                */
                 stage('test meanimage ps workflow') {
                   steps {
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'	
                   }
                 }
-              }
-            }
+             // }
+          //  }
 
             stage('flatfield cohorts') {
               stages {

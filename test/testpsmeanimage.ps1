@@ -750,6 +750,11 @@ Class testpsmeanimage {
         $inp.sample.copy($des, $sor, '*')
         $this.comparepaths($des, $sor, $inp)
         #
+        if (!test-path ($sor + '\.gitignore')){
+            $inp.setfile(($sor + '\.gitignore'), 'M21_1_tissue_mask.npz')
+            Write-Host 'da git ignore is not correct'
+        }
+        #
         $inp.sample.removedir($this.processloc)
         #
         Write-Host 'test cleanup method finished'

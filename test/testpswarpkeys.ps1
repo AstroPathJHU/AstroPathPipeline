@@ -44,9 +44,10 @@
         Write-Host '---------------------test ps [batchwarpkeys]---------------------'
         $this.importmodule()
         $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        #$this.testpsbatchwarpkeysconstruction($task)
+        $this.testpsbatchwarpkeysconstruction($task)
         $inp = batchwarpkeys $task  
-        #$this.testprocessroot($inp)
+        $this.removewarpoctetsdep($inp)
+        $this.testprocessroot($inp)
         $this.testwarpkeysinputbatch($inp)
         $this.runpywarpkeysexpected($inp)
         $this.testlogsexpected($inp)
@@ -55,6 +56,8 @@
         $inp.all = $true# uses all slide from the cohort, 
         #   output goes to the mpath\warping\octets folder
         $inp.updateprocessloc()
+        Write-Host 'test for all slides'
+        $this.removewarpoctetsdep($inp)
         $this.testwarpkeysinputbatch($inp)
         $this.runpywarpkeysexpected($inp)
         $this.testlogsexpected($inp)
@@ -121,7 +124,7 @@
         Write-Host "."
         Write-Host 'test [batchwarpkeys] constructors started'
         #
-        $log = logger $this.mpath $this.module -batchid:$this.batchid -project:$this.project 
+        #$log = logger $this.mpath $this.module -batchid:$this.batchid -project:$this.project 
         #
         try {
             batchwarpkeys  $task | Out-Null
@@ -172,9 +175,13 @@
         #
         $inp.batchslides | ForEach-Object{
             $des = $this.basepath, $_, 'im3', 'warping', 'octets' -join '\'
+            Write-Host '   '$des 
+            Write-Host '   '$_
             $inp.sample.copy($sor, $des)
-            rename-item ($des + '\M21_1-all_overlap_octets.csv') `
-                ($_ + '-all_overlap_octets.csv') -EA stop
+            if ($_ -notmatch 'M21_1'){
+                rename-item ($des + '\M21_1-all_overlap_octets.csv') `
+                    ($_ + '-all_overlap_octets.csv') -EA stop
+            }
         }
     }
     #
@@ -202,7 +209,7 @@
         $dpath = $inp.sample.basepath
         $rpath = '\\' + $inp.sample.project_data.fwpath
         #
-        $inp.getslideidregex()
+        $inp.getslideidregex('batchwarpkeys')
         #
         $pythontask = $inp.getpythontask($dpath, $rpath)
         $externallog = $inp.processlog($taskname)
@@ -247,15 +254,16 @@
             '--use-apiddef --project', $this.project.PadLeft(2,'0')
         ) -join ' ') + $wd
         #
-        Write-Host '[user] defined    :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
-        Write-Host '[warpkeys] defined:' [regex]::escape($task[0])'end' -foregroundColor Red
+        Write-Host '[user] defined    :' [regex]::escape($userpythontask)'end' 
+        Write-Host '[warpkeys] defined:' [regex]::escape($task[0])'end' 
         #
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($task[0]))){
-            Write-Host 'user defined and [warpoctets] defined tasks do not match:'  -foregroundColor Red
             Throw ('user defined and [warpoctets] defined tasks do not match')
         }
         #
         $this.removewarpoctetsdep($inp)
+        #
+        Write-Host 'test for [batchwarpkeys] expected input finished' 
         #
     }
     #
