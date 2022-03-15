@@ -22,8 +22,6 @@ RUN sudo apt-get update
 # Install PowerShell
 RUN sudo apt-get install -y powershell
 
-USER astropath
-
 #libvips stuff is from https://github.com/TailorBrands/docker-libvips/blob/f64952af6871fb963934b7454f7edf5b6738f4b8/8.6.1/Dockerfile
 #gdal stuff is from https://github.com/OSGeo/gdal/blob/f6689b653338502de4150f491864553894c37410/gdal/docker/ubuntu-full/Dockerfile
 
@@ -388,12 +386,11 @@ COPY --from=gdal  /build_gdal_python/usr/ /usr/
 COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
-ARG GITHUB_TOKEN
-
 #add python packages
 RUN sudo pip3 install --upgrade pip
 
-ARG ASTROPATH_DEPENDENCY_COMMIT=2c56dcfd05825aa6c74092409e6cdc7b6b10ed42
+ARG GITHUB_TOKEN
+ARG ASTROPATH_DEPENDENCY_COMMIT=2c497d1f4b4bd0a012399732b78fbcabe5af2654
 
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
@@ -413,6 +410,7 @@ RUN \
   fi && \
   sudo pip3 install "./AstroPathPipelinePrivate$EXTRAS"
 RUN sudo pip3 uninstall -y astropath
+RUN chown -R root:root /usr/local/lib/python3.8/
 
 from base as final
 
@@ -440,5 +438,7 @@ RUN sudo ldconfig
 ENV CLASSPATH="/usr/share/java/jackcess-1.1.14.jar:/usr/share/java/commons-logging-1.1.1.jar:/usr/share/java/commons-lang-2.4.jar"
 ENV PATH=/usr/local/texlive/bin/x86_64-linux:/home/astropath/.local/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
+
+USER astropath
 
 CMD ["/bin/bash"]
