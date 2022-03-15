@@ -585,6 +585,10 @@ Class testpsmeanimage {
         #
         $et_offset_file = $this.basepath,'corrections\best_exposure_time_offsets_Vectra_9_8_2020.csv' -join '\'
         $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath) 
+        if ($pythontask -notmatch $this.slideid){
+            Write-Host '    python task:' $pythontask
+            Throw 'annotation file missing test failied; slideid is in python task'
+        }
         $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
         $inp.sample.createdirs($des)
         #

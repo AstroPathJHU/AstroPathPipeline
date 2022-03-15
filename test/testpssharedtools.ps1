@@ -68,6 +68,7 @@
         Write-Host '    Git version: ' $tools.getgitversion()
         Write-Host '    Git status: ' $tools.checkgitstatus() 
         Write-Host '    Git full version: ' $tools.getfullversion()
+        Write-Host '    PowerShell Version: '$global:PSVersionTable.PSVersion
         #
     }
     #
