@@ -1,5 +1,6 @@
-import abc, contextlib, numpy as np, tifffile, traceback, warnings
+import abc, contextlib, numpy as np, pathlib, tifffile, traceback, warnings
 from ..utilities.miscfileio import memmapcontext
+from .image_masking.image_mask import ImageMask
 from .logging import printlogger
 
 class ImageLoaderBase(abc.ABC):
@@ -298,3 +299,22 @@ class ImageLoaderQPTiffMultiLayer(ImageLoaderTiff):
 class ImageLoaderComponentTiffSingleLayer(ImageLoaderComponentTiffMultiLayer, ImageLoaderTiffSingleLayer): pass
 class ImageLoaderSegmentedComponentTiffSingleLayer(ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderTiffSingleLayer): pass
 class ImageLoaderQPTiffSingleLayer(ImageLoaderQPTiffMultiLayer, ImageLoaderTiffSingleLayer): pass
+
+class ImageLoaderNpz(ImageLoaderBase):
+  def __init__(self, *args, filename, key, **kwargs):
+    self.__filename = pathlib.Path(filename)
+    self.__key = key
+    super().__init__(*args, **kwargs)
+
+  def getimage(self):
+    dct = np.load(self.__filename)
+    return dct[self.__key]
+
+class ImageLoaderBin(ImageLoaderBase):
+  def __init__(self, *args, filename, dimensions, **kwargs):
+    self.__filename = pathlib.Path(filename)
+    self.__dimensions = dimensions
+    super().__init__(*args, **kwargs)
+
+  def getimage(self):
+    return ImageMask.unpack_tissue_mask(self.__filename, self.__dimensions)
