@@ -282,7 +282,8 @@ class sampledef : sharedtools{
     }
     #
     [string]pybatchflatfieldfullpath(){
-          $flatfield = $this.mpath + '\flatfield\flatfield_' + $this.pybatchflatfield() + '.bin'
+          $flatfield = $this.mpath + '\flatfield\flatfield_' +
+           $this.pybatchflatfield() + '.bin'
           return $flatfield
     }
     #

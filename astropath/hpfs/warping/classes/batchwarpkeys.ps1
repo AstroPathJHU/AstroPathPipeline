@@ -32,6 +32,8 @@ class batchwarpkeys : moduletools {
     ----------------------------------------- #>
     [void]Getbatchwarpkeys(){
         #
+        $this.sample.info('start find keys')
+        #
         $taskname = 'batchwarpkeys'
         $dpath = $this.sample.basepath
         $rpath = '\\' + $this.sample.project_data.fwpath
@@ -40,6 +42,8 @@ class batchwarpkeys : moduletools {
         $pythontask = $this.getpythontask($dpath, $rpath)
         #
         $this.runpythontask($taskname, $pythontask)
+        #
+        $this.sample.info('finished find keys')
         #
     }
     #
@@ -64,8 +68,6 @@ class batchwarpkeys : moduletools {
     #
     [string]getpythontask($dpath, $rpath){
         #
-        $this.sample.info('start find keys')
-        #
         $pythontask = (
             $this.pythonmodulename, $dpath, 
             '--shardedim3root',  $rpath, 
@@ -78,8 +80,6 @@ class batchwarpkeys : moduletools {
          ) -join ' '
        #
        return $pythontask
-        #
-        $this.sample.info('finished find keys')
        #
     }
     #
@@ -120,7 +120,11 @@ class batchwarpkeys : moduletools {
     ----------------------------------------- #>
     [void]silentcleanup(){
         #
-        $this.sample.removedir($this.processloc)
+        if ($this.all){
+            $this.sample.removedir($this.processloc)
+        } else {
+            $this.sample.removedir($this.sample.warpprojectfolder())
+        }
         #
     }
     <# -----------------------------------------

@@ -50,10 +50,12 @@
         $this.testwarpkeysinputbatch($inp, 'batch')
         $this.runpywarpkeysexpected($inp, 'batch')
         $this.testlogsexpected($inp, 'batch')
+        $this.testcleanup($inp, 'batch')
         #
         $this.testwarpkeysinputbatch($inp, 'all')
         $this.runpywarpkeysexpected($inp, 'all')
         $this.testlogsexpected($inp, 'all')
+        $this.testcleanup($inp, 'all')
         $inp.sample.finish(($this.module+'-test'))
         #
         Write-Host '.'
@@ -211,27 +213,34 @@
         #
         $flatwpath = '\\' + $inp.sample.project_data.fwpath
         $this.addwarpoctetsdep($inp)
+        #
         if ($type -contains 'all'){
             $inp.all = $true
             $slides = $this.slidelist
-            $wd = ''
+            $wd = ' --workingdir', ($this.mpath +
+                 '\warping\Project_' + $this.project) -join ' '
         } else {
             $slides = '"M21_1"'
-            $wd = ' --workingdir', ($this.basepath + '\warping\Batch_'+ $this.batchid.PadLeft(2,'0')) -join ' '
+            $wd = ' --workingdir', ($this.basepath + '\warping\Batch_'+
+                 $this.batchid.PadLeft(2,'0')) -join ' '
         }
         #
+        Write-Host '    collecting [warpkeys] defined task'
         $task = $this.getmoduletask($inp)
+        #
+        Write-Host '    collecting [user] defined task'
         $userpythontask = (('warpingcohort',
             $this.basepath, 
             '--shardedim3root', $flatwpath,
             '--sampleregex', $slides,
-            '--flatfield-file', ($this.mpath + '\flatfield\flatfield_'+$this.pybatchflatfieldtest+'.bin'),
+            '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
+                         $this.pybatchflatfieldtest + '.bin'),
             '--octets-only --noGPU --no-log --ignore-dependencies --allow-local-edits',
             '--use-apiddef --project', $this.project.PadLeft(2,'0')
         ) -join ' ') + $wd
         #
-        Write-Host 'user defined        :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
-        Write-Host '[warpoctets] defined:' [regex]::escape($task[0])'end' -foregroundColor Red
+        Write-Host '[user] defined    :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
+        Write-Host '[warpkeys] defined:' [regex]::escape($task[0])'end' -foregroundColor Red
         #
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($task[0]))){
             Write-Host 'user defined and [warpoctets] defined tasks do not match:'  -foregroundColor Red
@@ -293,6 +302,35 @@
         }
         #
         Write-Host 'test py task started for [batchwarpkeys] LOG expected output finished'
+        #
+    }
+    #
+    [void]testcleanup($inp, $type){
+        #
+        if ($this.dryrun){
+            return
+        }
+        #
+        Write-Host '.'
+        Write-Host 'test cleaning tasks up started'
+        #
+        if ($type -contains 'all'){
+            $inp.all = $true# uses all slide from the cohort, 
+            #   output goes to the mpath\warping\octets folder
+            $warpingkeysfolder = $this.mpath + '\warping\Project_' + $this.project       
+        } else {
+            $warpingkeysfolder =  ($this.basepath + 
+            '\warping\Batch_'+ $this.batchid.PadLeft(2,'0'))
+        }
+        #
+        Write-Host '    path expected to be removed:' $warpingkeysfolder
+        #
+        $inp.cleanup()
+        #
+        if (test-path $warpingkeysfolder){
+            Throw 'cleaup did not delete folder, path still exists'
+        }
+        Write-Host 'test cleaning tasks up finish'
         #
     }
 #
