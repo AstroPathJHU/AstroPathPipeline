@@ -353,9 +353,14 @@ class sampledef : sharedtools{
         return $path
     }
     #
-    [string]warpoctetsfile(){
+    [string]warpoctetsfolder(){
         $file2 = $this.basepath, '\', $this.slideid,
-            '\im3\warping\octets\', $this.slideid, '-all_overlap_octets.csv' -join ''
+            '\im3\warping\octets'
+        return $file2
+    }
+    #
+    [string]warpoctetsfile(){
+        $file2 = $this.warpoctetsfolder(), '\', $this.slideid, '-all_overlap_octets.csv' -join ''
         return $file2
     }
     #
