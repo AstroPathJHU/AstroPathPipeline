@@ -121,9 +121,9 @@ class batchwarpkeys : moduletools {
     [void]silentcleanup(){
         #
         if ($this.all){
-            $this.sample.removedir($this.processloc)
-        } else {
             $this.sample.removedir($this.sample.warpprojectfolder())
+        } else {
+            $this.sample.removedir($this.processloc)
         }
         #
     }

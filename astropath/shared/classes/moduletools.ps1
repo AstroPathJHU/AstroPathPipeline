@@ -527,13 +527,15 @@
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
         $sampleoutput | ForEach-Object {
             #
-            if ($_ -notmatch 'DEBUG'){
-                $this.sample.message = ($_ -split ';')[3]
+            $mess = ($_ -split ';')[3]
+            #
+            if ($mess -notmatch 'DEBUG:'){
+                $this.sample.message = $mess
                 $this.sample.Writelog(2)
             }
             #
-            if ($_ -match 'ERROR'){
-                $this.sample.message = ($_ -split ';')[3]
+            if ($mess -match 'ERROR:'){
+                $this.sample.message = $mess
                 $this.sample.Writelog(4)
             }
             #
