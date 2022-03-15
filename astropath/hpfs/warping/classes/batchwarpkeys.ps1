@@ -18,13 +18,17 @@ class batchwarpkeys : moduletools {
     ----------------------------------------- #>
     [void]Runbatchwarpkeys(){
         #
-        $this.sample.createNewdirs($this.processloc)
-        $this.sample.createNewdirs(($this.processloc+ '\octets'))
+        $this.updateprocessloc()
         $this.getslideidregex('batchwarpkeys')
         $this.getbatchwarpoctets()
         $this.Getbatchwarpkeys()
         $this.datavalidation()
         #
+    }
+    [void]updateprocessloc(){
+        if ($this.all){
+            $this.processloc =  $this.sample.warpprojectfolder() 
+        }
     }
     <# -----------------------------------------
      GetBatchMeanImageComparison
@@ -34,6 +38,8 @@ class batchwarpkeys : moduletools {
     ----------------------------------------- #>
     [void]Getbatchwarpkeys(){
         #
+        $this.sample.info('start find keys')
+        #
         $taskname = 'batchwarpkeys'
         $dpath = $this.sample.basepath
         $rpath = '\\' + $this.sample.project_data.fwpath
@@ -42,6 +48,8 @@ class batchwarpkeys : moduletools {
         $pythontask = $this.getpythontask($dpath, $rpath)
         #
         $this.runpythontask($taskname, $pythontask)
+        #
+        $this.sample.info('finished find keys')
         #
     }
     #
@@ -66,30 +74,26 @@ class batchwarpkeys : moduletools {
     #
     [string]getpythontask($dpath, $rpath){
         #
-        $this.sample.info('start find keys')
-        #
-        $pythontask = ((
+        $pythontask = (
             $this.pythonmodulename, $dpath, 
             '--shardedim3root',  $rpath, 
             '--sampleregex',  ('"'+($this.batchslides -join '|')+'"'), 
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
             '--octets-only --noGPU --no-log',
             '--ignore-dependencies',
-            $this.buildpyopts('cohort')
-         ) -join ' '), $this.workingdir() -join ''
+            $this.buildpyopts('cohort'),
+            $this.workingdir()
+         ) -join ' '
        #
        return $pythontask
-        #
-        $this.sample.info('finished find keys')
        #
     }
     #
     [string]workingdir(){
-        if ($this.all){
-            return ''
-        } else {
-            return (' --workingdir ' + $this.sample.warpbatchfolder())
-        }
+        #
+        $this.sample.CreateNewDirs(($this.processloc+ '\octets'))
+        return ('--workingdir ' + $this.processloc)
+        #
     }
     #
     [void]getmodulename(){

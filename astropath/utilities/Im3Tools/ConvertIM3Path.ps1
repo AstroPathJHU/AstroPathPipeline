@@ -325,7 +325,7 @@ function Invoke-IM3Convert {
         #
         $images | foreach-object -Parallel {
             & $using:code $_ DAT -x $using:dat -o $using:dest # 2>&1>> $log
-        } -ThrottleLimit 10 | Out-File -append $log
+        } -ThrottleLimit 2 | Out-File -append $log
         #
     }
     #

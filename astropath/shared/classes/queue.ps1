@@ -59,11 +59,11 @@ class queue : vminformqueue{
     ----------------------------------------- #>
     [void]buildqueue(){
         #
-        $slides = $this.importslideids($this.mpath)
+        $slides = $this.importslideids($this.mpath, $true)
         #
         # select samples from the appropriate modules 
         #
-        $projects = $this.getapprojects()
+        $projects = $this.getapprojects($this.module, $true)
         #
         $cleanedslides = $slides | 
             Where-Object {$projects -contains $_.Project}

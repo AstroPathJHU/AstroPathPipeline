@@ -423,6 +423,31 @@
         #
         $str = ''
         #
+        if ($this.sample.slideid -match $this.sample.batchid){    
+            #
+            $this.batchslides | foreach-object {
+                $this.sample.slideid = $_
+                $str = $this.pyoptsnoaxquiredannossub()
+                if ($str){
+                    $this.sample.slideid = $this.sample.batchid
+                    return $str
+                }
+            }
+            #
+            $this.sample.slideid = $this.sample.batchid
+            #
+        } else {
+           $str = $this.pyoptsnoaxquiredannossub()
+        }
+        #
+        return $str
+        #
+    }
+    #
+    [string]pyoptsnoaxquiredannossub(){
+        #
+        $str = ''
+        #
         if (test-path $this.sample.annotationxml()){
             $xmlfile = $this.sample.getcontent($this.sample.annotationxml())
             if ([regex]::Escape($xmlfile) -notmatch 'Acquired'){
@@ -527,13 +552,15 @@
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
         $sampleoutput | ForEach-Object {
             #
-            if ($_ -notmatch 'DEBUG'){
-                $this.sample.message = ($_ -split ';')[3]
+            $mess = ($_ -split ';')[3]
+            #
+            if ($mess -notmatch 'DEBUG:'){
+                $this.sample.message = $mess
                 $this.sample.Writelog(2)
             }
             #
-            if ($_ -match 'ERROR'){
-                $this.sample.message = ($_ -split ';')[3]
+            if ($mess -match 'ERROR:'){
+                $this.sample.message = $mess
                 $this.sample.Writelog(4)
             }
             #

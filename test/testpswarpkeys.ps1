@@ -47,13 +47,18 @@
         #$this.testpsbatchwarpkeysconstruction($task)
         $inp = batchwarpkeys $task  
         #$this.testprocessroot($inp)
-        $this.testwarpkeysinputbatch($inp, 'batch')
-        $this.runpywarpkeysexpected($inp, 'batch')
-        $this.testlogsexpected($inp, 'batch')
+        $this.testwarpkeysinputbatch($inp)
+        $this.runpywarpkeysexpected($inp)
+        $this.testlogsexpected($inp)
+        $this.testcleanup($inp)
         #
-        $this.testwarpkeysinputbatch($inp, 'all')
-        $this.runpywarpkeysexpected($inp, 'all')
-        $this.testlogsexpected($inp, 'all')
+        $inp.all = $true# uses all slide from the cohort, 
+        #   output goes to the mpath\warping\octets folder
+        $inp.updateprocessloc()
+        $this.testwarpkeysinputbatch($inp)
+        $this.runpywarpkeysexpected($inp)
+        $this.testlogsexpected($inp)
+        $this.testcleanup($inp)
         $inp.sample.finish(($this.module+'-test'))
         #
         Write-Host '.'
@@ -138,7 +143,13 @@
         Write-Host '.'
         Write-host 'test creating sample dir started'
         Write-Host '    process location:' $inp.processloc
-        $testprocloc = $this.basepath + '\warping\Batch_' + ($this.batchid).PadLeft(2,'0')
+        #
+        if ($inp.all){
+            $testprocloc = $this.mpath + '\warping\Project_' + $this.project
+        } else{
+            $testprocloc = $this.basepath + '\warping\Batch_' + ($this.batchid).PadLeft(2,'0')
+        }
+        #
         if (!($inp.processloc -contains $testprocloc)){
             Write-Host '    test process loc:' $testprocloc
             Throw 'test process loc does not match [batchwarpkeys] loc'
@@ -151,11 +162,13 @@
         if ($this.dryrun){
             return
         }
+        write-Host '    adding warping directories'
         #
         $sor = $this.basepath, 'reference', 'warpingcohort',
         'M21_1-all_overlap_octets.csv' -join '\'
         #
         $inp.getslideidregex()
+        Write-Host '    Slides:' $inp.batchslides
         #
         $inp.batchslides | ForEach-Object{
             $des = $this.basepath, $_, 'im3', 'warping', 'octets' -join '\'
@@ -166,11 +179,16 @@
     }
     #
     [void]removewarpoctetsdep($inp){
+        #
         if ($this.dryrun){
             return
         }
         #
+        write-Host '    Removing warping directories'
+        #
         $inp.getslideidregex()
+        Write-Host '    Slides:' $inp.batchslides
+        #
         $inp.batchslides | ForEach-Object{
             $des = $this.basepath, $_, 'im3', 'warping' -join '\'
             $inp.sample.removedir($des)
@@ -193,7 +211,7 @@
         #
     }
     #
-    [void]testwarpkeysinputbatch($inp, $type){
+    [void]testwarpkeysinputbatch($inp){
         #
         if ($this.dryrun){
             return
@@ -204,29 +222,36 @@
         #
         $flatwpath = '\\' + $inp.sample.project_data.fwpath
         $this.addwarpoctetsdep($inp)
-        if ($type -contains 'all'){
-            $inp.all = $true
+        #
+        if ($inp.all){
             $slides = $this.slidelist
-            $wd = ''
+            $wd = ' --workingdir', ($this.mpath +
+                 '\warping\Project_' + $this.project) -join ' '
         } else {
             $slides = '"M21_1"'
-            $wd = ' --workingdir', ($this.basepath + '\warping\Batch_'+ $this.batchid.PadLeft(2,'0')) -join ' '
+            $wd = ' --workingdir', ($this.basepath + '\warping\Batch_'+
+                 $this.batchid.PadLeft(2,'0')) -join ' '
         }
         #
+        Write-Host '    collecting [warpkeys] defined task'
         $task = $this.getmoduletask($inp)
+        #
+        Write-Host '    collecting [user] defined task'
         $userpythontask = (('warpingcohort',
             $this.basepath, 
             '--shardedim3root', $flatwpath,
             '--sampleregex', $slides,
-            '--flatfield-file', ($this.mpath + '\flatfield\flatfield_'+$this.pybatchflatfieldtest+'.bin'),
+            '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
+                         $this.pybatchflatfieldtest + '.bin'),
             '--octets-only --noGPU --no-log --ignore-dependencies --allow-local-edits',
             '--use-apiddef --project', $this.project.PadLeft(2,'0')
         ) -join ' ') + $wd
         #
+        Write-Host '[user] defined    :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
+        Write-Host '[warpkeys] defined:' [regex]::escape($task[0])'end' -foregroundColor Red
+        #
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($task[0]))){
             Write-Host 'user defined and [warpoctets] defined tasks do not match:'  -foregroundColor Red
-            Write-Host 'user defined        :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
-            Write-Host '[warpoctets] defined:' [regex]::escape($task[0])'end' -foregroundColor Red
             Throw ('user defined and [warpoctets] defined tasks do not match')
         }
         #
@@ -234,33 +259,21 @@
         #
     }
     #
-    [void]runpywarpkeysexpected($inp, $type){
+    [void]runpywarpkeysexpected($inp){
         #
         Write-Host "."
-        Write-Host 'test for [batchwarpkeys] expected output' $type ' slides started'
-        #
-        if ($type -contains 'all'){
-            $inp.all = $true# uses all slide from the cohort, 
-            #   output goes to the mpath\warping\octets folder
-        }
-        $inp.sample.createNewdirs(($inp.processloc+ '\octets'))
+        Write-Host 'test for [batchwarpkeys] expected output slides started'
+        Write-Host '    testing for all slides:' $inp.all
         #
         $this.addwarpoctetsdep($inp)
         #
         $task = $this.getmoduletask($inp)
         $inp.getbatchwarpoctets()
-        #
-        if ($this.dryrun){
-            $this.runpytesttask($inp, $task[0], $task[1])
-        } else {
-            $this.runpytesttask($inp, $task[0], $task[1])
-            Write-Host '   '$task[0]
-            Write-Host '   '$task[1]
-        }
+        $this.runpytesttask($inp, $task[0], $task[1])
         #
         $this.removewarpoctetsdep($inp)
         #
-        Write-Host 'test for [batchwarpkeys] expected output' $type ' slides finished'
+        Write-Host 'test for [batchwarpkeys] expected output slides finished'
         #
     }
     <# --------------------------------------------
@@ -268,7 +281,7 @@
     check that the log is parsed correctly when
     run with the correct input.
     --------------------------------------------#>
-    [void]testlogsexpected($inp, $type){
+    [void]testlogsexpected($inp){
         #
         Write-Host '.'
         Write-Host 'test py task started for [batchwarpkeys] LOG expected output started'
@@ -293,6 +306,33 @@
         }
         #
         Write-Host 'test py task started for [batchwarpkeys] LOG expected output finished'
+        #
+    }
+    #
+    [void]testcleanup($inp){
+        #
+        if ($this.dryrun){
+            return
+        }
+        #
+        Write-Host '.'
+        Write-Host 'test cleaning tasks up started'
+        #
+        if ($inp.all){
+            $warpingkeysfolder = $this.mpath + '\warping\Project_' + $this.project       
+        } else {
+            $warpingkeysfolder =  ($this.basepath + 
+                '\warping\Batch_'+ $this.batchid.PadLeft(2,'0'))
+        }
+        #
+        Write-Host '    path expected to be removed:' $warpingkeysfolder
+        #
+        $inp.cleanup()
+        #
+        if (test-path $warpingkeysfolder){
+            Throw 'cleaup did not delete folder, path still exists'
+        }
+        Write-Host 'test cleaning tasks up finish'
         #
     }
 #

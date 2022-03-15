@@ -26,13 +26,14 @@ if ~exist(wd1, 'file')
          return
      end
 else
-    tbl = readtable(wd1,'Delimiter',',',...
-        'TreatAsEmpty',{' ','#N/A'}, ...
-        'Format', (repmat('%s', 1, length(Targets) + 4)));
-    %
+        %
     try
+        tbl = readtable(wd1,'Delimiter',',',...
+            'TreatAsEmpty',{' ','#N/A'}, ...
+            'Format', (repmat('%s', 1, length(Targets) + 4)));
         tbl1 = tbl(strcmp(tbl.Sample, sname),'QC_done_date');
     catch
+        fprintf('QC file in an unexpected format \n')
         tbl1 = [];
     end
         %
