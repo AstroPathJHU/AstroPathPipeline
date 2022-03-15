@@ -33,8 +33,7 @@ pipeline {
             sh 'pip install .[all]'
           }
         }
-
-
+        
         stage('ps module install') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
@@ -62,7 +61,7 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
               }
             }
-
+            
             stage('workflow') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
@@ -155,7 +154,7 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcsvscan'
               }
             }
-
+            
             stage('warping') {
               stages {
                 stage('test warping') {
@@ -176,7 +175,7 @@ pipeline {
                 }
               }
             }
-
+            
             stage('meanimage') {
               stages {
                 stage('test meanimage') {
@@ -242,7 +241,7 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
               }
             }
-
+            
             stage('code checks') {
               steps {
                 sh 'python -m pyflakes .'

@@ -131,6 +131,16 @@
         #
     }
     #
+    [string]CrossPlatformPaths($dir){
+        #
+        if (!$this.isWindows()){
+            $dir = $dir -replace '\\', '/'
+        } else{
+            $dir = $dir -replace '/', '\'
+        }
+        #
+        return $dir
+    }
     <# -----------------------------------------
      createdirs
      create a directory if it does not exist 
@@ -138,12 +148,17 @@
      Usage: $this.createdirs()
     ----------------------------------------- #>   
     [void]CreateDirs($dir){
+        #
+        $dir = $this.CrossPlatformPaths($dir)
+        #
         if (!(test-path $dir)){
             new-item $dir -itemtype "directory" -EA STOP | Out-NULL
         }
     }
     #
     [void]CreateNewDirs($dir){
+        #
+        $dir = $this.CrossPlatformPaths($dir)
         #
         $this.removedir($dir)
         #
@@ -155,6 +170,8 @@
     #
     [void]CreateFile($fpath){
         #
+        $fpath = $this.CrossPlatformPaths($fpath)
+        #
         $this.createDirs((Split-Path $fpath))
         #
         if (!(test-path $fpath)){
@@ -165,6 +182,8 @@
     #
     [void]removedir([string]$dir){
         #
+        $dir = $this.CrossPlatformPaths($dir)
+        #
         if (test-path $dir){
             Get-ChildItem -Directory $dir | Remove-Item -force -Confirm:$false -recurse
             remove-item $dir -force -Confirm:$false -Recurse
@@ -174,6 +193,8 @@
     #
     [void]removefile([string]$file){
         #
+        $file = $this.CrossPlatformPaths($file)
+        #
         if (test-path $file){
             remove-item $file -force -Confirm:$false -ea Continue
         }
@@ -181,6 +202,8 @@
     }
     #
     [void]removefile([string]$folder, [string] $filespec){
+        #
+        $folder = $this.CrossPlatformPaths($folder)
         #
         $filespec = '*' + $filespec
         $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
@@ -193,6 +216,8 @@
     check if a path exists
     ------------------------------------------ #>
     [switch]CheckPath([string]$p){
+        #
+        $p = $this.CrossPlatformPaths($p)
         #
         if (test-path $p){
             return $true
@@ -207,6 +232,8 @@
     get the last write time for a path or file
     ------------------------------------------ #>
     [DateTime]LastWrite([string]$p){
+        #
+        $p = $this.CrossPlatformPaths($p)
         #
         if (test-path $p){
             return (Get-ChildItem $p).LastWriteTime

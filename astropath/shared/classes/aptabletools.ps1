@@ -197,6 +197,20 @@
         return $projects
         #
      }
+         #
+    [PSCustomObject]GetAPProjects($module, $forceupdate){
+        #
+        $project_dat = $this.ImportConfigInfo($this.mpath, $forceupdate)
+        #
+        if (!$this.project){
+            $projects = ($project_dat | 
+                Where-object {$_.($module) -match 'yes'}).Project
+        } else {
+            $projects = $this.project
+        }
+        return $projects
+        #
+     }
     <# -----------------------------------------
      GetProjectCohortInfo
      Select the cohort info for a particular project
