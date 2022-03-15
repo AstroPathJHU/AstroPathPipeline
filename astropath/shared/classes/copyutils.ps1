@@ -256,8 +256,7 @@ class copyutils{
         }
         #
         $comparison = Compare-Object -ReferenceObject $($sourcehash.Values) `
-                                -DifferenceObject $($destinationhash.Values) `
-                        |
+                                -DifferenceObject $($destinationhash.Values) |
                 Where-Object -FilterScript {$_.SideIndicator -eq '<='}
         #
         # copy files that failed
