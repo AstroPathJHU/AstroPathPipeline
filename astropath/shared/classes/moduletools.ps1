@@ -423,6 +423,31 @@
         #
         $str = ''
         #
+        if ($this.sample.slideid -match $this.sample.batchid){    
+            #
+            $this.batchslides | foreach-object {
+                $this.sample.slideid = $_
+                $str = $this.pypyoptsnoaxquiredannossub()
+                if ($str){
+                    $this.sample.slideid = $this.sample.batchid
+                    return $str
+                }
+            }
+            #
+            $this.sample.slideid = $this.sample.batchid
+            #
+        } else {
+           $str = $this.pyoptsnoaxquiredannossub()
+        }
+        #
+        return $str
+        #
+    }
+    #
+    [string]pyoptsnoaxquiredannossub(){
+        #
+        $str = ''
+        #
         if (test-path $this.sample.annotationxml()){
             $xmlfile = $this.sample.getcontent($this.sample.annotationxml())
             if ([regex]::Escape($xmlfile) -notmatch 'Acquired'){

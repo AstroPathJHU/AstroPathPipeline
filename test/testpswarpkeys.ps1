@@ -198,26 +198,14 @@
     [array]getmoduletask($inp){
         #
         $taskname = 'batchwarpkeys'
-        Write-Host '   task name:' $taskname
-        #
         $inp.getmodulename()
-        Write-Host '    module name:' $inp.pythonmodulename
-        #
         $dpath = $inp.sample.basepath
         $rpath = '\\' + $inp.sample.project_data.fwpath
         #
         $inp.getslideidregex()
-        Write-Host '    Slides:' $inp.batchslides
-        #
-        Write-Host '   '$inp.sample.pybatchflatfieldfullpath()
-        Write-Host '   '$inp.buildpyopts('cohort')
-        Write-Host '   '$inp.workingdir()
         #
         $pythontask = $inp.getpythontask($dpath, $rpath)
-        Write-Host '    python task:' $pythontask
-        #
         $externallog = $inp.processlog($taskname)
-        Write-Host '    external log:' $externallog
         #
         return @($pythontask, $externallog)
         #
