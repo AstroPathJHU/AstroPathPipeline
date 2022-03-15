@@ -18,11 +18,17 @@ class batchwarpkeys : moduletools {
     ----------------------------------------- #>
     [void]Runbatchwarpkeys(){
         #
+        $this.updateprocessloc()
         $this.getslideidregex('batchwarpkeys')
         $this.getbatchwarpoctets()
         $this.Getbatchwarpkeys()
         $this.datavalidation()
         #
+    }
+    [void]updateprocessloc(){
+        if ($this.all){
+            $this.processloc =  $this.sample.warpprojectfolder() 
+        }
     }
     <# -----------------------------------------
      GetBatchMeanImageComparison
@@ -85,14 +91,8 @@ class batchwarpkeys : moduletools {
     #
     [string]workingdir(){
         #
-        if ($this.all){
-           $warpkeysfolder = $this.sample.warpprojectfolder()
-        } else {
-            $warpkeysfolder = $this.sample.warpbatchfolder()
-        }
-        #
-        $this.sample.CreateNewDirs(($warpkeysfolder+ '\octets'))
-        return ('--workingdir ' + $warpkeysfolder)
+        $this.sample.CreateNewDirs(($this.processloc+ '\octets'))
+        return ('--workingdir ' + $this.processloc)
         #
     }
     #
@@ -120,11 +120,7 @@ class batchwarpkeys : moduletools {
     ----------------------------------------- #>
     [void]silentcleanup(){
         #
-        if ($this.all){
-            $this.sample.removedir($this.sample.warpprojectfolder())
-        } else {
-            $this.sample.removedir($this.processloc)
-        }
+        $this.sample.removedir($this.processloc)
         #
     }
     <# -----------------------------------------
