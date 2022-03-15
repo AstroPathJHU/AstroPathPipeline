@@ -61,7 +61,7 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
               }
             }
-            /*
+            
             stage('workflow') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
@@ -154,28 +154,28 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcsvscan'
               }
             }
-            */
-           // stage('warping') {
-             // stages {
-              //  stage('test warping') {
-              //    steps {
-              //      sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarping'
-              //    }
-              //  }
-              //  stage('test warpingcohort') {
-              //    steps {
-              //      sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
-              //    }
-              //  }
+            
+            stage('warping') {
+              stages {
+                stage('test warping') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarping'
+                  }
+                }
+                stage('test warpingcohort') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
+                  }
+                }
                 stage('test ps warping workflow'){
                   steps{
-                //    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpkeys.ps1'
                   }
                 }
-              //}
-           // }
-            /*
+              }
+            }
+            
             stage('meanimage') {
               stages {
                 stage('test meanimage') {
@@ -241,7 +241,7 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
               }
             }
-            */
+            
             stage('code checks') {
               steps {
                 sh 'python -m pyflakes .'

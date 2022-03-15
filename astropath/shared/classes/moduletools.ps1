@@ -427,7 +427,7 @@
             #
             $this.batchslides | foreach-object {
                 $this.sample.slideid = $_
-                $str = $this.pypyoptsnoaxquiredannossub()
+                $str = $this.pyoptsnoaxquiredannossub()
                 if ($str){
                     $this.sample.slideid = $this.sample.batchid
                     return $str
