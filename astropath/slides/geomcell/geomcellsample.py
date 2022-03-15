@@ -22,13 +22,21 @@ class GeomCellField(GeomLoadField):
   @abc.abstractmethod
   def using_segmentation_layers(self): pass
 
-class GeomCellFieldInform(FieldReadSegmentedComponentTiffMultiLayer, GeomLoadRectangle):
+class GeomCellFieldInform(FieldReadSegmentedComponentTiffMultiLayer, GeomCellField):
   @contextlib.contextmanager
   def using_segmentation_layers(self):
     with self.using_component_tiff() as im:
       yield im.astype(np.uint32).transpose(2, 0, 1)
 
+class GeomCellRectangleDeepCellBase(GeomLoadRectangle):
+  pass
+
+class GeomCellFieldDeepCellBase(GeomCellField, GeomCellRectangleDeepCellBase):
+  pass
+
 class GeomCellSampleBase(GeomSampleBase, DbloadSample, SampleWithSegmentations, ParallelSample, WorkflowSample, CleanupArgumentParser):
+  rectangletype = GeomCellField
+
   @property
   def rectanglecsv(self): return "fields"
   @property
@@ -173,7 +181,7 @@ class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComp
     )
 
   @classmethod
-  def logmodule(self):
+  def logmodule(cls):
     return "geomcell"
 
   @property
@@ -207,8 +215,28 @@ class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComp
   def arelayersmembrane(self):
     return [self.ismembranelayer(imlayernumber) for imlayernumber in self.layerscomponenttiff]
 
-class GeomCellSampleDeepCell(GeomCellSampleBase):
-  pass
+class GeomCellSampleDeepCellBase(GeomCellSampleBase):
+  rectangletype = GeomCellFieldDeepCellBase
+
+class GeomCellSampleDeepCell(GeomCellSampleDeepCellBase):
+  rectangletype = GeomCellFieldDeepCell
+  @classmethod
+  def logmodule(cls):
+    return "geomcelldeepcell"
+  @property
+  def arelayersmembrane(self): return np.array([False])
+  @property
+  def celltypesbylayer(self): return np.array([2])
+
+class GeomCellSampleMesmer(GeomCellSampleDeepCellBase):
+  rectangletype = GeomCellFieldMesmer
+  @classmethod
+  def logmodule(cls):
+    return "geomcellmesmer"
+  @property
+  def arelayersmembrane(self): return np.array([True, False])
+  @property
+  def celltypesbylayer(self): return np.array([0, 2])
 
 class CellGeomLoad(DataClassWithPolygon):
   field: int
