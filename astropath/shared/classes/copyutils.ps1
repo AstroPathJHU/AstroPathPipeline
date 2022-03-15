@@ -187,10 +187,10 @@ class copyutils{
     [system.object]listfiles([string]$sor, [array]$filespec){
         $sor = $sor + '\*'
         if ($filespec -match '\*'){
-            $files = get-ChildItem $sor -Recurse 
+            $files = get-ChildItem $sor -Recurse -EA SilentlyContinue
         } else {
             $filespec = $filespec | foreach-object {'*' + $_}
-            $files = get-ChildItem $sor -Include  $filespec -Recurse
+            $files = get-ChildItem $sor -Include  $filespec -Recurse -EA SilentlyContinue
         }
         if (!$files) {
             $files = @()
