@@ -122,7 +122,7 @@ setupkwargs = dict(
     "psutil;sys_platform!='cygwin'", #please note astropath is NOT been tested on cygwin
     "rdp",
     "seaborn",
-    "scikit-image>=0.17,<0.18", #see test/testmisc.py - we want polygon.numpyarray to return reproducible results, and skimage.draw.polygon's behavior changes between 0.17 and 0.18.  Want to support python 3.6 for now so we need to stick to 0.17.
+    "scikit-image>=0.17",
     "scikit-learn>=0.17",
     "scipy>=0.12",
     "setuptools-scm",
@@ -135,7 +135,21 @@ setupkwargs = dict(
     "gdal": ["gdal>=3.3.0"],
     "gpu": ["pyopencl", "reikna"],
     "nnunet": ["nnunet>=1.6.0"],
-    "test": ["beautifulsoup4", "cvxpy", "flake8", "gitpython", "lxml", "marko[toc]", "pyflakes", "texoutparse"],
+    "test": [
+      #packages needed for running tests
+      "beautifulsoup4",
+      "cvxpy",
+      "flake8",
+      "gitpython",
+      "lxml",
+      "marko[toc]",
+      "pyflakes",
+      "texoutparse",
+      #packages that are standard dependencies, but
+      #a specific version is needed for reference comparison
+      "deepcell==0.11.0",
+      "scikit-image>=0.17,<0.18", #see test/testmisc.py - we want polygon.numpyarray to return reproducible results, and skimage.draw.polygon's behavior changes between 0.17 and 0.18.
+    ],
     "vips": ["pyvips"],
   },
   package_data = {
