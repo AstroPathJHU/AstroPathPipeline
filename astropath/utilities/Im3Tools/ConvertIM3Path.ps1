@@ -428,6 +428,9 @@ function SEARCH-FAILED {
     # find images that did not extract at all
     #
     $output = Get-ChildItem ($dest + '\*') ('*' + $filespec)
+    if (!$output){
+        return $images
+    }
     $outputnames = $output.Name
     $compareimagenames = (Split-Path $images -Leaf) -replace '.im3', $filespec
     $imagepath = Split-Path $images[0]
