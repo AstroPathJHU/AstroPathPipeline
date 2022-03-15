@@ -323,9 +323,15 @@ function Invoke-IM3Convert {
         #
         $log = $dest + '\doShred.log'
         #
-        $images | foreach-object -Parallel {
-            & $using:code $_ DAT -x $using:dat -o $using:dest # 2>&1>> $log
-        } -ThrottleLimit 2 | Out-File -append $log
+        while($images){
+            $images | foreach-object -Parallel {
+                & $using:code $_ DAT -x $using:dat -o $using:dest # 2>&1>> $log
+            } -ThrottleLimit 5| Out-File -append $log
+            #
+            Start-Sleep 2
+            #
+            $images = SEARCH-FAILED $images $dest '.Data.dat' 
+        }
         #
     }
     #
@@ -411,3 +417,41 @@ function Invoke-IM3Convert {
     #
 }
 #
+function SEARCH-FAILED {
+    #
+    param([parameter(Position=0)][array]$images,
+    [parameter(Position=1)][String]$dest,
+    [parameter(Position=2)][String]$filespec)
+    #
+    # find images that did not extract at all
+    #
+    $output = Get-ChildItem ($dest + '\*') ('*' + $filespec)
+    $outputnames = $output.Name
+    $compareimagenames = (Split-Path $images -Leaf) -replace '.im3', $filespec
+    $imagepath = Split-Path $images[0]
+    #
+    $comparison = Compare-Object -ReferenceObject $compareimagenames `
+        -DifferenceObject $outputnames |
+        Where-Object -FilterScript {$_.SideIndicator -eq '<='}
+    #
+    [array]$outimages = @()
+    #
+    if ($comparison.InputObject){
+        ($comparison.InputObject) | foreach-Object{
+            $outimages += $imagepath + '\' + ($_  -replace $filespec, '.im3')
+        }
+    }
+    #
+    # Find potential corrupt files
+    #
+    if ($filespec -match '.Data.dat'){
+        #
+        $output2 = $output | Where-Object {$_.Length -eq 0kb}
+        $outimages += (($output2 -replace [regex]::escape($dest), $imagepath) `
+            -replace $filespec, '.im3')
+        #
+    }
+    #
+    return $outimages
+    #
+}
