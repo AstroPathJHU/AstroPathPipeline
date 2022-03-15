@@ -28,12 +28,12 @@ pipeline {
       }
       
       stages{
-      /*  stage('pip install') {
+        stage('pip install') {
           steps {
             sh 'pip install .[all]'
           }
         }
-        */
+        
         stage('ps module install') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
@@ -155,7 +155,7 @@ pipeline {
               }
             }
             */
-            stage('warping') {
+           // stage('warping') {
              // stages {
               //  stage('test warping') {
               //    steps {
@@ -174,7 +174,7 @@ pipeline {
                   }
                 }
               //}
-            }
+           // }
             /*
             stage('meanimage') {
               stages {

@@ -151,11 +151,13 @@
         if ($this.dryrun){
             return
         }
+        write-Host '    adding warping directories'
         #
         $sor = $this.basepath, 'reference', 'warpingcohort',
         'M21_1-all_overlap_octets.csv' -join '\'
         #
         $inp.getslideidregex()
+        Write-Host '    Slides:' $inp.batchslides
         #
         $inp.batchslides | ForEach-Object{
             $des = $this.basepath, $_, 'im3', 'warping', 'octets' -join '\'
@@ -249,20 +251,12 @@
             $inp.all = $true# uses all slide from the cohort, 
             #   output goes to the mpath\warping\octets folder
         }
-        $inp.sample.createNewdirs(($inp.processloc+ '\octets'))
         #
         $this.addwarpoctetsdep($inp)
         #
         $task = $this.getmoduletask($inp)
         $inp.getbatchwarpoctets()
-        #
-        if ($this.dryrun){
-            $this.runpytesttask($inp, $task[0], $task[1])
-        } else {
-            $this.runpytesttask($inp, $task[0], $task[1])
-            Write-Host '   '$task[0]
-            Write-Host '   '$task[1]
-        }
+        $this.runpytesttask($inp, $task[0], $task[1])
         #
         $this.removewarpoctetsdep($inp)
         #

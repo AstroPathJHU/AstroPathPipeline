@@ -18,8 +18,6 @@ class batchwarpkeys : moduletools {
     ----------------------------------------- #>
     [void]Runbatchwarpkeys(){
         #
-        $this.sample.createNewdirs($this.processloc)
-        $this.sample.createNewdirs(($this.processloc+ '\octets'))
         $this.getslideidregex('batchwarpkeys')
         $this.getbatchwarpoctets()
         $this.Getbatchwarpkeys()
@@ -68,15 +66,16 @@ class batchwarpkeys : moduletools {
         #
         $this.sample.info('start find keys')
         #
-        $pythontask = ((
+        $pythontask = (
             $this.pythonmodulename, $dpath, 
             '--shardedim3root',  $rpath, 
             '--sampleregex',  ('"'+($this.batchslides -join '|')+'"'), 
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
             '--octets-only --noGPU --no-log',
             '--ignore-dependencies',
-            $this.buildpyopts('cohort')
-         ) -join ' '), $this.workingdir() -join ''
+            $this.buildpyopts('cohort'),
+            $this.workingdir()
+         ) -join ' '
        #
        return $pythontask
         #
@@ -85,11 +84,16 @@ class batchwarpkeys : moduletools {
     }
     #
     [string]workingdir(){
+        #
         if ($this.all){
-            return ''
+           $warpkeysfolder = $this.sample.warpprojectfolder()
         } else {
-            return (' --workingdir ' + $this.sample.warpbatchfolder())
+            $warpkeysfolder = $this.sample.warpbatchfolder()
         }
+        #
+        $this.sample.CreateNewDirs(($warpkeysfolder+ '\octets'))
+        return ('--workingdir ' + $warpkeysfolder)
+        #
     }
     #
     [void]getmodulename(){

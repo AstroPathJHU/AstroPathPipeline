@@ -362,6 +362,12 @@ class sampledef : sharedtools{
         $path = $this.basepath +'\warping\Batch_' + $this.BatchID
         return $path
     }
+    #
+    [string]warpprojectfolder(){
+        $path = $this.mpath +'\warping\Project_' + $this.project
+        return $path
+    }
+    #
     [string]warpbatchoctetsfolder(){
         $path = $this.basepath +'\warping\Batch_' + $this.BatchID + '\octets'
         return $path
