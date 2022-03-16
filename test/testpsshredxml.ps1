@@ -48,18 +48,21 @@ Class testpsshredxml {
         Write-Host "."
         Write-Host 'Starting Shred XML Test'
         #
+        $xmlpath = $inp.processvars[1] + '\' + $inp.sample.slideid
+        $userdefined = $this.process_loc, 'astropath_ws', 'shredxml', $this.slideid 
+        #
         $inp.ShredXML()
         $xmlpath = $inp.processvars[1] + '\' + $inp.sample.slideid
         if (!(Test-Path $xmlpath)) {
             Throw 'Shred XML Test Failed - Path was not created'
         }
         #
-        $im3s = gci ($inp.sample.Scanfolder() + '\MSI\*') *im3
+        $im3s = Get-ChildItem ($inp.sample.Scanfolder() + '\MSI\*') *im3
         $im3n = ($im3s).Count + 2
         #
         # check xml files = im3s
         #
-        $xmls = gci ($xmlpath + '\*') '*xml'
+        $xmls = Get-ChildItem ($xmlpath + '\*') '*xml'
         $files = ($xmls).Count
         if (!($im3n -eq $files)){
             Throw 'Shred XML Test Failed - Files do no match'
