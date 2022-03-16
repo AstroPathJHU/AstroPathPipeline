@@ -423,7 +423,7 @@
         #
         $str = ''
         #
-        if ($this.sample.slideid -match $this.sample.batchid){    
+        if ($this.sample.batchid -contains $this.sample.slideid) {    
             #
             $this.batchslides | foreach-object {
                 $this.sample.slideid = $_

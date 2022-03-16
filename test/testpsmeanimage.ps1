@@ -238,6 +238,14 @@ Class testpsmeanimage {
         Write-Host '   destination:' $des
         $inp.sample.copy($sor, $des, '*')
         #
+        if (!(test-path ($sor + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage source'
+        }
+        #
+        if (!(test-path ($des + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage desitination'
+        }
+        #
         Write-Host '   running cleanup protocol'
         $inp.cleanupbase()
         #
@@ -749,6 +757,10 @@ Class testpsmeanimage {
         #
         $inp.sample.copy($des, $sor, '*')
         $this.comparepaths($des, $sor, $inp)
+        #
+        if (!(test-path ($sor + '\.gitignore'))){
+            Throw 'da git ignore is not correct'
+        }
         #
         $inp.sample.removedir($this.processloc)
         #

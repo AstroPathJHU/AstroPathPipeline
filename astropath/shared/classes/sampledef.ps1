@@ -355,7 +355,7 @@ class sampledef : sharedtools{
     #
     [string]warpoctetsfolder(){
         $file2 = $this.basepath, '\', $this.slideid,
-            '\im3\warping\octets'
+            '\im3\warping\octets' -join ''
         return $file2
     }
     #
@@ -378,6 +378,11 @@ class sampledef : sharedtools{
         $path = $this.basepath +'\warping\Batch_' + $this.BatchID + '\octets'
         return $path
     }
+        #
+        [string]warpprojectoctetsfolder(){
+            $path = $this.basepath +'\warping\Project_' + $this.project + '\octets'
+            return $path
+        }
     #
     [void]testim3folder(){
         if (!(test-path $this.im3folder())){
