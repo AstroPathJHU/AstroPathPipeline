@@ -29,6 +29,7 @@ Class testpsshredxml {
         $this.ShredXMLTest($inp)
         $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
+        $inp.sample.removedir($this.process_loc)
         $inp.sample.finish(($this.module+'test'))
         Write-Host "."
         #
