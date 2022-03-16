@@ -255,9 +255,19 @@ class copyutils{
             $destinationhash.('tmp') = 'tmp'
         }
         #
-        $comparison = Compare-Object -ReferenceObject $($sourcehash.Values) `
-                                -DifferenceObject $($destinationhash.Values) |
-                Where-Object -FilterScript {$_.SideIndicator -eq '<='}
+        try{
+            $comparison = Compare-Object -ReferenceObject $($sourcehash.Values) `
+                                    -DifferenceObject $($destinationhash.Values) |
+                    Where-Object -FilterScript {$_.SideIndicator -eq '<='}
+        } catch {
+            if ($_.Exception.Message -match 'ReferenceObject'){
+                Throw ('source hash values not valid: ' +  $sourcehash.Values)
+            } elseif ($_.Exception.Message -match 'DifferenceObject'){
+                Throw ('destination hash values not valid: ' +  $destinationhash.Values)
+            } else {
+                Throw $_.Exception.Message
+            }
+        }
         #
         # copy files that failed
         # call checksum on the particular file to make sure the 

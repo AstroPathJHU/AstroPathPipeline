@@ -186,7 +186,7 @@ class queue : vminformqueue{
             $savelog += $loglines |
                     where-object {
                         ($_.Message -match $vers) -and 
-                         ($_.Slideid -match $ID) -and 
+                         ($_.Slideid -contains $ID) -and 
                          ($_.Message -match $statustype)
                     } |
                     Select-Object -Last 1 
@@ -196,7 +196,7 @@ class queue : vminformqueue{
         $d2 = ($loglines |
                  Where-Object {
                     $_.Message -match $statustypes[1] -and
-                     ($_.Slideid -match $ID)
+                     ($_.Slideid -contains $ID)
                  }).Date |
                Select-Object -Last 1 
         $d3 = ($savelog | Where-Object {$_.Message -match $statustypes[2]}).Date
