@@ -10,14 +10,14 @@
 #
  Class testpsmoduletools : testtools {
     #
-    [string]$class = 'logger'
+    [string]$class = 'moduletools'
     [string]$module = 'shredxml'
     #
     testpsmoduletools() : base(){
         #
         $this.testmodulecontruction()
         #
-        $task = ($this.project, $this.slideid, $this.process_loc, $this.mpath)
+        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $inp = meanimage $task
         #
         $this.testslidelist()
@@ -32,7 +32,7 @@
         Write-Host '.'
         Write-Host 'building a shredxml module object'
         try {
-            $task = ($this.project, $this.slideid, $this.process_loc, $this.mpath)
+            $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
             shredxml $task | Out-Null
         } catch {
             Throw 'module could not be constructed'
@@ -45,7 +45,7 @@
         Write-Host '.'
         Write-Host 'Starting Paths Testing'
         #
-        $testloc = $this.process_loc + '\astropath_ws\meanimage\' + $this.slideid
+        $testloc = $this.processloc + '\astropath_ws\meanimage\' + $this.slideid
         #
         if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape($testloc))){
             Throw ('processvars[0] not correct: ' + $inp.processvars[0] + '~=' + $testloc)

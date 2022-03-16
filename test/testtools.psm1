@@ -71,7 +71,7 @@ Class testtools{
         $this.processloc = $this.uncpath(("$PSScriptRoot\test_for_jenkins\testing_" + $this.module))
         $batchreferncetestpath = $this.processloc, $this.slideid -join '\'
         $this.batchreferencefile = ($batchreferncetestpath + '\flatfield_TEST.bin')
-        $this.basepath = uncpath($this.basepath)
+        $this.basepath = $this.uncpath($this.basepath)
         #
     }
     <# --------------------------------------------
