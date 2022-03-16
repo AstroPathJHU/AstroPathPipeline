@@ -191,7 +191,7 @@ pipeline {
                 }
                 stage('test meanimage ps workflow') {
                   steps {
-                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'	
+                  //  sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'	
                   }
                 }
               }
