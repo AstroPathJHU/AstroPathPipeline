@@ -1,4 +1,5 @@
-﻿<# testpsmoduletools
+﻿using module .\testtools.psm1
+<# testpsmoduletools
  testpslogger
  Benjamin Green - JHU
  Last Edit: 02.09.2022
@@ -7,21 +8,13 @@
  test if the module can be imported or not
  -------------------------------------------#>
 #
- Class testpsmoduletools {
+ Class testpsmoduletools : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
-    [string]$basepath = $PSScriptRoot + '\data'
+    [string]$class = 'logger'
     [string]$module = 'shredxml'
-    [string]$slideid = 'M21_1'
-    [string]$project = '0'
-    [string]$batchid = '8'
-    [string]$apmodule = $PSScriptRoot + '\..\astropath'
     #
-    testpsmoduletools(){
+    testpsmoduletools() : base(){
         #
-        Write-Host '---------------------test ps [moduletools]---------------------'
-        $this.importmodule()
         $this.testmodulecontruction()
         #
         $task = ($this.project, $this.slideid, $this.process_loc, $this.mpath)
@@ -32,12 +25,6 @@
         $this.TestPaths($inp)
         Write-Host '.'
         #
-    }
-    #
-    importmodule(){
-        Import-Module $this.apmodule -EA SilentlyContinue
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
     }
     #
     [void]testmodulecontruction(){

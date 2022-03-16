@@ -1,4 +1,5 @@
-﻿<# -------------------------------------------
+﻿using module .\testtools.psm1
+<# -------------------------------------------
  testpswarpoctets
  created by: Andrew Jorquera
  Last Edit: 02.10.2022
@@ -8,40 +9,28 @@
  functioning as intended
  -------------------------------------------#>
 #
-Class testpswarpoctets {
+Class testpswarpoctets : testtools {
     #
-    [string]$mpath 
-    [string]$processloc
-    [string]$basepath
     [string]$module = 'warpoctets'
-    [string]$slideid = 'M21_1'
-    [string]$project = '0'
-    [string]$batchid = '8'
-    [string]$apmodule = $PSScriptRoot + '/../astropath'
-    [string]$pytype = 'sample'
-    [string]$batchreferencefile
+    [string]$class = 'warpoctets'
     #
-    testpswarpoctets(){
+    testpswarpoctets(): base() {
         #
         $this.launchtests()
         #
     }
-    testpswarpoctets($project, $slideid){
+    testpswarpoctets($project, $slideid): base($project, $slideid) {
         #
-        $this.slideid = $slideid
-        $this.project = $project
         $this.launchtests
         #
     }
     #
     [void]launchtests(){
         #
-        Write-Host '---------------------test ps [warpoctets]---------------------'
-        $this.importmodule()
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $this.testpswarpoctetsconstruction($task)
         $inp = warpoctets $task
-        $this.testprocessroot($inp)
+        $this.testprocessroot($inp, $true)
         $this.testcorrectionfile($inp)
         $this.comparepywarpoctetsinput($inp)
         $this.runpytaskpyerror($inp)
@@ -55,59 +44,6 @@ Class testpswarpoctets {
         $this.CleanupTest($inp)
         $inp.sample.finish(($this.module+'-test'))
         Write-Host '.'
-    }
-    <# --------------------------------------------
-    importmodule
-    helper function to import the astropath module
-    and define global variables
-    --------------------------------------------#>
-    importmodule(){
-        Write-Host 'importing module ....'
-        Import-Module $this.apmodule
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_warpoctets'))
-        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
-        $batchreferncetestpath = $this.processloc, $this.slideid -join '\'
-        $this.batchreferencefile = ($batchreferncetestpath + '\flatfield_TEST.bin')
-    }
-    <# --------------------------------------------
-    uncpath
-    helper function to convert local paths defined
-    by pscriptroot etc. to full unc paths.
-    --------------------------------------------#>
-    [string]uncpath($str){
-        $r = $str -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
-        } else{
-            $root = $r -replace ":", "$"
-        }
-        return $root
-    }
-    <# --------------------------------------------
-    runpytesttask
-    helper function to run the python task provided
-    and export it to the exteral log provided
-    --------------------------------------------#>
-    [void]runpytesttask($inp, $pythontask, $externallog){
-        #
-        $inp.sample.start(($this.module+'-test'))
-        Write-Host '    warpoctets command:'
-        Write-Host '   '$pythontask  
-        Write-Host '    external log:' $externallog
-        Write-Host '    launching task'
-        #
-        $pythontask = $pythontask -replace '\\','/'
-        #
-        if ($inp.sample.isWindows()){
-            $inp.sample.checkconda()
-            etenv $inp.sample.pyenv()
-            Invoke-Expression $pythontask *>> $externallog
-            exenv
-        } else{
-            Invoke-Expression $pythontask *>> $externallog
-        }
-        #
     }
     <# --------------------------------------------
     testpswarpoctetsconstruction
@@ -135,44 +71,7 @@ Class testpswarpoctets {
         Write-Host 'test [warpoctets] constructors finished'
         #
     }
-    <# --------------------------------------------
-    testprocessroot
-    compare the proccessing root created by the 
-    warpoctets object is the same as the one created
-    by user defined or known input. Make sure that
-    we reference user defined input so that if
-    we run the test with an alternative sample
-    it will still work.
-    --------------------------------------------#>
-    [void]testprocessroot($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test processing dir preparation started'
-        #
-        Write-Host  '   check for an old run and remove it if found'
-        $inp.sample.removedir($this.processloc)
-        #
-        $md_processloc = (
-            $this.processloc,
-            'astropath_ws',
-            $this.module,
-            $this.slideid
-        ) -join '\'
-        #
-        if (!([regex]::escape($md_processloc) -contains [regex]::escape($inp.processloc))){
-            Write-Host 'meanimage module process location not defined correctly:'
-            Write-Host $md_processloc '~='
-            Throw ($inp.processloc)
-        }
-        #
-        $inp.sample.CreateNewDirs($inp.processloc)
-        #
-        if (!(test-path $md_processloc)){
-            Throw 'process working directory not created'
-        }
-        Write-Host 'test processing dir preparation finished'
-        #
-    }
+
     <# --------------------------------------------
     comparepywarpoctetsinput
     check that warpoctets input is what is expected
@@ -205,16 +104,10 @@ Class testpswarpoctets {
         $inp.getmodulename()
         $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath)
         #
-        if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
-            Write-Host 'user defined and [warpoctets] defined tasks do not match:'  -foregroundColor Red
-            Write-Host 'user defined        :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
-            Write-Host '[warpoctets] defined:' [regex]::escape($pythontask)'end' -foregroundColor Red
-            Throw ('user defined and [warpoctets] defined tasks do not match')
-        }
-        Write-Host 'python [warpoctets] input matches -- finished'
+        $this.compareinputs($userpythontask, $pythontask)
         #
     }
-    [void]testcorrectionfile($INP){
+    [void]testcorrectionfile($inp){
         #
         if ($inp.sample.pybatchflatfield()){
             return
@@ -240,68 +133,6 @@ Class testpswarpoctets {
         ##
     }
     <# --------------------------------------------
-    runpytaskpyerror
-    check that the python task completes correctly 
-    when run with the input that will throw a
-    python error
-    --------------------------------------------#>
-    [void]runpytaskpyerror($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python [warpoctets] with error input started'
-        $inp.sample.CreateNewDirs($inp.processloc)
-        $rpath = $PSScriptRoot + '\data\raw'
-        $dpath = $this.basepath
-        $inp.getmodulename()
-        #
-        $pythontask = $inp.('getpythontask' + $this.pytype)($dpath, $rpath) 
-        $pythontask = $pythontask, '--blah' -join ' '
-        #
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
-        $this.runpytesttask($inp, $pythontask, $externallog)
-        #
-        Write-Host 'test python [warpoctets] with error input finished'
-        #
-    }
-    <# --------------------------------------------
-    testlogpyerror
-    check that the log is parsed correctly
-    when run with the input that will throw a
-    python error. 
-    --------------------------------------------#>
-    [void]testlogpyerror($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python LOG with error input started'
-        #
-        $inp.getmodulename()
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
-        if (!$externallog){
-            Throw 'No external log'
-        }
-        Write-Host '    open log output'
-        $logoutput = $inp.sample.GetContent($externallog)
-        if (!$logoutput){
-            Throw 'No log output'
-        }
-        Write-Host '    test log output'
-        #
-        try {
-            $inp.getexternallogs($externallog)
-            Throw ''
-        } catch {
-            $err = $_.Exception.Message
-            $expectedoutput = 'Error in launching python task'
-            if ($err -notcontains $expectedoutput){
-                Write-Host $logoutput
-                Throw $_.Exception.Message
-            }
-        }
-        #
-        Write-Host 'test python LOG with error input FINISHED'
-        #
-    }
-    <# --------------------------------------------
     runpytaskaperror
     check that the python task completes correctly 
     when run with the input that will throw a
@@ -317,9 +148,7 @@ Class testpswarpoctets {
         $inp.getmodulename()
         #
         $des = $this.processloc, $this.slideid, 'warpoctets' -join '\'
-        $addedargs = (
-            ' --workingdir', $des
-        ) -join ' '
+        $addedargs = " --workingdir $des"
         #
         $pythontask = $inp.('getpythontask' + $this.pytype)($dpath, $rpath) 
         $pythontask = ($pythontask -replace `
@@ -331,42 +160,6 @@ Class testpswarpoctets {
         #
         Write-Host 'test python warpoctets with error in processing finished'
         #
-    }
-    <# --------------------------------------------
-    testlogaperror
-    check that the log is parsed correctly
-    when run with the input that will throw a
-    warpoctets sample error
-    --------------------------------------------#>
-    [void]testlogaperror($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python with error in PROCESSING started'
-        #
-        $inp.getmodulename()
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
-        if (!$externallog){
-            Throw 'No external log'
-        }
-        Write-Host '    open log output'
-        $logoutput = $inp.sample.GetContent($externallog)
-        if (!$logoutput){
-            Throw 'No log output'
-        }
-        Write-Host '    test log output'
-        #
-        try {
-            $inp.getexternallogs($externallog)
-        } catch {
-            $err = $_.Exception.Message
-            $expectedoutput = 'detected error in external task'
-            if ($err -notcontains $expectedoutput){
-                Write-Host $logoutput
-                Throw $_.Exception.Message
-            }
-        }
-        #
-        Write-Host 'test python with error in PROCESSING FINISHED'
     }
     <# --------------------------------------------
     runpytaskexpected
@@ -407,31 +200,6 @@ Class testpswarpoctets {
         $inp.sample.removefile($p2)
         #
         Write-Host 'test python warpoctets in workflow finished'
-        #
-    }
-    <# --------------------------------------------
-    testlogsexpected
-    check that the log is parsed correctly when
-    run with the correct input.
-    --------------------------------------------#>
-    [void]testlogsexpected($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python expected log output started'
-        $inp.getmodulename()
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
-        Write-Host '    open log output'
-        $logoutput = $inp.sample.GetContent($externallog)
-        Write-Host '    test log output'
-        #
-        try {
-            $inp.getexternallogs($externallog)
-        } catch {
-            Write-Host '   '$logoutput
-            Throw $_.Exception.Message
-        }
-        #
-        Write-Host 'test python expected log output finished'
         #
     }
     #

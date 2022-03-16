@@ -1,4 +1,5 @@
 ﻿  
+using module .\testtools.psm1
 <# -------------------------------------------
  testpsshredxml
  created by: Andrew Jorquera
@@ -10,31 +11,28 @@
  functioning as intended
  -------------------------------------------#>
 #
-Class testpsshredxml {
+Class testpsshredxml : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
+    [string]$module = 'shredxml'
     #
-    testpsshredxml(){
+    testpsshredxml() : base() {
         #
         # Setup Testing
         #
-        $this.importmodule()
-        #
-        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
+        $task = ('0', 'M21_1', $this.processloc, $this.mpath)
         $inp = shredxml $task
         #
         # Run Tests
-        #
+        <#
         $this.ShredXMLTest($inp)
         $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
         $inp.sample.removedir($this.process_loc)
         $inp.sample.finish(($this.module+'test'))
         Write-Host "."
-        #
+        #>
     }
-    #
+    <#
     importmodule(){
         Write-Host "."
         Write-Host 'importing module ....'
@@ -43,7 +41,7 @@ Class testpsshredxml {
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
         $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_shredxml'
     }
-    #
+    #>
     [void]ShredXMLTest($inp){
         Write-Host "."
         Write-Host 'Starting Shred XML Test'
