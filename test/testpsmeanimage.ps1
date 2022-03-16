@@ -238,6 +238,14 @@ Class testpsmeanimage {
         Write-Host '   destination:' $des
         $inp.sample.copy($sor, $des, '*')
         #
+        if (!(test-path ($sor + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage source'
+        }
+        #
+        if (!(test-path ($des + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage desitination'
+        }
+        #
         Write-Host '   running cleanup protocol'
         $inp.cleanupbase()
         #
@@ -751,8 +759,7 @@ Class testpsmeanimage {
         $this.comparepaths($des, $sor, $inp)
         #
         if (!(test-path ($sor + '\.gitignore'))){
-            $inp.sample.setfile(($sor + '\.gitignore'), 'M21_1_tissue_mask.npz')
-            Write-Host 'da git ignore is not correct'
+            Throw 'da git ignore is not correct'
         }
         #
         $inp.sample.removedir($this.processloc)
