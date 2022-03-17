@@ -26,15 +26,14 @@ pipeline {
           additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'"'
         }
       }
-      
+      /*
       stages{
         stage('pip install') {
           steps {
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
             sh 'pip install .[all]'
           }
         }
-        
+        */
         stage('ps module install') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
