@@ -98,7 +98,6 @@ class batchwarpfits : moduletools {
         $pythontask = $this.getpythontask($dpath, $rpath)
         #
         $this.runpythontask($taskname, $pythontask)
-        $this.silentcleanup()
         #
     }
     #

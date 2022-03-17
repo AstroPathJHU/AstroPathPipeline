@@ -45,6 +45,12 @@
         Write-Host '.'
         Write-Host 'Starting Paths Testing'
         #
+        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        #
+        if (!(test-path ($sor + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage source'
+        }
+        #
         $testloc = $this.processloc + '\astropath_ws\meanimage\' + $this.slideid
         #
         if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape($testloc))){

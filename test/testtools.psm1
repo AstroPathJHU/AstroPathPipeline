@@ -258,7 +258,7 @@ Class testtools{
     when run with the input that will throw a
     python error
     --------------------------------------------#>
-    [void]runpytaskpyerror($inp){
+    [void]runpytaskpyerror($inp, $type){
         #
         Write-Host '.'
         Write-Host ('test python ['+$this.class+'] with error input started')
@@ -272,6 +272,31 @@ Class testtools{
         #
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
         $this.runpytesttask($inp, $pythontask, $externallog)
+        #
+        Write-Host ('test python ['+$this.class+'] with error input finished')
+        #
+    }
+    #
+    <# --------------------------------------------
+    runpytaskpyerror
+    check that the python task completes correctly 
+    when run with the input that will throw a
+    python error
+    --------------------------------------------#>
+    [void]runpytaskpyerror($inp){
+        #
+        Write-Host '.'
+        Write-Host ('test python ['+$this.class+'] with error input started')
+        $inp.sample.CreateNewDirs($inp.processloc)
+        $this.addwarpoctetsdep($inp)
+        $task = $this.getmoduletask($inp)
+        $pythontask = $task[0]
+        $externallog = $task[1] + '.err.log'
+        #
+        $pythontask = $pythontask, '--blah' -join ' '
+        #
+        $this.runpytesttask($inp, $pythontask, $externallog)
+        $this.removewarpoctetsdep($inp)
         #
         Write-Host ('test python ['+$this.class+'] with error input finished')
         #
@@ -451,4 +476,115 @@ Class testtools{
         Write-Host ('test python ['+$this.class+'] LOG in workflow without apid finished')
         #
     }
+    #
+    [void]testcorrectionfile($inp){
+        #
+        if ($inp.sample.pybatchflatfield()){
+            return
+        }
+        #
+        $p2 = $inp.sample.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $micomp_data = $inp.sample.ImportCorrectionModels($inp.sample.mpath)
+        $newobj = [PSCustomObject]@{
+            SlideID = $inp.sample.slideid
+            Project = $inp.sample.project
+            Cohort = $inp.sample.cohort
+            BatchID = $inp.sample.batchid
+            FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
+            WarpingFile = 'None'
+        }
+        #
+        $micomp_data += $newobj
+        #
+        $micomp_data | Export-CSV $p2 -NoTypeInformation
+        $p3 = $inp.sample.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        $inp.sample.SetFile($p3, 'blah de blah')
+        ##
+    }
+    #
+    [void]setupsample($inp){
+        #
+        Write-Host '    copy background thresholds'
+        #
+        $p1 = ($this.basepath, '\reference\meanimage\',
+            $this.slideid, '-background_thresholds.csv') -join ''
+        #
+        $p2 = ($this.basepath, $this.slideid,
+            'im3\meanimage') -join '\'
+        #
+        $inp.sample.copy($p1, $p2)
+        #
+        Write-Host '    creating mock raw directory'
+        #
+        $rpath = ($this.basepath, 'raw', $this.slideid) -join '\'
+        #
+        $rfiles = (get-childitem ($rpath+'\*') '*dat').Name
+        #
+        Write-Host '    Found:' $rfiles.Length ' raw files'
+        Write-Host $rfiles
+        #
+        $dpath = ($this.basepath, $this.slideid,
+            'im3\Scan1\MSI', '*') -join '\'
+        $im3files = (get-childitem $dpath '*im3').Name
+        #
+        Write-Host '    Found:' $im3files.Length ' im3 files'
+        #
+        $newrpath = $this.processloc, $this.slideid, 'rpath', $this.slideid -join '\'
+        $inp.sample.CreateNewDirs($newrpath)
+        Write-Host '    New rpath:' $newrpath
+        Write-Host '    Matching files'
+        #
+        foreach($file in $im3files){
+            $rfile = $file -replace 'im3', 'Data.dat'
+            $newrfile = $rfiles -match [regex]::escape($rfile)
+            #
+            if (!$newrfile){
+                $newrfile = $rpath + '\' + $rfiles[0]
+                $inp.sample.copy($newrfile, $newrpath)
+                rename-item ($newrpath + '\' + $rfiles[0]) `
+                    ($file -replace 'im3', 'Data.dat')
+            }
+        }
+        #
+        Write-Host '    copying regular raw files'
+        $inp.sample.copy($rpath, $newrpath, '*')
+        #
+    #
+    }
+    #
+    [void]buildtestflatfield($inp){
+        #
+        Write-Host '.'
+        Write-Host 'build test flatfield started'
+        #
+        $batchreferencepath = $this.basepath + '\reference\batchflatfieldcohort\flatfield_TEST.bin'
+        $batchreferncetestpath = $this.processloc, $this.slideid -join '\'
+        $inp.sample.createdirs($batchreferncetestpath)
+        #
+        $import = 'import pathlib; import numpy as np; from astropath.utilities.img_file_io import read_image_from_layer_files, write_image_to_file' -join ' '
+        $task1 = "ff_file = pathlib.Path ('", ($batchreferencepath -replace '\\', '/'), "')" -join '' 
+        Write-Host '    Task1:' $task1
+        $task2 = "ff_img = read_image_from_layer_files(ff_file,1004,1344,35,dtype=np.float64)" -join ''
+        Write-Host '    Task2:' $task2
+        $task3 =  "outputdir = pathlib.Path ('", ($batchreferncetestpath -replace '\\', '/'), "')" -join ''
+        Write-Host '    Task3:' $task3
+        $task4 = "write_image_to_file(ff_img, outputdir/ff_file.name)" -join ''
+        Write-Host '    Task4:' $task4
+        $task = $import, $task1, $task2, $task3, $task4 -join '; '
+        Write-Host '    Task:' $task
+        #
+        if ($inp.sample.isWindows()){
+            conda run -n $inp.sample.pyenv() python -c $task
+        } else{
+            python -c $task
+        }
+        if (!(test-path $this.batchreferencefile )){
+            Throw 'Batch flatfield reference file failed to create'
+        }
+        #
+        Write-Host 'build test flatfield finished'
+        #
+    }
+    #
 }

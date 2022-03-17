@@ -15,9 +15,6 @@ using module .\testtools.psm1
 
     #
     testpswarpfits() : base(){
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_warpfits'))
-        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
         $this.launchtests()
     }
     #
@@ -32,22 +29,33 @@ using module .\testtools.psm1
     launchtests(){
         #
         $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        $this.testpswarpfitsconstruction($task)
+        #$this.testpswarpfitsconstruction($task)
         $inp = batchwarpfits $task  
-        $this.testprocessroot($inp)
-        $this.testshreddatim($inp)
+        #$this.testprocessroot($inp)
+        #$this.testshreddatim($inp)
         $this.removewarpoctetsdep($inp)
-        #
+        if (!$this.dryrun){
+        #    $this.buildtestflatfield($inp)
+        #    $this.runpytaskpyerror($inp)
+        #    $this.testlogpyerror($inp)
+            $this.runpytaskaperror($inp)
+            $this.testlogaperror($inp)
+        }
+        <#
         $this.testwarpfitsinput($inp)
         $this.runpywarpfitsexpected($inp)
-        $this.testlogsexpected($inp)
+        if ($this.dryrun){
+            $this.testlogsexpected($inp)
+        }
         #
         $inp.all = $true
         Write-Host 'test for all slides'
         $this.testwarpfitsinput($inp)
         $this.runpywarpfitsexpected($inp)
-        $this.testlogsexpected($inp)
-        #
+        if ($this.dryrun){
+            $this.testlogsexpected($inp)
+        }
+        #>
         $inp.sample.finish(($this.module+'test'))
         Write-Host '.'
     }
@@ -58,12 +66,12 @@ using module .\testtools.psm1
     [void]testpswarpfitsconstruction($task){
         #
         Write-Host "."
-        Write-Host 'test [warpfits] constructors started'
+        Write-Host 'test [batchwarpfits] constructors started'
         #
         try {
             batchwarpfits  $task | Out-Null
         } catch {
-            Throw ('[warpfits] construction with [1] input(s) failed. ' + $_.Exception.Message)
+            Throw ('[batchwarpfits] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
         <#
         try {
@@ -72,7 +80,7 @@ using module .\testtools.psm1
             Throw ('[meanimage] construction with [2] input(s) failed. ' + $_.Exception.Message)
         }
         #>
-        Write-Host 'test [warpfits] constructors finished'
+        Write-Host 'test [batchwarpfits] constructors finished'
         #
     }
     <#---------------------------------------------
@@ -102,6 +110,21 @@ using module .\testtools.psm1
         Write-Host '    open image keys text'
         $image_keys_file = $inp.getkeysloc()
         Write-Host '        keys file:' $image_keys_file
+        if ($inp.all){
+            $userdef = $this.basepath, 'warping', ('Project'+$this.project),
+                'octets', 'image_keys_needed.txt' -join '\'
+        } else {
+            $userdef = $this.basepath, 'warping', ('Batch_'+$this.batchid.PadLeft(2,'0')),
+                'octets', 'image_keys_needed.txt' -join '\'
+        }
+        #
+        Write-Host '    [batchwarpfits] image keys file:' $image_keys_file
+        Write-Host '    user defined:' $userdef
+        #
+        if ($userdef -notmatch [regex]::escape($image_keys_file)){
+            Throw 'image key file not defined correctly'
+        }
+        #
         $image_keys = $inp.sample.GetContent($image_keys_file)
         #
         $inp.getslideidregex('batchwarpfits')
@@ -157,11 +180,38 @@ using module .\testtools.psm1
             '--use-apiddef --project', $this.project.PadLeft(2,'0'), $wd
         ) -join ' '
         #
+        $this.removewarpoctetsdep($inp)
         $this.compareinputs($userpythontask, $task[0])
         #
-        $this.removewarpoctetsdep($inp)
+    }
+    <# --------------------------------------------
+    runpytaskaperror
+    check that the python task completes correctly 
+    when run with the input that will throw a
+    warpoctets sample error
+    --------------------------------------------#>
+    [void]runpytaskaperror($inp){
         #
-        Write-Host 'test for [batchwarpfits] expected input finished' 
+        Write-Host '.'
+        Write-Host 'test python [batchwarpfits] with error in processing started'
+        Write-Host '    testing for all slides:' $inp.all
+        #
+        $this.addwarpoctetsdep($inp)
+        $task = $this.getmoduletask($inp)
+        #
+        $inp.sample.CreateNewDirs($inp.processloc)
+        #
+        $des = $this.processloc, $this.slideid, 'warpoctets' -join '\'
+        $addedargs = " --workingdir $des"
+        #
+        $pythontask = ($task[0] -replace `
+            [regex]::escape($inp.sample.pybatchflatfieldfullpath()), 
+            $this.batchreferencefile) + $addedargs
+        #
+        $externallog = $task[1] + '.err.log'
+        $this.runpytesttask($inp, $pythontask, $externallog)
+        #
+        Write-Host 'test python [batchwarpfits] with error in processing finished'
         #
     }
     <#---------------------------------------------
@@ -173,6 +223,7 @@ using module .\testtools.psm1
         Write-Host 'test for [batchwarpfits] expected output slides started'
         Write-Host '    testing for all slides:' $inp.all
         #
+        $this.addwarpoctetsdep($inp)
         $task = $this.getmoduletask($inp)
         #
         if ($this.dryrun){
@@ -184,33 +235,46 @@ using module .\testtools.psm1
             Write-Host '   '$task[1]
         }
         #
+        $this.removewarpoctetsdep($inp)
         Write-Host 'test for [batchwarpfits] expected output slides finished'
         #
     }
-    <# --------------------------------------------
-    testlogsexpected
-    check that the log is parsed correctly when
-    run with the correct input.
-    --------------------------------------------#>
-    [void]testlogsexpected($inp){
+    #
+    [void]cleanuptest($inp){
         #
         Write-Host '.'
-        Write-Host 'test for [batchwarpfits] expected log output started'
-        $inp.getmodulename()
-        $inp.getslideidregex()
-        $externallog = $inp.ProcessLog('batchwarpkeys') 
-        Write-Host '    open log output'
-        $logoutput = $inp.sample.GetContent($externallog)
-        Write-Host '    test log output'
+        Write-Host 'test cleanup method started'
         #
-        try {
-            $inp.getexternallogs($externallog)
-        } catch {
-            Write-Host '   '$logoutput
-            Throw $_.Exception.Message
+        Write-Host '    remove working directories'
+        Write-Host '    path expected to be removed:' ($this.basepath + '\warping')
+        #
+        if(!$this.dryrun){
+            $inp.sample.removedir($this.basepath + '\warping')
         }
         #
-        Write-Host 'test for [batchwarpfits] expected log output finished'
+        $inp.sample.removedir($this.processloc)
+        #
+        Write-Host '    running cleanup method'
+        #
+        $cleanuppath = (
+            $this.processloc,
+            'astropath_ws',
+            $this.module,
+            $this.slideid
+        ) -join '\'
+        #
+        Write-Host '    path expected to be removed:' $cleanuppath
+        $inp.cleanup()
+        #
+        if (Test-Path $cleanuppath) {
+            Throw (
+                'dir still exists -- cleanup test failed:', 
+                $cleanuppath
+            ) -join ' '
+        }
+        #
+        Write-Host '    delete the testing_warpoctets folder'
+        Write-Host '    path expected to be removed:' $this.processloc
         #
     }
  }

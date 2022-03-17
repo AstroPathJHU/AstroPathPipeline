@@ -41,7 +41,7 @@ Class testpsmeanimage : testtools {
         $this.testcleanupbase($inp)
         $this.comparepymeanimageinput($inp)
         $this.runpytaskpyerror($inp)
-        $this.testlogpyerror($inp)
+        $this.testlogpyerror($inp, $true)
         $this.runpytaskaperror($inp)
         $this.testlogaperror($inp)
         $this.runpytaskexpected($inp)
@@ -213,7 +213,7 @@ Class testpsmeanimage : testtools {
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
-        Write-Host 'test python [m]eanimage] in workflow finished'
+        Write-Host 'test python [meanimage] in workflow finished'
         #
     }
     <# --------------------------------------------
