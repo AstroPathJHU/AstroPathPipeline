@@ -222,6 +222,7 @@ using module .\testtools.psm1
         #
         $externallog = $task[1] + '.err.log'
         $this.runpytesttask($inp, $pythontask, $externallog)
+        $this.removewarpoctetsdep($inp)
         #
         Write-Host 'test python [batchwarpfits] with error in processing finished'
         #
@@ -296,6 +297,17 @@ using module .\testtools.psm1
                 $cleanuppath
             ) -join ' '
         }
+        #
+        $p2 = (
+            $this.basepath,'\',
+            $this.slideid,
+            '\im3\meanimage\',
+            $this.slideid,
+            '-background_thresholds.csv'
+        ) -join ''
+        $inp.sample.removefile($p2)
+        #
+        $inp.sample.removedir($this.basepath + '\warping')
         #
         Write-Host '    delete the testing_warpoctets folder'
         Write-Host '    path expected to be removed:' $this.processloc

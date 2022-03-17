@@ -188,6 +188,9 @@ using module .\testtools.psm1
         if (test-path $warpingkeysfolder){
             Throw 'cleaup did not delete folder, path still exists'
         }
+        #
+        $inp.sample.removedir($this.mpath + '\warping')
+        #
         Write-Host 'test cleaning tasks up finish'
         #
     }

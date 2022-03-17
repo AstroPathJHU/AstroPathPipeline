@@ -71,6 +71,14 @@
         Write-Host '   destination:' $des
         $inp.sample.copy($sor, $des, '*')
         #
+        if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
+            Write-Host 'check sor failed on A'
+        }
+        #
+        if (!(test-path -LiteralPath ($des + '\.gitignore'))){
+            Write-Host 'check des failed on A'
+        }
+        #
         $sor1 = $sor + '\.gitignore'
         rename-item $sor1 'blah.gitignore'
         $sor2 = $sor + '\blah.gitignore'

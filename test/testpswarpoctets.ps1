@@ -204,6 +204,7 @@ Class testpswarpoctets : testtools {
                 $cleanuppath
             ) -join ' '
         }
+        #
         Write-Host '    cleanup method complete'
         Write-Host '    delete the testing_warpoctets folder'
         #
