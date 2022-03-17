@@ -659,5 +659,3 @@ Class testtools{
     #
 }
 #
-[testtools]::new() | Out-Null
-exit 0
