@@ -66,7 +66,7 @@
         #
         $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
         $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
-        #
+        <#
         Write-Host '   source:' $sor
         Write-Host '   destination:' $des
         $inp.sample.copy($sor, $des, '*')
@@ -78,7 +78,7 @@
         if (!(test-path -LiteralPath ($des + '\.gitignore'))){
             Throw 'da git ignore is not correct in meanimage destination'
         }
-        #
+        #>
         $this.comparepaths($sor, $des, $inp)
         $inp.sample.removedir($des)
         #
