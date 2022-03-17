@@ -26,8 +26,9 @@ pipeline {
           additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'"'
         }
       }
-      /*
+      
       stages{
+        /*
         stage('pip install') {
           steps {
             sh 'pip install .[all]'
