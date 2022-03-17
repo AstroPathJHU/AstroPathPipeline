@@ -90,10 +90,10 @@ class batchwarpfits : moduletools {
     ----------------------------------------- #>
     [void]Getbatchwarpfits(){
         #
-        $taskname = 'batchwarpfits'
+        $this.getmodulename()
+        $taskname = $this.pythonmodulename
         $dpath = $this.processvars[0]
         $rpath = '\\' + $this.processvars[1]
-        $this.getmodulename()
         #
         $pythontask = $this.getpythontask($dpath, $rpath)
         #

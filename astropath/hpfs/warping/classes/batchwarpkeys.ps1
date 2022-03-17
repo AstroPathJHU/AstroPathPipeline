@@ -40,10 +40,10 @@ class batchwarpkeys : moduletools {
         #
         $this.sample.info('start find keys')
         #
-        $taskname = 'batchwarpkeys'
+        $this.getmodulename()
+        $taskname = $this.pythonmodulename
         $dpath = $this.sample.basepath
         $rpath = '\\' + $this.sample.project_data.fwpath
-        $this.getmodulename()
         #
         $pythontask = $this.getpythontask($dpath, $rpath)
         #

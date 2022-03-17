@@ -189,13 +189,11 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
                   }
                 }
-                /*
                 stage('test meanimage ps workflow') {
                   steps {
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'	
                   }
                 }
-                */
               }
             }
 
@@ -237,13 +235,13 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
               }
             }
-            /*
+            
             stage('shredxml') {
               steps {
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
               }
             }
-            */
+            
             stage('code checks') {
               steps {
                 sh 'python -m pyflakes .'

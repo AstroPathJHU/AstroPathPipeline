@@ -118,7 +118,7 @@ using module .\testtools.psm1
         }
         #
         Write-Host '    collecting [warpkeys] defined task'
-        $task = $this.getmoduletask($inp)
+        $pythontask = $this.getmoduletask($inp)
         #
         Write-Host '    collecting [user] defined task'
         $userpythontask = (('warpingcohort',
@@ -131,12 +131,7 @@ using module .\testtools.psm1
             '--use-apiddef --project', $this.project.PadLeft(2,'0')
         ) -join ' ') + $wd
         #
-        Write-Host '[user] defined    :' [regex]::escape($userpythontask)'end' 
-        Write-Host '[warpkeys] defined:' [regex]::escape($task[0])'end' 
-        #
-        if (!([regex]::escape($userpythontask) -eq [regex]::escape($task[0]))){
-            Throw ('user defined and [warpoctets] defined tasks do not match')
-        }
+        $this.compareinputs($userpythontask, $pythontask[0])
         #
         $this.removewarpoctetsdep($inp)
         #
@@ -188,6 +183,7 @@ using module .\testtools.psm1
         Write-Host 'test cleaning tasks up finish'
         #
     }
+    #
 #
 }
 #

@@ -64,7 +64,7 @@ Class testtools{
     --------------------------------------------#>
     importmodule(){
         #
-        Write-Host '---------------------test ps ['$this.class']---------------------'
+        Write-Host ('---------------------test ps ['+$this.class+']---------------------')
         Write-Host "."
         Write-Host 'importing module ....'
         Import-Module $this.apmodule -Global
@@ -96,7 +96,7 @@ Class testtools{
     [void]runpytesttask($inp, $pythontask, $externallog){
         #
         $inp.sample.start(($this.class+'-test'))
-        Write-Host "    ["$this.class"] command:"
+        Write-Host ("    ["+$this.class+"] command:")
         Write-Host '   '$pythontask  
         Write-Host '    external log:' $externallog
         Write-Host '    launching task'
@@ -185,13 +185,13 @@ Class testtools{
     #
     [void]compareinputs($userpythontask, $pythontask){
         #
+        Write-Host 'user defined:' [regex]::escape($userpythontask) 'end'
+        Write-Host ('['+$this.class+'] defined: '+[regex]::escape($pythontask)+' end')
+        #       
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
-            Write-Host 'user defined and ['$this.class'] defined tasks do not match:'  -foregroundColor Red
-            Write-Host 'user defined       :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
-            Write-Host '['$this.class'] defined:' [regex]::escape($pythontask)'end' -foregroundColor Red
             Throw ('user defined and ['+$this.class+'] defined tasks do not match')
         }
-        Write-Host 'python ['$this.class'] input matches -- finished'
+        Write-Host ('python ['+$this.class+'] input matches -- finished')
         #
     }
     #
@@ -238,8 +238,8 @@ Class testtools{
     #
     [array]getmoduletask($inp){
         #
-        $taskname = $this.class
         $inp.getmodulename()
+        $taskname = $inp.pythonmodulename
         $dpath = $inp.sample.basepath
         $rpath = '\\' + $inp.sample.project_data.fwpath
         #
@@ -261,7 +261,7 @@ Class testtools{
     [void]runpytaskpyerror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python ['$this.class'] with error input started'
+        Write-Host ('test python ['+$this.class+'] with error input started')
         $inp.sample.CreateNewDirs($inp.processloc)
         $rpath = $PSScriptRoot + '\data\raw'
         $dpath = $this.basepath
@@ -273,7 +273,7 @@ Class testtools{
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
-        Write-Host 'test python ['$this.class'] with error input finished'
+        Write-Host ('test python ['+$this.class+'] with error input finished')
         #
     }
     <# --------------------------------------------
@@ -285,7 +285,7 @@ Class testtools{
     [void]testlogpyerror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python ['$this.class'] LOG with error input started'
+        Write-Host ('test python ['+$this.class+'] LOG with error input started')
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
@@ -304,7 +304,7 @@ Class testtools{
             }
         }
         #
-        Write-Host 'test python ['$this.class'] LOG with error input finished'
+        Write-Host ('test python ['+$this.class+'] LOG with error input finished')
         #
     }
     <# --------------------------------------------
@@ -316,7 +316,7 @@ Class testtools{
     [void]testlogaperror($inp){
         #
         Write-Host '.'
-        Write-Host 'test python ['$this.class'] LOG with error in processing started'
+        Write-Host ('test python ['+$this.class+'] LOG with error in processing started')
         #
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
@@ -338,7 +338,7 @@ Class testtools{
             }
         }
         #
-        Write-Host 'test python ['$this.class'] LOG with error in processing finished'
+        Write-Host ('test python ['+$this.class+'] LOG with error in processing finished')
         #
     }
     <# --------------------------------------------
@@ -349,7 +349,7 @@ Class testtools{
     [void]testlogsexpected($inp){
         #
         Write-Host '.'
-        Write-Host 'test python ['$this.class'] LOG in workflow started'
+        Write-Host ('test python ['+$this.class+'] LOG in workflow started')
         $inp.getmodulename()
         if ($this.class -match 'batch'){
             $inp.getslideidregex()
@@ -359,6 +359,10 @@ Class testtools{
         Write-Host '    open log output'
         $logoutput = $inp.sample.GetContent($externallog)
         Write-Host '    test log output'
+        #
+        if (!$logoutput){
+            Throw 'No log output'
+        }
         #
         try {
             $inp.getexternallogs($externallog)
@@ -392,7 +396,7 @@ Class testtools{
             Throw 'blank log output exists'
         }
         #
-        Write-Host 'test python ['$this.class'] LOG in workflow finished'
+        Write-Host ('test python ['+$this.class+'] LOG in workflow finished')
         #
     }
     #
@@ -404,7 +408,7 @@ Class testtools{
     [void]testlogsexpectedapid($inp){
         #
         Write-Host '.'
-        Write-Host 'test python ['$this.class'] LOG in workflow without apid started'
+        Write-Host ('test python ['+$this.class+'] LOG in workflow without apid started')
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         Write-Host '    open log output'
@@ -418,7 +422,7 @@ Class testtools{
             Throw $_.Exception.Message
         }
         #
-        Write-Host 'test python ['$this.class'] LOG in workflow without apid finished'
+        Write-Host ('test python ['+$this.class+'] LOG in workflow without apid finished')
         #
     }
     #
@@ -430,7 +434,7 @@ Class testtools{
     [void]testlogsexpectednoxml($inp){
         #
         Write-Host '.'
-        Write-Host 'test python ['$this.class'] LOG in workflow without apid started'
+        Write-Host ('test python ['+$this.class+'] LOG in workflow without apid started')
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         Write-Host '    open log output'
@@ -444,7 +448,7 @@ Class testtools{
             Throw $_.Exception.Message
         }
         #
-        Write-Host 'test python ['$this.class'] LOG in workflow without apid finished'
+        Write-Host ('test python ['+$this.class+'] LOG in workflow without apid finished')
         #
     }
 }
