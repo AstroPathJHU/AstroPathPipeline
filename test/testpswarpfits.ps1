@@ -38,23 +38,33 @@ using module .\testtools.psm1
         #    $this.buildtestflatfield($inp)
         #    $this.runpytaskpyerror($inp)
         #    $this.testlogpyerror($inp)
-            $this.runpytaskaperror($inp)
-            $this.testlogaperror($inp)
-        }
-        <#
-        $this.testwarpfitsinput($inp)
-        $this.runpywarpfitsexpected($inp)
-        if ($this.dryrun){
-            $this.testlogsexpected($inp)
+        #    $this.runpytaskaperror($inp)
+        #    $this.testlogaperror($inp)
+            $this.setupsample($inp)
         }
         #
-        $inp.all = $true
-        Write-Host 'test for all slides'
         $this.testwarpfitsinput($inp)
         $this.runpywarpfitsexpected($inp)
-        if ($this.dryrun){
-            $this.testlogsexpected($inp)
+        $this.testlogsexpected($inp)
+        <#
+        if (!$this.dryrun){
+            $inp.all = $true
+            $this.removewarpoctetsdep($inp)
+            Write-Host 'test for all slides'
+            $this.testwarpfitsinput($inp)
+            $this.runpywarpfitsexpected($inp)
+            $this.runpytaskpyerror($inp)
+            $this.testlogpyerror($inp)
+            $this.runpytaskaperror($inp)
+            $this.testlogaperror($inp)
+            $this.setupsample($inp)
         }
+        #
+        $this.testwarpfitsinput($inp)
+        $this.runpywarpfitsexpected($inp)
+        $this.testlogsexpected($inp)
+        #
+        $this.cleanuptest($inp)
         #>
         $inp.sample.finish(($this.module+'test'))
         Write-Host '.'
@@ -102,7 +112,7 @@ using module .\testtools.psm1
     <#---------------------------------------------
     testshreddatim
     ---------------------------------------------#>
-    [void] testshreddatim($inp){
+    [void]testshreddatim($inp){
         #
         Write-Host "."
         Write-Host 'test shred dat on images started'
@@ -201,12 +211,9 @@ using module .\testtools.psm1
         #
         $inp.sample.CreateNewDirs($inp.processloc)
         #
-        $des = $this.processloc, $this.slideid, 'warpoctets' -join '\'
-        $addedargs = " --workingdir $des"
-        #
         $pythontask = ($task[0] -replace `
             [regex]::escape($inp.sample.pybatchflatfieldfullpath()), 
-            $this.batchreferencefile) + $addedargs
+            $this.batchreferencefile)
         #
         $externallog = $task[1] + '.err.log'
         $this.runpytesttask($inp, $pythontask, $externallog)
@@ -231,8 +238,19 @@ using module .\testtools.psm1
             $inp.getwarpdats()
             $this.runpytesttask($inp, $task[0], $task[1])
         }  else {
-            Write-Host '   '$task[0]
-            Write-Host '   '$task[1]
+            #
+            $this.addoctetpatterns($inp)
+            $addedargs = (
+                '--initial-pattern-octets','2',
+                '--principal-point-octets','2',
+                '--final-pattern-octets','2'
+            ) -join ' '
+            #
+            $pythontask = ($task[0] -replace `
+                [regex]::escape($inp.sample.pybatchflatfieldfullpath()), 
+                $this.batchreferencefile) + $addedargs
+            $this.runpytesttask($inp, $pythontask, $task[1])
+            #
         }
         #
         $this.removewarpoctetsdep($inp)
@@ -277,6 +295,7 @@ using module .\testtools.psm1
         Write-Host '    path expected to be removed:' $this.processloc
         #
     }
+    #
  }
  #
  [testpswarpfits]::new() | Out-NUll

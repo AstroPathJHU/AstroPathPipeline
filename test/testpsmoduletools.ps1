@@ -45,12 +45,6 @@
         Write-Host '.'
         Write-Host 'Starting Paths Testing'
         #
-        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
-        #
-        if (!(test-path ($sor + '\.gitignore'))){
-            Throw 'da git ignore is not correct in meanimage source'
-        }
-        #
         $testloc = $this.processloc + '\astropath_ws\meanimage\' + $this.slideid
         #
         if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape($testloc))){
@@ -69,6 +63,27 @@
             Write-Host 'batch flatfield file:' $inp.sample.batchflatfield()
             Throw ('processvars[3] not correct: ' + $inp.processvars[3] + '~=' + $testloc + '\flatfield\flatfield_BatchID_08.bin')
         }
+        #
+        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        #
+        Write-Host '   source:' $sor
+        Write-Host '   destination:' $des
+        $inp.sample.copy($sor, $des, '*')
+        #
+        $sor1 = $sor + '\.gitignore'
+        $inp.sample.copy($sor1, $des)
+        #
+        if (!(test-path ($sor + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage source'
+        }
+        #
+        if (!(test-path ($des + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage destination'
+        }
+        #
+        $this.comparepaths($sor, $des)
+        $inp.sample.removedir($des)
         #
         Write-Host 'Passed Paths Testing'
         #

@@ -553,6 +553,29 @@ Class testtools{
     #
     }
     #
+    [void]addoctetpatterns($inp){
+        #
+        if ($this.all){
+            $folder = $this.sample.warpprojectoctetsfolder()
+        } else {
+            $folder = $this.sample.warpbatchoctetsfolder()
+        }
+        #
+        $inp.sample.createnewdirs($folder)
+        #
+        $reffiles = @( 'initial_pattern_octets_selected.csv',
+                    'principal_point_octets_selected.csv',
+                    'final_pattern_octets_selected.csv',
+                    ($this.slideid + '-all_overlap_octets.csv'))
+        #
+        $reffiles | foreach-object {
+            $reffile = $this.basepath, 'reference',
+            'warpingcohort', $_ -join '\'
+            $this.sample.copy($reffile, $folder)
+        }
+        #
+    }
+    #
     [void]buildtestflatfield($inp){
         #
         Write-Host '.'
