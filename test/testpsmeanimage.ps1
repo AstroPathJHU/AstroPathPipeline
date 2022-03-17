@@ -102,15 +102,6 @@ Class testpsmeanimage : testtools {
         Write-Host '   destination:' $des
         $inp.sample.copy($sor, $des, '*')
         #
-        $sor1 = $sor + '\.gitignore'
-        rename-item $sor1 'blah.gitignore'
-        $sor2 = $sor + '\blah.gitignore'
-        $des2 = $des + '\blah.gitignore'
-        #
-        $inp.sample.copy($sor2, $des)
-        rename-item $sor2 '.gitignore'
-        rename-item $des2 '.gitignore'
-        #
         if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
             Throw 'da git ignore is not correct in meanimage source'
         }
@@ -441,14 +432,6 @@ Class testpsmeanimage : testtools {
         $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
         #
         $inp.sample.copy($des, $sor, '*')
-        $des1 = $des + '\.gitignore'
-        rename-item $des1 'blah.gitignore'
-        $sor2 = $sor + '\blah.gitignore'
-        $des2 = $des + '\blah.gitignore'
-        #
-        $inp.sample.copy($des2, $sor)
-        rename-item $sor2 '.gitignore'
-        rename-item $des2 '.gitignore'
         #
         $this.comparepaths($des, $sor, $inp)
         #

@@ -72,23 +72,6 @@
         $inp.sample.copy($sor, $des, '*')
         #
         if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
-            Write-Host 'check sor failed on A'
-        }
-        #
-        if (!(test-path -LiteralPath ($des + '\.gitignore'))){
-            Write-Host 'check des failed on A'
-        }
-        #
-        $sor1 = $sor + '\.gitignore'
-        rename-item $sor1 'blah.gitignore'
-        $sor2 = $sor + '\blah.gitignore'
-        $des2 = $des + '\blah.gitignore'
-        #
-        $inp.sample.copy($sor2, $des)
-        rename-item $sor2 '.gitignore'
-        rename-item $des2 '.gitignore'
-        #
-        if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
             Throw 'da git ignore is not correct in meanimage source'
         }
         #

@@ -170,7 +170,7 @@ class copyutils{
         #
         $filespec | ForEach-Object{
             $find = ('"'+$_+'"')
-            find $sor1 -name $find | xargs cp -t ($des1 + '/')
+            find $sor1 -name $find | xargs cp -r -t ($des1 + '/')
         }
         #
     }
