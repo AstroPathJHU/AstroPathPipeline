@@ -40,8 +40,8 @@ Class testpsmeanimage : testtools {
         $this.testprocessroot($inp, $true)
         $this.testcleanupbase($inp)
         $this.comparepymeanimageinput($inp)
-        $this.runpytaskpyerror($inp)
-        $this.testlogpyerror($inp, $true)
+        $this.runpytaskpyerror($inp, $true)
+        $this.testlogpyerror($inp)
         $this.runpytaskaperror($inp)
         $this.testlogaperror($inp)
         $this.runpytaskexpected($inp)
@@ -103,13 +103,19 @@ Class testpsmeanimage : testtools {
         $inp.sample.copy($sor, $des, '*')
         #
         $sor1 = $sor + '\.gitignore'
-        $inp.sample.copy($sor1, $des)
+        rename-item $sor1 'blah.gitignore'
+        $sor2 = $sor + '\blah.gitignore'
+        $des2 = $des + '\blah.gitignore'
         #
-        if (!(test-path ($sor + '\.gitignore'))){
+        $inp.sample.copy($sor2, $des)
+        rename-item $sor2, '.gitignore'
+        rename-item $des2, '.gitignore'
+        #
+        if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
             Throw 'da git ignore is not correct in meanimage source'
         }
         #
-        if (!(test-path ($des + '\.gitignore'))){
+        if (!(test-path -LiteralPath ($des + '\.gitignore'))){
             Throw 'da git ignore is not correct in meanimage desitination'
         }
         #
@@ -436,7 +442,14 @@ Class testpsmeanimage : testtools {
         #
         $inp.sample.copy($des, $sor, '*')
         $sor1 = $sor + '\.gitignore'
-        $inp.sample.copy($sor1, $des)
+        rename-item $sor1 'blah.gitignore'
+        $sor2 = $sor + '\blah.gitignore'
+        $des2 = $des + '\blah.gitignore'
+        #
+        $inp.sample.copy($sor2, $des)
+        rename-item $sor2, '.gitignore'
+        rename-item $des2, '.gitignore'
+        #
         $this.comparepaths($des, $sor, $inp)
         #
         if (!(test-path ($sor + '\.gitignore'))){

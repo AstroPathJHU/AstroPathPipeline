@@ -29,24 +29,24 @@ using module .\testtools.psm1
     launchtests(){
         #
         $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        #$this.testpswarpfitsconstruction($task)
+        $this.testpswarpfitsconstruction($task)
         $inp = batchwarpfits $task  
-        #$this.testprocessroot($inp)
-        #$this.testshreddatim($inp)
+        $this.testprocessroot($inp)
+        $this.testshreddatim($inp)
+        $this.testwarpfitsinput($inp)
         $this.removewarpoctetsdep($inp)
         if (!$this.dryrun){
-        #    $this.buildtestflatfield($inp)
-        #    $this.runpytaskpyerror($inp)
-        #    $this.testlogpyerror($inp)
-        #    $this.runpytaskaperror($inp)
-        #    $this.testlogaperror($inp)
+            $this.buildtestflatfield($inp)
+            $this.runpytaskpyerror($inp)
+            $this.testlogpyerror($inp)
+            $this.runpytaskaperror($inp)
+            $this.testlogaperror($inp)
             $this.setupsample($inp)
         }
         #
-        $this.testwarpfitsinput($inp)
         $this.runpywarpfitsexpected($inp)
         $this.testlogsexpected($inp)
-        <#
+        #
         if (!$this.dryrun){
             $inp.all = $true
             $this.removewarpoctetsdep($inp)
@@ -57,7 +57,6 @@ using module .\testtools.psm1
             $this.testlogpyerror($inp)
             $this.runpytaskaperror($inp)
             $this.testlogaperror($inp)
-            $this.setupsample($inp)
         }
         #
         $this.testwarpfitsinput($inp)
@@ -65,7 +64,7 @@ using module .\testtools.psm1
         $this.testlogsexpected($inp)
         #
         $this.cleanuptest($inp)
-        #>
+        #
         $inp.sample.finish(($this.module+'test'))
         Write-Host '.'
     }
@@ -163,7 +162,7 @@ using module .\testtools.psm1
         Write-Host "."
         Write-Host 'test for [batchwarpfits] expected input started' 
         #
-        $flatwpath = '\\' + $inp.sample.project_data.fwpath
+        $flatwpath = $this.processloc, 'astropath_ws', 'batchwarpfits', $this.batchid -join '\'
         $this.addwarpoctetsdep($inp)
         #
         if ($inp.all){
@@ -177,7 +176,12 @@ using module .\testtools.psm1
         }
         #
         Write-Host '    collecting [warfits] defined task'
-        $task = $this.getmoduletask($inp)
+        #
+        $inp.getmodulename()
+        $dpath = $inp.processvars[0]
+        $rpath = $inp.processvars[1]
+        #
+        $pythontask = $inp.getpythontask($dpath, $rpath)
         #
         Write-Host '    collecting [user] defined task'
         $userpythontask = ('warpingcohort',
@@ -191,7 +195,7 @@ using module .\testtools.psm1
         ) -join ' '
         #
         $this.removewarpoctetsdep($inp)
-        $this.compareinputs($userpythontask, $task[0])
+        $this.compareinputs($userpythontask, $pythontask)
         #
     }
     <# --------------------------------------------
@@ -230,6 +234,7 @@ using module .\testtools.psm1
         Write-Host 'test for [batchwarpfits] expected output slides started'
         Write-Host '    testing for all slides:' $inp.all
         #
+        $inp.sample.CreateNewDirs($inp.processloc)
         $this.addwarpoctetsdep($inp)
         $task = $this.getmoduletask($inp)
         #
@@ -241,7 +246,7 @@ using module .\testtools.psm1
             #
             $this.addoctetpatterns($inp)
             $addedargs = (
-                '--initial-pattern-octets','2',
+                ' --initial-pattern-octets','2',
                 '--principal-point-octets','2',
                 '--final-pattern-octets','2'
             ) -join ' '

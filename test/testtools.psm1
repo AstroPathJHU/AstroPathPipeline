@@ -24,6 +24,7 @@ Class testtools{
     [string]$pybatchflatfieldtest = 'melanoma_batches_3_5_6_7_8_9_v2'
     [string]$slidelist = '"L1_1|M148|M206|M21_1|M55_1|YZ71|ZW2|MA12"'
     [string]$slideid2 = 'M55_1'
+    [string]$testrpath
     #
     testtools(){
         $this.importmodule()
@@ -72,6 +73,7 @@ Class testtools{
         $batchreferncetestpath = $this.processloc, $this.slideid -join '\'
         $this.batchreferencefile = ($batchreferncetestpath + '\flatfield_TEST.bin')
         $this.basepath = $this.uncpath($this.basepath)
+        $this.testrpath = $this.processloc, $this.slideid, 'rpath' -join '\'
         #
     }
     <# --------------------------------------------
@@ -185,8 +187,8 @@ Class testtools{
     #
     [void]compareinputs($userpythontask, $pythontask){
         #
-        Write-Host 'user defined:' [regex]::escape($userpythontask) 'end'
-        Write-Host ('['+$this.class+'] defined: '+[regex]::escape($pythontask)+' end')
+        Write-Host 'user defined:' $userpythontask 'end'
+        Write-Host ('['+$this.class+'] defined: ' + $pythontask + ' end')
         #       
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
             Throw ('user defined and ['+$this.class+'] defined tasks do not match')
@@ -241,7 +243,7 @@ Class testtools{
         $inp.getmodulename()
         $taskname = $inp.pythonmodulename
         $dpath = $inp.sample.basepath
-        $rpath = '\\' + $inp.sample.project_data.fwpath
+        $rpath =  $this.testrpath
         #
         $inp.getslideidregex($this.class)
         #
@@ -251,7 +253,6 @@ Class testtools{
         return @($pythontask, $externallog)
         #
     }
-    #
     <# --------------------------------------------
     runpytaskpyerror
     check that the python task completes correctly 
@@ -276,7 +277,6 @@ Class testtools{
         Write-Host ('test python ['+$this.class+'] with error input finished')
         #
     }
-    #
     <# --------------------------------------------
     runpytaskpyerror
     check that the python task completes correctly 
@@ -393,7 +393,8 @@ Class testtools{
             $inp.getexternallogs($externallog)
         } catch {
             if (
-                $logoutput -match ' 250 are needed to run all three sets of fit groups!'
+                $logoutput -match ' 250 are needed to run all three sets of fit groups!' -or
+                $logoutput -match ' 0 fits for the initial pattern had reduced cost!'
             ){
                 Write-Host '    test run passed'
             } else{
@@ -424,7 +425,6 @@ Class testtools{
         Write-Host ('test python ['+$this.class+'] LOG in workflow finished')
         #
     }
-    #
     <# --------------------------------------------
     testlogsexpected
     check that the log is parsed correctly when
@@ -450,7 +450,6 @@ Class testtools{
         Write-Host ('test python ['+$this.class+'] LOG in workflow without apid finished')
         #
     }
-    #
     <# --------------------------------------------
     testlogsexpected
     check that the log is parsed correctly when
@@ -530,9 +529,10 @@ Class testtools{
         #
         Write-Host '    Found:' $im3files.Length ' im3 files'
         #
-        $newrpath = $this.processloc, $this.slideid, 'rpath', $this.slideid -join '\'
-        $inp.sample.CreateNewDirs($newrpath)
-        Write-Host '    New rpath:' $newrpath
+        $newtestrpath = $this.testrpath + '\' + $this.slideid
+        $inp.sample.CreateNewDirs($newtestrpath)
+        #
+        Write-Host '    New rpath:' $newtestrpath
         Write-Host '    Matching files'
         #
         foreach($file in $im3files){
@@ -541,24 +541,25 @@ Class testtools{
             #
             if (!$newrfile){
                 $newrfile = $rpath + '\' + $rfiles[0]
-                $inp.sample.copy($newrfile, $newrpath)
-                rename-item ($newrpath + '\' + $rfiles[0]) `
+                $inp.sample.copy($newrfile, $newtestrpath)
+                rename-item ($newtestrpath + '\' + $rfiles[0]) `
                     ($file -replace 'im3', 'Data.dat')
             }
         }
         #
         Write-Host '    copying regular raw files'
-        $inp.sample.copy($rpath, $newrpath, '*')
+        $inp.sample.copy($rpath, $newtestrpath, '*')
         #
     #
     }
     #
     [void]addoctetpatterns($inp){
         #
+        Write-Host '    adding octet patterns'
         if ($this.all){
-            $folder = $this.sample.warpprojectoctetsfolder()
+            $folder = $inp.sample.warpprojectoctetsfolder()
         } else {
-            $folder = $this.sample.warpbatchoctetsfolder()
+            $folder = $inp.sample.warpbatchoctetsfolder()
         }
         #
         $inp.sample.createnewdirs($folder)
@@ -571,7 +572,7 @@ Class testtools{
         $reffiles | foreach-object {
             $reffile = $this.basepath, 'reference',
             'warpingcohort', $_ -join '\'
-            $this.sample.copy($reffile, $folder)
+            $inp.sample.copy($reffile, $folder)
         }
         #
     }

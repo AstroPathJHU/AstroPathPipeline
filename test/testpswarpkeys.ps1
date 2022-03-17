@@ -118,7 +118,10 @@ using module .\testtools.psm1
         }
         #
         Write-Host '    collecting [warpkeys] defined task'
-        $pythontask = $this.getmoduletask($inp)
+        $dpath = $inp.sample.basepath
+        $rpath = '\\' + $inp.sample.project_data.fwpath
+        #
+        $pythontask = $inp.getpythontask($dpath, $rpath)
         #
         Write-Host '    collecting [user] defined task'
         $userpythontask = (('warpingcohort',
