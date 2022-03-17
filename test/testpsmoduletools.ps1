@@ -66,6 +66,15 @@
         #
         $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
         $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        #
+        Write-Host '   source:' $sor
+        Write-Host '   destination:' $des
+        #
+        $filespec = '*'
+        $des1 = $des -replace '\\', '/'
+        $files = $inp.sample.listfiles($sor, $filespec)
+        Write-Host '    files:' $files
+        Throw 'stop'
         <#
         Write-Host '   source:' $sor
         Write-Host '   destination:' $des
