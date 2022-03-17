@@ -636,7 +636,7 @@
         #
         foreach ($statustype in $statustypes){
             $savelog += $loglines |
-                    where-object {($_.Slideid -match $ID) -and 
+                    where-object {($_.Slideid -contains $ID) -and 
                         ($_.Message -match $statustype)} |
                     Select-Object -Last 1 
         }
