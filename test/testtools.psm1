@@ -28,9 +28,6 @@ Class testtools{
     #
     testtools(){
        $this.importmodule()
-       $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-       $inp = meanimage $task
-       $this.testcopys($inp)
     }
     #
     testtools($module){

@@ -20,7 +20,7 @@
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $inp = meanimage $task
         #
-        $this.testslidelist()
+        # $this.testslidelist()
         #
         $this.TestPaths($inp)
         Write-Host '.'
