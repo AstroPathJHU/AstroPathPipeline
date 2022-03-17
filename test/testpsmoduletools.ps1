@@ -77,8 +77,8 @@
         $des2 = $des + '\blah.gitignore'
         #
         $inp.sample.copy($sor2, $des)
-        rename-item $sor2, '.gitignore'
-        rename-item $des2, '.gitignore'
+        rename-item $sor2 '.gitignore'
+        rename-item $des2 '.gitignore'
         #
         if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
             Throw 'da git ignore is not correct in meanimage source'
