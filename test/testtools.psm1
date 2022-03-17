@@ -394,7 +394,8 @@ Class testtools{
         } catch {
             if (
                 $logoutput -match ' 250 are needed to run all three sets of fit groups!' -or
-                $logoutput -match ' 0 fits for the'){
+                $logoutput -match ' 0 fits for the'-or
+                $logoutput -match 'FINISH: warping'){
                 Write-Host '    test run passed'
             } else{
                 Write-Host '   '$logoutput

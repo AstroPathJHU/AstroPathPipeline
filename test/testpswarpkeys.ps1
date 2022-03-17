@@ -118,6 +118,11 @@ using module .\testtools.psm1
         }
         #
         Write-Host '    collecting [warpkeys] defined task'
+        #
+        $inp.getslideidregex($this.class)
+        #
+        $inp.updateprocessloc()
+        $inp.getmodulename()
         $dpath = $inp.sample.basepath
         $rpath = '\\' + $inp.sample.project_data.fwpath
         #
@@ -134,7 +139,7 @@ using module .\testtools.psm1
             '--use-apiddef --project', $this.project.PadLeft(2,'0')
         ) -join ' ') + $wd
         #
-        $this.compareinputs($userpythontask, $pythontask[0])
+        $this.compareinputs($userpythontask, $pythontask)
         #
         $this.removewarpoctetsdep($inp)
         #

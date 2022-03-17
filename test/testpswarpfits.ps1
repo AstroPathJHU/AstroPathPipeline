@@ -177,6 +177,7 @@ using module .\testtools.psm1
         #
         Write-Host '    collecting [warfits] defined task'
         #
+        $inp.getslideidregex($this.class)
         $inp.getmodulename()
         $dpath = $inp.processvars[0]
         $rpath = $inp.processvars[1]
