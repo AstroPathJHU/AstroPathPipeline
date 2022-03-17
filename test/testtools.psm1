@@ -27,7 +27,10 @@ Class testtools{
     [string]$testrpath
     #
     testtools(){
-        $this.importmodule()
+       $this.importmodule()
+       $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
+       $inp = meanimage $task
+       $this.testcopys($inp)
     }
     #
     testtools($module){
@@ -58,6 +61,52 @@ Class testtools{
         $this.importmodule()
     }
     #
+    testcopys($inp){
+        #
+        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        #
+        Write-Host '   source:' $sor
+        Write-Host '   destination:' $des
+        #
+        $filespec = '*'
+        $des1 = $des -replace '\\', '/'
+        $files = $inp.sample.listfiles($sor, $filespec)
+        Write-Host '    files:' $files.FullName
+        #
+        #
+        $sor1 = ($sor -replace '\\', '/') + '/'
+        $des1 = $des -replace '\\', '/'
+        mkdir -p $des1
+        #
+        if (!($filespec -match '\*')){
+            $filespec = $filespec | foreach-object {'*' + $_}
+        }
+        #
+        $filespec | ForEach-Object{
+            $find = ('"'+$_+'"')
+            find $sor1 -name $find | xargs cp -r -t ($des1 + '/')
+        }
+        <#
+        $files | foreach-Object -Parallel { 
+            $sor1 = $_.FullName -replace '\\', '/'
+            mkdir -p $using:des1
+            cp $sor1 $using:des1 -r
+        } -ThrottleLimit 20
+        #>
+        if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage source'
+        }
+        #
+        if (!(test-path -LiteralPath ($des + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage destination'
+        }
+        #
+        $this.comparepaths($sor, $des, $inp)
+        #
+        Throw 'stop'
+        #
+    }
     <# --------------------------------------------
     importmodule
     helper function to import the astropath module
@@ -612,3 +661,6 @@ Class testtools{
     }
     #
 }
+#
+[testtools]::new() | Out-Null
+exit 0

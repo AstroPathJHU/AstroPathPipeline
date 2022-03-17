@@ -78,10 +78,10 @@
         if (!(test-path -LiteralPath ($des + '\.gitignore'))){
             Throw 'da git ignore is not correct in meanimage destination'
         }
-        #>
+        #
         $this.comparepaths($sor, $des, $inp)
         $inp.sample.removedir($des)
-        #
+        #>
         Write-Host 'Passed Paths Testing'
         #
     }
