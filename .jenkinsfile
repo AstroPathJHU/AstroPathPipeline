@@ -19,7 +19,7 @@ pipeline {
   }
 
   stages {
-    stage('run tests') {
+    stage('fetching git repo') {
       agent {
         dockerfile {
           dir '.docker'

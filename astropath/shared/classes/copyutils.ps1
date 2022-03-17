@@ -173,9 +173,12 @@ class copyutils{
             find $sor1 -name $find | xargs cp -r -t ($des1 + '/')
         }
         #>
+        $des1 = $des -replace '\\', '/'
         $files = $this.listfiles($sor, $filespec)
         $files | foreach-Object -Parallel { 
-            $this.lxcopy($_.FullName, $des)
+            $sor1 = $_.FullName -replace '\\', '/'
+            mkdir -p $using:des1
+            cp $sor1 $using:des1 -r
         } -ThrottleLimit 20
         #
     }
