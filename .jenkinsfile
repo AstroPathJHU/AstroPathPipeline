@@ -30,7 +30,7 @@ pipeline {
       stages{
         stage('pip install') {
           steps {
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testtools.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testtools.psm1'
             sh 'pip install .[all]'
           }
         }
