@@ -153,10 +153,11 @@ class copyutils{
      on linux
      ------------------------------------------
      Input: 
-        -sor: source file path (one file)
+        -sor: source folder path
         -des: destination folder path
+        -filespec: file specifier 
      ------------------------------------------
-     Usage: lxcopy(sor, des)
+     Usage: lxcopy(sor, des, filespec)
     ----------------------------------------- #>
     [void]lxcopy($sor, $des, $filespec){
         <#
