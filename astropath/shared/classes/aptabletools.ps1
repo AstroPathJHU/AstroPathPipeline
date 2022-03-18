@@ -6,6 +6,7 @@
     [PSCustomObject]$corrmodels_data
     [PSCustomObject]$ffmodels_data
     [PSCustomObject]$slide_data
+    [PSCustomObject]$worker_data
     #
     importaptables($mpath){
         $this.importcohortsinfo($mpath)
@@ -14,6 +15,7 @@
         $this.ImportFlatfieldModels($mpath)
         $this.ImportCorrectionModels($mpath)
         $this.ImportMICOMP($mpath)
+        $this.Importworkerlist($mpath)
     }
     #
     importaptables($mpath, $forceupdate){
@@ -23,6 +25,7 @@
         $this.ImportFlatfieldModels($mpath, $forceupdate)
         $this.ImportCorrectionModels($mpath, $forceupdate)
         $this.ImportMICOMP($mpath, $forceupdate)
+        $this.Importworkerlist($mpath, $forceupdate)
     }
     <# -----------------------------------------
      ImportCohortsInfo
@@ -293,8 +296,34 @@
         return $this.micomp_data
         #
     }
-
-
+    <# -----------------------------------------
+     Importlogfile
+     import and return a log file object
+     ------------------------------------------
+     Input: 
+        -fpath: full path to the log
+     ------------------------------------------
+     Usage: Importlogfile($fpath)
+    ----------------------------------------- #>
+    #
+    [PSCustomObject]Importworkerlist([string] $mpath, $forceupdate){
+        #
+        $worker_csv_file = $mpath + '\AstroPathHPFWLocs.csv'
+        $this.worker_data = $this.opencsvfile($worker_csv_file)
+        #
+        return $this.worker_data
+        #
+    }
+    #
+    [PSCustomObject]Importworkerlist([string] $mpath){
+        #
+        if (!$this.worker_data){
+            $this.Importworkerlist($mpath, $true) | Out-NULL
+        }
+        #
+        return $this.worker_data
+        #
+    }
     <# -----------------------------------------
      Importlogfile
      import and return a log file object

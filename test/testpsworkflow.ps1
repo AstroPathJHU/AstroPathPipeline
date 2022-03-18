@@ -1,4 +1,5 @@
   
+using module .\testtools.psm1
 <# -------------------------------------------
  testpsdistpatcher
  created by: Benjamin Green
@@ -8,18 +9,11 @@
  test if the dispatcher works
  -------------------------------------------#>
 #
-Class testpsworkflow {
+Class testpsworkflow : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
+    [string]$class = 'workflow'
     #
-    testpsworkflow(){
-        #
-        # Setup Testing
-        #
-        Write-Host '---------------------test ps [workflow]---------------------'
-        #
-        $this.importmodule()
+    testpsworkflow(): base(){
         #
         $password = ConvertTo-SecureString "MyPlainTextPassword" -AsPlainText -Force
         $cred = New-Object System.Management.Automation.PSCredential ("username", $password)  
@@ -29,20 +23,16 @@ Class testpsworkflow {
         $inp = astropathworkflow -Credential $cred -mpath $this.mpath -test
         $inp.workerloglocation = $PSScriptRoot + '\data\workflowlogs\'
         $inp.createdirs($inp.workerloglocation)
-       # $this.testdefworkerlist($inp)
+        $this.testdefworkerlist($inp)
+        $inp.removedir($inp.workerloglocation)
+        Write-Host '.'
+        Throw 'stop'
         #
-    }
-    #
-    [void]importmodule(){
-        Write-Host 'importing module ....'
-        $module = $PSScriptRoot + '/../astropath'
-        Import-Module $module 
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
     }
     #
     [void]testconstructors([PSCredential]$cred){
         #
+        Write-Host '.'
         Write-Host '[astropathworkflow] construction tests started'
        <#
         try {
@@ -81,9 +71,10 @@ Class testpsworkflow {
         #
         Write-Host "    Defining worker list"
         #
-        $inp.defworkerlist()
+        $inp.importworkerlist($inp.mpath)
+        $inp.CheckOrphan()
         #
-        if ($inp.workers.Status -match 'RUNNING'){
+        if ($inp.worker_data.Status -match 'RUNNING'){
             Throw 'Some workers tagged as running when they are not'
         }
         #

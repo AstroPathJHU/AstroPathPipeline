@@ -92,7 +92,6 @@ class queue : vminformqueue{
         $this.cleanedtasks = $slidearray
         #
     }
-
     <# -----------------------------------------
      defNotCompletedSlides
      For each slide, check the current module 

@@ -4,7 +4,6 @@
 class astropathwftools : sampledb {
     #
     [Pscredential]$login
-    [PSCustomObject]$workers
     [string]$workerloglocation = '\\' + $env:ComputerName +
         '\c$\users\public\astropath\'   
     #
@@ -55,12 +54,11 @@ class astropathwftools : sampledb {
         #
         Write-Host " Starting-Task-Distribution" -ForegroundColor Yellow
         Write-Host " Finding Workers" -ForegroundColor Yellow
-        $this.workers = $this.OpenCSVFile($this.mpath+'\AstroPathHPFWLocs.csv')
-        $this.workers | Add-Member -NotePropertyName 'Status' -NotePropertyValue 'IDLE'
+        $this.importworkerlist($this.mpath)
         $this.CheckOrphan()
         #
         write-host " Current Workers for Processing:" -ForegroundColor Yellow
-        write-host " " ($this.workers | 
+        write-host " " ($this.worker_data | 
             Format-Table  -AutoSize @{Name="module";Expression = { $_.module }; Alignment="left" },
                             @{Name="server";Expression = { $_.server }; Alignment="left" },
                             @{Name="location";Expression = { $_.location }; Alignment="left" },
@@ -83,9 +81,9 @@ class astropathwftools : sampledb {
     ----------------------------------------- #>
     [void]CheckOrphan(){
         #
-        foreach ($worker in @(0..($this.workers.Length - 1))){
+        foreach ($worker in @(0..($this.worker_data.Length - 1))){
             #
-            $currentjob = $this.workers[$worker]
+            $currentjob = $this.worker_data[$worker]
             $jobname = $this.defjobname($currentjob)
             $workertasklog = $this.workertasklog($jobname)
             $workertaskfile = $this.workertaskfile($jobname)
@@ -97,6 +95,9 @@ class astropathwftools : sampledb {
                 Write-Host ('  Orphaned job found: ' + $workertasklog) -ForegroundColor Yellow
                 #
                 try {
+                    #
+                    # check if I can access and remove the worker task file
+                    #
                     $fileStream = $fileInfo.Open([System.IO.FileMode]::Open)
                     $fileStream.Dispose()
                     $this.removefile($workertasklog)
@@ -105,13 +106,13 @@ class astropathwftools : sampledb {
                     Write-Host ('  Orphaned job completed and cleared: ' + $workertasklog) `
                         -ForegroundColor Yellow
                 }catch {
+                    #
                     $this.StartOrphanMonitor($jobname)
-                    $this.workers[$worker].Status = 'RUNNING'
-                    Write-Host ('  Orphaned job not completed: ' + $workertasklog + ' ... created log watchdog') `
+                    $this.worker_data[$worker].Status = 'RUNNING'
+                    Write-Host ('  Orphaned job not completed: ' + $workertasklog + ' ... created worker log watchdog') `
                         -ForegroundColor Yellow
                 }
             }
-            $this.work
         }
         #
     }
@@ -331,5 +332,51 @@ class astropathwftools : sampledb {
         }
         return $currentworkerip
         #
+    }
+    <# -----------------------------------------
+     CheckTaskLog
+     Check the task specific logs for start 
+     messages with no stops
+     ------------------------------------------
+     Usage: $this.CheckTaskLog()
+    ----------------------------------------- #>
+    [void]CheckTaskLog($jobname, $level){
+        #
+        # open the workertaskfile
+        #
+        $task = $this.getcontent($this.workertaskfile($jobname))
+        #
+        # parse out necessary information
+        #
+        $ID = ($task -split '-stringin:')[2]
+        $ID = ($ID -split '} 2')[0]
+        $ID = $ID -split '-'
+        #
+        # create a logging object and check the
+        # log for a finishing message
+        #
+        $cmodule = ($jobname -split '-')[2]
+        #
+        try{
+            if ($cmodule -match 'batch'){
+                $log = [mylogger]::new($this.mpath, $cmodule, $ID[1], ($ID[0] -replace '"', ''))
+            } else {
+                $log = [mylogger]::new($this.mpath, $cmodule, $ID[1])
+            }
+        } catch {
+            Write-Host $_.Exception.Message
+            Write-Host 'ID:' $ID[1]
+            Write-Host 'Project:' $ID[0]
+            return
+        }
+        #
+        if(!($this.checklog($log, $false))){
+            if ($level -match 'ERROR'){
+                 $log.error('Task did not seem to complete correctly, check results')
+            } elseif ($level -match 'WARNING'){
+                 $log.warning('Task did not seem to complete correctly, check results')
+            }
+            $log.finish($cmodule)
+        }
     }
 }
