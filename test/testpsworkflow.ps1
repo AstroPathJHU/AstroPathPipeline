@@ -15,8 +15,9 @@ Class testpsworkflow : testtools {
     #
     testpsworkflow(): base(){
         #
-        $password = ConvertTo-SecureString "MyPlainTextPassword" -AsPlainText -Force
-        $cred = New-Object System.Management.Automation.PSCredential ("username", $password)  
+        #$password = ConvertTo-SecureString "MyPlainTextPassword" -AsPlainText -Force
+        #$cred = New-Object System.Management.Automation.PSCredential ("username", $password)  
+        $cred = [System.Net.CredentialCache]::DefaultNetworkCredentials
         #
         $this.testconstructors($cred)
         #  
@@ -120,7 +121,7 @@ Class testpsworkflow : testtools {
     [void]StartTestJob($inp){
         Write-Host '    Starting test job'
         #
-        $currentworker = $inp.workers[0]
+        $currentworker = $inp.worker_data[0]
         $jobname = $inp.defjobname($currentworker)
         #
          $sb = {
