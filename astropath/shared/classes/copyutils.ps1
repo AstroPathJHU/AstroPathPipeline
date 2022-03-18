@@ -195,6 +195,14 @@ class copyutils{
      Usage: copy(sor, filespec)
     ----------------------------------------- #>
     [system.object]listfiles([string]$sor, [array]$filespec){
+        if ($this.isWindows()){
+            return $this.listfileswin($sor, $filespec)
+        } else {
+            return $this.listfileslin($sor, $filespec)
+        }
+    }
+    #
+    [system.object]listfileswin([string]$sor, [array]$filespec){
         $sor = $sor + '\*'
         if ($filespec -match '\*'){
             $files = get-ChildItem $sor -Recurse -EA SilentlyContinue

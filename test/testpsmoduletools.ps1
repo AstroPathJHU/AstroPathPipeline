@@ -77,12 +77,14 @@
 
         $find = ('"'+$filespec+'"')
         $files = find $sor1 -name $find
+        #$files = $files[0..$files.count]
         Write-Host '    files:' $files
         mkdir -p $des1
-        cp $files -r -t ($des1 + '/')
+        cp $files -r ($des1 + '/')
         #
         Write-host '.'
-        $files = find $des1 -name $find
+        #$files = find $des1 -name $find
+        $files = $files[0..$files.count]
         Write-Host '    files:' $files
         Throw 'stop'
         <#
