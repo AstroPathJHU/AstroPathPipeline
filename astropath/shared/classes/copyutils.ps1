@@ -155,7 +155,7 @@ class copyutils{
      Input: 
         -sor: source folder path
         -des: destination folder path
-        -filespec: file specifier 
+        -filespec: file specifier
      ------------------------------------------
      Usage: lxcopy(sor, des, filespec)
     ----------------------------------------- #>
@@ -175,11 +175,17 @@ class copyutils{
         }
         #>
         $des1 = $des -replace '\\', '/'
+        $sor1 = $sor -replace '\\', '/'
+        #
+        mkdir -p $des1
+        #
         $files = $this.listfiles($sor, $filespec)
+        $files = $files -replace '\\', '/'
+        #
+        $gitignore = $sor -replace '\\', '/'
+        #
         $files | foreach-Object -Parallel { 
-            $sor1 = $_.FullName -replace '\\', '/'
-            mkdir -p $using:des1
-            cp $sor1 $using:des1 -r
+            cp $_ $using:des1 -r
         } -ThrottleLimit 20
         #
     }
@@ -195,14 +201,6 @@ class copyutils{
      Usage: copy(sor, filespec)
     ----------------------------------------- #>
     [system.object]listfiles([string]$sor, [array]$filespec){
-        if ($this.isWindows()){
-            return $this.listfileswin($sor, $filespec)
-        } else {
-            return $this.listfileslin($sor, $filespec)
-        }
-    }
-    #
-    [system.object]listfileswin([string]$sor, [array]$filespec){
         $sor = $sor + '\*'
         if ($filespec -match '\*'){
             $files = get-ChildItem $sor -Recurse -EA SilentlyContinue

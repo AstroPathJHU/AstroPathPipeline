@@ -76,7 +76,7 @@
         #$files = $inp.sample.listfiles($sor, $filespec)
 
         $find = ('"'+$filespec+'"')
-        $files = get-ChildItem ($sor1 + '/*') -Recurse
+        $files = get-ChildItem ($sor1 + '\*') -Recurse
         #$files = $files[0..$files.count]
         Write-Host '    files:' $files
         mkdir -p $des1
