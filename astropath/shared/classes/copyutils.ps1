@@ -180,13 +180,15 @@ class copyutils{
         mkdir -p $des1
         #
         $files = $this.listfiles($sor, $filespec)
-        $files = $files -replace '\\', '/'
-        #
-        $gitignore = $sor -replace '\\', '/'
         #
         $files | foreach-Object -Parallel { 
             cp $_ $using:des1 -r
         } -ThrottleLimit 20
+        #
+        $gitignore = $sor1 + '/.gitignore'
+        if (test-path -LiteralPath $gitignore){
+            cp $gitignore $des1
+        }
         #
     }
     <# -----------------------------------------
