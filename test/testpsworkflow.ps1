@@ -70,8 +70,10 @@ Class testpsworkflow : testtools {
         Write-Host 'Starting worker list tests'
         #
         Write-Host "    Defining worker list"
+        Write-Host '    mpath:' $inp.mpath
         #
         $inp.importworkerlist($inp.mpath)
+        Write-Host ($inp.worker_data | Out-String)
         $inp.printworkerlist()
         $inp.CheckOrphan()
         #

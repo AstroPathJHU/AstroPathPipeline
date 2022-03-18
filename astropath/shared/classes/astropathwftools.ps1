@@ -60,7 +60,7 @@ class astropathwftools : sampledb {
         $this.printworkerlist()
         #
     }
-        <# -----------------------------------------
+    <# -----------------------------------------
     defworkerlist
     Builds the worker list for all modules
      from the AstroPathHPFsWlocs file
