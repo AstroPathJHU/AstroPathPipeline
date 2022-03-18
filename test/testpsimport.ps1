@@ -50,5 +50,10 @@
 #
 # launch test and exit if no error found
 #
-[testpsimport]::new() | Out-Null
-exit $LASTEXITCODE
+try {
+    [testpsimport]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
+exit 0
+
