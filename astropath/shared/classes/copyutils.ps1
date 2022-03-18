@@ -347,8 +347,11 @@ class copyutils{
                 [Byte[]] $computedHash = $hasher.ComputeHash($stream)
                 [string] $hash = [BitConverter]::ToString($computedHash) -replace '-',''
                 $cnt = 0
-                while(!($hcopy.TryAdd($_.FullName, $hash)) -and $cnt -lt 4){
+                while(!($hcopy.TryAdd($_.FullName, $hash))){
                     $cnt += 1
+                    if ($cnt -gt 4){
+                        break
+                    }
                 }
             } catch {
                 Throw $_.Exception.Message

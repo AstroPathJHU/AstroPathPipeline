@@ -87,11 +87,18 @@ Class testpsimagecorrection {
         Write-Host 'Recieved Correct FlatwIM3 Folder'
         #
         Write-Host 'Flatw Folder: ' $inp.sample.flatwfolder()
+        #
+        $inp.sample.removedir($this.processloc)
+        #
         Write-Host 'Passed Cleanup Test'
     }
 }
 #
 # launch test and exit if no error found
 #
-$test = [testpsimagecorrection]::new()
-exit 0
+try { 
+    [testpsimagecorrection]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
+exit 0v
