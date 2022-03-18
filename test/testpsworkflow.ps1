@@ -75,6 +75,7 @@ Class testpsworkflow : testtools {
         $inp.importworkerlist($inp.mpath)
         Write-Host ($inp.worker_data | Format-table | Out-String)
         $inp.printworkerlist()
+        Write-Host '    check for running tasks'
         $inp.CheckOrphan()
         #
         if ($inp.worker_data.Status -match 'RUNNING'){
@@ -89,14 +90,14 @@ Class testpsworkflow : testtools {
         #
         $inp.CheckOrphan()
         #
-        $currentworker = $inp.workers[0]
+        $currentworker = $inp.worker_data[0]
         $jobname = $inp.defjobname($currentworker)
         #
         $j = get-job -Name $jobname
         #
         Write-Host '    job name:' $jobname
         #
-        if (!($j) -OR (!($inp.workers.Status -match 'RUNNING'))){
+        if (!($j) -OR (!($inp.worker_data.Status -match 'RUNNING'))){
             Throw 'orphaned task monitor failed to launch'
         }
         #

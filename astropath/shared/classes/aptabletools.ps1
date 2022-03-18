@@ -310,7 +310,8 @@
         #
         $worker_csv_file = $mpath + '\AstroPathHPFWLocs.csv'
         $this.worker_data = $this.opencsvfileconfirm($worker_csv_file)
-        $this.worker_data = $this.worker_data | Add-Member -NotePropertyName 'Status' -NotePropertyValue 'IDLE'
+        $this.worker_data |
+            Add-Member -NotePropertyName 'Status' -NotePropertyValue 'IDLE'
         #
         return $this.worker_data
         #
