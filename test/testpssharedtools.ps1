@@ -297,7 +297,6 @@
         }
         #
         if (!(test-path -LiteralPath ($des1 + '/.gitignore'))){
-            Write-Host '   ' ($des1 + '/.gitignore')
             Throw 'da git ignore is not correct in meanimage destination'
         }
         #
@@ -306,7 +305,16 @@
         #
         Write-Host '    test with workflow tools'
         #
+        $files = $tools.listfiles($sor1, $filespec)
+        #
+        Write-Host '    source files:' $files
+        Write-Host '    copying'
+        #
         $tools.copy($sor, $des)
+        Write-host '.'
+        #
+        $files = find $des1 -name ('"*"')
+        Write-Host '    destination files:' $files
         #
         if (!(test-path -LiteralPath ($sor1 + '/.gitignore'))){
             Throw 'da git ignore is not correct in meanimage source'
