@@ -73,37 +73,49 @@
         $filespec = '*'
         $des1 = $des -replace '\\', '/'
         $sor1 = ($sor -replace '\\', '/') 
-        #$files = $inp.sample.listfiles($sor, $filespec)
-
-        $find = ('"'+$filespec+'"')
-        $files = get-ChildItem ($sor1 + '\*') -Recurse
-        #$files = $files[0..$files.count]
-        Write-Host '    files:' $files
+        #
+        $files = $inp.sample.listfiles($sor1, $filespec)
+        #
+        Write-Host '    source files:' $files
+        Write-Host '    copying'
+        #
         mkdir -p $des1
-        cp $files -r ($des1 + '/')
+        #
+        cp $files -r $des1
         cp ($sor1 + '/.gitignore') $des1
         #
         Write-host '.'
-        $files = find $des1 -name $find
-        #$files = $files[0..$files.count]
-        Write-Host '    files:' $files
-        Throw 'stop'
-        <#
-        Write-Host '   source:' $sor
-        Write-Host '   destination:' $des
-        $inp.sample.copy($sor, $des, '*')
+        $files = $inp.sample.listfiles($des1, $filespec)
+        Write-Host '    destination files:' $files
         #
-        if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
+        if (!(test-path -LiteralPath ($sor1 + '/.gitignore'))){
             Throw 'da git ignore is not correct in meanimage source'
         }
         #
-        if (!(test-path -LiteralPath ($des + '\.gitignore'))){
+        if (!(test-path -LiteralPath ($des1 + '/.gitignore'))){
             Throw 'da git ignore is not correct in meanimage destination'
         }
         #
         $this.comparepaths($sor, $des, $inp)
         $inp.sample.removedir($des)
-        #>
+        #
+        Write-Host '    test with workflow tools'
+        #
+        $this.sample.copy($sor, $des, $inp)
+        #
+        if (!(test-path -LiteralPath ($sor1 + '/.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage source'
+        }
+        #
+        if (!(test-path -LiteralPath ($des1 + '/.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage destination'
+        }
+        #
+        $this.comparepaths($sor, $des, $inp)
+        $inp.sample.removedir($des)
+        #
+        Throw 'stop'
+        #
         Write-Host 'Passed Paths Testing'
         #
     }
