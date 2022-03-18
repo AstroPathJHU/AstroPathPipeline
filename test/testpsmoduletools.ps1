@@ -83,8 +83,8 @@
         cp $files -r ($des1 + '/')
         #
         Write-host '.'
-        #$files = find $des1 -name $find
-        $files = $files[0..$files.count]
+        $files = find $des1 -name $find
+        #$files = $files[0..$files.count]
         Write-Host '    files:' $files
         Throw 'stop'
         <#
