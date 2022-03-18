@@ -73,7 +73,7 @@
         $filespec = '*'
         $des1 = $des -replace '\\', '/'
         $sor1 = ($sor -replace '\\', '/')
-        $files = $inp.sample.listfiles($sor, $filespec)
+        #$files = $inp.sample.listfiles($sor, $filespec)
 
         $find = ('"'+$filespec+'"')
         $files = find $sor1 -name $find
