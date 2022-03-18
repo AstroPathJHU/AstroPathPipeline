@@ -266,22 +266,27 @@ class MeanImage(ImageStack) :
             if self.mask_stack is not None :
                 write_image_to_file(self.mask_stack,f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}')
         self.logger.debug('Making plots of image layers and collecting them in the summary pdf....')
-        #save .pngs of the mean image/mask stack etc. layers
-        plotdir_path = workingdirpath / CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
-        plot_image_layers(self.__mean_image,
-                          f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
-        plot_image_layers(self.__std_err_of_mean_image,
-                          f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
-        if self.mask_stack is not None :
-            plot_image_layers(self.mask_stack,
-                              f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
-        #collect the plots that were just saved in a .pdf file from a LatexSummary
-        latex_summary = MeanImageLatexSummary(slide_id,plotdir_path)
-        latex_summary.build_tex_file()
-        check = latex_summary.compile()
-        if check!=0 :
-            warnmsg = 'WARNING: failed while compiling meanimage summary LaTeX file into a PDF. '
-            warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+        try :
+            #save .pngs of the mean image/mask stack etc. layers
+            plotdir_path = workingdirpath / CONST.MEANIMAGE_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
+            plot_image_layers(self.__mean_image,
+                            f'{slide_id}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
+            plot_image_layers(self.__std_err_of_mean_image,
+                            f'{slide_id}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
+            if self.mask_stack is not None :
+                plot_image_layers(self.mask_stack,
+                                f'{slide_id}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}'.rstrip('.bin'),plotdir_path)
+            #collect the plots that were just saved in a .pdf file from a LatexSummary
+            latex_summary = MeanImageLatexSummary(slide_id,plotdir_path)
+            latex_summary.build_tex_file()
+            check = latex_summary.compile()
+            if check!=0 :
+                warnmsg = 'WARNING: failed while compiling meanimage summary LaTeX file into a PDF. '
+                warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
+                self.logger.warning(warnmsg)
+        except Exception as e :
+            warnmsg = 'WARNING: failed to write out some optional plots (scripts will need to be run separately). '
+            warnmsg+= f'Exception: {e}'
             self.logger.warning(warnmsg)
 
     #################### PROPERTIES ####################
