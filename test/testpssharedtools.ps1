@@ -278,12 +278,12 @@
         $des1 = $des -replace '\\', '/'
         $sor1 = ($sor -replace '\\', '/') 
         #
+        mkdir -p $des1
+        #
         $files = $tools.listfiles($sor1, $filespec)
         #
         Write-Host '    source files:' $files
         Write-Host '    copying'
-        #
-        mkdir -p $des1
         #
         cp $files -r $des1
         cp ($sor1 + '/.gitignore') $des1
@@ -310,7 +310,7 @@
         Write-Host '    source files:' $files
         Write-Host '    copying'
         #
-        $tools.copy($sor, $des)
+        $tools.copy($sor, $des, $filespec)
         Write-host '.'
         #
         $files = find $des1 -name ('"*"')
