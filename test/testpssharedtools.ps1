@@ -336,6 +336,9 @@
 #
 # launch test and exit if no error found
 #
-[testpssharedtools]::new() | Out-Null
-Write-Host $LASTEXITCODE
-exit $LASTEXITCODE
+try {
+    [testpssharedtools]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
+exit 0
