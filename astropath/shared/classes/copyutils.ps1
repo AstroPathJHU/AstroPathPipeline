@@ -179,10 +179,10 @@ class copyutils{
         #
         mkdir -p $des1
         #
-        $files = $this.listfiles($sor, $filespec)
+        $files = $this.listfiles($sor1, $filespec)
         #
         $files | foreach-Object -Parallel { 
-            cp $_ $using:des1 -r
+            cp $_ -r $using:des1 
         } -ThrottleLimit 20
         #
         $gitignore = $sor1 + '/.gitignore'

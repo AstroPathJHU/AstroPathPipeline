@@ -320,6 +320,7 @@
             Throw 'da git ignore is not correct in meanimage source'
         }
         #
+        Write-Host '    ' ($des1 + '/.gitignore')
         if (!(test-path -LiteralPath ($des1 + '/.gitignore'))){
             Throw 'da git ignore is not correct in meanimage destination'
         }
