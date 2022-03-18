@@ -152,5 +152,10 @@
 #
 # launch test and exit if no error found
 #
-[testpsmoduletools]::new() | Out-Null
+try {
+    [testpsmoduletools]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
+

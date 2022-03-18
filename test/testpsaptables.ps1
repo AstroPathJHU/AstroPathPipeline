@@ -14,7 +14,6 @@
     #
     testpsaptables() : base(){
         #
-        throw 'stop'
         $this.testmpath()
         $tools = sharedtools
         $this.testapidfiles() | Out-Null
@@ -189,5 +188,10 @@
 #
 # launch test and exit if no error found
 #
-[testpsaptables]::new() | Out-Null
+try {
+    [testpsaptables]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
+

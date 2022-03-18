@@ -316,7 +316,11 @@ using module .\testtools.psm1
     #
  }
  #
- [testpswarpfits]::new() | Out-NUll
- exit 0
+ try {
+    [testpswarpfits]::new() | Out-NUll
+} catch {
+    Throw $_.Exception.Message
+}
+exit 0
 
 

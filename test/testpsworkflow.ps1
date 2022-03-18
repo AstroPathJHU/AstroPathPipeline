@@ -167,8 +167,9 @@ Class testpsworkflow {
 #
 # launch test and exit if no error found
 #
-[testpsworkflow]::new()
+try {
+    [testpsworkflow]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
-
-#Remove temporary processing directory
-#$inp.sample.removedir($processing)

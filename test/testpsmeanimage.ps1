@@ -447,5 +447,9 @@ Class testpsmeanimage : testtools {
 #
 # launch test and exit if no error found
 #
-[testpsmeanimage]::new() | Out-Null
+try {
+    [testpsmeanimage]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
