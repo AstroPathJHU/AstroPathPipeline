@@ -337,4 +337,5 @@
 # launch test and exit if no error found
 #
 [testpssharedtools]::new() | Out-Null
+Write-Host $LASTEXITCODE
 exit $LASTEXITCODE
