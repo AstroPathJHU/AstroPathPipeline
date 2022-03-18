@@ -297,6 +297,7 @@
         }
         #
         if (!(test-path -LiteralPath ($des1 + '/.gitignore'))){
+            Write-Host '   ' ($des1 + '/.gitignore')
             Throw 'da git ignore is not correct in meanimage destination'
         }
         #
