@@ -389,7 +389,7 @@ class copyutils{
     [hashtable]FileHasher($file, [int]$v, $singlefile){
         #
         $filehash = @{}
-        if (test-path $file){
+        if (test-path -LiteralPath $file){
             $filehash1 = Get-FileHash $file -Algorithm MD5
             $filehash.($file) = $filehash1.Hash
         }  

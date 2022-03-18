@@ -439,6 +439,12 @@ Class testpsmeanimage : testtools {
             Throw 'da git ignore is not correct'
         }
         #
+        if (test-path ($this.mpath + '\warping')){
+            Write-Host '    delete the testing_warpoctets folder'
+            Write-Host '    path expected to be removed:' ($this.mpath + '\warping')
+            $inp.sample.removedir(($this.mpath + '\warping'))
+        }
+        #
         $inp.sample.removedir($this.processloc)
         #
         Write-Host 'test cleanup method finished'

@@ -307,10 +307,17 @@ using module .\testtools.psm1
         ) -join ''
         $inp.sample.removefile($p2)
         #
-        $inp.sample.removedir($this.basepath + '\warping')
+        Write-Host '    delete the testing_warpoctets folder'
+        Write-Host '    path expected to be removed:' ($this.basepath + '\warping')
+        $inp.sample.removedir(($this.basepath + '\warping'))
+        #
+        Write-Host '    delete the testing_warpoctets folder'
+        Write-Host '    path expected to be removed:' ($this.mpath + '\warping')
+        $inp.sample.removedir(($this.mpath + '\warping'))
         #
         Write-Host '    delete the testing_warpoctets folder'
         Write-Host '    path expected to be removed:' $this.processloc
+        $inp.sample.removedir($this.processloc)
         #
     }
     #

@@ -39,6 +39,8 @@ for i1 = 1:length(batches)
         continue
     end
     %
+    fprintf(['Opened batch ', num2str(i1), ' Batch file \n'])
+    %
     if width(b) == 9
         bnames = b.Properties.VariableNames;
         b = [array2table([repmat(project, height(b), 1), repmat(cohort, height(b), 1)]), b];

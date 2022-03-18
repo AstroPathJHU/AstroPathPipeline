@@ -522,39 +522,39 @@ class queue : vminformqueue{
         return 3
         #
     }
-<# -----------------------------------------
- checkbatchwarpkeys
- check that the batch warp keys module has completed
- and all products exist for the batch
-------------------------------------------
- Input: 
-    - log[mylogger]: astropath log object
-    - dependency[switch]: true or false
- ------------------------------------------
- Output: returns 1 if dependency fails, 
- returns 2 if current module is still running,
- returns 3 if current module is complete
- ------------------------------------------
- Usage: $this.checkmeanimage(log, dependency)
------------------------------------------ #>
-[int]checkbatchwarpfits([mylogger]$log, $dependency){
-    #
-    if (!($this.checkbatchwarpkeys($log, $true) -eq 3)){
-        return 1
+    <# -----------------------------------------
+    checkbatchwarpfits
+    check that the batch warp keys module has completed
+    and all products exist for the batch
+    ------------------------------------------
+    Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+    ------------------------------------------
+    Output: returns 1 if dependency fails, 
+    returns 2 if current module is still running,
+    returns 3 if current module is complete
+    ------------------------------------------
+    Usage: $this.checkmeanimage(log, dependency)
+    ----------------------------------------- #>
+    [int]checkbatchwarpfits([mylogger]$log, $dependency){
+        #
+        if (!($this.checkbatchwarpkeys($log, $true) -eq 3)){
+            return 1
+        }
+        #
+        $log = $this.updatelogger($log, 'batchwarpfits')
+        if ($this.checklog($log, $true)){
+            return 2
+        }
+        <#
+        if (!$log.testbatchwarpfits()){
+            return 2
+        }
+        #>
+        return 3
+        #
     }
-    #
-    $log = $this.updatelogger($log, 'batchwarpfits')
-    if ($this.checklog($log, $true)){
-        return 2
-    }
-    <#
-    if (!$log.testbatchwarpfits()){
-        return 2
-    }
-    #>
-    return 3
-    #
-}
     <# -----------------------------------------
      checkimagecorrection
      check that the imagecorrection module has completed
