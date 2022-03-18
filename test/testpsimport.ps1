@@ -51,4 +51,4 @@
 # launch test and exit if no error found
 #
 [testpsimport]::new() | Out-Null
-exit 0
+exit $LASTEXITCODE
