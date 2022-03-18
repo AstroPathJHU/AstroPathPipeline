@@ -72,6 +72,7 @@ Class testpsworkflow : testtools {
         Write-Host "    Defining worker list"
         #
         $inp.importworkerlist($inp.mpath)
+        $inp.printworkerlist()
         $inp.CheckOrphan()
         #
         if ($inp.worker_data.Status -match 'RUNNING'){

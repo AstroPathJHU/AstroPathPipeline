@@ -57,6 +57,17 @@ class astropathwftools : sampledb {
         $this.importworkerlist($this.mpath)
         $this.CheckOrphan()
         #
+        $this.printworkerlist()
+        #
+    }
+        <# -----------------------------------------
+    defworkerlist
+    Builds the worker list for all modules
+     from the AstroPathHPFsWlocs file
+    ------------------------------------------
+    Usage: $this.defworkerlist()
+   ----------------------------------------- #>   
+   [void]printworkerlist(){
         write-host " Current Workers for Processing:" -ForegroundColor Yellow
         write-host " " ($this.worker_data | 
             Format-Table  -AutoSize @{Name="module";Expression = { $_.module }; Alignment="left" },
@@ -65,8 +76,7 @@ class astropathwftools : sampledb {
                             @{Name="status";Expression = { $_.Status }; Alignment="left" } |
             Out-String).Trim() -ForegroundColor Yellow
         Write-Host "  ." -ForegroundColor Yellow    
-        #
-    }
+   }
     <# -----------------------------------------
     CheckOrphan
     Check for orphaned tasks from a previously
