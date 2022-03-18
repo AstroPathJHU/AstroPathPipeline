@@ -81,6 +81,7 @@
         Write-Host '    files:' $files
         mkdir -p $des1
         cp $files -r ($des1 + '/')
+        cp ($sor  + '/.gitignore') $des1
         #
         Write-host '.'
         $files = find $des1 -name $find
