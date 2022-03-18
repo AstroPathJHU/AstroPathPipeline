@@ -1,4 +1,5 @@
-﻿<# -------------------------------------------
+﻿using module .\testtools.psm1
+<# -------------------------------------------
  testpsmeanimage
  Benjamin Green, Andrew Jorquera
  Last Edit: 01.18.2022
@@ -8,55 +9,38 @@
  functioning as intended
  -------------------------------------------#>
 #
-Class testpsmeanimage {
+Class testpsmeanimage : testtools {
     #
-    [string]$mpath 
-    [string]$processloc
-    [string]$basepath
     [string]$module = 'meanimage'
-    [string]$slideid = 'M21_1'
-    [string]$project = '0'
-    [string]$apmodule = $PSScriptRoot + '/../astropath'
-    [string]$pytype = 'sample'
+    [string]$class = 'meanimage'
     #
-    testpsmeanimage(){
+    testpsmeanimage() : base(){
         #
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
         $this.launchtests()
         #
     }
     #
-    testpsmeanimage($project, $slideid){
+    testpsmeanimage($project, $slideid) : base($project, $slideid) {
         #
-        $this.slideid = $slideid
-        $this.project = $project
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
         $this.launchtests()
         #
     }
     #
-    testpsmeanimage($project, $slideid, $dryrun){
+    testpsmeanimage($project, $slideid, $dryrun) : base($project, $slideid, $dryrun){
         #
-        $this.slideid = $slideid
-        $this.project = $project
-        $this.mpath = '\\bki04\astropath_processing'
         $this.launchtests()
         #
     }
     #
     [void]launchtests(){
         #
-        Write-Host '---------------------test ps [meanimage]---------------------'
-        $this.importmodule()
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $this.testpsmeanimageconstruction($task)
         $inp = meanimage $task 
-        $this.testprocessroot($inp)
+        $this.testprocessroot($inp, $true)
         $this.testcleanupbase($inp)
         $this.comparepymeanimageinput($inp)
-        $this.runpytaskpyerror($inp)
+        $this.runpytaskpyerror($inp, $true)
         $this.testlogpyerror($inp)
         $this.runpytaskaperror($inp)
         $this.testlogaperror($inp)
@@ -71,88 +55,6 @@ Class testpsmeanimage {
         $this.testcleanup($inp)
         $inp.sample.finish(($this.module+'-test'))
         Write-Host '.'
-    }
-    <# --------------------------------------------
-    importmodule
-    helper function to import the astropath module
-    and define global variables
-    --------------------------------------------#>
-    importmodule(){
-        #
-        Write-Host "."
-        Write-Host 'importing module ....'
-        Import-Module $this.apmodule
-        $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_meanimage'))
-        #
-    }
-    <# --------------------------------------------
-    uncpath
-    helper function to convert local paths defined
-    by pscriptroot etc. to full unc paths.
-    --------------------------------------------#>
-    [string]uncpath($str){
-        $r = $str -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
-        } else{
-            $root = $r -replace ":", "$"
-        }
-        return $root
-    }
-    <# --------------------------------------------
-    runpytesttask
-    helper function to run the python task provided
-    and export it to the exteral log provided
-    --------------------------------------------#>
-    [void]runpytesttask($inp, $pythontask, $externallog){
-        #
-        $inp.sample.start(($this.module+'-test'))
-        Write-Host '    meanimage command:'
-        Write-Host '   '$pythontask  
-        Write-Host '    external log:' $externallog
-        Write-Host '    launching task'
-        #
-        $pythontask = $pythontask -replace '\\','/'
-        #
-        if ($inp.sample.isWindows()){
-            $inp.sample.checkconda()
-            etenv $inp.sample.pyenv()
-            Invoke-Expression $pythontask *>> $externallog
-            exenv
-        } else{
-            Invoke-Expression $pythontask *>> $externallog
-        }
-        #
-    }
-    <# --------------------------------------------
-    comparepaths
-    helper function that uses the copy utils
-    file hasher to quickly compare two directories
-    --------------------------------------------#>
-    [void]comparepaths($patha, $pathb, $inp){
-        #
-        Write-Host '    Comparing paths:'
-        Write-Host '   '$patha
-        Write-Host '   '$pathb
-        if (!(test-path $patha)){
-            Throw ('path does not exist:', $patha -join ' ')
-        }
-        #
-        if (!(test-path $pathb)){
-            Throw ('path does not exist:', $pathb -join ' ')
-        }
-        #
-        $lista = Get-ChildItem $patha -file
-        $listb = Get-ChildItem $pathb -file
-        #
-        $hasha = $inp.sample.FileHasher($lista)
-        $hashb = $inp.sample.FileHasher($listb)
-        $comparison = Compare-Object -ReferenceObject $($hasha.Values) `
-                -DifferenceObject $($hashb.Values)
-        if ($comparison){
-            Throw 'file contents do not match'
-        }
-        #
     }
     <# --------------------------------------------
     testpsmeanimageconstruction
@@ -181,44 +83,6 @@ Class testpsmeanimage {
         #
     }
     <# --------------------------------------------
-    testprocessroot
-    compare the proccessing root created by the 
-    meanimage object is the same as the one created
-    by user defined or known input. Make sure that
-    we reference user defined input so that if
-    we run the test with an alternative sample
-    it will still work.
-    --------------------------------------------#>
-    [void]testprocessroot($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test processing dir preparation started'
-        #
-        Write-Host  '   check for an old run and remove it if found'
-        $inp.sample.removedir($this.processloc)
-        #
-        $md_processloc = (
-            $this.processloc,
-            'astropath_ws',
-            $this.module,
-            $this.slideid
-        ) -join '\'
-        #
-        if (!([regex]::escape($md_processloc) -contains [regex]::escape($inp.processloc))){
-            Write-Host 'meanimage module process location not defined correctly:'
-            Write-Host $md_processloc '~='
-            Throw ($inp.processloc)
-        }
-        #
-        $inp.sample.CreateNewDirs($inp.processloc)
-        #
-        if (!(test-path $md_processloc)){
-            Throw 'process working directory not created'
-        }
-        Write-Host 'test processing dir preparation finished'
-        #
-    }
-    <# --------------------------------------------
     testcleanupbase
     Create a copy of the old results and then 
     run the cleanupbase method. Finally copy the
@@ -238,11 +102,11 @@ Class testpsmeanimage {
         Write-Host '   destination:' $des
         $inp.sample.copy($sor, $des, '*')
         #
-        if (!(test-path ($sor + '\.gitignore'))){
+        if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
             Throw 'da git ignore is not correct in meanimage source'
         }
         #
-        if (!(test-path ($des + '\.gitignore'))){
+        if (!(test-path -LiteralPath ($des + '\.gitignore'))){
             Throw 'da git ignore is not correct in meanimage desitination'
         }
         #
@@ -294,70 +158,7 @@ Class testpsmeanimage {
         #
         $inp.getmodulename()
         $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath)
-        #
-        if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
-            Write-Host 'user defined and [meanimage] defined tasks do not match:'  -foregroundColor Red
-            Write-Host 'user defined       :' [regex]::escape($userpythontask)'end'  -foregroundColor Red
-            Write-Host '[meanimage] defined:' [regex]::escape($pythontask)'end' -foregroundColor Red
-            Throw ('user defined and [meanimage] defined tasks do not match')
-        }
-        Write-Host 'python [meanimage] input matches -- finished'
-        #
-    }
-    <# --------------------------------------------
-    runpytaskpyerror
-    check that the python task completes correctly 
-    when run with the input that will throw a
-    python error
-    --------------------------------------------#>
-    [void]runpytaskpyerror($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python [meanimage] with error input started'
-        $inp.sample.CreateNewDirs($inp.processloc)
-        $rpath = $PSScriptRoot + '\data\raw'
-        $dpath = $this.basepath
-        $inp.getmodulename()
-        #
-        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath) 
-        $pythontask = $pythontask, '--blah' -join ' '
-        #
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
-        $this.runpytesttask($inp, $pythontask, $externallog)
-        #
-        Write-Host 'test python [meanimage]  with error input finished'
-        #
-    }
-    <# --------------------------------------------
-    testlogpyerror
-    check that the log is parsed correctly
-    when run with the input that will throw a
-    python error
-    --------------------------------------------#>
-    [void]testlogpyerror($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python [meanimage] LOG with error input started'
-        #
-        $inp.getmodulename()
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
-        Write-Host '    open log output'
-        $logoutput = $inp.sample.GetContent($externallog)
-        Write-Host '    test log output'
-        #
-        try {
-            $inp.getexternallogs($externallog)
-        } catch {
-            $err = $_.Exception.Message
-            $expectedoutput = 'Error in launching python task'
-            if ($err -notcontains $expectedoutput){
-                Write-Host $logoutput
-                Throw $_.Exception.Message
-            }
-        }
-        #
-        Write-Host 'test python [meanimage] LOG with error input finished'
-        #
+        $this.compareinputs($userpythontask, $pythontask)
     }
     <# --------------------------------------------
     runpytaskaperror
@@ -381,37 +182,6 @@ Class testpsmeanimage {
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
         Write-Host 'test python [meanimage]  with error in processing finished'
-        #
-    }
-    <# --------------------------------------------
-    testlogaperror
-    check that the log is parsed correctly
-    when run with the input that will throw a
-    meanimagesample error
-    --------------------------------------------#>
-    [void]testlogaperror($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python [meanimage] LOG with error in processing started'
-        #
-        $inp.getmodulename()
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) + '.err.log'
-        Write-Host '    open log output'
-        $logoutput = $inp.sample.GetContent($externallog)
-        Write-Host '    test log output'
-        #
-        try {
-            $inp.getexternallogs($externallog)
-        } catch {
-            $err = $_.Exception.Message
-            $expectedoutput = 'detected error in external task'
-            if ($err -notcontains $expectedoutput){
-                Write-Host $logoutput
-                Throw $_.Exception.Message
-            }
-        }
-        #
-        Write-Host 'test python [meanimage] LOG with error in processing finished'
         #
     }
     <# --------------------------------------------
@@ -443,51 +213,7 @@ Class testpsmeanimage {
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         $this.runpytesttask($inp, $pythontask, $externallog)
         #
-        Write-Host 'test python [m]eanimage] in workflow finished'
-        #
-    }
-    <# --------------------------------------------
-    testlogsexpected
-    check that the log is parsed correctly when
-    run with the correct input.
-    --------------------------------------------#>
-    [void]testlogsexpected($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python [meanimage] LOG in workflow started'
-        $inp.getmodulename()
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
-        Write-Host '    open log output'
-        $logoutput = $inp.sample.GetContent($externallog)
-        Write-Host '    test log output'
-        #
-        try {
-            $inp.getexternallogs($externallog)
-        } catch {
-            Write-Host '   '$logoutput
-            Throw $_.Exception.Message
-        }
-        #
-        # check that blank lines didn't write to the log
-        #
-        $loglines = import-csv $inp.sample.mainlog `
-            -Delimiter ';' `
-            -header 'Project','Cohort','slideid','Message','Date' 
-        if ($inp.sample.module -match 'batch'){
-            $ID= $inp.sample.BatchID
-        } else {
-            $ID = $inp.sample.slideid
-        }
-        #
-        $savelog = $loglines |
-                    where-object {($_.Slideid -match $ID) -and 
-                        ($_.Message -eq '')} |
-                    Select-Object -Last 1 
-        if ($savelog){
-            Throw 'blank log output exists'
-        }
-        #
-        Write-Host 'test python [meanimage] LOG in workflow finished'
+        Write-Host 'test python [meanimage] in workflow finished'
         #
     }
     <# --------------------------------------------
@@ -545,31 +271,6 @@ Class testpsmeanimage {
         #
     }
     <# --------------------------------------------
-    testlogsexpected
-    check that the log is parsed correctly when
-    run with the correct input.
-    --------------------------------------------#>
-    [void]testlogsexpectedapid($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python [meanimage] LOG in workflow without apid started'
-        $inp.getmodulename()
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
-        Write-Host '    open log output'
-        $logoutput = $inp.sample.GetContent($externallog)
-        Write-Host '    test log output'
-        #
-        try {
-            $inp.getexternallogs($externallog)
-        } catch {
-            Write-Host '   '$logoutput
-            Throw $_.Exception.Message
-        }
-        #
-        Write-Host 'test python [meanimage] LOG in workflow without apid finished'
-        #
-    }
-    <# --------------------------------------------
     runpytaskexpectednoxml
     check that the python task completes correctly 
     when run with the correct input.
@@ -615,31 +316,6 @@ Class testpsmeanimage {
         $inp.sample.copy($desxml, $sorxml, 'annotations.xml')
         #
         Write-Host 'test python [meanimage] in workflow without apid finished'
-        #
-    }
-    <# --------------------------------------------
-    testlogsexpected
-    check that the log is parsed correctly when
-    run with the correct input.
-    --------------------------------------------#>
-    [void]testlogsexpectednoxml($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test python [meanimage] LOG in workflow without apid started'
-        $inp.getmodulename()
-        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
-        Write-Host '    open log output'
-        $logoutput = $inp.sample.GetContent($externallog)
-        Write-Host '    test log output'
-        #
-        try {
-            $inp.getexternallogs($externallog)
-        } catch {
-            Write-Host '   '$logoutput
-            Throw $_.Exception.Message
-        }
-        #
-        Write-Host 'test python [meanimage] LOG in workflow without apid finished'
         #
     }
     <# --------------------------------------------
@@ -756,6 +432,7 @@ Class testpsmeanimage {
         $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
         #
         $inp.sample.copy($des, $sor, '*')
+        #
         $this.comparepaths($des, $sor, $inp)
         #
         if (!(test-path ($sor + '\.gitignore'))){

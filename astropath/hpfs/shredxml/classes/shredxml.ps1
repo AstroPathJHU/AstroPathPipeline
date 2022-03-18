@@ -20,6 +20,7 @@ Class shredxml : moduletools {
     #
     shredxml([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
         $this.processvars[0] = $this.sample.basepath
+        $this.processvars[1] = $this.processloc
         $this.sample.CreateDirs($this.processloc)
     }
     <# -----------------------------------------
@@ -43,7 +44,7 @@ Class shredxml : moduletools {
         #
         $this.sample.info("Return data started")
         #
-		$sor = $this.processvars[1] + '\' + $this.sample.slideid
+		$sor = $this.processvars[1]
 		$des = $this.sample.xmlfolder()
         $this.sample.removedir($des)
 		$this.sample.copy($sor, $des, 'xml', 30)

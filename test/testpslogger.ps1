@@ -1,4 +1,5 @@
-﻿<# -------------------------------------------
+﻿using module .\testtools.psm1
+<# -------------------------------------------
  testpslogger
  Benjamin Green - JHU
  Last Edit: 02.09.2022
@@ -7,21 +8,13 @@
  test if the module can be imported or not
  -------------------------------------------#>
 #
- Class testpslogger {
+ Class testpslogger : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
-    [string]$basepath = $PSScriptRoot + '\data'
+    [string]$class = 'logger'
     [string]$module = 'shredxml'
-    [string]$slideid = 'M21_1'
-    [string]$apmodule = $PSScriptRoot + '/../astropath'
-    [string]$slideid2 = 'M55_1'
-    
     #
-    testpslogger(){
+    testpslogger() : base() {
         #
-        Write-Host '---------------------test ps [logger]---------------------'
-        $this.importmodule()
         $this.testloggerconstruction()
         #
         $log = logger $this.mpath $this.module $this.slideid
@@ -31,12 +24,6 @@
         $this.testeditsampleid($log)
         Write-Host '.'
         #
-    }
-    #
-    importmodule(){
-        Import-Module $this.apmodule -EA SilentlyContinue
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
     }
     #
     [void]testloggerconstruction(){

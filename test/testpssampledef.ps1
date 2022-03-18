@@ -1,3 +1,4 @@
+using module .\testtools.psm1
 <# -------------------------------------------
  testpssampledef
  Benjamin Green and Andrew Jorquera - JHU
@@ -7,29 +8,23 @@
  test the sampledef object and it's paths
  -------------------------------------------#>
 #
-Class testpssampledef {
+Class testpssampledef : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
-    [string]$basepath
     [string]$module = 'shredxml'
-    [string]$slideid = 'M21_1'
-    [string]$pybatchflatfieldtest = 'melanoma_batches_3_5_6_7_8_9_v2'
+    [string]$class = 'sampledef'
     #
-    testpssampledef(){
+    testpssampledef(): base(){
         $this.launchtests()
     }
     #
-    testpssampledef($module, $slideid){
+    testpssampledef($module, $slideid) : base(){
         $this.module = $module
         $this.slideid = $slideid
-        $this.launchtests
+        $this.launchtests()
     }
     #
     launchtests(){
         #
-        Write-Host '---------------------test ps [sampledef]---------------------'
-        $this.importmodule()
         $this.testsampledefconstruction()
         $sample = sampledef $this.mpath $this.module $this.slideid
         $this.testbatchflatfieldexamples($sample)
@@ -41,24 +36,6 @@ Class testpssampledef {
         $this.testpaths($sample, '01')
         Write-Host '.'
         #
-    }
-    #
-    importmodule(){
-        $apmodule = $PSScriptRoot + '/../astropath'
-        Import-Module $apmodule -EA SilentlyContinue
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
-        $this.updatebase()
-    }
-    #
-    [void]updatebase(){
-        $r = $PSScriptRoot -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
-        } else{
-            $root = $r -replace ":", "$"
-        }
-        $this.basepath = $root + '\data'
     }
     #
     [void]testsampledefconstruction(){

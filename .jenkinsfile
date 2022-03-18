@@ -42,6 +42,7 @@ pipeline {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
           //  sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1' 	
           }
         }
@@ -171,6 +172,7 @@ pipeline {
                   steps{
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpkeys.ps1'
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpfits.ps1'
                   }
                 }
               }
@@ -189,13 +191,11 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
                   }
                 }
-                /*
                 stage('test meanimage ps workflow') {
                   steps {
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'	
                   }
                 }
-                */
               }
             }
 
@@ -238,12 +238,6 @@ pipeline {
               }
             }
 
-            stage('shredxml') {
-              steps {
-                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
-              }
-            }
-            
             stage('code checks') {
               steps {
                 sh 'python -m pyflakes .'

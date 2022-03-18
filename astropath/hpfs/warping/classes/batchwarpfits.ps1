@@ -90,21 +90,20 @@ class batchwarpfits : moduletools {
     ----------------------------------------- #>
     [void]Getbatchwarpfits(){
         #
-        $taskname = 'batchwarpfits'
-        $dpath = $this.processvars[0]
-        $rpath = '\\' + $this.processvars[1]
+        $this.sample.info('start fits')
         $this.getmodulename()
+        $taskname = $this.pythonmodulename
+        $dpath = $this.processvars[0]
+        $rpath = $this.processvars[1]
         #
         $pythontask = $this.getpythontask($dpath, $rpath)
         #
         $this.runpythontask($taskname, $pythontask)
-        $this.silentcleanup()
+        $this.sample.info('fits finished')
         #
     }
     #
     [string]getpythontask($dpath, $rpath){
-        #
-        $this.sample.info('start fits')
         #
         $pythontask = (
             $this.pythonmodulename,
@@ -118,8 +117,6 @@ class batchwarpfits : moduletools {
             '--workingdir', $this.workingdir()
         ) -join ' '
         #
-        $this.sample.info('fits finished')
-       #
        return $pythontask
        #
     }

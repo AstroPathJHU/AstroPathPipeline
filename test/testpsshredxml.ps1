@@ -1,8 +1,7 @@
-﻿  
+﻿using module .\testtools.psm1
 <# -------------------------------------------
  testpsshredxml
- created by: Andrew Jorquera
- Last Edited by: Benjamin Green
+ Andrew Jorquera, Benjamin Green
  Last Edit: 01.18.2022
  --------------------------------------------
  Description
@@ -10,101 +9,101 @@
  functioning as intended
  -------------------------------------------#>
 #
-Class testpsshredxml {
+Class testpsshredxml : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
+    [string]$module = 'shredxml'
+    [string]$class = 'shredxml'
     #
-    testpsshredxml(){
+    testpsshredxml() : base() {
         #
         # Setup Testing
         #
-        $this.importmodule()
-        #
-        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
+        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $inp = shredxml $task
         #
         # Run Tests
         #
-        $this.ShredXMLTest($inp)
+        $this.testprocessroot($inp)
         $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
-        $inp.sample.removedir($this.process_loc)
         $inp.sample.finish(($this.module+'test'))
         Write-Host "."
         #
     }
     #
-    importmodule(){
-        Write-Host "."
-        Write-Host 'importing module ....'
-        $module = $PSScriptRoot + '/../astropath'
-        Import-Module $module -EA SilentlyContinue
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_shredxml'
-    }
-    #
-    [void]ShredXMLTest($inp){
-        Write-Host "."
-        Write-Host 'Starting Shred XML Test'
+    [void]testprocessroot($inp){
         #
-        $inp.ShredXML()
-        $xmlpath = $inp.processvars[1] + '\' + $inp.sample.slideid
-        if (!(Test-Path $xmlpath)) {
-            Throw 'Shred XML Test Failed - Path was not created'
+        Write-Host "."
+        Write-Host 'test process root started'
+        #
+        $xmlpath = $inp.processvars[1]
+        $userdefined = $this.processloc, 'astropath_ws', 'shredxml', $this.slideid -join '\'
+        #
+        Write-Host '    user defined:' $userdefined
+        Write-Host '    [shredxml] defined:' $xmlpath
+        #
+        if (!(Test-Path -LiteralPath $xmlpath)) {
+            Throw 'Shred XML Test Failed - XML Path was not created'
         }
         #
-        $im3s = gci ($inp.sample.Scanfolder() + '\MSI\*') *im3
-        $im3n = ($im3s).Count + 2
-        #
-        # check xml files = im3s
-        #
-        $xmls = gci ($xmlpath + '\*') '*xml'
-        $files = ($xmls).Count
-        if (!($im3n -eq $files)){
-            Throw 'Shred XML Test Failed - Files do no match'
+        if ($xmlpath -notmatch [regex]::escape($userdefined)){
+            Throw 'process dir not defined correctly'
         }
         #
-        Write-Host 'Passed Shred XML Test'
+        Write-Host 'test process root finished'
+        #
     }
     #
     [void]ReturnDataTest($inp){
+        #
         Write-Host "."
-        Write-Host 'Starting Return Data Test'
+        Write-Host 'Return Data Test started'
         #
+        Write-Host '    copy old results to a safe location'
+        $sor = $this.basepath, $this.slideid, 'im3\xml' -join '\'
+        $des = $this.processloc, $this.slideid, 'im3\xml' -join '\'
+        #
+        Write-Host '    source:' $sor
+        Write-Host '    destination:' $des
+        $inp.sample.copy($sor, $des, '*')       
+        #
+        Write-Host '    copy old results to processing directory'
+        $userdefined = $this.processloc, 'astropath_ws', 'shredxml', $this.slideid -join '\'
+        $inp.sample.copy($sor, $userdefined, '*')  
+        #
+        Write-Host '    run return data'
         $inp.returndata()
-        $returnpath = $inp.sample.xmlfolder()
         #
-        if (!(Test-Path $returnpath)) {
-            Throw 'Return Data Test Failed - xml folder does not exist'
-        }
+        $this.comparepaths($des, $sor, $inp)
         #
-        $im3s = gci ($inp.sample.Scanfolder() + '\MSI\*') *im3
-        $im3n = ($im3s).Count + 2
+        Write-Host 'Return Data Test finished'
         #
-        # check xml files = im3s
-        #
-        $xmls = gci ($returnpath + '\*') '*xml'
-        $files = ($xmls).Count
-        if (!($im3n -eq $files)){
-            Throw 'Return Data Test Failed - xml files do not match'
-        }
-        #
-        Write-Host 'Passed Return Data Test'
     }
     #
     [void]CleanupTest($inp){
+        #
         Write-Host "."
-        Write-Host 'Starting Cleanup Test'
+        Write-Host 'Cleanup Test started'
+        #
+        Write-Host '    running clean up'
+        Write-Host '    expected to remove:' $inp.processloc
         #
         $inp.cleanup()
-        if ($inp.processvars[4]) {
-            if (Test-Path $inp.processloc) {
-                Throw 'Cleanup Test Failed'
-            }
+        #
+        if (Test-Path $inp.processloc) {
+            Throw 'Cleanup Test Failed dir still exists'
         }
         #
-        Write-Host 'Passed Cleanup Test'
+        Write-Host '    cleaning up after test'
+        Write-Host '    expected to remove:' $this.processloc
+        $inp.sample.removedir($this.processloc)
+        #
+        if (Test-Path $this.processloc) {
+            Throw 'Cleanup Test Failed dir still exists'
+        }
+        #
+        Write-Host 'Cleanup Test finished'
+        #
     }
 }
 #
