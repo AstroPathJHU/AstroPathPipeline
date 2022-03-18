@@ -73,7 +73,7 @@ Class testpsworkflow : testtools {
         Write-Host '    mpath:' $inp.mpath
         #
         $inp.importworkerlist($inp.mpath)
-        Write-Host ($inp.worker_data | Out-String)
+        Write-Host ($inp.worker_data | Format-table | Out-String)
         $inp.printworkerlist()
         $inp.CheckOrphan()
         #
