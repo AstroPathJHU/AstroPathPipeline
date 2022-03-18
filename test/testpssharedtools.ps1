@@ -16,7 +16,7 @@
         #
         $this.testconstructor()
         $tools = sharedtools
-        #$this.testcondaenvir($tools)
+        $this.testcondaenvir($tools)
         $this.testcheckgitrepo($tools)
         $this.testcreatedirs($tools)
         $this.testcopy($tools)
@@ -328,7 +328,6 @@
         $this.comparepaths($sor, $des, $tools, $true)
         $tools.removedir($des)
         #
-        Throw 'stop'
         Write-Host 'test copy in linux finished'
         #
     }
@@ -338,4 +337,4 @@
 # launch test and exit if no error found
 #
 [testpssharedtools]::new() | Out-Null
-exit 0
+exit $LASTEXITCODE

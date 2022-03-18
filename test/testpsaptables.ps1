@@ -14,6 +14,7 @@
     #
     testpsaptables() : base(){
         #
+        throw 'stop'
         $this.testmpath()
         $tools = sharedtools
         $this.testapidfiles() | Out-Null
