@@ -15,11 +15,8 @@ Class testpsworkflow : testtools {
     #
     testpsworkflow(): base(){
         #
-        #$password = ConvertTo-SecureString "MyPlainTextPassword" -AsPlainText -Force
-        #$cred = New-Object System.Management.Automation.PSCredential ("username", $password)  
-        $cred = [System.Net.CredentialCache]::DefaultNetworkCredentials
-        $password = ConvertTo-SecureString $cred.Password -AsPlainText -Force
-        $cred = New-Object System.Management.Automation.PSCredential ($cred.username, $password)  
+        $password = ConvertTo-SecureString "MyPlainTextPassword" -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential ("username", $password)  
         #
         $this.testconstructors($cred)
         #  
