@@ -78,6 +78,11 @@
         $find = ('"'+$filespec+'"')
         $files = find $sor1 -name $find
         Write-Host '    files:' $files
+        cp $files -r -t ($des1 + '/')
+        #
+        Write-host '.'
+        $files = find $des -name $find
+        Write-Host '    files:' $files
         Throw 'stop'
         <#
         Write-Host '   source:' $sor
