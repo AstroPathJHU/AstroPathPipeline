@@ -72,16 +72,16 @@
         #
         $filespec = '*'
         $des1 = $des -replace '\\', '/'
-        $sor1 = ($sor -replace '\\', '/') + '/*'
+        $sor1 = ($sor -replace '\\', '/') 
         #$files = $inp.sample.listfiles($sor, $filespec)
 
         $find = ('"'+$filespec+'"')
-        $files = get-ChildItem $sor -Recurse
+        $files = get-ChildItem ($sor1 + '/*') -Recurse
         #$files = $files[0..$files.count]
         Write-Host '    files:' $files
         mkdir -p $des1
         cp $files -r ($des1 + '/')
-        cp ($sor  + '/.gitignore') $des1
+        cp ($sor1 + '/.gitignore') $des1
         #
         Write-host '.'
         $files = find $des1 -name $find
