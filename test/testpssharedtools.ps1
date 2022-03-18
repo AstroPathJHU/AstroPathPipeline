@@ -16,7 +16,7 @@
         #
         $this.testconstructor()
         $tools = sharedtools
-        $this.testcondaenvir($tools)
+        #$this.testcondaenvir($tools)
         $this.testcheckgitrepo($tools)
         $this.testcreatedirs($tools)
         $this.testcopy($tools)
