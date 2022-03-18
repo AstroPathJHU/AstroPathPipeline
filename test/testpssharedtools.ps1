@@ -20,6 +20,7 @@
         $this.testcheckgitrepo($tools)
         $this.testcreatedirs($tools)
         $this.testcopy($tools)
+        $this.testcopylinux($tools)
         Write-Host '.'
         #
     }
@@ -260,6 +261,65 @@
             Write-Host '    python finished'
             #     
         }
+        #
+    }
+    [void]testcopylinux($tools){
+        #
+        Write-Host '.'
+        Write-Host 'test copy in linux started'
+        #
+        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        #
+        Write-Host '   source:' $sor
+        Write-Host '   destination:' $des
+        #
+        $filespec = '*'
+        $des1 = $des -replace '\\', '/'
+        $sor1 = ($sor -replace '\\', '/') 
+        #
+        $files = $tools.listfiles($sor1, $filespec)
+        #
+        Write-Host '    source files:' $files
+        Write-Host '    copying'
+        #
+        mkdir -p $des1
+        #
+        cp $files -r $des1
+        cp ($sor1 + '/.gitignore') $des1
+        #
+        Write-host '.'
+        $files = find $des1 -name ('"*"')
+        Write-Host '    destination files:' $files
+        #
+        if (!(test-path -LiteralPath ($sor1 + '/.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage source'
+        }
+        #
+        if (!(test-path -LiteralPath ($des1 + '/.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage destination'
+        }
+        #
+        $this.comparepaths($sor, $des, $tools, $true)
+        $tools.removedir($des)
+        #
+        Write-Host '    test with workflow tools'
+        #
+        $tools.copy($sor, $des)
+        #
+        if (!(test-path -LiteralPath ($sor1 + '/.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage source'
+        }
+        #
+        if (!(test-path -LiteralPath ($des1 + '/.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage destination'
+        }
+        #
+        $this.comparepaths($sor, $des, $tools, $true)
+        $tools.removedir($des)
+        #
+        Throw 'stop'
+        Write-Host 'test copy in linux finished'
         #
     }
 }

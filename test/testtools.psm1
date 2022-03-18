@@ -145,6 +145,32 @@ Class testtools{
         #
     }
     #
+    [void]comparepaths($patha, $pathb, $tools, $type){
+        #
+        Write-Host '    Comparing paths:'
+        Write-Host '   '$patha
+        Write-Host '   '$pathb
+        if (!(test-path $patha)){
+            Throw ('path does not exist:', $patha -join ' ')
+        }
+        #
+        if (!(test-path $pathb)){
+            Throw ('path does not exist:', $pathb -join ' ')
+        }
+        #
+        $lista = Get-ChildItem $patha -file
+        $listb = Get-ChildItem $pathb -file
+        #
+        $hasha = $tools.FileHasher($lista)
+        $hashb = $tools.FileHasher($listb)
+        $comparison = Compare-Object -ReferenceObject $($hasha.Values) `
+                -DifferenceObject $($hashb.Values)
+        if ($comparison){
+            Throw 'file contents do not match'
+        }
+        #
+    }
+    #
     <# --------------------------------------------
     testprocessroot
     compare the proccessing root created by the 
