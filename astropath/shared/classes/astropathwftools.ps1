@@ -138,6 +138,20 @@ class astropathwftools : sampledb {
         #
         $myscriptblock = {
             param($workertasklog)
+            #
+            $fpath = Split-Path $workertasklog
+            $fname = Split-Path $workertasklog -Leaf
+            #
+            $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+            $newwatcher.Filter = $fname
+            $newwatcher.NotifyFilter = 'LastWrite'
+            #
+            $SI = ($workertasklog) 
+            #
+            Register-ObjectEvent $newwatcher `
+                -EventName Changed `
+                -SourceIdentifier $SI | Out-Null
+            #
             while (1) {
                 try { 
                     $fileInfo = New-Object System.IO.FileInfo $workertasklog
@@ -146,23 +160,16 @@ class astropathwftools : sampledb {
                     break
                 } catch {
                     #
-                    $fpath = Split-Path $workertasklog
-                    $fname = Split-Path $workertasklog -Leaf
-                    #
-                    $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-                    $newwatcher.Filter = $fname
-                    $newwatcher.NotifyFilter = 'LastWrite'
-                    #
-                    $SI = ($workertasklog) 
-                    #
-                    Register-ObjectEvent $newwatcher `
-                        -EventName Changed `
-                        -SourceIdentifier $SI | Out-Null
                     wait-event $SI  
-                    Unregister-Event -SourceIdentifier $SI -Force 
+                    remove-event -SourceIdentifier $SI
+                    Start-Sleep -s 10
                     #
                 }
+                #
             }
+            #
+            Unregister-Event -SourceIdentifier $SI -Force 
+            #
         }
         #
         $myparameters = @{
@@ -389,4 +396,92 @@ class astropathwftools : sampledb {
             $log.finish($cmodule)
         }
     }
+    #
+    # after jobs are launched from the queue wait for events or jobs
+    #
+    [void]WaitAny(){
+        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
+        $myevent = ''
+        While(!$myevent){
+            #
+            $myevent = Wait-Event -timeout 1
+            if ($myevent){
+                break
+            }
+            #
+            $myevent = Wait-Job -id $run -Any -Timeout 1
+            #
+         }
+         #
+         if (($myevent[0].GetType()).Name -match 'job'){
+            $this.CheckCompletedWorkers()
+         } else {
+             $this.CheckCompletedEvents()
+         }
+         #
+    }
+    #
+    [void]WaitAny($run){
+        #
+        $myevent = ''
+        While(!$myevent){
+            #
+            $myevent = Wait-Event -timeout 1
+            if ($myevent){
+                break
+            }
+            $myevent = Wait-Job -id $run -Any -Timeout 1
+            #
+        }
+        #
+    }
+    #
+    [void]WaitTask(){
+        <#
+        $myevent = ''
+        While(!$myevent){
+           $myevent = Wait-Job -id $j -Timeout 1
+           $myevent = get-event -SourceIdentifier $filename -timeout 1
+        }
+        #>
+        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
+        if (!$this.workers -and $run){
+            Wait-Job -id $run -Any
+        }
+        $this.CheckCompletedWorkers()
+        #
+    }
+    #
+    [void]CheckCompletedWorkers(){
+        #
+        $donejobs = Get-Job | 
+            Where-Object { $_.State -eq 'Completed'}
+        #
+        if ($donejobs){
+            $donejobs | Remove-Job
+            $donejobs | ForEach-Object {
+                #
+                $this.checkpsexeclog($_.Name)
+                $this.checkworkerlog($_)
+                #
+            }
+        }
+        #
+    }
+    #
+    [void]CheckCompletedEvents(){
+        #
+        $events = get-event
+        #
+        while($events){
+            #
+            $currentevent = $events[0]
+            remove-event -SourceIdentifier $currentevent.SourceIdentifier
+            $this.handleAPevent($currentevent.SourceIdentifier)
+            $events = get-event
+            #
+        }
+        #
+    }
+    #
 }

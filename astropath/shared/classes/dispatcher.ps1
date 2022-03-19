@@ -247,13 +247,56 @@ class Dispatcher : DispatcherTools {
         $this.popfile($this.workerlogfile($jobname), $logline)
         #
     }
-
+    #
+    [void]WaitAny(){
+        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
+        $myevent = ''
+        if (!$this.workers -and $run){
+            While(!$myevent){
+                #
+                $myevent = Wait-Event -timeout 1
+                if ($myevent){
+                    break
+                }
+                $myevent = Wait-Job -id $run -Any -Timeout 1
+                #
+            }
+            #
+            if (($myevent[0].GetType()).Name -match 'job'){
+                $this.CheckCompletedWorkers()
+            } else {
+                $this.CheckCompletedEvents()
+            }
+            #
+        } else {
+            $this.CheckCompletedEvents()
+        }
+    }
+    #
+    [void]WaitAny($run){
+        #
+        $myevent = ''
+        While(!$myevent){
+            #
+            $myevent = Wait-Event -timeout 1
+            if ($myevent){
+                break
+            }
+            $myevent = Wait-Job -id $run -Any -Timeout 1
+            #
+        }
+        #
+    }
     #
     [void]WaitTask(){
-        #
-        $run = @(Get-Job | 
-            Where-Object { $_.State -eq 'Running'  `
-                -and $_.Name -match $this.module}).id
+        <#
+        $myevent = ''
+        While(!$myevent){
+           $myevent = Wait-Job -id $j -Timeout 1
+           $myevent = get-event -SourceIdentifier $filename -timeout 1
+        }
+        #>
+        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
         if (!$this.workers -and $run){
             Wait-Job -id $run -Any
         }
@@ -264,12 +307,11 @@ class Dispatcher : DispatcherTools {
     [void]CheckCompletedWorkers(){
         #
         $donejobs = Get-Job | 
-            Where-Object { $_.State -eq 'Completed'  `
-                -and $_.Name -match $this.module}
+            Where-Object { $_.State -eq 'Completed'}
         #
         if ($donejobs){
             $donejobs | Remove-Job
-            $donejobs | ForEach {
+            $donejobs | ForEach-Object {
                 #
                 $this.checkpsexeclog($_.Name)
                 $this.checkworkerlog($_)
@@ -278,4 +320,20 @@ class Dispatcher : DispatcherTools {
         }
         #
     }
+    #
+    [void]CheckCompletedEvents(){
+        #
+        $events = get-event
+        #
+        while($events){
+            #
+            $currentevent = $events[0]
+            remove-event -SourceIdentifier $currentevent.SourceIdentifier
+            $this.handleAPevent($currentevent)
+            $events = get-event
+            #
+        }
+        #
+    }
+    #
 }

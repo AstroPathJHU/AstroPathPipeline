@@ -16,23 +16,26 @@ class queue : vminformqueue{
     [string]$project
     #
     queue($module){
-        $this.mpath = '\\bki04\astropath_processing'
-        $this.module = $module 
+        $this.init('\\bki04\astropath_processing', $module,'', '')
     }
     queue($mpath, $module){
-        $this.mpath = $mpath
-        $this.module = $module 
+        $this.init($mpath, $module, '', '')
     }
     queue($mpath, $module, $project){
-        $this.mpath = $mpath
-        $this.module = $module 
-        $this.project = $project
+        $this.init($mpath, $module, $project, '')
     }
     queue($mpath, $module, $project, $slideid){
+        $this.init($mpath, $module, $project, $slideid)
+    }
+    #
+    init($mpath, $module, $project, $slideid){
+        #
         $this.mpath = $mpath
         $this.module = $module 
         $this.project = $project
         $this.slideid = $slideid.trim()
+        $this.importaptables($this.mpath, $true)
+        #
     }
     <# -----------------------------------------
      ExtractQueue
@@ -59,11 +62,11 @@ class queue : vminformqueue{
     ----------------------------------------- #>
     [void]buildqueue(){
         #
-        $slides = $this.importslideids($this.mpath, $true)
+        $slides = $this.importslideids($this.mpath)
         #
         # select samples from the appropriate modules 
         #
-        $projects = $this.getapprojects($this.module, $true)
+        $projects = $this.getapprojects($this.module)
         #
         $cleanedslides = $slides | 
             Where-Object {$projects -contains $_.Project}
