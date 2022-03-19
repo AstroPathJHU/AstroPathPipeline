@@ -20,12 +20,12 @@ Class testpsworkflow : testtools {
         #
         $this.testconstructors($cred) 
         $inp = astropathworkflow -Credential $cred -mpath $this.mpath -test
+        $this.testastropathupdate($inp)
         $inp.workerloglocation = $PSScriptRoot + '\data\workflowlogs\'
         $inp.createdirs($inp.workerloglocation)
         $this.testworkerlistdef($inp)
         $this.testorphanjobmonitor($inp)
         $this.testwait($inp)
-        $this.testastropathupdate($inp)
         $inp.removedir($inp.workerloglocation)
         Write-Host '.'
         #
