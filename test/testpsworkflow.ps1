@@ -124,7 +124,9 @@ Class testpsworkflow : testtools {
         #
         if(!($j.State -match 'Completed')){
             Write-Host '    Path exists:' (test-path $inp.workertasklog($jobname))
-            $fileInfo = New-Object System.IO.FileInfo $inp.workertasklog($jobname)
+            $workertasklog = $inp.workertasklog($jobname)
+            $workertasklog = $workertasklog -replace '\\', '/'
+            $fileInfo = New-Object System.IO.FileInfo $workertasklog
             $fileStream = $fileInfo.Open([System.IO.FileMode]::Open)
             $fileStream.Dispose()
             Throw 'orphaned task monitor did not close correctly'
