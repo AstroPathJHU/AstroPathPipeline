@@ -123,7 +123,11 @@ Class testpsworkflow : testtools {
         write-host '    job state:' $j.State
         #
         if(!($j.State -match 'Completed')){
-             Throw 'orphaned task monitor did not close correctly'
+            Write-Host '    Path exists:' (test-path $inp.workertasklog($jobname))
+            $fileInfo = New-Object System.IO.FileInfo $inp.workertasklog($jobname)
+            $fileStream = $fileInfo.Open([System.IO.FileMode]::Open)
+            $fileStream.Dispose()
+            Throw 'orphaned task monitor did not close correctly'
         }
         #
         Receive-Job $j -ErrorAction Stop
@@ -140,12 +144,13 @@ Class testpsworkflow : testtools {
         #
         $this.launchjob(($jobname + '-test'), 60, $inp.workertasklog($jobname))
         #
-
-        #
         Write-Host '    Test job launched'
     }
     #
     [void]launchjob($jobname, $n, $log){
+        #
+        Write-Host '    job name:' $jobname
+        Write-Host '    file:' $log
         #
         $sb = {
             param($workertasklog, $n)
