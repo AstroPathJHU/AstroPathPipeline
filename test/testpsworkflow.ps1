@@ -117,7 +117,7 @@ Class testpsworkflow : testtools {
         Write-Host '    job start' (Get-Date)
         Write-Host '    wait for job'
         wait-job $testj -timeout 180
-        Start-Sleep -s 20
+        wait-job $j -timeout 180
         Write-Host '    wait returned:' (Get-Date)
         #
         write-host '    job state:' $j.State
