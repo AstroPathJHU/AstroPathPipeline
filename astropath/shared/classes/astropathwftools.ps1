@@ -139,6 +139,7 @@ class astropathwftools : sampledb {
         $myscriptblock = {
             param($workertasklog)
             #
+            $workertasklog = $workertasklog -replace '\\', '/'
             $fpath = Split-Path $workertasklog
             $fname = Split-Path $workertasklog -Leaf
             #
