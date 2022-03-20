@@ -73,7 +73,23 @@ Class testtools{
         $this.batchreferencefile = ($batchreferncetestpath + '\flatfield_TEST.bin')
         $this.basepath = $this.uncpath($this.basepath)
         $this.testrpath = $this.processloc, $this.slideid, 'rpath' -join '\'
+        $this.verifyAPIDdef()
         #
+    }
+    #
+    [void]verifyAPIDdef(){
+        #
+        if (!test-path ($this.mpath + '\AstroPathAPIDdef.csv')){
+            try{
+                $tools = sharedtools
+                $sor = $this.mpath + '\AstroPathAPIDdefTemplate.csv'
+                $des = $this.mpath + '\AstroPathAPIDdef.csv'
+                $paths_data = $tools.OpencsvFileConfirm($sor)
+                $paths_data | Export-CSV $des
+            } catch {
+                Write-Host 'Warning: AstroPathAPIDdef not found and could not be created from template'
+            }
+        }
     }
     <# --------------------------------------------
     uncpath

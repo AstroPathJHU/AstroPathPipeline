@@ -234,7 +234,7 @@ Class testpsmeanimage : testtools {
         $inp.sample.copy($sor, $sampledes)
         $inp.sample.removefile($sor)
         #
-        $samplefile1 = '\AstropathSampledef.csv'
+        $samplefile1 = '\AstroPathSampledef.csv'
         $samplesor1 = $this.basepath, '\astropath_processing' -join '\'
         $sampledes1 = $this.processloc, $this.slideid, 'test\test' -join '\'
         $sor = ($samplesor1 + $samplefile1)

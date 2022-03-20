@@ -1,4 +1,5 @@
-﻿ <# -------------------------------------------
+﻿using module .\testtools.psm1
+ <# -------------------------------------------
  testsampletracker
  Benjamin Green - JHU
  Last Edit: 02.09.2022
@@ -9,38 +10,32 @@
  properly.
  -------------------------------------------#>
 #
- Class testpssampletracker {
+ Class testpssampletracker : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
-    [string]$slideid = 'M21_1'
-    [string]$project = '0'
-    [string]$apmodule = $PSScriptRoot + '\..\astropath'
+    [string]$class = 'sampletracker'
+    [string]$module = ''
     #
-    testpssampletracker(){
+    testpssampletracker() : base(){
         $this.launchtests()
     }
     #
-    testpssampletracker($project, $slideid){
-        $this.project = $project
-        $this.slideid = $slideid
+    testpssampletracker($project, $slideid) : base($project, $slideid){
         $this.launchtests()
     }
     #
     [void]launchtests(){
         #
-        Write-Host '---------------------test ps [sampletracker]---------------------'
-        $this.importmodule()
         $this.testsampletrackerconstructors()
         $sampletracker = sampletracker -mpath $this.mpath
-        $this.cleanup($sampletracker)
+        $this.testmodules($sampletracker)
+        #
         Write-Host '.'
         Write-Host 'defining module status started'
-        $sampletracker.project = '0'
-        $sampletracker.defbase()
+        $sampletracker.sampledefslide($this.slideid)
         $sampletracker.defmodulestatus()
+        $this.cleanup($sampletracker)
         Write-Host 'defining module status finished'
-        $this.testmodules($sampletracker)
+        #
         $this.teststatus($sampletracker)
         $this.testupdate($sampletracker, 'shredxml', 'meanimage')
         $this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
@@ -49,12 +44,6 @@
         $this.addbatchflatfieldexamples($sampletracker)
         Write-Host '.'
         #
-    }
-    #
-    [void]importmodule(){
-        Import-Module $this.apmodule -EA SilentlyContinue
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
     }
     #
     [void]testsampletrackerconstructors(){
@@ -86,7 +75,7 @@
         Write-Host '    Modules:' $sampletracker.modules 
         #
         $cmodules = @('batchflatfield','batchmicomp','imagecorrection','meanimage','mergeloop',`
-            'segmaps','shredxml','transfer','vminform','warpoctets','batchwarpkeys')
+            'segmaps','shredxml','transfer','vminform','warpoctets','batchwarpkeys','batchwarpfits')
         $out = Compare-Object -ReferenceObject $sampletracker.modules  -DifferenceObject $cmodules
         if ($out){
             Throw ('module lists in [sampletracker] does not match, this may indicate new modules or a typo:' + $out)
@@ -136,7 +125,7 @@
                 $sampletracker.moduleinfo.warpoctets.status)
         }
         #
-        if ($sampletracker.moduleinfo.batchflatfield.status -notmatch 'NA'){
+        if ($sampletracker.moduleinfo.batchflatfield.status -notmatch 'WAITING'){
             Throw ('batchflatfield init status not correct. Status is: ' + 
                 $sampletracker.moduleinfo.batchflatfield.status)
         }
@@ -313,6 +302,9 @@
         $sampletracker.removefile($sampletracker.slidelogbase('shredxml'))
         $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
         $sampletracker.removefile($sampletracker.mainlogbase('batchmicomp'))
+        $sampletracker.removefile($sampletracker.mainlogbase('batchflatfield'))
+        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpfits'))
+        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpkeys'))
         $sampletracker.removefile($sampletracker.slidelogbase('warpoctets'))
         Write-Host 'clearing logs finished'
         #
@@ -442,5 +434,9 @@
 #
 # launch test and exit if no error found
 #
-[testpssampletracker]::new() | Out-Null
+try{
+    [testpssampletracker]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0

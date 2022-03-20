@@ -254,7 +254,7 @@ Class testpsworkflow : testtools {
         $inp.importaptables($inp.mpath, $true)
         #
         Write-Host '    add a test slide to the astropathAPIDdef'
-        $import_csv_file = $this.mpath + '\AstropathAPIDdef.csv'
+        $import_csv_file = $this.mpath + '\AstroPathAPIDdef.csv'
         $project_data = $inp.OpencsvFileConfirm($import_csv_file)
         $newobj = [PSCustomObject]@{
             SlideID = 'test'
@@ -288,7 +288,7 @@ Class testpsworkflow : testtools {
         Write-HOst '    test slide confirmed'
         Write-Host '    remove the slideid test from the table'
         #
-        $import_csv_file = $this.mpath + '\AstropathAPIDdef.csv'
+        $import_csv_file = $this.mpath + '\AstroPathAPIDdef.csv'
         $project_data = $inp.OpencsvFileConfirm($import_csv_file)
         $project_data = $project_data | Where-Object {$_.SlideID -ne 'test'}
         $project_data | Export-CSV $import_csv_file -NoTypeInformation
