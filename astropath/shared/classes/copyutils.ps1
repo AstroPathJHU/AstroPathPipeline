@@ -215,6 +215,21 @@ class copyutils{
         }
         return $files
     }
+    #
+    [int]countfiles([string]$sor, [array]$filespec){
+        $files = $this.listfiles($sor, $filespec)
+        return $files.count
+    }
+    #
+    [array]getfullnames([string]$sor, [array]$filespec){
+        $files = $this.listfiles($sor, $filespec)
+        return $files.fullnames
+    }
+    #
+    [array]getnames([string]$sor, [array]$filespec){
+        $files = $this.listfiles($sor, $filespec)
+        return $files.names
+    }
     <#------------------------------------------
     handlebrackets
     -------------------------------------------#>

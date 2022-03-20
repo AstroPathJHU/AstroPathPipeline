@@ -7,7 +7,7 @@
  methods used to build the sample trackers for each
  sample and module
  -------------------------------------------#>
- class dependencies : sampledef {
+ class dependencies : samplereqs {
     #
     dependencies($mpath): base ($mpath){}
     #
@@ -327,9 +327,6 @@
         #
         if ($this.moduleinfo.batchflatfield.vers -notmatch '0.0.1'){
             <#
-            if (!($this.checkbatchmicomp($true) -eq 3)){
-                return 1
-            }
             #
             if ($this.moduleinfo.batchmicomp.status -ne 'FINISHED'){
                 return 1
@@ -339,7 +336,12 @@
                 return 1
             }
             #
-            $ids = $this.ImportCorrectionModels($this.mpath)
+            if ($this.teststatus){
+                $ids = $this.ImportCorrectionModels($this.mpath, $false)
+            } else{ 
+                $ids = $this.ImportCorrectionModels($this.mpath)
+            }
+            #
             if ($ids.slideid -notcontains $this.slideid){
                 return 2
             }
@@ -349,11 +351,7 @@
             }
             #
         } else {
-            <#
-            if (!($this.checkmeanimage($true) -eq 3)){
-                return 1
-            }
-            #>
+            #
             if ($this.moduleinfo.meanimage.status -ne 'FINISHED'){
                 return 1
             }
@@ -436,7 +434,7 @@
             return 2
         }
         #
-        if (!$this.testbatchwarpkeys()){
+        if (!$this.testbatchwarpkeysfiles()){
             return 2
         }
         #
@@ -471,7 +469,7 @@
             return 2
         }
         #
-        if (!$this.testbatchwarpfits()){
+        if (!$this.testbatchwarpfitsfiles()){
             return 2
         }
         #
@@ -616,7 +614,8 @@
         $batcharrayunique | foreach-object {
             $nslidescomplete = ($batcharray -match $_).count
             $projectbatchpair = $_ -split ','
-            $sample = [sampledef]::new($this.mpath, $cmodule, $projectbatchpair[1], $projectbatchpair[0])
+            $sample = sampledef -mpath $this.mpath -module $cmodule `
+                -batchid $projectbatchpair[1] -project $projectbatchpair[0]
             $nslidesbatch = $sample.batchslides.count
             if ($nslidescomplete -eq $nslidesbatch){
                 $batchescomplete += $_

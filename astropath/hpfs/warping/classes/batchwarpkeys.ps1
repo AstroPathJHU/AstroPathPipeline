@@ -127,7 +127,7 @@ class batchwarpkeys : moduletools {
     Usage: $this.datavalidation()
     ----------------------------------------- #>
     [void]datavalidation(){
-        if (!$this.sample.testbatchwarpkeys()){
+        if (!$this.sample.testbatchwarpkeysfiles()){
             throw 'Output files are not correct'
         }
     }

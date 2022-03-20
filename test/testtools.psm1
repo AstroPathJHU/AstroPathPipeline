@@ -25,6 +25,7 @@ Class testtools{
     [string]$slidelist = '"L1_1|M148|M206|M21_1|M55_1|YZ71|ZW2|MA12"'
     [string]$slideid2 = 'M55_1'
     [string]$testrpath
+    [string]$apfile_temp_constant = 'Template.csv'
     #
     testtools(){
        $this.importmodule()
@@ -652,5 +653,69 @@ Class testtools{
         #
     }
     #
+    [void]addtestfiles($sample, $path, $files){
+        #
+        foreach ($file in $files) {
+            #
+            if ($file[0] -match '-'){
+                $file = $this.slideid + $file
+            }
+            #
+            $fullpath = $path + '\' + $file
+            $sample.setfile($fullpath, 'blah de blah')
+            #
+        }
+        #
+    }
+    #
+    [void]addtestfiles($sample, $path, $file, $source){
+        #
+        $sample.('get' + $source + 'files')() | ForEach-Object{
+            $sample.copy($_.FullName, $path)
+            $newname = $_.Name -replace $sample.($source + 'constant'),
+                 $sample.($file + 'constant')
+            rename-item ($path + '\' + $_.Name) $newname
+        }
+        #
+    }
+    #
+    [void]removetestfiles($sample, $path, [array]$files){
+        #
+        foreach ($file in $files) {
+            #
+            if ($file[0] -match '-'){
+                $file = $this.slideid + $file
+            }
+            #
+            
+            $fullpath = $path + '\' + $file
+            write-host '    file to remove:' $fullpath
+            $sample.removefile($fullpath)
+            Write-Host '    file successfully removed:' (!(test-path $fullpath))
+            #
+        }
+        #
+    }
+    #
+    [void]removetestfiles($sample, $path, $file, $source){
+        #
+        $sample.getfiles($source, $false) | ForEach-Object{
+            $newname = $_.Name -replace $($source + 'constant'),
+                 $($file + 'constant')
+            $sample.removefile($path + '\' + $newname)
+        }
+        #
+    }
+    #
+    [string]aptempfullname($sampletracker, $filetype){
+        #
+        $filename = $sampletracker.($filetype + '_fullfile')()
+        $tempfilename = $filename `
+            -replace $sampletracker.apfile_constant, $this.apfile_temp_constant
+        return $tempfilename
+        #
+    }
+    #
+    
 }
 #
