@@ -79,7 +79,7 @@ Class testtools{
     #
     [void]verifyAPIDdef(){
         #
-        if (!test-path ($this.mpath + '\AstroPathAPIDdef.csv')){
+        if (!(test-path ($this.mpath + '\AstroPathAPIDdef.csv'))){
             try{
                 $tools = sharedtools
                 $sor = $this.mpath + '\AstroPathAPIDdefTemplate.csv'

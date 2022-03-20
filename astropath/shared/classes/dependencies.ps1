@@ -393,7 +393,7 @@
             return 1
         }
         #
-        if ($this.moduleinfo.warpoctets.vers -notmatch '0.0.1'){
+        if ($this.moduleinfo.warpoctets.vers -match '0.0.1'){
             return 3
         }
         #
@@ -428,7 +428,7 @@
             return 1
         }
         #
-        if ($this.moduleinfo.batchwarpkeys.vers -notmatch '0.0.1'){
+        if ($this.moduleinfo.batchwarpkeys.vers -match '0.0.1'){
             return 3
         }
         #

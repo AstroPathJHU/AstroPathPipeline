@@ -471,7 +471,7 @@ class sampledef : sharedtools{
     }
     #
     [switch]testbatchmicompfiles(){
-        $micomp_data = $this.ImportMICOMP($this.mpath)
+        $micomp_data = $this.ImportMICOMP($this.mpath, $false)
         if (($micomp_data.root_dir_1 -contains ($this.basepath + '\') -AND
                 $micomp_data.slide_ID_1 -contains ($this.slideid)) -OR
             (($micomp_data.root_dir_2 -contains ($this.basepath + '\') -AND
