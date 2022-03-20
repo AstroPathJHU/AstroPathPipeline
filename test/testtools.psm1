@@ -709,7 +709,7 @@ Class testtools{
     #
     [string]aptempfullname($sampletracker, $filetype){
         #
-        $filename = $sampletracker.($filetype + '_fullfile')()
+        $filename = $sampletracker.($filetype + '_fullfile')($this.mpath)
         $tempfilename = $filename `
             -replace $sampletracker.apfile_constant, $this.apfile_temp_constant
         return $tempfilename

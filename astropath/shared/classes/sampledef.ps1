@@ -7,6 +7,7 @@
  methods used to build a sample object
  -------------------------------------------#>
 class sampledef : sharedtools{
+    #
     [string]$cohort
     [string]$project
     [string]$BatchID
@@ -39,6 +40,8 @@ class sampledef : sharedtools{
     [string]$binsegconstant = '_binary_seg_maps.tif'
     [string]$cellsegsumconstant = '_cell_seg_data_summary.tif'
     [string]$componentconstant = '_component_data.tif'
+    #
+    [array]$antibodies
     #
     sampledef(){}
     #

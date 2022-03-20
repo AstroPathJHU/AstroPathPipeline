@@ -342,6 +342,8 @@
         #
         $this.removetestfiles($sampletracker,
             $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
+        $this.removetestfiles($sampletracker,
+            $sampletracker.meanimagefoler(), '-mask_stack.bin')
         #
     }
     #
@@ -349,13 +351,15 @@
         #
         $this.addtestfiles($sampletracker, 
             $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
+        $this.addtestfiles($sampletracker,
+            $sampletracker.meanimagefoler(), '-mask_stack.bin')
         #
     }
     #
     [void]removebatchmicompexamples($sampletracker){
         #
         $p = $this.aptempfullname($sampletracker, 'micomp')
-        $p2 = $sampletracker.micomp_fullfile
+        $p2 = $sampletracker.micomp_fullfile($this.mpath)
         #
         $sampletracker.removefile($p2)
         $data = $sampletracker.opencsvfile($p)
@@ -367,7 +371,7 @@
     #
     [void]addbatchmicompexamples($sampletracker){
         #
-        $p2 = $sampletracker.micomp_fullfile
+        $p2 = $sampletracker.micomp_fullfile($this.mpath)
         #
         $micomp_data = $sampletracker.importmicomp($sampletracker.mpath)
         $newobj = [PSCustomObject]@{
@@ -396,7 +400,7 @@
     #
     [void]addbatchflatfieldexamples($sampletracker){
         #
-        $p2 = $sampletracker.corrmodels_fullfile
+        $p2 = $sampletracker.corrmodels_fullfile($this.mpath)
         #
         $micomp_data = $sampletracker.ImportCorrectionModels($sampletracker.mpath)
         $newobj = [PSCustomObject]@{
@@ -418,7 +422,7 @@
     [void]addcorrectionfile($sampletracker){
         #
         $p = $this.aptempfullname($sampletracker, 'corrmodels')
-        $p2 = $sampletracker.corrmodels_fullfile
+        $p2 = $sampletracker.corrmodels_fullfile($this.mpath)
         #
         $sampletracker.removefile($p2)
         $data = $sampletracker.opencsvfile($p)
