@@ -151,13 +151,13 @@
     #
     [switch]testbatchwarpkeysfiles(){
         #
-        return $this.testfiles($this.warpbatchfolder(), $this.warpbatchkeysreqfiles)
+        return $this.testfiles($this.warpbatchoctetsfolder(), $this.batchwarpkeysreqfiles)
         #
     }
     #
     [switch]testbatchwarpfitsfiles(){
         #
-        return $this.testfiles($this.warpbatchfolder(), $this.warpbatchfitsreqfiles)
+        return $this.testfiles($this.warpbatchfolder(), $this.batchwarpfitsreqfiles)
         #
     }
     #

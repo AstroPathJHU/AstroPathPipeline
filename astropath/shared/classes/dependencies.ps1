@@ -16,6 +16,28 @@
     # dependencies($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
     #
     [void]getlogstatus($cmodule){
+        if ($cmodule -match 'vminform'){
+            #
+            $this.getantibodies()
+            $this.antibodies | ForEach-Object{
+                $this.getlogstatussub($cmodule, $_)
+            }
+            #
+        } else {
+            $this.getlogstatussub($cmodule)
+        }
+    }
+    #
+    [void]getantibodies(){
+       # try{
+            $this.findantibodies($this.basepath)
+       # } catch {
+        #    Write-Host $_.Exception.Message
+        #    return
+        #}
+    }
+    #
+    [void]getlogstatussub($cmodule){
         #
         $logoutput = $this.checklog($cmodule, $false)
         #
@@ -42,6 +64,35 @@
             #
         }
         #
+    }
+    #
+    [void]getlogstatussub($cmodule, $antibody){
+        #
+        $logoutput = $this.checklog($cmodule, $antibody, $false)
+        $this.moduleinfo.($cmodule).($antibody) = @{}
+        #
+        if ($logoutput[1]){
+            $this.moduleinfo.($cmodule).($antibody).status = $logoutput[1].Message
+        } elseif ($logoutput) {
+            #
+            $statusval = ($this.('check'+$cmodule)($antibody))
+            if ($statusval -eq 1){
+                $this.moduleinfo.($cmodule).($antibody).status = 'WAITING'
+            } elseif ($statusval -eq 2){
+                $this.moduleinfo.($cmodule).($antibody).status = 'READY'
+            } elseif ($statusval -eq 3){
+                $this.moduleinfo.($cmodule).($antibody).status = 'FINISHED'
+            } elseif ($statusval -eq 4) {
+                $this.moduleinfo.($cmodule).($antibody).status = 'NA'
+            } else {
+                $this.moduleinfo.($cmodule).($antibody).status = 'UNKNOWN'
+            }
+            #
+        } else {
+            #
+            $this.moduleinfo.($cmodule).($antibody).status = 'RUNNING'
+            #
+        }
     }
     <# -----------------------------------------
      checklog
@@ -461,7 +512,7 @@
             return 1
         }
         #
-        if ($this.moduleinfo.batchwarpfits.vers -notmatch '0.0.1'){
+        if ($this.moduleinfo.batchwarpfits.vers -match '0.0.1'){
             return 3
         }
         #
@@ -510,7 +561,7 @@
     <# -----------------------------------------
      checkvminform
     ----------------------------------------- #>
-    [void]checkvminform($dependency){
+    [void]checkvminform(){
         #
         $this.informvers = '2.6.0'
         #
@@ -551,9 +602,26 @@
      ------------------------------------------
      Usage: $this.checkvminform(dependency)
     ----------------------------------------- #>
-    [int]checkvminform(){
+    [int]checkvminform($antibody){
+         #
+         if ($this.moduleinfo.imagecorrection.status -ne 'FINISHED'){
+            return 1
+        }
         #
-        return 4
+        if ($this.vmq.checkfornewtask($this.project, 
+            $this.slideid, $antibody)){
+                return 1
+            }
+        #
+        if ($this.vmq.checkforreadytask()){
+            return 2
+        }
+        <#
+        if ($this.checkimageqa()){
+            return 3
+        }
+        #>
+        return 1
         #
     }
     <# -----------------------------------------
@@ -571,7 +639,29 @@
     ----------------------------------------- #>
     [int]checkmergeloop(){
         #
-        return 4
+        $this.getantibodies()
+        <#
+        $this.antibodies | foreach-Object{
+            #
+            if ($this.moduleinfo.vminform.($_).status -eq 'RUNNING'){
+                return 1
+            }
+            #
+            if ($this.testantibodyfiles()){
+                return 
+            }
+            #
+        }
+        #
+        if (!$this.testmergefiles()){
+            return 2
+        }
+        #
+        if ($this.checkimageqa()){
+            return 3
+        }
+        #>
+        return 1
         #
     }
     <# -----------------------------------------

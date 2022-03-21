@@ -65,12 +65,6 @@ for i1 = 1:height(tbl)
     %
     progresstrack_samples_loop(main, wd, machine, version, logstring);
     %
-    % fill main inForm queue
-    %
-    try
-        pop_main_queue(wd, main)
-    catch
-    end
 end
 %
 end

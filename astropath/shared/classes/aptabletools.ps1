@@ -7,6 +7,7 @@
     [PSCustomObject]$ffmodels_data
     [PSCustomObject]$slide_data
     [PSCustomObject]$worker_data
+    [PSCustomObject]$mergeconfig_data
     #
     [string]$cohorts_file = 'AstroPathCohortsProgress.csv' 
     [string]$paths_file = 'AstroPathPaths.csv'
@@ -365,6 +366,40 @@
         return $this.micomp_data
         #
     }
+    #
+    [string]mergeconfig_fullfile($basepath){
+        #
+        $mergefile = get-childitem ($basepath + '\Batch\*') "MergeConfig*xlsx"
+        #
+        if (!$mergefile){
+            Throw ('merge config file could not be found for ' + $basepath)
+        }
+        #
+        return $mergefile[0].fullname
+        #
+    }
+    #
+    [PSCustomObject]ImportMergeConfig([string] $basepath, $createwatcher){
+        #
+        $micomp_csv_file = $this.mergeconfig_fullfile($basepath)
+        $this.mergeconfig_data = $this.importexcel($micomp_csv_file)
+        if ($createwatcher){
+            $this.FileWatcher($micomp_csv_file)
+        }
+        #
+        return $this.mergeconfig_data
+        #
+    }
+    #
+    [PSCustomObject]ImportMergeConfig([string] $basepath){
+        #
+        if (!$this.mergeconfig_data){
+            $this.ImportMergeConfig($basepath, $false) | Out-NULL
+        }
+        #
+        return $this.mergeconfig_data
+        #
+    }
     <# -----------------------------------------
      Importlogfile
      import and return a log file object
@@ -486,22 +521,5 @@
         return $logline
         #
     } 
-    #
-    [void]handleAPevent($file){
-        #
-        $fpath = Split-Path $file
-        $file = Split-Path $file -Leaf
-        #
-        switch -regex ($file){
-            $this.cohorts_file {$this.importcohortsinfo($this.mpath, $false)}
-            $this.paths_file {$this.importcohortsinfo($this.mpath, $false)}
-            $this.config_file {$this.ImportConfigInfo($this.mpath, $false)}
-            $this.slide_file {$this.ImportSlideIDs($this.mpath, $false)}
-            $this.ffmodels_file {$this.ImportFlatfieldModels($this.mpath, $false)}
-            $this.corrmodels_file {$this.ImportCorrectionModels($this.mpath, $false)}
-            $this.micomp_file {$this.ImportMICOMP($this.mpath, $false)}
-            $this.worker_file {$this.Importworkerlist($this.mpath, $false)}
-        }
-    }
     #   
 }

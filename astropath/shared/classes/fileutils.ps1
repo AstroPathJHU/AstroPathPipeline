@@ -189,6 +189,60 @@ class fileutils : generalutils {
         #
     }
     <# -----------------------------------------
+     ImportExcel
+     ------------------------------------------
+     Input: 
+        -fpath[string]: file path to read in
+        adopted from: 
+        https://www.c-sharpcorner.com/article/read-excel-file-using-psexcel-in-powershell2/
+     ------------------------------------------
+     Usage: $this.ImportExcel(fpath)
+    ----------------------------------------- #>
+    [PSCustomObject]ImportExcel($fpath){
+        #
+        $objExcel = New-Object -ComObject Excel.Application
+        $WorkBook = $objExcel.Workbooks.Open($fpath)
+        #
+        $worksheet = $workbook.WorkSheets(1)
+        $columns = $Worksheet.columns.count
+        $rows = $Worksheet.Rows.Count
+        #
+        # get the headers
+        #  
+        $names = @()
+        #
+        foreach ($i1 in (1..$columns)){
+            $cell = $worksheet.Cells.Item(1, $i1).text
+            if ($cell){
+                $names += $cell
+            } else {
+                break
+            }
+        }
+        #
+        $obj = @()
+        #
+        foreach ($i2 in (2..$rows)){
+            $cell = $worksheet.cells.item($i2, 1).text
+            if ($cell){
+                $obj1 = new-object pscustomobject
+                foreach($i3 in (0..($names.count-1))) {
+                    $obj1 | Add-Member -NotePropertyName $names[$i3] `
+                        -NotePropertyValue $worksheet.cells.item($i2, ($i3 + 1)).text
+                }
+                #
+                $obj += $obj1
+            } else { break }
+        }
+        #
+        try{
+            $objExcel.Quit()
+        } catch {}
+        #
+        return $obj
+        #
+    }
+    <# -----------------------------------------
      PopFile
      append to the end of a file
      ------------------------------------------

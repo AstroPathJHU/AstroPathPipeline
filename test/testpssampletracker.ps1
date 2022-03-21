@@ -309,11 +309,19 @@
         Write-Host 'clearing logs started'
         $sampletracker.removefile($sampletracker.slidelogbase('shredxml'))
         $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
+        $this.removemeanimageexamples($sampletracker)
         $sampletracker.removefile($sampletracker.mainlogbase('batchmicomp'))
         $sampletracker.removefile($sampletracker.mainlogbase('batchflatfield'))
-        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpfits'))
-        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpkeys'))
+        $this.removebatchflatfieldexamples($sampletracker)
         $sampletracker.removefile($sampletracker.slidelogbase('warpoctets'))
+        $this.removewarpoctetsexamples($sampletracker)
+        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpfits'))
+        $this.removebatchwarpfitsexamples($sampletracker)
+        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpkeys'))
+        $this.removebatchwarpkeysexamples($sampletracker)
+        $sampletracker.removedir($sampletracker.basepath + 'warping')
+        $sampletracker.removedir($sampletracker.warpoctetsfolder())
+        
         Write-Host 'clearing logs finished'
         #
     }
@@ -343,7 +351,7 @@
         $this.removetestfiles($sampletracker,
             $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
         $this.removetestfiles($sampletracker,
-            $sampletracker.meanimagefoler(), '-mask_stack.bin')
+            $sampletracker.meanimagefolder(), '-mask_stack.bin')
         #
     }
     #
@@ -352,7 +360,7 @@
         $this.addtestfiles($sampletracker, 
             $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
         $this.addtestfiles($sampletracker,
-            $sampletracker.meanimagefoler(), '-mask_stack.bin')
+            $sampletracker.meanimagefolder(), '-mask_stack.bin')
         #
     }
     #
@@ -447,14 +455,14 @@
     [void]removebatchwarpkeysexamples($sampletracker){
         #
         $this.removetestfiles($sampletracker, 
-            $sampletracker.warpbatchfolder(), $sampletracker.batchwarpkeysreqfiles)
+            $sampletracker.warpbatchoctetsfolder(), $sampletracker.batchwarpkeysreqfiles)
         #
     }
     #
     [void]addbatchwarpkeysexamples($sampletracker){
         #
         $this.addtestfiles($sampletracker, 
-            $sampletracker.warpbatchfolder(), $sampletracker.batchwarpkeysreqfiles)
+            $sampletracker.warpbatchoctetsfolder(), $sampletracker.batchwarpkeysreqfiles)
         #
     }
     #

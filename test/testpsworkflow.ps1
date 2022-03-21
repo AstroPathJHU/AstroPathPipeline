@@ -26,7 +26,7 @@ Class testpsworkflow : testtools {
         $this.testworkerlistdef($inp)
         $this.testorphanjobmonitor($inp)
         $this.testwait($inp)
-        $inp.removedir($inp.workerloglocation)
+        $inp.removedir($PSScriptRoot + '\data\workflowlogs')
         Write-Host '.'
         #
     }

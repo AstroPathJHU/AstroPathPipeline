@@ -239,7 +239,11 @@ class sampledef : sharedtools{
     [string]im3folder(){
         $path = $this.basepath + '\' + $this.slideid + '\im3'
         return $path
-
+    }
+    #
+    [string]upkeepfolder(){
+        $path = $this.basepath + '\upkeep_and_progress'
+        return $path
     }
     #
     [string]Scan(){
@@ -425,6 +429,24 @@ class sampledef : sharedtools{
     [string]warpprojectoctetsfolder(){
         $path = $this.basepath +'\warping\Project_' + $this.project + '\octets'
         return $path
+    }
+    #
+    [void]findantibodies(){
+        $this.findantibodies($this.basepath)
+    }
+    #
+    [void]findantibodies($basepath){
+        #
+        $this.ImportMergeConfig($basepath)
+        $targets = $this.mergeconfig_data.Target
+        $qa = $this.mergeconfig_data.ImageQA.indexOf('Tumor')
+        #
+        if ($qa -ge 0){
+            $targets[$qa] = 'Tumor'
+        }
+        #
+        $this.antibodies = $targets
+        #
     }
     #
     [int]getcount($source, $forceupdate){
