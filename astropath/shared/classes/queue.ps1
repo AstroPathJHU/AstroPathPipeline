@@ -429,6 +429,8 @@ class queue : vminformqueue{
                 return 1
             }
             #
+            $log = $this.updatelogger($log, 'batchflatfield')
+            #
             $ids = $this.ImportCorrectionModels($this.mpath)
             if ($ids.slideid -notcontains $log.slideid){
                 return 1
@@ -443,6 +445,8 @@ class queue : vminformqueue{
             if (!($this.checkmeanimage($log, $true) -eq 3)){
                 return 1
             }
+            #
+            $log = $this.updatelogger($log, 'batchflatfield')
             #
             $log.slidelog = $log.mainlog
             if ($this.checklog($log, $true)){
@@ -480,6 +484,11 @@ class queue : vminformqueue{
         }
         #
         $log = $this.updatelogger($log, 'warpoctets')
+        #
+        if ($log.vers -match '0.0.1'){
+            RETURN 3
+        }
+        #
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -513,11 +522,16 @@ class queue : vminformqueue{
         }
         #
         $log = $this.updatelogger($log, 'batchwarpkeys')
+        #
+        if ($log.vers -match '0.0.1'){
+            RETURN 3
+        }
+        #
         if ($this.checklog($log, $true)){
             return 2
         }
         #
-        if (!$log.testbatchwarpkeys()){
+        if (!$log.testbatchwarpkeysfiles()){
             return 2
         }
         #
@@ -546,14 +560,19 @@ class queue : vminformqueue{
         }
         #
         $log = $this.updatelogger($log, 'batchwarpfits')
+        #
+        if ($log.vers -match '0.0.1'){
+            RETURN 3
+        }
+        #
         if ($this.checklog($log, $true)){
             return 2
         }
-        <#
-        if (!$log.testbatchwarpfits()){
+        #
+        if (!$log.testbatchwarpfitsfiles()){
             return 2
         }
-        #>
+        #
         return 3
         #
     }
