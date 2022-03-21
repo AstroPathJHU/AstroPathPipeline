@@ -1,7 +1,8 @@
 import csv, itertools, logging, more_itertools, os, pathlib, re
 
-from astropath.slides.geomcell.geomcellcohort import GeomCellCohortDeepCell, GeomCellCohortInform
-from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSampleDeepCell, GeomCellSampleInform
+from astropath.shared.sample import SampleWithSegmentationFolder
+from astropath.slides.geomcell.geomcellcohort import GeomCellCohortDeepCell, GeomCellCohortInform, GeomCellCohortMesmer
+from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSampleDeepCell, GeomCellSampleInform, GeomCellSampleMesmer
 from astropath.utilities.version.git import thisrepo
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
@@ -30,14 +31,31 @@ class TestGeomCell(TestBaseSaveOutput):
     samplecls, cohortcls = {
       "inform": (GeomCellSampleInform, GeomCellCohortInform),
       "deepcell": (GeomCellSampleDeepCell, GeomCellCohortDeepCell),
+      "mesmer": (GeomCellSampleMesmer, GeomCellCohortMesmer),
     }[algorithm]
 
     root = thisfolder/"data"
     geomroot = thisfolder/"test_for_jenkins"/"geomcell"
+    segmentationroot = thisfolder/"data"/"reference"/"segmentation"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--logroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--njobs", "2"]
-    s = samplecls(root=root, samp=SlideID, geomroot=geomroot, logroot=geomroot, selectrectangles=[1], printthreshold=logging.CRITICAL+1, reraiseexceptions=False, uselogfiles=True)
+
+    samplekwargs = {
+      "root": root,
+      "samp": SlideID,
+      "geomroot": geomroot,
+      "logroot": geomroot,
+      "selectrectangles": [1],
+      "printthreshold": logging.CRITICAL+1,
+      "reraiseexceptions": False,
+      "uselogfiles": True,
+    }
+    if issubclass(samplecls, SampleWithSegmentationFolder):
+      samplekwargs["segmentationroot"] = segmentationroot
+      args += ["--segmentationroot", os.fspath(segmentationroot)]
+    s = samplecls(**samplekwargs)
     with s.logger:
       raise ValueError
+
     geomloadcsv = s.rectangles[0].geomloadcsv(algorithm)
     geomloadcsv.parent.mkdir(exist_ok=True, parents=True)
     geomloadcsv.touch()
@@ -108,11 +126,8 @@ class TestGeomCell(TestBaseSaveOutput):
   def testGeomCellFastUnitsPixels(self, **kwargs):
     self.testGeomCell(units="fast_pixels", **kwargs)
 
-  def testGeomCellFastUnitsMicrons(self, **kwargs):
-    self.testGeomCell(units="fast_microns", **kwargs)
-
   def testGeomCellDeepCell(self, **kwargs):
-    self.testGeomCell(algorithm="deepcell", **kwargs)
+    self.testGeomCell(algorithm="deepcell", SlideID="M21_1", **kwargs)
 
-  def testGeomCellDeepCellFastUnits(self, **kwargs):
-    self.testGeomCellDeepCell(units="fast_microns", **kwargs)
+  def testGeomCellMesmerFastUnitsMicrons(self, **kwargs):
+    self.testGeomCell(algorithm="mesmer", SlideID="M21_1", units="fast_microns", **kwargs)

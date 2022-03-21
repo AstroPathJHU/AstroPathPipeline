@@ -12,10 +12,10 @@ from ..utilities.tableio import readtable, writetable
 from ..utilities.version import astropathversionregex
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
-from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SegmentationFolderArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
 from .logging import getlogger, ThingWithLogger
-from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer
+from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import WorkflowDependencySlideID
@@ -1845,12 +1845,48 @@ class ParallelSample(SampleBase, ParallelArgumentParser):
     if self.njobs is not None: nworkers = min(nworkers, self.njobs)
     return mp.get_context().Pool(nworkers)
 
-class SampleWithSegmentations(SampleBase):
+class SampleWithSegmentations(ReadRectanglesBase):
   @classmethod
   @abc.abstractmethod
   def segmentationalgorithm(cls): pass
 
-class InformSegmentationSample(SampleWithSegmentations):
+class SampleWithSegmentationFolder(SampleWithSegmentations, SegmentationFolderArgumentParser):
+  def __init__(self,*args,segmentationfolder=None,segmentationroot=None,**kwargs) :
+    self.__segmentationfolderarg = segmentationfolder
+    super().__init__(*args, **kwargs)
+    if segmentationroot is None:
+      segmentationroot = self.im3root
+    self.__segmentationroot = segmentationroot
+
+  @property
+  def workflowkwargs(self) :
+    return {
+      **super().workflowkwargs,
+      'segmentationfolder': self.segmentationfolder,
+      'segmentationroot': self.segmentationroot,
+    }
+
+  @property
+  def segmentationroot(self):
+    return self.__segmentationroot
+  @property
+  def segmentationfolder(self):
+    #set the working directory path based on the algorithm being run (if it wasn't set by a command line arg)
+    return self.segmentation_folder(self.__segmentationfolderarg,self.segmentationroot,self.SlideID)
+
+  @classmethod
+  def segmentation_folder(cls,segmentationfolder,segmentationroot,SlideID) :
+    #default output is im3folder/segmentation/algorithm
+    outputdir = segmentationfolder
+    if outputdir is None :
+      outputdir = segmentationroot/SlideID/'im3'/'segmentation'/cls.segmentationalgorithm()
+    else :
+      if outputdir.name!=SlideID :
+        #put non-default output in a subdirectory named for the slide
+        outputdir = outputdir/SlideID
+    return outputdir
+
+class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentTiffBase):
   @classmethod
   def segmentationalgorithm(cls):
     return "inform"
@@ -1880,7 +1916,6 @@ class InformSegmentationSample(SampleWithSegmentations):
   def nsegmentations(self):
     return len(self.segmentationids)
 
-class ReadRectanglesSegmentedComponentTiffBase(ReadRectanglesComponentTiffBase, InformSegmentationSample):
   @property
   def masklayer(self):
     return self.nlayersunmixed + 1
@@ -1914,5 +1949,28 @@ class ReadRectanglesSegmentedComponentTiffBase(ReadRectanglesComponentTiffBase, 
     }
     return kwargs
 
-class ReadRectanglesDbloadSegmentedComponentTiff(ReadRectanglesDbloadComponentTiff, ReadRectanglesSegmentedComponentTiffBase):
+class ReadRectanglesDbloadSegmentedComponentTiff(ReadRectanglesDbloadComponentTiff, InformSegmentationSample):
   pass
+
+class DeepCellSegmentationSampleBase(SampleWithSegmentationFolder):
+  rectangletype = SegmentationRectangle
+  @property
+  def rectangleextrakwargs(self):
+    kwargs = {
+      **super().rectangleextrakwargs,
+      "segmentationfolder": self.segmentationfolder,
+    }
+    return kwargs
+
+class DeepCellSegmentationSample(DeepCellSegmentationSampleBase):
+  rectangletype = SegmentationRectangleDeepCell
+  @classmethod
+  def segmentationalgorithm(cls):
+    return "deepcell"
+
+class MesmerSegmentationSample(DeepCellSegmentationSampleBase):
+  rectangletype = SegmentationRectangleMesmer
+  @classmethod
+  def segmentationalgorithm(cls):
+    return "mesmer"
+

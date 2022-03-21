@@ -5,8 +5,8 @@ from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
-from ...shared.rectangle import GeomLoadRectangle, rectanglefilter
-from ...shared.sample import DbloadSample, GeomSampleBase, InformSegmentationSample, ParallelSample, ReadRectanglesDbloadSegmentedComponentTiff, SampleWithSegmentations, WorkflowSample
+from ...shared.rectangle import GeomLoadRectangle, rectanglefilter, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
+from ...shared.sample import DbloadSample, DeepCellSegmentationSample, DeepCellSegmentationSampleBase, GeomSampleBase, InformSegmentationSample, MesmerSegmentationSample, ParallelSample, ReadRectanglesDbload, ReadRectanglesDbloadSegmentedComponentTiff, SampleWithSegmentations, WorkflowSample
 from ...utilities import units
 from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
@@ -28,13 +28,20 @@ class GeomCellFieldInform(FieldReadSegmentedComponentTiffMultiLayer, GeomCellFie
     with self.using_component_tiff() as im:
       yield im.astype(np.uint32).transpose(2, 0, 1)
 
-class GeomCellRectangleDeepCellBase(GeomLoadRectangle):
+class GeomCellFieldDeepCellBase(GeomCellField, SegmentationRectangle):
   pass
+class GeomCellFieldDeepCell(GeomCellFieldDeepCellBase, SegmentationRectangleDeepCell):
+  @contextlib.contextmanager
+  def using_segmentation_layers(self):
+    with self.using_segmentation_array() as im:
+      yield im[np.newaxis]  #change the shape from [h, w] to [1, h, w]
+class GeomCellFieldMesmer(GeomCellFieldDeepCellBase, SegmentationRectangleMesmer):
+  @contextlib.contextmanager
+  def using_segmentation_layers(self):
+    with self.using_segmentation_array() as im:
+      yield im.transpose(2, 0, 1)
 
-class GeomCellFieldDeepCellBase(GeomCellField, GeomCellRectangleDeepCellBase):
-  pass
-
-class GeomCellSampleBase(GeomSampleBase, DbloadSample, SampleWithSegmentations, ParallelSample, WorkflowSample, CleanupArgumentParser):
+class GeomCellSampleBase(GeomSampleBase, SampleWithSegmentations, ReadRectanglesDbload, ParallelSample, WorkflowSample, CleanupArgumentParser):
   rectangletype = GeomCellField
 
   @property
@@ -130,13 +137,6 @@ class GeomCellSampleBase(GeomSampleBase, DbloadSample, SampleWithSegmentations, 
 
       writetable(geomloadcsv, geomload, rowclass=CellGeomLoad)
 
-  def inputfiles(self, **kwargs):
-    return super().inputfiles(**kwargs) + [
-      self.csv("constants"),
-      self.csv("fields"),
-      *(r.componenttifffile for r in self.rectangles),
-    ]
-
   @classmethod
   def getworkinprogressfiles(cls, SlideID, *, geomroot, **otherworkflowkwargs):
     geomfolder = geomroot/SlideID/"geom"/cls.segmentationalgorithm()
@@ -215,10 +215,24 @@ class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComp
   def arelayersmembrane(self):
     return [self.ismembranelayer(imlayernumber) for imlayernumber in self.layerscomponenttiff]
 
-class GeomCellSampleDeepCellBase(GeomCellSampleBase):
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
+      self.csv("constants"),
+      self.csv("fields"),
+      *(r.componenttifffile for r in self.rectangles),
+    ]
+
+class GeomCellSampleDeepCellBase(GeomCellSampleBase, DeepCellSegmentationSampleBase):
   rectangletype = GeomCellFieldDeepCellBase
 
-class GeomCellSampleDeepCell(GeomCellSampleDeepCellBase):
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
+      self.csv("constants"),
+      self.csv("fields"),
+      *(r.segmentationnpzfile for r in self.rectangles),
+    ]
+
+class GeomCellSampleDeepCell(GeomCellSampleDeepCellBase, DeepCellSegmentationSample):
   rectangletype = GeomCellFieldDeepCell
   @classmethod
   def logmodule(cls):
@@ -228,7 +242,7 @@ class GeomCellSampleDeepCell(GeomCellSampleDeepCellBase):
   @property
   def celltypesbylayer(self): return np.array([2])
 
-class GeomCellSampleMesmer(GeomCellSampleDeepCellBase):
+class GeomCellSampleMesmer(GeomCellSampleDeepCellBase, MesmerSegmentationSample):
   rectangletype = GeomCellFieldMesmer
   @classmethod
   def logmodule(cls):

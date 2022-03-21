@@ -4,7 +4,6 @@ import numpy as np
 from batchgenerators.utilities.file_and_folder_operations import join
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.optionalimports import deepcell, nnunet
-from ...shared.argumentparser import SegmentationFolderArgumentParser
 from ...shared.sample import ParallelSample, ReadRectanglesComponentAndIHCTiffFromXML
 from ...shared.sample import SampleWithSegmentations, WorkflowSample
 from .config import SEG_CONST
@@ -18,7 +17,7 @@ MESMER_SEGMENT_FILE_APPEND = 'mesmer_segmentation.npz'
 MESMER_GROUP_SIZE = 12
 
 class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWithSegmentations,
-                             WorkflowSample,ParallelSample,SegmentationFolderArgumentParser) :
+                             WorkflowSample,ParallelSample) :
     """
     Write out nuclear segmentation maps based on the DAPI layers of component tiffs for a single sample
     Algorithms available include pre-trained nnU-Net and DeepCell/mesmer models 
@@ -26,12 +25,11 @@ class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWith
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,layercomponenttiff=1,segmentationfolder=None,**kwargs) :
+    def __init__(self,*args,layercomponenttiff=1,**kwargs) :
         # only need to load the DAPI layers of the rectangles, so send that to the __init__
         if layercomponenttiff != 1 :
             raise RuntimeError(f'ERROR: sample layer was set to {kwargs.get("layer")}')
         super().__init__(*args,layercomponenttiff=layercomponenttiff,**kwargs)
-        self.__segmentationfolderarg = segmentationfolder
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
@@ -46,33 +44,7 @@ class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWith
     @methodtools.lru_cache()
     def runsegmentation(self, **kwargs): pass
 
-    #################### PROPERTIES ####################
-
-    @property
-    def workflowkwargs(self) :
-        return {
-            **super().workflowkwargs,
-            'segmentationfolder':self.__segmentationfolderarg,
-        }
-
-    @property
-    def segmentationfolder(self):
-        #set the working directory path based on the algorithm being run (if it wasn't set by a command line arg)
-        return self.segmentation_folder(self.__segmentationfolderarg,self.im3root,self.SlideID)
-
     #################### CLASS METHODS ####################
-
-    @classmethod
-    def segmentation_folder(cls,segmentationfolder,im3root,SlideID) :
-        #default output is im3folder/segmentation/algorithm
-        outputdir = segmentationfolder
-        if outputdir is None :
-            outputdir = im3root/SlideID/'im3'/SEG_CONST.SEGMENTATION_DIR_NAME/cls.segmentationalgorithm()
-        else :
-            if outputdir.name!=SlideID :
-                #put non-default output in a subdirectory named for the slide
-                outputdir = outputdir/SlideID
-        return outputdir
 
     @classmethod
     def getoutputfiles(cls,SlideID,im3root,informdataroot,segmentationfolder,**otherworkflowkwargs) :

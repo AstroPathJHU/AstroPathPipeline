@@ -6,7 +6,7 @@ from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .image_masking.maskloader import ThingWithMask, ThingWithTissueMask
-from .imageloader import ImageLoaderBin, ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
+from .imageloader import ImageLoaderBin, ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderNpz, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
 from .rectangletransformation import AsTypeTransformation, RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
 
 class Rectangle(DataClassWithPscale):
@@ -736,6 +736,39 @@ class GeomLoadRectangle(Rectangle):
     super().__post_init__(*args, **kwargs)
   def geomloadcsv(self, segmentationalgorithm):
     return self.__geomfolder/segmentationalgorithm/self.file.replace(UNIV_CONST.IM3_EXT, "_cellGeomLoad.csv")
+
+class SegmentationRectangle(Rectangle):
+  """
+  Rectangle that has segmentation npz files
+  You have to provide the segmentation folder
+  """
+  def __post_init__(self, *args, segmentationfolder, **kwargs):
+    self.__segmentationfolder = pathlib.Path(segmentationfolder)
+    super().__post_init__(*args, **kwargs)
+  @property
+  def segmentationnpzfile(self):
+    return self.__segmentationfolder/self.file.replace(UNIV_CONST.IM3_EXT, self.segmentationnpzsuffix)
+  @property
+  @abc.abstractmethod
+  def segmentationnpzsuffix(self): pass
+
+  @methodtools.lru_cache()
+  @property
+  def segmentationarrayloader(self):
+    return ImageLoaderNpz(filename=self.segmentationnpzfile, key="arr_0")
+
+  def using_segmentation_array(self):
+    return self.segmentationarrayloader.using_image()
+
+class SegmentationRectangleDeepCell(SegmentationRectangle):
+  @property
+  def segmentationnpzsuffix(self):
+    return "_deepcell_nuclear_segmentation.npz"
+
+class SegmentationRectangleMesmer(SegmentationRectangle):
+  @property
+  def segmentationnpzsuffix(self):
+    return "_mesmer_segmentation.npz"
 
 class MaskRectangleBase(Rectangle, ThingWithMask):
   pass
