@@ -153,13 +153,14 @@ class copyutils{
      on linux
      ------------------------------------------
      Input: 
-        -sor: source file path (one file)
+        -sor: source folder path
         -des: destination folder path
+        -filespec: file specifier
      ------------------------------------------
-     Usage: lxcopy(sor, des)
+     Usage: lxcopy(sor, des, filespec)
     ----------------------------------------- #>
     [void]lxcopy($sor, $des, $filespec){
-        #
+        <#
         $sor1 = ($sor -replace '\\', '/') + '/'
         $des1 = $des -replace '\\', '/'
         mkdir -p $des1
@@ -171,6 +172,22 @@ class copyutils{
         $filespec | ForEach-Object{
             $find = ('"'+$_+'"')
             find $sor1 -name $find | xargs cp -r -t ($des1 + '/')
+        }
+        #>
+        $des1 = $des -replace '\\', '/'
+        $sor1 = $sor -replace '\\', '/'
+        #
+        mkdir -p $des1
+        #
+        $files = $this.listfiles($sor1, $filespec)
+        #
+        $files | foreach-Object -Parallel { 
+            cp $_ -r $using:des1 
+        } -ThrottleLimit 20
+        #
+        $gitignore = $sor1 + '/.gitignore'
+        if (test-path -LiteralPath $gitignore){
+            cp $gitignore $des1
         }
         #
     }
@@ -197,6 +214,21 @@ class copyutils{
             $files = @()
         }
         return $files
+    }
+    #
+    [int]countfiles([string]$sor, [array]$filespec){
+        $files = $this.listfiles($sor, $filespec)
+        return $files.count
+    }
+    #
+    [array]getfullnames([string]$sor, [array]$filespec){
+        $files = $this.listfiles($sor, $filespec)
+        return $files.fullnames
+    }
+    #
+    [array]getnames([string]$sor, [array]$filespec){
+        $files = $this.listfiles($sor, $filespec)
+        return $files.names
     }
     <#------------------------------------------
     handlebrackets
@@ -330,8 +362,11 @@ class copyutils{
                 [Byte[]] $computedHash = $hasher.ComputeHash($stream)
                 [string] $hash = [BitConverter]::ToString($computedHash) -replace '-',''
                 $cnt = 0
-                while(!($hcopy.TryAdd($_.FullName, $hash)) -and $cnt -lt 4){
+                while(!($hcopy.TryAdd($_.FullName, $hash))){
                     $cnt += 1
+                    if ($cnt -gt 4){
+                        break
+                    }
                 }
             } catch {
                 Throw $_.Exception.Message
@@ -372,7 +407,7 @@ class copyutils{
     [hashtable]FileHasher($file, [int]$v, $singlefile){
         #
         $filehash = @{}
-        if (test-path $file){
+        if (test-path -LiteralPath $file){
             $filehash1 = Get-FileHash $file -Algorithm MD5
             $filehash.($file) = $filehash1.Hash
         }  

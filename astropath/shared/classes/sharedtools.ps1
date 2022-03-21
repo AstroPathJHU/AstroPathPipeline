@@ -423,113 +423,6 @@
         Write-Host -NoNewline $($writecurrent)
         #
     }
-    <# -----------------------------------------
-     TaskFileWatcher
-     Create a file watcher 
-     ------------------------------------------
-     Input: 
-        -file: full file path
-     ------------------------------------------
-     Usage: $this.TaskFileWatcher(file, slideid, module)
-    ----------------------------------------- #>
-    [string]TaskFileWatcher($file, $slideid, $module){
-        #
-        $fpath = Split-Path $file
-        $fname = Split-Path $file -Leaf
-        $SI = $module, $slideid -join '-'
-        #
-        $SI = $this.FileWatcher($fpath, $fname, $SI)
-        return $SI
-        #
-    }
-    <# -----------------------------------------
-     FileWatcher
-     Create a file watcher 
-     ------------------------------------------
-     Input: 
-        -file: full file path
-     ------------------------------------------
-     Usage: $this.FileWatcher(file)
-    ----------------------------------------- #>
-    [string]FileWatcher($file){
-        #
-        $fpath = Split-Path $file
-        $fname = Split-Path $file -Leaf
-        #
-        $SI = $this.FileWatcher($fpath, $fname)
-        return $SI
-        #
-    }
-    #
-    [string]FileWatcher($fpath, $fname){
-        #
-        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-        $newwatcher.Filter = $fname
-        $newwatcher.NotifyFilter = 'LastWrite'
-        #
-        Register-ObjectEvent $newwatcher `
-            -EventName Changed `
-            -SourceIdentifier ($fpath + '\' + $fname) | Out-Null
-        #
-        return ($fpath + '\' + $fname)
-        #
-    }
-    #
-    [string]FileWatcher($fpath, $fname, $SI){
-        #
-        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-        $newwatcher.Filter = $fname
-        $newwatcher.NotifyFilter = 'LastWrite'
-        #
-        Register-ObjectEvent $newwatcher `
-            -EventName Changed `
-            -SourceIdentifier $SI | Out-Null
-        #
-        return $SI
-        #
-    }
-    <# -----------------------------------------
-     WaitEvent
-     wait for an event to trigger optionally
-     remove the event subscriber and the event
-     ------------------------------------------
-     Input: 
-        -SI: the source identifier
-     ------------------------------------------
-     Usage: $this.WaitEvent(SI)
-    ----------------------------------------- #>
-    [void]WaitEvent($SI){
-        #
-        Wait-Event -SourceIdentifier $SI
-        Remove-Event -SourceIdentifier $SI
-        #
-    }
-    <# -----------------------------------------
-     UnregisterEvent
-     wait for an event to trigger optionally
-     remove the event subscriber and the event
-     ------------------------------------------
-     Input: 
-        -SI: the source identifier
-     ------------------------------------------
-     Usage: $this.UnregisterEvent(SI)
-    ----------------------------------------- #>
-    [void]UnregisterEvent($SI){
-        Unregister-Event -SourceIdentifier $SI -Force 
-    }
-    <# -----------------------------------------
-     UnregisterEvent
-     wait for an event to trigger optionally
-     remove the event subscriber and the event
-     ------------------------------------------
-     Input: 
-        -SI: the source identifier
-     ------------------------------------------
-     Usage: $this.UnregisterEvent(SI)
-    ----------------------------------------- #>
-    [void]File($SI){
-        Unregister-Event -SourceIdentifier $SI -Force 
-    }
     #
     [void]getmodulenames(){
         #
@@ -549,5 +442,6 @@
         $modulestatus = $project_dat | Select-Object -Property $this.modules 
         return $modulestatus
         #
-    }   
+    }
+   #
 }

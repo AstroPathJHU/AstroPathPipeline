@@ -163,7 +163,7 @@ class batchwarpfits : moduletools {
      Usage: $this.datavalidation()
     ----------------------------------------- #>
     [void]datavalidation(){
-        if (!$this.sample.testbatchwarpfits()){
+        if (!$this.sample.testbatchwarpfitsfiles()){
             throw 'Output files are not correct'
         }
     }

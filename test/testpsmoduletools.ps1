@@ -20,7 +20,7 @@
         $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $inp = meanimage $task
         #
-        $this.testslidelist()
+        # $this.testslidelist()
         #
         $this.TestPaths($inp)
         Write-Host '.'
@@ -63,24 +63,6 @@
             Write-Host 'batch flatfield file:' $inp.sample.batchflatfield()
             Throw ('processvars[3] not correct: ' + $inp.processvars[3] + '~=' + $testloc + '\flatfield\flatfield_BatchID_08.bin')
         }
-        #
-        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
-        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
-        #
-        Write-Host '   source:' $sor
-        Write-Host '   destination:' $des
-        $inp.sample.copy($sor, $des, '*')
-        #
-        if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
-            Throw 'da git ignore is not correct in meanimage source'
-        }
-        #
-        if (!(test-path -LiteralPath ($des + '\.gitignore'))){
-            Throw 'da git ignore is not correct in meanimage destination'
-        }
-        #
-        $this.comparepaths($sor, $des, $inp)
-        $inp.sample.removedir($des)
         #
         Write-Host 'Passed Paths Testing'
         #
@@ -170,5 +152,10 @@
 #
 # launch test and exit if no error found
 #
-[testpsmoduletools]::new() | Out-Null
+try {
+    [testpsmoduletools]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
+

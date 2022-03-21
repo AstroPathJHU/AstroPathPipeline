@@ -32,7 +32,7 @@
     FINISHED = 256
  }
 #
-class mylogger : sampledef {
+class mylogger : samplereqs {
     [int]$level = 2
     [string]$message
     [string]$messageappend = ''

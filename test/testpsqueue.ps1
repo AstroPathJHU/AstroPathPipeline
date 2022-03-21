@@ -250,5 +250,10 @@ Class testpsqueue {
 #
 # launch test and exit if no error found
 #
-[testpsqueue]::new() | Out-Null
+try {
+    [testpsqueue]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
+

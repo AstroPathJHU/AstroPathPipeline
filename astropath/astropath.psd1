@@ -62,6 +62,7 @@ PowerShellVersion = '7.0'
                       'shared\classes\aptabletools.ps1',
                       'shared\classes\sharedtools.ps1',
 	              'shared\classes\sampledef.ps1',
+                  'shared\classes\samplereqs.ps1',
                       'shared\classes\logging.ps1',
 	              'shared\classes\launchmodule.ps1',
 	              'shared\classes\moduletools.ps1',

@@ -234,7 +234,7 @@ Class testpsmeanimage : testtools {
         $inp.sample.copy($sor, $sampledes)
         $inp.sample.removefile($sor)
         #
-        $samplefile1 = '\AstropathSampledef.csv'
+        $samplefile1 = '\AstroPathSampledef.csv'
         $samplesor1 = $this.basepath, '\astropath_processing' -join '\'
         $sampledes1 = $this.processloc, $this.slideid, 'test\test' -join '\'
         $sor = ($samplesor1 + $samplefile1)
@@ -439,6 +439,12 @@ Class testpsmeanimage : testtools {
             Throw 'da git ignore is not correct'
         }
         #
+        if (test-path ($this.mpath + '\warping')){
+            Write-Host '    delete the testing_warpoctets folder'
+            Write-Host '    path expected to be removed:' ($this.mpath + '\warping')
+            $inp.sample.removedir(($this.mpath + '\warping'))
+        }
+        #
         $inp.sample.removedir($this.processloc)
         #
         Write-Host 'test cleanup method finished'
@@ -447,5 +453,9 @@ Class testpsmeanimage : testtools {
 #
 # launch test and exit if no error found
 #
-[testpsmeanimage]::new() | Out-Null
+try {
+    [testpsmeanimage]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0

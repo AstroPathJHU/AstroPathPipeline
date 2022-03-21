@@ -189,6 +189,60 @@ class fileutils : generalutils {
         #
     }
     <# -----------------------------------------
+     ImportExcel
+     ------------------------------------------
+     Input: 
+        -fpath[string]: file path to read in
+        adopted from: 
+        https://www.c-sharpcorner.com/article/read-excel-file-using-psexcel-in-powershell2/
+     ------------------------------------------
+     Usage: $this.ImportExcel(fpath)
+    ----------------------------------------- #>
+    [PSCustomObject]ImportExcel($fpath){
+        #
+        $objExcel = New-Object -ComObject Excel.Application
+        $WorkBook = $objExcel.Workbooks.Open($fpath)
+        #
+        $worksheet = $workbook.WorkSheets(1)
+        $columns = $Worksheet.columns.count
+        $rows = $Worksheet.Rows.Count
+        #
+        # get the headers
+        #  
+        $names = @()
+        #
+        foreach ($i1 in (1..$columns)){
+            $cell = $worksheet.Cells.Item(1, $i1).text
+            if ($cell){
+                $names += $cell
+            } else {
+                break
+            }
+        }
+        #
+        $obj = @()
+        #
+        foreach ($i2 in (2..$rows)){
+            $cell = $worksheet.cells.item($i2, 1).text
+            if ($cell){
+                $obj1 = new-object pscustomobject
+                foreach($i3 in (0..($names.count-1))) {
+                    $obj1 | Add-Member -NotePropertyName $names[$i3] `
+                        -NotePropertyValue $worksheet.cells.item($i2, ($i3 + 1)).text
+                }
+                #
+                $obj += $obj1
+            } else { break }
+        }
+        #
+        try{
+            $objExcel.Quit()
+        } catch {}
+        #
+        return $obj
+        #
+    }
+    <# -----------------------------------------
      PopFile
      append to the end of a file
      ------------------------------------------
@@ -328,5 +382,111 @@ class fileutils : generalutils {
             Throw "mutex not released: " + $fpath
         }
     }
+    <# -----------------------------------------
+     TaskFileWatcher
+     Create a file watcher 
+     ------------------------------------------
+     Input: 
+        -file: full file path
+     ------------------------------------------
+     Usage: $this.TaskFileWatcher(file, slideid, module)
+    ----------------------------------------- #>
+    [string]TaskFileWatcher($file, $slideid, $module){
+        #
+        $fpath = Split-Path $file
+        $fname = Split-Path $file -Leaf
+        $SI = $module, $slideid -join '-'
+        #
+        $SI = $this.FileWatcher($fpath, $fname, $SI)
+        return $SI
+        #
+    }
+    <# -----------------------------------------
+     FileWatcher
+     Create a file watcher 
+     ------------------------------------------
+     Input: 
+        -file: full file path
+     ------------------------------------------
+     Usage: $this.FileWatcher(file)
+    ----------------------------------------- #>
+    [string]FileWatcher($file){
+        #
+        $fpath = Split-Path $file
+        $fname = Split-Path $file -Leaf
+        #
+        $SI = $this.FileWatcher($fpath, $fname)
+        return $SI
+        #
+    }
     #
+    [string]FileWatcher($fpath, $fname){
+        #
+        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+        $newwatcher.Filter = $fname
+        $newwatcher.NotifyFilter = 'LastWrite'
+        #
+        Register-ObjectEvent $newwatcher `
+            -EventName Changed `
+            -SourceIdentifier ($fpath + '\' + $fname) | Out-Null
+        #
+        return ($fpath + '\' + $fname)
+        #
+    }
+    #
+    [string]FileWatcher($fpath, $fname, $SI){
+        #
+        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+        $newwatcher.Filter = $fname
+        $newwatcher.NotifyFilter = 'LastWrite'
+        #
+        Register-ObjectEvent $newwatcher `
+            -EventName Changed `
+            -SourceIdentifier $SI | Out-Null
+        #
+        return $SI
+        #
+    }
+    <# -----------------------------------------
+     WaitEvent
+     wait for an event to trigger optionally
+     remove the event subscriber and the event
+     ------------------------------------------
+     Input: 
+        -SI: the source identifier
+     ------------------------------------------
+     Usage: $this.WaitEvent(SI)
+    ----------------------------------------- #>
+    [void]WaitEvent($SI){
+        #
+        Wait-Event -SourceIdentifier $SI
+        Remove-Event -SourceIdentifier $SI
+        #
+    }
+    <# -----------------------------------------
+     UnregisterEvent
+     wait for an event to trigger optionally
+     remove the event subscriber and the event
+     ------------------------------------------
+     Input: 
+        -SI: the source identifier
+     ------------------------------------------
+     Usage: $this.UnregisterEvent(SI)
+    ----------------------------------------- #>
+    [void]UnregisterEvent($SI){
+        Unregister-Event -SourceIdentifier $SI -Force 
+    }
+    <# -----------------------------------------
+     UnregisterEvent
+     wait for an event to trigger optionally
+     remove the event subscriber and the event
+     ------------------------------------------
+     Input: 
+        -SI: the source identifier
+     ------------------------------------------
+     Usage: $this.UnregisterEvent(SI)
+    ----------------------------------------- #>
+    [void]File($SI){
+        Unregister-Event -SourceIdentifier $SI -Force 
+    }
 }

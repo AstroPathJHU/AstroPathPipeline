@@ -1,4 +1,5 @@
-﻿ <# -------------------------------------------
+﻿using module .\testtools.psm1
+ <# -------------------------------------------
  testsampletracker
  Benjamin Green - JHU
  Last Edit: 02.09.2022
@@ -9,52 +10,48 @@
  properly.
  -------------------------------------------#>
 #
- Class testpssampletracker {
+ Class testpssampletracker : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
-    [string]$slideid = 'M21_1'
-    [string]$project = '0'
-    [string]$apmodule = $PSScriptRoot + '\..\astropath'
+    [string]$class = 'sampletracker'
+    [string]$module = ''
     #
-    testpssampletracker(){
+    testpssampletracker() : base(){
         $this.launchtests()
     }
     #
-    testpssampletracker($project, $slideid){
-        $this.project = $project
-        $this.slideid = $slideid
+    testpssampletracker($project, $slideid) : base($project, $slideid){
         $this.launchtests()
     }
     #
     [void]launchtests(){
         #
-        Write-Host '---------------------test ps [sampletracker]---------------------'
-        $this.importmodule()
-        $this.testsampletrackerconstructors()
+        #$this.testsampletrackerconstructors()
         $sampletracker = sampletracker -mpath $this.mpath
-        $this.cleanup($sampletracker)
+        $this.testmodules($sampletracker)
+        #
         Write-Host '.'
         Write-Host 'defining module status started'
-        $sampletracker.project = '0'
-        $sampletracker.defbase()
+        $sampletracker.sampledefslide($this.slideid)
         $sampletracker.defmodulestatus()
+        $sampletracker.teststatus = $true
+        $this.cleanup($sampletracker)
         Write-Host 'defining module status finished'
-        $this.testmodules($sampletracker)
-        $this.teststatus($sampletracker)
+        #
+        #$this.teststatus($sampletracker)
         $this.testupdate($sampletracker, 'shredxml', 'meanimage')
-        $this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
-        $this.testupdate($sampletracker, 'batchmicomp', 'warpoctets')
+        $this.testupdate($sampletracker, 'meanimage', 'batchflatfield')
+        #$this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
+        #$this.testupdate($sampletracker, 'batchmicomp', 'batchflatfield')
+        $this.testupdate($sampletracker, 'batchflatfield', 'warpoctets')
+        $this.testupdate($sampletracker, 'warpoctets', 'batchwarpkeys')
+        $this.testupdate($sampletracker, 'batchwarpkeys', 'batchwarpfits')
+        $this.testupdate($sampletracker, 'batchwarpfits', 'imagecorrection')
+        #$this.testupdate($sampletracker, 'imagecorrection', 'vminform')
+        #$this.testupdate($sampletracker, 'vminform', 'segmaps')
         $this.cleanup($sampletracker)
         $this.addbatchflatfieldexamples($sampletracker)
         Write-Host '.'
         #
-    }
-    #
-    [void]importmodule(){
-        Import-Module $this.apmodule -EA SilentlyContinue
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
     }
     #
     [void]testsampletrackerconstructors(){
@@ -86,7 +83,7 @@
         Write-Host '    Modules:' $sampletracker.modules 
         #
         $cmodules = @('batchflatfield','batchmicomp','imagecorrection','meanimage','mergeloop',`
-            'segmaps','shredxml','transfer','vminform','warpoctets','batchwarpkeys')
+            'segmaps','shredxml','transfer','vminform','warpoctets','batchwarpkeys','batchwarpfits')
         $out = Compare-Object -ReferenceObject $sampletracker.modules  -DifferenceObject $cmodules
         if ($out){
             Throw ('module lists in [sampletracker] does not match, this may indicate new modules or a typo:' + $out)
@@ -136,7 +133,7 @@
                 $sampletracker.moduleinfo.warpoctets.status)
         }
         #
-        if ($sampletracker.moduleinfo.batchflatfield.status -notmatch 'NA'){
+        if ($sampletracker.moduleinfo.batchflatfield.status -notmatch 'WAITING'){
             Throw ('batchflatfield init status not correct. Status is: ' + 
                 $sampletracker.moduleinfo.batchflatfield.status)
         }
@@ -312,8 +309,19 @@
         Write-Host 'clearing logs started'
         $sampletracker.removefile($sampletracker.slidelogbase('shredxml'))
         $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
+        $this.removemeanimageexamples($sampletracker)
         $sampletracker.removefile($sampletracker.mainlogbase('batchmicomp'))
+        $sampletracker.removefile($sampletracker.mainlogbase('batchflatfield'))
+        $this.removebatchflatfieldexamples($sampletracker)
         $sampletracker.removefile($sampletracker.slidelogbase('warpoctets'))
+        $this.removewarpoctetsexamples($sampletracker)
+        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpfits'))
+        $this.removebatchwarpfitsexamples($sampletracker)
+        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpkeys'))
+        $this.removebatchwarpkeysexamples($sampletracker)
+        $sampletracker.removedir($sampletracker.basepath + 'warping')
+        $sampletracker.removedir($sampletracker.warpoctetsfolder())
+        
         Write-Host 'clearing logs finished'
         #
     }
@@ -339,32 +347,27 @@
     }
     #
     [void]removemeanimageexamples($sampletracker){
-        $files = @('-sum_images_squared.bin', '-std_err_of_mean_image.bin', `
-                '-mean_image.bin') #'-mask_stack.bin',
-        $p = $sampletracker.meanimagefolder()
         #
-        foreach ($file in $files) {
-            $fullpath = $p + '\' + $sampletracker.slideid + $file
-            $sampletracker.removefile($fullpath)
-        }
+        $this.removetestfiles($sampletracker,
+            $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
+        $this.removetestfiles($sampletracker,
+            $sampletracker.meanimagefolder(), '-mask_stack.bin')
+        #
     }
     #
     [void]addmeanimageexamples($sampletracker){
-        $files = @('-sum_images_squared.bin', '-std_err_of_mean_image.bin', `
-        '-mean_image.bin') #'-mask_stack.bin',
         #
-        $p = $sampletracker.meanimagefolder()
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
+        $this.addtestfiles($sampletracker,
+            $sampletracker.meanimagefolder(), '-mask_stack.bin')
         #
-        foreach ($file in $files) {
-            $fullpath = $p + '\' + $sampletracker.slideid + $file
-            $sampletracker.setfile($fullpath, 'blah de blah')
-        }
     }
     #
     [void]removebatchmicompexamples($sampletracker){
         #
-        $p = $sampletracker.mpath + '\meanimagecomparison\meanimagecomparison_tableTemplate.csv'
-        $p2 = $sampletracker.mpath + '\meanimagecomparison\meanimagecomparison_table.csv'
+        $p = $this.aptempfullname($sampletracker, 'micomp')
+        $p2 = $sampletracker.micomp_fullfile($this.mpath)
         #
         $sampletracker.removefile($p2)
         $data = $sampletracker.opencsvfile($p)
@@ -376,7 +379,7 @@
     #
     [void]addbatchmicompexamples($sampletracker){
         #
-        $p2 = $sampletracker.mpath + '\meanimagecomparison\meanimagecomparison_table.csv'
+        $p2 = $sampletracker.micomp_fullfile($this.mpath)
         #
         $micomp_data = $sampletracker.importmicomp($sampletracker.mpath)
         $newobj = [PSCustomObject]@{
@@ -397,20 +400,15 @@
     #
     [void]removebatchflatfieldexamples($sampletracker){
         #
-        $p = $sampletracker.mpath + '\AstroPathCorrectionModelsTemplate.csv'
-        $p2 = $sampletracker.mpath + '\AstroPathCorrectionModels.csv'
-        #
-        $sampletracker.removefile($p2)
-        $data = $sampletracker.opencsvfile($p)
-        $data | Export-CSV $p2  -NoTypeInformation
-        $p3 = $sampletracker.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        $this.addcorrectionfile($sampletracker)
+        $p3 = $sampletracker.mpath + '\flatfield\'+$this.pybatchflatfieldtest+'.bin'
         $sampletracker.removefile($p3)
         #
     }
     #
     [void]addbatchflatfieldexamples($sampletracker){
         #
-        $p2 = $sampletracker.mpath + '\AstroPathCorrectionModels.csv'
+        $p2 = $sampletracker.corrmodels_fullfile($this.mpath)
         #
         $micomp_data = $sampletracker.ImportCorrectionModels($sampletracker.mpath)
         $newobj = [PSCustomObject]@{
@@ -418,29 +416,103 @@
             Project = $sampletracker.project
             Cohort = $sampletracker.cohort
             BatchID = $sampletracker.batchid
-            FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
+            FlatfieldVersion = $this.pybatchflatfieldtest
             WarpingFile = 'None'
         }
         #
         $micomp_data += $newobj
         #
         $micomp_data | Export-CSV $p2 -NoTypeInformation
-        $p3 = $sampletracker.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
+        $p3 = $sampletracker.mpath + '\flatfield\' + $this.pybatchflatfieldtest + '.bin'
         $sampletracker.SetFile($p3, 'blah de blah')
     }
     # 
     [void]addcorrectionfile($sampletracker){
-        $p = $this.mpath + '\AstroPathCorrectionModelsTemplate.csv'
-        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $p = $this.aptempfullname($sampletracker, 'corrmodels')
+        $p2 = $sampletracker.corrmodels_fullfile($this.mpath)
         #
         $sampletracker.removefile($p2)
         $data = $sampletracker.opencsvfile($p)
         $data | Export-CSV $p2  -NoTypeInformation
+        #
+    }
+    #
+    [void]removewarpoctetsexamples($sampletracker){
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.warpoctetsfolder(), $sampletracker.warpoctetsreqfiles)
+        #
+    }
+    #
+    [void]addwarpoctetsexamples($sampletracker){
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.warpoctetsfolder(), $sampletracker.warpoctetsreqfiles)
+        #
+    }
+    #
+    [void]removebatchwarpkeysexamples($sampletracker){
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.warpbatchoctetsfolder(), $sampletracker.batchwarpkeysreqfiles)
+        #
+    }
+    #
+    [void]addbatchwarpkeysexamples($sampletracker){
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.warpbatchoctetsfolder(), $sampletracker.batchwarpkeysreqfiles)
+        #
+    }
+    #
+    [void]removebatchwarpfitsexamples($sampletracker){
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.warpbatchfolder(), $sampletracker.batchwarpfitsreqfiles)
+        #
+    }
+    #
+    [void]addbatchwarpfitsexamples($sampletracker){
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.warpbatchfolder(), $sampletracker.batchwarpfitsreqfiles)
+        #
+    }
+    #
+    [void]removeimagecorrectionexamples($sampletracker){
+        #
+        $sampletracker.removedir($sampletracker.flatwfolder())
+        $sampletracker.removedir($sampletracker.flatwim3folder())
+        #
+    }
+    #
+    [void]addimagecorrectionexamples($sampletracker){
+        #
+        $sampletracker.addtestfiles($sampletracker, 
+            $sampletracker.flatwfolder(), $sampletracker.imagecorrectionreqfiles[0], 
+            $sampletracker.im3constant
+        )
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.flatwfolder(), $sampletracker.imagecorrectionreqfiles[1], 
+            $sampletracker.im3constant
+        )
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.flatwim3folder(), $sampletracker.imagecorrectionreqfiles[2], 
+            $sampletracker.im3constant
+        )
+        #
     }
     #
 }
 #
 # launch test and exit if no error found
 #
-[testpssampletracker]::new() | Out-Null
+try{
+    [testpssampletracker]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
