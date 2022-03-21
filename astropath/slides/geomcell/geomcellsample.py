@@ -613,3 +613,5 @@ def inform(args=None):
   GeomCellSampleInform.runfromargumentparser(args)
 def deepcell(args=None):
   GeomCellSampleDeepCell.runfromargumentparser(args)
+def mesmer(args=None):
+  GeomCellSampleMesmer.runfromargumentparser(args)
