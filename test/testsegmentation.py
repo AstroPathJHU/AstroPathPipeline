@@ -54,45 +54,45 @@ class TestSegmentationBase(TestBaseCopyInput, TestBaseSaveOutput) :
         for fp in oldxml.glob('*') :
             yield fp,newxml
 
-#class TestSegmentationNNUNet(TestSegmentationBase) :
-#    """
-#    Class to use for testing the nnU-Net segmentation algorithm
-#    """
-#
-#    @property
-#    def outputfilenames(self) :
-#        root = folder/'test_for_jenkins'/'segmentation'/'root'
-#        all_fps = [root/'logfiles'/'segmentationnnunet.log', root/slide_ID/'logfiles'/f'{slide_ID}-segmentationnnunet.log']
-#        oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
-#        outputdir = root/slide_ID/'im3'/'segmentation'/'nnunet'
-#        for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
-#            all_fps.append(outputdir/f'{fns}_nnunet_nuclear_segmentation.npz')
-#        return all_fps
-#
-#    @unittest.skipIf(int(os.environ.get("JENKINS_NO_NNUNET", 0)), "nnU-Net is not installed on jenkins")
-#    def test_segmentation_nnunet(self) :
-#        #run the segmentation sample with the nnU-Net algorithm
-#        args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
-#                slide_ID,
-#                '--njobs','3',
-#                '--allow-local-edits',
-#                '--selectrectangles'
-#                ]
-#        for rn in rectangle_ns_with_comp_tiff_files_nnunet :
-#            args.append(str(rn))
-#        SegmentationSampleNNUNet.runfromargumentparser(args=args)
-#        #compare the results to the reference files
-#        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'nnunet'
-#        try :
-#            for fp in (folder/'data'/'reference'/'segmentation'/'nnunet').glob('*') :
-#                refa = (np.load(fp))['arr_0']
-#                testa = (np.load(outputdir/fp.name))['arr_0']
-#                np.testing.assert_allclose(testa,refa)
-#        except :
-#            self.saveoutput()
-#            raise
-#        finally :
-#            self.removeoutput()
+class TestSegmentationNNUNet(TestSegmentationBase) :
+    """
+    Class to use for testing the nnU-Net segmentation algorithm
+    """
+
+    @property
+    def outputfilenames(self) :
+        root = folder/'test_for_jenkins'/'segmentation'/'root'
+        all_fps = [root/'logfiles'/'segmentationnnunet.log', root/slide_ID/'logfiles'/f'{slide_ID}-segmentationnnunet.log']
+        oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
+        outputdir = root/slide_ID/'im3'/'segmentation'/'nnunet'
+        for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
+            all_fps.append(outputdir/f'{fns}_nnunet_nuclear_segmentation.npz')
+        return all_fps
+
+    @unittest.skipIf(int(os.environ.get("JENKINS_NO_NNUNET", 0)), "nnU-Net is not installed on jenkins")
+    def test_segmentation_nnunet(self) :
+        #run the segmentation sample with the nnU-Net algorithm
+        args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
+                slide_ID,
+                '--njobs','3',
+                '--allow-local-edits',
+                '--selectrectangles'
+                ]
+        for rn in rectangle_ns_with_comp_tiff_files_nnunet :
+            args.append(str(rn))
+        SegmentationSampleNNUNet.runfromargumentparser(args=args)
+        #compare the results to the reference files
+        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'nnunet'
+        try :
+            for fp in (folder/'data'/'reference'/'segmentation'/'nnunet').glob('*') :
+                refa = (np.load(fp))['arr_0']
+                testa = (np.load(outputdir/fp.name))['arr_0']
+                np.testing.assert_allclose(testa,refa)
+        except :
+            self.saveoutput()
+            raise
+        finally :
+            self.removeoutput()
 
 class TestSegmentationDeepCell(TestSegmentationBase) :
     """
@@ -133,41 +133,41 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
         finally :
             self.removeoutput()
 
-#class TestSegmentationMesmer(TestSegmentationBase) :
-#    """
-#    Class to use for testing the Mesmer segmentation algorithm
-#    """
-#
-#    @property
-#    def outputfilenames(self) :
-#        root = folder/'test_for_jenkins'/'segmentation'/'root'
-#        all_fps = [root/'logfiles'/'segmentationmesmer.log',
-#                   root/slide_ID/'logfiles'/f'{slide_ID}-segmentationmesmer.log']
-#        oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
-#        outputdir = root/slide_ID/'im3'/'segmentation'/'mesmer'
-#        for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
-#            all_fps.append(outputdir/f'{fns}_mesmer_segmentation.npz')
-#        return all_fps
-#
-#    def test_segmentation_deepcell(self) :
-#        #run the segmentation sample with the Mesmer algorithm
-#        args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
-#                slide_ID,
-#                '--allow-local-edits',
-#                '--selectrectangles'
-#                ]
-#        for rn in rectangle_ns_with_comp_tiff_files_mesmer :
-#            args.append(str(rn))
-#        SegmentationSampleMesmer.runfromargumentparser(args=args)
-#        #compare the results to the reference files
-#        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
-#        try :
-#            for fp in (folder/'data'/'reference'/'segmentation'/'mesmer').glob('*') :
-#                refa = (np.load(fp))['arr_0']
-#                testa = (np.load(outputdir/fp.name))['arr_0']
-#                np.testing.assert_allclose(testa,refa)
-#        except :
-#            self.saveoutput()
-#            raise
-#        finally :
-#            self.removeoutput()
+class TestSegmentationMesmer(TestSegmentationBase) :
+    """
+    Class to use for testing the Mesmer segmentation algorithm
+    """
+
+    @property
+    def outputfilenames(self) :
+        root = folder/'test_for_jenkins'/'segmentation'/'root'
+        all_fps = [root/'logfiles'/'segmentationmesmer.log',
+                   root/slide_ID/'logfiles'/f'{slide_ID}-segmentationmesmer.log']
+        oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
+        outputdir = root/slide_ID/'im3'/'segmentation'/'mesmer'
+        for fns in [fp.name[:-len('_component_data.tif')] for fp in oldcomptiffs.glob('*_component_data.tif')] :
+            all_fps.append(outputdir/f'{fns}_mesmer_segmentation.npz')
+        return all_fps
+
+    def test_segmentation_deepcell(self) :
+        #run the segmentation sample with the Mesmer algorithm
+        args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
+                slide_ID,
+                '--allow-local-edits',
+                '--selectrectangles'
+                ]
+        for rn in rectangle_ns_with_comp_tiff_files_mesmer :
+            args.append(str(rn))
+        SegmentationSampleMesmer.runfromargumentparser(args=args)
+        #compare the results to the reference files
+        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
+        try :
+            for fp in (folder/'data'/'reference'/'segmentation'/'mesmer').glob('*') :
+                refa = (np.load(fp))['arr_0']
+                testa = (np.load(outputdir/fp.name))['arr_0']
+                np.testing.assert_allclose(testa,refa)
+        except :
+            self.saveoutput()
+            raise
+        finally :
+            self.removeoutput()
