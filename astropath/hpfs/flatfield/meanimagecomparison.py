@@ -203,6 +203,7 @@ class MeanImageComparison :
             batchflatfieldmulticohortargs+=['--version',version_tag]
             batchflatfieldmulticohortargs+=['--flatfield-model-file',os.fspath(self.MODEL_TABLE_PATH)]
             batchflatfieldmulticohortargs+=['--include-bad-samples']
+            batchflatfieldmulticohortargs+=['--ignore-dependencies']
             BatchFlatfieldMultiCohort.runfromargumentparser(args=batchflatfieldmulticohortargs)
 
     #################### CLASS VARIABLES & PROPERTIES ####################
