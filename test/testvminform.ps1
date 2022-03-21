@@ -21,17 +21,17 @@ Class testvminform {
     [string]$outpath = "C:\Users\Public\BatchProcessing"
     [string]$apmodule = $PSScriptRoot + '/../astropath'
     [string]$referenceim3
+    [switch]$jenkins = $false
     #
     testvminform(){
         #
         $this.launchtests()
         #
     }
-    testvminform($project, $slideid){
+    testvminform($jenkins){
         #
-        $this.slideid = $slideid
-        $this.project = $project
-        $this.launchtests
+        $this.jenkins = $true
+        $this.launchtests()
         #
     }
     #
@@ -40,18 +40,17 @@ Class testvminform {
         Write-Host '---------------------test ps [vminform]---------------------'
         $this.importmodule()
         $task = ($this.basepath, $this.slideid, $this.procedure, $this.algorithm, $this.informver, $this.mpath)
-        #$this.testvminformconstruction($task)
+        $this.testvminformconstruction($task)
         $inp = vminform $task
-        <#
         $this.testoutputdir($inp)
         $this.testimagelist($inp)
         $this.comparevminforminput($inp)
         $this.testkillinformprocess($inp)
-        #>
         $this.runinformexpected($inp)
         $this.testlogexpected($inp)
         $this.runinformbatcherror($inp)
         $this.testlogbatcherror($inp)
+        $this.testinformoutputfiles($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -250,6 +249,10 @@ Class testvminform {
     --------------------------------------------#>
     [void]testkillinformprocess($inp){
         #
+        if ($this.jenkins) {
+            return
+        }
+        #
         Write-Host '.'
         Write-Host 'test kill inform process started'
         #
@@ -284,6 +287,10 @@ Class testvminform {
     --------------------------------------------#>
     [void]runinformexpected($inp){
         #
+        if ($this.jenkins) {
+            return
+        }
+        #
         Write-Host '.'
         Write-Host 'run on inform with expected outcome started'
         #
@@ -309,7 +316,6 @@ Class testvminform {
         Write-Host '    copying reference im3 file to flatw folder:' $this.referenceim3
         $inp.sample.copy($this.referenceim3, $inp.sample.flatwim3folder())
         #
-        $inp.KillinFormProcess()
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
         $inp.CreateImageList()
@@ -321,6 +327,10 @@ Class testvminform {
     run with the correct input. 
     --------------------------------------------#>
     [void]testlogexpected($inp) {
+        #
+        if ($this.jenkins) {
+            return
+        }
         #
         Write-Host '.'
         Write-Host 'test inform logs with expected outcome started'
@@ -358,8 +368,15 @@ Class testvminform {
     --------------------------------------------#>
     [void]runinformbatcherror($inp){
         #
+        if ($this.jenkins) {
+            return
+        }
+        #
         Write-Host '.'
         Write-Host 'run on inform with batch error started'
+        #
+        Write-Host '    waiting for expected inform to finish'
+        Start-Sleep 20
         #
         $this.setupbatcherror($inp)
         #
@@ -384,7 +401,6 @@ Class testvminform {
         Write-Host '    copying reference im3 files to flatw folder'
         $inp.sample.copy($referenceim3s, $inp.sample.flatwim3folder(), '.im3', 30)
         #
-        $inp.KillinFormProcess()
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
         $inp.CreateImageList()
@@ -399,6 +415,10 @@ Class testvminform {
     skipping the non-error first line
     --------------------------------------------#>
     [void]testlogbatcherror($inp) {
+        #
+        if ($this.jenkins) {
+            return
+        }
         #
         Write-Host '.'
         Write-Host 'test inform logs with batch error started'
@@ -427,6 +447,60 @@ Class testvminform {
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         Write-Host 'test inform logs with batch errors finished'
         #
+    }
+    
+    <# --------------------------------------------
+    testinformoutputfiles
+    test that the checking of inform files output
+    from the expected outcome works correctly
+    --------------------------------------------#>
+    [void]testinformoutputfiles($inp) {
+        #
+        if ($this.jenkins) {
+            return
+        }
+        #
+        Write-Host '.'
+        Write-Host 'test check inform output files started'
+        #
+        Write-Host '    error number at start:' $inp.err
+        $this.setupexpected($inp)
+        $inp.StartInForm()
+        $inp.WatchBatchInForm()
+        Write-Host '    batch process complete'
+        #
+        $inp.CheckInformOutputFiles()
+        Write-Host '    error number after inform:' $inp.err
+        #
+        $segdata = $inp.informoutpath + '\test_cell_seg_data.txt'
+        $bin = $inp.informoutpath + '\test_binary_seg_maps.tif'
+        $comp = $inp.informoutpath + '\test_component_data.tif'
+        $inp.sample.CreateFile($segdata)
+        $inp.sample.CreateFile($bin)
+        $inp.sample.CreateFile($comp)
+        #
+        $inp.CheckInformOutputFiles()
+        Write-Host '    error number test 1:' $inp.err
+        if (!($inp.err -eq 0)) {
+            throw 'seg data test failed - error code != 0'
+        }
+        $inp.sample.removefile($segdata)
+        $inp.CheckInformOutputFiles()
+        Write-Host '    error number test 2:' $inp.err
+        if (!($inp.err -eq 1)) {
+            throw 'error handling empty binary seg maps'
+        }
+        $inp.sample.removefile($bin)
+        $inp.CheckInformOutputFiles()
+        Write-Host '    error number test 3:' $inp.err
+        if (!($inp.err -eq 2)) {
+            throw 'error handling empty component data'
+        }
+        #
+        $inp.sample.CreateNewDirs($this.outpath)
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
+        #
+        Write-Host 'test check inform output files finished'
     }
     #
 }

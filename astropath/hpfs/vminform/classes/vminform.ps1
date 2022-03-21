@@ -33,6 +33,7 @@ Class informinput : moduletools {
     [string]$informbatchlog
     [int]$err
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
+    [array]$corruptedfiles
     #
     informinput([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
         #
@@ -268,13 +269,13 @@ Class informinput : moduletools {
         $batch = Get-Content $this.informbatchlog
         if (!($batch)){
             $this.sample.warning("inForm batch log does not exist")
-            $this.err = $this.err + 1
+            $this.err += 1
             return   
         }
         #
         if (!($batch -match "Batch process is completed")){
             $this.sample.warning("inForm batch log did not record a finishing event")
-            $this.err = $this.err + 1
+            $this.err += 1
             return   
         }
         #
@@ -295,24 +296,30 @@ Class informinput : moduletools {
         #
         $o = $this.informoutpath+"\*"
         $informtypes = @('cell_seg_data.txt','binary_seg_maps.tif','component_data.tif')
+        $this.corruptedfiles = @()
         #
         foreach($informtype in $informtypes){
             #
             $informtype = '*'+$informtype
-            $ofiles = Get-ChildItem $o -Include ('*'+$informtype)
+            $ofiles = @()
+            $ofiles += Get-ChildItem $o -Include ('*'+$informtype)
             $nfiles = $ofiles.Length
             if ($nfiles -ne 0){
                 $this.sample.info("inForm created " + $nfiles + " of " +
                     $this.image_list.Length + " " + $informtype + " files")
-                #
-                $b = ($ofiles| Measure-Object Length -Minimum).Minimum
-                if ($b -eq 0kb){
-                    $this.sample.warning("Some " + $informtype + " files appear to be corrupt")
-                    $this.err = $this.err + 1
-                    return
+                $ofiles | foreach-object {
+                    if(!$_.PSIsContainer -and $_.length -eq 0) {
+                        $this.corruptedfiles += $_.FullName
+                    }
                 }
             }
             #
+        }
+        #
+        if ($this.corruptedfiles.Length -gt 0) {
+            $this.sample.warning('Found ' + $this.corruptedfiles.Length + " files to be corrupt")
+            $this.err += 1
+            return
         }
         #
         $this.err = -1
