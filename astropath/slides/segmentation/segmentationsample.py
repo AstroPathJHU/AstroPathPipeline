@@ -15,7 +15,7 @@ from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation,
 NNUNET_SEGMENT_FILE_APPEND = 'nnunet_nuclear_segmentation.npz'
 DEEPCELL_SEGMENT_FILE_APPEND = 'deepcell_nuclear_segmentation.npz'
 MESMER_SEGMENT_FILE_APPEND = 'mesmer_segmentation.npz'
-MESMER_GROUP_SIZE = 12
+GROUP_SIZE = 48
 
 class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWithSegmentations,
                              WorkflowSample,ParallelSample,WorkingDirArgumentParser) :
@@ -275,12 +275,28 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
             rects_to_run.append((ir,rect,self.__get_rect_segmented_fp(rect)))
         completed_files = 0
         try :
-            for ir,rect,segmented_file_path in rects_to_run :
+            deepcell_batch_images = []
+            deepcell_batch_segmented_filepaths = []
+            for realir,(ir,rect,segmented_file_path) in enumerate(rects_to_run,start=1) :
+                #add to the batch
+                msg = f'Adding {rect.componenttifffile.name} ({ir} of {len(self.rectangles)}) '
+                msg+= 'to the next group of images....'
+                self.logger.debug(msg)
                 with rect.using_component_tiff() as im :
-                    msg = f'Running DeepCell segmentation for {rect.componenttifffile.name} '
-                    msg+= f'({ir} of {len(self.rectangles)})'
+                    dapi_layer = im
+                im_for_deepcell = np.expand_dims(dapi_layer,axis=-1)
+                deepcell_batch_images.append(im_for_deepcell)
+                deepcell_batch_segmented_filepaths.append(segmented_file_path)
+                #run segmentations for a whole batch
+                if (len(deepcell_batch_images)>=GROUP_SIZE) or (realir==len(rects_to_run)) :
+                    msg = f'Running DeepCell segmentation for the current group of {len(deepcell_batch_images)} images'
                     self.logger.debug(msg)
-                    run_deepcell_nuclear_segmentation(im,app,self.pscale,segmented_file_path)
+                    run_deepcell_nuclear_segmentation(np.array(deepcell_batch_images),
+                                                      app,
+                                                      self.pscale,
+                                                      deepcell_batch_segmented_filepaths)
+                    deepcell_batch_images = []
+                    deepcell_batch_segmented_filepaths = []
             for rect in self.rectangles :
                 if self.__get_rect_segmented_fp(rect).is_file() :
                     completed_files+=1
@@ -313,7 +329,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
 
     def runsegmentation(self) :
         """
-        Run nuclear segmentation using DeepCell's nuclear segmentation algorithm
+        Run whole-cell segmentation using the Mesmer segmentation algorithm
         """
         Mesmer = deepcell.applications.Mesmer
         pca_vec_to_dot = np.expand_dims(SEG_CONST.IHC_PCA_BLACK_COMPONENT,0).T
@@ -347,7 +363,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
                 mesmer_batch_images.append(im_for_mesmer)
                 mesmer_batch_segmented_filepaths.append(segmented_file_path)
                 #run segmentations for a whole batch
-                if (len(mesmer_batch_images)>=MESMER_GROUP_SIZE) or (realir==len(rects_to_run)) :
+                if (len(mesmer_batch_images)>=GROUP_SIZE) or (realir==len(rects_to_run)) :
                     msg = f'Running Mesmer segmentation for the current group of {len(mesmer_batch_images)} images'
                     self.logger.debug(msg)
                     run_mesmer_segmentation(np.array(mesmer_batch_images),
