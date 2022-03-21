@@ -241,6 +241,12 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
               }
             }
+			
+			stage('vminform') {
+              steps {
+                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testvminform.ps1 -TestParam jenkins'
+              }
+            }
             
             stage('code checks') {
               steps {
