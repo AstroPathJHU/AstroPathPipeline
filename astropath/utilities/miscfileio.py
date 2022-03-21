@@ -28,6 +28,12 @@ def rmtree_missing_ok(path, **kwargs):
   except FileNotFoundError:
     pass
 
+def iterdir_missing_ok(path, **kwargs):
+  try:
+    yield from path.iterdir(**kwargs)
+  except FileNotFoundError:
+    return
+
 def is_relative_to(path1, path2):
   """
   Like pathlib.PurePath.is_relative_to but backported to older python versions

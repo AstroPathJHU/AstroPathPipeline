@@ -16,14 +16,22 @@ class TestGeomCell(TestBaseSaveOutput):
   def outputfilenames(self):
     return [
       *(
-        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/"inform"/filename.name
-        for SlideID in ("M206",)
-        for filename in (thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom"/"inform").iterdir()
+        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/algo/filename.name
+        for SlideID in ("M206", "M21_1")
+        for algo in {
+          "M206": ("inform",),
+          "M21_1": ("deepcell", "mesmer"),
+        }[SlideID]
+        for filename in (thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom"/algo).iterdir()
       ),
-      thisfolder/"test_for_jenkins"/"geomcell"/"logfiles"/"geomcell.log",
       *(
-        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"logfiles"/f"{SlideID}-geomcell.log"
-        for SlideID in ("M206",)
+        thisfolder/"test_for_jenkins"/"geomcell"/"logfiles"/f"geomcell{algo}.log"
+        for algo in ("", "deepcell", "mesmer")
+      ),
+      *(
+        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"logfiles"/f"{SlideID}-geomcell{algo}.log"
+        for SlideID in ("M206", "M21_1")
+        for algo in ("", "deepcell", "mesmer")
       ),
     ]
 
