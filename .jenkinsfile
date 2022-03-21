@@ -48,7 +48,9 @@ pipeline {
 
         stage('run tests') {
           parallel {
-            stage('console scripts and documents') {
+            /*
+			
+			stage('console scripts and documents') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmarkdownlinks'
@@ -242,15 +244,22 @@ pipeline {
               }
             }
 			
-			stage('vminform') {
-              steps {
-                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testvminform.ps1 -TestParam jenkins'
-              }
-            }
+			
             
             stage('code checks') {
               steps {
                 sh 'python -m pyflakes .'
+              }
+            }
+			
+			
+			
+			
+			*/
+			
+			stage('vminform') {
+              steps {
+                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testvminform.ps1 -TestParam jenkins'
               }
             }
           }
