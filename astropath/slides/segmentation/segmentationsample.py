@@ -5,7 +5,7 @@ from batchgenerators.utilities.file_and_folder_operations import join
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.optionalimports import deepcell, nnunet
 from ...shared.sample import ParallelSample, ReadRectanglesComponentAndIHCTiffFromXML
-from ...shared.sample import SampleWithSegmentations, WorkflowSample
+from ...shared.sample import SampleWithSegmentationFolder, WorkflowSample
 from .config import SEG_CONST
 from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im
 from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation, run_mesmer_segmentation
@@ -16,7 +16,7 @@ DEEPCELL_SEGMENT_FILE_APPEND = 'deepcell_nuclear_segmentation.npz'
 MESMER_SEGMENT_FILE_APPEND = 'mesmer_segmentation.npz'
 MESMER_GROUP_SIZE = 12
 
-class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWithSegmentations,
+class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWithSegmentationFolder,
                              WorkflowSample,ParallelSample) :
     """
     Write out nuclear segmentation maps based on the DAPI layers of component tiffs for a single sample
