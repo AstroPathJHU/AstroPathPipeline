@@ -3,7 +3,7 @@ from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, TableReader, writetable
 from ..utilities.version.git import thisrepo
-from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
+from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SegmentationFolderArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger, ThingWithLogger
 from .rectangle import rectanglefilter
 from .workflowdependency import ThingWithRoots, WorkflowDependency
@@ -540,6 +540,18 @@ class SelectLayersCohort(Cohort, SelectLayersArgumentParser):
   @property
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "layers": self.layers}
+
+class SegmentationFolderCohort(Cohort, SegmentationFolderArgumentParser):
+  def __init__(self, *args, segmentationfolder=None, segmentationroot=None, **kwargs):
+    super().__init__(*args, **kwargs)
+    if segmentationfolder is not None: segmentationfolder = pathlib.Path(segmentationfolder)
+    if segmentationroot is not None: segmentationroot = pathlib.Path(segmentationroot)
+    self.segmentationfolder = segmentationfolder
+    self.segmentationroot = segmentationroot
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "segmentationroot": self.segmentationroot, "segmentationfolder": self.segmentationfolder}
 
 class TempDirCohort(Cohort, TempDirArgumentParser):
   """

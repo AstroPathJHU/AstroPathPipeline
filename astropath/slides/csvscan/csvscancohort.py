@@ -28,7 +28,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   def inputfiles(self, **kwargs):
     return []  #will be checked in run()
 
-  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[], segmentationalgorithms=None):
     toload = []
     batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"

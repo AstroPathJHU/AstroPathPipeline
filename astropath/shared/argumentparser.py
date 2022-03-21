@@ -279,6 +279,22 @@ class WorkingDirArgumentParser(RunFromArgumentParser) :
         'workingdir': wd,
       }
 
+class SegmentationFolderArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls):
+    p = super().makeargumentparser()
+    g = p.add_mutually_exclusive_group()
+    g.add_argument('--segmentationroot',type=pathlib.Path,help='Alternate root to use for the segmentation output.')
+    g.add_argument('--segmentationfolder',type=pathlib.Path,help='Path to the segmentation outputs.')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'segmentationroot': parsed_args_dict.pop('segmentationroot'),
+      'segmentationfolder': parsed_args_dict.pop('segmentationfolder'),
+    }
+
 class FileTypeArgumentParser(RunFromArgumentParser) :
   @classmethod
   def makeargumentparser(cls):

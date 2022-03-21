@@ -84,7 +84,7 @@ class TestSegmentationNNUNet(TestSegmentationBase) :
         #compare the results to the reference files
         outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'nnunet'
         try :
-            for fp in (folder/'data'/'reference'/'segmentation'/'nnunet').glob('*') :
+            for fp in (folder/'data'/'reference'/'segmentation'/slide_ID/'im3'/'segmentation'/'nnunet').glob('*') :
                 refa = (np.load(fp))['arr_0']
                 testa = (np.load(outputdir/fp.name))['arr_0']
                 np.testing.assert_allclose(testa,refa)
@@ -123,7 +123,7 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
         #compare the results to the reference files
         outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'deepcell'
         try :
-            for fp in (folder/'data'/'reference'/'segmentation'/'deepcell').glob('*') :
+            for fp in (folder/'data'/'reference'/'segmentation'/slide_ID/'im3'/'segmentation'/'deepcell').glob('*') :
                 refa = (np.load(fp))['arr_0']
                 testa = (np.load(outputdir/fp.name))['arr_0']
                 np.testing.assert_allclose(testa,refa)
@@ -162,7 +162,7 @@ class TestSegmentationMesmer(TestSegmentationBase) :
         #compare the results to the reference files
         outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
         try :
-            for fp in (folder/'data'/'reference'/'segmentation'/'mesmer').glob('*') :
+            for fp in (folder/'data'/'reference'/'segmentation'/slide_ID/'im3'/'segmentation'/'mesmer').glob('*') :
                 refa = (np.load(fp))['arr_0']
                 testa = (np.load(outputdir/fp.name))['arr_0']
                 np.testing.assert_allclose(testa,refa)
