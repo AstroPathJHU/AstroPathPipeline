@@ -1,4 +1,5 @@
-﻿ <# -------------------------------------------
+﻿using module .\testtools.psm1
+ <# -------------------------------------------
  testpssharedtools
  Benjamin Green - JHU
  Last Edit: 02.09.2022
@@ -7,16 +8,12 @@
  test the shared tools utilities 
  -------------------------------------------#>
 #
- Class testpssharedtools {
+ Class testpssharedtools : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
-    [string]$apmodule = $PSScriptRoot + '/../astropath'
+    [string]$class = 'sharedtools'
     #
-    testpssharedtools(){
+    testpssharedtools() : base() {
         #
-        Write-Host '---------------------test ps [sharedtools]---------------------'
-        $this.importmodule()
         $this.testconstructor()
         $tools = sharedtools
         $this.testcondaenvir($tools)
@@ -25,22 +22,6 @@
         $this.testcopy($tools)
         Write-Host '.'
         #
-    }
-    #
-    importmodule(){
-        Import-Module $this.uncpath($this.apmodule)
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
-    }
-    #
-    [string]uncpath($str){
-        $r = $str -replace( '\\', '/')
-        if ($r[0] -ne '/'){
-            $root = ('//' + $env:computername+'/'+$r) -replace ":", "$"
-        } else{
-            $root = $r -replace ":", "$"
-        }
-        return $root
     }
     #
     testconstructor(){
@@ -68,6 +49,7 @@
         Write-Host '    Git version: ' $tools.getgitversion()
         Write-Host '    Git status: ' $tools.checkgitstatus() 
         Write-Host '    Git full version: ' $tools.getfullversion()
+        Write-Host '    PowerShell Version: '$global:PSVersionTable.PSVersion
         #
     }
     #

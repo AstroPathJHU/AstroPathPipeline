@@ -39,7 +39,7 @@ class MiniField(units.ThingWithPscale):
     self.__position = position
 
   @property
-  def n(self): return self.hpfid  
+  def n(self): return self.hpfid
 
   @property
   def pscale(self): return self.__pscale
@@ -84,48 +84,49 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
     return printlogger("motifgeomcell")
 
   @staticmethod
-  def runHPF(i, field, *, logger, outputfolder, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, minarea, nfields):
-    geomload = []
-    onepixel = field.onepixel
-    outputfile = outputfolder/field.tifffile.with_suffix(".csv").name.replace(",", ".")
-    lockfile = outputfile.with_suffix(".lock")
-    with job_lock.JobLock(lockfile, outputfiles=[outputfile]) as lock:
-      if not lock: return
-      logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
-      with tifffile.TiffFile(field.tifffile) as f:
-        nuclei, _, membranes = f.pages
-        nuclei = nuclei.asarray()
-        membranes = membranes.asarray()
-        for celltype, imlayer in (0, membranes), (2, nuclei):
-          properties = skimage.measure.regionprops(imlayer)
-          ismembranelayer = imlayer is membranes
-          for cellproperties in properties:
-            if not np.any(cellproperties.image):
-              assert False
-              continue
-  
-            celllabel = cellproperties.label
-            if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
-            polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=field.pxvec, mxbox=field.mxbox, pscale=field.pscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
-            if polygon is None: continue
-            if polygon.area < minarea: continue
-  
-            box = np.array(cellproperties.bbox).reshape(2, 2)[:,::-1] * onepixel * 1.0
-            box += field.pxvec
-            box = box // onepixel * onepixel
-  
-            geomload.append(
-              CellGeomLoad(
-                field=field.n,
-                ctype=celltype,
-                n=celllabel,
-                box=box,
-                poly=polygon,
-                pscale=field.pscale,
+  def runHPF(i, field, *, logger, outputfolder, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, minarea, nfields, unitsargs):
+    with units.setup_context(*unitsargs):
+      geomload = []
+      onepixel = field.onepixel
+      outputfile = outputfolder/field.tifffile.with_suffix(".csv").name.replace(",", ".")
+      lockfile = outputfile.with_suffix(".lock")
+      with job_lock.JobLock(lockfile, outputfiles=[outputfile]) as lock:
+        if not lock: return
+        logger.info(f"writing cells for field {field.n} ({i} / {nfields})")
+        with tifffile.TiffFile(field.tifffile) as f:
+          nuclei, _, membranes = f.pages
+          nuclei = nuclei.asarray()
+          membranes = membranes.asarray()
+          for celltype, imlayer in (0, membranes), (2, nuclei):
+            properties = skimage.measure.regionprops(imlayer)
+            ismembranelayer = imlayer is membranes
+            for cellproperties in properties:
+              if not np.any(cellproperties.image):
+                assert False
+                continue
+
+              celllabel = cellproperties.label
+              if _onlydebug and (field.n, celltype, celllabel) not in _debugdraw: continue
+              polygon = PolygonFinder(imlayer, celllabel, ismembrane=ismembranelayer, bbox=cellproperties.bbox, pxvec=field.pxvec, mxbox=field.mxbox, pscale=field.pscale, logger=logger, loginfo=f"{field.n} {celltype} {celllabel}", _debugdraw=(field.n, celltype, celllabel) in _debugdraw, _debugdrawonerror=_debugdrawonerror, repair=repair).findpolygon()
+              if polygon is None: continue
+              if polygon.area < minarea: continue
+
+              box = np.array(cellproperties.bbox).reshape(2, 2)[:,::-1] * onepixel * 1.0
+              box += field.pxvec
+              box = box // onepixel * onepixel
+
+              geomload.append(
+                CellGeomLoad(
+                  field=field.n,
+                  ctype=celltype,
+                  n=celllabel,
+                  box=box,
+                  poly=polygon,
+                  pscale=field.pscale,
+                )
               )
-            )
-  
-      writetable(outputfile, geomload)
+
+        writetable(outputfile, geomload)
 
   @methodtools.lru_cache()
   @property
@@ -136,7 +137,7 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
   @property
   def constantsdict(self):
     return constantsdict(self.dbloadfolder/"constants.csv")
-    
+
   @property
   def shiftqptiff(self):
     constants = self.constantsdict
@@ -155,6 +156,7 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
       "logger": self.logger,
       "nfields": len(self.fields),
       "outputfolder": self.outputfolder,
+      "unitsargs": units.currentargs(),
       **kwargs,
     }
     self.outputfolder.mkdir(parents=True, exist_ok=True)
@@ -172,12 +174,13 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
 
   @classmethod
   def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
-    if misckwargs:
-      raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
-    sample = cls(**initkwargs)
-    with sample:
-      sample.run(**runkwargs)
-    return sample
+    with units.setup_context(misckwargs.pop("units")):
+      if misckwargs:
+        raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
+      sample = cls(**initkwargs)
+      with sample:
+        sample.run(**runkwargs)
+      return sample
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
@@ -190,12 +193,20 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
     }
 
   @classmethod
+  def misckwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().misckwargsfromargumentparser(parsed_args_dict),
+      "units": parsed_args_dict.pop("units"),
+    }
+
+  @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--tiff-folder", type=pathlib.Path, required=True, help="Folder with the segmented tiffs")
     p.add_argument("--output-folder", type=pathlib.Path, required=True, help="Folder for the output csvs")
     p.add_argument("--dbload-folder", type=pathlib.Path, required=True, help="Folder with the dbload csvs")
     p.add_argument("--log-folder", type=pathlib.Path, required=True, help="Folder for the log files")
+    p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default="safe")
     return p
 
 def main(args=None):

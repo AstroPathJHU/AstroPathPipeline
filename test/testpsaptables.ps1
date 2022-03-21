@@ -1,4 +1,5 @@
-﻿<# -------------------------------------------
+﻿using module .\testtools.psm1
+<# -------------------------------------------
  testaptables
  Benjamin Green - JHU
  Last Edit: 02.09.2022
@@ -7,16 +8,12 @@
  test if the module can be imported or not
  -------------------------------------------#>
 #
- Class testpsaptables {
+ Class testpsaptables : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
-    [string]$apmodule = $PSScriptRoot + '/../astropath'
+    [string]$class = 'aptabletools'
     #
-    testpsaptables(){
+    testpsaptables() : base(){
         #
-        Write-Host '---------------------test ps [aptabletools]---------------------'
-        $this.importmodule()
         $this.testmpath()
         $tools = sharedtools
         $this.testapidfiles() | Out-Null
@@ -28,12 +25,6 @@
         $this.testcohortsinfo($tools)
         Write-Host '.'
         #
-    }
-    #
-    importmodule(){
-        Import-Module $this.apmodule
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
     }
     #
     [void]testmpath(){
@@ -177,16 +168,6 @@
         $internal_apids = $tools.ImportCohortsInfo($this.mpath)
         write-host " " ($internal_apids | Out-String)
         #
-    }
-    #
-    [string]uncpath($str){
-        $r = $str -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
-        } else{
-            $root = $r -replace ":", "$"
-        }
-        return $root
     }
     #
     [void]addbatchflatfieldexamples($tools){

@@ -353,9 +353,14 @@ class sampledef : sharedtools{
         return $path
     }
     #
-    [string]warpoctetsfile(){
+    [string]warpoctetsfolder(){
         $file2 = $this.basepath, '\', $this.slideid,
-            '\im3\warping\octets\', $this.slideid, '-all_overlap_octets.csv' -join ''
+            '\im3\warping\octets' -join ''
+        return $file2
+    }
+    #
+    [string]warpoctetsfile(){
+        $file2 = $this.warpoctetsfolder(), '\', $this.slideid, '-all_overlap_octets.csv' -join ''
         return $file2
     }
     #
@@ -373,6 +378,11 @@ class sampledef : sharedtools{
         $path = $this.basepath +'\warping\Batch_' + $this.BatchID + '\octets'
         return $path
     }
+        #
+        [string]warpprojectoctetsfolder(){
+            $path = $this.basepath +'\warping\Project_' + $this.project + '\octets'
+            return $path
+        }
     #
     [void]testim3folder(){
         if (!(test-path $this.im3folder())){

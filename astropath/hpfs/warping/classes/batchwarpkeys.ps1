@@ -40,10 +40,10 @@ class batchwarpkeys : moduletools {
         #
         $this.sample.info('start find keys')
         #
-        $taskname = 'batchwarpkeys'
+        $this.getmodulename()
+        $taskname = $this.pythonmodulename
         $dpath = $this.sample.basepath
         $rpath = '\\' + $this.sample.project_data.fwpath
-        $this.getmodulename()
         #
         $pythontask = $this.getpythontask($dpath, $rpath)
         #
@@ -55,17 +55,15 @@ class batchwarpkeys : moduletools {
     #
     [void]getbatchwarpoctets(){
         #
-        if ($this.all){
-            return
-        }
-        #
-        $this.sample.info('copying batch octets to working dir')
+        $this.sample.info('copying slide octets to working dir')
         $sid = $this.sample.slideid
+        #
+        $this.sample.CreateNewDirs(($this.processloc+ '\octets'))
         #
         $this.batchslides | ForEach-Object{
            $this.sample.slideid = $_
            $this.sample.copy($this.sample.warpoctetsfile(),
-            $this.sample.warpbatchoctetsfolder())
+            ($this.processloc + '\octets'))
         }
         #
         $this.sample.slideid = $sid
@@ -91,7 +89,6 @@ class batchwarpkeys : moduletools {
     #
     [string]workingdir(){
         #
-        $this.sample.CreateNewDirs(($this.processloc+ '\octets'))
         return ('--workingdir ' + $this.processloc)
         #
     }

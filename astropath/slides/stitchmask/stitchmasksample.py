@@ -1,10 +1,11 @@
-import abc, numpy as np, pathlib
+import abc, methodtools, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
-from ...shared.image_masking.image_mask import ImageMask
-from ...shared.image_masking.maskloader import MaskLoader, TissueMaskLoader, TissueMaskLoaderWithPolygons
+from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMask, ThingWithTissueMaskPolygons
+from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
 from ...shared.logging import ThingWithLogger
-from ...shared.rectangle import MaskRectangle
+from ...shared.rectangle import MaskRectangleBase, AstroPathTissueMaskRectangle
+from ...shared.rectangletransformation import ImageTransformation
 from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, MaskWorkflowSampleBase
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.miscmath import floattoint
@@ -13,9 +14,10 @@ from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadSegmentedComponentTiffSingleLayer
 from ..zoom.zoomsamplebase import ZoomSampleBase
 
-class MaskField(Field, MaskRectangle): pass
+class MaskField(Field, MaskRectangleBase): pass
+class AstroPathTissueMaskField(MaskField, AstroPathTissueMaskRectangle): pass
 
-class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser, MaskLoader, ThingWithLogger):
+class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser, ThingWithMask, ThingWithLogger):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
@@ -26,6 +28,7 @@ class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgum
     The file stem of the mask file (without the folder or the suffix)
     """
 
+  @property
   def maskfilename(self):
     """
     Get the mask filename
@@ -37,7 +40,17 @@ class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgum
     folder = self.maskfolder
     return folder/filename
 
-class TissueMaskSample(MaskSample, TissueMaskLoader):
+  @methodtools.lru_cache()
+  @property
+  def maskloader(self):
+    if self.maskfilesuffix == ".npz":
+      return ImageLoaderNpz(filename=self.maskfilename, key="mask")
+    elif self.maskfilesuffix == ".bin":
+      return ImageLoaderBin(filename=self.maskfilename, dimensions=tuple((self.ntiles * self.zoomtilesize)[::-1]))
+    else:
+      raise ValueError(f"Invalid maskfilesuffix: {self.maskfilesuffix}")
+
+class TissueMaskSample(MaskSample, ThingWithTissueMask):
   """
   Base class for a sample that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the
@@ -45,7 +58,7 @@ class TissueMaskSample(MaskSample, TissueMaskLoader):
   could be mask == 1)
   """
 
-class TissueMaskSampleWithPolygons(TissueMaskSample, TissueMaskLoaderWithPolygons):
+class TissueMaskSampleWithPolygons(TissueMaskSample, ThingWithTissueMaskPolygons):
   """
   Base class for a sample that has a mask for tissue,
   which can be obtained from the main mask. (e.g. if the
@@ -57,8 +70,8 @@ class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
   """
   Base class for a sample that creates and writes a mask to file
   """
-  def writemask(self, **filekwargs):
-    filename = self.maskfilename(**filekwargs)
+  def writemask(self):
+    filename = self.maskfilename
     filename.parent.mkdir(exist_ok=True, parents=True)
 
     mask = self.createmask()
@@ -72,7 +85,7 @@ class WriteMaskSampleBase(MaskSample, MaskWorkflowSampleBase):
     else:
       raise ValueError("Don't know how to deal with mask file type {filetype}")
 
-  run = writemask
+  def run(self, *args, **kwargs): return self.writemask(*args, **kwargs)
 
   @abc.abstractmethod
   def createmask(self): "create the mask"
@@ -93,8 +106,9 @@ class InformMaskSample(TissueMaskSample):
   """
   @classmethod
   def maskfilestem(cls): return "inform_mask"
-  def tissuemask(self, mask):
-    return mask < self.nsegmentations
+  @property
+  def tissuemasktransformation(self):
+    return ImageTransformation(lambda mask: mask < self.nsegmentations)
 
 class AstroPathTissueMaskSample(TissueMaskSample):
   """
@@ -104,8 +118,9 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   """
   @classmethod
   def maskfilestem(cls): return "tissue_mask"
-  def tissuemask(self, mask):
-    return mask.astype(bool)
+  @property
+  def tissuemasktransformation(self):
+    return ImageTransformation(lambda mask: mask.astype(bool))
 
 class StitchMaskSample(WriteMaskSampleBase):
   """
@@ -226,12 +241,14 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
   @classmethod
   def logmodule(self): return "stitchtissuemask"
 
-  rectangletype = MaskField
+  rectangletype = AstroPathTissueMaskField
   @property
   def rectangleextrakwargs(self):
     return {
       **super().rectangleextrakwargs,
       "maskfolder": self.maskfolder,
+      "width": self.fwidth,
+      "height": self.fheight,
     }
 
   def inputfiles(self, **kwargs):
@@ -245,13 +262,7 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
   @property
   def backgroundvalue(self): return False
   def getHPFmask(self, field):
-    return ImageMask.unpack_tissue_mask(
-        field.tissuemaskfile,
-        (
-          floattoint(float(self.fheight/self.onepixel)),
-          floattoint(float(self.fwidth/self.onepixel)),
-        )
-      )
+    with field.using_tissuemask() as mask: return mask
 
 def astropathtissuemain(args=None):
   StitchAstroPathTissueMaskSample.runfromargumentparser(args=args)

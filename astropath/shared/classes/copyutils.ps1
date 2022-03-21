@@ -169,7 +169,8 @@ class copyutils{
         }
         #
         $filespec | ForEach-Object{
-            cp ($sor1+$_) $des1 -r
+            $find = ('"'+$_+'"')
+            find $sor1 -name $find | xargs cp -r -t ($des1 + '/')
         }
         #
     }
@@ -187,10 +188,10 @@ class copyutils{
     [system.object]listfiles([string]$sor, [array]$filespec){
         $sor = $sor + '\*'
         if ($filespec -match '\*'){
-            $files = get-ChildItem $sor -Recurse 
+            $files = get-ChildItem $sor -Recurse -EA SilentlyContinue
         } else {
             $filespec = $filespec | foreach-object {'*' + $_}
-            $files = get-ChildItem $sor -Include  $filespec -Recurse
+            $files = get-ChildItem $sor -Include  $filespec -Recurse -EA SilentlyContinue
         }
         if (!$files) {
             $files = @()
@@ -255,9 +256,19 @@ class copyutils{
             $destinationhash.('tmp') = 'tmp'
         }
         #
-        $comparison = Compare-Object -ReferenceObject $($sourcehash.Values) `
-                                -DifferenceObject $($destinationhash.Values) |
-                Where-Object -FilterScript {$_.SideIndicator -eq '<='}
+        try{
+            $comparison = Compare-Object -ReferenceObject $($sourcehash.Values) `
+                                    -DifferenceObject $($destinationhash.Values) |
+                    Where-Object -FilterScript {$_.SideIndicator -eq '<='}
+        } catch {
+            if ($_.Exception.Message -match 'ReferenceObject'){
+                Throw ('source hash values not valid: ' +  $sourcehash.Values)
+            } elseif ($_.Exception.Message -match 'DifferenceObject'){
+                Throw ('destination hash values not valid: ' +  $destinationhash.Values)
+            } else {
+                Throw $_.Exception.Message
+            }
+        }
         #
         # copy files that failed
         # call checksum on the particular file to make sure the 
@@ -293,8 +304,7 @@ class copyutils{
     processing.
     Edited from 'Get-FileHash' source code
     -----------------------------------------#>
-    [System.Collections.Concurrent.ConcurrentDictionary[string,object]]`
-        FileHasher($filelist, [int]$v){
+    [System.Collections.Concurrent.ConcurrentDictionary[string,object]]FileHasher($filelist, [int]$v){
         #
         [System.Collections.Concurrent.ConcurrentDictionary[string,object]]$hashes = @{}
         #
@@ -302,17 +312,16 @@ class copyutils{
             #
             $hcopy = $using:hashes
             $Algorithm="MD5"
-            $hasherType = "System.Security.Cryptography.${Algorithm}CryptoServiceProvider" `
-                -as [Type]
+            $hasherType = "System.Security.Cryptography.${Algorithm}CryptoServiceProvider" -as [Type]
             if ($hasherType) {
                 $hasher = $hasherType::New()
             }
             #
-            if(Test-Path -LiteralPath $_ -PathType Container) {
+            if(Test-Path -LiteralPath $_.FullName -PathType Container) {
                 continue
             }
             #
-            if (!(Test-path $_)){
+            if (!(Test-path -LiteralPath $_.FullName)){
                 continue
             }
             #
@@ -320,15 +329,18 @@ class copyutils{
                 [system.io.stream]$stream = [system.io.file]::OpenRead($_.FullName)
                 [Byte[]] $computedHash = $hasher.ComputeHash($stream)
                 [string] $hash = [BitConverter]::ToString($computedHash) -replace '-',''
-                $hcopy.($_.FullName) = $hash
+                $cnt = 0
+                while(!($hcopy.TryAdd($_.FullName, $hash)) -and $cnt -lt 4){
+                    $cnt += 1
+                }
             } catch {
-                    Throw $_.Exception.Message
+                Throw $_.Exception.Message
             } finally {
                 if($stream)
                 {
                     $stream.Dispose()
                 }
-             } 
+            } 
         } -ThrottleLimit 20
         #
         return ($hashes)

@@ -445,7 +445,7 @@
         #
         $str = ''
         #
-        if ($this.sample.slideid -match $this.sample.batchid){    
+        if ($this.sample.batchid -contains $this.sample.slideid) {    
             #
             $this.batchslides | foreach-object {
                 $this.sample.slideid = $_
@@ -658,7 +658,7 @@
         #
         foreach ($statustype in $statustypes){
             $savelog += $loglines |
-                    where-object {($_.Slideid -match $ID) -and 
+                    where-object {($_.Slideid -contains $ID) -and 
                         ($_.Message -match $statustype)} |
                     Select-Object -Last 1 
         }

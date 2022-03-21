@@ -31,6 +31,7 @@ Class warpoctets : moduletools {
      Usage: $this.RunMeanImage()
     ----------------------------------------- #>
     [void]RunWarpOctets(){
+        $this.sample.CreateNewDirs($this.sample.warpoctetsfolder())
         $this.DownloadFiles()
         $this.ShredDat()
         $this.GetWarpOctets()

@@ -1,4 +1,5 @@
-﻿<# testpsmoduletools
+﻿using module .\testtools.psm1
+<# testpsmoduletools
  testpslogger
  Benjamin Green - JHU
  Last Edit: 02.09.2022
@@ -7,24 +8,16 @@
  test if the module can be imported or not
  -------------------------------------------#>
 #
- Class testpsmoduletools {
+ Class testpsmoduletools : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
-    [string]$basepath = $PSScriptRoot + '\data'
+    [string]$class = 'moduletools'
     [string]$module = 'shredxml'
-    [string]$slideid = 'M21_1'
-    [string]$project = '0'
-    [string]$batchid = '8'
-    [string]$apmodule = $PSScriptRoot + '\..\astropath'
     #
-    testpsmoduletools(){
+    testpsmoduletools() : base(){
         #
-        Write-Host '---------------------test ps [moduletools]---------------------'
-        $this.importmodule()
         $this.testmodulecontruction()
         #
-        $task = ($this.project, $this.slideid, $this.process_loc, $this.mpath)
+        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
         $inp = meanimage $task
         #
         $this.testslidelist()
@@ -34,18 +27,12 @@
         #
     }
     #
-    importmodule(){
-        Import-Module $this.apmodule -EA SilentlyContinue
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing'
-    }
-    #
     [void]testmodulecontruction(){
         #
         Write-Host '.'
         Write-Host 'building a shredxml module object'
         try {
-            $task = ($this.project, $this.slideid, $this.process_loc, $this.mpath)
+            $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
             shredxml $task | Out-Null
         } catch {
             Throw 'module could not be constructed'
@@ -58,7 +45,7 @@
         Write-Host '.'
         Write-Host 'Starting Paths Testing'
         #
-        $testloc = $this.process_loc + '\astropath_ws\meanimage\' + $this.slideid
+        $testloc = $this.processloc + '\astropath_ws\meanimage\' + $this.slideid
         #
         if (!([regex]::Escape($inp.processvars[0]) -contains [regex]::Escape($testloc))){
             Throw ('processvars[0] not correct: ' + $inp.processvars[0] + '~=' + $testloc)
@@ -76,6 +63,24 @@
             Write-Host 'batch flatfield file:' $inp.sample.batchflatfield()
             Throw ('processvars[3] not correct: ' + $inp.processvars[3] + '~=' + $testloc + '\flatfield\flatfield_BatchID_08.bin')
         }
+        #
+        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
+        #
+        Write-Host '   source:' $sor
+        Write-Host '   destination:' $des
+        $inp.sample.copy($sor, $des, '*')
+        #
+        if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage source'
+        }
+        #
+        if (!(test-path -LiteralPath ($des + '\.gitignore'))){
+            Throw 'da git ignore is not correct in meanimage destination'
+        }
+        #
+        $this.comparepaths($sor, $des, $inp)
+        $inp.sample.removedir($des)
         #
         Write-Host 'Passed Paths Testing'
         #

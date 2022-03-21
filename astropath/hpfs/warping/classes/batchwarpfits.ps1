@@ -22,7 +22,7 @@ class batchwarpfits : moduletools {
     ----------------------------------------- #>
     [void]Runbatchwarpfits(){
         #
-        $this.getslideidregex()
+        $this.getslideidregex('batchwarpfits')
         $this.getwarpdats()
         $this.Getbatchwarpfits()
         $this.cleanup()
@@ -56,7 +56,7 @@ class batchwarpfits : moduletools {
     #
     [string]getkeysloc(){
         if ($this.all){
-            $image_keys_file = $this.sample.mpath + '\warping\octets\image_keys_needed.txt'
+            $image_keys_file = $this.sample.warpprojectoctetsfolder() + '\image_keys_needed.txt'
         } else {
             $image_keys_file = $this.sample.warpbatchoctetsfolder() + '\image_keys_needed.txt'
         }
@@ -90,23 +90,22 @@ class batchwarpfits : moduletools {
     ----------------------------------------- #>
     [void]Getbatchwarpfits(){
         #
-        $taskname = 'batchwarpfits'
-        $dpath = $this.processvars[0]
-        $rpath = '\\' + $this.processvars[1]
+        $this.sample.info('start fits')
         $this.getmodulename()
+        $taskname = $this.pythonmodulename
+        $dpath = $this.processvars[0]
+        $rpath = $this.processvars[1]
         #
         $pythontask = $this.getpythontask($dpath, $rpath)
         #
         $this.runpythontask($taskname, $pythontask)
-        $this.silentcleanup()
+        $this.sample.info('fits finished')
         #
     }
     #
     [string]getpythontask($dpath, $rpath){
         #
-        $this.sample.info('start fits')
-        #
-        $pythontask = ((
+        $pythontask = (
             $this.pythonmodulename,
             $dpath,
             '--shardedim3root',  $rpath, 
@@ -114,20 +113,19 @@ class batchwarpfits : moduletools {
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
             '--noGPU --no-log',
             '--ignore-dependencies',
-            $this.buildpyopts('cohort') 
-        ) -join ' '), $this.workingdir() -join ''
+            $this.buildpyopts('cohort'),
+            '--workingdir', $this.workingdir()
+        ) -join ' '
         #
-        $this.sample.info('fits finished')
-       #
        return $pythontask
        #
     }
     #
     [string]workingdir(){
         if ($this.all){
-            return ''
+            return $this.sample.warpprojectfolder()
         } else {
-            return (' --workingdir ' + $this.sample.warpbatchfolder())
+            return $this.sample.warpbatchfolder()
         }
     }
     #

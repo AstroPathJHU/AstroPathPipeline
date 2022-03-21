@@ -54,9 +54,8 @@ class TestStitchMask(TestBaseCopyInput, TestBaseSaveOutput):
     refsample = samplecls(root, SlideID, maskroot=thisfolder/"data"/"reference"/"stitchmask", logroot=maskroot, dbloadroot=dbloadroot, maskfilesuffix=maskfilesuffix)
 
     try:
-      mask1 = sample.readmask()
-      mask2 = refsample.readmask()
-      np.testing.assert_array_equal(mask1, mask2)
+      with sample.using_mask() as mask1, refsample.using_mask() as mask2:
+        np.testing.assert_array_equal(mask1, mask2)
     except:
       self.saveoutput()
       raise

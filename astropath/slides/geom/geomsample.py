@@ -78,7 +78,7 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
     writetable(fieldfilename, self.getfieldboundaries())
     writetable(tumorfilename, self.gettumorboundaries())
 
-  run = writeboundaries
+  def run(self, *args, **kwargs): return self.writeboundaries(*args, **kwargs)
 
   def inputfiles(self, **kwargs):
     result = [
