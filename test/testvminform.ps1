@@ -501,6 +501,8 @@ Class testvminform {
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         #
         Write-Host 'test check inform output files finished'
+
+        throw 'All Tests Completed'
     }
     #
 }
