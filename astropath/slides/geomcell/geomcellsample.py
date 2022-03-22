@@ -67,6 +67,16 @@ class GeomCellSampleBase(GeomSampleBase, SampleWithSegmentations, ReadRectangles
   @abc.abstractmethod
   def arelayersmembrane(self): pass
 
+  @property
+  @abc.abstractmethod
+  def algorithmindex(self): pass
+  def addalgorithmbit(self, celltype):
+    celltype = np.asarray(celltype)
+    np.testing.assert_array_less(celltype, 256)
+    algorithmbit = self.algorithmindex << 8
+    assert algorithmbit == 0 or algorithmbit >= 256
+    return celltype | algorithmbit
+
   def rungeomcell(self, *, minarea=None, **kwargs):
     self.geomsubfolder.mkdir(exist_ok=True, parents=True)
     if minarea is None: minarea = (3 * self.onemicron)**2
@@ -74,7 +84,7 @@ class GeomCellSampleBase(GeomSampleBase, SampleWithSegmentations, ReadRectangles
       "nfields": len(self.rectangles),
       "minarea": minarea,
       "logger": self.logger,
-      "celltypes": self.celltypesbylayer,
+      "celltypes": self.addalgorithmbit(self.celltypesbylayer),
       "arelayersmembrane": self.arelayersmembrane,
       "pscale": self.pscale,
       "unitsargs": units.currentargs(),
@@ -191,6 +201,10 @@ class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComp
       key=lambda x: -2*(x=="Tumor")-(x=="Immune")
     )
 
+  @property
+  def algorithmindex(self):
+    return 0
+
   def celltype(self, layer):
     segid = self.segmentationidfromlayer(layer)
     membrane = self.ismembranelayer(layer)
@@ -209,7 +223,7 @@ class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComp
 
   @property
   def celltypesbylayer(self):
-    return [self.celltype(imlayernumber) for imlayernumber in self.layerscomponenttiff]
+    return np.array([self.celltype(imlayernumber) for imlayernumber in self.layerscomponenttiff])
 
   @property
   def arelayersmembrane(self):
@@ -241,6 +255,9 @@ class GeomCellSampleDeepCell(GeomCellSampleDeepCellBase, DeepCellSegmentationSam
   def arelayersmembrane(self): return np.array([False])
   @property
   def celltypesbylayer(self): return np.array([2])
+  @property
+  def algorithmindex(self):
+    return 1
 
 class GeomCellSampleMesmer(GeomCellSampleDeepCellBase, MesmerSegmentationSample):
   rectangletype = GeomCellFieldMesmer
@@ -251,6 +268,9 @@ class GeomCellSampleMesmer(GeomCellSampleDeepCellBase, MesmerSegmentationSample)
   def arelayersmembrane(self): return np.array([True, False])
   @property
   def celltypesbylayer(self): return np.array([0, 2])
+  @property
+  def algorithmindex(self):
+    return 2
 
 class CellGeomLoad(DataClassWithPolygon):
   field: int
