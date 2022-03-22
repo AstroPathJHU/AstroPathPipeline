@@ -507,5 +507,5 @@ Class testvminform {
 #
 # launch test and exit if no error found
 #
-[testvminform]::new() | Out-Null
+[testvminform]::new($jenkins) | Out-Null
 exit 0
