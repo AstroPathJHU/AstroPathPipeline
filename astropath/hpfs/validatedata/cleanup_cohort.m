@@ -45,6 +45,6 @@ try
 catch
 end
 %
-convert_batch(main, wd);
+%convert_batch(main, wd);
 %
 end

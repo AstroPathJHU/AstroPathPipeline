@@ -25,9 +25,10 @@ Class testtools{
     [string]$slidelist = '"L1_1|M148|M206|M21_1|M55_1|YZ71|ZW2|MA12"'
     [string]$slideid2 = 'M55_1'
     [string]$testrpath
+    [string]$apfile_temp_constant = 'Template.csv'
     #
     testtools(){
-        $this.importmodule()
+       $this.importmodule()
     }
     #
     testtools($module){
@@ -57,7 +58,6 @@ Class testtools{
         $this.dryrun = $true
         $this.importmodule()
     }
-    #
     <# --------------------------------------------
     importmodule
     helper function to import the astropath module
@@ -74,7 +74,23 @@ Class testtools{
         $this.batchreferencefile = ($batchreferncetestpath + '\flatfield_TEST.bin')
         $this.basepath = $this.uncpath($this.basepath)
         $this.testrpath = $this.processloc, $this.slideid, 'rpath' -join '\'
+        $this.verifyAPIDdef()
         #
+    }
+    #
+    [void]verifyAPIDdef(){
+        #
+        if (!(test-path ($this.mpath + '\AstroPathAPIDdef.csv'))){
+            try{
+                $tools = sharedtools
+                $sor = $this.mpath + '\AstroPathAPIDdefTemplate.csv'
+                $des = $this.mpath + '\AstroPathAPIDdef.csv'
+                $paths_data = $tools.OpencsvFileConfirm($sor)
+                $paths_data | Export-CSV $des
+            } catch {
+                Write-Host 'Warning: AstroPathAPIDdef not found and could not be created from template'
+            }
+        }
     }
     <# --------------------------------------------
     uncpath
@@ -138,6 +154,32 @@ Class testtools{
         #
         $hasha = $inp.sample.FileHasher($lista)
         $hashb = $inp.sample.FileHasher($listb)
+        $comparison = Compare-Object -ReferenceObject $($hasha.Values) `
+                -DifferenceObject $($hashb.Values)
+        if ($comparison){
+            Throw 'file contents do not match'
+        }
+        #
+    }
+    #
+    [void]comparepaths($patha, $pathb, $tools, $type){
+        #
+        Write-Host '    Comparing paths:'
+        Write-Host '   '$patha
+        Write-Host '   '$pathb
+        if (!(test-path $patha)){
+            Throw ('path does not exist:', $patha -join ' ')
+        }
+        #
+        if (!(test-path $pathb)){
+            Throw ('path does not exist:', $pathb -join ' ')
+        }
+        #
+        $lista = Get-ChildItem $patha -file
+        $listb = Get-ChildItem $pathb -file
+        #
+        $hasha = $tools.FileHasher($lista)
+        $hashb = $tools.FileHasher($listb)
         $comparison = Compare-Object -ReferenceObject $($hasha.Values) `
                 -DifferenceObject $($hashb.Values)
         if ($comparison){
@@ -611,4 +653,69 @@ Class testtools{
         #
     }
     #
+    [void]addtestfiles($sample, $path, $files){
+        #
+        foreach ($file in $files) {
+            #
+            if ($file[0] -match '-'){
+                $file = $this.slideid + $file
+            }
+            #
+            $fullpath = $path + '\' + $file
+            $sample.setfile($fullpath, 'blah de blah')
+            #
+        }
+        #
+    }
+    #
+    [void]addtestfiles($sample, $path, $file, $source){
+        #
+        $sample.('get' + $source + 'files')() | ForEach-Object{
+            $sample.copy($_.FullName, $path)
+            $newname = $_.Name -replace $sample.($source + 'constant'),
+                 $sample.($file + 'constant')
+            rename-item ($path + '\' + $_.Name) $newname
+        }
+        #
+    }
+    #
+    [void]removetestfiles($sample, $path, [array]$files){
+        #
+        foreach ($file in $files) {
+            #
+            if ($file[0] -match '-'){
+                $file = $this.slideid + $file
+            }
+            #
+            
+            $fullpath = $path + '\' + $file
+            write-host '    file to remove:' $fullpath
+            $sample.removefile($fullpath)
+            Write-Host '    file successfully removed:' (!(test-path $fullpath))
+            #
+        }
+        #
+    }
+    #
+    [void]removetestfiles($sample, $path, $file, $source){
+        #
+        $sample.getfiles($source, $false) | ForEach-Object{
+            $newname = $_.Name -replace $($source + 'constant'),
+                 $($file + 'constant')
+            $sample.removefile($path + '\' + $newname)
+        }
+        #
+    }
+    #
+    [string]aptempfullname($sampletracker, $filetype){
+        #
+        $filename = $sampletracker.($filetype + '_fullfile')($this.mpath)
+        $tempfilename = $filename `
+            -replace $sampletracker.apfile_constant, $this.apfile_temp_constant
+        return $tempfilename
+        #
+    }
+    #
+    
 }
+#

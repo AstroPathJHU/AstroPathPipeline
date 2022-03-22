@@ -198,6 +198,9 @@ using module .\testtools.psm1
 #
 }
 #
-[testpsbatchwarpkeys]::new() | Out-Null
+try {
+    [testpsbatchwarpkeys]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
-

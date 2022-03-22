@@ -6,6 +6,56 @@
     [PSCustomObject]$corrmodels_data
     [PSCustomObject]$ffmodels_data
     [PSCustomObject]$slide_data
+    [PSCustomObject]$worker_data
+    [PSCustomObject]$mergeconfig_data
+    #
+    [string]$cohorts_file = 'AstroPathCohortsProgress.csv' 
+    [string]$paths_file = 'AstroPathPaths.csv'
+    [string]$config_file = 'AstroPathConfig.csv'
+    [string]$slide_file = 'AstroPathAPIDdef.csv'
+    [string]$ffmodels_file = 'AstroPathFlatfieldModels.csv' 
+    [string]$corrmodels_file = 'AstroPathCorrectionModels.csv' 
+    [string]$micomp_file = 'meanimagecomparison_table.csv' 
+    [string]$worker_file = 'AstroPathHPFWLocs.csv' 
+    #
+    [string]$apfile_constant = '.csv'
+    #
+    [string]apfullname($mpath, $file){
+        return ($mpath + '\' + $file)
+    }
+
+    #
+    [string]cohorts_fullfile($mpath){
+        return $this.apfullname($mpath, $this.cohorts_file)
+    }
+    #
+    [string]paths_fullfile($mpath){
+        return $this.apfullname($mpath, $this.paths_file)
+    }
+    #
+    [string]config_fullfile($mpath){
+    return $this.apfullname($mpath, $this.config_file)
+    }
+    #
+    [string]slide_fullfile($mpath){
+        return $this.apfullname($mpath, $this.slide_file)
+    }
+    #
+    [string]ffmodels_fullfile($mpath){
+    return $this.apfullname($mpath, $this.ffmodels_file)
+    }
+    #
+    [string]corrmodels_fullfile($mpath){
+        return $this.apfullname($mpath, $this.corrmodels_file)
+    }
+    #
+    [string]micomp_fullfile($mpath){
+        return ($mpath + '\meanimagecomparison\' + $this.micomp_file)
+    }
+    #
+    [string]worker_fullfile($mpath){
+        return $this.apfullname($mpath, $this.worker_file)
+    }
     #
     importaptables($mpath){
         $this.importcohortsinfo($mpath)
@@ -14,15 +64,17 @@
         $this.ImportFlatfieldModels($mpath)
         $this.ImportCorrectionModels($mpath)
         $this.ImportMICOMP($mpath)
+        $this.Importworkerlist($mpath)
     }
     #
-    importaptables($mpath, $forceupdate){
-        $this.importcohortsinfo($mpath, $forceupdate)
-        $this.importconfiginfo($mpath, $forceupdate)
-        $this.importslideids($mpath, $forceupdate)
-        $this.ImportFlatfieldModels($mpath, $forceupdate)
-        $this.ImportCorrectionModels($mpath, $forceupdate)
-        $this.ImportMICOMP($mpath, $forceupdate)
+    importaptables($mpath, $createwatcher){
+        $this.importcohortsinfo($mpath, $createwatcher)
+        $this.importconfiginfo($mpath, $createwatcher)
+        $this.importslideids($mpath, $createwatcher)
+        $this.ImportFlatfieldModels($mpath, $createwatcher)
+        $this.ImportCorrectionModels($mpath, $createwatcher)
+        $this.ImportMICOMP($mpath, $createwatcher)
+        $this.Importworkerlist($mpath, $createwatcher)
     }
     <# -----------------------------------------
      ImportCohortsInfo
@@ -37,17 +89,23 @@
      ------------------------------------------
      Usage: ImportCohortsInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportCohortsInfo([string] $mpath, $forceupdate){
+    [PSCustomObject]ImportCohortsInfo([string] $mpath, $createwatcher){
         #
-        $cohort_csv_file = $mpath + '\AstropathCohortsProgress.csv'
+        $cohort_csv_file = $this.cohorts_fullfile($mpath)
         #
         $project_data = $this.OpencsvFileConfirm($cohort_csv_file)
+        if ($createwatcher){
+            $this.FileWatcher($cohort_csv_file)
+        }
         #
-        $paths_csv_file = $mpath + '\AstropathPaths.csv'
+        $paths_csv_file = $this.paths_fullfile($mpath)
         #
         $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
         #
         $this.full_project_dat = $this.MergeCustomObject( $project_data, $paths_data, 'Project')
+        if ($createwatcher){
+            $this.FileWatcher($paths_csv_file)
+        }
         #
         return $this.full_project_dat
         #
@@ -56,7 +114,7 @@
     [PSCustomObject]ImportCohortsInfo([string] $mpath){
         #
         if(!$this.full_project_dat){
-            $this.importcohortsinfo($mpath, $true) | Out-NULL
+            $this.importcohortsinfo($mpath, $false) | Out-NULL
         }
         #
         return $this.full_project_dat
@@ -74,10 +132,13 @@
      ------------------------------------------
      Usage: ImportCohortsInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportConfigInfo([string] $mpath, $forceupdate){
+    [PSCustomObject]ImportConfigInfo([string] $mpath, $createwatcher){
         #
-        $config_csv_file = $mpath + '\AstropathConfig.csv'
+        $config_csv_file = $this.config_fullfile($mpath)
         $this.config_data = $this.OpencsvFileConfirm($config_csv_file)
+        if ($createwatcher){
+            $this.FileWatcher($config_csv_file)
+        }
         return $this.config_data
         #
     }
@@ -85,7 +146,7 @@
     [PSCustomObject]ImportConfigInfo([string] $mpath){
         #
         if(!$this.config_data){
-            $this.ImportConfigInfo($mpath, $true) | Out-Null
+            $this.ImportConfigInfo($mpath, $false) | Out-Null
         }
         return $this.config_data
         #
@@ -101,10 +162,13 @@
      ------------------------------------------
      Usage: ImportSlideIDs(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportSlideIDs([string] $mpath, $forceupdate){
+    [PSCustomObject]ImportSlideIDs([string] $mpath, $createwatcher){
         #
-        $defpath = $mpath + '\AstropathAPIDdef.csv'
+        $defpath = $this.slide_fullfile($mpath)
         $this.slide_data = $this.OpencsvFileConfirm($defpath)
+        if ($createwatcher){
+            $this.FileWatcher($defpath)
+        }
         return $this.slide_data 
         #
     }
@@ -112,7 +176,7 @@
     [PSCustomObject]ImportSlideIDs([string] $mpath){
         #
         if(!$this.slide_data){
-            $this.ImportSlideIDs($mpath, $true) | Out-Null
+            $this.ImportSlideIDs($mpath, $false) | Out-Null
         }
         return $this.slide_data
         #
@@ -128,10 +192,13 @@
      ------------------------------------------
      Usage: ImportFlatfieldModels(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportFlatfieldModels([string] $mpath, $forceupdate){
+    [PSCustomObject]ImportFlatfieldModels([string] $mpath, $createwatcher){
         #
-        $defpath = $mpath + '\AstroPathFlatfieldModels.csv'
+        $defpath = $this.ffmodels_fullfile($mpath)
         $this.ffmodels_data = $this.opencsvfile($defpath)
+        if ($createwatcher){
+            $this.FileWatcher($defpath)
+        }
         return $this.ffmodels_data
         #
      }
@@ -139,7 +206,7 @@
     [PSCustomObject]ImportFlatfieldModels([string] $mpath){
         #
         if(!$this.ffmodels_data){
-            $this.ImportFlatfieldModels($mpath, $true) | Out-NUll
+            $this.ImportFlatfieldModels($mpath, $false) | Out-NUll
         }
         return $this.ffmodels_data
         #
@@ -198,9 +265,9 @@
         #
      }
          #
-    [PSCustomObject]GetAPProjects($module, $forceupdate){
+    [PSCustomObject]GetAPProjects($module, $createwatcher){
         #
-        $project_dat = $this.ImportConfigInfo($this.mpath, $forceupdate)
+        $project_dat = $this.ImportConfigInfo($this.mpath, $createwatcher)
         #
         if (!$this.project){
             $projects = ($project_dat | 
@@ -244,10 +311,13 @@
      ------------------------------------------
      Usage: ImportCohortsInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportCorrectionModels([string] $mpath, $forceupdate){
+    [PSCustomObject]ImportCorrectionModels([string] $mpath, $createwatcher){
         #
-        $config_csv_file = $mpath + '\AstroPathCorrectionModels.csv'
-        $this.corrmodels_data = $this.opencsvfile($config_csv_file)
+        $corr_csv_file = $this.corrmodels_fullfile($mpath)
+        $this.corrmodels_data = $this.opencsvfile($corr_csv_file)
+        if ($createwatcher){
+            $this.FileWatcher($corr_csv_file)
+        }
         #
         return $this.corrmodels_data 
         #
@@ -256,7 +326,7 @@
     [PSCustomObject]ImportCorrectionModels([string] $mpath){
         #
         if (!$this.corrmodels_data){
-            $this.ImportCorrectionModels($mpath, $true) | Out-NULL
+            $this.ImportCorrectionModels($mpath, $false) | Out-NULL
         }
         #
         return $this.corrmodels_data 
@@ -275,10 +345,13 @@
      Usage: ImportMICOMP(mpath)
     ----------------------------------------- #>
     #
-    [PSCustomObject]ImportMICOMP([string] $mpath, $forceupdate){
+    [PSCustomObject]ImportMICOMP([string] $mpath, $createwatcher){
         #
-        $micomp_csv_file = $mpath + '\meanimagecomparison\meanimagecomparison_table.csv'
+        $micomp_csv_file = $this.micomp_fullfile($mpath)
         $this.micomp_data = $this.opencsvfile($micomp_csv_file)
+        if ($createwatcher){
+            $this.FileWatcher($micomp_csv_file)
+        }
         #
         return $this.micomp_data
         #
@@ -287,14 +360,79 @@
     [PSCustomObject]ImportMICOMP([string] $mpath){
         #
         if (!$this.micomp_data){
-            $this.importmicomp($mpath, $true) | Out-NULL
+            $this.importmicomp($mpath, $false) | Out-NULL
         }
         #
         return $this.micomp_data
         #
     }
-
-
+    #
+    [string]mergeconfig_fullfile($basepath){
+        #
+        $mergefile = get-childitem ($basepath + '\Batch\*') "MergeConfig*xlsx"
+        #
+        if (!$mergefile){
+            Throw ('merge config file could not be found for ' + $basepath)
+        }
+        #
+        return $mergefile[0].fullname
+        #
+    }
+    #
+    [PSCustomObject]ImportMergeConfig([string] $basepath, $createwatcher){
+        #
+        $micomp_csv_file = $this.mergeconfig_fullfile($basepath)
+        $this.mergeconfig_data = $this.importexcel($micomp_csv_file)
+        if ($createwatcher){
+            $this.FileWatcher($micomp_csv_file)
+        }
+        #
+        return $this.mergeconfig_data
+        #
+    }
+    #
+    [PSCustomObject]ImportMergeConfig([string] $basepath){
+        #
+        if (!$this.mergeconfig_data){
+            $this.ImportMergeConfig($basepath, $false) | Out-NULL
+        }
+        #
+        return $this.mergeconfig_data
+        #
+    }
+    <# -----------------------------------------
+     Importlogfile
+     import and return a log file object
+     ------------------------------------------
+     Input: 
+        -fpath: full path to the log
+     ------------------------------------------
+     Usage: Importlogfile($fpath)
+    ----------------------------------------- #>
+    #
+    [PSCustomObject]Importworkerlist([string] $mpath, $createwatcher){
+        #
+        $worker_csv_file = $this.worker_fullfile($mpath)
+        $this.worker_data = $this.opencsvfileconfirm($worker_csv_file)
+        $this.worker_data |
+            Add-Member -NotePropertyName 'Status' -NotePropertyValue 'IDLE'
+        if ($createwatcher){
+            $this.FileWatcher($worker_csv_file)
+        }
+        #
+        return $this.worker_data
+        #
+    }
+    #
+    [PSCustomObject]Importworkerlist([string] $mpath){
+        #
+        if (!$this.worker_data){
+            $this.Importworkerlist($mpath, $false) | Out-NULL
+        }
+        #
+        return $this.worker_data
+        #
+    }
     <# -----------------------------------------
      Importlogfile
      import and return a log file object
@@ -383,5 +521,5 @@
         return $logline
         #
     } 
-    #        
+    #   
 }

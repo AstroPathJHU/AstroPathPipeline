@@ -45,7 +45,7 @@
         #
         Write-Host '.'
         Write-Host 'Testing manual apid import. Output below:'
-        $apidfile = $this.mpath + '\AstropathAPIDdef.csv'
+        $apidfile = $this.mpath + '\AstroPathAPIDdef.csv'
         #
         if (!(test-path $apidfile -PathType Leaf)){
             Throw ('Cannot find ap id file' + $apidfile + '. ' + $_.Exception.Message)
@@ -148,16 +148,16 @@
         Write-Host '.'
         Write-Host 'Updating cohorts info. Output below:'
         #
-        $cohort_csv_template = $this.mpath + '\AstropathCohortsProgressTemplate.csv'
-        $cohort_csv_file = $this.mpath + '\AstropathCohortsProgress.csv'
+        $cohort_csv_template = $this.mpath + '\AstroPathCohortsProgressTemplate.csv'
+        $cohort_csv_file = $this.mpath + '\AstroPathCohortsProgress.csv'
         $project_data = $tools.OpencsvFileConfirm($cohort_csv_template)
         $p = $this.uncpath($PSScriptRoot)
         $project_data[0].Dpath = $p 
         $project_data[1].Dpath = $p  + '\data'
         $project_data | Export-CSV $cohort_csv_file 
         #
-        $paths_csv_template = $this.mpath + '\AstropathPathsTemplate.csv'
-        $paths_csv_file = $this.mpath + '\AstropathPaths.csv'
+        $paths_csv_template = $this.mpath + '\AstroPathPathsTemplate.csv'
+        $paths_csv_file = $this.mpath + '\AstroPathPaths.csv'
         $paths_data = $tools.OpencsvFileConfirm($paths_csv_template)
         $paths_data[0].Dpath = $p 
         $paths_data[1].Dpath = $p + '\data'
@@ -188,5 +188,10 @@
 #
 # launch test and exit if no error found
 #
-[testpsaptables]::new() | Out-Null
+try {
+    [testpsaptables]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
+

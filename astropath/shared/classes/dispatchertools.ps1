@@ -43,7 +43,22 @@ class DispatcherTools : queue {
         #
         $myscriptblock = {
             param($workertasklog)
+            #
+            $fpath = Split-Path $workertasklog
+            $fname = Split-Path $workertasklog -Leaf
+            #
+            $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+            $newwatcher.Filter = $fname
+            $newwatcher.NotifyFilter = 'LastWrite'
+            #
+            $SI = ($workertasklog) 
+            #
+            Register-ObjectEvent $newwatcher `
+                -EventName Changed `
+                -SourceIdentifier $SI | Out-Null
+            #
             while (1) {
+                #
                 try { 
                     $fileInfo = New-Object System.IO.FileInfo $workertasklog
                     $fileStream = $fileInfo.Open([System.IO.FileMode]::Open)
@@ -51,23 +66,16 @@ class DispatcherTools : queue {
                     break
                 } catch {
                     #
-                    $fpath = Split-Path $workertasklog
-                    $fname = Split-Path $workertasklog -Leaf
-                    #
-                    $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-                    $newwatcher.Filter = $fname
-                    $newwatcher.NotifyFilter = 'LastWrite'
-                    #
-                    $SI = ($workertasklog) 
-                    #
-                    Register-ObjectEvent $newwatcher `
-                        -EventName Changed `
-                        -SourceIdentifier $SI | Out-Null
-                    wait-event $SI  
-                    Unregister-Event -SourceIdentifier $SI -Force 
+                    $myevent = wait-event $SI  
+                    remove-event $myevent.EventIdentifier
+                    Start-Sleep -s 10
                     #
                 }
+                #
             }
+            #
+            Unregister-Event -SourceIdentifier $SI -Force 
+            #
         }
         #
         $myparameters = @{

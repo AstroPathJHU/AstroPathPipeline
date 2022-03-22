@@ -48,4 +48,23 @@ class sampletracker : dependencies {
             }
         }
     }
+    #
+    [void]handleAPevent($file){
+        #
+        $fpath = Split-Path $file
+        $file = Split-Path $file -Leaf
+        #
+        switch -regex ($file){
+            $this.cohorts_file {$this.importcohortsinfo($this.mpath, $false)}
+            $this.paths_file {$this.importcohortsinfo($this.mpath, $false)}
+            $this.config_file {$this.ImportConfigInfo($this.mpath, $false)}
+            $this.slide_file {$this.ImportSlideIDs($this.mpath, $false)}
+            $this.ffmodels_file {$this.ImportFlatfieldModels($this.mpath, $false)}
+            $this.corrmodels_file {$this.ImportCorrectionModels($this.mpath, $false)}
+            $this.micomp_file {$this.ImportMICOMP($this.mpath, $false)}
+            $this.worker_file {$this.Importworkerlist($this.mpath, $false)}
+            $this.vmq.mainqueue_file {$this.vmq.openmainvminformqueue($false)}
+            $this.vmq.localqueue_file {}
+        }
+    }
 }

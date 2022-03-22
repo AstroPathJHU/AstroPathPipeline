@@ -118,5 +118,10 @@
 #
 # launch test and exit if no error found
 #
-[testpslogger]::new() | Out-Null
+try {
+    [testpslogger]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
+

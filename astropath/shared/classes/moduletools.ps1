@@ -379,10 +379,7 @@
                 ' slides that appear to have scan ids not apids'))
             $sampleidim3s | foreach-object{
                 $newname = $this.sample.slideid + '_[' + ($_.name -split "_\[")[1]
-                $warn = $_.fullname, 'renamed to', $newname -join ' '
-                $this.sample.warning($warn)
-                #
-                rename-item $_.fullname $newname
+                $this.checkfile($_.fullname, $newname)
                 #
             }
         }
@@ -400,16 +397,56 @@
                 ' xmls that appear to have scan ids not apids'))
             $sampleidxmls | foreach-object{
                 $newname = $this.sample.slideid + '_[' + ($_.name -split "_\[")[1]
-                $warn = $_.fullname, 'renamed to', $newname -join ' '
-                $this.sample.warning($warn)
-                #
-                rename-item $_.fullname $newname
+                $this.checkfile($_.fullname, $newname)
                 #
             }
         }
         #
     }
-
+    #
+    [void]checkfile($file1, $filename2){
+        #
+        $path = Split-Path $file1
+        $file2 = $path + '\' + $filename2
+        #
+        if (!(test-path -LiteralPath $file2)){
+            $warn = 'attempting to rename', $file1, 'to', $filename2 -join ' '
+            $this.sample.warning($warn)
+            #
+            rename-item $file1 $filename2 -EA stop
+            #
+        } else {
+            $this.sample.warning('scan and apid files exist for the file:' + $file1)
+            #
+            $byte1 = (Get-Item -LiteralPath $file1).Length
+            $byte2 = (Get-Item -LiteralPath $file2).Length
+            $hash1 = $this.sample.FileHasher($file1, 7, $true)
+            $hash2 = $this.sample.FileHasher($file2, 7, $true)
+            #
+            if ($byte1 -eq 0kb -and $byte2 -eq 0kb){
+                $this.sample.error('Both files have 0 bytes and appear to be empty, exiting')
+            } elseif ($byte1 -eq 0kb){
+                $this.sample.warning('File is empty' + $file1)
+                $this.sample.warning('Attempting to delete file')
+                $this.sample.removefile($file1)
+            } elseif ($byte2 -eq 0kb){
+                $this.sample.warning('File is empty' + $file2)
+                $this.sample.warning('Attempting to replace with:' + $file1)
+                $this.sample.removefile($file2)
+                rename-item $file1 $filename2 -EA stop
+            } elseif ($byte1 -gt $byte2){
+                $this.sample.warning('File with scan id is large there may have been an error in transfer')
+                $this.sample.warning('Will attempt to replace apid with scan id')
+                $this.sample.removefile($file2)
+                rename-item $file1 $filename2 -EA stop
+            } elseif ($hash1.Value -eq $hash2.Value){
+                $this.sample.warning('the hash values are identical... deleting the scan id file and keeping apid file')
+                $this.sample.removefile($file1)
+            }
+            #
+        }
+        #
+    }
     #
     [void]runmatlabtask($taskname, $matlabtask){
         #

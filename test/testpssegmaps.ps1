@@ -77,5 +77,9 @@ Class testpssegmaps {
 #
 # launch test and exit if no error found
 #
-[testpssegmaps]::new() 
+try {
+    [testpssegmaps]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0

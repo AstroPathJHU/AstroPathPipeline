@@ -7,6 +7,7 @@
  methods used to build a sample object
  -------------------------------------------#>
 class sampledef : sharedtools{
+    #
     [string]$cohort
     [string]$project
     [string]$BatchID
@@ -16,7 +17,31 @@ class sampledef : sharedtools{
     [string]$mainlog
     [string]$slidelog
     [hashtable]$moduleinfo = @{}
-
+    [system.object]$im3files
+    [system.object]$xmlfiles
+    [system.object]$exposurexmlfiles
+    [system.object]$fwfiles
+    [system.object]$fw01files
+    [system.object]$flatwim3files
+    [system.object]$segmapfiles
+    #
+    [string]$im3constant = '.im3'
+    [string]$fwconstant = '.fw'
+    [string]$fw01constant = '.fw01'
+    [string]$rawconstant = '.Data.dat'
+    [string]$flatwim3constant = '.im3'
+    [string]$xmlconstant = '.xml'
+    [string]$exposurexmlconstant = '.SpectralBasisInfo.Exposure.xml'
+    [string]$algorithmconstant = '.ifp'
+    [string]$projectconstant = '.ifp'
+    [string]$segmapconstant = '_component_data_w_seg.tif'
+    [string]$mergetblconstant = '_cleaned_phenotype_data.csv'
+    [string]$cellsegconstant = '_cell_seg_data.txt'
+    [string]$binsegconstant = '_binary_seg_maps.tif'
+    [string]$cellsegsumconstant = '_cell_seg_data_summary.tif'
+    [string]$componentconstant = '_component_data.tif'
+    #
+    [array]$antibodies
     #
     sampledef(){}
     #
@@ -214,7 +239,11 @@ class sampledef : sharedtools{
     [string]im3folder(){
         $path = $this.basepath + '\' + $this.slideid + '\im3'
         return $path
-
+    }
+    #
+    [string]upkeepfolder(){
+        $path = $this.basepath + '\upkeep_and_progress'
+        return $path
     }
     #
     [string]Scan(){
@@ -310,6 +339,12 @@ class sampledef : sharedtools{
         return $path
     }
     #
+    [string]segmapfolder(){
+        $path = $this.basepath + '\' + $this.slideid + 
+            '\inform_data\Component_Tiffs'
+        return $path
+    }
+    #
     [string]phenotypefolder(){
         $path = $this.basepath + '\' + $this.slideid + 
             '\inform_data\Phenotyped'
@@ -322,6 +357,10 @@ class sampledef : sharedtools{
             '\im3\xml'
         return $path
 
+    }
+    #
+    [string]exposurexmlfolder(){
+        return $this.xmlfolder()
     }
     #
     [string]meanimagefile(){
@@ -345,6 +384,14 @@ class sampledef : sharedtools{
         $path = '\\'+$this.project_data.fwpath + '\' + 
             $this.slideid
         return $path
+    }
+    #
+    [string]fwfolder(){
+        return $this.flatwfolder()
+    }
+    #
+    [string]fw01folder(){
+        return $this.flatwfolder()
     }
     #
     [string]mergeconfigfile(){
@@ -378,232 +425,76 @@ class sampledef : sharedtools{
         $path = $this.basepath +'\warping\Batch_' + $this.BatchID + '\octets'
         return $path
     }
-        #
-        [string]warpprojectoctetsfolder(){
-            $path = $this.basepath +'\warping\Project_' + $this.project + '\octets'
-            return $path
-        }
     #
-    [void]testim3folder(){
-        if (!(test-path $this.im3folder())){
-            Throw "im3 folder not found for:" + $this.im3folder()
-        }
+    [string]warpprojectoctetsfolder(){
+        $path = $this.basepath +'\warping\Project_' + $this.project + '\octets'
+        return $path
     }
     #
-    [switch]testbatchflatfield(){
-        #
-        if (!(test-path $this.batchflatfield())){
-            return $false
-        }
-        #
-        return $true
+    [void]findantibodies(){
+        $this.findantibodies($this.basepath)
     }
     #
-    [switch]testpybatchflatfield(){
+    [void]findantibodies($basepath){
         #
-        if (!(test-path $this.pybatchflatfieldfullpath())){
-            return $false
+        $this.ImportMergeConfig($basepath)
+        $targets = $this.mergeconfig_data.Target
+        $qa = $this.mergeconfig_data.ImageQA.indexOf('Tumor')
+        #
+        if ($qa -ge 0){
+            $targets[$qa] = 'Tumor'
         }
         #
-        return $true
-    }
-    #
-    [switch]testxmlfiles(){
-        #
-        $xml = $this.xmlfolder()
-        $im3s = get-childitem ($this.Scanfolder() + '\MSI\*') *im3
-        $im3n = ($im3s).Count + 2
-        #
-        if (!(test-path $xml)){
-            return $false
-        }
-        #
-        # check xml files = im3s
-        #
-        $xmls = get-childitem ($xml + '\*') '*xml'
-        $files = ($xmls).Count
-        if (!($im3n -eq $files)){
-            return $false
-        }
-        #
-        return $true
+        $this.antibodies = $targets
         #
     }
     #
-    [switch]testmeanimagefiles(){
+    [int]getcount($source, $forceupdate){
         #
-        if ($this.vers -match '0.0.1'){
-            #
-            # check for mean images
-            # 
-            $file = $this.im3folder() + '\' + $this.slideid + '-mean.csv'
-            $file2 = $this.im3folder() + '\' + $this.slideid + '-mean.flt'
-            #
-            if (!(test-path $file)){
-                return $false
-            }
-            if (!(test-path $file2)){
-                return $false
-            }
+        if ($forceupdate){
+            $cnt = ($this.getfiles(
+                $source, $forceupdate)).Count
         } else {
-            #
-            # check for meanimage directory
-            #
-            $p = $this.meanimagefolder()
-            if (!(test-path $p)){
-                return $false
-            }
-            #
-            $files = @('-sum_images_squared.bin', '-std_err_of_mean_image.bin', `
-                     '-mean_image.bin') #'-mask_stack.bin',
-            #
-            foreach ($file in $files) {
-                $fullpath = $p + '\' + $this.slideid + $file
-                if (!(test-path $fullpath)){
-                    return $false
-                }
-            }
-            #
+            $cnt = ($this.getfiles(
+                $source)).Count
         }
         #
-        return $true
+        return $cnt
         #
     }
     #
-    [switch]testbatchmicompfiles(){
-        $micomp_data = $this.ImportMICOMP($this.mpath)
-        if (($micomp_data.root_dir_1 -contains ($this.basepath + '\') -AND
-                $micomp_data.slide_ID_1 -contains ($this.slideid)) -OR
-            (($micomp_data.root_dir_2 -contains ($this.basepath + '\') -AND
-                $micomp_data.slide_ID_2 -contains ($this.slideid)))){
-            return $true
+    [system.object]getfiles($source){
+        #
+        if (!$this.($source + 'files')){
+            $this.getfiles($source, $false) | Out-Null
         }
         #
-        return $false
+        return $this.($source + 'files')
         #
     }
     #
-    [switch]testimagecorrectionfiles(){
+    [system.object]getfiles($source, $forceupdate){
         #
-        $im3s = (get-childitem ($this.Scanfolder() + '\MSI\*') *im3).Count
+        $this.($source + 'files') = $this.listfiles(
+            $this.($source + 'folder')(), $this.($source + 'constant')
+        )
         #
-        $paths = @($this.flatwim3folder(), $this.flatwfolder(), $this.flatwfolder())
-        $filetypes = @('*im3', '*fw', '*fw01')
-        #
-        for ($i=0; $i -lt 3; $i++){
-            #
-            if (!(test-path $paths[$i])){
-                return $false
-            }
-            #
-            # check files = im3s
-            #
-            $files = (get-childitem ($paths[$i] + '\*') $filetypes[$i]).Count
-            if (!($im3s -eq $files)){
-                return $false
-            }
-        }
-        #
-        return $true
+        return $this.($source + 'files')
         #
     }
     #
-    [switch]testsegmentationfiles(){
+    [array]getnames($source, $type, $forceupdate){
         #
-        $table = $this.phenotypefolder() + '\Results\Tables'
-        if (!(test-path $table + '\*csv')){
-            return $false
-        }
-        $comp = (get-childitem ($table + '\*') '*csv').Count
-        $seg = (get-childitem ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
-        if (!($comp -eq $seg)){
-            return $false
-        }
-        return $true
-        #
-    }
-    #
-    [switch]testwarpoctets(){
-        #
-        $logfile = $this.basepath, '\', $this.slideid,
-            '\logfiles\', $this.slideid, '-warpoctets.log' -join ''
-        #
-        if (test-path $logfile){
-            $log = $this.importlogfile($logfile)
-            if ($log.Message -match "Sample is not good"){
-                return $true
-            }
-        }
-        $p = ($this.meanimagefolder() + '\' + $this.slideid + '-mask_stack.bin')
-        #
-        if (!(test-path $p)){
-            return $true
+        if ($forceupdate){
+            $names = ($this.getfiles(
+                $source, $forceupdate)).($type)
+        } else {
+            $names = ($this.getfiles(
+                $source)).($type)
         }
         #
-        return $this.testwarpoctetsfiles()
+        return $names
         #
-    }
-    #
-    [switch]testwarpoctetsfiles(){
-        #
-        $file = $this.basepath, '\warping\octets\',
-            $this.slideid, '-all_overlap_octets.csv' -join ''
-       #
-       $file2 = $this.basepath, '\', $this.slideid,
-            '\im3\warping\octets\', $this.slideid, '-all_overlap_octets.csv' -join ''
-       <#
-       $file3 = $this.basepath, '\', $slideid,
-        '\im3\warping\octets\image_keys_needed.txt' -join ''
-       #>
-        if (!(test-path $file) -AND !(test-path $file2)){
-            return $false
-        }
-        <#
-        if (!(test-path $file3)){
-            return $false
-        }
-        #>
-        return $true
-    }
-    #
-    [switch]testbatchwarpkeys(){
-        #
-        $p =  $this.warpbatchoctetsfolder()
-        #
-        if (!(test-path $p)){
-                return $false
-        }
-        $files = @('final_pattern_octets_selected.csv', 'initial_pattern_octets_selected.csv',
-            'image_keys_needed.txt','principal_point_octets_selected.csv')
-        #
-        foreach ($file in $files) {
-            $fullpath = $p + '\' + $file
-            if (!(test-path $fullpath)){
-                return $false
-            }
-        }
-        #
-        return $true
-    }
-    #
-    [switch]testbatchwarpfits(){
-        #
-        $p =  $this.warpbatchoctetsfolder()
-        #
-        if (!(test-path $p)){
-                return $false
-        }
-        $files = @('final_pattern_octets_selected.csv', 'initial_pattern_octets_selected.csv',
-            'image_keys_needed.txt','principal_point_octets_selected.csv')
-        #
-        foreach ($file in $files) {
-            $fullpath = $p + '\' + $file
-            if (!(test-path $fullpath)){
-                return $false
-            }
-        }
-        #
-        return $true
     }
     #
 }

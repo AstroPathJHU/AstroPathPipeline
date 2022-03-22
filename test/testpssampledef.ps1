@@ -220,5 +220,10 @@ Class testpssampledef : testtools {
 #
 # launch test and exit if no error found
 #
-[testpssampledef]::new() | Out-Null
+try {
+    [testpssampledef]::new() | Out-Null
+} catch {
+    Throw $_.Exception.Message
+}
 exit 0
+
