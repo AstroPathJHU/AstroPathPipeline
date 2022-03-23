@@ -269,7 +269,7 @@ Class testtools{
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
             Throw ('user defined and ['+$this.class+'] defined tasks do not match')
         }
-        Write-Host ('python ['+$this.class+'] input matches -- finished')
+        Write-Host ('['+$this.class+'] input matches -- finished')
         #
     }
     #

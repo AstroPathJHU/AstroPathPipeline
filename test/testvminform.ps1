@@ -1,3 +1,4 @@
+using module .\testtools.psm1
 <# -------------------------------------------
  testvminform
  created by: Andrew Jorquera
@@ -8,27 +9,23 @@
  functioning as intended
  -------------------------------------------#>
 #
-Class testvminform {
+Class testvminform : testtools {
     #
-    [string]$mpath 
-    [string]$processloc
-    [string]$basepath
     [string]$module = 'vminform'
-    [string]$slideid = 'M21_1'
-    [string]$procedure = 'CD8'
+    [string]$antibody = 'CD8'
     [string]$algorithm = 'CD8_Phenotype.ifp'
     [string]$informver = '2.4.8'
     [string]$outpath = "C:\Users\Public\BatchProcessing"
-    [string]$apmodule = $PSScriptRoot + '/../astropath'
     [string]$referenceim3
     [switch]$jenkins = $false
+    [string]$class = 'vminform'
     #
-    testvminform(){
+    testvminform() : base(){
         #
         $this.launchtests()
         #
     }
-    testvminform($jenkins){
+    testvminform($jenkins) : base(){
         #
         $this.jenkins = $true
         $this.launchtests()
@@ -37,9 +34,7 @@ Class testvminform {
     #
     [void]launchtests(){
         #
-        Write-Host '---------------------test ps [vminform]---------------------'
-        $this.importmodule()
-        $task = ($this.basepath, $this.slideid, $this.procedure, $this.algorithm, $this.informver, $this.mpath)
+        $task = ($this.basepath, $this.slideid, $this.antibody, $this.algorithm, $this.informver, $this.mpath)
         $this.testvminformconstruction($task)
         $inp = vminform $task
         $this.testoutputdir($inp)
@@ -51,33 +46,8 @@ Class testvminform {
         $this.runinformbatcherror($inp)
         $this.testlogbatcherror($inp)
         $this.testinformoutputfiles($inp)
+        throw 'Tests Complete'
         Write-Host '.'
-    }
-    <# --------------------------------------------
-    importmodule
-    helper function to import the astropath module
-    and define global variables
-    --------------------------------------------#>
-    importmodule(){
-        Import-Module $this.apmodule -global
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_vminform'))
-        $this.basepath = $this.uncpath(($PSScriptRoot + '\data'))
-        $this.referenceim3 = $this.basepath, 'M21_1\im3\Scan1\MSI\M21_1_[45093,13253].im3' -join '\'
-    }
-    <# --------------------------------------------
-    uncpath
-    helper function to convert local paths defined
-    by pscriptroot etc. to full unc paths.
-    --------------------------------------------#>
-    [string]uncpath($str){
-        $r = $str -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
-        } else{
-            $root = $r -replace ":", "$"
-        }
-        return $root
     }
     <# --------------------------------------------
     comparepathsexclude
@@ -153,7 +123,7 @@ Class testvminform {
         #
         $md_processloc = (
             $this.outpath,
-            $this.procedure
+            $this.antibody
         ) -join '\'
         #
         $inp.CreateOutputDir()
@@ -213,7 +183,7 @@ Class testvminform {
         Write-Host '.'
         Write-Host 'compare [vminform] expected input to actual started'
         #
-        $informoutpath = $this.outpath, $this.procedure -join '\'
+        $informoutpath = $this.outpath, $this.antibody -join '\'
         $md_imageloc = $this.outpath, 'image_list.tmp' -join '\'
         $algpath = $this.basepath, 'tmp_inform_data', 'Project_Development', $this.algorithm -join '\'
         $informpath = '"'+"C:\Program Files\Akoya\inForm\" + $this.informver + "\inForm.exe"+'"'
@@ -233,13 +203,7 @@ Class testvminform {
         #
         $informtask = $inp.getinformtask()
         #
-        if (!([regex]::escape($userinformtask) -eq [regex]::escape($informtask))){
-            Write-Host 'user defined and [vminform] defined tasks do not match:'  -foregroundColor Red
-            Write-Host 'user defined      :' [regex]::escape($userinformtask)'end'  -foregroundColor Red
-            Write-Host '[vminform] defined:' [regex]::escape($informtask)'end' -foregroundColor Red
-            Throw ('user defined and [vminform] defined tasks do not match')
-        }
-        Write-Host '[vminform] input matches -- finished'
+        $this.compareinputs($userinformtask, $informtask)
         #
     }
     <# --------------------------------------------
@@ -501,8 +465,6 @@ Class testvminform {
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         #
         Write-Host 'test check inform output files finished'
-
-        throw 'All Tests Completed'
     }
     #
 }
