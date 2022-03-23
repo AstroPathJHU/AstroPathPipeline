@@ -93,6 +93,7 @@ Class testvminform : testtools {
             $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
             $inp.informoutpath = $this.outpath + '\' + $this.antibody
             $inp.image_list_file = $this.outpath + '\image_list.tmp'
+            $inp.informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
             $inp.processvars[0] = $this.outpath
             $inp.processvars[1] = $this.outpath
             $inp.processvars[2] = $this.outpath
