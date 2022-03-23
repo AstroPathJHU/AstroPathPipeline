@@ -125,6 +125,7 @@ Class testvminform : testtools {
         if ($this.jenkins) {
             $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
             $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
+            $inp.informoutpath = $this.outpath + '\' + $this.antibody
         }
         Write-Host 'Outpath:' $this.outpath
 
