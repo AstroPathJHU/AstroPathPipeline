@@ -35,7 +35,6 @@ Class testvminform : testtools {
     [void]launchtests(){
         #
         $task = ($this.basepath, $this.slideid, $this.antibody, $this.algorithm, $this.informver, $this.mpath)
-        Write-Host 'On Jenkins?' $this.jenkins
         $this.testvminformconstruction($task)
         $inp = vminform $task
         $this.setupjenkinspaths($inp)
@@ -94,6 +93,9 @@ Class testvminform : testtools {
             $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
             $inp.informoutpath = $this.outpath + '\' + $this.antibody
             $inp.image_list_file = $this.outpath + '\image_list.tmp'
+            $inp.processvars[0] = $this.outpath
+            $inp.processvars[1] = $this.outpath
+            $inp.processvars[2] = $this.outpath
         }
     }
     <# --------------------------------------------
