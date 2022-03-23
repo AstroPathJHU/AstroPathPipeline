@@ -118,8 +118,22 @@
     #
     [switch]testimagecorrectionfiles(){
         #
-        return $this.testfiles($this.flatwfolder(), 
-            $this.im3constant, $this.imagecorrectionreqfiles())
+        if (!$this.testfiles($this.flatwfolder(), 
+                $this.im3constant, $this.imagecorrectionreqfiles[0])){
+                    return $false
+                }
+        #
+        if (!$this.testfiles($this.flatwfolder(), 
+                $this.im3constant, $this.imagecorrectionreqfiles[1])){
+                    return $false
+                }
+        #
+        if (!$this.testfiles($this.flatwim3folder(), 
+                $this.im3constant, $this.imagecorrectionreqfiles[2])){
+                    return $false
+                }
+        #
+        return $true
         #
     }
     #

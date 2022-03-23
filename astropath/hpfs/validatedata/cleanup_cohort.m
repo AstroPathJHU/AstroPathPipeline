@@ -4,7 +4,7 @@
 % check the bytes and number of files in all samples of a cohort
 % for any issues. Then prepare the batch and merge files.
 %
-function cleanup_cohort(main, wd, fw)   
+function cleanup_cohort(wd, fw)   
 %
 % get specimen names for the CS
 %
