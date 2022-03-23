@@ -22,7 +22,7 @@
         $this.addbatchflatfieldexamples($tools)
         $this.testcorrectioninfo($tools)
         $this.correctcohortsinfo($tools)
-        $this.testcohortsinfo($tools)
+       # $this.testcohortsinfo($tools)
         Write-Host '.'
         #
     }
@@ -148,16 +148,16 @@
         Write-Host '.'
         Write-Host 'Updating cohorts info. Output below:'
         #
-        $cohort_csv_template = $this.mpath + '\AstroPathCohortsProgressTemplate.csv'
-        $cohort_csv_file = $this.mpath + '\AstroPathCohortsProgress.csv'
+        $cohort_csv_file =  $tools.cohorts_fullfile($this.mpath) 
+        $cohort_csv_template = $cohort_csv_file -replace $tools.apfile_constant, $this.apfile_temp_constant
         $project_data = $tools.OpencsvFileConfirm($cohort_csv_template)
         $p = $this.uncpath($PSScriptRoot)
         $project_data[0].Dpath = $p 
         $project_data[1].Dpath = $p  + '\data'
         $project_data | Export-CSV $cohort_csv_file 
         #
-        $paths_csv_template = $this.mpath + '\AstroPathPathsTemplate.csv'
-        $paths_csv_file = $this.mpath + '\AstroPathPaths.csv'
+        $paths_csv_file =  $tools.paths_fullfile($this.mpath) 
+        $paths_csv_template = $paths_csv_file -replace $tools.apfile_constant, $this.apfile_temp_constant
         $paths_data = $tools.OpencsvFileConfirm($paths_csv_template)
         $paths_data[0].Dpath = $p 
         $paths_data[1].Dpath = $p + '\data'

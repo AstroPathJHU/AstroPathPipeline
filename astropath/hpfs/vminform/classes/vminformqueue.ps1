@@ -291,6 +291,31 @@ class vminformqueue : sharedtools {
         return $false
         #
     }
+    <# -----------------------------------------
+     checkforidletask
+     checks if the supplied project, slideid, 
+     and antibody present a task in the main
+     queue that is ready to be run
+     ------------------------------------------
+     Usage: $this.checkforreadytask()
+    ----------------------------------------- #>
+    [switch]checkforidletask($project, $slideid, $antibody){
+        #
+        $task = $this.mainvminformcsv|    
+            Where-Object {$_.Specimen -match $slideid -and 
+                $_.Anitbody -match $antibody -and 
+                $_.Algorithm -eq '' -and
+                $_.ProcessingLocation -eq ''
+            
+            }
+        #
+        if ($task){
+            return $true
+        } 
+        #
+        return $false
+        #
+    }
     #
     [void]newlocalrow($project, $slideid, $antibody){
         #
