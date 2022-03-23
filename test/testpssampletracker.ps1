@@ -25,19 +25,23 @@
     #
     [void]launchtests(){
         #
-        #$this.testsampletrackerconstructors()
+        $this.testsampletrackerconstructors()
         $sampletracker = sampletracker -mpath $this.mpath
         $this.testmodules($sampletracker)
         #
         Write-Host '.'
         Write-Host 'defining module status started'
+        Write-Host '    sample def slide'
         $sampletracker.sampledefslide($this.slideid)
+        Write-Host '    module status'
         $sampletracker.defmodulestatus()
+        Write-Host '    cleanup'
         $sampletracker.teststatus = $true
         $this.cleanup($sampletracker)
         Write-Host 'defining module status finished'
         #
         #$this.teststatus($sampletracker)
+        #$this.testupdate($sampletracker, 'transfer', 'shredxml')
         $this.testupdate($sampletracker, 'shredxml', 'meanimage')
         $this.testupdate($sampletracker, 'meanimage', 'batchflatfield')
         #$this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
@@ -46,8 +50,10 @@
         $this.testupdate($sampletracker, 'warpoctets', 'batchwarpkeys')
         $this.testupdate($sampletracker, 'batchwarpkeys', 'batchwarpfits')
         $this.testupdate($sampletracker, 'batchwarpfits', 'imagecorrection')
-        #$this.testupdate($sampletracker, 'imagecorrection', 'vminform')
-        #$this.testupdate($sampletracker, 'vminform', 'segmaps')
+        $this.testupdate($sampletracker, 'imagecorrection', 'vminform')
+        $this.testupdate($sampletracker, 'vminform', 'merge')
+        $this.testupdate($sampletracker, 'merge', 'imageqa')
+        $this.testupdate($sampletracker, 'imageqa', 'segmaps')
         $this.cleanup($sampletracker)
         $this.addbatchflatfieldexamples($sampletracker)
         Write-Host '.'
@@ -82,8 +88,8 @@
         #
         Write-Host '    Modules:' $sampletracker.modules 
         #
-        $cmodules = @('batchflatfield','batchmicomp','imagecorrection','meanimage','mergeloop',`
-            'segmaps','shredxml','transfer','vminform','warpoctets','batchwarpkeys','batchwarpfits')
+        $cmodules = @('transfer', 'shredxml', 'meanimage', 'batchflatfield', 'batchmicomp', 'imagecorrection',
+            'warpoctets', 'batchwarpkeys', 'batchwarpfits', 'vminform', 'merge', 'imageqa', 'segmaps')
         $out = Compare-Object -ReferenceObject $sampletracker.modules  -DifferenceObject $cmodules
         if ($out){
             Throw ('module lists in [sampletracker] does not match, this may indicate new modules or a typo:' + $out)
@@ -441,42 +447,48 @@
     [void]removewarpoctetsexamples($sampletracker){
         #
         $this.removetestfiles($sampletracker, 
-            $sampletracker.warpoctetsfolder(), $sampletracker.warpoctetsreqfiles)
+            $sampletracker.warpoctetsfolder(), 
+            $sampletracker.warpoctetsreqfiles)
         #
     }
     #
     [void]addwarpoctetsexamples($sampletracker){
         #
         $this.addtestfiles($sampletracker, 
-            $sampletracker.warpoctetsfolder(), $sampletracker.warpoctetsreqfiles)
+            $sampletracker.warpoctetsfolder(), 
+            $sampletracker.warpoctetsreqfiles)
         #
     }
     #
     [void]removebatchwarpkeysexamples($sampletracker){
         #
         $this.removetestfiles($sampletracker, 
-            $sampletracker.warpbatchoctetsfolder(), $sampletracker.batchwarpkeysreqfiles)
+            $sampletracker.warpbatchoctetsfolder(), 
+            $sampletracker.batchwarpkeysreqfiles)
         #
     }
     #
     [void]addbatchwarpkeysexamples($sampletracker){
         #
         $this.addtestfiles($sampletracker, 
-            $sampletracker.warpbatchoctetsfolder(), $sampletracker.batchwarpkeysreqfiles)
+            $sampletracker.warpbatchoctetsfolder(),
+            $sampletracker.batchwarpkeysreqfiles)
         #
     }
     #
     [void]removebatchwarpfitsexamples($sampletracker){
         #
         $this.removetestfiles($sampletracker, 
-            $sampletracker.warpbatchfolder(), $sampletracker.batchwarpfitsreqfiles)
+            $sampletracker.warpbatchfolder(),
+            $sampletracker.batchwarpfitsreqfiles)
         #
     }
     #
     [void]addbatchwarpfitsexamples($sampletracker){
         #
         $this.addtestfiles($sampletracker, 
-            $sampletracker.warpbatchfolder(), $sampletracker.batchwarpfitsreqfiles)
+            $sampletracker.warpbatchfolder(),
+            $sampletracker.batchwarpfitsreqfiles)
         #
     }
     #
@@ -490,19 +502,109 @@
     [void]addimagecorrectionexamples($sampletracker){
         #
         $sampletracker.addtestfiles($sampletracker, 
-            $sampletracker.flatwfolder(), $sampletracker.imagecorrectionreqfiles[0], 
+            $sampletracker.flatwfolder(),
+            $sampletracker.imagecorrectionreqfiles[0], 
             $sampletracker.im3constant
         )
         #
         $this.addtestfiles($sampletracker, 
-            $sampletracker.flatwfolder(), $sampletracker.imagecorrectionreqfiles[1], 
+            $sampletracker.flatwfolder(),
+            $sampletracker.imagecorrectionreqfiles[1], 
             $sampletracker.im3constant
         )
         #
         $this.addtestfiles($sampletracker, 
-            $sampletracker.flatwim3folder(), $sampletracker.imagecorrectionreqfiles[2], 
+            $sampletracker.flatwim3folder(),
+            $sampletracker.imagecorrectionreqfiles[2], 
             $sampletracker.im3constant
         )
+        #
+    }
+    #
+    [void]removevminformexamples($sampletracker){
+        #
+        $sampletracker.findantibodies()
+        $sampletracker.antibodies | ForEach-Object {
+            $sampletracker.cantibody = $_
+            $this.removetestfiles($sampletracker, 
+                $sampletracker.cantibodyfolder(),
+                $sampletracker.vminformreqfiles, 
+                $sampletracker.im3constant)
+        }
+        #
+    }
+    #
+    [void]addvminformexamples($sampletracker){
+        #
+        $sampletracker.antibodies | ForEach-Object {
+            $sampletracker.cantibody = $_
+            $this.addtestfiles($sampletracker, 
+                $sampletracker.cantibodyfolder(),
+                $sampletracker.vminformreqfiles, 
+                $sampletracker.im3constant)
+        }
+        #
+    }
+    #
+    #
+    [void]removemergeexamples($sampletracker){
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.mergefolder(),
+            $sampletracker.mergereqfiles, 
+            $sampletracker.im3constant)
+        #
+    }
+    #
+    [void]addmergeexamples($sampletracker){
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.mergefolder(),
+            $sampletracker.mergereqfiles, 
+            $sampletracker.im3constant)
+        #
+    }
+    #
+    [void]removeimageqaexamples($sampletracker){
+        #
+        $sampletracker.removefile($sampletracker.imageqa_fullpath)
+        #
+    }
+    #
+    [void]addimageqaexamples($sampletracker){
+        #
+        $sampletracker.findantibodies()
+        $sampletracker.ImportImageQA()
+        #
+        # add in Xs for all antibodies of
+        # the slideid
+        #
+        $newline = $this.slideid, ($this.antibodies | 
+            ForEach-Object {
+                $newline += ',X'
+            })
+        #
+        $newline += ",`r`n"
+        #
+        $this.popfile($sampletracker.imageqa_fullpath, $newline)
+        #
+    }
+    #
+    [void]removesegmapsexamples($sampletracker){
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.segmapsfolder(),
+            $sampletracker.segmapsreqfiles,
+            $sampletracker.im3constant)
+        #
+    }
+    #
+    [void]addsegmapsexamples($sampletracker){
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.segmapsfolder(),
+            $sampletracker.segmapsreqfiles,
+            $sampletracker.im3constant)
         #
     }
     #

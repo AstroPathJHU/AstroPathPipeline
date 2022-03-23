@@ -8,6 +8,7 @@
     [PSCustomObject]$slide_data
     [PSCustomObject]$worker_data
     [PSCustomObject]$mergeconfig_data
+    [PSCustomObject]$imageqa_data
     #
     [string]$cohorts_file = 'AstroPathCohortsProgress.csv' 
     [string]$paths_file = 'AstroPathPaths.csv'
@@ -17,6 +18,10 @@
     [string]$corrmodels_file = 'AstroPathCorrectionModels.csv' 
     [string]$micomp_file = 'meanimagecomparison_table.csv' 
     [string]$worker_file = 'AstroPathHPFWLocs.csv' 
+    [string]$imageqa_file = 'imageqa_upkeep.csv'
+    [string]$imageqa_path = '\upkeep_and_progress'
+    #
+    [array]$imageqa_headers = @('comments')
     #
     [string]$apfile_constant = '.csv'
     #
@@ -431,6 +436,71 @@
         }
         #
         return $this.worker_data
+        #
+    }
+    #
+    [string]imageqa_fullpath(){
+        return $this.imageqa_fullpath($this.basepath)
+    }
+    #
+    [string]imageqa_fullpath($basepath){
+        $imageqa_filepath = $basepath + 
+            $this.imageqa_path + '\' + $this.imageqa_file
+        return $imageqa_filepath
+    }
+    #
+    [array]buildimageqaheaders($cantibodies){
+        #
+        $str = @('SlideID')
+        $cantibodies | ForEach-Object{
+            $str += $_
+        }
+        $headers = $str + $this.imageqa_headers
+        #
+        return $headers
+        #
+    }
+    #
+    #
+    [void]ImportImageQA(){
+        #
+        $this.ImportImageQA($this.basepath)
+        #
+    }
+    #
+    [void]ImportImageQA($basepath){
+        #
+        if (!$this.antibodies){
+            $this.findantibodies()
+        }
+        #
+        $cantibodies = $this.antibodies
+        $this.ImportImageQA($basepath, $cantibodies)
+        #
+    }
+    #
+    [void]ImportImageQA($basepath, $cantibodies){
+        #
+        $this.imageqa_data = $this.opencsvfile(
+            $this.imageqa_fullpath($basepath), 
+            $this.buildimageqaheaders($cantibodies))
+        #
+    }
+    #
+    [void]AddImageQA($basepath, $slideid, $cantibodies){
+        #
+        $str = $slideid
+        $cantibodies | ForEach-Object{
+            $str += ','
+        }
+        #
+        $this.imageqa_headers | ForEach-Object{
+            $str += ','
+        }
+        #
+        $str += "`r`n"
+        #
+        $this.popfile($this.imageqa_fullpath($basepath), $str)
         #
     }
     <# -----------------------------------------

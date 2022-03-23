@@ -75,23 +75,59 @@ Class testtools{
         $this.basepath = $this.uncpath($this.basepath)
         $this.testrpath = $this.processloc, $this.slideid, 'rpath' -join '\'
         $this.verifyAPIDdef()
+        $this.updatepaths()
         #
     }
     #
     [void]verifyAPIDdef(){
         #
-        if (!(test-path ($this.mpath + '\AstroPathAPIDdef.csv'))){
-            try{
-                $tools = sharedtools
-                $sor = $this.mpath + '\AstroPathAPIDdefTemplate.csv'
-                $des = $this.mpath + '\AstroPathAPIDdef.csv'
-                $paths_data = $tools.OpencsvFileConfirm($sor)
-                $paths_data | Export-CSV $des
-            } catch {
-                Write-Host 'Warning: AstroPathAPIDdef not found and could not be created from template'
+        $files = get-childitem $this.mpath ('*' + $this.apfile_temp_constant)
+        $tools = sharedtools
+        #
+        $files | ForEach-Object{
+            #
+            $file = $_.FullName -replace 'Template.csv','.csv'
+            if (!(test-path ($file))){
+                try{
+                    $sor = $_.FullName
+                    $des = $file
+                    Write-Host '    creating:' $des
+                    Write-Host '    from:' $sor
+                    $paths_data = $tools.OpencsvFileConfirm($sor)
+                    $paths_data | Export-CSV $des
+                } catch {
+                    Write-Host "Warning: $file not found and could not be created from template"
+                }
             }
+            #
         }
     }
+    #
+    [void]updatepaths(){
+        #
+        $tools = sharedtools
+        #
+        $cohort_csv_file =  $tools.cohorts_fullfile($this.mpath) 
+        $project_data = $tools.OpencsvFileConfirm($cohort_csv_file)
+        $p = $this.uncpath($PSScriptRoot)
+        #
+        if ($project_data[0].Dpath -notcontains [regex]::escape($p)){
+            Write-Host '    UPDATING THE COHORTS & PATHS TABLES'
+            $project_data[0].Dpath = $p 
+            $project_data[1].Dpath = $p  + '\data'
+            $project_data | Export-CSV $cohort_csv_file 
+            #
+            $paths_csv_file =  $tools.paths_fullfile($this.mpath) 
+            $paths_data = $tools.OpencsvFileConfirm($paths_csv_file)
+            $paths_data[0].Dpath = $p 
+            $paths_data[1].Dpath = $p + '\data'
+            $paths_data[0].FWpath = ($p  + '\flatw') -replace '\\\\', ''
+            $paths_data[1].FWpath = ($p  + '\data\flatw') -replace '\\\\', ''
+            $paths_data | Export-CSV $paths_csv_file
+        }
+        #
+    }
+
     <# --------------------------------------------
     uncpath
     helper function to convert local paths defined

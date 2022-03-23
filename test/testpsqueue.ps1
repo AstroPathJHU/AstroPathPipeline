@@ -40,6 +40,7 @@ Class testpsqueue {
         $this.testcheckbatchflatfield($inp)
         $this.testcheckwarpoctets($inp)
         $this.testcheckbatchwarpkeys($inp)
+       # $this.testcheckbatchwarpfits($inp)
         $this.testbuildqueue($inp)
         $this.testextractqueue($inp)
         Write-Host '.'
@@ -184,7 +185,7 @@ Class testpsqueue {
         $log = logger $this.mpath $this.module 'L1_1'
         #
         Write-Host '    "update" log'
-        $log.Sample($this.slideid, $this.mpath, $slides)
+        $log.Sample($this.slideid, $this.module, $slides)
         Write-Host '    "update" vers'
         $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project, 'short')
         #

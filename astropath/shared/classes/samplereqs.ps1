@@ -20,7 +20,9 @@
         'image_keys_needed.txt','principal_point_octets_selected.csv')
     [array]$batchwarpfitsreqfiles = @('weighted_average_warp.csv')
     [array]$imagecorrectionreqfiles = @('.fw', '.fw01','.flatwim3')
-    [array]$segmentationreqfiles = @('.segmap')
+    [array]$vminformreqfiles = @('.segmap')
+    [array]$mergereqfiles = @('.merge')
+    [array]$segmapsreqfiles = @('.segmap')
     #
     samplereqs(){}
     samplereqs($mpath) : base($mpath){}
@@ -116,8 +118,22 @@
     #
     [switch]testimagecorrectionfiles(){
         #
-        return $this.testfiles($this.flatwfolder(), 
-            $this.im3constant, $this.imagecorrectionreqfiles())
+        if (!$this.testfiles($this.flatwfolder(), 
+                $this.im3constant, $this.imagecorrectionreqfiles[0])){
+                    return $false
+                }
+        #
+        if (!$this.testfiles($this.flatwfolder(), 
+                $this.im3constant, $this.imagecorrectionreqfiles[1])){
+                    return $false
+                }
+        #
+        if (!$this.testfiles($this.flatwim3folder(), 
+                $this.im3constant, $this.imagecorrectionreqfiles[2])){
+                    return $false
+                }
+        #
+        return $true
         #
     }
     #
@@ -133,7 +149,8 @@
             }
         }
         #
-        $p = ($this.meanimagefolder() + '\' + $this.slideid + '-mask_stack.bin')
+        $p = ($this.meanimagefolder() + '\' +
+         $this.slideid + '-mask_stack.bin')
         #
         if (!(test-path $p)){
             return $true
@@ -145,26 +162,83 @@
     #
     [switch]testwarpoctetsfiles(){
         #
-        return $this.testfiles($this.warpoctetsfolder(), $this.warpoctetsreqfiles)
+        return $this.testfiles($this.warpoctetsfolder(),
+         $this.warpoctetsreqfiles)
         #
     }
     #
     [switch]testbatchwarpkeysfiles(){
         #
-        return $this.testfiles($this.warpbatchoctetsfolder(), $this.batchwarpkeysreqfiles)
+        return $this.testfiles($this.warpbatchoctetsfolder(),
+         $this.batchwarpkeysreqfiles)
         #
     }
     #
     [switch]testbatchwarpfitsfiles(){
         #
-        return $this.testfiles($this.warpbatchfolder(), $this.batchwarpfitsreqfiles)
+        return $this.testfiles($this.warpbatchfolder(),
+         $this.batchwarpfitsreqfiles)
         #
     }
     #
-    [switch]testsegmentationfiles(){
+    [switch]testmergefiles($cantibodies){
+        #
+        $date1 =  $this.getmindate('merge', $true)
+        #
+        foreach($antibody in $cantibodies){
+            #
+            $this.cantibody = $antibody
+            $date2 = $this.getmaxdate('cantibody', $true)
+            #
+            if ($date2 -ge $date1){
+                return $false
+            }            
+            #
+        }
+        #
+        return $true
+        #
+    }
+    #
+    [switch]checknewimageqa($cantibodies){
+        #
+        $this.importimageqa($this.basepath, $cantibodies)
+        #
+        $data = $this.imageqa_data.slideid -contains $this.slideid
+        #
+        if (!$data){
+            $this.addimageqa(
+                $this.basepath, $this.slideid, $cantibodies)
+            return $false
+        }
+        #
+        return $true
+        #
+    }
+    #
+    [switch]testimageqafiles($cantibodies){
+        #
+        $this.importimageqa($this.basepath, $cantibodies)
+        #
+        $data = $this.imageqa_data.slideid | 
+            Where-Object {$_.SlideID -contains $this.slideid}
+        #
+        foreach($antibody in $cantibodies){
+            #
+            if ($data.($antibody) -notcontains 'X'){
+                return $false
+            }         
+            #
+        }
+        #
+        return $true
+        #
+    }
+    #
+    [switch]testsegmapsfiles(){
         #
         return $this.testfiles($this.componentfolder(),
-             $this.im3constant, $this.segmentationreqfiles)
+             $this.im3constant, $this.segmapsreqfiles)
         #
     }
     #

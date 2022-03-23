@@ -231,22 +231,12 @@
             return 2
         }
         #
-        # check for checksum, qptiff, and annotationxml
-        #
-        $file = $this.CheckSumsfile()
-        $file2 = $this.qptifffile()
-        $file3 = $this.annotationxml()
-        $im3s = (Get-ChildItem ($this.Scanfolder() + '\MSI\*') *im3).Count
-        #
-        #if (!(test-path $file)){
-        #    return 2
-        #}
-        if (!(test-path $file2)){
+        if (!$this.testtransferfiles()){
             return 2
         }
-        if (!(test-path $file3)){
-            return 2
-        }    
+        #
+        $im3s = (Get-ChildItem ($this.Scanfolder() + '\MSI\*') *im3).Count
+        #    
         if (!$im3s){
             return 2
         }
@@ -550,7 +540,7 @@
         #
         if ($this.checklog('imagecorrection', $true)){
             return 2
-        }
+        }  
         #
         if(!$this.testimagecorrectionfiles()){
             return 2
@@ -603,65 +593,98 @@
      Usage: $this.checkvminform(dependency)
     ----------------------------------------- #>
     [int]checkvminform($antibody){
-         #
-         if ($this.moduleinfo.imagecorrection.status -ne 'FINISHED'){
+        #
+        if ($this.moduleinfo.imagecorrection.status -ne 'FINISHED'){
             return 1
         }
         #
         if ($this.vmq.checkfornewtask($this.project, 
             $this.slideid, $antibody)){
                 return 1
-            }
+        
+        }
         #
-        if ($this.vmq.checkforreadytask()){
+        if ($this.vmq.checkforidletask($this.project, 
+        $this.slideid, $antibody)){
+            return 1
+        } 
+        #
+        if ($this.vmq.checkforreadytask($this.project, 
+        $this.slideid, $antibody)){
             return 2
         }
-        <#
-        if ($this.checkimageqa()){
-            return 3
-        }
-        #>
-        return 1
+        #
+        return 3
         #
     }
     <# -----------------------------------------
-     checkmergeloop
+     checkmerge
      place holder
     ------------------------------------------
      Input: 
-        - dependency[switch]: true or false
      ------------------------------------------
      Output: returns 1 if dependency fails, 
      returns 2 if current module is still running,
      returns 3 if current module is complete
      ------------------------------------------
-     Usage: $this.checkmergeloop(dependency)
+     Usage: $this.checkmerge(dependency)
     ----------------------------------------- #>
-    [int]checkmergeloop(){
+    [int]checkmerge(){
         #
         $this.getantibodies()
-        <#
+        #
         $this.antibodies | foreach-Object{
             #
-            if ($this.moduleinfo.vminform.($_).status -eq 'RUNNING'){
+            if ($this.moduleinfo.vminform.($_).status -ne 'FINISHED'){
                 return 1
             }
             #
-            if ($this.testantibodyfiles()){
-                return 
-            }
-            #
         }
         #
-        if (!$this.testmergefiles()){
+        if ($this.checklog('merge', $true)){
             return 2
         }
         #
-        if ($this.checkimageqa()){
-            return 3
+        if (!$this.testmergefiles($this.antibodies)){
+            return 2
         }
-        #>
-        return 1
+        #
+        return 3
+        #
+    }
+    <# -----------------------------------------
+     checkimageqa
+     place holder
+    ------------------------------------------
+     Input: 
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkimageqa(dependency)
+    ----------------------------------------- #>
+    [int]checkimageqa(){
+        #
+        if ($this.moduleinfo.merge.status -ne 'FINISHED'){
+            return 1
+        }
+        #
+        $this.getantibodies()
+        #
+        if ($this.checknewimageqa($this.antibodies)){
+            return 2
+        }
+        #
+        # check each antibody column for
+        # the slide in the qa file and 
+        # return true if there is an X
+        # 
+        if(!$this.testimageqafiles($this.antibodies)){
+            return 2
+        }
+        #
+        return 3
         #
     }
     <# -----------------------------------------
@@ -679,7 +702,20 @@
     ----------------------------------------- #>
     [int]checksegmaps(){
         #
-        return 4
+        if ($this.moduleinfo.imageqa.status -ne 'FINISHED'){
+            return 1
+        } 
+        #
+        #
+        if ($this.checklog('segmaps', $true)){
+            return 2
+        }
+        #
+        if(!$this.testsegmapsfiles()){
+            return 2
+        }
+        #
+        return 3
         #
     }
     <# -----------------------------------------

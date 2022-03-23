@@ -8,7 +8,7 @@
  error checking and using file locking mutexes
  -------------------------------------------#>
 class fileutils : generalutils {
-    [INT]$MAX = 500
+    [INT]$MAX = 5
 
     <# -----------------------------------------
      OpenCSVFile
@@ -60,16 +60,25 @@ class fileutils : generalutils {
         #
     }
     <# -----------------------------------------
-     OpenCSVFile
-     open a csv file with error checking and a 
-     file locking mutex into a powershell
-     object where each row is a different 
-     object and columns are the object fields
-     ------------------------------------------
      Input: 
         -fpath[string]: file path to read in
      ------------------------------------------
-     Usage: $this.OpenCSVFile(fpath)
+     Usage: $this.OpenCSVFile(fpath, headers)
+    ----------------------------------------- #>
+    [PSCustomObject]OpenCsvFile($fpath, [array]$headers){
+        #
+        $this.checkexistscreate($fpath, $headers)
+        #
+        $Q = $this.opencsvfile($fpath)
+        #
+        return $Q
+        #
+    }
+    <# -----------------------------------------
+     Input: 
+        -fpath[string]: file path to read in
+     ------------------------------------------
+     Usage: $this.OpenCSVFile(fpath, delim, headers)
     ----------------------------------------- #>
     [PSCustomObject]OpenCSVFile([string] $fpath, [string] $delim, [array] $header){
         #
@@ -139,6 +148,26 @@ class fileutils : generalutils {
         }
         #
         return $data
+        #
+    }
+    #
+    [PSCustomObject]OpenCSVFileConfirm([string] $fpath, [array]$headers){
+        $this.checkexistscreate($fpath, $headers)
+        return $this.opencsvfileconfirm($fpath)
+    }
+    #
+    [void]checkexistscreate($fpath, [array]$headers){
+        #
+        if (!(test-path $fpath)){
+            $this.createcsvfile($fpath, $headers)
+        }
+        #
+    }
+    #
+    [void]createcsvfile($fpath, [array]$headers){
+        #
+        $newheaders = ($headers -join ',') + "`r`n"
+        $this.setfile($fpath, $newheaders)
         #
     }
     <# -----------------------------------------
