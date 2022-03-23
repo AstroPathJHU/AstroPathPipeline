@@ -28,7 +28,6 @@ Class testvminform : testtools {
     testvminform($jenkins) : base(){
         #
         $this.jenkins = $true
-        $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
         $this.launchtests()
         #
     }
@@ -125,6 +124,10 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'test create output directory started'
         #
+        if ($this.jenkins) {
+            $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
+        }
+
         $md_processloc = (
             $this.outpath,
             $this.antibody
