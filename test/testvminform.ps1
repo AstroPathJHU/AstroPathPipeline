@@ -38,6 +38,7 @@ Class testvminform : testtools {
         Write-Host 'On Jenkins?' $this.jenkins
         $this.testvminformconstruction($task)
         $inp = vminform $task
+        $this.setupjenkinspaths($inp)
         $this.testoutputdir($inp)
         $this.testimagelist($inp)
         $this.comparevminforminput($inp)
@@ -83,6 +84,19 @@ Class testvminform : testtools {
         #
     }
     <# --------------------------------------------
+    setupjenkinspaths
+    set up output paths for when tests are being 
+    run on jenkins
+    --------------------------------------------#>
+    [void]setupjenkinspaths($inp){
+        if ($this.jenkins) {
+            $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
+            $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
+            $inp.informoutpath = $this.outpath + '\' + $this.antibody
+            $inp.image_list_file = $this.outpath + '\image_list.tmp'
+        }
+    }
+    <# --------------------------------------------
     testvminformconstruction
     test that the vminform object can be constucted
     --------------------------------------------#>
@@ -122,13 +136,6 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'test create output directory started'
         #
-        if ($this.jenkins) {
-            $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
-            $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
-            $inp.informoutpath = $this.outpath + '\' + $this.antibody
-        }
-        Write-Host 'Outpath:' $this.outpath
-
         $md_processloc = (
             $this.outpath,
             $this.antibody
