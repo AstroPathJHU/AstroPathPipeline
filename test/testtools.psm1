@@ -91,6 +91,8 @@ Class testtools{
                 try{
                     $sor = $_.FullName
                     $des = $file
+                    Write-Host '    creating:' $des
+                    Write-Host '    from:' $sor
                     $paths_data = $tools.OpencsvFileConfirm($sor)
                     $paths_data | Export-CSV $des
                 } catch {
