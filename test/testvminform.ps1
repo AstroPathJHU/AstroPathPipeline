@@ -35,8 +35,6 @@ Class testvminform : testtools {
     [void]launchtests(){
         #
         $task = ($this.basepath, $this.slideid, $this.antibody, $this.algorithm, $this.informver, $this.mpath)
-        Write-Host 'Task:' $task
-        Write-Host 'Outpath:' $this.outpath
         Write-Host 'On Jenkins?' $this.jenkins
         $this.testvminformconstruction($task)
         $inp = vminform $task
@@ -126,7 +124,9 @@ Class testvminform : testtools {
         #
         if ($this.jenkins) {
             $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
+            $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
         }
+        Write-Host 'Outpath:' $this.outpath
 
         $md_processloc = (
             $this.outpath,
