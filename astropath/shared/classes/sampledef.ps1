@@ -16,6 +16,7 @@ class sampledef : sharedtools{
     [PSCustomObject]$batchslides
     [string]$mainlog
     [string]$slidelog
+    [string]$cantibody
     [hashtable]$moduleinfo = @{}
     [system.object]$im3files
     [system.object]$xmlfiles
@@ -24,6 +25,8 @@ class sampledef : sharedtools{
     [system.object]$fw01files
     [system.object]$flatwim3files
     [system.object]$segmapfiles
+    [system.object]$mergefiles
+    [system.object]$cantibodyfiles
     #
     [string]$im3constant = '.im3'
     [string]$fwconstant = '.fw'
@@ -35,11 +38,12 @@ class sampledef : sharedtools{
     [string]$algorithmconstant = '.ifp'
     [string]$projectconstant = '.ifp'
     [string]$segmapconstant = '_component_data_w_seg.tif'
-    [string]$mergetblconstant = '_cleaned_phenotype_data.csv'
+    [string]$mergeconstant = '_cleaned_phenotype_data.csv'
     [string]$cellsegconstant = '_cell_seg_data.txt'
     [string]$binsegconstant = '_binary_seg_maps.tif'
     [string]$cellsegsumconstant = '_cell_seg_data_summary.tif'
     [string]$componentconstant = '_component_data.tif'
+    [string]$cantibodyconstant = '_cell_seg_data.txt'
     #
     [array]$antibodies
     #
@@ -180,11 +184,13 @@ class sampledef : sharedtools{
     #
     [void]deflogpaths(){
         #
-        $this.mainlog = $this.basepath + '\logfiles\' + $this.module + '.log'
+        $this.mainlog = $this.basepath + '\logfiles\' +
+            $this.module + '.log'
         if ($this.module -match 'batch'){
             $this.slidelog = $this.mainlog
         } else {
-            $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
+            $this.slidelog = $this.basepath + '\' +
+                $this.slideid + '\logfiles\' +
                 $this.slideid + '-' + $this.module + '.log'
         }
         #
@@ -196,7 +202,8 @@ class sampledef : sharedtools{
         if ($cmodule -match 'batch'){
                 $cslidelog = $cmainlog
             } else {
-                $cslidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
+                $cslidelog = $this.basepath + '\' +
+                    $this.slideid + '\logfiles\' +
                     $this.slideid + '-' + $cmodule + '.log'
         }
         $vers = $this.GetVersion($this.mpath, $cmodule, $this.project)
@@ -211,12 +218,14 @@ class sampledef : sharedtools{
     }
     #
     [string]slidelogbase(){
-        $path = $this.slidelogfolder() + '\' + $this.slideid + '-'
+        $path = $this.slidelogfolder() +
+            '\' + $this.slideid + '-'
         return $path
     }
     #
     [string]slidelogbase($cmodule){
-        $path = $this.slidelogfolder() + '\' + $this.slideid + '-' + $cmodule + '.log'
+        $path = $this.slidelogfolder() + 
+            '\' + $this.slideid + '-' + $cmodule + '.log'
         return $path
     }
     #
@@ -352,6 +361,18 @@ class sampledef : sharedtools{
 
     }
     #
+    [string]cantibodyfolder(){
+        $path = $this.phenotypefolder() + '\'  + $this.cantibody
+        return $path
+    }
+    #
+    [string]mergefolder(){
+        $path = $this.basepath + '\' + $this.slideid + 
+            '\inform_data\Phenotyped\Results\Tables'
+        return $path
+
+    }
+    #
     [string]xmlfolder(){
         $path = $this.basepath + '\' + $this.slideid + 
             '\im3\xml'
@@ -407,7 +428,8 @@ class sampledef : sharedtools{
     }
     #
     [string]warpoctetsfile(){
-        $file2 = $this.warpoctetsfolder(), '\', $this.slideid, '-all_overlap_octets.csv' -join ''
+        $file2 = $this.warpoctetsfolder(),
+            '\', $this.slideid, '-all_overlap_octets.csv' -join ''
         return $file2
     }
     #
@@ -422,12 +444,14 @@ class sampledef : sharedtools{
     }
     #
     [string]warpbatchoctetsfolder(){
-        $path = $this.basepath +'\warping\Batch_' + $this.BatchID + '\octets'
+        $path = $this.basepath +'\warping\Batch_' +
+            $this.BatchID + '\octets'
         return $path
     }
     #
     [string]warpprojectoctetsfolder(){
-        $path = $this.basepath +'\warping\Project_' + $this.project + '\octets'
+        $path = $this.basepath +
+            '\warping\Project_' + $this.project + '\octets'
         return $path
     }
     #
@@ -460,6 +484,38 @@ class sampledef : sharedtools{
         }
         #
         return $cnt
+        #
+    }
+    #
+    [int]getmindate($source, $forceupdate){
+        #
+        if ($forceupdate){
+            $dates = ($this.getfiles(
+                $source, $forceupdate)).LastWriteTime
+        } else {
+            $dates = ($this.getfiles(
+                $source)).LastWriteTime
+        }
+        #
+        $date = ($dates | Measure-Object -Minimum).Minimum
+        #
+        return $date
+        #
+    }
+    #
+    [int]getmaxdate($source, $forceupdate){
+        #
+        if ($forceupdate){
+            $dates = ($this.getfiles(
+                $source, $forceupdate)).LastWriteTime
+        } else {
+            $dates = ($this.getfiles(
+                $source)).LastWriteTime
+        }
+        #
+        $date = ($dates | Measure-Object -Maximum).Maximum
+        #
+        return $date
         #
     }
     #
