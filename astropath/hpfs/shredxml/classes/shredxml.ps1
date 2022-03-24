@@ -44,7 +44,7 @@ Class shredxml : moduletools {
         #
         $this.sample.info("Return data started")
         #
-		$sor = $this.processvars[1]
+		$sor = $this.processvars[1], $this.sample.slideid -join '\'
 		$des = $this.sample.xmlfolder()
         $this.sample.removedir($des)
 		$this.sample.copy($sor, $des, 'xml', 30)
