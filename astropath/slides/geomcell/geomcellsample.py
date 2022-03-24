@@ -14,6 +14,7 @@ from ...utilities.units import ThingWithPscale
 from ...utilities.units.dataclasses import distancefield
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadSegmentedComponentTiffMultiLayer
+from ..segmentation.segmentationsample import SegmentationSampleDeepCell, SegmentationSampleMesmer
 
 class GeomLoadField(Field, GeomLoadRectangle):
   pass
@@ -258,6 +259,10 @@ class GeomCellSampleDeepCell(GeomCellSampleDeepCellBase, DeepCellSegmentationSam
   @property
   def algorithmindex(self):
     return 1
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
+    return [SegmentationSampleDeepCell] + super().workflowdependencyclasses(**kwargs)
+
 
 class GeomCellSampleMesmer(GeomCellSampleDeepCellBase, MesmerSegmentationSample):
   rectangletype = GeomCellFieldMesmer
@@ -271,6 +276,9 @@ class GeomCellSampleMesmer(GeomCellSampleDeepCellBase, MesmerSegmentationSample)
   @property
   def algorithmindex(self):
     return 2
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
+    return [SegmentationSampleMesmer] + super().workflowdependencyclasses(**kwargs)
 
 class CellGeomLoad(DataClassWithPolygon):
   field: int
