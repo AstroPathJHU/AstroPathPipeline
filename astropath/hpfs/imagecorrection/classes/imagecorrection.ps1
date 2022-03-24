@@ -53,7 +53,7 @@ Class imagecorrection : moduletools {
         $s = $this.sample.basepath, $this.sample.flatwfolder(), 
             $this.sample.slideid -join ' '
         $this.sample.info($s)
-        $this.sample.testim3folder()
+        $this.sample.testim3mainfolder()
         $this.sample.testbatchflatfield()
     }
    <# -----------------------------------------

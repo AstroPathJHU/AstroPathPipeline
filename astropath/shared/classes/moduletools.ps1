@@ -155,7 +155,7 @@
             [FileDownloads]::IM3){
             $des = $this.processvars[0] +'\'+
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
-            $sor = $this.sample.MSIfolder()
+            $sor = $this.sample.im3folder()
             $this.sample.copy($sor, $des, 'im3', 30)
             if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
                 Throw 'im3s did not download correctly'
@@ -323,7 +323,7 @@
     [void]fixM2(){
         #
         $this.sample.info("Fix M# files")
-        $msi = $this.sample.MSIfolder() +'\*'
+        $msi = $this.sample.im3folder() +'\*'
         $m2s = Get-ChildItem $msi -include '*_M*.im3' -Exclude '*].im3'
         $errors = $m2s | ForEach-Object {($_.Name -split ']')[0] + ']'}
         #
@@ -348,7 +348,7 @@
     [void]fixSIDs(){
         #
         $this.sample.info("Fix M# files")
-        $msi = $this.sample.MSIfolder() +'\*'
+        $msi = $this.sample.im3folder() +'\*'
         $slideid = $this.sample.slideid + '_*.im3'
         $sampleidim3s = Get-ChildItem $msi -exclude $slideid  -include '*.im3'
         #

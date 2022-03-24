@@ -245,7 +245,7 @@ class sampledef : sharedtools{
         return $path
     }
     #
-    [string]im3folder(){
+    [string]im3mainfolder(){
         $path = $this.basepath + '\' + $this.slideid + '\im3'
         return $path
     }
@@ -330,7 +330,7 @@ class sampledef : sharedtools{
         return $path
     }
     #
-    [string]MSIfolder(){
+    [string]im3folder(){
         $path = $this.Scanfolder() + '\MSI'
         return $path 
     }
@@ -391,7 +391,7 @@ class sampledef : sharedtools{
     }
     #
     [string]meanimagefolder(){
-        $path = $this.im3folder() + '\meanimage'
+        $path = $this.im3mainfolder() + '\meanimage'
         return $path
     }
     #

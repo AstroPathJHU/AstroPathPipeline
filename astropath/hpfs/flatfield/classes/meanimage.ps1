@@ -149,7 +149,7 @@ Class meanimage : moduletools {
     ----------------------------------------- #>
     [void]ReturnDataMatlab(){
         #
-		$des = $this.sample.im3folder()
+		$des = $this.sample.im3mainfolder()
         #
         $sor = $this.processvars[1] + '\flat\' + 
             $this.sample.slideid + '\*.flt'
@@ -175,7 +175,7 @@ Class meanimage : moduletools {
     [void]ReturnDataPy(){
         if ($this.processvars[4]){
             #
-		    $des = $this.sample.im3folder() + '\meanimage'
+		    $des = $this.sample.im3mainfolder() + '\meanimage'
             $sor = $this.processvars[0] +'\meanimage'
             #
             $this.sample.copy($sor, $des, '*', 30)
