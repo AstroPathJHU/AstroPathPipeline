@@ -1,6 +1,5 @@
 #imports
-from ...shared.argumentparser import SegmentationFolderArgumentParser
-from ...shared.cohort import ParallelCohort, SegmentationFolderCohort, orkflowCohort
+from ...shared.cohort import ParallelCohort, SegmentationFolderCohort, WorkflowCohort
 from .segmentationsample import SegmentationSampleBase, SegmentationSampleNNUNet
 from .segmentationsample import SegmentationSampleDeepCell, SegmentationSampleMesmer
 
