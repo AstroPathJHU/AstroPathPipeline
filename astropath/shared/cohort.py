@@ -553,6 +553,14 @@ class SegmentationFolderCohort(Cohort, SegmentationFolderArgumentParser):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "segmentationroot": self.segmentationroot, "segmentationfolder": self.segmentationfolder}
 
+  @property
+  def workflowkwargs(self) :
+    return {
+      **super().workflowkwargs,
+      'segmentationfolder':self.segmentationfolder,
+      'segmentationroot':self.segmentationroot,
+    }
+
 class TempDirCohort(Cohort, TempDirArgumentParser):
   """
   Base class for any cohort that wants to use a temporary directory
