@@ -473,6 +473,20 @@ class sampledef : sharedtools{
         #
     }
     #
+    [void]findlowestopal(){
+        #
+        $this.ImportMergeConfig($this.basepath)
+        $targets = $this.mergeconfig_data.Target
+        $qa = $this.mergeconfig_data.ImageQA.indexOf('Tumor')
+        #
+        if ($qa -ge 0){
+            $targets[$qa] = 'Tumor'
+        }
+        #
+        $this.antibodies = $targets
+        #
+    }
+    #
     [int]getcount($source, $forceupdate){
         #
         if ($forceupdate){
