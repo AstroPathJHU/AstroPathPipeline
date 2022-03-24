@@ -13,7 +13,7 @@ Class testvminform : testtools {
     #
     [string]$module = 'vminform'
     [string]$antibody = 'CD8'
-    [string]$algorithm = 'CD8_Phenotype.ifp'
+    [string]$algorithm = 'CD8_Phenotype.ifr'
     [string]$informver = '2.4.8'
     [string]$outpath = "C:\Users\Public\BatchProcessing"
     [string]$referenceim3
@@ -107,21 +107,11 @@ Class testvminform : testtools {
         #
         Write-Host "."
         Write-Host 'test [vminform] constructors started'
-        #
-        #$log = logger $this.mpath $this.module $this.slideid 
-        #
         try {
             vminform $task | Out-Null
         } catch {
             Throw ('[vminform] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
-        <#
-        try {
-            warpoctets  $task $log | Out-Null
-        } catch {
-            Throw ('[warpoctets] construction with [2] input(s) failed. ' + $_.Exception.Message)
-        }
-        #>
         Write-Host 'test [vminform] constructors finished'
         #
     }
@@ -295,6 +285,7 @@ Class testvminform : testtools {
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         $inp.sample.CreateNewDirs($this.outpath)
         #
+        $this.referenceim3 = $inp.sample.MSIfolder() + '\M21_1_[45093,13253].im3'
         Write-Host '    copying reference im3 file to flatw folder:' $this.referenceim3
         $inp.sample.copy($this.referenceim3, $inp.sample.flatwim3folder())
         #
@@ -319,7 +310,7 @@ Class testvminform : testtools {
         #
         Write-Host '    comparing output with reference'
         $reference = $inp.sample.basepath + '\reference\vminform\expected'
-        $excluded = @('*.log', '*.ifp')
+        $excluded = @('*.log', '*.ifr')
         $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
         Write-Host '    compare successful'
         #
@@ -379,9 +370,8 @@ Class testvminform : testtools {
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         $inp.sample.CreateNewDirs($this.outpath)
         #
-        $referenceim3s = $this.basepath, 'M21_1\im3\Scan1\MSI' -join '\'
         Write-Host '    copying reference im3 files to flatw folder'
-        $inp.sample.copy($referenceim3s, $inp.sample.flatwim3folder(), '.im3', 30)
+        $inp.sample.copy($inp.sample.MSIfolder(), $inp.sample.flatwim3folder(), '.im3', 30)
         #
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
@@ -407,7 +397,7 @@ Class testvminform : testtools {
         #
         Write-Host 'comparing output with reference'
         $reference = $inp.sample.basepath + '\reference\vminform\batcherror'
-        $excluded = @('*.log', '*.ifp')
+        $excluded = @('*.log', '*.ifr')
         $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
         Write-Host '    compare successful'
         #

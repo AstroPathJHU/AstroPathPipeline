@@ -1,3 +1,4 @@
+using module .\testtools.psm1
 <# -------------------------------------------
  testvminformmain
  created by: Andrew Jorquera
@@ -8,13 +9,13 @@
  vminform tests
  -------------------------------------------#>
 #
-Class testvminformmain {
+Class testvminformmain : testtools {
     #
     [string]$processloc
     [string]$module = 'vminform'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
     #
-    testvminformmain(){
+    testvminformmain() : base(){
         #
         $this.testruninform()
         #
@@ -33,29 +34,6 @@ Class testvminformmain {
         #
         Write-Host 'test run on inform finished'
         #
-    }
-    <# --------------------------------------------
-    importmodule
-    helper function to import the astropath module
-    and define global variables
-    --------------------------------------------#>
-    importmodule(){
-        Import-Module $this.apmodule
-        $this.processloc = $this.uncpath(($PSScriptRoot + '\test_for_jenkins\testing_vminform'))
-    }
-    <# --------------------------------------------
-    uncpath
-    helper function to convert local paths defined
-    by pscriptroot etc. to full unc paths.
-    --------------------------------------------#>
-    [string]uncpath($str){
-        $r = $str -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
-        } else{
-            $root = $r -replace ":", "$"
-        }
-        return $root
     }
     <# --------------------------------------------
     starttestjob
