@@ -47,6 +47,7 @@ Class testvminform : testtools {
         $this.runinformbatcherror($inp)
         $this.testlogbatcherror($inp)
         $this.testinformoutputfiles($inp)
+        $this.testnewcheckinform($inp)
         throw 'Tests Complete'
         Write-Host '.'
     }

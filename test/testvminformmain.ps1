@@ -14,6 +14,7 @@ Class testvminformmain : testtools {
     [string]$processloc
     [string]$module = 'vminform'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
+    [string]$class = 'vminformmain'
     #
     testvminformmain() : base(){
         #
