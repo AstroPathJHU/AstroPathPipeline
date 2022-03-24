@@ -59,9 +59,9 @@
         #>
     }
     #
-    [void]testim3folder(){
-        if (!(test-path $this.im3folder())){
-            Throw "im3 folder not found for:" + $this.im3folder()
+    [void]testim3mainfolder(){
+        if (!(test-path $this.im3mainfolder())){
+            Throw "im3 folder not found for:" + $this.im3mainfolder()
         }
     }
     #
@@ -69,7 +69,7 @@
         #
         if ($this.vers -match '0.0.1'){
             #
-            return $this.testfiles($this.im3folder(), $this.meanimagereqfilesv1)
+            return $this.testfiles($this.im3mainfolder(), $this.meanimagereqfilesv1)
             #
         } else {
             #
