@@ -328,14 +328,14 @@
         # if task is not a dependency and the version is
         # 0.0.1 then just checkout
         #
+        if ($this.moduleinfo.meanimage.status -ne 'FINISHED'){
+            return 1
+        }
+        #
         if (
              $this.moduleinfo.batchmicomp.vers -match '0.0.1'
             ){
-            return 4
-        }
-        #
-        if ($this.moduleinfo.meanimage.status -ne 'FINISHED'){
-            return 1
+            return 3
         }
         #
         if ($this.checklog('batchmicomp', $true)){

@@ -9,7 +9,7 @@
  -------------------------------------------#>
  class samplereqs : sampledef {
     # 
-    [array]$transferreqfiles = @('CheckSums.txt', '_annotations.xml', '.qptiff', 'BatchID.txt')
+    [array]$transferreqfiles = @('_annotations.xml', '.qptiff', 'BatchID.txt')
     [array]$xmlreqfiles = @('Full.xml','Parameters.xml', '.exposurexml')
     [array]$meanimagereqfilesv1 = @('-mean.csv', '-mean.flt')
     [array]$meanimagereqfiles = @('-sum_images_squared.bin',
