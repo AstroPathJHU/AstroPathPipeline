@@ -254,6 +254,10 @@ class copyutils{
         #
         # get the list of files that were transferred
         #
+        if (!(test-path $sor)){
+            Throw ('path could not be found:' + $sor)
+        }
+        #
         if ((Get-Item $sor) -is [System.IO.DirectoryInfo]){
             #
             $sourcefiles = $this.listfiles($sor, $filespec)

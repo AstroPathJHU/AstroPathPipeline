@@ -289,13 +289,7 @@ class Dispatcher : DispatcherTools {
     }
     #
     [void]WaitTask(){
-        <#
-        $myevent = ''
-        While(!$myevent){
-           $myevent = Wait-Job -id $j -Timeout 1
-           $myevent = get-event -SourceIdentifier $filename -timeout 1
-        }
-        #>
+        #
         $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
         if (!$this.workers -and $run){
             Wait-Job -id $run -Any

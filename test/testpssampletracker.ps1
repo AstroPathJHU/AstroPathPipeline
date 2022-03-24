@@ -387,7 +387,7 @@
         #
         $p2 = $sampletracker.micomp_fullfile($this.mpath)
         #
-        $micomp_data = $sampletracker.importmicomp($sampletracker.mpath)
+        $micomp_data = $sampletracker.importmicomp($sampletracker.mpath, $false)
         $newobj = [PSCustomObject]@{
             root_dir_1 = $sampletracker.basepath + '\'
             slide_ID_1 = $sampletracker.slideid
@@ -407,7 +407,7 @@
     [void]removebatchflatfieldexamples($sampletracker){
         #
         $this.addcorrectionfile($sampletracker)
-        $p3 = $sampletracker.mpath + '\flatfield\'+$this.pybatchflatfieldtest+'.bin'
+        $p3 = $sampletracker.mpath + '\flatfield\flatfield_'+$this.pybatchflatfieldtest+'.bin'
         $sampletracker.removefile($p3)
         #
     }
@@ -416,7 +416,7 @@
         #
         $p2 = $sampletracker.corrmodels_fullfile($this.mpath)
         #
-        $micomp_data = $sampletracker.ImportCorrectionModels($sampletracker.mpath)
+        $micomp_data = $sampletracker.ImportCorrectionModels($sampletracker.mpath, $false)
         $newobj = [PSCustomObject]@{
             SlideID = $sampletracker.slideid
             Project = $sampletracker.project
@@ -429,7 +429,7 @@
         $micomp_data += $newobj
         #
         $micomp_data | Export-CSV $p2 -NoTypeInformation
-        $p3 = $sampletracker.mpath + '\flatfield\' + $this.pybatchflatfieldtest + '.bin'
+        $p3 = $sampletracker.mpath + '\flatfield\flatfield_' + $this.pybatchflatfieldtest + '.bin'
         $sampletracker.SetFile($p3, 'blah de blah')
     }
     # 
