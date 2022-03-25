@@ -114,10 +114,10 @@ Class imagecorrection : moduletools {
             $sor = $this.processvars[0] + '\' + 
                 $this.sample.slideid + '\im3\flatw'
             $des = $this.sample.flatwim3folder()
-            $this.sample.copy($sor, $des, '.im3', 30)
+            $this.sample.copy($sor, $des, 'im3', 30)
             #
             $sorcount = (gci ($sor + '\*') -Include '*im3').Count
-            $descount = (gci ($des + '\*') -Include '*.im3').Count
+            $descount = (gci ($des + '\*') -Include '*im3').Count
             if(!($sorcount -eq $descount)){
                 Throw 'im3s did not upload correctly'
             }

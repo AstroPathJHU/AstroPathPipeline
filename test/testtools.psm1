@@ -111,7 +111,10 @@ Class testtools{
         $project_data = $tools.OpencsvFileConfirm($cohort_csv_file)
         $p = $this.uncpath($PSScriptRoot)
         #
-        if ($project_data[0].Dpath -notcontains [regex]::escape($p)){
+        if ([regex]::escape($project_data[0].Dpath) -ne [regex]::escape($p)){
+            Write-Host '    paths do not match'
+            Write-host '   '$project_data[0].Dpath
+            Write-host '   '$p
             Write-Host '    UPDATING THE COHORTS & PATHS TABLES'
             $project_data[0].Dpath = $p 
             $project_data[1].Dpath = $p  + '\data'

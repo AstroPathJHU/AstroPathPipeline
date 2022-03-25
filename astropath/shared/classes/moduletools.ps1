@@ -156,7 +156,7 @@
             $des = $this.processvars[0] +'\'+
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
             $sor = $this.sample.im3folder()
-            $this.sample.copy($sor, $des, 'im3', 30)
+            $this.sample.copy($sor, $des, 'im3', 10)
             if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
                 Throw 'im3s did not download correctly'
             }
@@ -193,7 +193,7 @@
             [FileDownloads]::XML){
             $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
             $sor = $this.sample.xmlfolder()
-            $this.sample.copy($sor, $des, 'xml', 30)
+            $this.sample.copy($sor, $des, 'xml', 20)
             if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
                 Throw 'xmls did not download correctly'
             }

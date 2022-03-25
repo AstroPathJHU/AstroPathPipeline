@@ -112,7 +112,7 @@ Class meanimage : moduletools {
              $dpath, 
              '--sampleregex', $this.sample.slideid,
              '--shardedim3root', $rpath, 
-            #' --workingdir', ($this.processvars[0] + '\meanimage'), 
+             ' --workingdir', ($this.processvars[0] + '\meanimage'), 
             "--njobs '8'",
             $globalargs -join ' ')
         #
