@@ -11,8 +11,11 @@ using module .\testtools.psm1
 #
 Class testsegmentationcheck : testtools {
     #
-    [string]$module = 'vminform'
+    [string]$module = 'meanimage'
     [string]$class = 'segmentationcheck'
+    [string]$antibody = 'CD8'
+    [string]$algorithm = 'CD8_Prototype.ifr'
+    [string]$informver = '2.4.8'
     #
     testsegmentationcheck() : base(){
         #
@@ -22,9 +25,9 @@ Class testsegmentationcheck : testtools {
     #
     [void]launchtests(){
         #
-        $task = ($this.basepath, $this.slideid, $this.antibody, $this.algorithm, $this.informver, $this.mpath)
-        $inp = vminform $task
-        $this.testsegmentation($inp)
+        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
+        $inp = meanimage $task
+        $this.testfindsegmentationtargets($inp)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -32,21 +35,13 @@ Class testsegmentationcheck : testtools {
     test that the checking of inform files output
     from the expected outcome works correctly
     --------------------------------------------#>
-    [void]testsegmentation($inp) {
+    [void]testfindsegmentationtargets($inp) {
         #
         Write-Host '.'
         Write-Host 'test segmentation check started'
-        <#
-        Write-Host '    error number at start:' $inp.err
-        $this.setupexpected($inp)
-        $inp.StartInForm()
-        $inp.WatchBatchInForm()
-        Write-Host '    batch process complete'
-        #>
         Write-Host '--------------------'
-        $inp.sample.findantibodies()
-        Write-Host '    Anitibodies:' $inp.sample.antibodies
-        
+        $inp.sample.findsegmentationtargets()
+        Write-Host '    Segmentation Targets:' $inp.sample.segmentationtargets
         #
         Write-Host 'test segmentation check done'
         #
