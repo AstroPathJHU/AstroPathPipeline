@@ -99,6 +99,23 @@ Class imagecorrection : moduletools {
         $this.sample.info("cleanup finished")
         #
     }
+    #
+    [void]loggedcopy($sor, $des, $type, $filespec){
+        #
+        $this.sample.info("return $type")
+        $this.sample.info('source: '+ $sor)
+        $sorcount = (Get-ChildItem ($sor + '\*') -Include "*$filespec").Count
+        $this.sample.info('source file(s): ' + $sorcount)
+        $this.sample.info('destination: '+ $des)
+        $this.sample.copy($sor, $des, $filespec, 10)
+        $descount = (Get-ChildItem ($des + '\*') -Include "*$filespec").Count
+        $this.sample.info('destintation file(s): ' + $descount)
+        #
+        if(!($sorcount -eq $descount)){
+            Throw "$type did not upload correctly." 
+        }
+        #
+    }
     <# -----------------------------------------
      silentcleanup
      silentcleanup
@@ -114,13 +131,7 @@ Class imagecorrection : moduletools {
             $sor = $this.processvars[0] + '\' + 
                 $this.sample.slideid + '\im3\flatw'
             $des = $this.sample.flatwim3folder()
-            $this.sample.copy($sor, $des, 'im3', 30)
-            #
-            $sorcount = (gci ($sor + '\*') -Include '*im3').Count
-            $descount = (gci ($des + '\*') -Include '*im3').Count
-            if(!($sorcount -eq $descount)){
-                Throw 'im3s did not upload correctly'
-            }
+            $this.loggedcopy($sor, $des, 'corrected im3s', 'im3')
             #
             $this.sample.copy($sor, $des, '.log')
             #
@@ -129,14 +140,10 @@ Class imagecorrection : moduletools {
             $sor = $this.processvars[1] + '\' + $this.sample.slideid
             $des = $this.sample.flatwfolder()
             #
-            @('.fw', '.fw01') | foreach-object {
+            @('fw', 'fw01') | foreach-object {
                 #
-                $this.sample.copy($sor, $des, $_, 30)
-                $sorcount = (gci ($sor + '\*') -Include ('*' + $_)).Count
-                $descount = (gci ($des + '\*') -Include ('*' + $_)).Count
-                if(!($sorcount -eq $descount)){
-                    Throw ('*' + $_ + 's did not upload correctly')
-                }
+                $this.loggedcopy($sor, $des, "corrected $_", $_)
+                #
             }
             #
             $this.sample.copy($sor, $des, '.log')
