@@ -25,10 +25,22 @@
     #
     [string]$apfile_constant = '.csv'
     #
+    $color_hex = @{
+        Red = 'FF0000'; R = 'FF0000';
+        Green = '00FF00'; G = '00FF00';
+        Blue = '0000FF'; B = '0000FF';
+        Cyan = '00FFFF'; C = '00FFFF';
+        Yellow = 'FFFF00'; Y = 'FFFF00';
+        Magenta = 'FF00FF'; M = 'FF00FF';
+        White = 'FFFFFF'; W = 'FFFFFF';
+        Black = '000000'; K = '000000';
+        Orange = 'E8692B'; O = 'E8692B';
+        Coral = 'FFC0CB'; L = 'FFC0CB';
+    }
+    #
     [string]apfullname($mpath, $file){
         return ($mpath + '\' + $file)
     }
-
     #
     [string]cohorts_fullfile($mpath){
         return $this.apfullname($mpath, $this.cohorts_file)
@@ -403,6 +415,48 @@
         }
         #
         return $this.mergeconfig_data
+        #
+    }
+    #
+    [void]MergeConfigToCSV([string] $basepath, $batch){
+        #
+        $this.MergeConfigToCSV(
+            $basepath, $batch, $this.project, $this.cohort)
+        #
+    }
+    #
+    [void]MergeConfigToCSV([string] $basepath, $batch, $project, $cohort){
+        #
+        $batchid = ([string]$batch).PadLeft(2, '0')
+        #
+        $csvfile = $basepath + '\Batch\MergeConfig_' + $batchid + '.csv'
+        if (Test-Path $csvfile){
+            Throw ('csv file already created for ' + $basepath)
+        }
+        #
+        if (!$this.mergeconfig_data){
+            $this.ImportMergeConfig($basepath, $false) | Out-NULL
+        }
+        #
+        $mergeconfig = $this.mergeconfig_data
+        $count = 1
+        foreach ($row in $mergeconfig) {
+            $row | Add-Member -NotePropertyName Project `
+                -NotePropertyValue $project -PassThru
+            $row | Add-Member -NotePropertyName Cohort  `
+                -NotePropertyValue $cohort -PassThru
+            $row | Add-Member -NotePropertyName layer `
+                -NotePropertyValue $count -PassThru
+            $row.Colors = $this.color_hex.($row.Colors)
+            $count++
+        }
+        $mergeconfig | 
+            Select-Object -Property Project,Cohort,BatchID,layer, `
+                Opal,Target,Compartment,TargetType,CoexpressionStatus, `
+                SegmentationStatus,SegmentationHierarchy, `
+                NumberofSegmentations,ImageQA,Colors | 
+            Export-Csv -Path $csvfile -NoTypeInformation
+
         #
     }
     <# -----------------------------------------
