@@ -50,10 +50,10 @@
         $this.testupdate($sampletracker, 'warpoctets', 'batchwarpkeys')
         $this.testupdate($sampletracker, 'batchwarpkeys', 'batchwarpfits')
         $this.testupdate($sampletracker, 'batchwarpfits', 'imagecorrection')
-        $this.testupdate($sampletracker, 'imagecorrection', 'vminform')
-        $this.testupdate($sampletracker, 'vminform', 'merge')
-        $this.testupdate($sampletracker, 'merge', 'imageqa')
-        $this.testupdate($sampletracker, 'imageqa', 'segmaps')
+        #$this.testupdate($sampletracker, 'imagecorrection', 'vminform')
+        #$this.testupdate($sampletracker, 'vminform', 'merge')
+        #$this.testupdate($sampletracker, 'merge', 'imageqa')
+        #$this.testupdate($sampletracker, 'imageqa', 'segmaps')
         $this.cleanup($sampletracker)
         $this.addbatchflatfieldexamples($sampletracker)
         Write-Host '.'
@@ -325,7 +325,8 @@
         $this.removebatchwarpfitsexamples($sampletracker)
         $sampletracker.removefile($sampletracker.mainlogbase('batchwarpkeys'))
         $this.removebatchwarpkeysexamples($sampletracker)
-        $sampletracker.removedir($sampletracker.basepath + 'warping')
+        $sampletracker.removedir($sampletracker.basepath +'\warping')
+        $sampletracker.removedir($sampletracker.mpath +'\flatfield')
         $sampletracker.removedir($sampletracker.warpoctetsfolder())
         
         Write-Host 'clearing logs finished'

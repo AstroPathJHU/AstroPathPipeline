@@ -331,6 +331,8 @@ class copyutils{
                     Throw ('failed to copy ' + $tempsor + '. N tries:' + $copycount)
                 }
                 #
+                Start-Sleep 5
+                #
                 $this.createdirs($des)
                 #
                 if ($this.isWindows()){
@@ -341,6 +343,7 @@ class copyutils{
                 #
                 $copycount += 1
                 $this.verifyChecksum($tempsor, $des, '*', $copycount)
+                $copycount = 0
             }
         }
         #
