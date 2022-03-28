@@ -6,7 +6,7 @@ from ..utilities.version.git import thisrepo
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SegmentationFolderArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger, ThingWithLogger
 from .rectangle import rectanglefilter
-from .workflowdependency import ThingWithRoots, WorkflowDependency
+from .workflowdependency import ThingWithRoots, ThingWithWorkflowKwargs, WorkflowDependency
 
 class CohortBase(ThingWithRoots, ThingWithLogger):
   """
@@ -185,7 +185,7 @@ class SampleFilter:
       result.message = self.messages[bool(result)]
     return result
 
-class Cohort(RunCohortBase, ArgumentParserMoreRoots):
+class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
   Base class for a cohort that can be run in a loop
 
@@ -313,7 +313,10 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     return {*super().rootnames, "im3root", "informdataroot"}
   @property
   def workflowkwargs(self):
-    return self.rootkwargs
+    return {
+      **super().workflowkwargs,
+      **self.rootkwargs,
+    }
 
   def run(self, *, printnotrunning=True, cleanup=False, **kwargs):
     """
@@ -433,7 +436,7 @@ class DbloadCohort(Cohort, DbloadCohortBase, DbloadArgumentParser):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
 
-class GlobalDbloadCohortBase(DbloadCohortBase, TableReader):
+class GlobalDbloadCohortBase(DbloadCohortBase):
   @property
   def dbload(self):
     return self.dbloadroot/UNIV_CONST.DBLOAD_DIR_NAME
@@ -767,6 +770,7 @@ class WorkflowCohort(Cohort):
         assert False
 
     def slideidfilter(self, sample, **kwargs):
+      import pprint; pprint.pprint(self.workflowkwargs)
       return filter(
         runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[

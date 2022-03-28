@@ -18,7 +18,7 @@ from .logging import getlogger, ThingWithLogger
 from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
-from .workflowdependency import WorkflowDependencySlideID
+from .workflowdependency import ThingWithWorkflowKwargs, WorkflowDependencySlideID
 
 class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger, contextlib.ExitStack):
   """
@@ -524,7 +524,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def REDCapID(self):
     return self.clinicalinfo.REDCapID
 
-class WorkflowSample(SampleBase, WorkflowDependencySlideID):
+class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
   Base class for a sample that will be used in a workflow,
   i.e. it takes in input files and creates output files.
