@@ -2,12 +2,12 @@ import abc, os, pathlib, re
 
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...utilities.config import CONST as UNIV_CONST
-from ...shared.argumentparser import *#RunFromArgumentParser
+from ...shared.argumentparser import ArgumentParserWithVersionRequirement, InitAndRunFromArgumentParserBase, RunFromArgumentParserBase
 from ...shared.csvclasses import Annotation, AnnotationInfo, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
 from ...shared.overlap import Overlap
 from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
-from ...shared.workflowdependency import ThingWithWorkflowKwargs
+from ...shared.workflowdependency import ThingWithRoots, ThingWithWorkflowKwargs
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield, TableReader
 from ..align.field import Field, FieldOverlap

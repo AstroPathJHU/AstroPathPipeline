@@ -2,7 +2,6 @@ import abc, argparse, contextlib, logging, pathlib, re
 from ..utilities.tableio import TableReader
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
-from .logging import printlogger
 from .workflowdependency import MRODebuggingMetaClass, ThingWithRoots
 
 class RunFromArgumentParserBase(ThingWithRoots, TableReader, contextlib.ExitStack, metaclass=MRODebuggingMetaClass):

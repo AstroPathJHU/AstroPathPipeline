@@ -1,7 +1,7 @@
 import abc, contextlib, datetime, job_lock, logging, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
-from ..utilities.tableio import readtable, TableReader, writetable
+from ..utilities.tableio import readtable, writetable
 from ..utilities.version.git import thisrepo
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SegmentationFolderArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger, ThingWithLogger
