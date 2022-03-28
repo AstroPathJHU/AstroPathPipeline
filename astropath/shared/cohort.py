@@ -548,7 +548,8 @@ class SegmentationFolderCohort(Cohort, SegmentationFolderArgumentParser):
   def __init__(self, *args, segmentationfolder=None, segmentationroot=None, **kwargs):
     super().__init__(*args, **kwargs)
     if segmentationfolder is not None: segmentationfolder = pathlib.Path(segmentationfolder)
-    if segmentationroot is not None: segmentationroot = pathlib.Path(segmentationroot)
+    if segmentationroot is None: segmentationroot = self.im3root
+    segmentationroot = pathlib.Path(segmentationroot)
     self.segmentationfolder = segmentationfolder
     self.segmentationroot = segmentationroot
 
