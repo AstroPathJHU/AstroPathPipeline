@@ -450,6 +450,25 @@
             $row.Colors = $this.color_hex.($row.Colors)
             $count++
         }
+        #
+        $AFlayer = [PSCustomObject]@{
+            Project = $project
+            Cohort = $cohort
+            BatchID = $batch
+            layer = $count
+            Opal = 'AF'
+            Target = 'NA'
+            Compartment = 'Nucleus'
+            TargetType = 'NA'
+            CoexpressionStatus = 'NA'
+            SegmentationStatus = '0'
+            SegmentationHierarchy = '0'
+            NumberofSegmentations = '0'
+            ImageQA = 'NA'
+            Colors = $this.color_hex.('Black')
+        }
+        $mergeconfig += $AFlayer
+        #
         $mergeconfig | 
             Select-Object -Property Project,Cohort,BatchID,layer, `
                 Opal,Target,Compartment,TargetType,CoexpressionStatus, `
