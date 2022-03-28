@@ -70,7 +70,7 @@ class RunCsvScanBase(CsvScanBase, ArgumentParserWithVersionRequirement, InitAndR
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
     p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex", default=[])
-    p.add_argument("--segmentation-algorithm", action="append", choices="inform", help="load cell geometry csvs from these segmentation algorithms", metavar="algorithm", dest="segmentation_algorithms")
+    p.add_argument("--segmentation-algorithm", action="append", choices=("inform", "deepcell", "mesmer"), help="load cell geometry csvs from these segmentation algorithms", metavar="algorithm", dest="segmentation_algorithms")
     return p
 
   @classmethod

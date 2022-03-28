@@ -236,8 +236,8 @@ class Im3ArgumentParser(RunFromArgumentParser):
 
 class WorkingDirArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument('--workingdir',type=pathlib.Path,help='Path to the working directory where output should be stored.')
     return p
   @classmethod
@@ -255,8 +255,8 @@ class WorkingDirArgumentParser(RunFromArgumentParser) :
 
 class SegmentationFolderArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     g = p.add_mutually_exclusive_group()
     g.add_argument('--segmentationroot',type=pathlib.Path,help='Alternate root to use for the segmentation output.')
     g.add_argument('--segmentationfolder',type=pathlib.Path,help='Path to the segmentation outputs.')
@@ -271,8 +271,8 @@ class SegmentationFolderArgumentParser(RunFromArgumentParser) :
 
 class FileTypeArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument('--filetype',choices=['raw','flatWarp'],default='raw',
                    help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatWarp" files (extension {UNIV_CONST.FLATW_EXT}).')
     return p
@@ -285,8 +285,8 @@ class FileTypeArgumentParser(RunFromArgumentParser) :
 
 class GPUArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument('--noGPU', action='store_true',
                    help='Add this flag to disable any major GPU computations.')
     return p
@@ -299,8 +299,8 @@ class GPUArgumentParser(RunFromArgumentParser) :
 
 class ImageCorrectionArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     g = p.add_mutually_exclusive_group()
     g.add_argument('--exposure-time-offset-file', type=pathlib.Path,
                     help='''Path to a .csv file specifying layer-dependent exposure time correction offsets for the 
@@ -334,8 +334,8 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
 
 class WarpFitArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls) :
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs) :
+    p = super().makeargumentparser(**kwargs)
     p.add_argument('--fixed', default=['fx','fy','p1','p2'], nargs='*',
                    help='Names of parameters to keep fixed during fitting (default = fx, fy, p1, p2).')
     p.add_argument('--init-pars', type=dict_of_init_par_values_callback, nargs='*',

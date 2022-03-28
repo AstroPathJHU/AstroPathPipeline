@@ -6,8 +6,9 @@ from ..slides.annowarp.annowarpcohort import AnnoWarpCohortAstroPathTissueMask
 from ..slides.csvscan.csvscancohort import CsvScanCohort
 from ..slides.deepzoom.deepzoomcohort import DeepZoomCohort
 from ..slides.geom.geomcohort import GeomCohort
-from ..slides.geomcell.geomcellcohort import GeomCellCohortInform
+from ..slides.geomcell.geomcellcohort import GeomCellCohortDeepCell, GeomCellCohortInform, GeomCellCohortMesmer
 from ..slides.prepdb.prepdbcohort import PrepDbCohort
+from ..slides.segmentation.segmentationcohort import SegmentationCohortDeepCell, SegmentationCohortMesmer
 from ..slides.stitchmask.stitchmaskcohort import StitchAstroPathTissueMaskCohort
 from ..slides.zoom.zoomcohort import ZoomCohort
 
@@ -16,7 +17,7 @@ class Workflow(RunFromArgumentParserBase):
   Run the full AstroPath slide processing workflow.
   """
 
-  cohorts = PrepDbCohort, AlignCohort, StitchAstroPathTissueMaskCohort, WriteAnnotationInfoCohort, CopyAnnotationInfoCohort, ZoomCohort, DeepZoomCohort, AnnoWarpCohortAstroPathTissueMask, GeomCohort, GeomCellCohortInform, CsvScanCohort
+  cohorts = PrepDbCohort, SegmentationCohortDeepCell, SegmentationCohortMesmer, AlignCohort, StitchAstroPathTissueMaskCohort, WriteAnnotationInfoCohort, CopyAnnotationInfoCohort, ZoomCohort, DeepZoomCohort, AnnoWarpCohortAstroPathTissueMask, GeomCohort, GeomCellCohortInform, GeomCellCohortDeepCell, GeomCellCohortMesmer, CsvScanCohort
 
   _istmpclass = False
   @classmethod

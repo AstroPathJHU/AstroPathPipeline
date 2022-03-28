@@ -139,8 +139,8 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
     #################### CLASS METHODS ####################
 
     @classmethod
-    def makeargumentparser(cls):
-        p = super().makeargumentparser()
+    def makeargumentparser(cls, **kwargs):
+        p = super().makeargumentparser(**kwargs)
         p.add_argument('--version',
                        help="version of the flatfield model that should be created from the given slides' meanimages")
         p.add_argument('--flatfield-model-file',type=pathlib.Path,

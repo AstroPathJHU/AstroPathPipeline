@@ -194,8 +194,8 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
     #################### CLASS METHODS ####################
 
     @classmethod
-    def makeargumentparser(cls):
-        p = super().makeargumentparser()
+    def makeargumentparser(cls, **kwargs):
+        p = super().makeargumentparser(**kwargs)
         p.add_argument('workingdir', type=pathlib.Path, help='Path to the directory that should hold the results')
         p.add_argument('--skip-masking', action='store_true',
                        help='''Add this flag to entirely skip masking out the background regions 

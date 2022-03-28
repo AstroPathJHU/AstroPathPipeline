@@ -770,7 +770,6 @@ class WorkflowCohort(Cohort):
         assert False
 
     def slideidfilter(self, sample, **kwargs):
-      import pprint; pprint.pprint(self.workflowkwargs)
       return filter(
         runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
