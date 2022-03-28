@@ -1862,6 +1862,7 @@ class SampleWithSegmentationFolder(SampleWithSegmentations, SegmentationFolderAr
   def workflowkwargs(self) :
     return {
       **super().workflowkwargs,
+      'segmentationfolderarg': self.__segmentationfolderarg,
       'segmentationfolder': self.segmentationfolder,
       'segmentationroot': self.segmentationroot,
     }

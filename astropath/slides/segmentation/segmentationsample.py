@@ -47,8 +47,8 @@ class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWith
     #################### CLASS METHODS ####################
 
     @classmethod
-    def getoutputfiles(cls,SlideID,im3root,informdataroot,segmentationfolder,**otherworkflowkwargs) :
-        outputdir=cls.segmentation_folder(segmentationfolder,im3root,SlideID)
+    def getoutputfiles(cls,SlideID,segmentationroot,informdataroot,segmentationfolderarg,**otherworkflowkwargs) :
+        outputdir=cls.segmentation_folder(segmentationfolderarg,segmentationroot,SlideID)
         append = None
         if cls.segmentationalgorithm()=='nnunet' :
             append = NNUNET_SEGMENT_FILE_APPEND

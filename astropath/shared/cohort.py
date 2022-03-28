@@ -560,7 +560,7 @@ class SegmentationFolderCohort(Cohort, SegmentationFolderArgumentParser):
   def workflowkwargs(self) :
     return {
       **super().workflowkwargs,
-      'segmentationfolder':self.segmentationfolder,
+      'segmentationfolderarg':self.segmentationfolder,
       'segmentationroot':self.segmentationroot,
     }
 
