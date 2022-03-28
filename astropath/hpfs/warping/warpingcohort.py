@@ -142,8 +142,8 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
     #################### CLASS METHODS ####################
 
     @classmethod
-    def makeargumentparser(cls):
-        p = super().makeargumentparser()
+    def makeargumentparser(cls, **kwargs):
+        p = super().makeargumentparser(**kwargs)
         p.add_argument('--layer', type=int, default=1,
                        help='The layer number (starting from one) of the images that should be used (default=1)')
         p.add_argument('--initial-pattern-octets', type=int, default=100,

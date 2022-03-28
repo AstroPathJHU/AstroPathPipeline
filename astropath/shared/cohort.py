@@ -1,12 +1,12 @@
 import abc, contextlib, datetime, job_lock, logging, pathlib, re
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
-from ..utilities.tableio import readtable, TableReader, writetable
+from ..utilities.tableio import readtable, writetable
 from ..utilities.version.git import thisrepo
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SegmentationFolderArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .logging import getlogger, ThingWithLogger
 from .rectangle import rectanglefilter
-from .workflowdependency import ThingWithRoots, WorkflowDependency
+from .workflowdependency import ThingWithRoots, ThingWithWorkflowKwargs, WorkflowDependency
 
 class CohortBase(ThingWithRoots, ThingWithLogger):
   """
@@ -185,7 +185,7 @@ class SampleFilter:
       result.message = self.messages[bool(result)]
     return result
 
-class Cohort(RunCohortBase, ArgumentParserMoreRoots):
+class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
   Base class for a cohort that can be run in a loop
 
@@ -313,7 +313,10 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots):
     return {*super().rootnames, "im3root", "informdataroot"}
   @property
   def workflowkwargs(self):
-    return self.rootkwargs
+    return {
+      **super().workflowkwargs,
+      **self.rootkwargs,
+    }
 
   def run(self, *, printnotrunning=True, cleanup=False, **kwargs):
     """
@@ -433,7 +436,7 @@ class DbloadCohort(Cohort, DbloadCohortBase, DbloadArgumentParser):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "dbloadroot": self.dbloadroot}
 
-class GlobalDbloadCohortBase(DbloadCohortBase, TableReader):
+class GlobalDbloadCohortBase(DbloadCohortBase):
   @property
   def dbload(self):
     return self.dbloadroot/UNIV_CONST.DBLOAD_DIR_NAME
@@ -545,7 +548,8 @@ class SegmentationFolderCohort(Cohort, SegmentationFolderArgumentParser):
   def __init__(self, *args, segmentationfolder=None, segmentationroot=None, **kwargs):
     super().__init__(*args, **kwargs)
     if segmentationfolder is not None: segmentationfolder = pathlib.Path(segmentationfolder)
-    if segmentationroot is not None: segmentationroot = pathlib.Path(segmentationroot)
+    if segmentationroot is None: segmentationroot = self.im3root
+    segmentationroot = pathlib.Path(segmentationroot)
     self.segmentationfolder = segmentationfolder
     self.segmentationroot = segmentationroot
 
@@ -557,7 +561,7 @@ class SegmentationFolderCohort(Cohort, SegmentationFolderArgumentParser):
   def workflowkwargs(self) :
     return {
       **super().workflowkwargs,
-      'segmentationfolder':self.segmentationfolder,
+      'segmentationfolderarg':self.segmentationfolder,
       'segmentationroot':self.segmentationroot,
     }
 

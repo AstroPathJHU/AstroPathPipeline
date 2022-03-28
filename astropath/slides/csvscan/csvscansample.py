@@ -2,13 +2,14 @@ import abc, os, pathlib, re
 
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...utilities.config import CONST as UNIV_CONST
-from ...shared.argumentparser import RunFromArgumentParser
+from ...shared.argumentparser import ArgumentParserWithVersionRequirement, InitAndRunFromArgumentParserBase, RunFromArgumentParserBase
 from ...shared.csvclasses import Annotation, AnnotationInfo, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
 from ...shared.overlap import Overlap
 from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
+from ...shared.workflowdependency import ThingWithRoots, ThingWithWorkflowKwargs
 from ...utilities.dataclasses import MyDataClass
-from ...utilities.tableio import pathfield
+from ...utilities.tableio import pathfield, TableReader
 from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
@@ -16,13 +17,20 @@ from ..align.stitch import AffineEntry
 from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
-from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSampleInform
-from ...utilities.tableio import TableReader
+from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSampleDeepCell, GeomCellSampleInform, GeomCellSampleMesmer
 
 class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
   pass
 
-class CsvScanBase(TableReader):
+class CsvScanBase(TableReader, ThingWithWorkflowKwargs):
+  def __init__(self, *args, segmentationalgorithms=None, **kwargs):
+    if not segmentationalgorithms: segmentationalgorithms = ["inform"]
+    self.__segmentationalgorithms = segmentationalgorithms
+    super().__init__(*args, **kwargs)
+
+  @property
+  def segmentationalgorithms(self): return self.__segmentationalgorithms
+
   @property
   @abc.abstractmethod
   def logger(self): return super().logger
@@ -49,14 +57,29 @@ class CsvScanBase(TableReader):
   @classmethod
   def logmodule(cls): return "csvscan"
 
-class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
+  @property
+  def workflowkwargs(self) :
+    return {
+      **super().workflowkwargs,
+      "segmentationalgorithms": self.segmentationalgorithms,
+    }
+
+class RunCsvScanBase(CsvScanBase, ArgumentParserWithVersionRequirement, InitAndRunFromArgumentParserBase, RunFromArgumentParserBase, ThingWithRoots, ThingWithWorkflowKwargs):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
     p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex", default=[])
-    p.add_argument("--segmentation-algorithm", action="append", choices="inform", help="load cell geometry csvs from these segmentation algorithms", metavar="algorithm", dest="segmentation_algorithms")
+    p.add_argument("--segmentation-algorithm", action="append", choices=("inform", "deepcell", "mesmer"), help="load cell geometry csvs from these segmentation algorithms", metavar="algorithm", dest="segmentation_algorithms")
     return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "segmentationalgorithms": parsed_args_dict.pop("segmentation_algorithms"),
+    }
+    return kwargs
 
   @classmethod
   def runkwargsfromargumentparser(cls, parsed_args_dict):
@@ -64,11 +87,10 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "checkcsvs": parsed_args_dict.pop("checkcsvs"),
       "ignorecsvs": parsed_args_dict.pop("ignore_csvs"),
-      "segmentationalgorithms": parsed_args_dict.pop("segmentation_algorithms"),
     }
     return kwargs
 
-class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
+class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase, RunCsvScanBase):
   rectangletype = CsvScanRectangle
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
@@ -87,8 +109,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
   def processcsv(self, *args, **kwargs):
     return super().processcsv(*args, SlideID=self.SlideID, **kwargs)
 
-  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[], segmentationalgorithms=None):
-    if not segmentationalgorithms: segmentationalgorithms = ["inform"]
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
     toload = []
     expectcsvs = {
       self.csv(_) for _ in (
@@ -114,7 +135,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       )
     }
     expectcsvs |= {
-      r.geomloadcsv(algo) for r in self.rectangles for algo in segmentationalgorithms
+      r.geomloadcsv(algo) for r in self.rectangles for algo in self.segmentationalgorithms
     }
 
     def hasanycells(rectangle, algorithm):
@@ -127,7 +148,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       else:
         return True
     expectcsvs |= {
-      r.phenotypecsv for r in self.rectangles if any(hasanycells(r, algo) for algo in segmentationalgorithms)
+      r.phenotypecsv for r in self.rectangles if any(hasanycells(r, algo) for algo in self.segmentationalgorithms)
     }
 
     meanimagecsvs = {
@@ -145,7 +166,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
         "globals",
       )
     } | {
-      r.phenotypeQAQCcsv for r in self.rectangles if any(hasanycells(r, algo) for algo in segmentationalgorithms)
+      r.phenotypeQAQCcsv for r in self.rectangles if any(hasanycells(r, algo) for algo in self.segmentationalgorithms)
     } | annotationinfocsvs | meanimagecsvs
     goodcsvs = set()
     unknowncsvs = set()
@@ -250,7 +271,17 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [AnnoWarpSampleInformTissueMask, GeomCellSampleInform, GeomSample] + super().workflowdependencyclasses(**kwargs)
+    segmentationalgorithms = kwargs["segmentationalgorithms"]
+    return [
+      AnnoWarpSampleInformTissueMask,
+      GeomSample,
+    ] + [
+      {
+        "inform": GeomCellSampleInform,
+        "deepcell": GeomCellSampleDeepCell,
+        "mesmer": GeomCellSampleMesmer,
+      }[algo] for algo in segmentationalgorithms
+    ] + super().workflowdependencyclasses(**kwargs)
 
   def run(self, *args, **kwargs): return self.runcsvscan(*args, **kwargs)
 

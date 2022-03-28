@@ -187,6 +187,10 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
     filters = [filter(self, globalcsv, **kwargs) for filter in self.samplefilters]
     yield self.globalcsv(), filters
 
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "segmentationalgorithms": self.segmentationalgorithms}
+
   def runsample(self, sample, **kwargs):
     return sample.runcsvscan(**kwargs)
 
@@ -212,6 +216,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         "moremainlogroots": True,
         "skipstartfinish": True,
         "printthreshold": True,
+        "segmentationalgorithms": True,
       }[k]
     }
 

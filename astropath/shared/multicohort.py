@@ -54,8 +54,8 @@ class MultiCohortBase(ArgumentParserWithVersionRequirement):
     return MultiLogger(*(c.globallogger(**kwargs) for c in self.cohorts), entermessage=self.globallogentermessage)
 
   @classmethod
-  def makeargumentparser(cls):
-    p = cls.singlecohortclass.makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = cls.singlecohortclass.makeargumentparser(**kwargs)
     for a in p._actions[:]:
       if "root" in a.dest:
         assert a.nargs in {1, None}, a.nargs

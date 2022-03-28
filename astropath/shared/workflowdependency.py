@@ -2,9 +2,34 @@ import abc, contextlib, csv, datetime, more_itertools, re
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.miscfileio import field_size_limit_context, rm_missing_ok
 from ..utilities.version.git import GitCommit, thisrepo
-from .logging import MyLogger, ThingWithLogger
+from .logging import MyLogger, printlogger, ThingWithLogger
 
-class ThingWithRoots(abc.ABC):
+class MRODebuggingMetaClass(abc.ABCMeta):
+  def __new__(cls, name, bases, dct, **kwargs):
+    try:
+      return super().__new__(cls, name, bases, dct, **kwargs)
+    except TypeError as e:
+      if "Cannot create a consistent" in str(e):
+        logger = printlogger("mro")
+        logger.critical("========================")
+        logger.critical(f"MROs of bases of {name}:")
+        for base in bases:
+          logger.critical("------------------------")
+          for c in base.__mro__:
+            logger.critical(c.__name__)
+        logger.critical("************************")
+        logger.critical("filtered for the bad ones:")
+        for base in bases:
+          bad = [c for c in base.__mro__ if re.search(rf"\b{c.__name__}\b", str(e))]
+          if len(bad) < 2: continue
+          logger.critical("------------------------")
+          logger.critical(base.__name__)
+          for c in bad:
+            logger.critical(c.__name__)
+        logger.critical("========================")
+      raise
+
+class ThingWithRoots(abc.ABC, metaclass=MRODebuggingMetaClass):
   @property
   def rootnames(self):
     return set()
@@ -12,7 +37,13 @@ class ThingWithRoots(abc.ABC):
   def rootkwargs(self):
     return {name: getattr(self, name) for name in self.rootnames}
 
-class WorkflowDependency(ThingWithRoots, ThingWithLogger):
+class ThingWithWorkflowKwargs(abc.ABC, metaclass=MRODebuggingMetaClass):
+  @property
+  @abc.abstractmethod
+  def workflowkwargs(self):
+    return {}
+
+class WorkflowDependency(ThingWithRoots, ThingWithLogger, ThingWithWorkflowKwargs):
   @property
   def workflowkwargs(self):
     return self.rootkwargs
