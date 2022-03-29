@@ -14,6 +14,7 @@ from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
 from ..align.stitch import AffineEntry
+from ..annotationinfo.annotationinfo import CopyAnnotationInfoSampleBase
 from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
@@ -275,6 +276,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     return [
       AnnoWarpSampleInformTissueMask,
       GeomSample,
+      CopyAnnotationInfoSampleBase,
     ] + [
       {
         "inform": GeomCellSampleInform,
