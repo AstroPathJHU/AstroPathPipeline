@@ -437,6 +437,18 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     """
     return "annowarp"
 
+  @classmethod
+  def logstartregex(cls):
+    new = super().logstartregex()
+    old = "runAnnowarp started"
+    return rf"(?:{old}|{new})"
+
+  @classmethod
+  def logendregex(cls):
+    new = super().logendregex()
+    old = "annowarp finished"
+    return rf"(?:{old}|{new})"
+
   @staticmethod
   def stitchresultcls(*, model, cvxpy):
     """
