@@ -350,6 +350,7 @@ class SampleRunStatus(MyDataClass):
     if isinstance(other, GitCommit):
       return self.gitcommit < other
     elif isinstance(other, SampleRunStatus):
+      if other.gitcommit is None: return False
       return self.ended < other.started and self <= other.gitcommit
     else:
       return NotImplemented

@@ -68,7 +68,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
       for SlideID in slideids:
         logfolder = testroot/SlideID/"logfiles"
         logfolder.mkdir(exist_ok=True, parents=True)
-        for module in "annowarp", "geom", "geomcell", "csvscan":
+        for module in "annowarp", "geom", "geomcell", "csvscan", "copyannotationinfo":
           now = datetime.datetime.now()
           if module == "csvscan":
             starttime = now - datetime.timedelta(seconds=15)

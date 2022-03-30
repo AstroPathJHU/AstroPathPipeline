@@ -14,6 +14,7 @@ from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
 from ..align.stitch import AffineEntry
+from ..annotationinfo.annotationinfo import CopyAnnotationInfoSampleBase
 from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
@@ -25,6 +26,11 @@ class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
 class CsvScanBase(TableReader, ThingWithWorkflowKwargs):
   def __init__(self, *args, segmentationalgorithms=None, **kwargs):
     if not segmentationalgorithms: segmentationalgorithms = ["inform"]
+    if "inform" not in segmentationalgorithms:
+      raise ValueError("Have to include inform segmentation")
+      #this is so that the hasanycells() function below works
+      #can modify it to open up the segmented component tiff if there's
+      #no inform and then this restriction wouldn't be necessary
     self.__segmentationalgorithms = segmentationalgorithms
     super().__init__(*args, **kwargs)
 
@@ -148,7 +154,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
       else:
         return True
     expectcsvs |= {
-      r.phenotypecsv for r in self.rectangles if any(hasanycells(r, algo) for algo in self.segmentationalgorithms)
+      r.phenotypecsv for r in self.rectangles if hasanycells(r, "inform")
     }
 
     meanimagecsvs = {
@@ -275,6 +281,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     return [
       AnnoWarpSampleInformTissueMask,
       GeomSample,
+      CopyAnnotationInfoSampleBase,
     ] + [
       {
         "inform": GeomCellSampleInform,

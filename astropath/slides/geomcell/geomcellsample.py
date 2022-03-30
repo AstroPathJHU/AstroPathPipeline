@@ -195,6 +195,18 @@ class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComp
   def logmodule(cls):
     return "geomcell"
 
+  @classmethod
+  def logstartregex(cls):
+    new = super().logstartregex()
+    old = "geomcell started"
+    return rf"(?:{old}|{new})"
+
+  @classmethod
+  def logendregex(cls):
+    new = super().logendregex()
+    old = "geomcell processed [0-9]+ fields"
+    return rf"(?:{old}|{new})"
+
   @property
   def segmentationorder(self):
     return sorted(

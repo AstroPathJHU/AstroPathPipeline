@@ -22,6 +22,18 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
   @classmethod
   def logmodule(self): return "geom"
 
+  @classmethod
+  def logstartregex(cls):
+    new = super().logstartregex()
+    old = "geomSample started"
+    return rf"(?:{old}|{new})"
+
+  @classmethod
+  def logendregex(cls):
+    new = super().logendregex()
+    old = "geomSample finished"
+    return rf"(?:{old}|{new})"
+
   @property
   def rectanglecsv(self): return "fields"
   rectangletype = FieldReadSegmentedComponentTiffSingleLayer
