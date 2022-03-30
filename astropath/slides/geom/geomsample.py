@@ -87,8 +87,8 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
     """
     if fieldfilename is None: fieldfilename = self.fieldfilename
     if tumorfilename is None: tumorfilename = self.tumorfilename
-    writetable(fieldfilename, self.getfieldboundaries())
-    writetable(tumorfilename, self.gettumorboundaries())
+    writetable(fieldfilename, self.getfieldboundaries(), rowclass=Boundary)
+    writetable(tumorfilename, self.gettumorboundaries(), rowclass=Boundary)
 
   def run(self, *args, **kwargs): return self.writeboundaries(*args, **kwargs)
 
