@@ -1,8 +1,8 @@
 ﻿<#
 --------------------------------------------------------
 informinput
-Created By: Benjamin Green -JHU
-Last Edit: 07/23/2021
+Created By: Benjamin Green, Andrew Jorquera
+Last Edit: 03/28/2022
 --------------------------------------------------------
 Description
 Task to be launched remotely to ANY computer from ANYWHERE
@@ -298,31 +298,59 @@ Class informinput : moduletools {
         $informtypes = @('cell_seg_data.txt','binary_seg_maps.tif','component_data.tif')
         $this.corruptedfiles = @()
         #
-        foreach($informtype in $informtypes){
+        foreach ($informtype in $informtypes) {
             #
             $informtype = '*'+$informtype
             $ofiles = @()
             $ofiles += Get-ChildItem $o -Include ('*'+$informtype)
             $nfiles = $ofiles.Length
-            if ($nfiles -ne 0){
+            if ($nfiles -ne 0) {
                 $this.sample.info("inForm created " + $nfiles + " of " +
                     $this.image_list.Length + " " + $informtype + " files")
                 $ofiles | foreach-object {
-                    if(!$_.PSIsContainer -and $_.length -eq 0) {
+                    if (!$_.PSIsContainer -and $_.length -eq 0) {
                         $this.corruptedfiles += $_.FullName
                     }
                 }
             }
             #
         }
+    }
+    <# -----------------------------------------
+     CheckExportOptions
+     using information from the mergeconfig csv
+     file, check to make sure the outputted 
+     inform prototype has the correct export 
+     options and update if neccesary
+     ------------------------------------------
+     Usage: $this.CheckExportOptions()
+    ----------------------------------------- #>
+    [void]CheckExportOptions(){
         #
-        if ($this.corruptedfiles.Length -gt 0) {
-            $this.sample.warning('Found ' + $this.corruptedfiles.Length + " files to be corrupt")
-            $this.err += 1
-            return
+        $this.sample.ImportMergeConfigCSV($this.sample.basepath)
+        $this.sample.findsegmentationtargets()
+        if (!$this.sample.mergeconfig_data) {
+            throw 'segmentation option not needed on any procedure'
         }
         #
-        $this.err = -1
+        $procedure = $this.sample.GetContent($this.algpath)
+        $exportline = $procedure | Where-Object {$_ -match '<exporttypes>'}
+        #
+        if (!$exportline) {
+            throw 'error in reading <exporttypes> line in procedure'
+        }
+        #
+        $needscomponent = $this.sample.segmentationtargets | 
+                        Where-Object {$_.Target -match $this.abx}
+        if ($needscomponent) {
+            $componentline = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>'
+        }
+        else {
+            $componentline = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>'
+        }
+        $this.sample.info("Replacing exportline:" + $exportline + "with componentline:" + $componentline)
+        (Get-Content $this.algpath).replace($exportline, $componentline) | 
+            Set-Content $this.algpath
         #
     }
     <# -----------------------------------------

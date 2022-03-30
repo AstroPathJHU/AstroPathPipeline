@@ -396,6 +396,18 @@
         #
     }
     #
+    [string]mergeconfigcsv_fullfile($basepath){
+        #
+        $mergefile = get-childitem ($basepath + '\Batch\*') "MergeConfig*csv"
+        #
+        if (!$mergefile){
+            Throw ('merge config file could not be found for ' + $basepath)
+        }
+        #
+        return $mergefile[0].fullname
+        #
+    }
+    #
     [PSCustomObject]ImportMergeConfig([string] $basepath, $createwatcher){
         #
         $micomp_csv_file = $this.mergeconfig_fullfile($basepath)
@@ -413,6 +425,15 @@
         if (!$this.mergeconfig_data){
             $this.ImportMergeConfig($basepath, $false) | Out-NULL
         }
+        #
+        return $this.mergeconfig_data
+        #
+    }
+    #
+    [PSCustomObject]ImportMergeConfigCSV([string] $basepath){
+        #
+        $micomp_csv_file = $this.mergeconfigcsv_fullfile($basepath)
+        $this.mergeconfig_data = Import-CSV $micomp_csv_file
         #
         return $this.mergeconfig_data
         #
