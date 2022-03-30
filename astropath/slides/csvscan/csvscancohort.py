@@ -1,6 +1,6 @@
 import contextlib, datetime, job_lock, os, re
 from ...utilities.config import CONST as UNIV_CONST
-from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
+from ...shared.cohort import FilterResult, GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SampleFilter, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
 from ...shared.samplemetadata import SampleDef
 from ...shared.workflowdependency import WorkflowDependency
@@ -180,6 +180,27 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
 class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, RunCsvScanBase):
   sampleclass = CsvScanSample
   __doc__ = sampleclass.__doc__
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    result = {
+      **super().initkwargsfromargumentparser(parsed_args_dict)
+    }
+    def correctsegmentations(self, sample, **kwargs):
+      segmentationalgorithms = frozenset(self.segmentationalgorithms)
+      folder = self.geomroot/sample.SlideID/"geom"
+      geomalgorithms = frozenset(subfolder.name for subfolder in folder.glob("*/") if any(subfolder.iterdir()))
+      messages = []
+      missing = segmentationalgorithms - geomalgorithms
+      extras = geomalgorithms - segmentationalgorithms
+      if missing: messages.append(f"Sample has missing algorithms in geom: {', '.join(missing)}.")
+      if extras: messages.append(f"Sample has extra algorithms in geom: {', '.join(extras)}.")
+      if missing or extras:
+        return FilterResult(False, " ".join(messages))
+      else:
+        return FilterResult(True, "Sample has the right segmentation algorithms in geom.")
+    result["slideidfilters"].append(SampleFilter(correctsegmentations, None, None))
+    return result
 
   def sampleswithfilters(self, **kwargs):
     yield from super().sampleswithfilters(**kwargs)
