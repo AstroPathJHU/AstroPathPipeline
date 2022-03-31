@@ -207,8 +207,8 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     mus = np.array(mus)
     sigmas = np.array(sigmas)
 
-    fixedmus = mus[fixedindices].astype(units.unitdtype)
-    fixedsigmas = sigmas[fixedindices].astype(units.unitdtype)
+    fixedmus = mus[fixedindices]
+    fixedsigmas = sigmas[fixedindices]
 
     badindices = []
     for i, mu, sigma in more_itertools.zip_equal(fixedindices, fixedmus, fixedsigmas):
@@ -216,6 +216,9 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
         badindices.append(i)
     if badindices:
       raise ValueError(f"Have to provide non-None constraint mu and sigma for variables #{badindices} if you want to fix them")
+
+    fixedmus = fixedmus.astype(units.unitdtype)
+    fixedsigmas = fixedsigmas.astype(units.unitdtype)
 
     floatfix = np.ix_(floatedindices, fixedindices)
     fixfloat = np.ix_(fixedindices, floatedindices)
