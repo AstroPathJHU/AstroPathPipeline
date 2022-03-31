@@ -23,6 +23,33 @@ class copyutils{
         return $false
         #
     }
+    #
+    [string]CrossPlatformPaths($dir){
+        #
+        if (!$this.isWindows()){
+            $dir = $dir -replace '\\', '/'
+        } else{
+            $dir = $dir -replace '/', '\'
+        }
+        #
+        return $dir
+    }
+    <# ------------------------------------------
+    CheckPath
+    ------------------------------------------
+    check if a path exists
+    ------------------------------------------ #>
+    [switch]CheckPath([string]$p){
+        #
+        $p = $this.CrossPlatformPaths($p)
+        #
+        if (test-path -literalpath $p){
+            return $true
+        } else {
+            return $false
+        }
+        #
+    }
     <# -----------------------------------------
      copy
      copy a file from one location to another
@@ -238,6 +265,48 @@ class copyutils{
         return $fname
     }
     <# -----------------------------------------
+    testpaths 
+    test a path. If the path fails, check multiple
+    times of the next few seconds to try to see 
+    if the connection is a result of a bad 
+    network connection.
+    ----------------------------------------- #> 
+    [void]testpath($path){
+        #
+        $cnt = 0
+        while($cnt -lt 4){
+            if (!$this.checkpath($path)){
+                $cnt += 1
+                Start-Sleep 2
+            } else {
+                break
+            }
+            #
+        }
+        #
+        if ($cnt -eq 4){
+            Throw ('path could not be found:' + $path)
+        }
+        #
+    }
+    #
+    [void]testpath($path, $create){
+        #
+        $cnt = 0
+        while($cnt -lt 4){
+            if (!$this.checkpath($path)){
+                $cnt += 1
+                Start-Sleep 2
+            } else {
+                break
+            }
+            #
+        }
+        #
+        $this.createdirs($path)
+        #
+    }
+    <# -----------------------------------------
      verifyChecksum
      create checksums on files to make sure they
      transferred properly if they do not, try 
@@ -247,33 +316,70 @@ class copyutils{
         - sor: source folder path
         - des: destination folder path
         - filespec: an array of filespecs to transfer
+        - copycount: an int that indicates 
+            the number of times a file has 
+            attempted to be copied.
      ------------------------------------------
-     Usage: copy(sor, des, filespec)
+     Usage: copy(sor, des, filespec, copycount)
     ----------------------------------------- #>
-    [void]verifyChecksum([string]$sor, [string]$des, [array]$filespec, [int]$copycount){
+    [void]verifyChecksum([string]$sor, [string]$des, 
+        [array]$filespec, [int]$copycount){
         #
-        # get the list of files that were transferred
+        $this.testpath($sor)
+        $this.testpath($des, $true)
         #
-        $cnt = 0
-        while($cnt -lt 4){
-            if (!(test-path -LiteralPath $sor)){
-                $cnt += 1
-            } else {
-                break
-            }
-            #
-        }
+        $missingfiles = $this.checknfiles($sor, $des, $filespec)
+        $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
         #
-        if ($cnt -eq 4){
-            Throw ('path could not be found:' + $sor)
-        }
-            
+        [array]$hashes = $this.FileHashHandler($sor, $des, $filespec)
+        $comparison = $this.comparehashes($hashes[0], $hashes[1])
+        $this.retrycopyloop($comparison, $copycount, $sor, $des)
+        #
+    }
+    <#
+        check n files 
+    #>
+    [array]checknfiles($sor, $des, $filespec){
+        #
+        $missingfiles = @()
         #
         if ((Get-Item $sor) -is [System.IO.DirectoryInfo]){
             #
             $sourcefiles = $this.listfiles($sor, $filespec)
             $desfiles = $this.listfiles($des, $filespec)
+            $missingfiles = ($sourcefiles | 
+                Where-Object {$desfiles.name -notcontains $_.Name}
+                ).FullName
+
+        } else {
+            $sourcefiles = $sor
+            $desfiles = $des + '\' + (Split-Path $sor -Leaf)
             #
+            if (!(test-path -literalpath $desfiles)){
+                $missingfiles += $sourcefiles
+            }
+            #
+        }
+        #
+        return $missingfiles
+        #
+    }
+    <# -----------------------------------------
+    filehashhandler
+    handle the file hasher depending on if the 
+    input sorce was a file or a destination
+    -----------------------------------------
+    Input: 
+        - sor: source folder path
+        - des: destination folder path
+        - filespec: an array of filespecs to transfer
+    ----------------------------------------- #>
+    [array]FileHashHandler($sor, $des, $filespec){
+        #
+        if ((Get-Item $sor) -is [System.IO.DirectoryInfo]){
+            #
+            $sourcefiles = $this.listfiles($sor, $filespec)
+            $desfiles = $this.listfiles($des, $filespec)
             #
             if ($global:PSVersionTable.PSVersion -lt 7){
                 $sourcehash = $this.FileHasher($sourcefiles)
@@ -282,17 +388,18 @@ class copyutils{
                 $sourcehash = $this.FileHasher($sourcefiles, 7)
                 $destinationhash = $this.FileHasher($desfiles, 7)
             }
+            #
         } else {
             #
-            $sourcefiles = $this.handlebrackets($sor)
-            $desfiles = $this.handlebrackets($des + '\' + (Split-Path $sor -Leaf))
+            $sourcefiles = $sor
+            $desfiles = $des + '\' + (Split-Path $sor -Leaf)
             #
             $sourcehash = $this.FileHasher($sourcefiles, 7, $true)
             $destinationhash = $this.FileHasher($desfiles, 7, $true)
             #
         }
         #
-        # catch empty folders
+        # catch empty
         #
         if ($sourcehash.count -eq 0) {
             $sourcehash = @{}
@@ -303,50 +410,7 @@ class copyutils{
             $destinationhash.('tmp') = 'tmp'
         }
         #
-        try{
-            $comparison = Compare-Object -ReferenceObject $($sourcehash.Values) `
-                                    -DifferenceObject $($destinationhash.Values) |
-                    Where-Object -FilterScript {$_.SideIndicator -eq '<='}
-        } catch {
-            if ($_.Exception.Message -match 'ReferenceObject'){
-                Throw ('source hash values not valid: ' +  $sourcehash.Values)
-            } elseif ($_.Exception.Message -match 'DifferenceObject'){
-                Throw ('destination hash values not valid: ' +  $destinationhash.Values)
-            } else {
-                Throw $_.Exception.Message
-            }
-        }
-        #
-        # copy files that failed
-        # call checksum on the particular file to make sure the 
-        # second go round went properly, fail on the 5th try.
-        #
-        if ($comparison) {
-            #
-            foreach ($file in $comparison) {
-                $tempsor = ($sourcehash.GetEnumerator() | 
-                    Where-Object {$_.Value -contains $file.InputObject}).Key
-                #
-                if ($copycount -ge 50){
-                    Throw ('failed to copy ' + $tempsor + '. N tries:' + $copycount)
-                }
-                #
-                Start-Sleep 5
-                #
-                $this.createdirs($des)
-                #
-                if ($this.isWindows()){
-                    xcopy $tempsor $des /q /y /z /j /v | Out-Null
-                } else {
-                    $this.lxcopy($sor, $des)
-                }
-                #
-                $copycount += 1
-                $this.verifyChecksum($tempsor, $des, '*', $copycount)
-                $copycount = 0
-            }
-        }
-        #
+        return @($sourcehash, $destinationhash)
     }
     <#-----------------------------------------
     FileHasher
@@ -358,7 +422,7 @@ class copyutils{
         #
         [System.Collections.Concurrent.ConcurrentDictionary[string,object]]$hashes = @{}
         #
-        $filelist | foreach-Object -Parallel{
+        $job = $filelist | foreach-Object -AsJob -Parallel {
             #
             $hcopy = $using:hashes
             $Algorithm="MD5"
@@ -381,11 +445,11 @@ class copyutils{
                 [string] $hash = [BitConverter]::ToString($computedHash) -replace '-',''
                 $cnt = 0
                 while(!($hcopy.TryAdd($_.FullName, $hash))){
-                    $cnt += 1
                     if ($cnt -gt 4){
                         break
                     }
                 }
+                #
             } catch {
                 Throw $_.Exception.Message
             } finally {
@@ -395,6 +459,9 @@ class copyutils{
                 }
             } 
         } -ThrottleLimit 20
+        #
+        wait-job $job.id
+        receive-job $job.id -ea stop
         #
         return ($hashes)
         #
@@ -421,7 +488,7 @@ class copyutils{
         return $filehash
         #
     }
-
+    #
     [hashtable]FileHasher($file, [int]$v, $singlefile){
         #
         $filehash = @{}
@@ -430,6 +497,109 @@ class copyutils{
             $filehash.($file) = $filehash1.Hash
         }  
         return $filehash
+        #
+    }
+    <# -----------------------------------------
+    comparehashes
+    compare the hash values added and return a
+    vector of hashes in input 1 not correct
+    or existant in input 2.
+    ----------------------------------------- #>
+    [array]comparehashes($sourcehash, $destinationhash){
+        #
+        try{
+            $notmatch = Compare-Object -ReferenceObject $sourcehash.values `
+                                    -DifferenceObject $destinationhash.values |
+                    Where-Object -FilterScript {$_.SideIndicator -eq '<='}
+        } catch {
+            if ($_.Exception.Message -match 'ReferenceObject'){
+                Throw ('source hash values not valid: ' +  $sourcehash.Values)
+            } elseif ($_.Exception.Message -match 'DifferenceObject'){
+                Throw ('destination hash values not valid: ' +  $destinationhash.Values)
+            } else {
+                Throw $_.Exception.Message
+            }
+        }
+        #
+        if ($notmatch){
+            $shashstrings = @()
+            #
+            $path = split-path $sourcehash.keys[0] 
+            #
+            foreach ($skey in $sourcehash.keys){
+                $file = Split-Path $skey -Leaf
+                $shashstrings += $file, $sourcehash.($skey) -join ';'
+            }
+            #
+            $dhashstrings = @()
+            #
+            foreach ($dkey in $destinationhash.keys){
+                $file = Split-Path $dkey -Leaf
+                $dhashstrings += $file, $destinationhash.($dkey) -join ';'
+            }
+            #
+            $notmatch = Compare-Object $shashstrings $dhashstrings |
+                Where-Object {$_.SideIndicator -eq '<='}
+            #
+            $notmatch = $notmatch.InputObject | ForEach-Object{
+                    return ($path + '\' + ($_ -split ';')[0])
+            }
+            #
+        }
+        #
+        return $notmatch
+        #
+    }
+    <# -----------------------------------------
+    retrycopyloop
+    loop through each comparison object and 
+    retry the copy for a provided comparison object 
+    -----------------------------------------
+    Input: 
+        - comparison: the comparison object
+        from a compare-object
+        - $sourcefile
+        - sor: source folder path
+        - des: destination folder path
+        - filespec: an array of filespecs to transfer
+        - copycount: an int that indicates 
+            the number of times a file has 
+            attempted to be copied.
+    ----------------------------------------- #>
+    [void]retrycopyloop($notmatch, 
+        $copycount, $sor, $des){
+        #
+        if ($notmatch) {
+            foreach ($file in $notmatch) {
+                #
+                if ($copycount -ge 50){
+                    Throw ('failed to copy ' +
+                        $file + '. N tries:' + $copycount)
+                }
+                #
+                $this.retrycopy($file, $sor, $des, $copycount)
+                #
+            }
+        }
+    }
+    <#
+    retrycopy
+    retry copying a specific file. 
+    #>
+    [void]retrycopy($tempsor, $sor, $des, $copycount){
+        #
+        Start-Sleep 2
+        #
+        $this.createdirs($des)
+        #
+        if ($this.isWindows()){
+            xcopy $tempsor $des /q /y /z /j /v | Out-Null
+        } else {
+            $this.lxcopy($sor, $des)
+        }
+        #
+        $copycount ++
+        $this.verifyChecksum($tempsor, $des, '*', $copycount)
         #
     }
 }
