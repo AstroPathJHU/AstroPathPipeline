@@ -130,17 +130,6 @@
         return($server)
         #
     }
-    #
-    [string]CrossPlatformPaths($dir){
-        #
-        if (!$this.isWindows()){
-            $dir = $dir -replace '\\', '/'
-        } else{
-            $dir = $dir -replace '/', '\'
-        }
-        #
-        return $dir
-    }
     <# -----------------------------------------
      createdirs
      create a directory if it does not exist 
@@ -184,7 +173,7 @@
         #
         $dir = $this.CrossPlatformPaths($dir)
         #
-        if (test-path $dir){
+        if (test-path -literalpath $dir){
             Get-ChildItem -Directory $dir | Remove-Item -force -Confirm:$false -recurse
             remove-item $dir -force -Confirm:$false -Recurse
         }
@@ -195,8 +184,8 @@
         #
         $file = $this.CrossPlatformPaths($file)
         #
-        if (test-path $file){
-            remove-item $file -force -Confirm:$false -ea Continue
+        if (test-path -literalpath $file){
+            remove-item -literalpath $file -force -Confirm:$false -ea Continue
         }
         #
     }
@@ -211,22 +200,6 @@
         #
     }
     <# ------------------------------------------
-    CheckPath
-    ------------------------------------------
-    check if a path exists
-    ------------------------------------------ #>
-    [switch]CheckPath([string]$p){
-        #
-        $p = $this.CrossPlatformPaths($p)
-        #
-        if (test-path $p){
-            return $true
-        } else {
-            return $false
-        }
-        #
-    }
-    <# ------------------------------------------
     LastWrite
     ------------------------------------------
     get the last write time for a path or file
@@ -235,7 +208,7 @@
         #
         $p = $this.CrossPlatformPaths($p)
         #
-        if (test-path $p){
+        if (test-path -literalpath $p){
             return (Get-ChildItem $p).LastWriteTime
         } else {
             return Get-Date

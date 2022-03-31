@@ -79,6 +79,20 @@ Class testtools{
         #
     }
     #
+    [void]checkcreatepyenv($tools){
+        if ($tools.isWindows()){
+            if(!($tools.CheckpyEnvir())){
+                #
+                Write-Host '.'
+                Write-Host 'ap environment does not exist.'
+                Write-Host '    creating in' $tools.pyenv()
+                Write-Host '    log will be created at:' $tools.pyinstalllog()
+                #
+                $tools.CreatepyEnvir()
+            }
+        }
+    }
+    #
     [void]verifyAPIDdef(){
         #
         $files = get-childitem $this.mpath ('*' + $this.apfile_temp_constant)

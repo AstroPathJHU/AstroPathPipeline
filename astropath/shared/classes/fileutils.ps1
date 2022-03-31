@@ -358,10 +358,11 @@ class fileutils : generalutils {
      Usage: $this.WriteFile(fpath, fstring, opt)
     ----------------------------------------- #>
      [void]WriteFile([string]$fpath,[array]$fstring, [string]$opt){
+        #
         if ($opt -eq 'Set'){
-            Set-Content -Path $fpath -Value $fstring -NoNewline -EA Stop
+            Set-Content -LiteralPath $fpath -Value $fstring -NoNewline -EA Stop
         } elseif ($opt -eq 'Pop') {
-            Add-Content -Path $fpath -Value $fstring -NoNewline -EA Stop
+            Add-Content -LiteralPath $fpath -Value $fstring -NoNewline -EA Stop
         }
      }
     <# -----------------------------------------

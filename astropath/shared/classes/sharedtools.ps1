@@ -16,6 +16,20 @@
     [array]$modules
     [switch]$checkpyenvswitch = $false
     [switch]$teststatus = $false
+    [hashtable]$softwareurls = @{
+        'Miniconda3' = 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe';
+        'MikTeX' = '';
+        'matlab' = '';
+        'git' = '';
+        'python' = ''
+    }
+    [hashtable]$softwareargs = @{
+        'Miniconda3' = @('/InstallationType=AllUsers', '/RegisterPython=1','/S','/D=C:\ProgramData\Miniconda3')
+        'MikTeX' = @('');
+        'matlab' = @('');
+        'git' = @('');
+        'python' = @('')
+    }
     #
     sharedtools(){}
     #
@@ -293,10 +307,7 @@
         $drive = '\\'+$server+'\C$'
         #
         $minicondapath = ($drive + '\ProgramData\Miniconda3')
-        if (!(test-path $minicondapath )){
-            Throw "Miniconda must be installed for this code version " + 
-                $minicondapath
-        }
+        $this.testcondainstall($minicondapath)
         #
         if ((get-module).name -notcontains 'Conda'){
             $Env:CONDA_EXE = $minicondapath, 'Scripts\conda.exe' -join '\'
@@ -309,6 +320,18 @@
             Import-Module $mname -Global
             #
         } 
+    }
+    [void]testcondainstall($minicondapath){
+        #
+        if (!(test-path $minicondapath )){
+            $this.softwareinstall('Miniconda3', $minicondapath)
+        }
+        #
+        if (!(test-path $minicondapath )){
+            Throw "Miniconda must be installed for this code version " + 
+                $minicondapath
+        }
+        #
     }
     <# ------------------------------------------
     CheckMikTex
@@ -443,5 +466,41 @@
         return $modulestatus
         #
     }
-   #
+    #
+    [void]softwareinstall($name){
+        $this.createdirs($this.pyinstalllocation())
+        $this.softwaredownload($name)
+        $this.softwareexe($name)
+        $this.removefile($this.softwarelinkpath($name))
+    }
+    #
+    [void]softwareinstall($name, $path){
+        Write-Verbose ('INSTALLING:' + $name)
+        $this.createdirs($this.pyinstalllocation())
+        $this.softwaredownload($name)
+        $this.softwareexe($name, $path)
+        $this.removefile($this.softwarelinkpath($name))
+    }
+    #
+    [void]softwaredownload($name){
+            $url = $this.softwareurls.($name)
+            curl $url -o $this.softwarelinkpath($name)
+    }
+    #
+    [void]softwareexe($name){
+        Start-Process -Filepath $this.softwarelinkpath($name) `
+            -ArgumentList $this.softwareargs.($name) -Wait -Verb RunAs
+    }
+    #
+    [void]softwareexe($name, $path){
+        $newargs = $this.softwareargs.($name) `
+            -replace [regex]::escape('C:\ProgramData\' + $name ), $path
+        Start-Process -Filepath $this.softwarelinkpath($name) `
+            -ArgumentList $newargs -Wait -Verb RunAs
+    }
+    #
+    [string]softwarelinkpath($name){
+            return ($this.pyinstalllocation() + $name + ".exe")
+    }
+    #
 }

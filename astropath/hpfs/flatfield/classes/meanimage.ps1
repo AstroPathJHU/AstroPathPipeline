@@ -1,7 +1,7 @@
 ﻿<#
 --------------------------------------------------------
 meanimage
-Created By: Andrew Jorquera
+Benjamin Gree, Andrew Jorquera
 Last Edit: 10/19/2021
 --------------------------------------------------------
 Description
