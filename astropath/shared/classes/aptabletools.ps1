@@ -26,16 +26,17 @@
     [string]$apfile_constant = '.csv'
     #
     $color_hex = @{
-        Red = 'FF0000'; R = 'FF0000';
-        Green = '00FF00'; G = '00FF00';
-        Blue = '0000FF'; B = '0000FF';
-        Cyan = '00FFFF'; C = '00FFFF';
-        Yellow = 'FFFF00'; Y = 'FFFF00';
+        Red = 'D10000'; R = 'D10000';
+        Green = '11FF00'; G = '11FF00';
+        Blue = '888888'; B = '888888';
+        Cyan = '0077FF'; C = '0077FF';
+        Yellow = 'FFF300'; Y = 'FFF300';
         Magenta = 'FF00FF'; M = 'FF00FF';
         White = 'FFFFFF'; W = 'FFFFFF';
         Black = '000000'; K = '000000';
-        Orange = 'E8692B'; O = 'E8692B';
-        Coral = 'FFC0CB'; L = 'FFC0CB';
+        Orange = '923D00'; O = '923D00'
+        #Orange = 'E8692B'; O = 'E8692B';
+        #Coral = 'FFC0CB'; L = 'FFC0CB';
     }
     #
     [string]apfullname($mpath, $file){
