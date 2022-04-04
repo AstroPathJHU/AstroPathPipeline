@@ -35,6 +35,14 @@ Class informinput : moduletools {
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     [array]$corruptedfiles
     #
+    $export_type_setting = @{
+        Default         = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>';
+        BinaryMaps       = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>';
+        Component        = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>';
+        BinaryWComponent = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>'
+    }
+
+    #
     informinput([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
         #
         $this.flevel = [FileDownloads]::FLATWIM3
@@ -335,21 +343,33 @@ Class informinput : moduletools {
         #
         $procedure = $this.sample.GetContent($this.algpath)
         $exportline = $procedure | Where-Object {$_ -match '<exporttypes>'}
-        #
         if (!$exportline) {
             throw 'error in reading <exporttypes> line in procedure'
         }
         #
-        $needscomponent = $this.sample.segmentationtargets | 
-                        Where-Object {$_.Target -match $this.abx}
-        if ($needscomponent) {
-            $componentline = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>'
+        [bool]$needsbinaryseg = $this.sample.binarysegtargets | 
+                        Where-Object {$_.Target -contains $this.abx}
+        [bool]$needscomponent = $this.sample.componenttarget | 
+                        Where-Object {$_.Target -contains $this.abx}
+        #
+        $changedline = ''
+        switch ($true) {
+            {($needsbinaryseg -and $needscomponent)} {
+                $changedline = $this.export_type_setting.BinaryWComponent
+                break
+            }
+            $needsbinaryseg {
+                $changedline = $this.export_type_setting.BinaryMaps
+            }
+            $needscomponent {
+                $changedline = $this.export_type_setting.Component
+            }
+            default {
+                $changedline = $this.export_type_setting.Default
+            }
         }
-        else {
-            $componentline = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>'
-        }
-        $this.sample.info("Replacing exportline:" + $exportline + "with componentline:" + $componentline)
-        (Get-Content $this.algpath).replace($exportline, $componentline) | 
+        $this.sample.info("Replacing exportline:" + $exportline + "with changedline:" + $changedline)
+        (Get-Content $this.algpath).replace($exportline, $changedline) | 
             Set-Content $this.algpath
         #
     }

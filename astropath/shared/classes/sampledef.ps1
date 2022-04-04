@@ -46,7 +46,8 @@ class sampledef : sharedtools{
     [string]$cantibodyconstant = '_cell_seg_data.txt'
     #
     [array]$antibodies
-    [array]$segmentationtargets
+    [array]$componenttarget
+    [array]$binarysegtargets
     #
     sampledef(){}
     #
@@ -479,20 +480,27 @@ class sampledef : sharedtools{
         $this.ImportMergeConfig($this.basepath)
         $targets = $this.mergeconfig_data
         #
-        $lineagetargets = $targets | Where-Object {$_.SegmentationStatus -gt 0 -and $_.TargetType -eq 'Lineage'}
-        $statusgroups = $lineagetargets | Group-Object SegmentationStatus
+        $sorted = $targets | 
+            Where-Object {$_.SegmentationStatus -gt 0} | 
+            Sort-Object -Property Opal
+        $this.componenttarget = $sorted[0]
         #
-        $segmentation = @()
+        $lineagetargets = $targets | 
+            Where-Object {$_.SegmentationStatus -gt 0 -and $_.TargetType -eq 'Lineage'}
+        $statusgroups = $lineagetargets | 
+            Group-Object SegmentationStatus
+        #
+        $binaryseg = @()
         foreach ($statusgroup in $statusgroups) {
             $sorted = $statusgroup.group | Sort-Object -Property Opal
             $lowestopal = $sorted[0]
             if ($lowestopal.ImageQA -eq 'Tumor') {
                 $lowestopal.Target = 'Tumor'
             }
-            $segmentation += $lowestopal
+            $binaryseg += $lowestopal
         }
         #
-        $this.segmentationtargets = $segmentation
+        $this.binarysegtargets = $binaryseg
         #
     }
     #
