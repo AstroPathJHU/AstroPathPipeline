@@ -34,9 +34,11 @@ Class informinput : moduletools {
     [int]$err
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     [array]$corruptedfiles
+    [bool]$needsbinaryseg
+    [bool]$needscomponent
     #
     $export_type_setting = @{
-        Default         = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>';
+        Default          = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>';
         BinaryMaps       = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>';
         Component        = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>';
         BinaryWComponent = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>'
@@ -159,6 +161,46 @@ Class informinput : moduletools {
              ForEach-Object {$_.FullName} |
             foreach-object {$_+"`r`n"}
         $this.sample.setfile($this.image_list_file, $this.image_list)
+        #
+    }
+    <# -----------------------------------------
+     CheckExportOptions
+     using information from the mergeconfig csv
+     file, check to make sure the outputted 
+     inform prototype has the correct export 
+     options and update if neccesary
+     ------------------------------------------
+     Usage: $this.CheckExportOptions()
+    ----------------------------------------- #>
+    [void]CheckExportOptions(){
+        #
+        $this.GetSegmentationData()
+        #
+        $procedure = $this.sample.GetContent($this.algpath)
+        $exportline = $procedure | Where-Object {$_ -match '<exporttypes>'}
+        if (!$exportline) {
+            throw 'error in reading <exporttypes> line in procedure'
+        }
+        #
+        $changedline = ''
+        switch ($true) {
+            {($needsbinaryseg -and $needscomponent)} {
+                $changedline = $this.export_type_setting.BinaryWComponent
+                break
+            }
+            $this.needsbinaryseg {
+                $changedline = $this.export_type_setting.BinaryMaps
+            }
+            $this.needscomponent {
+                $changedline = $this.export_type_setting.Component
+            }
+            default {
+                $changedline = $this.export_type_setting.Default
+            }
+        }
+        $this.sample.info("Replacing exportline:" + $exportline + "with changedline:" + $changedline)
+        (Get-Content $this.algpath).replace($exportline, $changedline) | 
+            Set-Content $this.algpath
         #
     }
     <# -----------------------------------------
@@ -303,7 +345,15 @@ Class informinput : moduletools {
     [void]CheckInFormOutputFiles(){
         #
         $o = $this.informoutpath+"\*"
-        $informtypes = @('cell_seg_data.txt','binary_seg_maps.tif','component_data.tif')
+        $informtypes = @('cell_seg_data.txt')
+        if ($this.needsbinaryseg) {
+            $informtypes += 'binary_seg_maps.tif'
+        }
+        if ($this.needscomponent) {
+            $informtypes += 'component_data.tif'
+        }
+        Write-Host '    InformTypes:' $informtypes
+        #
         $this.corruptedfiles = @()
         #
         foreach ($informtype in $informtypes) {
@@ -325,52 +375,23 @@ Class informinput : moduletools {
         }
     }
     <# -----------------------------------------
-     CheckExportOptions
-     using information from the mergeconfig csv
-     file, check to make sure the outputted 
-     inform prototype has the correct export 
-     options and update if neccesary
+     GetSegmentationData
+     Get segmentation data from mergeconfig.csv
+     and check if it exists
      ------------------------------------------
-     Usage: $this.CheckExportOptions()
+     Usage: $this.GetSegmentationData()
     ----------------------------------------- #>
-    [void]CheckExportOptions(){
+    [void]GetSegmentationData(){
         #
         $this.sample.ImportMergeConfigCSV($this.sample.basepath)
         $this.sample.findsegmentationtargets()
         if (!$this.sample.mergeconfig_data) {
             throw 'segmentation option not needed on any procedure'
         }
-        #
-        $procedure = $this.sample.GetContent($this.algpath)
-        $exportline = $procedure | Where-Object {$_ -match '<exporttypes>'}
-        if (!$exportline) {
-            throw 'error in reading <exporttypes> line in procedure'
-        }
-        #
-        [bool]$needsbinaryseg = $this.sample.binarysegtargets | 
+        $this.needsbinaryseg = $this.sample.binarysegtargets | 
                         Where-Object {$_.Target -contains $this.abx}
-        [bool]$needscomponent = $this.sample.componenttarget | 
+        $this.needscomponent = $this.sample.componenttarget | 
                         Where-Object {$_.Target -contains $this.abx}
-        #
-        $changedline = ''
-        switch ($true) {
-            {($needsbinaryseg -and $needscomponent)} {
-                $changedline = $this.export_type_setting.BinaryWComponent
-                break
-            }
-            $needsbinaryseg {
-                $changedline = $this.export_type_setting.BinaryMaps
-            }
-            $needscomponent {
-                $changedline = $this.export_type_setting.Component
-            }
-            default {
-                $changedline = $this.export_type_setting.Default
-            }
-        }
-        $this.sample.info("Replacing exportline:" + $exportline + "with changedline:" + $changedline)
-        (Get-Content $this.algpath).replace($exportline, $changedline) | 
-            Set-Content $this.algpath
         #
     }
     <# -----------------------------------------
