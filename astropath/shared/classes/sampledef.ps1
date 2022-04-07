@@ -306,8 +306,9 @@ class sampledef : sharedtools{
             $file = ($ids | Where-Object { $_.slideid `
                     -contains $this.slideid}).FlatfieldVersion
         } else  {
-            $file1 = ($ids | Where-Object { $_.BatchID.padleft(2, '0') `
-                -contains $this.batchid}).FlatfieldVersion
+            $file1 = ($ids |
+                Where-Object { $_.BatchID.padleft(2, '0') -contains $this.batchid `
+                -and $_.Project -contains $this.project }).FlatfieldVersion
            if ($file1.Count -ne 1){
                 $file = $file1[0]
            } elseif ($file1.Count -eq 1){
