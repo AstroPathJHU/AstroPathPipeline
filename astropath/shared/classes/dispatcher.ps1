@@ -54,7 +54,7 @@ class Dispatcher : DispatcherTools {
             Write-Host " Checking for tasks" -ForegroundColor Yellow
             $this.checknew()
             $this.DistributeTasks()
-            $this.WaitTask()
+            $this.WaitAny()
             $this.checknew()
         }
         #

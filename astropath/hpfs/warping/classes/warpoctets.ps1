@@ -64,9 +64,7 @@ Class warpoctets : moduletools {
             $this.sample.slideid,
             '--shardedim3root',  $rpath, 
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
-            '--noGPU',
-            '--no-log',
-            $globalargs
+            '--noGPU', '--no-log', $globalargs
          ) -join ' '
         #
         return $pythontask

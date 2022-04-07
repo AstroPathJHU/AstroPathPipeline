@@ -501,6 +501,7 @@
     [void]runpythontask($taskname, $pythontask){
         #
         $externallog = $this.ProcessLog($taskname)
+        $this.sample.info(('python task: ' + $pythontask))
         if ($this.sample.isWindows()){
             $this.sample.checkconda()
             conda activate $this.sample.pyenv()

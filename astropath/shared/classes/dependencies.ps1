@@ -29,12 +29,12 @@
     }
     #
     [void]getantibodies(){
-       # try{
+        try{
             $this.findantibodies($this.basepath)
-       # } catch {
-        #    Write-Host $_.Exception.Message
-        #    return
-        #}
+        } catch {
+            Write-Host $_.Exception.Message
+            return
+        }
     }
     #
     [void]getlogstatussub($cmodule){
@@ -575,7 +575,8 @@
         #
         $this.originaltasks = $current_queue_data
         $this.cleanedtasks = $this.originaltasks -replace ('\s','')
-        $this.cleanedtasks = $this.cleanedtasks | ForEach-Object {$_.Split(',')[0..3] -join(',')}
+        $this.cleanedtasks = $this.cleanedtasks | 
+            ForEach-Object {$_.Split(',')[0..3] -join(',')}
         #
     }
     
@@ -605,12 +606,12 @@
         }
         #
         if ($this.vmq.checkforidletask($this.project, 
-        $this.slideid, $antibody)){
+            $this.slideid, $antibody)){
             return 1
         } 
         #
         if ($this.vmq.checkforreadytask($this.project, 
-        $this.slideid, $antibody)){
+            $this.slideid, $antibody)){
             return 2
         }
         #

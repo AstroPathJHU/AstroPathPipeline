@@ -40,7 +40,7 @@
         $this.cleanup($sampletracker)
         Write-Host 'defining module status finished'
         #
-        #$this.teststatus($sampletracker)
+        $this.teststatus($sampletracker)
         #$this.testupdate($sampletracker, 'transfer', 'shredxml')
         $this.testupdate($sampletracker, 'shredxml', 'meanimage')
         $this.testupdate($sampletracker, 'meanimage', 'batchflatfield')
@@ -50,10 +50,10 @@
         $this.testupdate($sampletracker, 'warpoctets', 'batchwarpkeys')
         $this.testupdate($sampletracker, 'batchwarpkeys', 'batchwarpfits')
         $this.testupdate($sampletracker, 'batchwarpfits', 'imagecorrection')
-        #$this.testupdate($sampletracker, 'imagecorrection', 'vminform')
-        #$this.testupdate($sampletracker, 'vminform', 'merge')
-        #$this.testupdate($sampletracker, 'merge', 'imageqa')
-        #$this.testupdate($sampletracker, 'imageqa', 'segmaps')
+        $this.testupdate($sampletracker, 'imagecorrection', 'vminform')
+        $this.testupdate($sampletracker, 'vminform', 'merge')
+        $this.testupdate($sampletracker, 'merge', 'imageqa')
+        $this.testupdate($sampletracker, 'imageqa', 'segmaps')
         $this.cleanup($sampletracker)
         $this.addbatchflatfieldexamples($sampletracker)
         Write-Host '.'
