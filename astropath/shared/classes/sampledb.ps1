@@ -16,16 +16,16 @@ class sampledb : sharedtools {
     #
     sampledb(){
         $this.mpath = '\\bki04\astropath_processing'
-        $this.vmq = [vminformqueue]::new()
+        $this.vmq = [vminformqueue]::new($this.mpath)
     }
     sampledb($mpath){
         $this.mpath = $mpath
-        $this.vmq = [vminformqueue]::new()
+        $this.vmq = [vminformqueue]::new($this.mpath)
     }
     sampledb($mpath, $projects){
         $this.mpath = $mpath
         $this.projects = $projects
-        $this.vmq = [vminformqueue]::new()
+        $this.vmq = [vminformqueue]::new($this.mpath)
     }
     #
     <# -----------------------------------------
