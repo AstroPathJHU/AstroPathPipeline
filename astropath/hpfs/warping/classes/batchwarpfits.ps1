@@ -78,7 +78,7 @@ class batchwarpfits : moduletools {
         }
         $current_keys = $current_keys |
          foreach-object {
-              $this.sample.MSIfolder() + '\' + $_ + '.im3'
+              $this.sample.im3folder() + '\' + $_ + '.im3'
         }
         $this.sample.slideid = $sid 
         return $current_keys
