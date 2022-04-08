@@ -17,10 +17,10 @@ using module .\testtools.psm1
         $this.launchtests()
     }
     #
-    testpsbatchwarpkeys($dryrun) : base('1', 'M10_2', '6', $dryrun){
+    testpsbatchwarpkeys($dryrun) : base('16', 'AP01600030', '2', $dryrun){
         #
         $this.processloc = '\\bki08\e$'
-        $this.basepath = '\\bki04\Clinical_Specimen'
+        $this.basepath = '\\bki-fs1\data01\Clinical_Specimen_14'
         $this.launchtests()
         #
     }
@@ -35,7 +35,7 @@ using module .\testtools.psm1
         $this.runpywarpkeysexpected($inp)
         $this.testlogsexpected($inp)
         $this.testcleanup($inp)
-        #
+        <#
         $inp.all = $true# uses all slide from the cohort, 
         #   output goes to the mpath\warping\octets folder
         $inp.updateprocessloc()
@@ -46,7 +46,7 @@ using module .\testtools.psm1
         $this.testlogsexpected($inp)
         $this.testcleanup($inp)
         $inp.sample.finish(($this.module+'-test'))
-        #
+        #>
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -155,6 +155,12 @@ using module .\testtools.psm1
         #
         $this.addwarpoctetsdep($inp)
         #
+        $inp.getmodulename()
+        write-host $inp.pythonmodulename
+        write-host $inp.sample.pybatchflatfieldfullpath()
+        write-host $inp.workingdir()
+        write-host $inp.buildpyopts('cohort')
+        throw 'here'
         $task = $this.getmoduletask($inp)
         $inp.getbatchwarpoctets()
         $this.runpytesttask($inp, $task[0], $task[1])
@@ -199,7 +205,7 @@ using module .\testtools.psm1
 }
 #
 try {
-    [testpsbatchwarpkeys]::new() | Out-Null
+    [testpsbatchwarpkeys]::new($dryrun) | Out-Null
 } catch {
     Throw $_.Exception.Message
 }
