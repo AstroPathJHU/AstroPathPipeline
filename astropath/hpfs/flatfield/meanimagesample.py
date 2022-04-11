@@ -179,9 +179,8 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                         r_key = (r.n,r.file)
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         proc_results[r_key] = pool.apply_async(return_new_mask_labelled_regions,
-                                                               (im,r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                               (self,im,r.file.rstrip(UNIV_CONST.IM3_EXT),
                                                                 background_thresholds,ets,
-                                                                self.layer_group_names,
                                                                 self.__image_masking_dirpath))
                 for (rn,rfile),res in proc_results.items() :
                     try :
@@ -200,9 +199,8 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                 try :
                     with r.using_corrected_im3() as im :
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
-                        new_lmrs=return_new_mask_labelled_regions(im,r.file.rstrip(UNIV_CONST.IM3_EXT),
+                        new_lmrs=return_new_mask_labelled_regions(self,im,r.file.rstrip(UNIV_CONST.IM3_EXT),
                                                                   background_thresholds,ets,
-                                                                  self.layer_group_names,
                                                                   self.__image_masking_dirpath)
                         labelled_mask_regions+=new_lmrs
                 except Exception as e :
@@ -444,9 +442,8 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                         r_key = (r.n,r.file)
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         proc_results[r_key] = pool.apply_async(save_plots_for_image,
-                                                               (im,r.file.rstrip(UNIV_CONST.IM3_EXT),
-                                                                background_thresholds,ets,self.layer_group_names,
-                                                                r.allexposuretimes,
+                                                               (self,im,r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                                background_thresholds,ets,r.allexposuretimes,
                                                                 self.exposure_time_histograms_and_bins_by_layer_group,
                                                                 self.__image_masking_dirpath))
                 for (rn,rfile),res in proc_results.items() :
@@ -464,11 +461,9 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                 self.logger.debug(msg)
                 try :
                     with r.using_corrected_im3() as im :
-                        save_plots_for_image(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
+                        save_plots_for_image(self,im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                              self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
-                                             self.layer_group_names,
-                                             r.allexposuretimes,
-                                             self.exposure_time_histograms_and_bins_by_layer_group,
+                                             r.allexposuretimes,self.exposure_time_histograms_and_bins_by_layer_group,
                                              self.__image_masking_dirpath)
                 except Exception as e :
                     warnmsg = f'WARNING: saving masking plots for rectangle {r.n} '
