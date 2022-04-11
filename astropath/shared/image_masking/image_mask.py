@@ -45,14 +45,17 @@ class ImageMask() :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,im_array,im_key,bg_thresholds,norm_ets) :
+    def __init__(self,im_array,im_key,bg_thresholds,norm_ets,layer_group_names) :
         """
-        im_array      = the multilayer image array whose mask should be created 
-                        (may already be corrected to a set of exposure times)
-        im_key        = the string representing the key of the image filename 
-                        (used as a prepend to the masking file name and in labelled mask regions)
-        bg_thresholds = a list of the background intensity thresholds in counts in each image layer
-        norm_ets      = a list of the exposure times to which the image layers have been normalized 
+        im_array          = the multilayer image array whose mask should be created 
+                            (may already be corrected to a set of exposure times)
+        im_key            = the string representing the key of the image filename 
+                            (used as a prepend to the masking file name and in labelled mask regions)
+        bg_thresholds     = a list of the background intensity thresholds in counts in each image layer
+        norm_ets          = a list of the exposure times to which the image layers have been normalized 
+        layer_group_names = a list of the names (generally broadband filter names) of each image layer
+                            (used to determine which cuts are applied where, must correspond to some defined values)
+                            (best to use the value of this image's sample property)
 
         The last three arguments are only needed (and the last two are required) if plots for this image will be saved
         """
@@ -426,7 +429,7 @@ class ImageMask() :
 
 #################### FILE-SCOPE CONVENIENCE FUNCTIONS ####################
 
-def return_new_mask_labelled_regions(im_array,im_key,bg_thresholds,norm_ets,savedir=None) :
+def return_new_mask_labelled_regions(im_array,im_key,bg_thresholds,norm_ets,layer_group_names,savedir=None) :
     """
     Create an ImageMask, write out the files it creates, and return its list of labelled mask regions
     This function writes out the ImageMask it creates and doesn't return it in order to have the 
@@ -436,11 +439,11 @@ def return_new_mask_labelled_regions(im_array,im_key,bg_thresholds,norm_ets,save
     
     arguments are the same as ImageMask.__init__
     """
-    mask = ImageMask(im_array,im_key,bg_thresholds,norm_ets)
+    mask = ImageMask(im_array,im_key,bg_thresholds,norm_ets,layer_group_names)
     mask.save_mask_files(savedir)
     return mask.labelled_mask_regions
 
-def save_plots_for_image(im_array,im_key,bg_thresholds,norm_ets,orig_ets,exp_time_hists_and_bins,savedir) :
+def save_plots_for_image(im_array,im_key,bg_thresholds,norm_ets,layer_group_names,orig_ets,exp_time_hists_and_bins,savedir) :
     """
     Create the masks for a given image and write out plots of the process
     Useful if all you care about is getting the plots
@@ -448,5 +451,5 @@ def save_plots_for_image(im_array,im_key,bg_thresholds,norm_ets,orig_ets,exp_tim
 
     arguments are the same as ImageMask.__init__ + ImageMask.save_plots
     """
-    mask = ImageMask(im_array,im_key,bg_thresholds,norm_ets)
+    mask = ImageMask(im_array,im_key,bg_thresholds,norm_ets,layer_group_names)
     mask.save_plots(orig_ets,exp_time_hists_and_bins,savedir)

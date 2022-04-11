@@ -1,4 +1,5 @@
 import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
+from multiprocessing.sharedctypes import Value
 
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
@@ -527,6 +528,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   @methodtools.lru_cache()
   @property
   def wavelengths(self) :
+    """
+    The Wavelengths for each image layer as listed in the Full.xml file
+    """
     tree = ET.parse(self.fullxmlfile)
     root = tree.getroot()
     wavelength_find = './G/G/G/G[@name="Spectra"]/G/G[@name="Spectrum"]/G/D[@name="Wavelengths"]'
@@ -535,12 +539,99 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @methodtools.lru_cache()
   @property
-  def filternames(self) :
+  def filter_names(self) :
+    """
+    The ExcitationFilterNames for each image layer as listed in the Full.xml file
+    """
     tree = ET.parse(self.fullxmlfile)
     root = tree.getroot()
     filter_name_find = './G/G/G/G[@name="Spectra"]/G/G[@name="AcquisitionSettings"]/G/D[@name="ExcitationFilterName"]'
     filter_names = [el.text.strip() for el in root.findall(filter_name_find)]
     return filter_names
+
+  @methodtools.lru_cache()
+  @property
+  def layer_group_names(self) :
+    """
+    The layer group names (i.e. vectra_dapi / polaris_texas_red) for each image layer 
+    as interpreted from the wavelengths and filter names in the Full.xml file 
+    """
+    if len(self.wavelengths)!=len(self.filter_names) :
+      errmsg = f'ERROR: found {len(self.wavelengths)} wavelengths but {len(self.filter_names)} filter names! '
+      errmsg+= f'Wavelengths = {self.wavelengths} and filter_names = {self.filter_names}'
+      raise RuntimeError(errmsg)
+    microscope_prepend = None
+    if len(self.wavelengths)==35 :
+      microscope_prepend = 'vectra'
+    elif len(self.wavelengths)==43 :
+      microscope_prepend = 'polaris'
+    else :
+      raise ValueError(f'ERROR: unrecognized number of wavelengths/filter_names ({len(self.wavelengths)})!')
+    result = []
+    for wl,fn in zip(self.wavelengths,self.filter_names) :
+      to_add = f'{microscope_prepend}_'
+      if fn=='DAPI' :
+        to_add+='dapi'
+      elif fn=='DAPI / Opal 780' :
+        to_add+='dapi' if wl<700 else 'opal_780'
+      elif fn=='FITC' :
+        to_add+='fitc'
+      elif fn=='Cy3' :
+        to_add+='cy3'
+      elif fn=='Texas Red' :
+        to_add+='texas_red'
+      elif fn=='Opal 480 / Cy5' :
+        to_add+='opal_480' if wl<600 else 'cy5'
+      elif fn=='Cy5' :
+        to_add+='cy5'
+      else :
+        raise ValueError(f'ERROR: unrecognized filter_name "{fn}"! (wavelength = {wl})')
+      result.append(to_add)
+    return result
+
+  @methodtools.lru_cache()
+  @property
+  def layer_group_boundaries(self) :
+    """
+    The first and last layers in each layer group as determined from the Full.xml file
+    """
+    result = []
+    last_lgname = None; start_lgn = 1
+    for lgn,lgname in enumerate(self.layer_group_names,start=1) :
+      if last_lgname is None :
+        last_lgname = lgname
+      if lgname!=last_lgname :
+        result.append((start_lgn,lgn-1))
+        last_lgname = lgname
+        start_lgn = lgn
+    result.append((start_lgn,lgn))
+    return result
+
+  @methodtools.lru_cache()
+  @property
+  def brightest_layers(self) :
+    """
+    The layer numbers showing the brightest overall images in each layer group
+    (Informal, just used for plotting)
+    """
+    result = []
+    for lgb in self.layer_group_boundaries :
+      lgn = self.layer_group_names[lgb[0]-1]
+      if lgn.endswith('dapi') or lgn.endswith('cy5') or lgn=='vectra_texas_red' :
+        result.append(int(0.5*(lgb[0]+lgb[1])))
+      elif lgn.endswith('fitc') or lgn=='polaris_cy3' :
+        result.append(lgb[0]+1)
+      elif lgn=='vectra_cy3' :
+        result.append(lgb[0]+2)
+      elif lgn=='polaris_opal_780' :
+        result.append(lgb[0])
+      elif lgn=='polaris_opal_480' :
+        result.append(lgb[1]-1)
+      elif lgn=='polaris_texas_red' :
+        result.append(lgb[1]-2)
+      else :
+        raise ValueError(f'ERROR: unrecognized layer group name "{lgn}"!')
+    return result
 
 class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
