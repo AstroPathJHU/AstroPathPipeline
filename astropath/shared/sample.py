@@ -524,6 +524,24 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def REDCapID(self):
     return self.clinicalinfo.REDCapID
 
+  @methodtools.lru_cache()
+  @property
+  def wavelengths(self) :
+    tree = ET.parse(self.fullxmlfile)
+    root = tree.getroot()
+    wavelength_find = './G/G/G/G[@name="Spectra"]/G/G[@name="Spectrum"]/G/D[@name="Wavelengths"]'
+    wavelengths = [int(el.text.strip()) for el in root.findall(wavelength_find)]
+    return wavelengths
+
+  @methodtools.lru_cache()
+  @property
+  def filternames(self) :
+    tree = ET.parse(self.fullxmlfile)
+    root = tree.getroot()
+    filter_name_find = './G/G/G/G[@name="Spectra"]/G/G[@name="AcquisitionSettings"]/G/D[@name="ExcitationFilterName"]'
+    filter_names = [el.text.strip() for el in root.findall(filter_name_find)]
+    return filter_names
+
 class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
   Base class for a sample that will be used in a workflow,
