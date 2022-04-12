@@ -12,15 +12,15 @@ class vminformqueue : modulequeue {
     #
     vminformqueue() : base ('vminform'){
         $this.vminformqueueinit()
-        $this.coalescevminformqueues()
+        #$this.coalescevminformqueues()
     }
     vminformqueue($mpath): base ($mpath, 'vminform'){
         $this.vminformqueueinit()
-        $this.coalescevminformqueues()
+        #$this.coalescevminformqueues()
     }
     vminformqueue($mpath, $project) : base( $mpath, 'vminform', $project){
         $this.vminformqueueinit()
-        $this.coalescevminformqueues($project)
+        #$this.coalescevminformqueues($project)
     }
     vminformqueueinit(){
         $this.refobject = 'taskid'
@@ -324,7 +324,7 @@ class vminformqueue : modulequeue {
         $D = Get-Date
         $currenttask2 = "$currenttask" + ",Processing: " + 
             $currentworker.server + '-' + $currentworker.location + "," + $D
-        $mxtstring = 'Global\' + $this.queue_file.replace('\', '_') + '.LOCK'
+        $mxtstring = 'Global\' + ($this.mainqueuelocation()).replace('\', '_') + '.LOCK'
         #
         # add escape to '\'
         #
@@ -338,9 +338,9 @@ class vminformqueue : modulequeue {
             try{
                 $imxtx = $mxtx.WaitOne(60 * 10)
                 if($imxtx){
-                    $Q = get-content -Path $this.queue_file
+                    $Q = get-content -Path $this.mainqueuelocation()
                     $Q2 = $Q -replace $rg,$currenttask2
-                    Set-Content -Path $this.queue_file -Value $Q2
+                    Set-Content -Path $this.mainqueuelocation() -Value $Q2
                     $mxtx.releasemutex()
                     break
                 } else{
