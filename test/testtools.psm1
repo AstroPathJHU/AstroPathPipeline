@@ -26,6 +26,8 @@ Class testtools{
     [string]$slideid2 = 'M55_1'
     [string]$testrpath
     [string]$apfile_temp_constant = 'Template.csv'
+    [string]$pybatchwarpingfiletest = 'warping_BatchID_08.csv'
+    [string]$batchflatfieldgtest = 'BatchID_08'
     #
     testtools(){
        $this.importmodule()
@@ -118,6 +120,10 @@ Class testtools{
     }
     #
     [void]updatepaths(){
+        #
+        if ($this.dryrun){
+            return
+        }
         #
         $tools = sharedtools
         #
@@ -265,8 +271,11 @@ Class testtools{
             $this.slideid
         ) -join '\'
         #
+        write-host '   user defined:' $md_processloc
+        write-host '    module defined:' $inp.processloc
+        #
         if (!([regex]::escape($md_processloc) -contains [regex]::escape($inp.processloc))){
-            Write-Host 'meanimage module process location not defined correctly:'
+            Write-Host 'module process location not defined correctly:'
             Write-Host $md_processloc '~='
             Throw ($inp.processloc)
         }
@@ -577,24 +586,57 @@ Class testtools{
             return
         }
         #
-        $p2 = $inp.sample.mpath + '\AstroPathCorrectionModels.csv'
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
         #
-        $micomp_data = $inp.sample.ImportCorrectionModels($inp.sample.mpath)
+        $micomp_data = $inp.sample.ImportCorrectionModels($this.mpath)
         $newobj = [PSCustomObject]@{
             SlideID = $inp.sample.slideid
             Project = $inp.sample.project
             Cohort = $inp.sample.cohort
             BatchID = $inp.sample.batchid
-            FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
+            FlatfieldVersion = $this.pybatchflatfieldtest
             WarpingFile = 'None'
         }
         #
-        $micomp_data += $newobj
+        if ($micomp_data.slideid -notmatch $inp.sample.slideid){
+            $micomp_data += $newobj
+            $micomp_data | Export-CSV $p2 -NoTypeInformation
+        }
         #
-        $micomp_data | Export-CSV $p2 -NoTypeInformation
-        $p3 = $inp.sample.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
-        $inp.sample.SetFile($p3, 'blah de blah')
-        ##
+        $p3 = $this.mpath + '\flatfield\flatfield_'+
+            $this.pybatchflatfieldtest + '.bin'
+        if (!(test-path $p3)){
+            $inp.sample.SetFile($p3, 'blah de blah')
+        }
+        #
+    }
+    #
+    [void]testcorrectionfile($tool, $tools){
+        #
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $micomp_data = $tool.ImportCorrectionModels($this.mpath)
+        #
+        $newobj = [PSCustomObject]@{
+            SlideID = $tool.slideid
+            Project = $tool.project
+            Cohort = $tool.cohort
+            BatchID = $tool.batchid
+            FlatfieldVersion = $this.pybatchflatfieldtest
+            WarpingFile = 'None'
+        }
+        #
+        if ($tool.slideid -notmatch ($micomp_data.slideid -join '|')){
+            $micomp_data += $newobj
+            $micomp_data | Export-CSV $p2 -NoTypeInformation
+        }
+        #
+        $p3 = $this.mpath + '\flatfield\flatfield_'+
+            $this.pybatchflatfieldtest + '.bin'
+        if (!(test-path $p3)){
+            $tool.SetFile($p3, 'blah de blah')
+        }
+        #
     }
     #
     [void]setupsample($inp){
@@ -608,6 +650,13 @@ Class testtools{
             'im3\meanimage') -join '\'
         #
         $inp.sample.copy($p1, $p2)
+        #
+        $this.createtestraw($inp)
+        #
+    #
+    }
+    #
+    [void]createtestraw($inp){
         #
         Write-Host '    creating mock raw directory'
         #
@@ -645,7 +694,6 @@ Class testtools{
         Write-Host '    copying regular raw files'
         $inp.sample.copy($rpath, $newtestrpath, '*')
         #
-    #
     }
     #
     [void]addoctetpatterns($inp){
@@ -694,6 +742,7 @@ Class testtools{
         Write-Host '    Task:' $task
         #
         if ($inp.sample.isWindows()){
+            $inp.sample.checkconda()
             conda run -n $inp.sample.pyenv() python -c $task
         } else{
             python -c $task
@@ -723,11 +772,16 @@ Class testtools{
     #
     [void]addtestfiles($sample, $path, $file, $source){
         #
-        $sample.('get' + $source + 'files')() | ForEach-Object{
+        $source = $source -replace '\.', ''
+        $file = $file -replace '\.', ''
+        $sample.getfiles($source, $false) | ForEach-Object{
             $sample.copy($_.FullName, $path)
-            $newname = $_.Name -replace $sample.($source + 'constant'),
+            if ($sample.($source + 'constant') `
+                -notcontains $sample.($file + 'constant')){
+                $newname = $_.Name -replace $sample.($source + 'constant'),
                  $sample.($file + 'constant')
-            rename-item ($path + '\' + $_.Name) $newname
+                rename-item ($path + '\' + $_.Name) $newname
+            }
         }
         #
     }
@@ -740,7 +794,6 @@ Class testtools{
                 $file = $this.slideid + $file
             }
             #
-            
             $fullpath = $path + '\' + $file
             write-host '    file to remove:' $fullpath
             $sample.removefile($fullpath)
@@ -752,6 +805,8 @@ Class testtools{
     #
     [void]removetestfiles($sample, $path, $file, $source){
         #
+        $source = $source -replace '\.', ''
+        $file = $file -replace '\.', ''
         $sample.getfiles($source, $false) | ForEach-Object{
             $newname = $_.Name -replace $($source + 'constant'),
                  $($file + 'constant')
@@ -769,6 +824,26 @@ Class testtools{
         #
     }
     #
-    
+    [void]testgitstatus($sample){
+        #
+        write-host '.'
+        write-host ('test git status after [' + $this.class + '] started')
+        #
+        if (!$sample.checkgitstatustest()){
+            $gitstatus = git -C $sample.testpackagepath() status
+            write-host $gitstatus
+            Throw 'git status not empty changes on branch'
+        }
+        #
+        write-host ('test git status after [' + $this.class + '] finished')
+        #
+    }
+    [void]resetvminform($sample){
+        $sample.removefile($this.mpath + '\across_project_queues\vminform-queue.csv')
+        $sample.copy(($this.mpath + '\vminform-queue.csv'),
+         ($this.mpath + '\across_project_queues'))
+        $sample.removefile(
+            $sample.vmq.localqueuefile.($this.project))
+    }
 }
 #

@@ -8,6 +8,8 @@
  -------------------------------------------#>
 class copyutils{
     #
+    [int]$ntries = 50
+    #
     copyutils(){}
     <# -----------------------------------------
      isWindows
@@ -572,9 +574,9 @@ class copyutils{
         if ($notmatch) {
             foreach ($file in $notmatch) {
                 #
-                if ($copycount -ge 50){
+                if ($copycount -ge $this.ntries){
                     Throw ('failed to copy ' +
-                        $file + '. N tries:' + $copycount)
+                        $file + ' to ' + $des + '. N tries: ' + $copycount)
                 }
                 #
                 $this.retrycopy($file, $sor, $des, $copycount)

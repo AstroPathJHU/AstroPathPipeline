@@ -22,6 +22,7 @@
         $this.testcopy($tools)
         $this.testcopylinux($tools)
         $this.testfilehasher($tools)
+        $this.testgitstatus($tools)        
         Write-Host '.'
         #
     }
@@ -415,7 +416,7 @@
             Throw 'no error'
         } catch {
             $e = $_.Exception.Message
-            if ($e -notmatch 'N tries:50'){
+            if ($e -notmatch 'failed to copy'){
                 Throw 'not correct error'
             }
         }

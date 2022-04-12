@@ -22,6 +22,7 @@
         #
         $this.testwritestartmessage($log)
         $this.testeditsampleid($log)
+        $this.testgitstatus($log)        
         Write-Host '.'
         #
     }

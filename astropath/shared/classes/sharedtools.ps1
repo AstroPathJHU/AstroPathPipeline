@@ -64,6 +64,15 @@
         #
         return $str
     }
+    #
+    [string]testpackagepath(){
+        $str = $this.coderoot() + '\..\test\data'
+        if (!$this.isWindows()){
+            $str = $str -replace ('\\', '/')
+        }
+        #
+        return $str
+    }
     <# -----------------------------------------
      CodeRoot
      the path to the powershell module (package)
@@ -250,6 +259,15 @@
            } else {
                 return $false
            }
+    }
+    #
+    [switch]checkgitstatustest(){
+        $gitstatus = git -C $this.testpackagepath() status
+        if ($gitstatus -match "nothing to commit, working tree clean"){
+             return $true
+        } else {
+             return $false
+        }
     }
     <# -----------------------------------------
     getgitversion

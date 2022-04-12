@@ -10,6 +10,8 @@
     [PSCustomObject]$mergeconfig_data
     [PSCustomObject]$imageqa_data
     #
+    [array]$antibodies
+    #
     [string]$cohorts_file = 'AstroPathCohortsProgress.csv' 
     [string]$paths_file = 'AstroPathPaths.csv'
     [string]$config_file = 'AstroPathConfig.csv'
@@ -20,6 +22,8 @@
     [string]$worker_file = 'AstroPathHPFWLocs.csv' 
     [string]$imageqa_file = 'imageqa_upkeep.csv'
     [string]$imageqa_path = '\upkeep_and_progress'
+    [system.object]$mergefiles
+    [system.object]$cantibodyfiles
     #
     [array]$imageqa_headers = @('comments')
     #
@@ -403,6 +407,35 @@
         }
         #
         return $this.mergeconfig_data
+        #
+    }
+    #
+    [PSCustomObject]ImportMergeConfig(){
+        #
+        $this.ImportMergeConfig($this.basepath) | Out-NULL
+        #
+        return $this.mergeconfig_data
+        #
+    }
+    #
+    [void]findantibodies(){
+        $this.findantibodies($this.basepath)
+    }
+    #
+    [void]findantibodies($basepath){
+        #
+        $this.ImportMergeConfig($basepath)
+        $data = $this.mergeconfig_data | 
+            Where-Object {$_.Opal -notcontains 'DAPI' `
+                -and $_.Target -notcontains 'Membrane'}
+        $targets = $data.Target
+        $qa = $data.ImageQA.indexOf('Tumor')
+        #
+        if ($qa -ge 0){
+            $targets[$qa] = 'Tumor'
+        }
+        #
+        $this.antibodies = $targets
         #
     }
     <# -----------------------------------------

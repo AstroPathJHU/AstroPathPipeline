@@ -34,9 +34,16 @@ class sampletracker : dependencies {
         #
         $this.modules | ForEach-Object {
             $this.deflogpaths($_)
-            #$this.FileWatcher($this.moduleinfo.($_).mainlog, $this.slideid, $_)
             $this.getlogstatus($_)
         }
+        #
+    }
+    #
+    [void]preparesample($slide, $slides){
+        #
+        $this.ParseAPIDdef($slide.slideid, $slides)
+        $this.defbase()
+        $this.defmodulestatus()
         #
     }
     #

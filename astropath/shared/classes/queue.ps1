@@ -647,7 +647,8 @@ class queue : vminformqueue{
         #
         $this.originaltasks = $current_queue_data
         $this.cleanedtasks = $this.originaltasks -replace ('\s','')
-        $this.cleanedtasks = $this.cleanedtasks | ForEach {$_.Split(',')[0..3] -join(',')}
+        $this.cleanedtasks = $this.cleanedtasks | 
+            ForEach-Object {$_.Split(',')[0..3] -join(',')}
         #
     }
     <# -----------------------------------------
@@ -695,8 +696,8 @@ class queue : vminformqueue{
             $this.corrmodels_file {$this.ImportCorrectionModels($this.mpath, $false)}
             $this.micomp_file {$this.ImportMICOMP($this.mpath, $false)}
             $this.worker_file {$this.Importworkerlist($this.mpath, $false)}
-            $this.vmq.mainqueue_file {$this.vmq.openmainvminformqueue($false)}
-            $this.vmq.localqueue_file {}
+            #$this.vmq.mainqueue_file {$this.vmq.openmainqueue($false)}
+            #$this.vmq.localqueue_file {}
         }
     }
 }

@@ -1,13 +1,13 @@
 ﻿function sampletracker {
     param(
         [parameter()][string]$mpath,
-        [parameter()][string]$slideid
+        [parameter()][vminformqueue]$vmq
     )
     #
-    if (!($PSBoundParameters.ContainsKey('project'))){
+    if (!($PSBoundParameters.ContainsKey('vmq'))){
         return [sampletracker]::new($mpath)
     }
     #
-    # return [sampletracker]::new($mpath, $module, $slideid, $project)
+    return [sampletracker]::new($mpath, $vmq)
     #
 }

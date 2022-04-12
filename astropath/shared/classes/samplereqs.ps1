@@ -5,9 +5,20 @@
  --------------------------------------------
  Description
     methods used to describe metadata of what
-    files are required for modules
+    files are required for modules. when adding
+    a module the pipeline add:
+    - a [module]reqfiles array to this method. 
+        - depending on the first letter of the 
+        requirement decides how the code will 
+        handle files:
+        - files listed with '-' as the first 
+        character will be appended with the 
+        slideid in the search. 
+        - a '.' indicates to handle as a list
+        of files (for example '.im3' for im3 files)
+        - no 
  -------------------------------------------#>
- class samplereqs : sampledef {
+ class samplereqs : samplefiles {
     # 
     [array]$transferreqfiles = @('_annotations.xml', '.qptiff', 'BatchID.txt')
     [array]$xmlreqfiles = @('Full.xml','Parameters.xml', '.exposurexml')
@@ -20,9 +31,16 @@
         'image_keys_needed.txt','principal_point_octets_selected.csv')
     [array]$batchwarpfitsreqfiles = @('weighted_average_warp.csv')
     [array]$imagecorrectionreqfiles = @('.fw', '.fw01','.flatwim3')
-    [array]$vminformreqfiles = @('.segmap')
+    [array]$vminformreqfiles = @('.cellseg', '.cellsegsum','.component')
     [array]$mergereqfiles = @('.merge')
     [array]$segmapsreqfiles = @('.segmap')
+    #
+    # regex's for prepending variables at the time of the search
+    # used by test file and combined by '|'
+    #
+    [array]$addslideidscan = @('^_','.qptiff')
+    [array]$addslideiddot = @('Full', 'Parameters')
+    [array]$addslideid = @('^-')
     #
     samplereqs(){}
     samplereqs($mpath) : base($mpath){}
@@ -183,6 +201,11 @@
     #
     [switch]testmergefiles($cantibodies){
         #
+        $this.getfiles('merge', $true)
+        if (!$this.mergefiles){
+            return $false 
+        }
+        #
         $date1 =  $this.getmindate('merge', $true)
         #
         foreach($antibody in $cantibodies){
@@ -209,18 +232,18 @@
         if (!$data){
             $this.addimageqa(
                 $this.basepath, $this.slideid, $cantibodies)
-            return $false
+            return $true
         }
         #
-        return $true
+        return $false
         #
     }
     #
-    [switch]testimageqafiles($cantibodies){
+    [switch]testimageqafile($cantibodies){
         #
         $this.importimageqa($this.basepath, $cantibodies)
         #
-        $data = $this.imageqa_data.slideid | 
+        $data = $this.imageqa_data | 
             Where-Object {$_.SlideID -contains $this.slideid}
         #
         foreach($antibody in $cantibodies){
@@ -241,8 +264,27 @@
              $this.im3constant, $this.segmapsreqfiles)
         #
     }
-    #
-    [switch]testfiles($path, $testfiles){
+    <# --------------------------------------------
+    testfiles
+     test the files are accurate according 
+     to the input. For input (2) checks if
+     the files in the input ([filetype]req) array
+     exist. For (3) input checks that the input 
+     either exists or that the count is correct [and
+     no files are empty (indicating a corrupt file).]
+     --------------------------------------------
+     Input 
+        [string]path: path of files to test
+        [string]source: the sample [filetype] 
+        to compare n files with. 
+        [array]testfiles: an array of files 
+            to test from [filetype]req format
+    --------------------------------------------
+    Usage
+        testfiles($path, [array]$testfiles)
+        testfiles($path, $source, [array]$testfiles)
+    -------------------------------------------- #>
+    [switch]testfiles($path, [array]$testfiles){
         #
         if (!(test-path $path)){
             return $false
@@ -259,7 +301,7 @@
         #
     }
     #
-    [switch]testfiles($path, $source, $testfiles){
+    [switch]testfiles($path, $source, [array]$testfiles){
         #
         if (!(test-path $path)){
             return $false
@@ -279,20 +321,30 @@
         return $true
         #
     }
-    #
+    <# --------------------------------------------
+    testfile 
+     test if the file exists. If the file starts with 
+     '-' prepend slideid, if the file is Parametes\ Full
+     then prepend '.'slideid. If the file has
+     '_' or matches qptiff add 
+    -------------------------------------------- #>
+
     [switch]testfile($path, $file){
         #
-        if ($file[0] -match '-'){
+        #if ($file[0] -match '-'){
+        if ($file -match ($this.addslideid -join '|')){
             $file = $this.slideid + $file
         }
         #
-        if (($file[0] -match '_') -or
-            ($file -match '.qptiff')){
+        #if (($file[0] -match '_') -or
+        #    ($file -match '.qptiff')){
+        if ($file -match ($this.addslideidscan -join '|')){
             $file = $this.slideid + '_' + $this.Scan() +  $file
         }
         #
-        if (($file -match 'Parameters') -or
-            ($file -match 'Full')){
+        #if (($file -match 'Parameters') -or
+        #    ($file -match 'Full')){
+        if ($file -match ($this.addslideiddot -join '|')){
             $file = $this.slideid + '.' + $file
         }
         #

@@ -55,6 +55,7 @@ Class testpsmeanimage : testtools {
         $this.testmasks($inp)
         $this.testcleanup($inp)
         $inp.sample.finish(($this.module+'-test'))
+        $this.testgitstatus($inp.sample)
         Write-Host '.'
     }
     <# --------------------------------------------
