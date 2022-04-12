@@ -135,10 +135,12 @@
         #
         if (($this.flevel -band [FileDownloads]::FLATFIELD) -eq 
             [FileDownloads]::FLATFIELD){
-            $flatfieldfolder = $this.processvars[0]+'\flatfield'
-            $this.sample.removedir($flatfieldfolder)
-            $this.sample.CreateDirs($flatfieldfolder)
-            $this.sample.copy($this.sample.batchflatfield(), $flatfieldfolder)
+            if ($this.sample.vers -match '0.0.1'){
+                $flatfieldfolder = $this.processvars[0]+'\flatfield'
+                $this.sample.removedir($flatfieldfolder)
+                $this.sample.CreateDirs($flatfieldfolder)
+                $this.sample.copy($this.sample.batchflatfield(), $flatfieldfolder)
+            }
         }
         #
     }

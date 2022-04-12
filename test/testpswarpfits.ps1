@@ -66,6 +66,7 @@ using module .\testtools.psm1
         $this.cleanuptest($inp)
         #
         $inp.sample.finish(($this.module+'test'))
+        $this.testgitstatus($inp.sample)
         Write-Host '.'
     }
     <# --------------------------------------------

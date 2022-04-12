@@ -6,55 +6,62 @@
  Description
  a special case of the queue functionality
  -------------------------------------------#>
-class vminformqueue : sharedtools {
+class vminformqueue : modulequeue {
     #
-    [PSCustomObject]$mainvminformcsv
-    [hashtable]$localvminformdates = @{}
-    [hashtable]$localqueue = @{}
-    [hashtable]$localqueuefile = @{}
-    [string]$localqueue_file = 'inForm_queue.csv'
-    [string]$mainqueue_file ='vminform-queue.csv'
-    [string]$mainqueue_path = '\across_project_queues'
-    [string]$project
-    
-    vminformqueue(){
-        $this.mpath = '\\bki04\astropath_processing'
+    [string]$informvers = '2.4.8'
+    #
+    vminformqueue() : base ('vminform'){
+        $this.vminformqueueinit()
+        $this.coalescevminformqueues()
     }
-    vminformqueue($mpath){
-        $this.mpath = $mpath
+    vminformqueue($mpath): base ($mpath, 'vminform'){
+        $this.vminformqueueinit()
+        $this.coalescevminformqueues()
     }
-    vminformqueue($mpath, $project){
-        $this.mpath = $mpath
-        $this.project = $project
+    vminformqueue($mpath, $project) : base( $mpath, 'vminform', $project){
+        $this.vminformqueueinit()
+        $this.coalescevminformqueues($project)
+    }
+    vminformqueueinit(){
+        $this.refobject = 'taskid'
+        $this.localqueue_filename = 'inForm_queue.csv'
+        $this.mainqueueheaders = 'TaskID,slideid,Antibody,Algorithm,ProcessingLocation,StartDate'
+        $this.localqueueheaders = 'TaskID,slideid,Antibody,Algorithm'
     }
   <# -----------------------------------------
      coalescevminformqueues
      coalesce local and main vminform queues
+     for all projects. Do not force update 
+     the local queues if this option is run.
      ------------------------------------------
      Usage: $this.coalescevminformqueues()
     ----------------------------------------- #>
     [void]coalescevminformqueues(){
-         $projects = $this.getapprojects('vminform')
-         #
-         $this.openmainvminformqueue($false)
-         $projects | ForEach-Object{
+        #
+        $projects = $this.getapprojects($this.module)
+        #
+        $this.openmainqueue($false)
+        $projects | ForEach-Object{
             $this.coalescevminformqueues($_, $true)
-         }
-         $this.writemainqueue($this.mainvminformqueuelocation())
-         #
+        }
+        #
+        $this.writemainqueue($this.mainqueuelocation())
+        #
     }
   <# -----------------------------------------
      coalescevminformqueues
      coalesce local and main vminform queues
-     for a particular project
+     for a particular project. Force updates
+     the local queue but do not create a new
+     file watcher. 
      ------------------------------------------
      Usage: $this.coalescevminformqueues($project)
     ----------------------------------------- #>
     [void]coalescevminformqueues($project){
         #
-        $this.openmainvminformqueue($false)
+        $this.openmainqueue()
         $this.coalescevminformqueues($project, $false)
-        $this.writemainqueue($this.mainvminformqueuelocation())
+        $this.writemainqueue($this.mainqueuelocation())
         #
     }
     <# -----------------------------------------
@@ -64,11 +71,13 @@ class vminformqueue : sharedtools {
     ----------------------------------------- #>
     [void]coalescevminformqueues($project, $all){
         #
+        $this.openmainqueue()
+        #
         $cproject = $project.ToString()
         if ($all){
-            $this.getlocalvminformqueue($cproject)
+            $this.getlocalqueue($cproject)
         } else {
-            $this.getlocalvminformqueue($cproject, $false)
+            $this.getlocalqueue($cproject, $false)
         }
         $localtmp = $this.localqueue.($cproject)
         $this.pairqueues($cproject)
@@ -84,132 +93,42 @@ class vminformqueue : sharedtools {
         }
         #
     }
+    <#------------------------------------------
+    will force update all local and main inform 
+    queues and create file watchers. to run after the
+    sampledb has been built
+    --------------------------------------------#>
+    [void]createwatchersvminformqueues(){
+        #
+        $projects = $this.getapprojects($this.module)
+            #
+        $this.openmainqueue($false)
+        $projects | ForEach-Object{
+            #
+            $this.coalescevminformqueues($_, $false)
+            $this.getlocalqueue($_, $true)
+            #
+        }
+        #
+        $this.writemainqueue($this.mainqueuelocation())
+        $this.openmainqueue($true)
+        #
+    }
     #
     [void]pairqueues($cproject){
         #
-        $currentprojecttasks = $this.mainvminformcsv -match ('T' + $cproject.PadLeft(3,'0'))
-        $this.updatelocalvminfomqueue($currentprojecttasks, $cproject)
-        $this.updatemainvminfomqueue($cproject)
+        $currentprojecttasks = $this.filtertasks($cproject)
+        $this.updatelocalvminformqueue($currentprojecttasks, $cproject)
+        $this.updatemainvminformqueue($cproject)
         #
     }
     <# -----------------------------------------
-     mainvminfomqueuelocation
-     open main inform queue
-     ------------------------------------------
-     Usage: $this.mainvminfomqueuelocation()
-    ----------------------------------------- #>
-    [string]mainvminformqueuelocation(){
-        #
-        $mainqueuefile = $this.mpath +
-             $this.mainqueue_path + '\' + $this.mainqueue_file
-        #
-        return $mainqueuefile
-        #
-    } 
-    #
-    [void]openmainvminformqueue(){
-       $this.openmainvminformqueue($false)
-    }
-
-    <# -----------------------------------------
-     openmainvminfomqueue
-     open main inform queue
-     ------------------------------------------
-     Usage: $this.openmainvminfomqueue()
-    ----------------------------------------- #>
-    [void]openmainvminformqueue($createwatcher){
-        #
-        $mainqueuefile = $this.mainvminformqueuelocation()
-        #
-        if (!(test-path $mainqueuefile)){
-            $this.setfile($mainqueuefile,
-                'TaskID,Specimen,Antibody,Algorithm,ProcessingLocation,StartDate')
-        }
-        #
-        $mainqueue = $this.OpenCSVFile($mainqueuefile)
-        $mainqueue = $mainqueue | where-object { $_.taskid.Length -eq 9}
-        #
-        if ($mainqueue){
-            $mainqueue | foreach-object {
-                $_ | Add-Member localtaskid $_.taskid.substring(4).trim('0') -PassThru
-            }
-        }
-        #
-        if ($createwatcher){
-            $this.FileWatcher($mainqueuefile)
-        }
-        #
-        $this.mainvminformcsv = $mainqueue
-    }
-    <# -----------------------------------------
-     openmainvminfomqueue
-     open main inform queue
-     ------------------------------------------
-     Usage: $this.openmainvminfomqueue()
-    ----------------------------------------- #>
-    [void]openlocalvminformqueue($project){
-        #
-        if (!($this.localqueue.($project))){
-            $this.openlocalvminformqueue($project, $false)
-        }
-        #
-    }
-    #
-    [void]openlocalvminformqueue($project, $createwatcher){
-        #
-        if (!(test-path $this.localqueuefile.($project))){
-            $this.setfile($this.localqueuefile.($project), `
-                'TaskID,Specimen,Antibody,Algorithm')
-        }
-        #
-        if ($createwatcher){
-            $this.FileWatcher($this.localqueuefile.($project))
-        }
-        #
-        $q = $this.OpenCSVFile($this.localqueuefile.($project))
-        $this.localqueue.($project) = $q
-        #
-    }  
-    <# -----------------------------------------
-     localvminfomqueuelocation
-     open local inform queue
-     ------------------------------------------
-     Usage: $this.localvminfomqueuelocation()
-    ----------------------------------------- #>
-    [string]localvminfomqueuelocation($project){
-        #
-        $cohortinfo = $this.GetProjectCohortInfo($this.mpath, $project)
-        $localqueuepath = $cohortinfo.Dpath +
-            '\' + $cohortinfo.Dname + '\upkeep_and_progress'
-        #
-        $localqueuepath = $this.CrossPlatformPaths($localqueuepath)
-        #
-        $localqueuefilea = $localqueuepath + '\' + $this.localqueue_file
-        #
-        return $localqueuefilea
-        #
-    }
-    #
-    [void]getlocalvminformqueue($project){
-        #
-        $this.localqueuefile.($project) = $this.localvminfomqueuelocation($project)
-        $this.openlocalvminformqueue($project)
-        #
-    }
-    #
-    [void]getlocalvminformqueue($project, $createwatcher){
-        #
-        $this.localqueuefile.($project) = $this.localvminfomqueuelocation($project)
-        $this.openlocalvminformqueue($project, $createwatcher)
-        #
-    }
-    <# -----------------------------------------
-     updatelocalvminfomqueue
+     updatelocalvminformqueue
      update local vminform queue
      ------------------------------------------
-     Usage: $this.updatelocalvminfomqueue()
+     Usage: $this.updatelocalvminformqueue()
     ----------------------------------------- #>
-    [void]updatelocalvminfomqueue($currentprojecttasks, $project){
+    [void]updatelocalvminformqueue($currentprojecttasks, $project){
         #
         if (!$this.localqueue.($project)){
             $this.localqueue.($project) = @()
@@ -226,7 +145,7 @@ class vminformqueue : sharedtools {
             #
             if ($localtaskid -notin $this.localqueue.($project).TaskID) {
                 $NewRow =  $row |
-                     select-object -Property Specimen, Antibody, Algorithm |
+                     select-object -Property slideid, Antibody, Algorithm |
                      Add-Member TaskID $localtaskid -PassThru
                $this.localqueue.($project) += $NewRow
             }
@@ -245,19 +164,19 @@ class vminformqueue : sharedtools {
             }
             #
             if (($localrow |
-                    select-object -Property Specimen, Antibody, Algorithm) `
+                    select-object -Property slideid, Antibody, Algorithm) `
                 -notmatch ($row |
-                    select-object -Property Specimen, Antibody, Algorithm)
+                    select-object -Property slideid, Antibody, Algorithm)
             ) {
                 #
                 $max = ($this.localqueue.($project).taskid | measure-object -maximum).Maximum
                 $newid = $max + 1
                 $NewRow =  $localrow |
-                select-object -Property Specimen, Antibody, Algorithm |
+                select-object -Property slideid, Antibody, Algorithm |
                     Add-Member TaskID $newid -PassThru
                 $this.localqueue.($project) += $NewRow
                 #
-                $localrow[0].Specimen = $row.Specimen
+                $localrow[0].slideid = $row.slideid
                 $localrow[0].Antibody = $row.Antibody
                 $localrow[0].Algorithm = $row.Algorithm
             }
@@ -265,33 +184,34 @@ class vminformqueue : sharedtools {
         #
     }
     <# -----------------------------------------
-     updatemainvminfomqueue
+     updatemainvminformqueue
      update main vminform queue
      ------------------------------------------
-     Usage: $this.updatemainvminfomqueue()
+     Usage: $this.updatemainvminformqueue()
     ----------------------------------------- #>
-    [void]updatemainvminfomqueue($project){
+    [void]updatemainvminformqueue($project){
         #
-        if (!$this.mainvminformcsv){
-            $this.mainvminformcsv = @()
+        if (!$this.maincsv){
+            $this.maincsv = @()
         }
         #
         $this.localqueue.($project) | ForEach-Object{
             #
-            if ($_.Algorithm -ne ''){
+            if ($_.Algorithm.Trim() -ne ''){
+                #
                 $maintaskid = 'T', $project.PadLeft(3,'0'),
                     ($_.TaskID.ToString()).PadLeft(5,'0') -join ''
                 #
-                if ($maintaskid -notin $this.mainvminformcsv.taskid) {
+                if ($maintaskid -notin $this.maincsv.taskid) {
                     $NewRow = $_ | 
-                        select-object -Property TaskID, Specimen, Antibody, Algorithm |
+                        select-object -Property TaskID, slideid, Antibody, Algorithm |
                         Add-Member -NotePropertyMembers @{
                             ProcessingLocation = ''
                             StartDate = ''
                             localtaskid = $_.TaskID
                         } -PassThru
                     $NewRow.TaskID = $maintaskid
-                    $this.mainvminformcsv += $NewRow
+                    $this.maincsv += $NewRow
                 }
             }
         }
@@ -308,12 +228,12 @@ class vminformqueue : sharedtools {
     ----------------------------------------- #>
     [switch]checkfornewtask($project, $slideid, $antibody){
         #
-        $this.getlocalvminformqueue($project, $false)
+        $this.getlocalqueue($project, $false)
         #
         $task = $this.localqueue.($project) |    
             Where-Object {
-                $_.Specimen -match $slideid -and 
-                $_.Anitbody -match $antibody    
+                $_.slideid -match $slideid -and 
+                $_.Antibody -match $antibody    
             }
         #
         if (!$task){
@@ -335,9 +255,9 @@ class vminformqueue : sharedtools {
     ----------------------------------------- #>
     [switch]checkforreadytask($project, $slideid, $antibody){
         #
-        $task = $this.mainvminformcsv |    
-            Where-Object {$_.Specimen -match $slideid -and 
-                $_.Anitbody -match $antibody -and 
+        $task = $this.maincsv |    
+            Where-Object {$_.slideid -match $slideid -and 
+                $_.Antibody -match $antibody -and 
                 $_.Algorithm -ne '' -and
                 $_.ProcessingLocation -eq ''
             
@@ -360,11 +280,11 @@ class vminformqueue : sharedtools {
     ----------------------------------------- #>
     [switch]checkforidletask($project, $slideid, $antibody){
         #
-        $this.getlocalvminformqueue($project, $false)
+        $this.getlocalqueue($project, $false)
         #
         $task = $this.localqueue.($project) |    
-            Where-Object {$_.Specimen -match $slideid -and 
-                $_.Anitbody -match $antibody -and 
+            Where-Object {$_.slideid -match $slideid -and 
+                $_.Antibody -match $antibody -and 
                 $_.Algorithm -eq '' -and
                 $_.ProcessingLocation -eq ''
             
@@ -380,10 +300,14 @@ class vminformqueue : sharedtools {
     #
     [void]newlocalrow($project, $slideid, $antibody){
         #
+        if (!$this.localqueue.($project)){
+            $this.localqueue.($project) = @()
+        }
+        #
         $newid = ($this.localqueue.($project).taskid | measure-object -maximum).Maximum + 1
         $NewRow =  [PSCustomObject]@{
             TaskID = $newid
-            Specimen = $slideid
+            slideid = $slideid
             Antibody = $antibody
             Algorithm = ''
         } 
@@ -391,29 +315,9 @@ class vminformqueue : sharedtools {
         #
     }
     #
-    [void]writelocalqueue($project){
-        $updatedlocal = (($this.localqueue.($project) | 
-            ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
-        try{
-            $this.SetFile($this.localqueuefile.($project), $updatedlocal)
-        } catch {}
-    }
-    #
-    [void]writemainqueue($mainqueuelocation){
-        $mainqueue = $this.mainvminformcsv | 
-            select-object -Property TaskID, Specimen, Antibody,
-             Algorithm, ProcessingLocation, StartDate
-        #
-        $updatedmain = (($mainqueue |
-            ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
-        try {
-            $this.SetFile($mainqueuelocation, $updatedmain)
-        } catch {}
-    }
-    #
     [void]UpdateQueue($currenttask, $currentworker, $tasktomatch){
         #
-        if ($this.module -ne 'vminform'){
+        if ($this.module -ne $this.module){
             return
         }
         #

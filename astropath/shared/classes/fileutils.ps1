@@ -504,7 +504,7 @@ class fileutils : generalutils {
      Usage: $this.UnregisterEvent(SI)
     ----------------------------------------- #>
     [void]UnregisterEvent($SI){
-        Unregister-Event -SourceIdentifier $SI -Force 
+        Unregister-Event -SourceIdentifier $SI -Force -EA Stop
     }
     <# -----------------------------------------
      UnregisterEvent

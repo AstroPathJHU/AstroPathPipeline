@@ -19,8 +19,8 @@
         if ($cmodule -match 'vminform'){
             #
             $this.getantibodies()
-            $this.antibodies | ForEach-Object{
-                $this.getlogstatussub($cmodule, $_)
+            foreach ($abx in $this.antibodies) {
+                $this.getlogstatussub($cmodule, $abx)
             }
             #
         } else {
@@ -208,6 +208,42 @@
         } else {
             return @($false)
         }
+    }
+    <# -----------------------------------------
+     checkscan
+     check that the slide has been scanned,
+     all scan products exist and the 
+     slides are ready to be transferred.
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module needs to be run,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkscan(log, dependency)
+    ----------------------------------------- #>
+    [int]checkscan(){
+        #
+        if (!($this.moduleinfo.transfer.version -match '0.0.1') -and 
+            $this.checklog('transfer', $true)){
+            return 2
+        }
+        #
+        if (!$this.testtransferfiles()){
+            return 2
+        }
+        #
+        $im3s = (Get-ChildItem ($this.Scanfolder() + '\MSI\*') *im3).Count
+        #    
+        if (!$im3s){
+            return 2
+        }
+        #
+        return 3
+        #
     }
     <# -----------------------------------------
      checktransfer
@@ -550,42 +586,19 @@
     }
     <# -----------------------------------------
      checkvminform
-    ----------------------------------------- #>
-    [void]checkvminform(){
-        #
-        $this.informvers = '2.6.0'
-        #
-        $queue_path = $this.mpath + '\across_project_queues'
-        $this.queue_file = $queue_path + '\' + $this.module + '-queue.csv'
-        $queue_data = $this.getcontent($this.queue_file)
-        #
-        $current_queue_data = @()
-        #
-        # find rows without "processing started"
-        #
-        foreach($row in $queue_data) {
-            $array = $row.ToString().Split(",")
-            $array = $array -replace '\s',''
-            if($array[3]){
-                if($array -match "Processing"){ Continue } else { 
-                    $current_queue_data += $row
-                    }
-                } 
-        }
-        #
-        $this.originaltasks = $current_queue_data
-        $this.cleanedtasks = $this.originaltasks -replace ('\s','')
-        $this.cleanedtasks = $this.cleanedtasks | 
-            ForEach-Object {$_.Split(',')[0..3] -join(',')}
-        #
-    }
-    
-    <# -----------------------------------------
-     checkvminform
-     place holder
+     checks the status of a particular antibody
+     and if it is ready to be run. Details on
+     checks follows:
+     check the image correction step has 
+     finished. check that the slide - antibody
+     pair is in the local queues (add if not)
+     check that the antibody is in the queue
+     w/o an algorithm. checks the log for
+     errors. checks for tasks with algorithm
+     and ready to be run.
     ------------------------------------------
      Input: 
-        - dependency[switch]: true or false
+        - antibody[string]: antibody to check
      ------------------------------------------
      Output: returns 1 if dependency fails, 
      returns 2 if current module is still running,
@@ -602,12 +615,15 @@
         if ($this.vmq.checkfornewtask($this.project, 
             $this.slideid, $antibody)){
                 return 1
-        
         }
         #
         if ($this.vmq.checkforidletask($this.project, 
             $this.slideid, $antibody)){
             return 1
+        }
+        #
+        if ($this.checklog('vminform', $antibody, $true)){
+            return 2
         } 
         #
         if ($this.vmq.checkforreadytask($this.project, 
@@ -620,13 +636,16 @@
     }
     <# -----------------------------------------
      checkmerge
-     place holder
+     checks if the merge function needs to be 
+     run. Details on checks follows:
+     checks all vminform ab logs for finished,
+     checks the mergelog for previously run,
+     tests the mergefiles exist and the dates
+     are newer than the most recent inform run.
     ------------------------------------------
-     Input: 
-     ------------------------------------------
      Output: returns 1 if dependency fails, 
      returns 2 if current module is still running,
-     returns 3 if current module is complete
+     returns 3 if current module is complete.
      ------------------------------------------
      Usage: $this.checkmerge(dependency)
     ----------------------------------------- #>
@@ -634,9 +653,9 @@
         #
         $this.getantibodies()
         #
-        $this.antibodies | foreach-Object{
+        foreach ($abx in $this.antibodies){
             #
-            if ($this.moduleinfo.vminform.($_).status -ne 'FINISHED'){
+            if ($this.moduleinfo.vminform.($abx).status -ne 'FINISHED'){
                 return 1
             }
             #
@@ -655,9 +674,12 @@
     }
     <# -----------------------------------------
      checkimageqa
-     place holder
-    ------------------------------------------
-     Input: 
+     check if image qa has finished or not. 
+     Details on checks follows:
+     first check that the slide has finished 
+     previous steps then check that the slides
+     have been checked off manually in the 
+     image qa spreadsheet. 
      ------------------------------------------
      Output: returns 1 if dependency fails, 
      returns 2 if current module is still running,
@@ -677,11 +699,7 @@
             return 2
         }
         #
-        # check each antibody column for
-        # the slide in the qa file and 
-        # return true if there is an X
-        # 
-        if(!$this.testimageqafiles($this.antibodies)){
+        if(!$this.testimageqafile($this.antibodies)){
             return 2
         }
         #
@@ -690,10 +708,12 @@
     }
     <# -----------------------------------------
      checksegmaps
-     place holder
-    ------------------------------------------
-     Input: 
-        - dependency[switch]: true or false
+     check if the segmaps step should be run. 
+     details on the checks follow:
+     first check that the previous steps have
+     finished then check for issues in the log,
+     finially check that there are as many seg
+     files as im3 files.
      ------------------------------------------
      Output: returns 1 if dependency fails, 
      returns 2 if current module is still running,
@@ -719,6 +739,31 @@
         return 3
         #
     }
+     <# -----------------------------------------
+     checkdbload
+     check if the slide is ready to be loaded 
+     into the database by checking all previous
+     steps.
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checksegmaps(dependency)
+    ----------------------------------------- #>
+    [int]checkdbload(){
+        #
+        if ($this.moduleinfo.segmaps.status -ne 'FINISHED'){
+            return 1
+        } 
+        #
+        if ($this.checklog('dbload', $true)){
+            return 2
+        }
+        #
+        return 3
+        #
+    }
     <# -----------------------------------------
      Aggregatebatches
      check that all slides from each unqiue batch are on the list
@@ -735,7 +780,6 @@
     ----------------------------------------- #>
     [array]Aggregatebatches($batcharray, $cmodule){
         $batcharrayunique = $batcharray | Sort-Object | Get-Unique
-        $slides = $this.importslideids($this.mpath)
         $batchescomplete = @()
         #
         $batcharrayunique | foreach-object {

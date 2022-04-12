@@ -27,6 +27,7 @@ Class testpsshredxml : testtools {
         $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
         $inp.sample.finish(($this.module+'test'))
+        $this.testgitstatus($inp.sample)  
         Write-Host "."
         #
     }

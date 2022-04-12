@@ -43,6 +43,7 @@ Class testpswarpoctets : testtools {
         $this.testlogsexpected($inp)
         $this.CleanupTest($inp)
         $inp.sample.finish(($this.module+'-test'))
+        $this.testgitstatus($inp.sample)
         Write-Host '.'
     }
     <# --------------------------------------------

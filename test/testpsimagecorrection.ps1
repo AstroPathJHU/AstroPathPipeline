@@ -1,6 +1,7 @@
-﻿<# -------------------------------------------
+﻿using module .\testtools.psm1
+<# -------------------------------------------
  testpsimagecorrection
- created by: Andrew Jorquera
+ Benjamin Green
  Last Edit: 2/1/2022
  --------------------------------------------
  Description
@@ -8,69 +9,223 @@
  functioning as intended
  -------------------------------------------#>
 #
-Class testpsimagecorrection {
+Class testpsimagecorrection : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
+    [string]$module = 'imagecorrection'
+    [string]$class = 'imagecorrection'
     #
     testpsimagecorrection(){
         #
-        # Setup Testing
+        $this.launchtests()
         #
-        $this.importmodule()
+    }
+    #
+    testpsimagecorrection($dryrun) : base ('1', 'M21_1', $dryrun){
         #
-        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
+        $this.launchtests()
+        #
+    }
+    #
+    launchtests(){
+        #
+        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
+        $this.testpsimconstruction($task)
         $inp = imagecorrection $task
+        <#
+        $this.testrpath = $inp.processvars[1]
         #
-        # Run Tests
+        $this.testprocessroot($inp, $true)
+        $inp.testpaths()
+        $this.adddeps($inp)
+        $this.testdownloadfiles($inp)
+        $this.testshred($inp)
+        $this.testimagecorrectioninput($inp)
         #
-        $this.DownloadFilesTest($inp)
+        $this.runpytaskexpected($inp)
+        $this.testrenamefw2dat($inp)
+        $this.testinjectdat($inp)
         $this.CleanupTest($inp)
+        #>
+        $inp.runimagecorrection()
+        <#
+        $this.removedeps($inp)
+        $this.testgitstatus($inp.sample)
+        Write-Host '.'
+        #>
+    }
+    <# --------------------------------------------
+    testpsimconstruction
+    test that the meanimage object can be constucted
+    --------------------------------------------#>
+    [void]testpsimconstruction($task){
+        #
+        Write-Host "."
+        Write-Host ('test ['+$this.class+'] constructors started')
+        #
+        #$log = logger $this.mpath $this.module -batchid:$this.batchid -project:$this.project 
+        #
+        try {
+            imagecorrection  $task | Out-Null
+        } catch {
+            Throw ('['+$this.class +'] construction with [1] input(s) failed. ' + $_.Exception.Message)
+        }
+        <#
+        try {
+            meanimage  $task $log | Out-Null
+        } catch {
+            Throw ('[meanimage] construction with [2] input(s) failed. ' + $_.Exception.Message)
+        }
+        #>
+        Write-Host ('test ['+ $this.class +'] constructors finished')
+        #
     }
     #
-    importmodule(){
-        $module = $PSScriptRoot + '/../astropath'
-        Import-Module $module -EA SilentlyContinue
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_imagecorrection'
+    [void]adddeps($inp){
+        #
+        if ($this.dryrun){
+            return
+        }
+        #
+        Write-host '.'
+        write-host 'preparing dependencies started'
+        $inp.sample.setfile($inp.sample.batchflatfield(), 'flatfield')
+        $inp.sample.setfile($inp.sample.batchwarpingfile(), 'warping')
+        write-host 'preparing dependencies finished'
+        #
     }
     #
-    [void]DownloadFilesTest($inp){
+    [void]removedeps($inp){
         #
-        Write-Host 'Starting Download Files Test'
-        $im3path = $inp.sample.basepath + '\' + $inp.sample.slideid + '\im3\Scan1\MSI'
-        Write-Host 'im3path: ' $im3path
-        Write-Host 'MSI folder: ' $inp.sample.MSIfolder()
-        if (!([regex]::Escape($inp.sample.MSIfolder()) -contains [regex]::Escape($im3path))){
-            Throw ('MSI folder not correct: ' + $inp.sample.MSIfolder() + '~=' + $im3path)
+        if ($this.dryrun){
+            return
         }
-        $im3path += '\*im3'
-        if (!(Test-Path -Path $im3path)) {
-            Throw 'No im3 files in MSI folder'
-        }
-        Write-Host 'Correct files in IM3 folder'
         #
-        $xmlpath = $inp.sample.basepath + '\' + $inp.sample.slideid + '\im3\xml'
-        Write-Host 'xmlpath: ' $xmlpath
-        Write-Host 'XML folder: ' $inp.sample.xmlfolder()
-        if (!([regex]::Escape($inp.sample.xmlfolder()) -contains [regex]::Escape($xmlpath))){
-            Throw ('XML folder not correct: ' + $inp.sample.xmlfolder() + '~=' + $xmlpath)
-        }
-        $xmlpath += '\*xml'
-        if (!(Test-Path -Path $xmlpath)) {
-            Throw 'No xml files in MSI folder'
-        }
-        Write-Host 'Correct files in XML folder'
+        Write-host '.'
+        write-host 'preparing dependencies started'
+        $inp.sample.removefile($inp.sample.batchflatfield())
+        $inp.sample.setfile($inp.sample.batchwarpingfile(), 'warping')
+        write-host 'preparing dependencies finished'
         #
-        $testid = '08'
-        Write-Host 'Batch ID: ' $inp.sample.BatchID
-        if (!($inp.sample.BatchID -eq $testid)) {
-            Throw 'Incorrect BatchID'
-        }
-        Write-Host 'Received Correct Batch ID'
+    }
+    #
+    [void]testdownloadfiles($inp){
         #
-        Write-Host 'Flatfield Folder: ' $inp.sample.flatfieldfolder()
-        Write-Host 'Passed Download Files Test'
+        Write-host '.'
+        write-host 'test download files started'
+        $inp.DownloadFiles()
+        #
+        $des = $inp.processvars[0] +'\'+
+            $inp.sample.slideid+'\im3\'+$inp.sample.Scan()+,'\MSI'
+        $sor = $inp.sample.im3folder()
+        #
+        #$this.comparepaths($des, $sor, $inp)
+        #
+        $des = $inp.processvars[1] +'\' + $inp.sample.slideid + '\'
+        $sor = $inp.sample.xmlfolder()
+        #
+        #$this.comparepaths($des, $sor, $inp)
+        #
+    }
+    #
+    [void]testshred($inp){
+        #
+        if ($this.dryrun){
+            $inp.ShredDat()
+        } else{ 
+            $this.createtestraw($inp)
+        }
+        #
+    }
+    #
+    [void]testimagecorrectioninput($inp){
+        #
+        if ($this.dryrun){
+            return
+        }
+        #
+        Write-host '.'
+        write-host 'test for [imagecorrection] expected input started'
+        #
+        Write-Host '    collecting [module] defined task'
+        #
+        $inp.getmodulename()
+        $rpath = $this.testrpath
+        $dpath = $this.basepath
+        #
+        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath)
+        #
+        Write-Host '    collecting [user] defined tasks'
+        #
+        $wd = ' --workingdir', 
+            ($this.processloc, 'astropath_ws\imagecorrection',
+             $this.slideid -join '\')  -join ' '
+        #
+        $userpythontask = (('applyflatwcohort',
+            $dpath,
+            '--sampleregex', $this.slideid, 
+            '--shardedim3root', $rpath,
+            '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
+                $this.pybatchflatfieldtest + '.bin'), 
+            '--warping-file', $this.pybatchwarpingfiletest, 
+            "--njobs '8' --no-log --layers -1 --allow-local-edits",
+            '--use-apiddef --project', $this.project.PadLeft(2,'0')
+            ) -join ' ') + $wd
+        #
+        #$this.runpytesttask($inp, $userpythontask, $externaltask)
+        $this.compareinputs($userpythontask, $pythontask)
+        #
+    }
+    #
+      <# --------------------------------------------
+    runpytaskexpected
+    check that the python task completes correctly 
+    when run with the correct input.
+    --------------------------------------------#>
+    [void]runpytaskexpected($inp){
+        #
+        Write-Host '.'
+        Write-Host 'test python [imagecorrection] in workflow started'
+        $inp.sample.CreateDirs($inp.processloc)
+        $rpath = $this.testrpath
+        $dpath = $inp.sample.basepath
+        $inp.getmodulename()
+        #
+        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath) 
+        #
+        $pythontask = $pythontask
+        #
+        $externallog = $inp.ProcessLog($inp.pythonmodulename) 
+        $this.runpytesttask($inp, $pythontask, $externallog)
+        #
+        Write-Host 'test python [imagecorrection] in workflow finished'
+        #
+    }
+    #
+    [void]testrenamefw2dat($inp){
+        #
+        if ($inp.sample.vers -match '0.0.1'){
+            return
+        }
+        Write-host '.'
+        Write-host 'rename fw 2 dat test started'
+        write-host '    remove data.dat from:' ($inp.processvars[1] + '\' + $this.slideid)
+        #
+        $inp.renamefw2dat()
+        #
+        Write-host 'rename fw 2 dat test finished'
+        #
+    }
+    #
+    [void]testinjectdat($inp){
+        #
+        write-host '.'
+        write-host 'test inject dat started'
+        if ($this.dryrun){
+            $inp.injectdat()
+        } else{ 
+            $this.createtestflatw($inp)
+        }
+        write-host 'test inject dat finished'
         #
     }
     #
@@ -97,8 +252,8 @@ Class testpsimagecorrection {
 # launch test and exit if no error found
 #
 try { 
-    [testpsimagecorrection]::new() | Out-Null
+    [testpsimagecorrection]::new($dryrun) | Out-Null
 } catch {
     Throw $_.Exception.Message
 }
-exit 0v
+exit 0

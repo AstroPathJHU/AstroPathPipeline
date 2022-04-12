@@ -26,22 +26,23 @@
     [void]launchtests(){
         #
         $this.testsampletrackerconstructors()
-        $sampletracker = sampletracker -mpath $this.mpath
+        $sampletracker = sampletracker -mpath $this.mpath -vmq (vminformqueue $this.mpath)
         $this.testmodules($sampletracker)
         #
         Write-Host '.'
-        Write-Host 'defining module status started'
+        Write-Host 'preparing sampletracker & dir started'
         Write-Host '    sample def slide'
         $sampletracker.sampledefslide($this.slideid)
         Write-Host '    module status'
         $sampletracker.defmodulestatus()
-        Write-Host '    cleanup'
         $sampletracker.teststatus = $true
+        $this.savephenotypedata($sampletracker)
+        Write-Host '    cleanup'
         $this.cleanup($sampletracker)
-        Write-Host 'defining module status finished'
+        Write-Host 'prepareing sampletracker & dir finished'
         #
         $this.teststatus($sampletracker)
-        #$this.testupdate($sampletracker, 'transfer', 'shredxml')
+        $this.testupdate($sampletracker, 'transfer', 'shredxml')
         $this.testupdate($sampletracker, 'shredxml', 'meanimage')
         $this.testupdate($sampletracker, 'meanimage', 'batchflatfield')
         #$this.testupdate($sampletracker, 'meanimage', 'batchmicomp')
@@ -54,8 +55,14 @@
         $this.testupdate($sampletracker, 'vminform', 'merge')
         $this.testupdate($sampletracker, 'merge', 'imageqa')
         $this.testupdate($sampletracker, 'imageqa', 'segmaps')
+        $this.testupdate($sampletracker, 'segmaps', 'dbload')
+        #
         $this.cleanup($sampletracker)
-        $this.addbatchflatfieldexamples($sampletracker)
+        $this.testcorrectionfile($sampletracker, $true)
+        $this.returnphenotypedata($sampletracker)
+        #
+        $this.testgitstatus($sampletracker)  
+        #
         Write-Host '.'
         #
     }
@@ -72,8 +79,49 @@
             Throw ('[sampletracker] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
         #
+        try{
+            sampletracker -mpath $this.mpath -vmq (vminformqueue $this.mpath) | Out-Null
+        } catch {
+            Throw ('[sampletracker] construction with [2] input(s) failed. ' + $_.Exception.Message)
+        }   
+        #
         Write-Host 'test [sampletracker] constructors finished'
         #                
+    }
+    #
+    [void]savephenotypedata($sampletracker){
+        #
+        write-host '    saving inform results'
+        if ((test-path ($this.processloc + '\tables')) -and
+            !(test-path $sampletracker.mergefolder())){
+                return 
+            }
+        #
+        $sampletracker.removedir($this.processloc + '\tables')
+        $sampletracker.copy($sampletracker.mergefolder(),
+            ($this.processloc + '\tables'))
+            $sampletracker.removedir($this.processloc + '\Component_Tiffs')
+        $sampletracker.copy($sampletracker.componentfolder(),
+            ($this.processloc + '\Component_Tiffs'))
+        #
+    }
+    #
+    [void]returnphenotypedata($sampletracker){
+        #
+        write-host '    returning inform results'
+        if (test-path ($this.processloc + '\tables')){
+            $sampletracker.removedir($sampletracker.mergefolder())
+            $sampletracker.copy(($this.processloc + '\tables'),
+                $sampletracker.mergefolder())
+        }
+        #
+        if (test-path ($this.processloc + '\Component_Tiffs')){
+            $sampletracker.removedir($sampletracker.componentfolder())
+            $sampletracker.copy(($this.processloc + '\Component_Tiffs'),
+                $sampletracker.componentfolder())
+            $sampletracker.removedir($this.processloc)
+        }
+        #
     }
     #
     [void]testmodules($sampletracker){
@@ -89,7 +137,7 @@
         Write-Host '    Modules:' $sampletracker.modules 
         #
         $cmodules = @('transfer', 'shredxml', 'meanimage', 'batchflatfield', 'batchmicomp', 'imagecorrection',
-            'warpoctets', 'batchwarpkeys', 'batchwarpfits', 'vminform', 'merge', 'imageqa', 'segmaps')
+            'warpoctets', 'batchwarpkeys', 'batchwarpfits', 'vminform', 'merge', 'imageqa', 'segmaps', 'dbload')
         $out = Compare-Object -ReferenceObject $sampletracker.modules  -DifferenceObject $cmodules
         if ($out){
             Throw ('module lists in [sampletracker] does not match, this may indicate new modules or a typo:' + $out)
@@ -161,21 +209,21 @@
             $log = logger -mpath $this.mpath -module $current -slideid $sampletracker.slideid
         }
         #
-        $log.start($current)
+        $this.setstart($sampletracker, $log, $current)
         Start-Sleep -s 10
-        $log.finish($current)
+        $this.setfinish($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
         $sampletracker.getlogstatus($next)
         #
-        Write-Host '            '$current':' $sampletracker.moduleinfo[$current].status
-        Write-Host '            '$next':' $sampletracker.moduleinfo[$next].status
+        Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
+        Write-Host '            '$next':' $this.getstatus($sampletracker, $next)
         #
-        if ($sampletracker.moduleinfo[$current].status -notmatch 'READY'){
+        if ($this.getstatus($sampletracker, $current) -notmatch 'READY'){
             Throw ($current + ' status not correct on finish with improper results.')
         }
         #
-        if ($sampletracker.moduleinfo[$next].status -notmatch 'WAITING'){
+        if ($this.getstatus($sampletracker, $next) -notmatch 'WAITING'){
             Throw ($next + ' status not correct on finish with improper results.')
         }
         #
@@ -183,40 +231,44 @@
         #
         $this.('add' + $current + 'examples')($sampletracker)
         #
-        $log.start($current)
+        $this.setstart($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
         $sampletracker.getlogstatus($next)
         #
         Write-Host '        when started:'
-        Write-Host '            '$current':' $sampletracker.moduleinfo[$current].status
-        Write-Host '            '$next':' $sampletracker.moduleinfo[$next].status
+        Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
+        Write-Host '            '$next':' $this.getstatus($sampletracker, $next) 
         #
-        if ($sampletracker.moduleinfo[$current].status -notmatch 'RUNNING'){
+        if ($this.getstatus($sampletracker, $current) -notmatch 'RUNNING'){
             Throw ($current + ' status not correct on running.')
         }
         #
-        if ($sampletracker.moduleinfo[$next].status -notmatch 'WAITING'){
+        if ($this.getstatus($sampletracker, $next) -notmatch 'WAITING'){
             Throw ($next + ' status not correct on running.')
         }
         #
         Start-Sleep -s 10
         #
-        $log.finish($current)
+        $this.setfinish($sampletracker, $log, $current)
+        #
+        if ($current -match 'imageqa'){
+            $this.addimageqafinished($sampletracker)
+        }
         #
         $sampletracker.getlogstatus($current)
         $sampletracker.getlogstatus($next)
         #
         Write-Host '        when finished:'
         #
-        Write-Host '            '$current':' $sampletracker.moduleinfo[$current].status
-        Write-Host '            '$next':' $sampletracker.moduleinfo[$next].status
+        Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
+        Write-Host '            '$next':' $this.getstatus($sampletracker, $next) 
         #
-        if ($sampletracker.moduleinfo[$current].status -notmatch 'FINISHED'){
+        if ($this.getstatus($sampletracker, $current) -notmatch 'FINISHED'){
             Throw ($current + ' status not correct in intial finish')
         }
         #
-        if ($sampletracker.moduleinfo[$next].status -notmatch 'READY'){
+        if ($this.getstatus($sampletracker, $next)  -notmatch 'READY'){
             Throw ($next + ' status not correct in intial ready.')
         }
         #
@@ -224,23 +276,24 @@
         #
         Start-Sleep -s 10
         #
-        $log.start($current)
+        $this.setstart($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
-        $sampletracker.getlogstatus( $next)
+        $sampletracker.getlogstatus($next)
         #
         Write-Host '        when started:'
         #
-        Write-Host '            '$current':' $sampletracker.moduleinfo[$current].status
-        Write-Host '            '$next':' $sampletracker.moduleinfo[$next].status
+        Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
+        Write-Host '            '$next':' $this.getstatus($sampletracker, $next) 
         #
-        if ($sampletracker.moduleinfo[$current].status -notmatch 'RUNNING'){
+        if ($this.getstatus($sampletracker, $current) -notmatch 'RUNNING'){
             Throw ($current + ' status not correct on running.')
         }
         #
-        if ($sampletracker.moduleinfo[$next].status -notmatch 'WAITING'){
+        if ($this.getstatus($sampletracker, $next)  -notmatch 'WAITING'){
             Throw ($next + ' status not correct on running.')
         }
+        #
         Write-Host '    Check logs on error' 
         #
         Start-Sleep -s 10
@@ -248,60 +301,60 @@
         $log.error('blah de blah de blah')
         #
         $sampletracker.getlogstatus($current)
-        $sampletracker.getlogstatus( $next)
+        $sampletracker.getlogstatus($next)
         #
         Write-Host '        when error added:'
         #
-        Write-Host '            '$current':' $sampletracker.moduleinfo[$current].status
-        Write-Host '            '$next':' $sampletracker.moduleinfo[$next].status
+        Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
+        Write-Host '            '$next':' $this.getstatus($sampletracker, $next) 
         #
-        if ($sampletracker.moduleinfo[$current].status -notmatch 'RUNNING'){
+        if ($this.getstatus($sampletracker, $current) -notmatch 'RUNNING'){
             Throw ($current + ' status not correct on error. ')
         }
         #
-        if ($sampletracker.moduleinfo[$next].status -notmatch 'WAITING'){
+        if ($this.getstatus($sampletracker, $next)  -notmatch 'WAITING'){
             Throw ($next + ' status not correct on error. ')
         }
         #
         start-sleep -s 10
         #
-        $log.finish($current)
-        #
-        $sampletracker.getlogstatus($current)
-        $sampletracker.getlogstatus( $next)
-        #
-        Write-Host '        when finished:'
-        #
-        Write-Host '            '$current':' $sampletracker.moduleinfo[$current].status
-        Write-Host '            '$next':' $sampletracker.moduleinfo[$next].status
-        #
-        if ($sampletracker.moduleinfo[$current].status -notmatch 'ERROR'){
-            Throw ($current + ' status not correct on finish w error.')
-        }
-        #
-        if ($sampletracker.moduleinfo[$next].status -notmatch 'WAITING'){
-            Throw ($next + ' status not correct on finish w error. ')
-        }
-        #
-        Write-Host '    check clean run'
-        #
-        $log.start($current)
-        start-sleep -s 10
-        $log.finish($current)
+        $this.setfinish($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
         $sampletracker.getlogstatus($next)
         #
         Write-Host '        when finished:'
         #
-        Write-Host '            '$current':' $sampletracker.moduleinfo[$current].status
-        Write-Host '            '$next':' $sampletracker.moduleinfo[$next].status
+        Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
+        Write-Host '            '$next':' $this.getstatus($sampletracker, $next) 
         #
-        if ($sampletracker.moduleinfo[$current].status -notmatch 'FINISHED'){
+        if ($this.getstatus($sampletracker, $current) -notmatch 'ERROR'){
+            Throw ($current + ' status not correct on finish w error.')
+        }
+        #
+        if ($this.getstatus($sampletracker, $next)  -notmatch 'WAITING'){
+            Throw ($next + ' status not correct on finish w error. ')
+        }
+        #
+        Write-Host '    check clean run'
+        #
+        $this.setstart($sampletracker, $log, $current)
+        start-sleep -s 10
+        $this.setfinish($sampletracker, $log, $current)
+        #
+        $sampletracker.getlogstatus($current)
+        $sampletracker.getlogstatus($next)
+        #
+        Write-Host '        when finished:'
+        #
+        Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
+        Write-Host '            '$next':' $this.getstatus($sampletracker, $next) 
+        #
+        if ($this.getstatus($sampletracker, $current) -notmatch 'FINISHED'){
             Throw ($current + ' status not correct on final finish. ')
         }
         #
-        if ($sampletracker.moduleinfo[$next].status -notmatch 'READY'){
+        if ($this.getstatus($sampletracker, $next)  -notmatch 'READY'){
             Throw ($next + ' status not correct on final finish. ')
         }
         #
@@ -309,16 +362,81 @@
         #
     }
     #
+    [void]setstart($sampletracker, $log, $module){
+        #
+        if ($module -match 'vminform'){
+            $log.val = @($this.project, $this.slideid,
+                $sampletracker.antibodies[0], 'blah.ifr', '2.4.8')
+            $sampletracker.vmq.openmainqueue($false)
+        }
+        #
+        if ($module -match 'vminform'){
+            $sampletracker.vmq.openmainqueue($false)
+            $sampletracker.antibodies | ForEach-Object{
+                $log.val[2] = $_
+                $log.start($module)
+            }
+        } else {
+            $log.start($module)
+        }
+        #
+    }
+    #
+    [void]setfinish($sampletracker, $log, $module){
+        #
+        if ($module -match 'vminform'){
+            $log.val = @($this.project, $this.slideid,
+                $sampletracker.antibodies[0], 'blah.ifr', '2.4.8')
+            $sampletracker.vmq.openmainqueue($false)
+        }
+        #
+        if ($module -match 'vminform'){
+            $sampletracker.vmq.openmainqueue($false)
+            $sampletracker.antibodies | ForEach-Object{
+                $log.val[2] = $_
+                $log.finish($module)
+            }
+        } else {
+            $log.finish($module)
+        }
+        #
+    }
+    #
+    [string]getstatus($sampletracker, $module){
+        #
+        if ($module -contains 'vminform'){
+            $status = ''
+            foreach ($abx in $sampletracker.antibodies){
+                $status = $sampletracker.moduleinfo.($module).($abx).status
+                if ($status -ne 'FINISHED'){
+                    break
+                }
+            }
+        } else {
+            $status = $sampletracker.moduleinfo[$module].status
+        }
+        #
+        return $status
+        #
+    }
+    #
     [void]cleanup($sampletracker){
         #
         Write-Host '.'
         Write-Host 'clearing logs started'
+        $sampletracker.removefile($this.mpath + '\across_project_queues\vminform-queue.csv')
+        $sampletracker.copy(($this.mpath + '\vminform-queue.csv'),
+         ($this.mpath + '\across_project_queues'))
+        $sampletracker.removefile(
+            $sampletracker.vmq.localqueuefile.($this.project))
+        $sampletracker.removedir($sampletracker.informfolder())
         $sampletracker.removefile($sampletracker.slidelogbase('shredxml'))
         $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
+        $sampletracker.removefile($sampletracker.slidelogbase('vminform'))
+        $sampletracker.removefile($sampletracker.mainlogbase('vminform'))
         $this.removemeanimageexamples($sampletracker)
         $sampletracker.removefile($sampletracker.mainlogbase('batchmicomp'))
         $sampletracker.removefile($sampletracker.mainlogbase('batchflatfield'))
-        $this.removebatchflatfieldexamples($sampletracker)
         $sampletracker.removefile($sampletracker.slidelogbase('warpoctets'))
         $this.removewarpoctetsexamples($sampletracker)
         $sampletracker.removefile($sampletracker.mainlogbase('batchwarpfits'))
@@ -326,10 +444,33 @@
         $sampletracker.removefile($sampletracker.mainlogbase('batchwarpkeys'))
         $this.removebatchwarpkeysexamples($sampletracker)
         $sampletracker.removedir($sampletracker.basepath +'\warping')
-        $sampletracker.removedir($sampletracker.mpath +'\flatfield')
         $sampletracker.removedir($sampletracker.warpoctetsfolder())
-        
+        $sampletracker.removedir($sampletracker.flatwim3folder())
+        $sampletracker.removedir($sampletracker.flatwfolder())
+        $sampletracker.removefile($sampletracker.basepath + '\upkeep_and_progress\imageqa_upkeep.csv')
+        $this.removebatchflatfieldexamples($sampletracker)
+        #
         Write-Host 'clearing logs finished'
+        #
+    }
+    #
+    [void]removetransferexamples($sampletracker){
+        #
+        $p = $sampletracker.im3folder()
+        $p2 = $p + '-copy'
+        #
+        $sampletracker.copy($p, $p2, '*')
+        $sampletracker.removedir($p)
+        #
+    }
+    #
+    [void]addtransferexamples($sampletracker){
+        #
+        $p = $sampletracker.im3folder()
+        $p2 = $p + '-copy'
+        #
+        $sampletracker.copy($p2, $p, '*')
+        $sampletracker.removedir($p2)
         #
     }
     #
@@ -415,23 +556,8 @@
     #
     [void]addbatchflatfieldexamples($sampletracker){
         #
-        $p2 = $sampletracker.corrmodels_fullfile($this.mpath)
+        $this.testcorrectionfile($sampletracker, $true)
         #
-        $micomp_data = $sampletracker.ImportCorrectionModels($sampletracker.mpath, $false)
-        $newobj = [PSCustomObject]@{
-            SlideID = $sampletracker.slideid
-            Project = $sampletracker.project
-            Cohort = $sampletracker.cohort
-            BatchID = $sampletracker.batchid
-            FlatfieldVersion = $this.pybatchflatfieldtest
-            WarpingFile = 'None'
-        }
-        #
-        $micomp_data += $newobj
-        #
-        $micomp_data | Export-CSV $p2 -NoTypeInformation
-        $p3 = $sampletracker.mpath + '\flatfield\flatfield_' + $this.pybatchflatfieldtest + '.bin'
-        $sampletracker.SetFile($p3, 'blah de blah')
     }
     # 
     [void]addcorrectionfile($sampletracker){
@@ -502,7 +628,9 @@
     #
     [void]addimagecorrectionexamples($sampletracker){
         #
-        $sampletracker.addtestfiles($sampletracker, 
+        $this.addalgorithms($sampletracker)
+        #
+        $this.addtestfiles($sampletracker, 
             $sampletracker.flatwfolder(),
             $sampletracker.imagecorrectionreqfiles[0], 
             $sampletracker.im3constant
@@ -522,38 +650,87 @@
         #
     }
     #
-    [void]removevminformexamples($sampletracker){
+    [void]addalgorithms($sampletracker){
         #
         $sampletracker.findantibodies()
-        $sampletracker.antibodies | ForEach-Object {
-            $sampletracker.cantibody = $_
-            $this.removetestfiles($sampletracker, 
-                $sampletracker.cantibodyfolder(),
-                $sampletracker.vminformreqfiles, 
-                $sampletracker.im3constant)
+        foreach ($abx in $sampletracker.antibodies) {
+            #
+            $sampletracker.vmq.checkfornewtask($this.project, $this.slideid, $abx)
+            $sampletracker.vmq.localqueue.($this.project) |    
+                Where-Object {
+                    $_.slideid -match $this.slideid -and 
+                    $_.Antibody -match $abx   
+                } |
+                Foreach-object {
+                    $_.algorithm = 'blah.ifr'
+                }
+            $sampletracker.vmq.writelocalqueue($this.project)
+            #
+            $sampletracker.vmq.coalescevminformqueues($this.project)
+            #
+            $sampletracker.vmq.maincsv | 
+                Where-Object {
+                    $_.slideid -match $this.slideid -and 
+                    $_.Antibody -match $abx   
+                } | 
+                Foreach-object {
+                    $_.algorithm = 'blah.ifr'
+                    $_.ProcessingLocation = ''
+                }
+                #
         }
+        #
+        
+        #
+    }
+    #
+    [void]removevminformexamples($sampletracker){
+        #
+        $this.addalgorithms($sampletracker)
+        $sampletracker.removedir($sampletracker.informfolder())
         #
     }
     #
     [void]addvminformexamples($sampletracker){
         #
-        $sampletracker.antibodies | ForEach-Object {
-            $sampletracker.cantibody = $_
+        $this.addalgorithms($sampletracker)
+        #
+        foreach ($abx in $sampletracker.antibodies ) {
+            $sampletracker.cantibody = $abx
             $this.addtestfiles($sampletracker, 
                 $sampletracker.cantibodyfolder(),
-                $sampletracker.vminformreqfiles, 
+                $sampletracker.vminformreqfiles[0], 
                 $sampletracker.im3constant)
+            $this.addtestfiles($sampletracker, 
+                $sampletracker.cantibodyfolder(),
+                $sampletracker.vminformreqfiles[1], 
+                $sampletracker.im3constant)
+                #
+            $sampletracker.vmq.maincsv | 
+                Where-Object {
+                    $_.slideid -match $this.slideid -and 
+                    $_.Antibody -match $abx   
+                } | 
+                Foreach-object {
+                    $_.algorithm = 'blah.ifr'
+                    $_.ProcessingLocation = 'go place'
+                }
+            #
         }
+        $sampletracker.vmq.writemainqueue($sampletracker.vmq.mainqueuelocation())
+        #
+        $this.addtestfiles($sampletracker, 
+                $sampletracker.componentfolder(),
+                $sampletracker.vminformreqfiles[2], 
+                $sampletracker.im3constant)
         #
     }
     #
-    #
     [void]removemergeexamples($sampletracker){
         #
-        $this.removetestfiles($sampletracker, 
-            $sampletracker.mergefolder(),
-            $sampletracker.mergereqfiles, 
-            $sampletracker.im3constant)
+        $sampletracker.removedir(
+            $sampletracker.mergefolder()
+        )
         #
     }
     #
@@ -561,41 +738,51 @@
         #
         $this.addtestfiles($sampletracker, 
             $sampletracker.mergefolder(),
-            $sampletracker.mergereqfiles, 
+            $sampletracker.mergereqfiles[0], 
             $sampletracker.im3constant)
+        $files = Get-ChildItem $sampletracker.mergefolder()
+        #
+        $date = get-date
+        foreach ($file in $files){
+            $file.LastWriteTime = $date
+        }
         #
     }
     #
     [void]removeimageqaexamples($sampletracker){
         #
-        $sampletracker.removefile($sampletracker.imageqa_fullpath)
+        $sampletracker.removefile($sampletracker.imageqa_fullpath())
         #
     }
     #
-    [void]addimageqaexamples($sampletracker){
+    [void]addimageqaexamples($sampletracker){}
+    #
+    [void]addimageqafinished($sampletracker){
         #
+        $this.removeimageqaexamples($sampletracker)
         $sampletracker.findantibodies()
         $sampletracker.ImportImageQA()
         #
         # add in Xs for all antibodies of
         # the slideid
         #
-        $newline = $this.slideid, ($this.antibodies | 
+        $newline = $this.slideid
+        $sampletracker.antibodies | 
             ForEach-Object {
                 $newline += ',X'
-            })
+            }
         #
         $newline += ",`r`n"
         #
-        $this.popfile($sampletracker.imageqa_fullpath, $newline)
+        $sampletracker.popfile($sampletracker.imageqa_fullpath(), $newline)
         #
     }
     #
     [void]removesegmapsexamples($sampletracker){
         #
         $this.removetestfiles($sampletracker, 
-            $sampletracker.segmapsfolder(),
-            $sampletracker.segmapsreqfiles,
+            $sampletracker.segmapfolder(),
+            $sampletracker.segmapsreqfiles[0],
             $sampletracker.im3constant)
         #
     }
@@ -603,8 +790,8 @@
     [void]addsegmapsexamples($sampletracker){
         #
         $this.addtestfiles($sampletracker, 
-            $sampletracker.segmapsfolder(),
-            $sampletracker.segmapsreqfiles,
+            $sampletracker.segmapfolder(),
+            $sampletracker.segmapsreqfiles[0],
             $sampletracker.im3constant)
         #
     }
@@ -618,4 +805,5 @@ try{
 } catch {
     Throw $_.Exception.Message
 }
+#
 exit 0

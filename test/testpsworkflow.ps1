@@ -1,4 +1,3 @@
-  
 using module .\testtools.psm1
 <# -------------------------------------------
  testpsdistpatcher
@@ -27,6 +26,7 @@ Class testpsworkflow : testtools {
         $this.testorphanjobmonitor($inp)
         $this.testwait($inp)
         $inp.removedir($PSScriptRoot + '\data\workflowlogs')
+        $this.testgitstatus($inp)  
         Write-Host '.'
         #
     }

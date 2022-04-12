@@ -140,6 +140,7 @@ class mylogger : samplereqs {
     }
     #
     [void]finish($msg){
+        $this.buildappend()
         $this.message =  "FINISH: "+$msg+' '+$this.vers
         $this.defmsgcaps()
     }

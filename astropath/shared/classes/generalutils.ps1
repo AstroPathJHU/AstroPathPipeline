@@ -196,7 +196,21 @@
         #
         $filespec = '*' + $filespec
         $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
-        if ($files ){ Remove-Item $files -force -recurse -Confirm:$false}
+        if ($files ){ $files | Remove-Item -force -recurse -Confirm:$false}
+        #
+    }
+    #
+    [void]renamefile([string]$folder, $sor, $des){
+        #
+        $folder = $this.CrossPlatformPaths($folder)
+        #
+        $filespec = '*' + $sor
+        $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
+        #
+        $files | Foreach-Object {
+            $newname = $_.name -replace $sor, $des   
+            Rename-Item $_.fullname $newname -ea stop 
+        }
         #
     }
     <# ------------------------------------------

@@ -15,17 +15,20 @@ class sampledb : sharedtools {
     [vminformqueue]$vmq
     #
     sampledb(){
-        $this.mpath = '\\bki04\astropath_processing'
-        $this.vmq = [vminformqueue]::new($this.mpath)
+        $this.sampledbinit('\\bki04\astropath_processing')
     }
     sampledb($mpath){
-        $this.mpath = $mpath
-        $this.vmq = [vminformqueue]::new($this.mpath)
+        $this.sampledbinit($mpath)
     }
     sampledb($mpath, $projects){
-        $this.mpath = $mpath
         $this.projects = $projects
-        $this.vmq = [vminformqueue]::new($this.mpath)
+        $this.sampledbinit($mpath)
+    }
+    #
+    sampledbinit($mpath){
+        $this.mpath = $mpath
+        $this.vmq = vminformqueue $this.mpath
+        $this.importaptables($this.mpath, $true)
     }
     #
     <# -----------------------------------------
@@ -36,8 +39,9 @@ class sampledb : sharedtools {
     ----------------------------------------- #>
     [void]buildsampledb(){
         #
-        $slides = $this.importslideids($this.mpath)
-        $this.defsampleStages($slides)
+        $this.defsampleStages()
+        $this.vmq.createwatchersvminformqueues()
+        $this.createprojectmodulewatchers()
         #
     }
     <# -----------------------------------------
@@ -49,13 +53,13 @@ class sampledb : sharedtools {
     ------------------------------------------
     Usage: $this.defNotCompletedSlides(cleanedslides)
     ----------------------------------------- #>
-    [void]defsampleStages($slides){
+    [void]defsampleStages(){
         #
         $c = 1
-        $ctotal = $slides.count
-        $sampletracker = [sampletracker]::new($this.mpath)
+        $ctotal = $this.slide_data.count
+        $sampletracker = sampletracker $this.mpath
         #
-        foreach($slide in $slides){
+        foreach($slide in $this.slide_data){
             #
             $p = [math]::Round(100 * ($c / $ctotal))
             Write-Progress -Activity "Checking slides" `
@@ -64,9 +68,7 @@ class sampledb : sharedtools {
                             -CurrentOperation $slide.slideid
             $c += 1 
             #
-            $sampletracker.ParseAPIDdef($slide.slideid, $slides)
-            $sampletracker.defbase()
-            $sampletracker.defmodulestatus()
+            $sampletracker.preparesample($slide, $this.slide_data)
             $this.sampledb.($slide.slideid) = $sampletracker.moduleinfo
         }
         #
@@ -116,11 +118,14 @@ class sampledb : sharedtools {
         write-progress -Activity "Checking slides" -Status "100% Complete:" -Completed
         #
     }
+    <#-----------------------------------------
+    open
+    ----------------------------------------- #>
     <# -----------------------------------------
     defmoduleStages
     For each module, create or read in 
     a module table. refresh the sample status
-    in the module tabl. Write out main
+    in the module table. Write out main
     and project level module tables.
     ------------------------------------------
     Usage: $this.defmoduleStages()
@@ -178,23 +183,32 @@ class sampledb : sharedtools {
     Usage: $this.writemoduledb(project)
     ----------------------------------------- #>
     #
-    [void]handleAPevent($file){
+    [void]handleAPevent($fullfile){
         #
-        $fpath = Split-Path $file
-        $file = Split-Path $file -Leaf
+        $fpath = Split-Path $fullfile
+        $file = Split-Path $fullfile -Leaf
         #
         switch -regex ($file){
             $this.cohorts_file {$this.importcohortsinfo($this.mpath, $false)}
             $this.paths_file {$this.importcohortsinfo($this.mpath, $false)}
-            $this.config_file {$this.ImportConfigInfo($this.mpath, $false)}
+            $this.config_file {
+                $this.ImportConfigInfo($this.mpath, $false)
+                $this.vmq.config_data = $this.config_data
+            }
             $this.slide_file {$this.ImportSlideIDs($this.mpath, $false)}
             $this.ffmodels_file {$this.ImportFlatfieldModels($this.mpath, $false)}
             $this.corrmodels_file {$this.ImportCorrectionModels($this.mpath, $false)}
             $this.micomp_file {$this.ImportMICOMP($this.mpath, $false)}
             $this.worker_file {$this.Importworkerlist($this.mpath, $false)}
-            $this.vmq.mainqueue_file {$this.vmq.openmainvminformqueue($false)}
-            $this.vmq.localqueue_file {}
+            $this.vmq.mainqueuelocation() {$this.coalescevminformqueues()}
         }
+        #       
+        $this.projects | foreach-object{
+            switch -regex ($fullfile){
+                $this.vmq.localqueue.($_) {$vmq.coalescevminformqueues($_)}
+            }
+        }
+        #
     }
     #
 }

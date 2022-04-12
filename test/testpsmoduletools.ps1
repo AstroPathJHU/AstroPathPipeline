@@ -23,6 +23,7 @@
         # $this.testslidelist()
         #
         $this.TestPaths($inp)
+        $this.testgitstatus($inp.sample)        
         Write-Host '.'
         #
     }

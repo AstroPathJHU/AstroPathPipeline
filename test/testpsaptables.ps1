@@ -19,10 +19,11 @@
         $this.testapidfiles() | Out-Null
         $this.testapidfiles($tools)
         $this.testconfiginfo($tools)
-        $this.addbatchflatfieldexamples($tools)
+        $this.testcorrectionfile($tools, $true)
         $this.testcorrectioninfo($tools)
         $this.correctcohortsinfo($tools)
        # $this.testcohortsinfo($tools)
+        $this.testgitstatus($tools)        
         Write-Host '.'
         #
     }
@@ -167,20 +168,6 @@
         #
         $internal_apids = $tools.ImportCohortsInfo($this.mpath)
         write-host " " ($internal_apids | Out-String)
-        #
-    }
-    #
-    [void]addbatchflatfieldexamples($tools){
-        #
-        Write-Host '.'
-        Write-Host 'Add Correction Models file'
-        #
-        $p = $this.mpath + '\AstroPathCorrectionModelsTemplate.csv'
-        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
-        #
-        $tools.removefile($p2)
-        $data = $tools.opencsvfile($p)
-        $data | Export-CSV $p2  -NoTypeInformation
         #
     }
     #

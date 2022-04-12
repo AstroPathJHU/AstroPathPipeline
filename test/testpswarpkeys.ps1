@@ -35,7 +35,7 @@ using module .\testtools.psm1
         $this.runpywarpkeysexpected($inp)
         $this.testlogsexpected($inp)
         $this.testcleanup($inp)
-        <#
+        #
         $inp.all = $true# uses all slide from the cohort, 
         #   output goes to the mpath\warping\octets folder
         $inp.updateprocessloc()
@@ -46,7 +46,8 @@ using module .\testtools.psm1
         $this.testlogsexpected($inp)
         $this.testcleanup($inp)
         $inp.sample.finish(($this.module+'-test'))
-        #>
+        #
+        $this.testgitstatus($inp.sample)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -160,7 +161,6 @@ using module .\testtools.psm1
         write-host $inp.sample.pybatchflatfieldfullpath()
         write-host $inp.workingdir()
         write-host $inp.buildpyopts('cohort')
-        throw 'here'
         $task = $this.getmoduletask($inp)
         $inp.getbatchwarpoctets()
         $this.runpytesttask($inp, $task[0], $task[1])
@@ -190,9 +190,10 @@ using module .\testtools.psm1
         Write-Host '    path expected to be removed:' $warpingkeysfolder
         #
         $inp.cleanup()
+        $inp.sample.removedir($warpingkeysfolder)
         #
         if (test-path $warpingkeysfolder){
-            Throw 'cleaup did not delete folder, path still exists'
+            Throw 'cleanup did not delete folder, path still exists'
         }
         #
         $inp.sample.removedir($this.mpath + '\warping')
@@ -205,7 +206,7 @@ using module .\testtools.psm1
 }
 #
 try {
-    [testpsbatchwarpkeys]::new($dryrun) | Out-Null
+    [testpsbatchwarpkeys]::new() | Out-Null
 } catch {
     Throw $_.Exception.Message
 }
