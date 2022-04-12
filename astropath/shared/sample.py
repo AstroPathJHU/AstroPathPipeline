@@ -558,13 +558,17 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       errmsg = f'ERROR: found {len(self.wavelengths)} wavelengths but {len(self.filter_names)} filter names! '
       errmsg+= f'Wavelengths = {self.wavelengths} and filter_names = {self.filter_names}'
       raise RuntimeError(errmsg)
+    if len(self.wavelengths)!=self.nlayersim3 :
+      errmsg = f'ERROR: found {len(self.wavelengths)} wavelengths and filter names, '
+      errmsg+= f'but IM3 images in this sample have {self.nlayersim3} layers!'
+      raise ValueError(errmsg)
     microscope_prepend = None
     if len(self.wavelengths)==35 :
       microscope_prepend = 'vectra'
     elif len(self.wavelengths)==43 :
       microscope_prepend = 'polaris'
     else :
-      raise ValueError(f'ERROR: unrecognized number of wavelengths/filter_names ({len(self.wavelengths)})!')
+      raise ValueError(f'ERROR: unrecognized number of wavelengths/filter_names/im3 layers ({len(self.wavelengths)})!')
     result = []
     for wl,fn in zip(self.wavelengths,self.filter_names) :
       to_add = f'{microscope_prepend}_'
@@ -583,26 +587,36 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       elif fn=='Cy5' :
         to_add+='cy5'
       else :
-        raise ValueError(f'ERROR: unrecognized filter_name "{fn}"! (wavelength = {wl})')
+        raise ValueError(f'ERROR: unrecognized broadband filter_name "{fn}"! (wavelength = {wl})')
       result.append(to_add)
     return result
 
   @methodtools.lru_cache()
   @property
-  def layer_group_boundaries(self) :
+  def layer_groups(self) :
     """
-    The first and last layers in each layer group as determined from the Full.xml file
+    A dictionary where the keys are the names of each layer group and the values are tuples of
+    the first and last layers in each layer group
+    Determined from the Full.xml file
     """
-    result = []
+    result = {}
     last_lgname = None; start_lgn = 1
     for lgn,lgname in enumerate(self.layer_group_names,start=1) :
       if last_lgname is None :
         last_lgname = lgname
       if lgname!=last_lgname :
-        result.append((start_lgn,lgn-1))
+        if last_lgname in result.keys() :
+          errmsg = 'ERROR: Raw image layer groups seem discontinuous based on their names! '
+          errmsg+= f'Wavelengths = {self.wavelengths} and filter_names = {self.filter_names}'
+          raise RuntimeError(errmsg)
+        result[last_lgname] = (start_lgn,lgn-1)
         last_lgname = lgname
         start_lgn = lgn
-    result.append((start_lgn,lgn))
+    if lgn in result.keys() :
+      errmsg = 'ERROR: Raw image layer groups seem discontinuous based on their names! '
+      errmsg+= f'Wavelengths = {self.wavelengths} and filter_names = {self.filter_names}'
+      raise RuntimeError(errmsg)
+    result[lgn] = (start_lgn,lgn)
     return result
 
   @methodtools.lru_cache()

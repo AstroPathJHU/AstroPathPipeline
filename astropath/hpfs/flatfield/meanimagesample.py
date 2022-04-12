@@ -80,28 +80,19 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
     @property
     def image_masking_dirpath(self) :
         return self.__image_masking_dirpath
-    @property
-    def mask_layer_groups(self) :
-        if self.nlayersim3==35 :
-            return UNIV_CONST.LAYER_GROUPS_35
-        elif self.nlayersim3==43 :
-            return UNIV_CONST.LAYER_GROUPS_43
-        else :
-            errmsg = f'ERROR: no defined list of broadband filter breaks for images with {self.nlayersim3} layers!'
-            raise ValueError(errmsg)
     @methodtools.lru_cache()
     @property
     def exposure_time_histograms_and_bins_by_layer_group(self) :
-        all_exp_times = []
-        for lgi in range(len(self.mask_layer_groups)) :
-            all_exp_times.append([])
+        all_exp_times = {}
+        for lgn in self.layer_groups.keys() :
+            all_exp_times[lgn] = []
         for r in self.rectangles :
-            for lgi,lgb in enumerate(self.mask_layer_groups) :
-                all_exp_times[lgi].append(r.allexposuretimes[lgb[0]-1])    
-        exp_time_hists_and_bins = []
-        for lgi in range(len(self.mask_layer_groups)) :
-            newhist,newbins = np.histogram(all_exp_times[lgi],bins=60)
-            exp_time_hists_and_bins.append((newhist,newbins))
+            for lgn,lgb in self.layer_groups.items() :
+                all_exp_times[lgn].append(r.allexposuretimes[lgb[0]-1])    
+        exp_time_hists_and_bins = {}
+        for lgn in self.mask_layer_groups.keys() :
+            newhist,newbins = np.histogram(all_exp_times[lgn],bins=60)
+            exp_time_hists_and_bins.append[lgn] = (newhist,newbins)
         return exp_time_hists_and_bins
 
     @property
@@ -496,7 +487,7 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         if not self.skip_masking :
             self.create_or_find_image_masks()
         #make the mean image from all of the tissue bulk rectangles
-        new_field_logs = self.__meanimage.stack_rectangle_images(self.tissue_bulk_rects,self.med_ets,
+        new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,self.med_ets,
                                                                  self.image_masking_dirpath)
         for fl in new_field_logs :
             fl.slide = self.SlideID
