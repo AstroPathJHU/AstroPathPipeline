@@ -647,9 +647,15 @@ class queue : vminformqueue{
         }
         #
         $this.originaltasks = $current_queue_data
-        $this.cleanedtasks = $this.originaltasks -replace ('\s','')
-        $this.cleanedtasks = $this.cleanedtasks | 
-            ForEach-Object {$_.Split(',')[0..3]}
+        $tempcleanedtasks = $this.originaltasks -replace ('\s','')
+        #
+        $this.cleanedtasks = New-Object 'object[]' $tempcleanedtasks.count
+        $cnt = 0
+        #
+        foreach ($newtask in $tempcleanedtasks){
+           $this.cleanedtasks[$cnt] = ($newtask.split(',')[0..3])
+           $cnt ++
+        }
         #
     }
     <# -----------------------------------------
@@ -668,19 +674,20 @@ class queue : vminformqueue{
     ----------------------------------------- #>
     [array]Aggregatebatches($batcharray){
         $batcharrayunique = $batcharray | Sort-Object | Get-Unique
-        $slides = $this.importslideids($this.mpath)
-        $batchescomplete = @()
+        $batchescomplete = New-Object 'object[]' $batcharrayunique.count
+        $cnt = 0
         #
         $batcharrayunique | foreach-object {
             $nslidescomplete = ($batcharray -match $_).count
-            $projectbatchpair = $_ -split ','
-            $sample = [sampledef]::new($this.mpath, $this.module, $projectbatchpair[1], $projectbatchpair[0])
+            $sample = sample $this.mpath $this.module $_[1] $_[0]
             $nslidesbatch = $sample.batchslides.count
             if ($nslidescomplete -eq $nslidesbatch){
-                $batchescomplete += $_
+                $batchescomplete[$cnt] = $_
+                $cnt ++
             }
         }
-        return $batchescomplete
+        #
+        return ($batchescomplete -ne $null)
     }
     #
     [void]handleAPevent($file){
