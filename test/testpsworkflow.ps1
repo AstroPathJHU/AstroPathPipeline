@@ -32,8 +32,8 @@ Class testpsworkflow : testtools {
         #
         # add user name and password to runtestjob(4) for these to work
         #
-        $this.launchremotejobbatch($inp)  
-        #$this.launchremotejob($inp) 
+        #$this.launchremotejobbatch($inp)  
+        $this.launchremotejob($inp) 
         #$this.launchremotetestjob($inp)  
         Write-Host '.'
         #
@@ -374,8 +374,8 @@ Class testpsworkflow : testtools {
         #
         $inp.mpath = '\\bki04\astropath_processing'
         #
-        $module = 'meanimage'
-        $currenttask = @('1', $this.slideid)
+        $module = 'warpoctets'
+        $currenttask = @('1', 'M110_1')
         $currentworker = [PSCustomObject]@{
             module = $module
             server = 'bki06'
@@ -423,10 +423,10 @@ Class testpsworkflow : testtools {
         $inp.mpath = '\\bki04\astropath_processing'
         #
         $module = 'batchwarpkeys'
-        $currenttask = @('1', '8')
+        $currenttask = @('1', '14')
         $currentworker = [PSCustomObject]@{
             module = $module
-            server = 'bki06'
+            server = 'bki08'
             location = 'e$'
             status = 'IDLE'
         }

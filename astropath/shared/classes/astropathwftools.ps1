@@ -378,11 +378,11 @@ class astropathwftools : sampledb {
         #
         # open the workertaskfile
         #
-        $task = $this.getcontent($this.workertaskfile($jobname))
+        $mtask = $this.getcontent($this.workertaskfile($jobname))
         #
         # parse out necessary information
         #
-        $file1 = $task -split 'module'
+        $file1 = $mtask -split 'module'
         $ID = ($file1[4] -split '} 2')[0]
         $ID = ($ID -split '-') -replace '"', ''
         $cmodule = $ID[0].trim()
@@ -394,14 +394,14 @@ class astropathwftools : sampledb {
             if ($cmodule -match 'batch'){
                 $cproject = ($ID[1] -replace 'project', '').trim()
                 $cbatchid = ($ID[2] -replace 'batchid', '').trim()
-                $log = [mylogger]::new($this.mpath, $cmodule, $cbatchid, $cproject)
+                $log = logger -mpath:$this.mpath $cmodule -batchid:$cbatchid -project:$cproject
             } else {
                 $cslideid = ($ID[2] -replace 'slideid', '').trim()
-                $log = [mylogger]::new($this.mpath, $cmodule, $cslideid)
+                $log = logger -mpath:$this.mpath -module:$cmodule -slide:$cslideid
             }
         } catch {
             Write-Host $_.Exception.Message
-            Write-Host 'ID:' $ID[1]
+            Write-Host 'ID:' $ID
             Write-Host 'Project:' $ID[0]
             return
         }
