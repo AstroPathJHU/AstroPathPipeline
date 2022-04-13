@@ -20,7 +20,7 @@ Class imagecorrection : moduletools {
     #
     [string]$pytype = 'cohort'
     #
-    imagecorrection([array]$task,[launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
+    imagecorrection([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample){
         $this.flevel = [FileDownloads]::BATCHID + 
             [FileDownloads]::IM3 + 
             [FileDownloads]::FLATFIELD + 

@@ -1,7 +1,7 @@
 ﻿<#
 --------------------------------------------------------
 meanimage
-Benjamin Gree, Andrew Jorquera
+Benjamin Green, Andrew Jorquera
 Last Edit: 10/19/2021
 --------------------------------------------------------
 Description
@@ -20,7 +20,7 @@ Class meanimage : moduletools {
     #
     [string]$pytype = 'sample'
     #
-    meanimage([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
+    meanimage([hashtable]$task, [launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample){
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
         $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
     }

@@ -15,8 +15,7 @@ Class testpssegmaps : testtools {
     #
     testpssegmaps(){
         #
-        $task = ('0', 'M21_1', $this.processloc, $this.mpath)
-        $inp = segmaps $task
+        $inp = segmaps $this.task
         #
         # Run Tests
         #

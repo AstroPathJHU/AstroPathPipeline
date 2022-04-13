@@ -7,7 +7,7 @@ Last Edit: 02.16.2022
 #>
 class batchwarpkeys : moduletools {
     #
-    batchwarpkeys([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    batchwarpkeys([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
         $this.processloc = $this.sample.warpbatchfolder() 
     }
     <# -----------------------------------------
@@ -77,7 +77,7 @@ class batchwarpkeys : moduletools {
             '--shardedim3root',  $rpath, 
             '--sampleregex',  ('"'+($this.batchslides -join '|')+'"'), 
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
-            '--octets-only --noGPU --no-log',
+            '--octets-only', $this.gpuopt(), '--no-log',
             '--ignore-dependencies',
             $this.buildpyopts('cohort'),
             $this.workingdir()

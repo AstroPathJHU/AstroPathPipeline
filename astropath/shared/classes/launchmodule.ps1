@@ -11,9 +11,9 @@ class launchmodule : mylogger{
         $this.level = 12
         #
         if ($module -match 'batch'){
-            $this.sampledefbatch($val[1], $val[0])
+            $this.sampledefbatch($val.batchid, $val.project)
         } else {
-            $this.sampledefslide($val[1])            
+            $this.sampledefslide($val.slideid)            
 
         }
         #

@@ -26,9 +26,8 @@ using module .\testtools.psm1
     }
     #
     launchtests(){
-        $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        $this.testpsbatchwarpkeysconstruction($task)
-        $inp = batchwarpkeys $task  
+        $this.testpsbatchwarpkeysconstruction($this.task)
+        $inp = batchwarpkeys $this.task  
         $this.removewarpoctetsdep($inp)
         $this.testprocessroot($inp)
         $this.testwarpkeysinputbatch($inp)
@@ -136,7 +135,7 @@ using module .\testtools.psm1
             '--sampleregex', $slides,
             '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
                          $this.pybatchflatfieldtest + '.bin'),
-            '--octets-only --noGPU --no-log --ignore-dependencies --allow-local-edits',
+            '--octets-only',$inp.gpuopt(), '--no-log --ignore-dependencies --allow-local-edits',
             '--use-apiddef --project', $this.project.PadLeft(2,'0')
         ) -join ' ') + $wd
         #

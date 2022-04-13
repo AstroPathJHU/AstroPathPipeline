@@ -1,3 +1,4 @@
+using module .\testtools.psm1
 <# -------------------------------------------
  testpsconvertim3path
  Benjamin Green - JHU
@@ -7,44 +8,85 @@
  test if the module can be imported or not
  -------------------------------------------#>
 #
-Class testpsconvertim3path {
+Class testpsconvertim3path : testtools{
     #
-    [string]$apmodule = $PSScriptRoot + '/../astropath'
-    [string]$basepath
-    [string]$flatwpath
-    [string]$slideid
+    [string]$module = 'convertim3path'
     [string]$scanfolder
-    [string]$dryrun
+    [string]$class = 'convertim3path'
+    [string]$im3folderexten = '\im3\Scan1\MSI'
     #
-    testpsconvertim3path($dryrun){
+    testpsconvertim3path(){
+        $this.launchtests()
+    }
+    #
+    testpsconvertim3path($dryrun) : base ('1', 'M21_1', $dryrun){
         #
-        $this.basepath = '\\bki04\Clinical_Specimen'
-        $this.flatwpath = '\\bki08\e$\astropath_ws\test'
-        $this.slideid = 'M21_1'
-        $this.scanfolder = $this.basepath + '\' + $this.slideid + '\im3\Scan1\MSI'
         $this.dryrun = $true
+        $this.basepath = '\\bki04\Clinical_Specimen'
         $this.launchtests()
         #
     }
     [void]launchtests(){
-        Write-Host '---------------------test [convertim3path]---------------------'
-        $this.importmodule()
-        $this.launchshred()
+        #
+        $this.scanfolder = $this.basepath + '\' + $this.slideid + $this.im3folderexten
+        #
+        $this.cleanup()
+        $this.launchshreddat()
         $this.testnormal()
         $this.testzero()
         $this.testzero2()
+        $this.cleanup()
+        #
+        $this.launchshredfullxml()
+        $this.cleanup()
+        $this.launchshredxml()
+        $this.cleanup()
+        $this.launchshredall()
+        $this.cleanup()
+        #
+        $this.launchinject()
+        $this.cleanup()
+        #
         Write-Host '.'
         #
     }
     #
-    [void]importmodule(){
-        Write-Host '.'
-        Write-Host 'importing astropath ... '
-        Import-Module $this.apmodule
+    [void]launchshreddat(){
+        ConvertIM3Path $this.basepath $this.processloc $this.slideid -shred -dat -verbose -debug
     }
     #
-    [void]launchshred(){
-        ConvertIM3Path $this.basepath $this.flatwpath $this.slideid -shred -dat -verbose
+    [void]launchshredxml(){
+        ConvertIM3Path $this.basepath $this.processloc $this.slideid -shred -xml -verbose -debug
+    }
+    #
+    [void]launchshredfullxml(){
+        ConvertIM3Path $this.basepath $this.processloc $this.slideid -shred -xmlfull -verbose -debug
+    }
+    #
+    [void]launchshredall(){
+        ConvertIM3Path $this.basepath $this.processloc $this.slideid -shred -all -verbose -debug
+    }
+    #
+    [void]launchinject(){
+        #
+        write-host '.'
+        write-host 'test inject started'
+        #
+        $des = $this.processloc + '\test_data\' + 
+            $this.slideid + $this.im3folderexten
+        write-host '    copy' $this.scanfolder
+        write-host '    to:' $des
+        if (!(test-path $des)){
+            new-item $des -ItemType 'directory'
+        }
+        robocopy $this.scanfolder $des -r:3 -w:3 -np -E -mt:10
+        #
+        $this.basepath = $this.processloc + '\test_data'
+        $this.launchshreddat()
+        #
+        ConvertIM3Path $this.basepath $this.processloc $this.slideid -inject -verbose -debug
+        write-host 'test inject finished'
+        #
     }
     #
     [void]testnormal(){
@@ -55,7 +97,7 @@ Class testpsconvertim3path {
         #
         Write-Host '    image 1:' $images[0]
         #
-        $dest = ($this.flatwpath + '\' + $this.slideid)
+        $dest = ($this.processloc + '\' + $this.slideid)
         $filespec = '.Data.dat'
         #
         $output = Get-ChildItem ($dest + '\*') ('*' + $filespec)
@@ -79,14 +121,14 @@ Class testpsconvertim3path {
         Write-Host '.'
         Write-Host 'test that the zero byte dats are found correctly started'
         #
-        $outputimages = Get-ChildItem ($this.flatwpath + '\' + $this.slideid + '\*') '*Data.dat'   
+        $outputimages = Get-ChildItem ($this.processloc + '\' + $this.slideid + '\*') '*Data.dat'   
         Write-Host '    remove:' $outputimages[0].FullName
         remove-item -LiteralPath $outputimages[0].FullName -Force -EA Stop
         Write-Host '    create file'
         new-item -Path $outputimages[0].Directory -Name $outputimages[0].Name -ItemType 'file' -EA Stop
         #
         $filespec = '.Data.dat'
-        $dest = ($this.flatwpath + '\' + $this.slideid)
+        $dest = ($this.processloc + '\' + $this.slideid)
         [array]$images = (Get-ChildItem ($this.scanfolder +'\*') '*.im3').FullName
         Write-Host '    image 1:' $images[0]
         #
@@ -113,7 +155,7 @@ Class testpsconvertim3path {
         Write-Host '.'
         Write-Host 'test that the zero byte dats are found correctly started'
         #
-        $outputimages = Get-ChildItem ($this.flatwpath + '\' + $this.slideid + '\*') '*Data.dat'   
+        $outputimages = Get-ChildItem ($this.processloc + '\' + $this.slideid + '\*') '*Data.dat'   
         Write-Host '    remove:' $outputimages[0].FullName
         remove-item -LiteralPath $outputimages[0].FullName -Force -EA Stop
         Write-Host '    create file'
@@ -125,7 +167,7 @@ Class testpsconvertim3path {
         new-item -Path $outputimages[1].Directory -Name $outputimages[1].Name -ItemType 'file' -EA Stop
         #
         $filespec = '.Data.dat'
-        $dest = ($this.flatwpath + '\' + $this.slideid)
+        $dest = ($this.processloc + '\' + $this.slideid)
         [array]$images = (Get-ChildItem ($this.scanfolder +'\*') '*.im3').FullName
         Write-Host '    image 1:' $images[0]
         #
@@ -147,6 +189,16 @@ Class testpsconvertim3path {
         #
     }
     #
+    [void]cleanup(){
+        #
+        $dir = $this.processloc
+        #
+        if (test-path -literalpath $dir){
+            Get-ChildItem -Directory $dir | Remove-Item -force -Confirm:$false -recurse
+            remove-item $dir -force -Confirm:$false -Recurse
+        }
+        #
+    }
 }
 #
 # launch test and exit if no error found
