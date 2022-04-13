@@ -584,7 +584,7 @@
                 Throw 'Error in launching python task'
             }
             #
-            if ($this.sample.module -match 'warpoctets'){
+            if ($this.sample.module -match 'warpoctets|imagecorrection'){
                 $this.parsepysamplelog()
             }
             #

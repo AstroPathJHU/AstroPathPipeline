@@ -141,6 +141,23 @@ Class imagecorrection : moduletools {
     [void]renamefw2dat(){
         #
         $this.sample.info("rename fw 2 dat started")
+        #
+        $files = $this.sample.listfiles(($this.processvars[1], $this.sample.slideid -join '\'), 'fw')
+        if (!$files){
+            #
+            $this.sample.error('no fw files applyflatw failed without an error, will rerun and print entire applyflatw log')
+            $this.applyflatwpy()
+            #
+            $this.getmodulename()
+            $taskname = $this.pythonmodulename
+            $externallog = $this.ProcessLog($taskname)
+            $this.logoutput = $this.sample.GetContent($externallog)
+            $this.sample.error($this.logoutput)
+            throw 'end rerun for no fw files after appyflatw'
+            #
+        }
+
+        #
         $this.sample.removefile(
             ($this.processvars[1], $this.sample.slideid -join '\'), '.Data.dat')
         if ($this.sample.listfiles(
