@@ -401,8 +401,9 @@ class astropathwftools : sampledb {
             }
         } catch {
             Write-Host $_.Exception.Message
-            Write-Host 'ID:' $ID
-            Write-Host 'Project:' $ID[0]
+            Write-Host $ID
+            Write-Host 'ID:' (($ID[2] -replace 'slideid', '').trim())
+            Write-Host 'Project:' (($ID[1] -replace 'project', '').trim())
             return
         }
         #
