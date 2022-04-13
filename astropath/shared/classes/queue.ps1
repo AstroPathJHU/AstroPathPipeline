@@ -72,18 +72,19 @@ class queue : vminformqueue{
             Where-Object {$projects -contains $_.Project}
         #
         $slidesnotcomplete = $this.defNotCompletedSlides($cleanedslides)
-        $slidearray = @()
-        $batcharray = @()
+        $slidearray = New-Object 'object[]' $slidesnotcomplete.count
+        $batcharray = New-Object 'object[]' $slidesnotcomplete.count
+        #
         if ($slidesnotcomplete.count -eq 1){
-            $slidearray += $slidesnotcomplete.Project + 
-                ',' + $slidesnotcomplete.Slideid
-            $batcharray += $slidesnotcomplete.Project + 
-                ',' + $slidesnotcomplete.Slideid
+            $slidearray[0] = ($slidesnotcomplete.Project,
+                $slidesnotcomplete.Slideid)
+            $batcharray[0] = ($slidesnotcomplete.Project, 
+                $slidesnotcomplete.Slideid)
         } else {
             for($i=0; $i -lt $slidesnotcomplete.count;$i++){
-                $slidearray += ($slidesnotcomplete.Project[$i],
+                $slidearray[$i] = ($slidesnotcomplete.Project[$i],
                     $slidesnotcomplete.Slideid[$i])
-                $batcharray += ($slidesnotcomplete.Project[$i],
+                $batcharray[$i] = ($slidesnotcomplete.Project[$i],
                     $slidesnotcomplete.BatchID[$i])
             }
         }
@@ -648,7 +649,7 @@ class queue : vminformqueue{
         $this.originaltasks = $current_queue_data
         $this.cleanedtasks = $this.originaltasks -replace ('\s','')
         $this.cleanedtasks = $this.cleanedtasks | 
-            ForEach-Object {$_.Split(',')[0..3] -join(',')}
+            ForEach-Object {$_.Split(',')[0..3]}
         #
     }
     <# -----------------------------------------
