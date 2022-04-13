@@ -28,9 +28,8 @@ using module .\testtools.psm1
     #
     launchtests(){
         #
-        $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        $this.testpswarpfitsconstruction($task)
-        $inp = batchwarpfits $task  
+        $this.testpswarpfitsconstruction($this.task)
+        $inp = batchwarpfits $this.task  
         $this.testprocessroot($inp)
         $this.testshreddatim($inp)
         $this.testwarpfitsinput($inp)
@@ -192,7 +191,7 @@ using module .\testtools.psm1
             '--sampleregex', $slides,
             '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
                             $this.pybatchflatfieldtest + '.bin'),
-            '--noGPU --no-log --ignore-dependencies --allow-local-edits',
+            $inp.gpuopt(), '--no-log --ignore-dependencies --allow-local-edits',
             '--use-apiddef --project', $this.project.PadLeft(2,'0'), $wd
         ) -join ' '
         #

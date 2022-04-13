@@ -365,15 +365,14 @@
     [void]setstart($sampletracker, $log, $module){
         #
         if ($module -match 'vminform'){
-            $log.val = @($this.project, $this.slideid,
-                $sampletracker.antibodies[0], 'blah.ifr', '2.4.8')
+            $log.val = $this.task
             $sampletracker.vmq.openmainqueue($false)
         }
         #
         if ($module -match 'vminform'){
             $sampletracker.vmq.openmainqueue($false)
             $sampletracker.antibodies | ForEach-Object{
-                $log.val[2] = $_
+                $log.val.antibody = $_
                 $log.start($module)
             }
         } else {
@@ -385,15 +384,14 @@
     [void]setfinish($sampletracker, $log, $module){
         #
         if ($module -match 'vminform'){
-            $log.val = @($this.project, $this.slideid,
-                $sampletracker.antibodies[0], 'blah.ifr', '2.4.8')
+            $log.val = $this.task
             $sampletracker.vmq.openmainqueue($false)
         }
         #
         if ($module -match 'vminform'){
             $sampletracker.vmq.openmainqueue($false)
             $sampletracker.antibodies | ForEach-Object{
-                $log.val[2] = $_
+                $log.val.antibody = $_
                 $log.finish($module)
             }
         } else {

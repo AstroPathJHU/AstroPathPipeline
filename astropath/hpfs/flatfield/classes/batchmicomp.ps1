@@ -9,7 +9,7 @@ class batchmicomp : moduletools {
     #
     [string]$project
     #
-    batchmicomp([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    batchmicomp([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'
         $this.processloc = $this.sample.basepath + '\flatfield\' + $this.sample.batchID
         $this.sample.createdirs($this.processloc)

@@ -7,7 +7,7 @@ Last Edit: 02.16.2022
 #>
 class batchwarpfits : moduletools {
     #
-    batchwarpfits([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    batchwarpfits([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
        # $this.processloc = '\\' + $this.sample.project_data.fwpath +
        #     '\warpfits\Batch_' + $this.sample.BatchID
         $this.processvars[0] = $this.sample.basepath
@@ -111,7 +111,7 @@ class batchwarpfits : moduletools {
             '--shardedim3root',  $rpath, 
             '--sampleregex',  ('"'+($this.batchslides -join '|')+'"'), 
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
-            '--noGPU --no-log',
+            $this.gpuopt(),'--no-log',
             '--ignore-dependencies',
             $this.buildpyopts('cohort'),
             '--workingdir', $this.workingdir()

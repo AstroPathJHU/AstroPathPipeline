@@ -21,14 +21,16 @@
         'MikTeX' = '';
         'matlab' = '';
         'git' = '';
-        'python' = ''
+        'python' = '';
+        'NET' = ''
     }
     [hashtable]$softwareargs = @{
         'Miniconda3' = @('/InstallationType=AllUsers', '/RegisterPython=1','/S','/D=C:\ProgramData\Miniconda3')
         'MikTeX' = @('');
         'matlab' = @('');
         'git' = @('');
-        'python' = @('')
+        'python' = @('');
+        'NET' = @('')
     }
     #
     sharedtools(){}
@@ -195,7 +197,7 @@
             } 
         } else {
             $version = $this.getpackageversion() 
-            $version = $version, $this.getdate() -join '.' 
+            $version = $version
         }
         #
         return $version
@@ -293,14 +295,14 @@
      for some reason return the v0.0.0 versioning
     ----------------------------------------- #>
     [string]getpackageversion(){
-        $version = "v0.0.0.dev0+g0000000"
+        $version = "v0.0.0.dev0+g0000000", $this.getdate() -join '.' 
         if ($this.CheckpyEnvir()){
             #
             $this.checkconda()
             $condalist = conda list -p $this.pyenv()
             $astropath = $condalist -match $this.package
             if ($astropath[1]){
-                $version = 'v'+($astropath[1] -split ' ') -match 'dev'
+                $version = 'v'+(($astropath[1] -split ' ') -match 'dev')
             }
         }
         return $version                
@@ -374,6 +376,16 @@
         if ($myenv -notmatch 'matlab'){
             Write-Host "WARNING: matlab command does not exist on the current system! v0.0.1 software not supported w/o matlab."
         }        
+    }
+    #
+    [void]checkNET(){
+        if (!(Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Release -ge 461808){
+            Throw 'Please install .NET framework 4.7.2 or greater to run code'
+        }
+    }
+    #
+    [void]checksoftware(){
+        $this.checkNET()
     }
      <# -----------------------------------------
      CheckpyEnvir

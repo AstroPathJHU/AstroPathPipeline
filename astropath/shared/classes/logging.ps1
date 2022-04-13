@@ -37,7 +37,7 @@ class mylogger : samplereqs {
     [string]$message
     [string]$messageappend = ''
     [string]$vers
-    [array]$val
+    [hashtable]$val
     #
     # constructors
     #
@@ -173,9 +173,9 @@ class mylogger : samplereqs {
     #
     [void]buildappend(){
         if ($this.module -eq 'vminform'){
-            $this.messageappend = ": Antibody: " + $this.val[2] + 
-                " - Algorithm: " + $this.val[3] + 
-                " - inForm version: " + $this.val[4]
+            $this.messageappend = ": Antibody: " + $this.val.Antibody + 
+                " - Algorithm: " + $this.val.Algorithm + 
+                " - inForm version: " + $this.val.informvers
         }
     }
 }

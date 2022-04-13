@@ -18,7 +18,7 @@ class vminformqueue : modulequeue {
         $this.vminformqueueinit()
         #$this.coalescevminformqueues()
     }
-    vminformqueue($mpath, $project) : base( $mpath, 'vminform', $project){
+    vminformqueue($mpath, $project) : base($mpath, 'vminform', $project){
         $this.vminformqueueinit()
         #$this.coalescevminformqueues($project)
     }

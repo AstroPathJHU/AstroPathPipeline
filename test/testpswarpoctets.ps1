@@ -27,9 +27,8 @@ Class testpswarpoctets : testtools {
     #
     [void]launchtests(){
         #
-        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        $this.testpswarpoctetsconstruction($task)
-        $inp = warpoctets $task
+        $this.testpswarpoctetsconstruction($this.task)
+        $inp = warpoctets $this.task
         $this.testprocessroot($inp, $true)
         $this.testcorrectionfile($inp)
         $this.comparepywarpoctetsinput($inp)
@@ -97,7 +96,7 @@ Class testpswarpoctets : testtools {
             $this.slideid, #'--sampleregex',
             '--shardedim3root', $rpath,
             '--flatfield-file',  $batchbinfile,
-            '--noGPU',
+            $inp.gpuopt(),
             '--no-log',
             '--allow-local-edits',
             '--skip-start-finish')

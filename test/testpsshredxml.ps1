@@ -18,8 +18,7 @@ Class testpsshredxml : testtools {
         #
         # Setup Testing
         #
-        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        $inp = shredxml $task
+        $inp = shredxml $this.task
         #
         # Run Tests
         #

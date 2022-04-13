@@ -19,7 +19,16 @@
     [string]$mainqueueheaders = 'Project,Cohort,SlideID,Status,isGood'
     [string]$localqueueheaders = 'Project,Cohort,SlideID,Status,isGood'
     [string]$refobject 
-    
+    #
+    modulequeue(){
+        $this.modulequeueinit('\\bki04\astropath_processing', '')
+        <#
+        if ($module -notcontains 'vminform'){
+            $this.coalescequeues()
+        }
+        #>
+    }
+    #
     modulequeue($module){
         $this.modulequeueinit('\\bki04\astropath_processing', $module)
         <#

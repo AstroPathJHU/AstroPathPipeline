@@ -29,11 +29,12 @@
     [array]$batchslides
     [switch]$all = $false
     #
-    moduletools([array]$task,[launchmodule]$sample){
+    moduletools([hashtable]$task, [launchmodule]$sample){
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
         $this.vers = $this.sample.GetVersion(
-            $this.sample.mpath, $this.sample.module, $task[0])   
+            $this.sample.mpath, $this.sample.module, $task.project)
+        $this.sample.checksoftware()   
     }
     <# -----------------------------------------
     BuildProcessLocPath
@@ -52,9 +53,14 @@
         # If processloc is not '*' a processing destination was added as 
         # input, correct the paths to analyze from there
         #
-        if ($task[2] -AND !($task[2] -match '\*')){
-            $this.processloc = ($task[2] + '\astropath_ws\' + 
-                $this.sample.module + '\'+$task[1])
+        if ($task.processloc -AND !($task.processloc -match '\*')){
+            if ($this.sample.module -match 'batch'){
+                $this.processloc = ($task.processloc + '\astropath_ws\' + 
+                    $this.sample.module + '\'+$task.batchid)
+            } else {
+                $this.processloc = ($task.processloc + '\astropath_ws\' + 
+                    $this.sample.module + '\'+$task.slideid)
+            }
             #
             $processvarsa = $this.processvars[0,2,3] -replace `
                 [regex]::escape($this.sample.basepath), $this.processloc 
@@ -456,6 +462,18 @@
         $str = ('--allow-local-edits --use-apiddef --project',
             $project -join ' '), $this.pyoptsnoaxquiredannos() -join ''
         return $str
+    }
+    #
+    [string]gpuopt(){
+        $gpu = Get-WmiObject win32_VideoController
+        if (($gpu.Name.length) -gt 1 -or 
+            ($gpu.name -match 'NVIDIA') -or 
+            ($gpu.name -match 'AMD')
+        ){
+            return ''
+        } else {
+            return '--noGPU'
+        }
     }
     #
     [string]pyoptsnoaxquiredannos(){

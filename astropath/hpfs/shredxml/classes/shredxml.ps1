@@ -18,7 +18,7 @@ Usage: $a = [shredxml]::new($task, $sample)
 #>
 Class shredxml : moduletools {
     #
-    shredxml([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    shredxml([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
         $this.processvars[0] = $this.sample.basepath
         $this.processvars[1] = $this.processloc
         $this.sample.CreateDirs($this.processloc)

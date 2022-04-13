@@ -1,7 +1,7 @@
 <#
 --------------------------------------------------------
 merge
-Created By: Andrew Jorquera
+Benjamin Green, Andrew Jorquera
 Last Edit: 12/10/2021
 --------------------------------------------------------
 Description
@@ -18,7 +18,7 @@ Usage: $a = [merge]::new($task, $sample)
 #>
 Class merge : moduletools {
     #
-    merge([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
+    merge([hashtable]$task, [launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample){
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs\MaSS"'
     }
     <# -----------------------------------------

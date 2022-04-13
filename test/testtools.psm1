@@ -28,6 +28,10 @@ Class testtools{
     [string]$apfile_temp_constant = 'Template.csv'
     [string]$pybatchwarpingfiletest = 'warping_BatchID_08.csv'
     [string]$batchflatfieldgtest = 'BatchID_08'
+    [hashtable]$task 
+    [string]$informvers = '2.4.8'
+    [string]$informantibody = 'CD8'
+    [string]$informproject = 'blah.ifr'
     #
     testtools(){
        $this.importmodule()
@@ -78,6 +82,12 @@ Class testtools{
         $this.testrpath = $this.processloc, $this.slideid, 'rpath' -join '\'
         $this.verifyAPIDdef()
         $this.updatepaths()
+        $this.task = @{project =$this.project; slideid=$this.slideid;
+                    processloc=$this.processloc;mpath= $this.mpath;
+                    batchid=$this.batchid;module=$this.module;
+                    antibody=$this.informantibody; algorithm=$this.informproject;
+                    informvers=$this.informvers
+                    }
         #
     }
     #
@@ -393,9 +403,9 @@ Class testtools{
         Write-Host ('test python ['+$this.class+'] with error input started')
         $inp.sample.CreateNewDirs($inp.processloc)
         $this.addwarpoctetsdep($inp)
-        $task = $this.getmoduletask($inp)
-        $pythontask = $task[0]
-        $externallog = $task[1] + '.err.log'
+        $mtask = $this.getmoduletask($inp)
+        $pythontask = $mtask[0]
+        $externallog = $mtask[1] + '.err.log'
         #
         $pythontask = $pythontask, '--blah' -join ' '
         #
@@ -738,14 +748,14 @@ Class testtools{
         Write-Host '    Task3:' $task3
         $task4 = "write_image_to_file(ff_img, outputdir/ff_file.name)" -join ''
         Write-Host '    Task4:' $task4
-        $task = $import, $task1, $task2, $task3, $task4 -join '; '
-        Write-Host '    Task:' $task
+        $taska = $import, $task1, $task2, $task3, $task4 -join '; '
+        Write-Host '    Task:' $taska
         #
         if ($inp.sample.isWindows()){
             $inp.sample.checkconda()
-            conda run -n $inp.sample.pyenv() python -c $task
+            conda run -n $inp.sample.pyenv() python -c $taska
         } else{
-            python -c $task
+            python -c $taska
         }
         if (!(test-path $this.batchreferencefile )){
             Throw 'Batch flatfield reference file failed to create'
