@@ -317,7 +317,7 @@ class vminformqueue : modulequeue {
     #
     [void]UpdateQueue($currenttask, $currentworker, $tasktomatch){
         #
-        if ($this.module -ne $this.module){
+        if ($this.module -ne 'vminform'){
             return
         }
         #

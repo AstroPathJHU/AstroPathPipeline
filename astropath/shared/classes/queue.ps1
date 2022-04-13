@@ -81,10 +81,10 @@ class queue : vminformqueue{
                 ',' + $slidesnotcomplete.Slideid
         } else {
             for($i=0; $i -lt $slidesnotcomplete.count;$i++){
-                $slidearray += $slidesnotcomplete.Project[$i] + 
-                    ',' + $slidesnotcomplete.Slideid[$i]
-                $batcharray += $slidesnotcomplete.Project[$i] + 
-                    ',' + $slidesnotcomplete.BatchID[$i]
+                $slidearray += ($slidesnotcomplete.Project[$i],
+                    $slidesnotcomplete.Slideid[$i])
+                $batcharray += ($slidesnotcomplete.Project[$i],
+                    $slidesnotcomplete.BatchID[$i])
             }
         }
         #
