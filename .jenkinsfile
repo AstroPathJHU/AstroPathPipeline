@@ -56,12 +56,13 @@ pipeline {
               }
             }
 
+/*
             stage('workflow') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
               }
             }
-
+*/
             stage('prepdb') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
