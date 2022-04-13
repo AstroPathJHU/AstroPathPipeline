@@ -466,7 +466,7 @@
     #
     [string]gpuopt(){
         $gpu = Get-WmiObject win32_VideoController
-        if (($gpu.Name.length) -gt 1 -or 
+        if (($gpu.Name.count) -gt 1 -or 
             ($gpu.name -match 'NVIDIA') -or 
             ($gpu.name -match 'AMD')
         ){
