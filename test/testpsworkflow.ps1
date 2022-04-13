@@ -374,8 +374,8 @@ Class testpsworkflow : testtools {
         #
         $inp.mpath = '\\bki04\astropath_processing'
         #
-        $module = 'warpoctets'
-        $currenttask = @('1', 'M110_1')
+        $module = 'imagecorrection'
+        $currenttask = @('16', 'AP0160021')
         $currentworker = [PSCustomObject]@{
             module = $module
             server = 'bki06'
