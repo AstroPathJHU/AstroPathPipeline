@@ -10,7 +10,7 @@
 class queue : vminformqueue{
     #
     [Array]$originaltasks
-    [Array]$cleanedtasks
+    [system.object]$cleanedtasks
     [string]$queue_file
     [string]$informvers
     [string]$project
@@ -677,13 +677,24 @@ class queue : vminformqueue{
         $batchescomplete = New-Object 'object[]' $batcharrayunique.count
         $cnt = 0
         #
-        $batcharrayunique | foreach-object {
-            $nslidescomplete = ($batcharray -match $_).count
-            $sample = sample -mpath $this.mpath -module $this.module -batchid $_[1] -project $_[0]
+        if ($batcharrayunique.count -eq 2 -and $batcharrayunique[0].count -eq 1){
+            $nslidescomplete = ($batcharray -match $batcharrayunique).count
+            $sample = sample -mpath $this.mpath -module $this.module -batchid $batcharrayunique[1] -project $batcharrayunique[0]
             $nslidesbatch = $sample.batchslides.count
             if ($nslidescomplete -eq $nslidesbatch){
                 $batchescomplete[$cnt] = $_
                 $cnt ++
+            }
+        } else {
+            #
+            $batcharrayunique | foreach-object {
+                $nslidescomplete = ($batcharray -match $_).count
+                $sample = sample -mpath $this.mpath -module $this.module -batchid $_[1] -project $_[0]
+                $nslidesbatch = $sample.batchslides.count
+                if ($nslidescomplete -eq $nslidesbatch){
+                    $batchescomplete[$cnt] = $_
+                    $cnt ++
+                }
             }
         }
         #
