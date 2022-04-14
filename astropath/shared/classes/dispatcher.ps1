@@ -194,7 +194,12 @@ class Dispatcher : DispatcherTools {
             #
             $currentworker, $this.workers = $this.workers 
             $tasktomatch, $this.originaltasks = $this.originaltasks
-            $currenttask, $this.cleanedtasks = $this.cleanedtasks
+            if ($this.cleanedtasks.count -eq 1){
+                $currenttask = $this.cleanedtasks
+                $this.cleanedtasks = @()
+            } else {
+                $currenttask, $this.cleanedtasks = $this.cleanedtasks
+            }
             #
             Write-Host "  Launching Task on:" $currentworker.server $currentworker.location `
                     -ForegroundColor Yellow
