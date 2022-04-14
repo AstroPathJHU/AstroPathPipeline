@@ -195,7 +195,7 @@ class Dispatcher : DispatcherTools {
             $currentworker, $this.workers = $this.workers 
             $tasktomatch, $this.originaltasks = $this.originaltasks
             if ($this.cleanedtasks.count -eq 1){
-                $currenttask = $this.cleanedtasks
+                $currenttask = $this.cleanedtasks[0]
                 $this.cleanedtasks = @()
             } else {
                 $currenttask, $this.cleanedtasks = $this.cleanedtasks
