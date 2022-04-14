@@ -534,6 +534,21 @@
         #
     }
     #
+    [void]runpythontask($taskname, $pythontask, $nolog){
+        #
+        $externallog = $this.ProcessLog($taskname)
+        $this.sample.info(('python task: ' + $pythontask))
+        if ($this.sample.isWindows()){
+            $this.sample.checkconda()
+            conda activate $this.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            conda deactivate 
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
+        #
+    }
+    #
     [void]getexternallogs($externallog){
         #
         $this.logoutput = $this.sample.GetContent($externallog)

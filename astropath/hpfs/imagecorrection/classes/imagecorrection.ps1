@@ -51,8 +51,7 @@ Class imagecorrection : moduletools {
      Usage: $this.TestPaths()
     ----------------------------------------- #>
     [void]TestPaths(){
-        $this.sample.info('run applyflatw for:')
-        $s = $this.sample.basepath, $this.sample.flatwfolder(), 
+        $s = 'run applyflatw for:', $this.sample.basepath, $this.sample.flatwfolder(), 
             $this.sample.slideid -join ' '
         $this.sample.info($s)
         $this.sample.testim3mainfolder()
@@ -84,6 +83,22 @@ Class imagecorrection : moduletools {
         $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished applying correction -- matlab")
     }
+    #
+    [void]applyflatwpy($nologaction){
+        #
+        $this.sample.info("started applying correction -- python")
+        $this.getmodulename()
+        $taskname = $this.pythonmodulename
+        #
+        $dpath = $this.sample.basepath + ' '
+        $rpath = $this.processvars[1]
+        $pythontask = $this.('getpythontask' + $this.pytype)($dpath, $rpath)
+        #
+        $this.runpythontask($taskname, $pythontask, $nologaction)
+        $this.sample.info("finished applying correction -- python")
+        #
+    }
+    #
     [void]applyflatwpy(){
         #
         $this.sample.info("started applying correction -- python")
@@ -146,14 +161,13 @@ Class imagecorrection : moduletools {
         if (!$files){
             #
             $this.sample.error('no fw files applyflatw failed without an error, will rerun and print entire applyflatw log')
-            $this.applyflatwpy()
+            $this.applyflatwpy($true)
             #
             $this.getmodulename()
-            $taskname = $this.pythonmodulename
-            $externallog = $this.ProcessLog($taskname)
+            $externallog = $this.ProcessLog($this.pythonmodulename)
             $this.logoutput = $this.sample.GetContent($externallog)
             $this.sample.error($this.logoutput)
-            throw 'end rerun for no fw files after appyflatw'
+            THROW 'end rerun for no fw files after appyflatw'
             #
         }
 
