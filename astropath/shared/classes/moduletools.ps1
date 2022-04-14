@@ -698,7 +698,7 @@
         # parse log
         #
         if ($this.sample.module -match 'batch'){
-            $ID= $this.sample.BatchID
+            $ID= $this.sample.BatchID.padleft(2,'0')
         } else {
             $ID = $this.sample.slideid
         }

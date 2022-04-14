@@ -594,7 +594,7 @@ class queue : vminformqueue{
     ----------------------------------------- #>
     [int]checkimagecorrection([mylogger]$log, $dependency){
         #
-        if (!($this.checkbatchflatfield($log, $true) -eq 3)){
+        if (!($this.checkbatchwarpfits($log, $true) -eq 3)){
             return 1
         }
         #
@@ -682,7 +682,7 @@ class queue : vminformqueue{
             $sample = sample -mpath $this.mpath -module $this.module -batchid $batcharrayunique[1] -project $batcharrayunique[0]
             $nslidesbatch = $sample.batchslides.count
             if ($nslidescomplete -eq $nslidesbatch){
-                $batchescomplete[$cnt] = $_
+                $batchescomplete[$cnt] = $batcharrayunique
                 $cnt ++
             }
         } else {
