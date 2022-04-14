@@ -19,7 +19,7 @@ bases = strcat(repmat({'\\'}, height(cohorts_progress), 1), ...
     height(cohorts_progress), 1),...
     cohorts_progress.Dname);
 
-ii = contains(bases, wd);
+ii = contains(lower(bases), lower(wd));
 %
 cohort = cohorts_progress.Cohort(ii);
 project = cohorts_progress.Project(ii);
@@ -62,7 +62,7 @@ for i1 = 1:length(batches)
     %
     % do the merge config file
     %
-    merge = replace(batch, 'BatchID','MergeConfig');
+    merge = replace(batch, 'Batch_','MergeConfig_');
     %
     try
         m = readtable(merge);
