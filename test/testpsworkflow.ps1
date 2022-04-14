@@ -378,8 +378,8 @@ Class testpsworkflow : testtools {
         $currenttask = @('16', 'AP0160021')
         $currentworker = [PSCustomObject]@{
             module = $module
-            server = 'bki06'
-            location = 'e$'
+            server = 'bki09'
+            location = 'g$'
             status = 'IDLE'
         }
         #

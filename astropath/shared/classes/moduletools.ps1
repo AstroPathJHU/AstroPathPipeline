@@ -466,7 +466,7 @@
     #
     [string]gpuopt(){
         $gpu = Get-WmiObject win32_VideoController
-        if (($gpu.Name.length) -gt 1 -or 
+        if (($gpu.Name.count) -gt 1 -or 
             ($gpu.name -match 'NVIDIA') -or 
             ($gpu.name -match 'AMD')
         ){
@@ -531,6 +531,21 @@
             Invoke-Expression $pythontask *>> $externallog
         }
         $this.getexternallogs($externallog)
+        #
+    }
+    #
+    [void]runpythontask($taskname, $pythontask, $nolog){
+        #
+        $externallog = $this.ProcessLog($taskname)
+        $this.sample.info(('python task: ' + $pythontask))
+        if ($this.sample.isWindows()){
+            $this.sample.checkconda()
+            conda activate $this.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            conda deactivate 
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
         #
     }
     #

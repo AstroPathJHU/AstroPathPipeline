@@ -679,7 +679,7 @@ class queue : vminformqueue{
         #
         $batcharrayunique | foreach-object {
             $nslidescomplete = ($batcharray -match $_).count
-            $sample = sample $this.mpath $this.module $_[1] $_[0]
+            $sample = sample -mpath $this.mpath -module $this.module -batchid $_[1] -project $_[0]
             $nslidesbatch = $sample.batchslides.count
             if ($nslidescomplete -eq $nslidesbatch){
                 $batchescomplete[$cnt] = $_
