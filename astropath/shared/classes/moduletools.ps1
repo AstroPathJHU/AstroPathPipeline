@@ -710,14 +710,14 @@
         foreach ($statustype in $statustypes){
             $savelog += $loglines |
                     where-object {($_.Slideid -contains $ID) -and 
-                        ($_.Message -match $statustype)} |
+                        ($_.Message -match "^$statustype")} |
                     Select-Object -Last 1 
         }
         #
         $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
         $d2 = ($savelog | Where-Object {$_.Message -match $statustypes[1]}).Date
         #
-        if ($d2 -gt $d1){
+        if (($d2) -and ($d2 -gt $d1)){
             $this.silentcleanup()
             Throw 'detected error in external task'
         }

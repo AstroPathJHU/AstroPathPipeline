@@ -174,7 +174,7 @@ class queue : vminformqueue{
         #
         # parse log
         #
-        $statustypes = @('START:','ERROR:','FINISH:')
+        $statustypes = @('^START:','^ERROR:','^FINISH:')
         $savelog = @()
         $vers = $log.vers -replace 'v', ''
         $vers = ($vers -split '\.')[0,1,2] -join '.'
