@@ -9,16 +9,19 @@
  class modulequeue : sharedtools {
     #
     [array]$maincsv
+    [array]$lastopenmaincsv
     [hashtable]$localdates = @{}
     [hashtable]$localqueue = @{}
+    [hashtable]$lastopenlocalqueue = @{}
     [hashtable]$localqueuefile = @{}
     [string]$localqueue_filename
     [string]$mainqueue_filename
     [string]$mainqueue_path = '\across_project_queues'
     [string]$project
-    [string]$mainqueueheaders = 'Project,Cohort,SlideID,Status,isGood'
-    [string]$localqueueheaders = 'Project,Cohort,SlideID,Status,isGood'
+    [string]$mainqueueheaders = 'Project,Cohort,SlideID,Status,isGood,StartTime,FinishTime'
+    [string]$localqueueheaders = 'Project,Cohort,SlideID,Status,isGood,StartTime,FinishTime'
     [string]$refobject 
+    [array]$newtasks
     #
     modulequeue(){
         $this.modulequeueinit('\\bki04\astropath_processing', '')
@@ -131,6 +134,10 @@
     --------------------------------------------#>
     [void]createwatchersqueues(){
         #
+        if ($this.module -contains 'vminform'){
+            return
+        }
+        #
         $projects = $this.getapprojects($this.module)
         #
         $this.openmainqueue($false)
@@ -209,6 +216,13 @@
         }
         #
         $this.maincsv = $mainqueue
+        #
+        if($this.lastopenmaincsv){
+            $this.getnewtasksmain($this.lastopenmaincsv, $this.maincsv)
+        }
+        #
+        $this.lastopenmaincsv = $mainqueue
+        #
     }
     <# -----------------------------------------
      openmainqueue
@@ -244,6 +258,7 @@
         }
         #
         $this.localqueue.($project) = $q
+        $this.lastopenlocalqueue.($project) = $q
         #
     }  
     <# -----------------------------------------
@@ -307,6 +322,9 @@
     [void]writemainqueue($mainqueuelocation){
         #
         [array]$heads = ($this.mainqueueheaders -split ',')
+        #
+        $this.lastopenmaincsv = $this.maincsv
+        #
         $mainqueue = $this.maincsv | 
             select-object -Property $heads
         #
@@ -326,6 +344,38 @@
         #
         if ($isevent){
             $this.FileWatcher($this.mainqueuelocation())
+        }
+        #
+    }
+    #
+    <#
+        If a module queue is updated locally, we need to get the 
+        slideids from that queue so that we can update their status
+        and enque the corresponding task to the module worker queues
+    #>
+    [void]getnewtasksmain($oldqueue, $newqueue){
+        #
+        if (!$this.newtasks){
+            $this.newtasks = @()
+        }
+        #
+        if ($this.module -match 'vminform'){
+            #
+            $cmp = Compare-Object -ReferenceObject $newqueue `
+                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID'
+            #
+        } else {
+            #
+            $cmp = Compare-Object -ReferenceObject $newqueue `
+                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 'StartTime', 'EndTime'
+            #
+        }
+        #
+        if ($cmp){
+            #
+            $this.newtasks += ($cmp |
+                Where-Object {$_.SideIndicator -match '<='}).SlideID
+            #
         }
         #
     }

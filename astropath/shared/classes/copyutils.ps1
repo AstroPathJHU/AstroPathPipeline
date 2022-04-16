@@ -220,6 +220,19 @@ class copyutils{
         }
         #
     }
+    #
+    [string]uncpaths($path){
+        #
+        $r = $path -replace( '/', '\')
+        if ($r[0] -ne '\'){
+            $root = '\\' + $path
+        } else{
+            $root = $path
+        }
+        #
+        return $root
+        #
+    }
     <# -----------------------------------------
      listfiles
      list all files with a filespec or multiple

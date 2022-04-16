@@ -4,7 +4,7 @@
  Last Edit: 10.13.2020
  --------------------------------------------
  Description
- a special case of the queue functionality
+ a special case of the module queue 
  -------------------------------------------#>
 class vminformqueue : modulequeue {
     #
@@ -310,7 +310,8 @@ class vminformqueue : modulequeue {
             slideid = $slideid
             Antibody = $antibody
             Algorithm = ''
-        } 
+        }
+        # 
         $this.localqueue.($project) += $NewRow
         #
     }

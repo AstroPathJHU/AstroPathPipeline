@@ -116,23 +116,30 @@ class DispatcherTools : queue {
         $ID = ($ID -split '-') -replace '"', ''
         $cmodule = $ID[0].trim()
         #
+        $cslideid = ($ID -match 'slideid')
+        $cslideid = ($cslideid -replace 'slideid', '').trim()
+        #
+        $cproject = ($ID -match 'project')
+        $cproject = ($cproject -replace 'project', '').trim()
+        #
+        $cbatchid = ($ID -match 'batchid')
+        $cbatchid = ($cbatchid -replace 'batchid', '').trim()
+        #
         # create a logging object and check the
         # log for a finishing message
         #
         try{
             if ($cmodule -match 'batch'){
-                $cproject = ($ID[1] -replace 'project', '').trim()
-                $cbatchid = ($ID[2] -replace 'batchid', '').trim()
                 $log = logger -mpath:$this.mpath $cmodule -batchid:$cbatchid -project:$cproject
             } else {
-                $cslideid = ($ID[2] -replace 'slideid', '').trim()
                 $log = logger -mpath:$this.mpath -module:$cmodule -slide:$cslideid
             }
         } catch {
             Write-Host $_.Exception.Message
             Write-Host $ID
-            Write-Host 'ID:' (($ID[2] -replace 'slideid', '').trim())
-            Write-Host 'Project:' (($ID[1] -replace 'project', '').trim())
+            Write-Host 'SlideID:' $cslideid
+            Write-Host 'BatchID:' $cbatchid
+            Write-Host 'Project:' $cproject
             return
         }
         #

@@ -9,10 +9,11 @@
  -------------------------------------------#>
 class sampledb : sharedtools {
     #
-    [array]$projects
     [System.Collections.Concurrent.ConcurrentDictionary[string,object]]$sampledb = @{}
     [System.Collections.Concurrent.ConcurrentDictionary[string,object]]$moduledb = @{}
     [vminformqueue]$vmq
+    [hashtable]$moduleobjs
+    [array]$newfinishedtasks
     #
     sampledb(){
         $this.sampledbinit('\\bki04\astropath_processing')
@@ -26,9 +27,12 @@ class sampledb : sharedtools {
     }
     #
     sampledbinit($mpath){
+        #
         $this.mpath = $mpath
-        $this.vmq = vminformqueue $this.mpath
         $this.importaptables($this.mpath, $true)
+        $this.defmodulequeues()
+        $this.getmodulelogs()
+        #
     }
     #
     <# -----------------------------------------
@@ -40,8 +44,33 @@ class sampledb : sharedtools {
     [void]buildsampledb(){
         #
         $this.defsampleStages()
+        $this.defmodulewatchers()
+        $this.getmodulelogwatchers()
+        #
+    }
+    #
+    [void]defmodulequeues(){
+        #
+        $this.vmq = vminformqueue $this.mpath
+        $this.getmodulenames()
+        $this.modules | ForEach-Object{
+            $this.moduleobjs.($_) = modulequeue $this.mpath $_
+        }
+        #
+    }
+    #
+    [void]defmodulewatchers(){
+        #
         $this.vmq.createwatchersvminformqueues()
-        $this.createprojectmodulewatchers()
+        $this.modules | ForEach-Object{
+            $this.moduleobjs.($_).createwatchersqueues()
+        }
+        #
+    }
+    #
+    [void]defmodulelogwatchers(){
+        #
+        $this.getmodulelogs($true)
         #
     }
     <# -----------------------------------------
@@ -57,7 +86,7 @@ class sampledb : sharedtools {
         #
         $c = 1
         $ctotal = $this.slide_data.count
-        $sampletracker = sampletracker $this.mpath
+        $sampletracker = sampletracker -mpath $this.mpath -vmq $this.vmq -modules $this.modules 
         #
         foreach($slide in $this.slide_data){
             #
@@ -150,13 +179,6 @@ class sampledb : sharedtools {
     Usage: $this.updatemoduledb(cmodule, slideid)
     ----------------------------------------- #>
     <# -----------------------------------------
-    defmoduledb
-    For a module, create or read in 
-    the module table.
-    ------------------------------------------
-    Usage: $this.defmoduledb(cmodule)
-    ----------------------------------------- #>
-    <# -----------------------------------------
     comparesamplemodule
     For a sample check that the moduledb
     status matches 
@@ -170,18 +192,60 @@ class sampledb : sharedtools {
     ------------------------------------------
     Usage: $this.updatemodouledb(cmodule, slideid)
     ----------------------------------------- #>
-    <# -----------------------------------------
-    writemoduledb
-    write out the main module db
-    ------------------------------------------
-    Usage: $this.writemoduledb()
-    ----------------------------------------- #>
-    <# -----------------------------------------
-    writemoduledb
-    write out the project module db
-    ------------------------------------------
-    Usage: $this.writemoduledb(project)
-    ----------------------------------------- #>
+    #
+    [void]getmodulelogs(){
+        $this.getmodulelogs($false)
+    }
+    #
+    [void]getmodulelogs($createwatcher){
+        #
+        $this.getmodulenames()
+        foreach ($module in $this.modules){
+            $projects = $this.getapprojects()
+            $projects | foreach-object{
+                #
+                if($this.modulelogs.($module).($_)){
+                    $oldlog = $this.modulelogs.($module).($_)
+                } else {
+                    $oldlog = @()
+                }
+                #
+                $this.modulelogs.($module).($_) = 
+                    $this.importlogfile($module, $project, $createwatcher)
+                #
+                $this.getnewloglines($oldlog, $this.modulelogs.($module).($_))
+                #
+            }
+        }
+        #
+    }
+    #
+    [void]getnewloglines($oldlog, $newlog){
+        #  
+        if (!$this.newfinishedtasks){
+            $this.newfinishedtasks = @()
+        }
+        #
+        if ($oldlog){
+            $newlog_finishlines = $newlog |
+                Where-Object {$_.Message -match '^FINISH'}
+            #
+            $newlog_rows = @()
+            foreach ($line in $newlog_finishlines){
+                $newlog_rows += $line -join ';'
+            }
+            #
+            $oldlog_rows = @()
+            foreach ($line in $oldlog){
+                $oldlog_rows += $line -join ';'
+            }
+            #
+            $cmp = compare-object $newlog_rows $oldlog_rows -Property 'SlideID','Date' |
+                 Where-Object {$_.SideIndicator -eq '<='}
+            $this.newfinishedtasks += $cmp.SlideID
+        } 
+        #
+    }
     #
     [void]handleAPevent($fullfile){
         #
