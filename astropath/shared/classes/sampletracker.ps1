@@ -20,13 +20,13 @@ class sampletracker : dependencies {
         $this.vmq = $vmq
     }
     #
-    sampletracker($mpath, $vmq, $slideid): base ($mpath, $slideid){
-        $this.getmodulenames()
+    sampletracker($mpath, $vmq, [hashtable]$modules): base ($mpath){
+        $this.modules = $modules
         $this.vmq = $vmq
     }
     #
-    sampletracker($mpath, $modules, $vmq, $slideid): base ($mpath, $slideid){
-        $this.modules = $modules
+    sampletracker($mpath, $vmq, [hashtable]$modules, $slideid): base ($mpath, $slideid){
+        $this.getmodulenames()
         $this.vmq = $vmq
     }
     #

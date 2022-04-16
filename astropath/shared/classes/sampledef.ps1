@@ -133,14 +133,9 @@ class sampledef : sharedtools{
         $project_dat = $this.full_project_dat| 
                     Where-Object -FilterScript {$_.Project -eq $this.project}
         #
-        $r = $project_dat.dpath -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = '\\' + $project_dat.dpath 
-        } else{
-            $root = $project_dat.dpath
-        }
+        $root = $this.uncpaths($project_dat.dpath)
         #
-        $this.basepath = $root, '\', $project_dat.dname -join ''
+        $this.basepath = $root, $project_dat.dname -join '\'
         #
         $this.project_data = $project_dat
         #

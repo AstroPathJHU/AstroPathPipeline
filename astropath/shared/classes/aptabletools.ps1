@@ -120,6 +120,16 @@
         #
     }
     #
+    [PSCustomObject]ImportCohortsInfo(){
+        #
+        if(!$this.full_project_dat){
+            $this.importcohortsinfo($this.mpath, $false) | Out-NULL
+        }
+        #
+        return $this.full_project_dat
+        #
+    }
+    #
     [PSCustomObject]ImportCohortsInfo([string] $mpath){
         #
         if(!$this.full_project_dat){
@@ -439,13 +449,13 @@
         #
     }
     <# -----------------------------------------
-     Importlogfile
+     Importworkerlist
      import and return a log file object
      ------------------------------------------
      Input: 
         -fpath: full path to the log
      ------------------------------------------
-     Usage: Importlogfile($fpath)
+     Usage: Importworkerlist($fpath)
     ----------------------------------------- #>
     #
     [PSCustomObject]Importworkerlist([string] $mpath, $createwatcher){
@@ -545,7 +555,44 @@
      ------------------------------------------
      Usage: Importlogfile($fpath)
     ----------------------------------------- #>
-    [PSCustomObject]Importlogfile([string] $fpath){
+    #
+    [PSCustomObject]Importlogfile($module, $project, $createwatcher){
+        #
+        $fpath = $this.defprojectlogpath($module, $project)
+        $logfile = $this.importlogfile($fpath)
+        #
+        if ($createwatcher){
+            $this.FileWatcher($fpath)
+        }
+        #
+        return $logfile
+        #
+     }
+     #
+     [string]defprojectlogpath($module, $project){
+            #
+            $this.importconfiginfo() | Out-Null
+            $project_dat = $this.config_data |
+                Where-Object {$_.project -contains $project}
+            #
+            $root = $this.uncpaths($project_dat.dpath)
+            $fpath = $root, $project_dat.dname, 'logfiles', ($module,'.log' -join '') -join '\'
+            #
+            return $fpath
+            #
+     }
+     #
+    [PSCustomObject]Importlogfile($module, $project){
+        #
+        $logfile = $this.importlogfile(
+            $this.defprojectlogpath($module, $project)
+        )
+        #
+        return $logfile
+        #
+     }
+     #
+     [PSCustomObject]Importlogfile([string] $fpath){
         #
         $logfile = $this.opencsvfile($fpath, `
             ';', @('Project','Cohort','slideid','Message','Date'))

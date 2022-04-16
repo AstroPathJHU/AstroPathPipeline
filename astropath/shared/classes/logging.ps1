@@ -173,8 +173,8 @@ class mylogger : samplereqs {
     #
     [void]buildappend(){
         if ($this.module -eq 'vminform'){
-            $this.messageappend = ": Antibody: " + $this.val.Antibody + 
-                " - Algorithm: " + $this.val.Algorithm + 
+            $this.messageappend = ": Antibody: " + $this.val.antibody + 
+                " - Algorithm: " + $this.val.algorithm + 
                 " - inForm version: " + $this.val.informvers
         }
     }
