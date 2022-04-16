@@ -45,7 +45,6 @@ class queue : modulequeue {
         if ('vminform' -ne $this.module){
             $this.buildqueue()
         } else {
-            $this.vmq = vminformqueue $this.mpath
             $this.('check'+$this.module)()
         }
         #
