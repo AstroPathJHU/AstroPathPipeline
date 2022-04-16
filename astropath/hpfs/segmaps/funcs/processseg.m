@@ -77,18 +77,20 @@ end
 %%
 function startseg(wd, sname, MergeConfig)
 %
-wd1 = [wd,'\',sname,'\inform_data\Phenotyped\Results\Tables'];
+wd1 = [wd,'\',sname,'\im3\flatw'];
 fd = [wd,'\',sname,'\inform_data\Component_Tiffs'];
+wd2 = [wd,'\',sname,'\inform_data\Phenotyped\Results\Tables'];
 %
-if exist(fd, 'dir') && exist(wd1,'dir')
+if exist(fd, 'dir') && exist(wd2,'dir')
     fnames = dir([fd,'\*_w_seg.tif']);
     t1 = min([fnames(:).datenum]);
-    fnames2 = dir([wd1, '\*.csv']);
-    t2 = max([fnames2(:).datenum]);
+    fnames2 = dir([wd1, '\*.im3']);
+    fnames3 = dir([wd2, '\*.csv']);
+    t3 = max([fnames3(:).datenum]);
     onedayago = datenum(datetime() - 1);
     %
-    if ~isempty(t2) && ...
-            (length(fnames)~=length(fnames2)|| t2 > t1) %&& t2 <= onedayago
+    if ~isempty(t3) && ...
+            (length(fnames) ~= length(fnames2)|| t3 > t1) %&& t2 <= onedayago
         %
         % start the parpool if it is not open;
         % attempt to open with local at max cores, if that does not work attempt
