@@ -8,7 +8,7 @@ Description
 Task to be launched remotely to ANY computer from ANYWHERE
 --------------------------------------------------------
 Input:
-$task[array]: the 5 part array of dpath, slideid, 
+$task[hashtable]: must contain slideid, 
     antibody, algorithm, and inform version to use
     E.g. @('\\bki04\Clinical_Specimen_2','M18_1','CD8,CD8_12.05.2018_highTH.ifr','2.4.8.)
 $sample[launchmodule]: A launchmodule object 
@@ -19,7 +19,6 @@ Usage: $a = [informinput]::new($task, $sample)
 #>
 Class informinput {
     #
-    [string]$stringin
     [string]$abx
     [string]$alg
     [string]$abpath
@@ -34,17 +33,17 @@ Class informinput {
     [int]$err
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     #
-    informinput([array]$task,[launchmodule]$sample) {
+    informinput([hashtable]$task,[launchmodule]$sample) {
         #
         $this.sample = $sample
-        $this.abx = $task[2].trim()
-        $this.alg = $task[3].trim()
+        $this.abx = $task.antibody.trim()
+        $this.alg = $task.algorithm.trim()
         $this.abpath = $this.sample.phenotypefolder() + '\' + $this.abx
         $this.algpath = $this.sample.basepath +
              '\tmp_inform_data\Project_Development\' + $this.alg
         $this.informoutpath = $this.outpath + "\" + $this.abx
         $this.informpath = '"'+"C:\Program Files\Akoya\inForm\" + 
-            $task[4].trim() + "\inForm.exe"+'"'
+            $task.informvers.trim() + "\inForm.exe"+'"'
         $this.informbatchlog = $this.informoutpath + "\Batch.log"
         #
         $this.TestPaths()

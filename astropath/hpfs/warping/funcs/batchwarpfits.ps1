@@ -26,7 +26,7 @@ Function batchwarpfits {
     # used for testing; when launched manually without launchmodule
     #
     if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
-       $log = [launchmodule]::new($task[$task.Count-1], 'batchwarpfits', $task) 
+       $log = [launchmodule]::new($task.mpath, 'batchwarpfits', $task) 
        $e = 1
     } else {$e = 0}
     #

@@ -22,37 +22,33 @@
     #
     modulequeue(){
         $this.modulequeueinit('\\bki04\astropath_processing', '')
-        <#
-        if ($module -notcontains 'vminform'){
-            $this.coalescequeues()
-        }
-        #>
+        #
     }
     #
     modulequeue($module){
         $this.modulequeueinit('\\bki04\astropath_processing', $module)
-        <#
+        #
         if ($module -notcontains 'vminform'){
             $this.coalescequeues()
         }
-        #>
+        #
     }
     modulequeue($mpath, $module){
         $this.modulequeueinit($mpath, $module)
-        <#
+        #
         if ($module -notcontains 'vminform'){
             $this.coalescequeues()
         }
-        #>
+        #
     }
     modulequeue($mpath, $module, $project){
         $this.project = $project
         $this.modulequeueinit($mpath, $module)
-        <#
+        #
         if ($module -notcontains 'vminform'){
             $this.coalescequeues($project)
         }
-        #>
+        #
     }
     #
     [void]modulequeueinit($mpath, $module){
@@ -74,7 +70,8 @@
      Usage: $this.coalescequeues()
     ----------------------------------------- #>
     [void]coalescequeues(){
-         $projects = $this.getapprojects($this.modulename)
+         #
+         $projects = $this.getapprojects($this.module)
          #
          $this.openmainqueue($false)
          $projects | ForEach-Object{
@@ -134,7 +131,7 @@
     --------------------------------------------#>
     [void]createwatchersqueues(){
         #
-        $projects = $this.getapprojects($this.modulename)
+        $projects = $this.getapprojects($this.module)
         #
         $this.openmainqueue($false)
         $projects | ForEach-Object{

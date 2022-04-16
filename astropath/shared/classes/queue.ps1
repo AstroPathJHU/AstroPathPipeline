@@ -7,32 +7,28 @@
  methods used to build the queues and check 
  dependencies
  -------------------------------------------#>
-class queue : vminformqueue{
+class queue : modulequeue {
     #
     [Array]$originaltasks
     [system.object]$cleanedtasks
-    [string]$queue_file
     [string]$informvers
     [string]$project
     #
-    queue($module){
-        $this.init('\\bki04\astropath_processing', $module,'', '')
+    queue($module) : base($module){
+        $this.queueinit('\\bki04\astropath_processing', $module,'', '')
     }
-    queue($mpath, $module){
-        $this.init($mpath, $module, '', '')
+    queue($mpath, $module) : base($mpath, $module){
+        $this.queueinit($mpath, $module, '', '')
     }
-    queue($mpath, $module, $project){
-        $this.init($mpath, $module, $project, '')
+    queue($mpath, $module, $project) : base($mpath, $module, $project){
+        $this.queueinit($mpath, $module, $project, '')
     }
-    queue($mpath, $module, $project, $slideid){
-        $this.init($mpath, $module, $project, $slideid)
+    queue($mpath, $module, $project, $slideid) : base($mpath, $module, $project){
+        $this.queueinit($mpath, $module, $project, $slideid)
     }
     #
-    init($mpath, $module, $project, $slideid){
+    queueinit($mpath, $module, $project, $slideid){
         #
-        $this.mpath = $mpath
-        $this.module = $module 
-        $this.project = $project
         $this.slideid = $slideid.trim()
         $this.importaptables($this.mpath, $true)
         #
@@ -49,8 +45,8 @@ class queue : vminformqueue{
         if ('vminform' -ne $this.module){
             $this.buildqueue()
         } else {
+            $this.vmq = vminformqueue $this.mpath
             $this.('check'+$this.module)()
-            #$this.coalescevminformqueues()
         }
         #
     }
@@ -628,9 +624,7 @@ class queue : vminformqueue{
         #
         $this.informvers = '2.4.8'
         #
-        $queue_path = $this.mpath + '\across_project_queues'
-        $this.queue_file = $queue_path + '\' + $this.module + '-queue.csv'
-        $queue_data = $this.getcontent($this.queue_file)
+        $queue_data = $this.getcontent($this.mainqueuelocation())
         #
         $current_queue_data = @()
         #
@@ -655,6 +649,57 @@ class queue : vminformqueue{
         foreach ($newtask in $tempcleanedtasks){
            $this.cleanedtasks[$cnt] = ($newtask.split(',')[0..3])
            $cnt ++
+        }
+        #
+    }
+    #
+    [void]UpdateQueue($currenttask, $currentworker, $tasktomatch){
+        #
+        $currenttask = $currenttask -join ','
+        #
+        if ($this.module -ne 'vminform'){
+            return
+        }
+        #
+        $D = Get-Date
+        $currenttask2 = "$currenttask" + ",Processing: " + 
+            $currentworker.server + '-' + $currentworker.location + "," + $D
+        $mxtstring = 'Global\' + ($this.mainqueuelocation()).replace('\', '_') + '.LOCK'
+        #
+        # add escape to '\'
+        #
+        $rg = [regex]::escape($tasktomatch) + "$"
+        #
+        $cnt = 0
+        $Max = 120
+        #
+        do{
+           $mxtx = New-Object System.Threading.Mutex($false, $mxtstring)
+            try{
+                $imxtx = $mxtx.WaitOne(60 * 10)
+                if($imxtx){
+                    $Q = get-content -Path $this.mainqueuelocation()
+                    $Q2 = $Q -replace $rg,$currenttask2
+                    Set-Content -Path $this.mainqueuelocation() -Value $Q2
+                    $mxtx.releasemutex()
+                    break
+                } else{
+                    $cnt = $cnt + 1
+                    Start-Sleep -s 5
+                }
+            }catch{
+                $cnt = $cnt + 1
+                Start-Sleep -s 5
+                Continue
+            }
+        } while($cnt -lt $Max)
+        #
+        # if the script could not access the queue file after 10 mins of trying every 2 secs
+        # there is an issue and exit the script
+        #
+        if ($cnt -ge $Max){
+            $ErrorMessage = "Could not access "+$this.module+"-queue.csv"
+            Throw $ErrorMessage 
         }
         #
     }
