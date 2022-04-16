@@ -117,13 +117,19 @@ class DispatcherTools : queue {
         $cmodule = $ID[0].trim()
         #
         $cslideid = ($ID -match 'slideid')
-        $cslideid = ($cslideid -replace 'slideid', '').trim()
+        if ($cslideid){
+            $cslideid = ($cslideid -replace 'slideid', '').trim()
+        }
         #
         $cproject = ($ID -match 'project')
-        $cproject = ($cproject -replace 'project', '').trim()
+        if ($cproject){
+            $cproject = ($cproject -replace 'project', '').trim()
+        }
         #
         $cbatchid = ($ID -match 'batchid')
-        $cbatchid = ($cbatchid -replace 'batchid', '').trim()
+        if ($cbatchid){
+            $cbatchid = ($cbatchid -replace 'batchid', '').trim()
+        }
         #
         # create a logging object and check the
         # log for a finishing message
