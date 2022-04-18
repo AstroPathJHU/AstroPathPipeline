@@ -40,14 +40,14 @@ Class testvminform : testtools {
         <#$this.setupjenkinspaths($inp)
         $this.testoutputdir($inp)
         $this.testimagelist($inp)
+        $this.testcheckexportoptions($inp)
         $this.comparevminforminput($inp)
         $this.testkillinformprocess($inp)
         $this.runinformexpected($inp)
         $this.testlogexpected($inp)
         $this.runinformbatcherror($inp)
         $this.testlogbatcherror($inp)#>
-        #$this.testinformoutputfiles($inp)
-        $this.testcheckexportoptions($inp)
+        $this.testinformoutputfiles($inp)
         #throw 'Tests Complete'
         Write-Host '.'
     }
@@ -182,6 +182,63 @@ Class testvminform : testtools {
         Write-Host 'test create image list finished'
         #
     }
+    
+    <# --------------------------------------------
+    testcheckexportoptions
+    test that the check export options function
+    is working as intended
+    --------------------------------------------#>
+    [void]testcheckexportoptions($inp) {
+        #
+        Write-Host '.'
+        Write-Host 'test check segmentation options started'
+        #
+        $inp.GetSegmentationData()
+        #
+        Write-Host '    checking default export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_Default.ifr'
+        $inp.needsbinaryseg = $false
+        $inp.needscomponent = $false
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    default export type successful'
+        #
+        Write-Host '    checking binary seg map export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_BinaryMaps.ifr'
+        $inp.needsbinaryseg = $true
+        $inp.needscomponent = $false
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    binary seg map export type successful'
+        #
+        Write-Host '    checking component export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_Component.ifr'
+        $inp.needsbinaryseg = $false
+        $inp.needscomponent = $true
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    default compoent type successful'
+        #
+        Write-Host '    checking binary with component export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_BinaryWComponent.ifr'
+        $inp.needsbinaryseg = $true
+        $inp.needscomponent = $true
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    default binary with component type successful'
+        #
+        $inp.sample.mergeconfig_data = $null
+        Write-Host 'test check segmentation options finished'
+    }
+    <# --------------------------------------------
+    checkprotocol
+    helper function to check that the protocol
+    export type line has been changed correctly
+    --------------------------------------------#>
+    [void]checkprotocol($inp, $checkpath) {
+        #
+        $inp.CheckExportOptions()
+        if ((Get-FileHash $inp.algpath).Hash -ne (Get-FileHash $checkpath).Hash) {
+            throw ($inp.algpath + ' != ' + $checkpath)
+        }
+        #
+    }
     <# --------------------------------------------
     comparevminforminput
     check that vminform input is what is expected
@@ -293,6 +350,7 @@ Class testvminform : testtools {
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
         $inp.CreateImageList()
+        $inp.CheckExportOptions()
         #
     }
     <# --------------------------------------------
@@ -377,6 +435,7 @@ Class testvminform : testtools {
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
         $inp.CreateImageList()
+        $inp.CheckExportOptions()
         #
     }
     <# --------------------------------------------
@@ -435,14 +494,12 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'test check inform output files started'
         #
-        Write-Host '    error number at start:' $inp.err
         $this.setupexpected($inp)
         $inp.StartInForm()
         $inp.WatchBatchInForm()
         Write-Host '    batch process complete'
-        #
+        <#
         $inp.CheckInformOutputFiles()
-        Write-Host '    error number after inform:' $inp.err
         Write-Host '    Corrupted Files:' $inp.corruptedfiles
         #
         $segdata = $inp.informoutpath + '\test_cell_seg_data.txt'
@@ -454,77 +511,17 @@ Class testvminform : testtools {
         #
         $inp.CheckInformOutputFiles()
         Write-Host '    Corrupted Files:' $inp.corruptedfiles
-        #
-        $inp.sample.CreateNewDirs($this.outpath)
-        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
+        #>
+        #$inp.sample.CreateNewDirs($this.outpath)
+        #$inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         #
         Write-Host 'test check inform output files finished'
-    }
-    <# --------------------------------------------
-    testcheckexportoptions
-    test that the check export options function
-    is working as intended
-    --------------------------------------------#>
-    [void]testcheckexportoptions($inp) {
-        #
-        if ($this.jenkins) {
-            return
-        }
-        #
-        Write-Host '.'
-        Write-Host 'test check segmentation options started'
-        #
-        $this.setupexpected($inp)
-        $inp.GetSegmentationData()
-        #
-        Write-Host '    checking default export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_Default.ifr'
-        $inp.needsbinaryseg = $false
-        $inp.needscomponent = $false
-        $this.checkprotocol($inp, $checkpath)
-        Write-Host '    default export type successful'
-        #
-        Write-Host '    checking binary seg map export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_BinaryMaps.ifr'
-        $inp.needsbinaryseg = $true
-        $inp.needscomponent = $false
-        $this.checkprotocol($inp, $checkpath)
-        Write-Host '    binary seg map export type successful'
-        #
-        Write-Host '    checking component export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_Component.ifr'
-        $inp.needsbinaryseg = $false
-        $inp.needscomponent = $true
-        $this.checkprotocol($inp, $checkpath)
-        Write-Host '    default compoent type successful'
-        #
-        Write-Host '    checking binary with component export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_BinaryWComponent.ifr'
-        $inp.needsbinaryseg = $true
-        $inp.needscomponent = $true
-        $this.checkprotocol($inp, $checkpath)
-        Write-Host '    default binary with component type successful'
-        #
-        $inp.sample.mergeconfig_data = $null
-        Write-Host 'test check segmentation options finished'
-    }
-    <# --------------------------------------------
-    checkprotocol
-    helper function to check that the protocol
-    export type line has been changed correctly
-    --------------------------------------------#>
-    [void]checkprotocol($inp, $checkpath) {
-        #
-        $inp.CheckExportOptions()
-        if ((Get-FileHash $inp.algpath).Hash -ne (Get-FileHash $checkpath).Hash) {
-            throw ($inp.algpath + ' != ' + $checkpath)
-        }
-        #
     }
     #
 }
 #
 # launch test and exit if no error found
+# add $jenkins parameter to constructor if testing on jenkins
 #
 [testvminform]::new() | Out-Null
 exit 0

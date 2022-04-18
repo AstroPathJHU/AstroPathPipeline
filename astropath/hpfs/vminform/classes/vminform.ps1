@@ -98,6 +98,7 @@ Class informinput : moduletools {
             #
             $this.CreateOutputDir()
             $this.CreateImageList()
+            $this.CheckExportOptions()
             $this.StartInForm()
             $this.WatchBatchInForm()
             $this.CheckErrors()
@@ -201,6 +202,31 @@ Class informinput : moduletools {
         $this.sample.info("Replacing exportline:" + $exportline + "with changedline:" + $changedline)
         (Get-Content $this.algpath).replace($exportline, $changedline) | 
             Set-Content $this.algpath
+        #
+    }
+    
+    <# -----------------------------------------
+     GetSegmentationData
+     Get segmentation data from mergeconfig.csv
+     and return if it already exists
+     ------------------------------------------
+     Usage: $this.GetSegmentationData()
+    ----------------------------------------- #>
+    [void]GetSegmentationData(){
+        #
+        if ($this.sample.mergeconfig_data) {
+            return
+        }
+        #
+        $this.sample.ImportMergeConfigCSV($this.sample.basepath)
+        $this.sample.findsegmentationtargets()
+        if (!$this.sample.mergeconfig_data) {
+            throw 'segmentation option not needed on any procedure'
+        }
+        $this.needsbinaryseg = $this.sample.binarysegtargets | 
+                        Where-Object {$_.Target -contains $this.abx}
+        $this.needscomponent = $this.sample.componenttarget | 
+                        Where-Object {$_.Target -contains $this.abx}
         #
     }
     <# -----------------------------------------
@@ -373,30 +399,6 @@ Class informinput : moduletools {
             }
             #
         }
-    }
-    <# -----------------------------------------
-     GetSegmentationData
-     Get segmentation data from mergeconfig.csv
-     and return if it already exists
-     ------------------------------------------
-     Usage: $this.GetSegmentationData()
-    ----------------------------------------- #>
-    [void]GetSegmentationData(){
-        #
-        if ($this.sample.mergeconfig_data) {
-            return
-        }
-        #
-        $this.sample.ImportMergeConfigCSV($this.sample.basepath)
-        $this.sample.findsegmentationtargets()
-        if (!$this.sample.mergeconfig_data) {
-            throw 'segmentation option not needed on any procedure'
-        }
-        $this.needsbinaryseg = $this.sample.binarysegtargets | 
-                        Where-Object {$_.Target -contains $this.abx}
-        $this.needscomponent = $this.sample.componenttarget | 
-                        Where-Object {$_.Target -contains $this.abx}
-        #
     }
     <# -----------------------------------------
      ReturnData
