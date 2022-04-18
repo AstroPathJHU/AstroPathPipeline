@@ -184,7 +184,7 @@ Class informinput : moduletools {
         #
         $changedline = ''
         switch ($true) {
-            {($needsbinaryseg -and $needscomponent)} {
+            {($this.needsbinaryseg -and $this.needscomponent)} {
                 $changedline = $this.export_type_setting.BinaryWComponent
                 break
             }
@@ -335,7 +335,7 @@ Class informinput : moduletools {
     <# -----------------------------------------
      CheckInFormOutputFiles
      record the number of complete inform 
-     output files of each type 
+     output files of each necessary type 
      (cell_seg, binary_seg_maps, component_data)
      and check if any files have 0bytes, 
      indicating a potential error.
@@ -377,11 +377,15 @@ Class informinput : moduletools {
     <# -----------------------------------------
      GetSegmentationData
      Get segmentation data from mergeconfig.csv
-     and check if it exists
+     and return if it already exists
      ------------------------------------------
      Usage: $this.GetSegmentationData()
     ----------------------------------------- #>
     [void]GetSegmentationData(){
+        #
+        if ($this.sample.mergeconfig_data) {
+            return
+        }
         #
         $this.sample.ImportMergeConfigCSV($this.sample.basepath)
         $this.sample.findsegmentationtargets()
