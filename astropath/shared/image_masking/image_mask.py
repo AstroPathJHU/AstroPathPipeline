@@ -48,11 +48,12 @@ class ImageMask() :
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,sample,im_array,im_key,bg_thresholds,norm_ets) :
+    def __init__(self,im_array,layer_groups,brightest_layers,im_key,bg_thresholds,norm_ets) :
         """
-        sample            = the Sample object that this image array is coming from
         im_array          = the multilayer image array whose mask should be created 
                             (may already be corrected to a set of exposure times)
+        layer_groups      = a dictionary of the different image layer groups and their bounds
+        brightest_layers  = the brightest layers in each group (used for plotting)
         im_key            = the string representing the key of the image filename 
                             (used as a prepend to the masking file name and in labelled mask regions)
         bg_thresholds     = a list of the background intensity thresholds in counts in each image layer
@@ -61,7 +62,7 @@ class ImageMask() :
         The last three arguments are only needed (and the last two are required) if plots for this image will be saved
         """
         #set the layer groups for the image
-        self.__layer_groups=sample.layer_groups
+        self.__layer_groups=layer_groups
         #set the number of layers in each group that can be missed and still have the region flagged
         self.__fold_flag_cuts = {}
         for lgn,lgb in self.__layer_groups.items() :
@@ -73,7 +74,7 @@ class ImageMask() :
             else :
                 self.__fold_flag_cuts[lgn] = 3
         #set which layers are the brightest
-        self.__bright_layers=sample.brightest_layers
+        self.__bright_layers=brightest_layers
         #apply smoothing to Vectra images only
         microscope_name = ((list(self.__layer_groups.keys())[0]).split('_'))[0]
         if microscope_name=='vectra' :
@@ -424,7 +425,7 @@ class ImageMask() :
 
 #################### FILE-SCOPE CONVENIENCE FUNCTIONS ####################
 
-def return_new_mask_labelled_regions(sample,im_array,im_key,bg_thresholds,norm_ets,savedir=None) :
+def return_new_mask_labelled_regions(im_array,layer_groups,bright_layers,im_key,bg_thresholds,norm_ets,savedir=None) :
     """
     Create an ImageMask, write out the files it creates, and return its list of labelled mask regions
     This function writes out the ImageMask it creates and doesn't return it in order to have the 
@@ -434,11 +435,12 @@ def return_new_mask_labelled_regions(sample,im_array,im_key,bg_thresholds,norm_e
     
     arguments are the same as ImageMask.__init__
     """
-    mask = ImageMask(sample,im_array,im_key,bg_thresholds,norm_ets)
+    mask = ImageMask(im_array,layer_groups,bright_layers,im_key,bg_thresholds,norm_ets)
     mask.save_mask_files(savedir)
     return mask.labelled_mask_regions
 
-def save_plots_for_image(sample,im_array,im_key,bg_thresholds,norm_ets,orig_ets,exp_time_hists_and_bins,savedir) :
+def save_plots_for_image(im_array,layer_groups,bright_layers,im_key,bg_thresholds,norm_ets,
+                         orig_ets,exp_time_hists_and_bins,savedir) :
     """
     Create the masks for a given image and write out plots of the process
     Useful if all you care about is getting the plots
@@ -446,5 +448,5 @@ def save_plots_for_image(sample,im_array,im_key,bg_thresholds,norm_ets,orig_ets,
 
     arguments are the same as ImageMask.__init__ + ImageMask.save_plots
     """
-    mask = ImageMask(sample,im_array,im_key,bg_thresholds,norm_ets)
+    mask = ImageMask(im_array,layer_groups,bright_layers,im_key,bg_thresholds,norm_ets)
     mask.save_plots(orig_ets,exp_time_hists_and_bins,savedir)
