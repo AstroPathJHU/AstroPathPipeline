@@ -41,7 +41,7 @@ class TestMeanImageComparison(TestBaseCopyInput,TestBaseSaveOutput) :
             parametersfile=folder/'data'/SlideID/'im3'/'xml'/f'{SlideID}.Parameters.xml'
             if parametersfile.exists() :
                 yield parametersfile,newxml
-            fullfile=folder/'data'/SlideID/'im3'/'xml'/f'{SlideID}.Parameters.xml'
+            fullfile=folder/'data'/SlideID/'im3'/'xml'/f'{SlideID}.Full.xml'
             if fullfile.exists() :
                 yield fullfile,newxml
             newscan=newroot/SlideID/'im3'/'Scan1'
