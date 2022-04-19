@@ -627,8 +627,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     (Informal, just used for plotting)
     """
     result = []
-    for lgb in self.layer_group_boundaries :
-      lgn = self.layer_group_names[lgb[0]-1]
+    for lgn,lgb in self.layer_groups.items() :
       if lgn.endswith('dapi') or lgn.endswith('cy5') or lgn=='vectra_texas_red' :
         result.append(int(0.5*(lgb[0]+lgb[1])))
       elif lgn.endswith('fitc') or lgn=='polaris_cy3' :
