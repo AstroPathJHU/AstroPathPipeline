@@ -46,8 +46,13 @@ class TestMeanImageComparison(TestBaseCopyInput,TestBaseSaveOutput) :
                 yield fullfile,newxml
             newscan=newroot/SlideID/'im3'/'Scan1'
             scandir=folder/'data'/SlideID/'im3'/'Scan1'
-            for fp in scandir.rglob('*') :
-                yield fp,newscan
+            for fp in scandir.glob('*') :
+                if not fp.is_dir() :
+                    yield fp,newscan
+            newMSI=newroot/SlideID/'im3'/'Scan1'/'MSI'
+            msidir=folder/'data'/SlideID/'im3'/'Scan1'/'MSI'
+            for fp in msidir.glob('*') :
+                yield fp,newMSI
 
     def setUp(self) :
         super().setUp()
