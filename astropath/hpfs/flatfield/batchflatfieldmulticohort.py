@@ -127,10 +127,11 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             #write out the flatfield model
             logger.debug(f'Writing out flatfield model, plots, and summary pdf for version {self.__version}....')
             samp = None
-            for sample in self.samples() :
-                if samp is None :
-                    samp = sample
-                    break
+            for cohort in self.cohorts :
+                for sample in cohort.samples() :
+                    if samp is None :
+                        samp = sample
+                        break
             flatfield.write_output(samp,self.__version,self.workingdir)
 
     #################### CLASS VARIABLES + PROPERTIES ####################

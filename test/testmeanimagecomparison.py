@@ -32,7 +32,7 @@ class TestMeanImageComparison(TestBaseCopyInput,TestBaseSaveOutput) :
     @classmethod
     def filestocopy(cls):
         """
-        Need to copy the sampledef.csv and Parameters.xml files
+        Need to copy the sampledef.csv, Parameters.xml, and Full.xml files and the Scan directories
         """
         newroot = folder/'test_for_jenkins'/'meanimagecomparison'/'root'
         yield folder/'data'/'sampledef.csv', newroot
@@ -41,6 +41,13 @@ class TestMeanImageComparison(TestBaseCopyInput,TestBaseSaveOutput) :
             parametersfile=folder/'data'/SlideID/'im3'/'xml'/f'{SlideID}.Parameters.xml'
             if parametersfile.exists() :
                 yield parametersfile,newxml
+            fullfile=folder/'data'/SlideID/'im3'/'xml'/f'{SlideID}.Parameters.xml'
+            if fullfile.exists() :
+                yield fullfile,newxml
+            newscan=newroot/SlideID/'im3'/'Scan1'
+            scandir=folder/'data'/SlideID/'im3'/'Scan1'
+            for fp in scandir.rglob('*') :
+                yield fp,newscan
 
     def setUp(self) :
         super().setUp()
