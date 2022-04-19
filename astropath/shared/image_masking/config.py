@@ -96,7 +96,7 @@ class Const :
         local normalized laplacian variance below which a pixel is flagged as blurry for multiple layer masks 
         """
         return {'vectra_dapi':0.00085,
-                'polaris_dapi':0.0700,
+                'polaris_dapi':0.01,
             }
     @property
     def DUST_MAX_MEANS(self) :
@@ -105,7 +105,7 @@ class Const :
         allowed to flag multilayer blur
         """
         return {'vectra_dapi':0.00065,
-                'polaris_dapi':0.0525,
+                'polaris_dapi':0.0075,
             }
     @property
     def BLUR_FLAG_STRING(self) :
