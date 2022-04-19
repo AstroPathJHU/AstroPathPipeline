@@ -612,11 +612,11 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
         result[last_lgname] = (start_lgn,lgn-1)
         last_lgname = lgname
         start_lgn = lgn
-    if lgn in result.keys() :
+    if lgname in result.keys() :
       errmsg = 'ERROR: Raw image layer groups seem discontinuous based on their names! '
       errmsg+= f'Wavelengths = {self.wavelengths} and filter_names = {self.filter_names}'
       raise RuntimeError(errmsg)
-    result[lgn] = (start_lgn,lgn)
+    result[lgname] = (start_lgn,lgn)
     return result
 
   @methodtools.lru_cache()

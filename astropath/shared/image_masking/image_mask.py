@@ -126,13 +126,13 @@ class ImageMask() :
                             (if None the plots will be written in the current directory)
         """
         all_plots = []
-        for lgn,lgb in self.__layer_groups.items() :
+        for lgi,(lgn,lgb) in enumerate(self.__layer_groups.items()) :
             fold_nlv_cut = CONST.FOLD_NLV_CUTS[lgn]
             fold_nlv_max_mean = CONST.FOLD_MAX_MEANS[lgn]
             fold_flag_cut = self.__fold_flag_cuts[lgn]
             group_blur_mask,stacked_masks = self.__get_image_layer_group_blur_mask(lgn,fold_nlv_cut,
                                                                                    fold_nlv_max_mean,fold_flag_cut)
-            plot_img_layer = self.__im_array[:,:,self.__bright_layers[lgn]]
+            plot_img_layer = self.__im_array[:,:,self.__bright_layers[lgi]]
             sorted_pil = np.sort(plot_img_layer[group_blur_mask==1].flatten())
             if len(sorted_pil)>0 :
                 pil_max = sorted_pil[int(0.95*len(sorted_pil))]; pil_min = sorted_pil[0]
@@ -141,15 +141,15 @@ class ImageMask() :
             norm = 255./(pil_max-pil_min)
             im_c = (np.clip(norm*(plot_img_layer-pil_min),0,255)).astype(np.uint8)
             overlay_c = np.array([im_c,im_c*group_blur_mask,im_c*group_blur_mask]).transpose(1,2,0)
-            plots = [{'image':plot_img_layer,'title':f'raw IMAGE layer {self.__bright_layers[lgn]}'},
+            plots = [{'image':plot_img_layer,'title':f'raw IMAGE layer {self.__bright_layers[lgi]}'},
                      {'image':overlay_c,'title':f'layer {lgb[0]}-{lgb[1]} blur mask overlay (clipped)'}]
             plots.append({'bar':et_hists_and_bins[lgn][0],
                           'bins':et_hists_and_bins[lgn][1],
                           'xlabel':f'layer {lgb[0]}-{lgb[1]} exposure times (ms)',
                           'line_at':orig_ets[lgb[0]-1]})
-            plots.append({'image':self.__im_nlv[:,:,self.__bright_layers[lgn]],
+            plots.append({'image':self.__im_nlv[:,:,self.__bright_layers[lgi]],
                           'title':'local variance of normalized laplacian'})
-            plots.append({'hist':self.__im_nlv[:,:,self.__bright_layers[lgn]].flatten(),
+            plots.append({'hist':self.__im_nlv[:,:,self.__bright_layers[lgi]].flatten(),
                           'xlabel':'variance of normalized laplacian',
                           'line_at':fold_nlv_cut})
             plots.append({'image':stacked_masks,

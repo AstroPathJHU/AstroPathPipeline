@@ -90,9 +90,9 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             for lgn,lgb in self.layer_groups.items() :
                 all_exp_times[lgn].append(r.allexposuretimes[lgb[0]-1])    
         exp_time_hists_and_bins = {}
-        for lgn in self.mask_layer_groups.keys() :
+        for lgn in self.layer_groups.keys() :
             newhist,newbins = np.histogram(all_exp_times[lgn],bins=60)
-            exp_time_hists_and_bins.append[lgn] = (newhist,newbins)
+            exp_time_hists_and_bins[lgn] = (newhist,newbins)
         return exp_time_hists_and_bins
 
     @property
