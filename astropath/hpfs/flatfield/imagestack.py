@@ -29,11 +29,12 @@ class ImageStack(ThingWithLogger) :
         self.__mask_stack = None
         self.n_images_read = 0
 
-    def stack_rectangle_images(self,rectangles,med_ets=None,maskingdirpath=None) :
+    def stack_rectangle_images(self,samp,rectangles,med_ets=None,maskingdirpath=None) :
         """
         Loop over a set of given images and add them to the stack
         If masking is being applied, also read each image's masking file before adding it to the stack
         
+        samp           = the Sample object from which the rectangles originally came
         rectangles     = the list of rectangles whose images should be added to the stack
         med_ets        = the list of median exposure times by layer for the whole sample that the rectangles are 
                          coming from (used to normalize images before stacking them)
@@ -57,7 +58,7 @@ class ImageStack(ThingWithLogger) :
             return self.__stack_images_no_masking(rectangles,med_ets)
         else :
             self.__logger.info('Images WILL be masked before stacking')
-            return self.__stack_images_with_masking(rectangles,med_ets,maskingdirpath)
+            return self.__stack_images_with_masking(samp,rectangles,med_ets,maskingdirpath)
 
     def add_sample_meanimage_from_files(self,sample) :
         """
@@ -138,7 +139,7 @@ class ImageStack(ThingWithLogger) :
                                            'bulk','stacking',str(list(range(1,self.__image_stack.shape[-1]+1)))))
         return n_images_read, n_images_stacked_by_layer, field_logs
 
-    def __stack_images_with_masking(self,rectangles,med_ets,maskingdirpath) :
+    def __stack_images_with_masking(self,samp,rectangles,med_ets,maskingdirpath) :
         """
         Read all of the image masks and add the masked images and their masks to the stacks 
         """
@@ -180,7 +181,7 @@ class ImageStack(ThingWithLogger) :
                 normalized_im = im/med_ets if med_ets is not None else im/r.allexposuretimes[np.newaxis,np.newaxis,:]
                 if imkey in keys_with_full_masks :
                     mask_path = maskingdirpath/f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
-                    mask = ImageMask.onehot_mask_from_full_mask_file_no_blur(mask_path,self.__image_stack.shape)
+                    mask = ImageMask.onehot_mask_from_full_mask_file_no_blur(samp,mask_path,self.__image_stack.shape)
                     layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
                 else :
                     mask_path = maskingdirpath/f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
@@ -212,12 +213,12 @@ class MeanImage(ImageStack) :
         self.__mean_image=None
         self.__std_err_of_mean_image=None
 
-    def stack_rectangle_images(self,rectangles,*otherstackimagesargs) :
+    def stack_rectangle_images(self,samp,rectangles,*otherstackimagesargs) :
         if len(rectangles)<1 :
             return []
         if self.__n_images_stacked_by_layer is None :
             self.__n_images_stacked_by_layer = np.zeros((rectangles[0].im3shape[-1]),dtype=np.uint64)
-        n_images_read, n_images_stacked_by_layer, field_logs = super().stack_rectangle_images(rectangles,
+        n_images_read, n_images_stacked_by_layer, field_logs = super().stack_rectangle_images(samp,rectangles,
                                                                                               *otherstackimagesargs)
         self.n_images_read+=n_images_read
         self.__n_images_stacked_by_layer+=n_images_stacked_by_layer
@@ -327,10 +328,10 @@ class Flatfield(ImageStack) :
         self.__metadata_summaries+=readtable(sample.metadatasummary,MetadataSummary)
         self.__field_logs+=readtable(sample.fieldsused,FieldLog)
 
-    def stack_rectangle_images(self,rectangles,*otherstackimagesargs) :
+    def stack_rectangle_images(self,samp,rectangles,*otherstackimagesargs) :
         if self.__n_images_stacked_by_layer is None :
             self.__n_images_stacked_by_layer = np.zeros((self.image_stack.shape[-1]),dtype=np.uint64)
-        n_images_read, n_images_stacked_by_layer, field_logs = super().stack_rectangle_images(rectangles,
+        n_images_read, n_images_stacked_by_layer, field_logs = super().stack_rectangle_images(samp,rectangles,
                                                                                               *otherstackimagesargs)
         self.n_images_read+=n_images_read
         self.__n_images_stacked_by_layer+=n_images_stacked_by_layer
@@ -380,7 +381,7 @@ class Flatfield(ImageStack) :
                     self.__flatfield_image[:,:,li]=sm_mean_image[:,:,li]/layermean
                     self.__flatfield_image_err[:,:,li]=sm_mean_img_err[:,:,li]/layermean
 
-    def write_output(self,version,workingdirpath) :
+    def write_output(self,samp,version,workingdirpath) :
         """
         Write out the flatfield image and all other output
 
@@ -411,7 +412,7 @@ class Flatfield(ImageStack) :
                           f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}_uncertainty',plotdir_path)
         if self.mask_stack is not None :
             plot_image_layers(self.mask_stack,f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}_mask_stack',plotdir_path)
-        flatfield_image_pixel_intensity_plot(self.__flatfield_image,version,plotdir_path)
+        flatfield_image_pixel_intensity_plot(samp,self.__flatfield_image,version,plotdir_path)
         #make the summary PDF
         latex_summary = FlatfieldLatexSummary(self.__flatfield_image,plotdir_path,version)
         latex_summary.build_tex_file()
@@ -459,7 +460,7 @@ class CorrectedMeanImage(MeanImage) :
         self.__corrected_mean_image = self.mean_image/flatfield_image
         self.__corrected_mean_image_err = self.__corrected_mean_image*np.sqrt(np.power(self.__flatfield_image_err/self.__flatfield_image,2)*np.power(self.std_err_of_mean_image/self.mean_image,2))
 
-    def write_output(self,workingdirpath) :
+    def write_output(self,samp,workingdirpath) :
         """
         Write out the relevant information for the corrected mean image to the given working directory
         """
@@ -497,10 +498,10 @@ class CorrectedMeanImage(MeanImage) :
         sm_corr_mean_image = smooth_image_worker(self.__corrected_mean_image,
                                                  CONST.FLATFIELD_WIDE_GAUSSIAN_FILTER_SIGMA,gpu=True)
         self.logger.info('Plotting pixel intensities....')
-        flatfield_image_pixel_intensity_plot(self.__flatfield_image,save_dirpath=plotdir_path)
-        corrected_mean_image_PI_and_IV_plots(sm_mean_image,sm_corr_mean_image,
+        flatfield_image_pixel_intensity_plot(samp,self.__flatfield_image,save_dirpath=plotdir_path)
+        corrected_mean_image_PI_and_IV_plots(samp,sm_mean_image,sm_corr_mean_image,
                                              central_region=False,save_dirpath=plotdir_path)
-        corrected_mean_image_PI_and_IV_plots(sm_mean_image,sm_corr_mean_image,
+        corrected_mean_image_PI_and_IV_plots(samp,sm_mean_image,sm_corr_mean_image,
                                              central_region=True,save_dirpath=plotdir_path)
         #make the summary PDF
         self.logger.info('Making the summary pdf....')

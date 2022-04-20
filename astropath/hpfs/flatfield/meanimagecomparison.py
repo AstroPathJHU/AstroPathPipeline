@@ -10,7 +10,7 @@ from ...shared.samplemetadata import SampleDef
 from .config import CONST
 from .utilities import FlatfieldModelTableEntry, ComparisonTableEntry, normalize_mean_image
 from .plotting import meanimage_comparison_plot
-from .batchflatfieldmulticohort import BatchFlatfieldMultiCohort
+from .batchflatfieldmulticohort import BatchFlatfieldSample, BatchFlatfieldMultiCohort
 
 class MeanImageComparison :
     """
@@ -38,9 +38,15 @@ class MeanImageComparison :
         self.meanimage_subdir_name = self.FLATW_MEANIMAGE_SUBDIR_NAME if use_flatw else self.MEANIMAGE_SUBDIR_NAME
         #create a dictionary keyed by root directory paths, with values that are lists of slide IDs at those paths
         self.slide_ids_by_rootdir = self.__get_slides_by_rootdir(root_dirs,sampleregex,min_images_stacked)
-        #get a list of all the slide IDs and their mean image filepaths, sorted in the order they'll be plotted
+        #get a list of all the slide samples and their mean image filepaths, sorted in the order they'll be plotted
         #(also returns the list of slide IDs after which lines would go if sorted by project/cohort/batch)
         self.ordered_slide_tuples,self.lines_after = self.__get_sorted_slide_tuples(sort_by)
+        layer_groups = self.ordered_slide_tuples[0][0].layer_groups
+        for samp,_ in self.ordered_slide_tuples[1:] :
+            if samp.layer_groups != layer_groups :
+                errmsg = f'ERROR: some slides have mismatch layer groups! {layer_groups} vs. {samp.layer_groups} '
+                errmsg+= f'(latter is {samp.SlideID})'
+                raise RuntimeError(errmsg)
 
     def calculate_comparisons(self) :
         """
@@ -59,10 +65,12 @@ class MeanImageComparison :
         #populate the array with all of the values needed
         n_pairs_to_do = int(((len(self.ordered_slide_tuples)**2)-len(self.ordered_slide_tuples))/2)
         pairs_done = set()
-        for is1,(sid1,mid1) in enumerate(self.ordered_slide_tuples) :
+        for is1,(s1,mid1) in enumerate(self.ordered_slide_tuples) :
+            sid1 = s1.SlideID
             mi1fp = mid1/f'{sid1}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
             semi1fp = mid1/f'{sid1}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
-            for is2,(sid2,mid2) in enumerate(self.ordered_slide_tuples) :
+            for is2,(s2,mid2) in enumerate(self.ordered_slide_tuples) :
+                sid2 = s2.SlideID
                 mi2fp = mid2/f'{sid2}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
                 semi2fp = mid2/f'{sid2}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}'
                 #put zeroes along the diagonal
@@ -116,7 +124,7 @@ class MeanImageComparison :
         bounds:      the lower and upper bounds on the imshow scale for the plot(s)
         """
         #make the list of ordered slide IDs to send to the plotting function
-        slide_ids = [st[0] for st in self.ordered_slide_tuples]
+        slide_ids = [st[0].SlideID for st in self.ordered_slide_tuples]
         #reset the lines_after variable if it was externally supplied
         if lines_after!=[''] :
             self.lines_after = lines_after
@@ -126,7 +134,7 @@ class MeanImageComparison :
         if to_plot=='all' :
             layers = list(range(1,self.dims[-1]+1))
         elif to_plot=='brightest' :
-            layers = UNIV_CONST.BRIGHTEST_LAYERS_35 if self.dims[-1]==35 else UNIV_CONST.BRIGHTEST_LAYERS_43
+            layers = self.ordered_slide_tuples[0][0].brightest_layers
         else :
             layers = []
         for ln in layers : 
@@ -141,13 +149,7 @@ class MeanImageComparison :
         if to_plot=='average' :
             #save a plot of the average over all considered layers and also over the filter groups individually
             self.logger.debug('Saving plots of values averaged over all layers and within filter groups...')
-            layer_groups = None
-            if self.dims[-1]==35 :
-                layer_groups = UNIV_CONST.LAYER_GROUPS_35
-            elif self.dims[-1]==43 :
-                layer_groups = UNIV_CONST.LAYER_GROUPS_43
-            else :
-                raise RuntimeError(f'ERROR: no broadband filter groups defined for images with {self.dims[-1]} layers')
+            layer_groups = list((self.ordered_slide_tuples[0][0].layer_groups).values())
             layer_groups = [(1,self.dims[-1])]+layer_groups
             for ilg,lg in enumerate(layer_groups) :
                 average_values = np.zeros_like(self.dos_std_dev_values[:,:,0])
@@ -190,9 +192,8 @@ class MeanImageComparison :
         if self.MODEL_TABLE_PATH.is_file() :
             all_lines = readtable(self.MODEL_TABLE_PATH,FlatfieldModelTableEntry)
         #add a line for every slide used
-        for sid,mid in self.ordered_slide_tuples :
-            sd = SampleDef(SlideID=sid,root=mid.parent.parent.parent)
-            all_lines.append(FlatfieldModelTableEntry(version_tag,sd.Project,sd.Cohort,sd.BatchID,sd.SlideID))
+        for s,_ in self.ordered_slide_tuples :
+            all_lines.append(FlatfieldModelTableEntry(version_tag,s.Project,s.Cohort,s.BatchID,s.SlideID))
         #write out the table
         writetable(self.MODEL_TABLE_PATH,all_lines)
         #run batchflatfieldmulticohort if requested
@@ -408,16 +409,16 @@ class MeanImageComparison :
         plotted. Also returns a list of slide IDs after which lines would be placed on the plot, based on 
         project/cohort/batch divisions
         """
-        sampledefs = []
+        samples = []
         for rd,sids in self.slide_ids_by_rootdir.items() :
             for sid in sids :
-                sampledefs.append(SampleDef(SlideID=sid,root=rd))
+                samples.append(BatchFlatfieldSample(rd,sid))
         ordered_tuples = []
         lines_after = []
         if sort_by=='project_cohort_batch' :
-            projects = list(set([sd.Project for sd in sampledefs]))
-            cohorts = list(set([sd.Cohort for sd in sampledefs]))
-            batches = list(set([sd.BatchID for sd in sampledefs]))
+            projects = list(set([s.Project for s in samples]))
+            cohorts = list(set([s.Cohort for s in samples]))
+            batches = list(set([s.BatchID for s in samples]))
             projects.sort(); cohorts.sort(); batches.sort()
             for p in projects :
                 if len(ordered_tuples)>0 and ordered_tuples[-1][0] not in lines_after :
@@ -428,16 +429,15 @@ class MeanImageComparison :
                     for b in batches :
                         if len(ordered_tuples)>0 and ordered_tuples[-1][0] not in lines_after :
                             lines_after.append(ordered_tuples[-1][0])
-                        for sd in sampledefs :
-                            if sd.Project==p and sd.Cohort==c and sd.BatchID==b :
-                                root = ([rd for rd,sids in self.slide_ids_by_rootdir.items() if sd.SlideID in sids])[0]
-                                mid = root/sd.SlideID/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
-                                ordered_tuples.append((sd.SlideID,mid))
+                        for s in samples :
+                            if s.Project==p and s.Cohort==c and s.BatchID==b :
+                                mid = s.root/s.SlideID/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
+                                ordered_tuples.append((s,mid))
             return ordered_tuples, lines_after[:-1]
         elif sort_by=='order' :
-            for sd in sampledefs :
-                mid = sd.root/sd.SlideID/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
-                ordered_tuples.append((sd.SlideID,mid))
+            for s in samples :
+                mid = s.root/s.SlideID/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
+                ordered_tuples.append((s,mid))
             return ordered_tuples, lines_after
         else :
             raise RuntimeError(f'ERROR: sort option {sort_by} is not recognized!')

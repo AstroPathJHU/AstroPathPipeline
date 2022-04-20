@@ -48,24 +48,42 @@ class Const :
     def FOLD_MIN_SIZE(self) :
         return 3000 #minimum size in pixels of individual structure elements allowed in multilayer blur masks
     @property
-    def FOLD_NLV_CUTS_BY_LAYER_GROUP_35(self) :
+    def FOLD_NLV_CUTS(self) :
         """
         local normalized laplacian variances below which a pixel is flagged as blurry for multiple layer masks 
         """
-        return [0.0035,0.0035,0.0035,0.0035,0.0035]
+        return {'vectra_dapi':0.0035,
+                'vectra_fitc':0.0035,
+                'vectra_cy3':0.0035,
+                'vectra_texas_red':0.0035,
+                'vectra_cy5':0.0035,
+                'polaris_dapi':0.120,
+                'polaris_opal_780':0.0000,
+                'polaris_opal_480':0.0700,
+                'polaris_cy5':0.0700,
+                'polaris_fitc':0.1200,
+                'polaris_cy3':0.1000,
+                'polaris_texas_red':0.1000,
+            }
     @property
-    def FOLD_MAX_MEANS_BY_LAYER_GROUP_35(self) :
+    def FOLD_MAX_MEANS(self) :
         """
         maximum mean within the smaller window of the local normalized laplacian variance 
         allowed to flag multilayer blur
         """
-        return [0.0030,0.0030,0.0030,0.0030,0.0030]
-    @property
-    def FOLD_NLV_CUTS_BY_LAYER_GROUP_43(self) :
-        return [0.120,0.0000,0.0700,0.0700,0.1200,0.1000,0.1000] 
-    @property
-    def FOLD_MAX_MEANS_BY_LAYER_GROUP_43(self) :
-        return [0.100,0.0000,0.0600,0.0600,0.1000,0.0850,0.0850] 
+        return {'vectra_dapi':0.0030,
+                'vectra_fitc':0.0030,
+                'vectra_cy3':0.0030,
+                'vectra_texas_red':0.0030,
+                'vectra_cy5':0.0030,
+                'polaris_dapi':0.100,
+                'polaris_opal_780':0.000,
+                'polaris_opal_480':0.060,
+                'polaris_cy5':0.060,
+                'polaris_fitc':0.100,
+                'polaris_cy3':0.085,
+                'polaris_texas_red':0.085,
+            }
     @property
     def DUST_MIN_PIXELS(self) :
         return 30000 #minimum number of pixels required to flag DAPI layer blur in images
@@ -73,24 +91,22 @@ class Const :
     def DUST_MIN_SIZE(self) :
         return 20000 #minimum size in pixels of individual structure elements allowed in DAPI layer blur masks
     @property
-    def DUST_NLV_CUT_35(self) :
+    def DUST_NLV_CUTS(self) :
         """
         local normalized laplacian variance below which a pixel is flagged as blurry for multiple layer masks 
         """
-        return 0.00085
+        return {'vectra_dapi':0.00085,
+                'polaris_dapi':0.01,
+            }
     @property
-    def DUST_MAX_MEAN_35(self) :
+    def DUST_MAX_MEANS(self) :
         """
         maximum mean within the smaller window of the local normalized laplacian variance 
         allowed to flag multilayer blur
         """
-        return 0.00065
-    @property
-    def DUST_NLV_CUT_43(self) :
-        return 0.0700
-    @property
-    def DUST_MAX_MEAN_43(self) :
-        return 0.0525
+        return {'vectra_dapi':0.00065,
+                'polaris_dapi':0.0075,
+            }
     @property
     def BLUR_FLAG_STRING(self) :
         return 'blurred likely folded tissue or dust' #string to use for blurred areas in the labelled mask regions file
@@ -101,17 +117,23 @@ class Const :
     def SATURATION_MIN_SIZE(self) :
         return 1000 #minimum size in pixels of individual structure elements allowed in saturation masks
     @property
-    def SATURATION_INTENSITY_CUTS_35(self) :
+    def SATURATION_INTENSITY_CUTS(self) :
         """
-        intensity in counts/ms required to flag saturation in each layer group for 35-layer images
+        intensity in counts/ms required to flag saturation in each layer group
         """
-        return [100,100,250,400,150]
-    @property
-    def SATURATION_INTENSITY_CUTS_43(self) :
-        """
-        intensity in counts/ms required to flag saturation in each layer group for 43-layer images
-        """
-        return [100,50,250,250,150,100,100]
+        return {'vectra_dapi':100,
+                'vectra_fitc':100,
+                'vectra_cy3':250,
+                'vectra_texas_red':400,
+                'vectra_cy5':150,
+                'polaris_dapi':100,
+                'polaris_opal_780':50,
+                'polaris_opal_480':250,
+                'polaris_cy5':250,
+                'polaris_fitc':150,
+                'polaris_cy3':100,
+                'polaris_texas_red':100,
+            }
     @property
     def SATURATION_FLAG_STRING(self) :
         """
