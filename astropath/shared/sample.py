@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
+import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, pandas as pd, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
 from ..hpfs.warping.utilities import WarpingSummary
@@ -546,6 +546,32 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     filter_name_find = './G/G/G/G[@name="Spectra"]/G/G[@name="AcquisitionSettings"]/G/D[@name="ExcitationFilterName"]'
     filter_names = [el.text.strip() for el in root.findall(filter_name_find)]
     return filter_names
+
+  @methodtools.lru_cache()
+  @property
+  def opals_targets(self) :
+    """
+    A list of tuples of (opal_string,target_string) from the MergeConfig_*.xlsx file 
+    (should exist as early as meanimage)
+    """
+    opals_targets = []
+    fp = self.mergeconfigcsv.parent/self.mergeconfigcsv.replace('.csv','.xlsx')
+    if not fp.is_file() :
+      raise FileNotFoundError(f'ERROR: MergeConfig Excel file {fp} not found!')
+    data = pd.DataFrame(pd.read_excel(fp))
+    for _,row in data.loc[:,['Opal','Target']].iterrows() :
+        #convert the opal to an integer if possible
+        opal = row['Opal']
+        try :
+          opal = int(opal)
+        except ValueError :
+          pass
+        #make the target into a nice string
+        target = row['Target'].replace('/','').lower()
+        #skip any "NA" entries
+        if target!='na' :
+          opals_targets.append((opal,target))
+    return opals_targets
 
   @methodtools.lru_cache()
   @property
