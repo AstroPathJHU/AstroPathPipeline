@@ -43,7 +43,13 @@ Class informinput : moduletools {
         Component        = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>';
         BinaryWComponent = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>'
     }
-
+    #
+    $error_dictionary = @{
+        ConnectionFailed = 'A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond';
+        NoElements = 'Sequence contains no elements';
+        CorruptIM3 = 'External component has thrown an exception';
+        ExtensionError = '----extension error placeholder----' #TODO
+    }
     #
     informinput([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
         #
@@ -199,9 +205,11 @@ Class informinput : moduletools {
                 $changedline = $this.export_type_setting.Default
             }
         }
-        $this.sample.info("Replacing exportline:" + $exportline + "with changedline:" + $changedline)
-        (Get-Content $this.algpath).replace($exportline, $changedline) | 
-            Set-Content $this.algpath
+        if ($exportline -ne $changedline) {
+            $this.sample.info("Replacing exportline:" + $exportline + "with changedline:" + $changedline)
+            (Get-Content $this.algpath).replace($exportline, $changedline) | 
+                Set-Content $this.algpath
+        }
         #
     }
     
@@ -331,18 +339,19 @@ Class informinput : moduletools {
    <# -----------------------------------------
     CheckErrors
     check the resulting process files for any 
-    potential errors
+    potential errors. write batch errors to
+    sample log
     ------------------------------------------
     Usage: $this.CheckErrors()
    ----------------------------------------- #>
     [void]CheckErrors(){
         #
-        $errs = Get-Content $this.informprocesserrorlog
+        $errs = $this.sample.GetContent($this.informprocesserrorlog)
         if ($errs){
             $this.sample.warning($errs)
         }
         #
-        $batch = Get-Content $this.informbatchlog
+        $batch = $this.sample.GetContent($this.informbatchlog)
         if (!($batch)){
             $this.sample.warning("inForm batch log does not exist")
             $this.err += 1
@@ -355,7 +364,40 @@ Class informinput : moduletools {
             return   
         }
         #
+        $errormessage = $batch.Where({$_ -match $completestring}, 'SkipUntil')
+        Write-Host '    Error message:'
+        $this.sample.error(($errormessage | Select-Object -skip 1))
+        if ($errormessage.length -gt 0) {
+            foreach ($errorline in $errormessage) {
+                $this.CheckErrorDictionary($errorline)
+            }
+        }
+        #
         $this.CheckInFormOutputFiles()
+        #
+    }
+    <# -----------------------------------------
+     CheckErrorDictionary
+     check an error line against the error
+     dictionary. errors can lead to files
+     being rerun, altered, or skipped
+     ------------------------------------------
+     Usage: $this.CheckInFormOutputFiles()
+    ----------------------------------------- #>
+    [void]CheckErrorDictionary($errorline){
+        #
+        if ($errorline -match $this.error_dictionary.ConnectionFailed) {
+            #rerun
+        }
+        if ($errorline -match $this.error_dictionary.NoElements) {
+            #skip
+        }
+        if ($errorline -match $this.error_dictionary.CorruptIM3) {
+            #skip
+        }
+        if ($errorline -match $this.error_dictionary.ExtensionError) {
+            #change extension capitilization
+        }
         #
     }
     <# -----------------------------------------
@@ -378,7 +420,6 @@ Class informinput : moduletools {
         if ($this.needscomponent) {
             $informtypes += 'component_data.tif'
         }
-        Write-Host '    InformTypes:' $informtypes
         #
         $this.corruptedfiles = @()
         #
@@ -399,6 +440,7 @@ Class informinput : moduletools {
             }
             #
         }
+        #
     }
     <# -----------------------------------------
      ReturnData

@@ -494,10 +494,54 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'test check inform output files started'
         #
-        $this.setupexpected($inp)
-        $inp.StartInForm()
-        $inp.WatchBatchInForm()
+        $inp.GetSegmentationData()
+        #
+        Write-Host '    checking default export option'
+        $inp.needsbinaryseg = $false
+        $inp.needscomponent = $false
+        $this.runinformexpected($inp)
+        $segdata = $inp.informoutpath + '\test_cell_seg_data.txt'
+        $bin = $inp.informoutpath + '\test_binary_seg_maps.tif'
+        $comp = $inp.informoutpath + '\test_component_data.tif'
+        
+        #
+        $inp.sample.CreateFile($segdata)
+        $inp.sample.CreateFile($bin)
+        $inp.sample.CreateFile($comp)
+        $inp.CheckInFormOutputFiles()
+        if ($inp -ne 0) {
+            throw 'error with corrupt files'
+        }
+        Write-Host '    default export type successful'
+        #
+        Write-Host '    checking binary seg map export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_BinaryMaps.ifr'
+        $inp.needsbinaryseg = $true
+        $inp.needscomponent = $false
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    binary seg map export type successful'
+        #
+        Write-Host '    checking component export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_Component.ifr'
+        $inp.needsbinaryseg = $false
+        $inp.needscomponent = $true
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    default compoent type successful'
+        #
+        Write-Host '    checking binary with component export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_BinaryWComponent.ifr'
+        $inp.needsbinaryseg = $true
+        $inp.needscomponent = $true
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    default binary with component type successful'
+        #
+        $inp.sample.mergeconfig_data = $null
+        
+
+        #
+        $this.runinformexpected($inp)
         Write-Host '    batch process complete'
+
         <#
         $inp.CheckInformOutputFiles()
         Write-Host '    Corrupted Files:' $inp.corruptedfiles

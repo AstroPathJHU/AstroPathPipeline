@@ -41,9 +41,25 @@ Class testsegmentationcheck : testtools {
         Write-Host 'test segmentation check started'
         Write-Host '--------------------'
         $inp.sample.findsegmentationtargets()
-        Write-Host '    Segmentation Targets:' $inp.sample.segmentationtargets
-        #
+        Write-Host '    Binary Targets:' $inp.sample.binarysegtargets
+        Write-Host '    Component Target:' $inp.sample.componenttarget
         Write-Host 'test segmentation check done'
+        #
+    }
+    <# --------------------------------------------
+    testsegmentation
+    test that the transferring the merge config
+    file from excel to csv works correctly
+    --------------------------------------------#>
+    [void]testmergeconfigtocsv($inp) {
+        #
+        Write-Host '.'
+        Write-Host 'test merge config to csv started'
+        #
+        $testbatchid = 1
+        $inp.sample.MergeConfigToCSV($inp.sample.basepath, $testbatchid)
+        #
+        Write-Host 'test merge config to csv done'
         #
     }
 }
