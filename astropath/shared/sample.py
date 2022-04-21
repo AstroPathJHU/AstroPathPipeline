@@ -555,7 +555,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     (should exist as early as meanimage)
     """
     opals_targets = []
-    fp = self.mergeconfigcsv.parent/self.mergeconfigcsv.replace('.csv','.xlsx')
+    fp = self.mergeconfigcsv.parent/((self.mergeconfigcsv.name).replace('.csv','.xlsx'))
     if not fp.is_file() :
       raise FileNotFoundError(f'ERROR: MergeConfig Excel file {fp} not found!')
     data = pd.DataFrame(pd.read_excel(fp))
@@ -567,10 +567,10 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
         except ValueError :
           opal = opal.lower()
         #make the target into a nice string
-        target = row['Target'].replace('/','').lower()
+        target = row['Target']
         #skip any "NA" entries
-        if target!='na' :
-          opals_targets.append((opal,target))
+        if type(target)==str and target!='na' :
+          opals_targets.append((opal,target.replace('/','').lower()))
     return opals_targets
 
   @methodtools.lru_cache()
@@ -621,7 +621,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       targets_contributing=[]
       wls = [fg[1] for fg in filter_groups if fg[0]==group_name]
       for opal,target in self.opals_targets :
-        if (opal=='dapi' and group_name.split('_')[1]=='dapi') or (opal>=min(wls) and opal<=max(wls)) :
+        if ( (opal=='dapi' and group_name.split('_')[1]=='dapi') 
+             or (type(opal)==int and opal>=min(wls) and opal<=max(wls)) ) :
           targets_contributing.append(target)
       new_name = group_name
       for target in sorted(targets_contributing) :
