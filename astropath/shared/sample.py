@@ -380,8 +380,18 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def mergeconfigcsv(self):
     return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.csv"
   @property
+  def mergeconfigxlsx(self):
+    return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.xlsx"
+  @property
   def mergeconfig(self):
     return self.readtable(self.mergeconfigcsv, MergeConfig)
+  @property
+  def batchxlsx(self) :
+    fp = self.root/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
+    if fp.is_file() :
+      return fp
+    fp = self.root/"Batch"/f"BatchID_{self.BatchID:02d}.xlsx"
+    return fp
 
   @property
   def samplelog(self):
@@ -555,9 +565,12 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     (should exist as early as meanimage)
     """
     opals_targets = []
-    fp = self.mergeconfigcsv.parent/((self.mergeconfigcsv.name).replace('.csv','.xlsx'))
+    if self.mergeconfigxlsx.is_file() :
+      fp = self.mergeconfigxlsx
+    else :
+      fp = self.batchxlsx
     if not fp.is_file() :
-      raise FileNotFoundError(f'ERROR: MergeConfig Excel file {fp} not found!')
+      raise FileNotFoundError(f'ERROR: Neither a MergeConfig nor Batch Excel file were found in {fp.parent}!')
     data = pd.DataFrame(pd.read_excel(fp))
     for _,row in data.loc[:,['Opal','Target']].iterrows() :
         #convert the opal to an integer if possible
