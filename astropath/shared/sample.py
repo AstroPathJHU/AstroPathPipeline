@@ -601,15 +601,15 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       if fn=='DAPI' :
         to_add+='dapi'
       elif fn=='DAPI / Opal 780' :
-        to_add+='dapi' if wl<700 else 'opal_780'
+        to_add+='dapi' if wl<700 else 'opal780'
       elif fn=='FITC' :
         to_add+='fitc'
       elif fn=='Cy3' :
         to_add+='cy3'
       elif fn=='Texas Red' :
-        to_add+='texas_red'
+        to_add+='texasred'
       elif fn=='Opal 480 / Cy5' :
-        to_add+='opal_480' if wl<600 else 'cy5'
+        to_add+='opal480' if wl<600 else 'cy5'
       elif fn=='Cy5' :
         to_add+='cy5'
       else :
