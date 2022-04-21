@@ -199,7 +199,8 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         return FilterResult(False, " ".join(messages))
       else:
         return FilterResult(True, "Sample has the right segmentation algorithms in geom.")
-    result["slideidfilters"].append(SampleFilter(correctsegmentations, None, None))
+    if not parsed_args_dict["print_errors"]:
+      result["slideidfilters"].append(SampleFilter(correctsegmentations, None, None))
     return result
 
   def sampleswithfilters(self, **kwargs):
