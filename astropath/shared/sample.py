@@ -565,7 +565,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
         try :
           opal = int(opal)
         except ValueError :
-          pass
+          opal = opal.lower()
         #make the target into a nice string
         target = row['Target'].replace('/','').lower()
         #skip any "NA" entries
@@ -595,7 +595,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       microscope_prepend = 'polaris'
     else :
       raise ValueError(f'ERROR: unrecognized number of wavelengths/filter_names/im3 layers ({len(self.wavelengths)})!')
-    result = []
+    filter_groups = []
     for wl,fn in zip(self.wavelengths,self.filter_names) :
       to_add = f'{microscope_prepend}_'
       if fn=='DAPI' :
@@ -614,8 +614,22 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
         to_add+='cy5'
       else :
         raise ValueError(f'ERROR: unrecognized broadband filter_name "{fn}"! (wavelength = {wl})')
-      result.append(to_add)
-    return result
+      filter_groups.append((to_add,wl))
+    layer_group_names = [fg[0] for fg in filter_groups]
+    unique_names = set(layer_group_names)
+    for group_name in unique_names :
+      targets_contributing=[]
+      wls = [fg[1] for fg in filter_groups if fg[0]==group_name]
+      for opal,target in self.opals_targets :
+        if (opal=='dapi' and group_name.split('_')[1]=='dapi') or (opal>=min(wls) and opal<=max(wls)) :
+          targets_contributing.append(target)
+      new_name = group_name
+      for target in sorted(targets_contributing) :
+        new_name+=f'_{target}'
+      for i in range(len(layer_group_names)) :
+        if layer_group_names[i]==group_name :
+          layer_group_names[i]=new_name
+    return layer_group_names
 
   @methodtools.lru_cache()
   @property
