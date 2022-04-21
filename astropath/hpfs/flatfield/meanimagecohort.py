@@ -3,7 +3,7 @@ from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentP
 from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort
 from .meanimagesample import MeanImageSample
 
-class MeanImageCohort(CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, 
+class MeanImageCohort(CorrectedImageCohort, ParallelCohort, MaskCohort, SelectRectanglesCohort, 
                       WorkflowCohort, WorkingDirArgumentParser, FileTypeArgumentParser) :
     sampleclass = MeanImageSample
     __doc__ = sampleclass.__doc__

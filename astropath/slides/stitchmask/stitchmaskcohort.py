@@ -12,6 +12,10 @@ class StitchAstroPathTissueMaskCohort(StitchMaskCohortBase):
   sampleclass = StitchAstroPathTissueMaskSample
   __doc__ = sampleclass.__doc__
 
+  @property
+  def workflowkwargs(self):
+    return {**super().workflowkwargs, "skip_masking": False}
+
 def informmain(args=None):
   StitchInformMaskCohort.runfromargumentparser(args)
 

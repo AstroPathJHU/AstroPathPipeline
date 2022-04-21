@@ -1,5 +1,6 @@
 import abc, methodtools, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
+from ...hpfs.flatfield.meanimagesample import MeanImageSample
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMask, ThingWithTissueMaskPolygons
 from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
@@ -263,6 +264,14 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
   def backgroundvalue(self): return False
   def getHPFmask(self, field):
     with field.using_tissuemask() as mask: return mask
+
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
+    return [MeanImageSample] + super().workflowdependencyclasses(**kwargs)
+
+  @property
+  def workflowkwargs(self):
+    return {**super().workflowkwargs, "skip_masking": False}
 
 def astropathtissuemain(args=None):
   StitchAstroPathTissueMaskSample.runfromargumentparser(args=args)
