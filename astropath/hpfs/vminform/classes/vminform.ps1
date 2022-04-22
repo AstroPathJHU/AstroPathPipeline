@@ -34,6 +34,7 @@ Class informinput : moduletools {
     [int]$err
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     [array]$corruptedfiles
+    [array]$skippedfiles
     [bool]$needsbinaryseg
     [bool]$needscomponent
     #
@@ -45,10 +46,10 @@ Class informinput : moduletools {
     }
     #
     $error_dictionary = @{
-        ConnectionFailed = 'A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond';
-        NoElements = 'Sequence contains no elements';
-        CorruptIM3 = 'External component has thrown an exception';
-        ExtensionError = '----extension error placeholder----' #TODO
+        ConnectionFailed = '*A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond';
+        NoElements = '*Sequence contains no elements';
+        SegmentCells = '*Please segment cells';
+        CorruptIM3 = '*External component has thrown an exception'
     }
     #
     informinput([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
@@ -114,6 +115,8 @@ Class informinput : moduletools {
                 Throw "Could not complete task after 5 attempts"
             } elseif ($this.err -eq -1){
                 $this.sample.info("inForm Batch Process Finished Successfully")
+                $this.MergeOutputDirectories()
+                $this.informoutpath = $this.outpath + "\" + $this.abx + '_1'
             }
         }
         #
@@ -134,6 +137,7 @@ Class informinput : moduletools {
         #
         $this.KillinFormProcess()
         $this.sample.info("Create inForm output location")
+        $this.informoutpath = $this.outpath + "\" + $this.abx + '_' + $this.err
         $this.sample.createnewdirs($this.informoutpath)
         #
     }
@@ -164,9 +168,11 @@ Class informinput : moduletools {
         #
         $this.sample.info("Compile image list")
         $p = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw\*'
-        $this.image_list = Get-ChildItem -Path $p -include *.im3 |
-             ForEach-Object {$_.FullName} |
-            foreach-object {$_+"`r`n"}
+        if ($this.err -eq 0) {
+            $this.image_list = Get-ChildItem -Path $p -include *.im3 |
+                ForEach-Object {$_.FullName} |
+                foreach-object {$_+"`r`n"}
+        }
         $this.sample.setfile($this.image_list_file, $this.image_list)
         #
     }
@@ -339,8 +345,7 @@ Class informinput : moduletools {
    <# -----------------------------------------
     CheckErrors
     check the resulting process files for any 
-    potential errors. write batch errors to
-    sample log
+    potential errors
     ------------------------------------------
     Usage: $this.CheckErrors()
    ----------------------------------------- #>
@@ -351,53 +356,22 @@ Class informinput : moduletools {
             $this.sample.warning($errs)
         }
         #
-        $batch = $this.sample.GetContent($this.informbatchlog)
-        if (!($batch)){
+        $batchlog = $this.sample.GetContent($this.informbatchlog)
+        if (!($batchlog)){
             $this.sample.warning("inForm batch log does not exist")
             $this.err += 1
             return   
         }
         #
-        if (!($batch -match "Batch process is completed")){
+        if (!($batchlog -match "Batch process is completed")){
             $this.sample.warning("inForm batch log did not record a finishing event")
             $this.err += 1
             return   
         }
         #
-        $errormessage = $batch.Where({$_ -match $completestring}, 'SkipUntil')
-        Write-Host '    Error message:'
-        $this.sample.error(($errormessage | Select-Object -skip 1))
-        if ($errormessage.length -gt 0) {
-            foreach ($errorline in $errormessage) {
-                $this.CheckErrorDictionary($errorline)
-            }
-        }
-        #
         $this.CheckInFormOutputFiles()
-        #
-    }
-    <# -----------------------------------------
-     CheckErrorDictionary
-     check an error line against the error
-     dictionary. errors can lead to files
-     being rerun, altered, or skipped
-     ------------------------------------------
-     Usage: $this.CheckInFormOutputFiles()
-    ----------------------------------------- #>
-    [void]CheckErrorDictionary($errorline){
-        #
-        if ($errorline -match $this.error_dictionary.ConnectionFailed) {
-            #rerun
-        }
-        if ($errorline -match $this.error_dictionary.NoElements) {
-            #skip
-        }
-        if ($errorline -match $this.error_dictionary.CorruptIM3) {
-            #skip
-        }
-        if ($errorline -match $this.error_dictionary.ExtensionError) {
-            #change extension capitilization
-        }
+        $this.CheckBatchLogErrors($batchlog)
+        $this.GetFixableFiles()
         #
     }
     <# -----------------------------------------
@@ -405,14 +379,14 @@ Class informinput : moduletools {
      record the number of complete inform 
      output files of each necessary type 
      (cell_seg, binary_seg_maps, component_data)
-     and check if any files have 0bytes, 
-     indicating a potential error.
+     check if any files needed - given the 
+     files found in the image list - have 
+     0bytes, indicating a potential error.
      ------------------------------------------
      Usage: $this.CheckInFormOutputFiles()
     ----------------------------------------- #>
     [void]CheckInFormOutputFiles(){
         #
-        $o = $this.informoutpath+"\*"
         $informtypes = @('cell_seg_data.txt')
         if ($this.needsbinaryseg) {
             $informtypes += 'binary_seg_maps.tif'
@@ -423,24 +397,120 @@ Class informinput : moduletools {
         #
         $this.corruptedfiles = @()
         #
+        $o = $this.informoutpath+"\*"
+        #
         foreach ($informtype in $informtypes) {
             #
-            $informtype = '*'+$informtype
             $ofiles = @()
             $ofiles += Get-ChildItem $o -Include ('*'+$informtype)
             $nfiles = $ofiles.Length
             if ($nfiles -ne 0) {
                 $this.sample.info("inForm created " + $nfiles + " of " +
                     $this.image_list.Length + " " + $informtype + " files")
-                $ofiles | foreach-object {
-                    if (!$_.PSIsContainer -and $_.length -eq 0) {
-                        $this.corruptedfiles += $_.FullName
-                    }
+            }
+            #
+            $imagefiles = @()
+            $imagefiles += Get-ChildItem $this.image_list -Include ('*'+$informtype) 
+            foreach ($file in $imagefiles) {
+                $fileneeded = $file -replace '\..*',('_'+$informtype)
+                if (!$fileneeded.PSIsContainer -and $fileneeded.length -eq 0) {
+                    $this.corruptedfiles += $file.FullName
                 }
             }
             #
         }
         #
+    }
+    <# -----------------------------------------
+     CheckBatchLogErrors
+     check errors given from the inform batch 
+     log and refeerence error dictionary to 
+     see if image files need to be rerun or 
+     skipped depending on the error.
+     ------------------------------------------
+     Usage: $this.CheckBatchLogErrors($batchlog)
+    ----------------------------------------- #>
+    [void]CheckBatchLogErrors($batchlog){
+        $completestring = 'Batch process is completed'
+        $errormessage = $batchlog.Where({$_ -match $completestring}, 'SkipUntil')
+        $this.sample.warning(($errormessage | Select-Object -skip 1))
+        #
+        $this.skippedfiles = @()
+        if ($errormessage.length -gt 0) {
+            foreach ($errorline in $errormessage) {
+                $errorline -match '\[\d+,\d+\]'
+                if ($matches) {
+                    $imageid = $matches[0]
+                    $this.CheckErrorDictionary($errorline, $imageid)
+                }
+            }
+        }
+    }
+    <# -----------------------------------------
+     CheckErrorDictionary
+     check an error line against the error
+     dictionary. errors can lead to files
+     being rerun or skipped
+     ------------------------------------------
+     Usage: $this.CheckInFormOutputFiles($errorline, $imageid)
+    ----------------------------------------- #>
+    [void]CheckErrorDictionary($errorline, $imageid){
+        #
+        $filepath = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw\' + 
+                    $this.sample.slideid + '_' + $imageid + '.im3'
+        switch -regex ($errorline) {
+            $this.error_dictionary.ConnectionFailed {
+                $this.corruptedfiles += $filepath
+            }
+            $this.error_dictionary.NoElements {
+                $this.skippedfiles += $filepath
+            }
+            $this.error_dictionary.SegmentCells {
+                $this.skippedfiles += $filepath
+            }
+            $this.error_dictionary.CorruptIM3 {
+                $this.skippedfiles += $filepath
+            }
+        }
+        #
+    }
+    <# -----------------------------------------
+     CheckForFixableFiles
+     Get corrupted files that can be fixed
+     by a rerun while ommitting files that 
+     should be skipped and set to new image
+     list
+     ------------------------------------------
+     Usage: $this.CheckForFixableFiles()
+    ----------------------------------------- #>
+    [void]CheckForFixableFiles(){
+        $corrupted = $this.corruptedfiles | Select-Object -Unique
+        $skipped = $this.skippedfiles | Select-Object -Unique
+        $filestorerun = $corrupted | Where-Object {$skipped -notcontains $_}
+        if ($filestorerun.length -gt 0) {
+            $this.image_list = $null
+            $this.image_list = Get-ChildItem $filestorerun -include *.im3 |
+                ForEach-Object {$_.FullName} |
+                foreach-object {$_+"`r`n"}
+            $this.err++
+        }
+    }
+    <# -----------------------------------------
+     MergeOutputDirectories
+     Merge output directories to a folder using
+     newest files
+     ------------------------------------------
+     Usage: $this.MergeOutputDirectories()
+    ----------------------------------------- #>
+    [void]MergeOutputDirectories(){
+        $finalpath = $this.outpath + "\" + $this.abx
+        $this.sample.CreateNewDirs($finalpath)
+        for ($i=0; $i -le 5; $i++) {
+            $errpath = $this.outpath + "\" + $this.abx + '_' + $i
+            if (Test-Path $errpath) {
+                robocopy $errpath $finalpath -r:3 -w:3 -np -E -mt:4 /IS | out-null
+            }
+        }
     }
     <# -----------------------------------------
      ReturnData
