@@ -565,12 +565,12 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     (should exist as early as meanimage)
     """
     opals_targets = []
-    if self.mergeconfigxlsx.is_file() :
-      fp = self.mergeconfigxlsx
-    else :
+    if self.batchxlsx.is_file() :
       fp = self.batchxlsx
+    else :
+      fp = self.mergeconfigxlsx
     if not fp.is_file() :
-      raise FileNotFoundError(f'ERROR: Neither a MergeConfig nor Batch Excel file were found in {fp.parent}!')
+      raise FileNotFoundError(f'ERROR: Neither a Batch nor MergeConfig Excel file were found in {fp.parent}!')
     data = pd.DataFrame(pd.read_excel(fp))
     for _,row in data.loc[:,['Opal','Target']].iterrows() :
         #convert the opal to an integer if possible
