@@ -17,11 +17,12 @@
     [string]$localqueue_filename
     [string]$mainqueue_filename
     [string]$mainqueue_path = '\across_project_queues'
+    [string]$localqueue_path = '\progress_tables'
     [string]$project
     [string]$mainqueueheaders = 'Project,Cohort,SlideID,Status,isGood,StartTime,FinishTime'
     [string]$localqueueheaders = 'Project,Cohort,SlideID,Status,isGood,StartTime,FinishTime'
     [string]$refobject 
-    [array]$newtasks
+    [string]$type = 'table'
     #
     modulequeue(){
         $this.modulequeueinit('\\bki04\astropath_processing', '')
@@ -31,7 +32,7 @@
     modulequeue($module){
         $this.modulequeueinit('\\bki04\astropath_processing', $module)
         #
-        if ($module -notcontains 'vminform'){
+        if ($this.type -notcontains 'queue'){
             $this.coalescequeues()
         }
         #
@@ -39,7 +40,7 @@
     modulequeue($mpath, $module){
         $this.modulequeueinit($mpath, $module)
         #
-        if ($module -notcontains 'vminform'){
+        if ($this.type -notcontains 'queue'){
             $this.coalescequeues()
         }
         #
@@ -48,7 +49,7 @@
         $this.project = $project
         $this.modulequeueinit($mpath, $module)
         #
-        if ($module -notcontains 'vminform'){
+        if ($this.type -notcontains 'queue'){
             $this.coalescequeues($project)
         }
         #
@@ -58,12 +59,11 @@
         #
         $this.mpath = $mpath
         $this.module = $module
-        $this.localqueue_filename = $module + '-local-queue.csv'
-        $this.mainqueue_filename = $module + '-queue.csv'
+        $this.localqueue_filename = $module + '-local-'+ $this.type+'.csv'
+        $this.mainqueue_filename = $module + '-'+ $this.type+'.csv'
         $this.refobject = 'slideid'
         #
     }
-    #
   <# -----------------------------------------
      coalescequeues
      coalesce local and main  queues
@@ -108,54 +108,63 @@
     [void]coalescequeues($project, $all){
         #
         $cproject = $project.ToString()
+        if ($this.coalesceinformtables($cproject)){
+            return
+        }
+        #
         if ($all){
             $this.getlocalqueue($cproject)
         } else {
             $this.getlocalqueue($cproject, $false)
         }
-        $localtmp = $this.localqueue.($cproject)
-        $this.localqueue.($cproject) = $this.filtertasks($cproject)
         #
-        if ($localtmp){
-            $cmp = Compare-Object -ReferenceObject $localtmp.($this.refobject) `
-                -DifferenceObject $this.localqueue.($cproject).($this.refobject)
-            if ($cmp){
-                $this.writelocalqueue($cproject)
-            }
-         } else {
-            $this.writelocalqueue($cproject)
-        }
+        $localtmp = $this.getstoredtable($this.localqueue.($cproject))
+        $this.localqueue.($cproject) = $this.filtertasks($cproject)
+        $this.comparewrite($cproject, $localtmp)
         #
     }
-    <#------------------------------------------
-    will force update all local and main 
-    queues and create file watchers. to run after the
-    sampledb has been built
-    --------------------------------------------#>
-    [void]createwatchersqueues(){
+    #
+    [switch]coalesceinformtables($project){
         #
-        if ($this.module -contains 'vminform'){
-            return
+        if ($this.module -match 'vminform' -and 
+            $this.type -match 'table') {
+            #
+            $localtmp = $this.getstoredtable($this.localqueue.($project))
+            $this.getlocalqueue($project, $false)
+            $localtmp2 = $this.getstoredtable($this.localqueue.($project))
+            $this.localqueue.($project) = $localtmp
+            #
+            $this.comparewrite($project, $localtmp2)
+            return $true
         }
         #
-        $projects = $this.getapprojects($this.module)
+        return $false
         #
-        $this.openmainqueue($false)
-        $projects | ForEach-Object{
-            $this.coalescequeues($_, $false)
-            $this.getlocalqueue($cproject, $true)
+    }
+    #
+    [void]comparewrite($project, $localtmp){
+        #
+        if ($this.localqueue.($project)){
+            if ($localtmp){
+                $cmp = Compare-Object -ReferenceObject $localtmp.($this.refobject) `
+                    -DifferenceObject $this.localqueue.($project).($this.refobject)
+                if ($cmp){
+                    $this.writelocalqueue($project)
+                }
+            } else {
+                $this.writelocalqueue($project)
+            }
         }
-        #
-        $this.writemainqueue($this.mainqueuelocation())
-        $this.openmainqueue($true)
         #
     }
     #
     [PSCustomObject]filtertasks($cproject){
-        if ($this.module -contains 'vminform'){
-            $vals = $this.maincsv | where-object {$_.taskid -match ('T' + $cproject.PadLeft(3,'0'))}
+        if ($this.type -contains 'queue'){
+            $vals = $this.maincsv |
+                where-object {$_.taskid -match ('T' + $cproject.PadLeft(3,'0'))}
         } else {
-            $vals = ($this.maincsv.project -contains $cproject)
+            $vals = $this.maincsv | 
+                Where-Object {$_.project -contains $cproject}
         }
         return $vals
     }
@@ -189,6 +198,11 @@
     #
     [void]openmainqueue($createwatcher){
         #
+        if ($this.module -match 'vminform' -and 
+            $this.type -match 'table') {
+            return
+        }
+        #
         $mainqueuefile = $this.mainqueuelocation()
         #
         if (!(test-path $mainqueuefile)){
@@ -204,7 +218,7 @@
         }
         #
         if ($mainqueue){
-            if ($this.module -match 'vminform'){
+            if ($this.type -match 'queue'){
                 $mainqueue | foreach-object {
                     $_ | Add-Member localtaskid $_.taskid.substring(4).trimstart('0') -PassThru
                 }
@@ -221,46 +235,23 @@
             $this.getnewtasksmain($this.lastopenmaincsv, $this.maincsv)
         }
         #
-        $this.lastopenmaincsv = $mainqueue
-        #
-    }
-    <# -----------------------------------------
-     openmainqueue
-     open main inform queue
-     ------------------------------------------
-     Usage: $this.openmainqueue()
-    ----------------------------------------- #>
-    [void]openlocalqueue($project){
-        #
-        if (!($this.localqueue.($project))){
-            $this.openlocalqueue($project, $false)
-        }
+        $this.lastopenmaincsv = $this.getstoredtable($mainqueue)
         #
     }
     #
-    [void]openlocalqueue($project, $createwatcher){
+    [void]getlocalqueue($project){
         #
-        if (!(test-path $this.localqueuefile.($project))){
-            $this.setfile($this.localqueuefile.($project), `
-               $this.localqueueheaders)
-        }
+        $this.localqueuefile.($project) = $this.localqueuelocation($project)
+        $this.openlocalqueue($project)
         #
-        if ($createwatcher){
-            $this.FileWatcher($this.localqueuefile.($project))
-        }
+    }
+    #
+    [void]getlocalqueue($project, $createwatcher){
         #
-        [array]$q = $this.OpenCSVFile($this.localqueuefile.($project))
+        $this.localqueuefile.($project) = $this.localqueuelocation($project)
+        $this.openlocalqueue($project, $createwatcher)
         #
-        if ($q){
-            $q = $q | where-object { 
-                $_.($this.refobject) -and $_.($this.refobject).trim().length -gt 0
-            }
-        }
-        #
-        $this.localqueue.($project) = $q
-        $this.lastopenlocalqueue.($project) = $q
-        #
-    }  
+    }
     <# -----------------------------------------
      localqueuelocation
      open local inform queue
@@ -279,28 +270,72 @@
     [string]localqueuepath($project){
         $cohortinfo = $this.GetProjectCohortInfo($this.mpath, $project)
         $localqueuepath = $cohortinfo.Dpath +
-            '\' + $cohortinfo.Dname + '\upkeep_and_progress'
+            '\' + $cohortinfo.Dname + '\upkeep_and_progress' + $this.localqueue_path
             $localqueuepath = $this.CrossPlatformPaths($localqueuepath)
         return $localqueuepath
     }
-    #
-    [void]getlocalqueue($project){
+    <# -----------------------------------------
+     openlocalqueue
+     open local module queue table
+     ------------------------------------------
+     Usage: $this.openlocalqueue()
+    ----------------------------------------- #>
+    [void]openlocalqueue($project){
         #
-        $this.localqueuefile.($project) = $this.localqueuelocation($project)
-        $this.openlocalqueue($project)
+        if (!($this.localqueue.($project))){
+            $this.openlocalqueue($project, $false)
+        }
         #
     }
     #
-    [void]getlocalqueue($project, $createwatcher){
+    [void]openlocalqueue($project, $createwatcher){
         #
-        $this.localqueuefile.($project) = $this.localqueuelocation($project)
-        $this.openlocalqueue($project, $createwatcher)
+        if (!(test-path $this.localqueuefile.($project))){
+            #
+            if ($this.module -match 'vminform' -and 
+                $this.type -match 'table') {
+                $headers = $this.createvmtableheaders($project)
+                $headers = ($headers -join ',')
+            } else {
+                $headers = $this.localqueueheaders
+            }
+            #
+            $this.setfile($this.localqueuefile.($project), `
+                $headers)
+        }
         #
-    }
+        if ($createwatcher){
+            $this.FileWatcher($this.localqueuefile.($project))
+        }
+        #
+        [array]$q = $this.OpenCSVFile($this.localqueuefile.($project))
+        #
+        if ($q){
+            $q = $q | where-object { 
+                $_.($this.refobject) -and $_.($this.refobject).trim().length -gt 0
+            }
+        }
+        #
+        $this.localqueue.($project) = $q
+        $this.lastopenlocalqueue.($project) = $this.getstoredtable($q)
+        #
+    }  
     #
     [void]writelocalqueue($project){
         #
+        if (!($this.localqueue.($project) )){
+            return
+        }
+        #
+        if ($this.module -match 'vminform' -and 
+            $this.type -match 'table') {
+            $heads = $this.createvmtableheaders($project)
+        } else {
+            $heads = $this.localqueueheaders -split ','
+        }
+        #
         $updatedlocal = (($this.localqueue.($project) | 
+            select-object -Property $heads | 
             ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
         try {
             $this.UnregisterEvent($this.localqueuefile.($project))
@@ -319,11 +354,45 @@
         #
     }
     #
+    [void]writemainqueue(){
+        $this.writemainqueue($this.mainqueuelocation())
+    }
+    #
     [void]writemainqueue($mainqueuelocation){
+        #
+        if ($this.module -match 'vminform' -and 
+            $this.type -match 'table') {
+            return
+        }
+        #
+        if (!($this.maincsv )){
+            return
+        }
         #
         [array]$heads = ($this.mainqueueheaders -split ',')
         #
-        $this.lastopenmaincsv = $this.maincsv
+        $stable = $this.getstoredtable($this.lastopenmaincsv)
+        $this.lastopenmaincsv = ''
+        #
+        $mainqueue = $this.getstoredtable($this.maincsv)
+        $this.openmainqueue($false)
+        $this.getnewtasksmain($stable, $this.lastopenmaincsv)
+        #
+        if ($this.module -match 'vminform'){
+            if ($this.comparetablesvmmain($mainqueue, $this.maincsv)){
+                $this.maincsv = $mainqueue
+                $this.lastopenmaincsv = $this.getstoredtable($this.maincsv) 
+            } else {
+                return
+            }
+        } else {
+            if ($this.comparetables($mainqueue, $this.maincsv)){
+                $this.maincsv = $mainqueue
+                $this.lastopenmaincsv = $this.getstoredtable($this.maincsv) 
+            } else {
+                return
+            }
+        }
         #
         $mainqueue = $this.maincsv | 
             select-object -Property $heads
@@ -332,7 +401,7 @@
             ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
         #
         try {
-            $this.UnregisterEvent($this.mainqueuelocation())
+            $this.UnregisterEvent($mainqueuelocation)
             $isevent = $true
         } catch {
             $isevent = $false
@@ -343,7 +412,7 @@
         } catch {}
         #
         if ($isevent){
-            $this.FileWatcher($this.mainqueuelocation())
+            $this.FileWatcher($mainqueuelocation)
         }
         #
     }
@@ -359,15 +428,23 @@
             $this.newtasks = @()
         }
         #
-        if ($this.module -match 'vminform'){
+        if (!$newqueue){
+            return
+        }
+        #
+        if (!$oldqueue){
+            return
+        }
+        #
+        if ($this.type -match 'queue'){
             #
             $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID'
+                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID', 'Antibody', 'Algorithm'
             #
         } else {
             #
             $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 'StartTime', 'EndTime'
+                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 'StartTime', 'FinishTime'
             #
         }
         #
@@ -377,6 +454,113 @@
                 Where-Object {$_.SideIndicator -match '<='}).SlideID
             #
         }
+        #
+    }
+    #
+    [switch]comparetables($oldqueue, $newqueue){
+        #
+        if (!$oldqueue){
+            return $false
+        }
+        #
+        if (!$newqueue){
+            return $true
+        }
+        #
+        if ($this.type -match 'queue'){
+            #
+            $cmp = Compare-Object -ReferenceObject $newqueue `
+                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID'
+            #
+        } else {
+            #
+            $cmp = Compare-Object -ReferenceObject $newqueue `
+                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 'StartTime', 'FinishTime'
+            #
+        }
+        #
+        if ($cmp){
+            return $true
+        } else {
+            return $false
+        }
+        #
+    }
+    #
+    [switch]comparetablesvmmain($oldqueue, $newqueue){
+        #
+        if (!$oldqueue){
+            return $false
+        }
+        #
+        if (!$newqueue){
+            return $true
+        }
+        #
+        if ($this.type -match 'queue'){
+            #
+            $cmp = Compare-Object -ReferenceObject $newqueue `
+                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID', 'ProcessingLocation', 'StartDate'
+            #
+        } else {
+            #
+            $cmp = Compare-Object -ReferenceObject $newqueue `
+                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 'StartTime', 'FinishTime'
+            #
+        }
+        #
+        if ($cmp){
+            return $true
+        } else {
+            return $false
+        }
+        #
+    }
+    <#------------------------------------------
+    will force update all local and main 
+    queues and create file watchers. to run after the
+    sampledb has been built
+    --------------------------------------------#>
+    [void]createwatchersqueues(){
+        #
+        if ($this.type -contains 'queue'){
+            return
+        }
+        #
+        $projects = $this.getapprojects($this.module)
+        #
+        $this.writemainqueue()
+        $this.openmainqueue($true)
+        $projects | ForEach-Object{
+            $this.coalescequeues($_, $false)
+            $this.getlocalqueue($_, $true)
+        }
+        #
+    }
+    #
+    [array]createvmtableheaders($project){
+        #
+        $this.importcohortsinfo($this.mpath) | Out-Null
+        #
+        $project_dat = $this.full_project_dat| 
+                    Where-Object -FilterScript {$_.Project -eq $project}
+        #
+        $root = $this.uncpaths($project_dat.dpath)
+        #
+        $basepath = $root, $project_dat.dname -join '\'
+        #
+        $this.findantibodies($basepath)
+        #
+        $headers = @('Project','Cohort','SlideID')
+        #
+        $this.antibodies | ForEach-Object {
+            $statusname = ($_ + '_Status')
+            $startname = ($_ + '_StartTime') 
+            $finishname = ($_ + '_FinishTime')
+            $headers += @($statusname, $startname, $finishname)
+        }
+        #
+        return $headers
         #
     }
     #

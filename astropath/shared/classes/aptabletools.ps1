@@ -25,9 +25,18 @@
     [system.object]$mergefiles
     [system.object]$cantibodyfiles
     #
+    [string]$onstrings = 'yes|y|on'
+    [array]$logfileheaders = @('Project','Cohort','slideid','Message','Date')
+    #
     [array]$imageqa_headers = @('comments')
     #
     [string]$apfile_constant = '.csv'
+    #
+    [string]$log_error = 'ERROR'
+    [string]$log_start = 'START'
+    [string]$log_finish = 'FINISH'
+    #
+    [string]$node_idle = 'IDLE'
     #
     [string]apfullname($mpath, $file){
         return ($mpath + '\' + $file)
@@ -111,7 +120,8 @@
         #
         $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
         #
-        $this.full_project_dat = $this.MergeCustomObject( $project_data, $paths_data, 'Project')
+        $this.full_project_dat = $this.MergeCustomObject(
+            $project_data, $paths_data, 'Project')
         if ($createwatcher){
             $this.FileWatcher($paths_csv_file)
         }
@@ -149,7 +159,7 @@
         -mpath: main path for the astropath processing
          which contains all necessary processing files
      ------------------------------------------
-     Usage: ImportCohortsInfo(mpath)
+     Usage: ImportConfigInfo(mpath)
     ----------------------------------------- #>
     [PSCustomObject]ImportConfigInfo([string] $mpath, $createwatcher){
         #
@@ -166,6 +176,15 @@
         #
         if(!$this.config_data){
             $this.ImportConfigInfo($mpath, $false) | Out-Null
+        }
+        return $this.config_data
+        #
+    }
+    #
+    [PSCustomObject]ImportConfigInfo(){
+        #
+        if(!$this.config_data){
+            $this.ImportConfigInfo($this.mpath, $false) | Out-Null
         }
         return $this.config_data
         #
@@ -242,13 +261,14 @@
      Usage: GetAPProjects(mpath, module, project)
      Usage: GetAPProjects()
     ----------------------------------------- #>
-    [PSCustomObject]GetAPProjects([string] $mpath, [string] $module, [string] $project){
+    [PSCustomObject]GetAPProjects([string] $mpath,
+     [string] $module, [string] $project){
         #
         $project_dat = $this.ImportConfigInfo($mpath)
         #
         if (!$project){
             $projects = ($project_dat | 
-                Where-object {$_.($module) -match 'yes'}).Project
+                Where-object {$_.($module) -match $this.onstrings}).Project
         } else {
             $projects = $project
         }
@@ -262,7 +282,7 @@
         #
         if (!$this.project){
             $projects = ($project_dat | 
-                Where-object {$_.($this.module) -match 'yes'}).Project
+                Where-object {$_.($this.module) -match $this.onstrings}).Project
         } else {
             $projects = $this.project
         }
@@ -274,12 +294,9 @@
         #
         $project_dat = $this.ImportConfigInfo($this.mpath)
         #
-        if (!$this.project){
-            $projects = ($project_dat | 
-                Where-object {$_.($module) -match 'yes'}).Project
-        } else {
-            $projects = $this.project
-        }
+        $projects = ($project_dat | 
+            Where-object {$_.($module) -match $this.onstrings}).Project
+    
         return $projects
         #
      }
@@ -290,7 +307,7 @@
         #
         if (!$this.project){
             $projects = ($project_dat | 
-                Where-object {$_.($module) -match 'yes'}).Project
+                Where-object {$_.($module) -match $this.onstrings}).Project
         } else {
             $projects = $this.project
         }
@@ -305,8 +322,8 @@
         -mpath: main path for the astropath processing
          which contains all necessary processing files
      ------------------------------------------
-     Usage: GetAPProjects(mpath, module, project)
-     Usage: GetAPProjects()
+     Usage: GetProjectCohortInfo(mpath, module, project)
+     Usage: GetProjectCohortInfo()
     ----------------------------------------- #>
     [PSCustomObject]GetProjectCohortInfo([string] $mpath, [string] $project){
         #
@@ -328,7 +345,7 @@
         -mpath: main path for the astropath processing
          which contains all necessary processing files
      ------------------------------------------
-     Usage: ImportCohortsInfo(mpath)
+     Usage: ImportCorrectionModels(mpath)
     ----------------------------------------- #>
     [PSCustomObject]ImportCorrectionModels([string] $mpath, $createwatcher){
         #
@@ -463,7 +480,7 @@
         $worker_csv_file = $this.worker_fullfile($mpath)
         $this.worker_data = $this.opencsvfileconfirm($worker_csv_file)
         $this.worker_data |
-            Add-Member -NotePropertyName 'Status' -NotePropertyValue 'IDLE'
+            Add-Member -NotePropertyName 'Status' -NotePropertyValue $this.node_idle
         if ($createwatcher){
             $this.FileWatcher($worker_csv_file)
         }
@@ -571,12 +588,13 @@
      #
      [string]defprojectlogpath($module, $project){
             #
-            $this.importconfiginfo() | Out-Null
-            $project_dat = $this.config_data |
+            $this.importcohortsinfo() | Out-Null
+            $project_dat = $this.full_project_dat |
                 Where-Object {$_.project -contains $project}
             #
             $root = $this.uncpaths($project_dat.dpath)
-            $fpath = $root, $project_dat.dname, 'logfiles', ($module,'.log' -join '') -join '\'
+            $fpath = $root, $project_dat.dname, 'logfiles',
+             ($module,'.log' -join '') -join '\'
             #
             return $fpath
             #
@@ -594,9 +612,12 @@
      #
      [PSCustomObject]Importlogfile([string] $fpath){
         #
-        $logfile = $this.opencsvfile($fpath, `
-            ';', @('Project','Cohort','slideid','Message','Date'))
-        #
+        if (test-path $fpath){
+            $logfile = $this.opencsvfile($fpath, `
+                ';', $this.logfileheaders)
+        } else {
+            $logfile = ''
+        }
         #
         return $logfile
         #
@@ -617,12 +638,13 @@
      ------------------------------------------
      Usage: selectlogline($fpath)
     ----------------------------------------- #>
-    [PSCustomObject]selectlogline([PSCustomObject] $loglines, [string] $ID, [string] $status){    
+    [PSCustomObject]selectlogline([PSCustomObject] $loglines,
+     [string] $ID, [string] $status){    
         #
         $logline = $loglines |
                 where-object {
                         ($_.Slideid -match $ID) -and 
-                        ($_.Message -match $status)
+                        ($_.Message -match ('^' + $status))
                 } |
                 Select-Object -Last 1
         #
@@ -630,13 +652,14 @@
         #
     }
     #
-    [PSCustomObject]selectlogline([PSCustomObject] $loglines, [string] $ID, [string] $status, [string] $vers){    
+    [PSCustomObject]selectlogline([PSCustomObject] $loglines,
+     [string] $ID, [string] $status, [string] $vers){    
         #
         $logline = $loglines |
                 where-object {
                     ($_.Message -match $vers) -and 
                         ($_.Slideid -match $ID) -and 
-                        ($_.Message -match $status)
+                        ($_.Message -match ('^' + $status))
                 } |
                 Select-Object -Last 1
         #
@@ -644,13 +667,15 @@
         #
     }
     #
-    [PSCustomObject]selectlogline([PSCustomObject] $loglines, [string] $ID, [string] $status, [string] $vers, [string] $antibody){    
+    [PSCustomObject]selectlogline([PSCustomObject] $loglines,
+     [string] $ID, [string] $status, [string] $vers, [string] $antibody){    
         #
         $logline = $loglines |
                 where-object {
                     ($_.Slideid -match $ID) -and 
-                        ($_.Message -match $status) -and 
-                        ($_.Message -match ('Antibody: ' + $antibody + ' - Algorithm:'))
+                        ($_.Message -match ('^' + $status)) -and 
+                        ($_.Message -match ('Antibody: ' +
+                         $antibody + ' - Algorithm:'))
                 } |
                 Select-Object -Last 1
         #
@@ -658,18 +683,21 @@
         #
     } 
     #
-    [PSCustomObject]selectlogline([PSCustomObject] $loglines, [string] $ID, [string] $status, [string] $vers, [string] $antibody, [string] $algorithm){    
+    [PSCustomObject]selectlogline([PSCustomObject] $loglines,
+     [string] $ID, [string] $status, [string] $vers, [string] $antibody,
+     [string] $algorithm){    
         #
         $logline = $loglines |
                 where-object {
                     ($_.Slideid -match $ID) -and 
-                        ($_.Message -match $status) -and 
-                        ($_.Message -match ('Antibody: ' + $antibody + ' - Algorithm: ' + $algorithm))
+                        ($_.Message -match ('^' + $status)) -and 
+                        ($_.Message -match ('Antibody: ' +
+                         $antibody + ' - Algorithm: ' + $algorithm))
                 } |
                 Select-Object -Last 1
         #
         return $logline
         #
     } 
-    #   
+    # 
 }

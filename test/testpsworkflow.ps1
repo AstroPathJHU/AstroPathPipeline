@@ -28,13 +28,13 @@ Class testpsworkflow : testtools {
         $this.testwait($inp)
         $inp.removedir($PSScriptRoot + '\data\workflowlogs')
         $this.testgitstatus($inp)
-        #>
         #
         # add user name and password to runtestjob(4) for these to work
-        #
-        $this.launchremotejobbatch($inp)  
+        <#
+        #$this.launchremotejobbatch($inp)  
         #$this.launchremotejob($inp) 
         #$this.launchremotetestjob($inp)  
+        #>
         Write-Host '.'
         #
     }

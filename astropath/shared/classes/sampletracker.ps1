@@ -11,23 +11,45 @@ class sampletracker : dependencies {
     #
     [vminformqueue]$vmq
     #
-    sampletracker($mpath): base ($mpath){
+    sampletracker($mpath) : base ($mpath){
+        #
         $this.getmodulenames()
+        $this.importaptables($this.mpath, $false)
+        $this.getmodulelogs()
+        #
     }
     #
     sampletracker($mpath, $vmq): base ($mpath){
+        #
         $this.getmodulenames()
+        $this.importaptables($this.mpath, $false)
+        $this.getmodulelogs()
         $this.vmq = $vmq
+        #
     }
     #
-    sampletracker($mpath, $vmq, [hashtable]$modules): base ($mpath){
+    sampletracker($mpath, $vmq, $modules): base ($mpath){
+        #
         $this.modules = $modules
         $this.vmq = $vmq
+        $this.getmodulelogs()
+        #
     }
     #
-    sampletracker($mpath, $vmq, [hashtable]$modules, $slideid): base ($mpath, $slideid){
-        $this.getmodulenames()
+    sampletracker($mpath, $vmq, $modules, $modulelogs): base ($mpath){
+        #
+        $this.modules = $modules
+        $this.modulelogs = $modulelogs
         $this.vmq = $vmq
+        #
+    }
+    #
+    sampletracker($mpath, $vmq, $modules, $modulelogs, $slideid): base ($mpath, $slideid){
+        #
+        $this.modules = $modules
+        $this.modulelogs = $modulelogs
+        $this.vmq = $vmq
+        #
     }
     #
     [void]defmodulestatus(){
@@ -43,6 +65,25 @@ class sampletracker : dependencies {
         #
         $this.ParseAPIDdef($slide.slideid, $slides)
         $this.defbase()
+        $this.moduleinfo.project = $this.project
+        $this.defmodulestatus()
+        #
+    }
+    #
+    [void]preparesample($slide){
+        #
+        $this.importslideids($this.mpath) | Out-Null
+        $this.ParseAPIDdef($slide)
+        $this.defbase()
+        $this.moduleinfo.project = $this.project
+        $this.defmodulestatus()
+        #
+    }
+    #
+    [void]preparesample(){
+        #
+        $this.defbase()
+        $this.moduleinfo.project = $this.project
         $this.defmodulestatus()
         #
     }

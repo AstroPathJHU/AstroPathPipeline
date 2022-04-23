@@ -52,6 +52,10 @@
         return $this.testfiles($this.scanfolder(), $this.transferreqfiles)
     }
     #
+    [switch]testshredxmlfiles(){
+        return $this.testxmlfiles()
+    }
+    #
     [switch]testxmlfiles(){
         #
         return $this.testfiles($this.xmlfolder(), 

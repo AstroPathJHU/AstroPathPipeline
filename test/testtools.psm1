@@ -855,5 +855,11 @@ Class testtools{
         $sample.removefile(
             $sample.vmq.localqueuefile.($this.project))
     }
+    #
+    [void]showtable($table){
+        #
+        write-host ($table | Format-Table | Out-String)
+        #
+    }
 }
 #

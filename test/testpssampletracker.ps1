@@ -27,6 +27,7 @@
         #
         $this.testsampletrackerconstructors()
         $sampletracker = sampletracker -mpath $this.mpath -vmq (vminformqueue $this.mpath)
+        $this.testchecklog($sampletracker)
         $this.testmodules($sampletracker)
         #
         Write-Host '.'
@@ -60,7 +61,7 @@
         $this.cleanup($sampletracker)
         $this.testcorrectionfile($sampletracker, $true)
         $this.returnphenotypedata($sampletracker)
-        #
+        #>
         $this.testgitstatus($sampletracker)  
         #
         Write-Host '.'
@@ -73,7 +74,7 @@
         Write-Host 'test [sampletracker] constructors started'
         #
         try{
-            sampletracker -mpath $this.mpath | Out-Null
+            sampletracker -mpath $this.mpath -debug | Out-Null
             # $sampletracker.removewatchers()
         } catch {
             Throw ('[sampletracker] construction with [1] input(s) failed. ' + $_.Exception.Message)
@@ -143,6 +144,21 @@
             Throw ('module lists in [sampletracker] does not match, this may indicate new modules or a typo:' + $out)
         }
         #
+    }
+    #
+    [void]testchecklog($sampletracker){
+        write-host '.'
+        write-host 'test if the check log and module logs work started'
+        Write-Host '    test the module logs'
+        Write-Host '    module logs:' ($sampletracker.modulelogs.segmaps.('1') |
+             format-table | out-string)
+        #
+        if (!($sampletracker.modulelogs.segmaps.('1'))){
+            write-host 'no log detected works'
+        }
+        #
+        write-host 'test if the check log and module logs work finished'
+        throw 'end'
     }
     #
     [void]teststatus($sampletracker){
@@ -801,7 +817,7 @@
 try{
     [testpssampletracker]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 #
 exit 0

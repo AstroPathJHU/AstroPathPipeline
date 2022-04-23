@@ -121,10 +121,15 @@ Class informinput {
     ----------------------------------------- #>
     [void]KillinFormProcess(){
         #
-        $value = get-process -name inform -EA SilentlyContinue |
-                                    Stop-Process -Force -EA stop
-        $value2 = get-process -name rserve -EA SilentlyContinue |
-                    Stop-Process -Force -EA stop
+        get-process -name inform -EA SilentlyContinue |
+            Stop-Process -Force -EA stop | Out-Null
+        #
+        get-process |
+            where-object {$_.MainWindowTitle -eq 'inform'} |
+            Stop-process -force -EA Stop | out-null
+        #
+        get-process -name rserve -EA SilentlyContinue |
+            Stop-Process -Force -EA stop | Out-Null
         Start-Sleep 20
         #
     }

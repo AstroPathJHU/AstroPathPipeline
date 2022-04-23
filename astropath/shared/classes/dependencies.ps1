@@ -9,6 +9,37 @@
  -------------------------------------------#>
  class dependencies : samplereqs {
     #
+    [hashtable]$status = 
+     @{finish = 'FINISHED';
+        running = 'RUNNING';
+        ready = 'READY';
+        error = 'ERROR';
+        waiting = 'WAITING';
+        na = 'NA';
+        unknown = 'UNKNOWN';
+        rerun = 'RERUN'
+    }
+    #
+    [string]$empty_time = 'NA'
+    #
+    $pipeline_steps = [ordered]@{
+        step1 = 'scan';
+        step2 = 'transfer';
+        step3 = 'shredxml';
+        step4 = 'meanimage';
+        step5 = 'batchmicomp';
+        step6 = 'batchflatfield';
+        step7 = 'warpoctets';
+        step8 = 'batchwarpkeys';
+        step9 = 'batchwarpfits';
+        step10 = 'imagecorrection';
+        step11 = 'vminform';
+        step12 = 'merge';
+        step13 = 'imageqa';
+        step14 = 'segmaps';
+        step15 = 'dbload'
+    }
+    #
     dependencies($mpath): base ($mpath){}
     #
     dependencies($mpath, $slideid): base ($mpath, '', $slideid){}
@@ -16,6 +47,7 @@
     # dependencies($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
     #
     [void]getlogstatus($cmodule){
+        #
         if ($cmodule -match 'vminform'){
             #
             $this.getantibodies()
@@ -26,6 +58,7 @@
         } else {
             $this.getlogstatussub($cmodule)
         }
+        #
     }
     #
     [void]getantibodies(){
@@ -39,28 +72,23 @@
     #
     [void]getlogstatussub($cmodule){
         #
-        $logoutput = $this.checklog($cmodule, $false)
+        $logoutput = $this.checkloginit($cmodule, $false)
         #
         if ($logoutput[1]){
             $this.moduleinfo.($cmodule).status = $logoutput[1].Message
         } elseif ($logoutput) {
             #
-            $statusval = ($this.('check'+$cmodule)())
-            if ($statusval -eq 1){
-                $this.moduleinfo.($cmodule).status = 'WAITING'
-            } elseif ($statusval -eq 2){
-                $this.moduleinfo.($cmodule).status = 'READY'
-            } elseif ($statusval -eq 3){
-                $this.moduleinfo.($cmodule).status = 'FINISHED'
-            } elseif ($statusval -eq 4) {
-                $this.moduleinfo.($cmodule).status = 'NA'
-            } else {
-                $this.moduleinfo.($cmodule).status = 'UNKNOWN'
+            switch ($this.('check'+$cmodule)()){
+                1 {$this.moduleinfo.($cmodule).status = $this.status.waiting}
+                2 {$this.moduleinfo.($cmodule).status = $this.status.ready}
+                3 {$this.moduleinfo.($cmodule).status = $this.status.finish}
+                4 {$this.moduleinfo.($cmodule).status = $this.status.na}
+                Default {$this.moduleinfo.($cmodule).status = $this.status.unknown}
             }
             #
         } else {
             #
-            $this.moduleinfo.($cmodule).status = 'RUNNING'
+            $this.moduleinfo.($cmodule).status = $this.status.running
             #
         }
         #
@@ -68,29 +96,26 @@
     #
     [void]getlogstatussub($cmodule, $antibody){
         #
-        $logoutput = $this.checklog($cmodule, $antibody, $false)
         $this.moduleinfo.($cmodule).($antibody) = @{}
-        #
+        $logoutput = $this.checkloginit($cmodule, $antibody, $false)
+        <#
         if ($logoutput[1]){
             $this.moduleinfo.($cmodule).($antibody).status = $logoutput[1].Message
         } elseif ($logoutput) {
-            #
-            $statusval = ($this.('check'+$cmodule)($antibody))
-            if ($statusval -eq 1){
-                $this.moduleinfo.($cmodule).($antibody).status = 'WAITING'
-            } elseif ($statusval -eq 2){
-                $this.moduleinfo.($cmodule).($antibody).status = 'READY'
-            } elseif ($statusval -eq 3){
-                $this.moduleinfo.($cmodule).($antibody).status = 'FINISHED'
-            } elseif ($statusval -eq 4) {
-                $this.moduleinfo.($cmodule).($antibody).status = 'NA'
-            } else {
-                $this.moduleinfo.($cmodule).($antibody).status = 'UNKNOWN'
+            #>
+        if ($logoutput){
+            switch ($this.('check'+$cmodule)($antibody)){
+                1 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.waiting}
+                2 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.ready}
+                3 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.finish}
+                4 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.na}
+                5 {$this.moduleinfo.($cmodule).($antibody).status = $logoutput[1].Message}
+                Default {$this.moduleinfo.($cmodule).($antibody).status = $this.status.unknown}
             }
             #
         } else {
             #
-            $this.moduleinfo.($cmodule).($antibody).status = 'RUNNING'
+            $this.moduleinfo.($cmodule).($antibody).status = $this.status.running
             #
         }
     }
@@ -116,17 +141,52 @@
     ----------------------------------------- #>
     [array]checklog($cmodule, $dependency){
         #
-        if (!(test-path $this.moduleinfo.($cmodule).slidelog)){
+        if (!($this.modulelogs.($cmodule).($this.project))){
             return @($true)
         }
         #
-        $loglines = $this.importlogfile($this.moduleinfo.($cmodule).slidelog)
+        $startdate = $this.moduleinfo.($cmodule).StartTime
+        $finishdate = $this.moduleinfo.($cmodule).FinishTime
+        $errorline = $this.moduleinfo.($cmodule).Errorline
+        #
+        return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
+        #
+    }
+    #
+    [array]checkloginit($cmodule, $dependency){
+        #
+        if (!($this.modulelogs.($cmodule).($this.project))){
+            $this.moduleinfo.($cmodule).StartTime = $this.empty_time
+            $this.moduleinfo.($cmodule).FinishTime = $this.empty_time
+            return @($true)
+        }
+        #
+        $loglines = $this.modulelogs.($cmodule).($this.project)
         $vers = $this.setlogvers($cmodule)
         $ID = $this.setlogid($cmodule)
         #
-        $startdate = ($this.selectlogline($loglines, $ID, 'START', $vers)).Date
-        $finishdate = ($this.selectlogline($loglines, $ID, 'FINISH', $vers)).Date
-        $errorline = $this.selectlogline($loglines, $ID, 'ERROR')
+        $startdate = ($this.selectlogline($loglines,
+            $ID, $this.log_start, $vers)).Date
+        $finishdate = ($this.selectlogline($loglines,
+            $ID, $this.log_finish, $vers)).Date
+        $errorline = $this.selectlogline($loglines,
+            $ID, $this.log_error)
+        #
+        if ($startdate){
+            $this.moduleinfo.($cmodule).StartTime = $startdate
+        } else {
+            $this.moduleinfo.($cmodule).StartTime = $this.empty_time
+        }
+        #
+        if ($startdate -and $finishdate -and 
+                (get-date $finishdate) -gt (get-date $startdate)
+        ){
+            $this.moduleinfo.($cmodule).FinishTime = $finishdate
+        } else {
+            $this.moduleinfo.($cmodule).FinishTime = $this.empty_time
+        }
+        #
+        $this.moduleinfo.($cmodule).Errorline = $errorline
         #
         return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
         #
@@ -134,17 +194,51 @@
     #
     [array]checklog($cmodule, $antibody, $dependency){
         #
-        if (!(test-path $this.moduleinfo.($cmodule).slidelog)){
+        if (!($this.modulelogs.($cmodule).($this.project))){
             return @($true)
         }
         #
-        $loglines = $this.importlogfile($this.moduleinfo.($cmodule).slidelog)
+        $startdate = $this.moduleinfo.($cmodule).($antibody).StartTime
+        $finishdate = $this.moduleinfo.($cmodule).($antibody).FinishTime
+        $errorline = $this.moduleinfo.($cmodule).($antibody).Errorline
+        #
+        return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
+        #
+    }
+    #
+    [array]checkloginit($cmodule, $antibody, $dependency){
+        #
+        if (!($this.modulelogs.($cmodule).($this.project))){
+            $this.moduleinfo.($cmodule).($antibody).StartTime = $this.empty_time
+            $this.moduleinfo.($cmodule).($antibody).FinishTime = $this.empty_time
+            return @($true)
+        }
+        #
+        $loglines = $this.modulelogs.($cmodule).($this.project)
         $vers = $this.setlogvers($cmodule)
         $ID = $this.setlogid($cmodule)
         #
-        $startdate = ($this.selectlogline($loglines, $ID, 'START', $vers, $antibody)).Date
-        $finishdate = ($this.selectlogline($loglines, $ID, 'FINISH', $vers, $antibody)).Date
-        $errorline = $this.selectlogline($loglines, $ID, 'ERROR', '', $antibody)
+        $startdate = ($this.selectlogline($loglines,
+            $ID, $this.log_start, $vers, $antibody)).Date
+        $finishdate = ($this.selectlogline($loglines,
+         $ID, $this.log_finish, $vers, $antibody)).Date
+        $errorline = $this.selectlogline($loglines,
+         $ID, $this.log_error, '', $antibody)
+        #
+        if ($startdate){
+            $this.moduleinfo.($cmodule).($antibody).StartTime = $startdate
+        } else {
+            $this.moduleinfo.($cmodule).($antibody).StartTime = $this.empty_time
+        }
+        #
+        if ($startdate -and $finishdate -and
+            (get-date $finishdate) -gt (get-date $startdate)){
+            $this.moduleinfo.($cmodule).($antibody).FinishTime = $finishdate
+        } else {
+            $this.moduleinfo.($cmodule).($antibody).FinishTime = $this.empty_time
+        }
+        #
+        $this.moduleinfo.($cmodule).($antibody).Errorline = $errorline
         #
         return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
         #
@@ -193,12 +287,16 @@
     ----------------------------------------- #>
     [array]deflogstatus($startdate, $finishdate, $errorline, $dependency){
         #
-        $errordate = $errorline.Date
-        $errorlogical = ($startdate -le $errordate -and $finishdate -ge $errordate) 
+        $errorlogical = $this.errorlogical($startdate, $finishdate, $errorline)
         #
-        if ( !$startdate -or $errorlogical -or 
-            (!$dependency -and ($finishdate -gt $startdate)) -or 
-            ($dependency -and !($finishdate -gt $startdate))
+        if ( (!$startdate) -or ($startdate -eq $this.empty_time) -or
+            $errorlogical -or (
+                !$dependency -and ($finishdate -ne $this.empty_time) -and
+                (get-date $finishdate) -gt (get-date $startdate)
+            ) -or (
+                $dependency -and (($finishdate -eq $this.empty_time) -or
+                (get-date $finishdate) -le (get-date $startdate))
+            )
         ){
             if ($errorlogical){
                 return @($true, $errorline)
@@ -208,6 +306,20 @@
         } else {
             return @($false)
         }
+    }
+    #
+    [switch]errorlogical($startdate, $finishdate, $errorline){
+        #
+        $errordate = $errorline.Date
+        $errorlogical = (
+            $startdate -and $startdate -ne $this.empty_time -and
+            $errordate -and $errordate -ne $this.empty_time -and
+            $finishdate -and $finishdate -ne $this.empty_time -and
+            (get-date $startdate) -le (get-date $errordate) -and 
+            (get-date $finishdate) -ge (get-date $errordate)
+        )
+        return $errorlogical
+        #
     }
     <# -----------------------------------------
      checkscan
@@ -297,15 +409,17 @@
     ----------------------------------------- #>
     [int]checkshredxml(){
         #
-        if ($this.moduleinfo.transfer.status -ne 'FINISHED'){
+        $cmodule = 'shredxml'
+        #
+        if ($this.checkpreviousstep($cmodule)){
             return 1
-        }
+        } 
         #
-        if ($this.checklog('shredxml', $true)){
+        if ($this.checklog($cmodule, $true)){
             return 2
-        }
+        }  
         #
-        if (!$this.testxmlfiles()){
+        if (!$this.('test' + $cmodule + 'files')()){
             return 2
         }
         #
@@ -329,15 +443,17 @@
     ----------------------------------------- #>
     [int]checkmeanimage(){
         #
-        if ($this.moduleinfo.shredxml.status -ne 'FINISHED'){
+        $cmodule = 'meanimage'
+        #
+        if ($this.checkpreviousstep($cmodule)){
             return 1
-        }
+        } 
         #
-        if ($this.checklog('meanimage', $true)){
+        if ($this.checklog($cmodule, $true)){
             return 2
-        }
+        }  
         #
-        if (!$this.testmeanimagefiles()){
+        if (!$this.('test' + $cmodule + 'files')()){
             return 2
         }
         #
@@ -361,24 +477,21 @@
     ----------------------------------------- #>
     [int]checkbatchmicomp(){
         #
-        # if task is not a dependency and the version is
-        # 0.0.1 then just checkout
+        $cmodule = 'batchmicomp'
         #
-        if ($this.moduleinfo.meanimage.status -ne 'FINISHED'){
+        if ($this.checkpreviousstep($cmodule)){
             return 1
-        }
+        } 
         #
-        if (
-             $this.moduleinfo.batchmicomp.vers -match '0.0.1'
-            ){
+        if ($this.moduleinfo.($cmodule).vers -match '0.0.1'){
             return 3
         }
         #
-        if ($this.checklog('batchmicomp', $true)){
+        if ($this.checklog($cmodule, $true)){
             return 2
-        }
+        }  
         #
-        if (!$this.testbatchmicompfiles()){
+        if (!$this.('test' + $cmodule + 'files')()){
             return 2
         }
         #
@@ -402,17 +515,23 @@
     ----------------------------------------- #>
     [int]checkbatchflatfield(){
         #
+        $cmodule = 'batchflatfield'
+        #
+        if ($this.checkpreviousstep($cmodule)){
+            return 1
+        }
+        #
         if ($this.moduleinfo.batchflatfield.vers -notmatch '0.0.1'){
             <#
             #
             if ($this.moduleinfo.batchmicomp.status -ne 'FINISHED'){
                 return 1
             }
-            #>
-            if ($this.moduleinfo.meanimage.status -ne 'FINISHED'){
+            #
+            if ($this.moduleinfo.meanimage.status -ne $this.status.finish){
                 return 1
             }
-            #
+            #>
             if ($this.teststatus){
                 $ids = $this.ImportCorrectionModels($this.mpath, $false)
             } else{ 
@@ -428,12 +547,12 @@
             }
             #
         } else {
-            #
-            if ($this.moduleinfo.meanimage.status -ne 'FINISHED'){
+            <#
+            if ($this.moduleinfo.meanimage.status -ne $this.status.finish){
                 return 1
             }
-            #
-            if ($this.checklog('batchflatfield', $true)){
+            #>
+            if ($this.checklog($cmodule, $true)){
                 return 2
             }
             #
@@ -464,19 +583,21 @@
     ----------------------------------------- #>
     [int]checkwarpoctets(){
         #
-        if ($this.moduleinfo.batchflatfield.status -ne 'FINISHED'){
-            return 1
-        }
+        $cmodule = 'warpoctets'
         #
-        if ($this.moduleinfo.warpoctets.vers -match '0.0.1'){
+        if ($this.checkpreviousstep($cmodule)){
+            return 1
+        } 
+        #
+        if ($this.moduleinfo.($cmodule).vers -match '0.0.1'){
             return 3
         }
         #
-        if ($this.checklog('warpoctets', $true)){
+        if ($this.checklog($cmodule, $true)){
             return 2
-        }
+        }  
         #
-        if (!$this.testwarpoctets()){
+        if (!$this.('test' + $cmodule + 'files')()){
             return 2
         }
         #
@@ -499,19 +620,21 @@
     ----------------------------------------- #>
     [int]checkbatchwarpkeys(){
         #
-        if ($this.moduleinfo.warpoctets.status -ne 'FINISHED'){
-            return 1
-        }
+        $cmodule = 'batchwarpkeys'
         #
-        if ($this.moduleinfo.batchwarpkeys.vers -match '0.0.1'){
+        if ($this.checkpreviousstep($cmodule)){
+            return 1
+        } 
+        #
+        if ($this.moduleinfo.($cmodule).vers -match '0.0.1'){
             return 3
         }
         #
-        if ($this.checklog('batchwarpkeys', $true)){
+        if ($this.checklog($cmodule, $true)){
             return 2
-        }
+        }  
         #
-        if (!$this.testbatchwarpkeysfiles()){
+        if (!$this.('test' + $cmodule + 'files')()){
             return 2
         }
         #
@@ -534,19 +657,21 @@
     ----------------------------------------- #>
     [int]checkbatchwarpfits(){
         #
-        if ($this.moduleinfo.batchwarpkeys.status -ne 'FINISHED'){
-            return 1
-        }
+        $cmodule = 'batchwarpfits'
         #
-        if ($this.moduleinfo.batchwarpfits.vers -match '0.0.1'){
+        if ($this.checkpreviousstep($cmodule)){
+            return 1
+        } 
+        #
+        if ($this.moduleinfo.($cmodule).vers -match '0.0.1'){
             return 3
         }
         #
-        if ($this.checklog('batchwarpfits', $true)){
+        if ($this.checklog($cmodule, $true)){
             return 2
-        }
+        }  
         #
-        if (!$this.testbatchwarpfitsfiles()){
+        if (!$this.('test' + $cmodule + 'files')()){
             return 2
         }
         #
@@ -570,15 +695,17 @@
     ----------------------------------------- #>
     [int]checkimagecorrection(){
         #
-        if ($this.moduleinfo.batchwarpfits.status -ne 'FINISHED'){
-            return 1
-        }
+        $cmodule = 'imagecorrection'
         #
-        if ($this.checklog('imagecorrection', $true)){
+        if ($this.checkpreviousstep($cmodule)){
+            return 1
+        } 
+        #
+        if ($this.checklog($cmodule, $true)){
             return 2
         }  
         #
-        if(!$this.testimagecorrectionfiles()){
+        if (!$this.('test' + $cmodule + 'files')()){
             return 2
         }
         #
@@ -608,9 +735,11 @@
     ----------------------------------------- #>
     [int]checkvminform($antibody){
         #
-        if ($this.moduleinfo.imagecorrection.status -ne 'FINISHED'){
+        $cmodule = 'vminform'
+        #
+        if ($this.checkpreviousstep($cmodule)){
             return 1
-        }
+        } 
         #
         if ($this.vmq.checkfornewtask($this.project, 
             $this.slideid, $antibody)){
@@ -622,12 +751,17 @@
             return 1
         }
         #
-        if ($this.checklog('vminform', $antibody, $true)){
-            return 2
-        } 
+        $taskid = $this.vmq.checkforreadytask($this.project, 
+            $this.slideid, $antibody)
         #
-        if ($this.vmq.checkforreadytask($this.project, 
-            $this.slideid, $antibody)){
+        if ($taskid){
+            return 2
+        }
+        #
+        $logoutput = $this.checklog($cmodule, $antibody, $true)
+        if ($logoutput[1]){
+            return 5
+        } elseif ($logoutput){
             return 2
         }
         #
@@ -651,17 +785,19 @@
     ----------------------------------------- #>
     [int]checkmerge(){
         #
+        $cmodule = 'merge'
+        #
         $this.getantibodies()
         #
         foreach ($abx in $this.antibodies){
             #
-            if ($this.moduleinfo.vminform.($abx).status -ne 'FINISHED'){
+            if ($this.moduleinfo.vminform.($abx).status -ne $this.status.finish){
                 return 1
             }
             #
         }
         #
-        if ($this.checklog('merge', $true)){
+        if ($this.checklog($cmodule, $true)){
             return 2
         }
         #
@@ -689,9 +825,11 @@
     ----------------------------------------- #>
     [int]checkimageqa(){
         #
-        if ($this.moduleinfo.merge.status -ne 'FINISHED'){
+        $cmodule = 'imageqa'
+        #
+        if ($this.checkpreviousstep($cmodule)){
             return 1
-        }
+        } 
         #
         $this.getantibodies()
         #
@@ -723,16 +861,17 @@
     ----------------------------------------- #>
     [int]checksegmaps(){
         #
-        if ($this.moduleinfo.imageqa.status -ne 'FINISHED'){
+        $cmodule = 'segmaps'
+        #
+        if ($this.checkpreviousstep($cmodule)){
             return 1
         } 
         #
-        #
-        if ($this.checklog('segmaps', $true)){
+        if ($this.checklog($cmodule, $true)){
             return 2
         }
         #
-        if(!$this.testsegmapsfiles()){
+        if (!$this.('test' + $cmodule + 'files')()){
             return 2
         }
         #
@@ -753,11 +892,13 @@
     ----------------------------------------- #>
     [int]checkdbload(){
         #
-        if ($this.moduleinfo.segmaps.status -ne 'FINISHED'){
+        $cmodule = 'dbload'
+        #
+        if ($this.checkpreviousstep($cmodule)){
             return 1
         } 
         #
-        if ($this.checklog('dbload', $true)){
+        if ($this.checklog($cmodule, $true)){
             return 2
         }
         #
@@ -795,4 +936,27 @@
         return $batchescomplete
     }
     #
+    [string]previousstep($step){
+        #
+        $id = $($this.pipeline_steps.Values).indexOf($step)
+        if ($id -eq 0){
+            return $step
+        } else {
+            $newid = $id - 1
+            return $this.pipeline_steps[$newid]
+        }
+        #
+    }
+    #
+    [switch]checkpreviousstep($step){
+        #
+        $previousstep = $this.previousstep($step)
+        #
+        if ($this.moduleinfo.($previousstep).status -ne $this.status.finish){
+            return $true
+        } 
+        #
+        return $false
+        #
+    }
 }

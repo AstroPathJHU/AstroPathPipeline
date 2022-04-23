@@ -2,7 +2,9 @@
     param(
         [parameter()][string]$mpath,
         [parameter()][vminformqueue]$vmq,
-        [parameter()][hashtable]$modules
+        [parameter()][array]$modules,
+        [parameter()][hashtable]$modulelogs,
+        [parameter()][string]$slideid
     )
     #
     if (!($PSBoundParameters.ContainsKey('vmq'))){
@@ -13,6 +15,14 @@
         return [sampletracker]::new($mpath, $vmq)
     }
     #
-    return [sampletracker]::new($mpath, $vmq, $modules)
+    if (!($PSBoundParameters.ContainsKey('modulelogs'))){
+        return [sampletracker]::new($mpath, $vmq, $modules)
+    }
+    #
+    if (!($PSBoundParameters.ContainsKey('slideid'))){
+        return [sampletracker]::new($mpath, $vmq, $modules, $modulelogs)
+    }
+    #
+    return [sampletracker]::new($mpath, $vmq, $modules, $modulelogs, $slideid)
     #
 }

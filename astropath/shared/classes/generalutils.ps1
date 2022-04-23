@@ -230,6 +230,17 @@
         #
     }
     #
+    [PSCustomObject]getstoredtable($table){
+        #
+        $names = $table |
+         Get-Member -MemberType NoteProperty |
+         Select-Object -ExpandProperty Name
+        $storedtable = $table | 
+            Select-Object -Property $names
+        return $storedtable
+        #
+    }
+    #
     <# -----------------------------------------
      GetCreds
      puts credentials in a string format

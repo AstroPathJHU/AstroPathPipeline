@@ -452,6 +452,8 @@ class fileutils : generalutils {
     #
     [string]FileWatcher($fpath, $fname){
         #
+        $this.createdirs($fpath)
+        #
         $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
         $newwatcher.Filter = $fname
         $newwatcher.NotifyFilter = 'LastWrite'
@@ -465,6 +467,8 @@ class fileutils : generalutils {
     }
     #
     [string]FileWatcher($fpath, $fname, $SI){
+        #
+        $this.createdirs($fpath)
         #
         $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
         $newwatcher.Filter = $fname

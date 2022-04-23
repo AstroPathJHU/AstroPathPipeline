@@ -9,18 +9,22 @@
 class vminformqueue : modulequeue {
     #
     [string]$informvers = '2.4.8'
+    [string]$type = 'queue'
     #
     vminformqueue() : base ('vminform'){
         $this.vminformqueueinit()
         $this.coalescevminformqueues()
+        $this.newtasks = @()
     }
     vminformqueue($mpath): base ($mpath, 'vminform'){
         $this.vminformqueueinit()
         $this.coalescevminformqueues()
+        $this.newtasks = @()
     }
     vminformqueue($mpath, $project) : base($mpath, 'vminform', $project){
         $this.vminformqueueinit()
         $this.coalescevminformqueues($project)
+        $this.newtasks = @()
     }
     vminformqueueinit(){
         $this.refobject = 'taskid'
@@ -45,6 +49,10 @@ class vminformqueue : modulequeue {
             $this.coalescevminformqueues($_, $true)
         }
         #
+        if($this.lastopenmaincsv){
+            $this.getnewtasksmain($this.lastopenmaincsv, $this.maincsv)
+        }
+        #
         $this.writemainqueue($this.mainqueuelocation())
         #
     }
@@ -61,6 +69,9 @@ class vminformqueue : modulequeue {
         #
         $this.openmainqueue()
         $this.coalescevminformqueues($project, $false)
+        if($this.lastopenmaincsv){
+            $this.getnewtasksmain($this.lastopenmaincsv, $this.maincsv)
+        }
         $this.writemainqueue($this.mainqueuelocation())
         #
     }
@@ -79,7 +90,7 @@ class vminformqueue : modulequeue {
         } else {
             $this.getlocalqueue($cproject, $false)
         }
-        $localtmp = $this.localqueue.($cproject)
+        $localtmp =  $this.getstoredtable($this.localqueue.($cproject))
         $this.pairqueues($cproject)
         #
         if ($localtmp){
@@ -101,7 +112,8 @@ class vminformqueue : modulequeue {
     [void]createwatchersvminformqueues(){
         #
         $projects = $this.getapprojects($this.module)
-            #
+        #
+        $this.writemainqueue()
         $this.openmainqueue($false)
         $projects | ForEach-Object{
             #
@@ -110,7 +122,11 @@ class vminformqueue : modulequeue {
             #
         }
         #
-        $this.writemainqueue($this.mainqueuelocation())
+        if($this.lastopenmaincsv){
+            $this.getnewtasksmain($this.lastopenmaincsv, $this.maincsv)
+        }
+        #
+        $this.writemainqueue()
         $this.openmainqueue($true)
         #
     }
@@ -253,7 +269,7 @@ class vminformqueue : modulequeue {
      ------------------------------------------
      Usage: $this.checkforreadytask()
     ----------------------------------------- #>
-    [switch]checkforreadytask($project, $slideid, $antibody){
+    [string]checkforreadytask($project, $slideid, $antibody){
         #
         $task = $this.maincsv |    
             Where-Object {$_.slideid -match $slideid -and 
@@ -264,10 +280,10 @@ class vminformqueue : modulequeue {
             }
         #
         if ($task){
-            return $true
+            return $task.taskid
         } 
         #
-        return $false
+        return ''
         #
     }
     <# -----------------------------------------

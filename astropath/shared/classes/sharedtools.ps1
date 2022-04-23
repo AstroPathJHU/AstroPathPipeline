@@ -14,8 +14,10 @@
     [string]$psroot = $pshome + "\powershell.exe"
     [string]$package = 'astropath'
     [array]$modules
+    [hashtable]$modulelogs = @{}
     [switch]$checkpyenvswitch = $false
     [switch]$teststatus = $false
+    [array]$newtasks
     [hashtable]$softwareurls = @{
         'Miniconda3' = 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe';
         'MikTeX' = '';
@@ -532,5 +534,102 @@
     [string]softwarelinkpath($name){
             return ($this.pyinstalllocation() + $name + ".exe")
     }
+     #
+     [void]getmodulelogs(){
+        $this.getmodulelogs($false)
+    }
     #
+    [void]getmodulelogs($createwatcher){
+        #
+        $this.getmodulenames()
+        foreach ($module in $this.modules){
+            $projects = $this.getapprojects($module)
+            if ($this.modulelogs.($module).count -eq 0){
+                $this.modulelogs.($module) = @{} 
+            }
+            $projects | foreach-object{
+                #
+                $this.getmodulelogs($module, $_, $createwatcher )
+                #
+            }
+        }
+        #
+    }
+    [void]getmodulelogs($module, $project){
+        $this.getmodulelogs($module, $project, $false)
+    }
+    #
+    [void]getmodulelogs($module, $project, $createwatcher){
+        #
+        if($this.modulelogs.($module).($project)){
+            $oldlog = $this.getstoredtable($this.modulelogs.($module).($project))
+        } else {
+            $oldlog = @()
+        }
+        #
+        $this.modulelogs.($module).($project) = 
+            $this.importlogfile($module, $project, $createwatcher)
+        #
+        if (!$createwatcher){
+            $this.getnewloglines($oldlog, $project, $module)
+        }
+        #
+    }
+    #
+    [void]getnewloglines($oldlog, $project, $module){
+        #
+        if (!$this.newtasks){
+            $this.newtasks = @()
+        }
+        #
+        $newlog = $this.modulelogs.($module).($project)
+        $newlog_finishlines = $newlog |
+                Where-Object {$_.Message -match '^FINISH'}
+        #
+        if ($newlog_finishlines){
+            #
+            if ($oldlog){
+                $cmp = compare-object $newlog_finishlines $oldlog -Property 'SlideID','Date' |
+                    Where-Object {$_.SideIndicator -eq '<='}
+                $slidestocheck = $cmp.SlideID
+            } else {
+                $slidestocheck = $newlog_finishlines.slideid
+            } 
+            #
+            if ($module -match 'batch'){
+                $newslidestocheck = @()  
+                if ($slidestocheck){
+                    $slidestocheck | Foreach-object {
+                        $newslidestocheck +=
+                            $this.getbatchslideslight($_, $project)
+                    }
+                }
+                $slidestocheck = $newslidestocheck
+                #
+            }
+            #
+            $this.newtasks += $slidestocheck
+            $this.newtasks = ($this.newtasks | Sort-Object | Get-Unique)
+        }
+    }
+    #
+    [array]getbatchslideslight([string]$mbatchid, $project){
+        #
+        if ($mbatchid[0] -match '0'){
+            [string]$mbatchid = $mbatchid[1]
+        }
+        #
+        $batch = $this.slide_data | 
+            Where-Object {
+                $_.BatchID -eq $mbatchid.trim() -and 
+                $_.Project -eq $project.trim()
+            }
+        #
+        if (!$batch){
+            Throw 'Not a valid batchid'
+        }
+        return $batch.SlideID
+        #
+    }
+    #  
 }

@@ -17,7 +17,11 @@ $vers[string]: The version number of inform to use
 #
 Function vminform {
      #
-     param($task, $log, [Parameter()][switch]$test)
+     param(
+        $task,
+        $log,
+        [Parameter()][switch]$test
+    )
      #
      # used for testing; when launched manually without launchmodule
      #
