@@ -120,6 +120,14 @@
         #
     }
     #
+    [switch]testbatchflatfieldfiles(){
+        if ($this.moduleinfo.batchflatfield.vers -notmatch '0.0.1'){
+            return $this.testpybatchflatfield()
+        } else {
+            return $this.testbatchflatfield()
+        }
+    }
+    #
     [switch]testbatchflatfield(){
         #
         if (!(test-path $this.batchflatfield())){
@@ -130,6 +138,16 @@
     }
     #
     [switch]testpybatchflatfield(){
+        #
+        if ($this.teststatus){
+            $ids = $this.ImportCorrectionModels($this.mpath, $false)
+        } else{ 
+            $ids = $this.ImportCorrectionModels($this.mpath)
+        }
+        #
+        if ($ids.slideid -notcontains $this.slideid){
+            return $false
+        }
         #
         if (!(test-path $this.pybatchflatfieldfullpath())){
             return $false
@@ -267,6 +285,10 @@
         return $this.testfiles($this.componentfolder(),
              $this.im3constant, $this.segmapsreqfiles)
         #
+    }
+    #
+    [switch]testdbloadfiles(){
+        return $true
     }
     <# --------------------------------------------
     testfiles

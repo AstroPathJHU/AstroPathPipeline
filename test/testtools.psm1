@@ -627,6 +627,10 @@ Class testtools{
         #
         $micomp_data = $tool.ImportCorrectionModels($this.mpath)
         #
+        if (!$tool.slideid){
+            return
+        }
+        #
         $newobj = [PSCustomObject]@{
             SlideID = $tool.slideid
             Project = $tool.project
@@ -646,6 +650,8 @@ Class testtools{
         if (!(test-path $p3)){
             $tool.SetFile($p3, 'blah de blah')
         }
+        #
+        $tool.ImportCorrectionModels($this.mpath, $false)
         #
     }
     #
@@ -859,6 +865,41 @@ Class testtools{
     [void]showtable($table){
         #
         write-host ($table | Format-Table | Out-String)
+        #
+    }
+    #
+    [void]savephenotypedata($sampletracker){
+        #
+        write-host '    saving inform results'
+        if ((test-path ($this.processloc + '\tables')) -and
+            !(test-path $sampletracker.mergefolder())){
+                return 
+            }
+        #
+        $sampletracker.removedir($this.processloc + '\tables')
+        $sampletracker.copy($sampletracker.mergefolder(),
+            ($this.processloc + '\tables'))
+            $sampletracker.removedir($this.processloc + '\Component_Tiffs')
+        $sampletracker.copy($sampletracker.componentfolder(),
+            ($this.processloc + '\Component_Tiffs'))
+        #
+    }
+    #
+    [void]returnphenotypedata($sampletracker){
+        #
+        write-host '    returning inform results'
+        if (test-path ($this.processloc + '\tables')){
+            $sampletracker.removedir($sampletracker.mergefolder())
+            $sampletracker.copy(($this.processloc + '\tables'),
+                $sampletracker.mergefolder())
+        }
+        #
+        if (test-path ($this.processloc + '\Component_Tiffs')){
+            $sampletracker.removedir($sampletracker.componentfolder())
+            $sampletracker.copy(($this.processloc + '\Component_Tiffs'),
+                $sampletracker.componentfolder())
+            $sampletracker.removedir($this.processloc)
+        }
         #
     }
 }

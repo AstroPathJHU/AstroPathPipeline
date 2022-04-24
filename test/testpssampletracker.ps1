@@ -34,12 +34,15 @@
         Write-Host 'preparing sampletracker & dir started'
         Write-Host '    sample def slide'
         $sampletracker.sampledefslide($this.slideid)
-        Write-Host '    module status'
-        $sampletracker.defmodulestatus()
+        Write-Host '    cleanup'
         $sampletracker.teststatus = $true
         $this.savephenotypedata($sampletracker)
-        Write-Host '    cleanup'
         $this.cleanup($sampletracker)
+        $sampletracker.getmodulelogs()
+        #
+        Write-Host '    module status'
+        $sampletracker.defmodulestatus()
+        $this.showtable($sampletracker.moduleinfo.transfer)
         Write-Host 'prepareing sampletracker & dir finished'
         #
         $this.teststatus($sampletracker)
@@ -90,41 +93,6 @@
         #                
     }
     #
-    [void]savephenotypedata($sampletracker){
-        #
-        write-host '    saving inform results'
-        if ((test-path ($this.processloc + '\tables')) -and
-            !(test-path $sampletracker.mergefolder())){
-                return 
-            }
-        #
-        $sampletracker.removedir($this.processloc + '\tables')
-        $sampletracker.copy($sampletracker.mergefolder(),
-            ($this.processloc + '\tables'))
-            $sampletracker.removedir($this.processloc + '\Component_Tiffs')
-        $sampletracker.copy($sampletracker.componentfolder(),
-            ($this.processloc + '\Component_Tiffs'))
-        #
-    }
-    #
-    [void]returnphenotypedata($sampletracker){
-        #
-        write-host '    returning inform results'
-        if (test-path ($this.processloc + '\tables')){
-            $sampletracker.removedir($sampletracker.mergefolder())
-            $sampletracker.copy(($this.processloc + '\tables'),
-                $sampletracker.mergefolder())
-        }
-        #
-        if (test-path ($this.processloc + '\Component_Tiffs')){
-            $sampletracker.removedir($sampletracker.componentfolder())
-            $sampletracker.copy(($this.processloc + '\Component_Tiffs'),
-                $sampletracker.componentfolder())
-            $sampletracker.removedir($this.processloc)
-        }
-        #
-    }
-    #
     [void]testmodules($sampletracker){
         #
         Write-Host "."
@@ -158,7 +126,6 @@
         }
         #
         write-host 'test if the check log and module logs work finished'
-        throw 'end'
     }
     #
     [void]teststatus($sampletracker){
@@ -226,7 +193,7 @@
         }
         #
         $this.setstart($sampletracker, $log, $current)
-        Start-Sleep -s 10
+        Start-Sleep -s 2
         $this.setfinish($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
@@ -264,7 +231,7 @@
             Throw ($next + ' status not correct on running.')
         }
         #
-        Start-Sleep -s 10
+        Start-Sleep -s 2
         #
         $this.setfinish($sampletracker, $log, $current)
         #
@@ -290,7 +257,7 @@
         #
         Write-Host '    Check logs on restart'
         #
-        Start-Sleep -s 10
+        Start-Sleep -s 2
         #
         $this.setstart($sampletracker, $log, $current)
         #
@@ -312,7 +279,7 @@
         #
         Write-Host '    Check logs on error' 
         #
-        Start-Sleep -s 10
+        Start-Sleep -s 2
         #
         $log.error('blah de blah de blah')
         #
@@ -332,7 +299,7 @@
             Throw ($next + ' status not correct on error. ')
         }
         #
-        start-sleep -s 10
+        start-sleep -s 2
         #
         $this.setfinish($sampletracker, $log, $current)
         #
@@ -355,7 +322,7 @@
         Write-Host '    check clean run'
         #
         $this.setstart($sampletracker, $log, $current)
-        start-sleep -s 10
+        start-sleep -s 2
         $this.setfinish($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
@@ -418,6 +385,9 @@
     #
     [string]getstatus($sampletracker, $module){
         #
+        $sampletracker.getmodulelogs()
+        $sampletracker.preparesample($This.slideid)
+        #
         if ($module -contains 'vminform'){
             $status = ''
             foreach ($abx in $sampletracker.antibodies){
@@ -443,15 +413,26 @@
          ($this.mpath + '\across_project_queues'))
         $sampletracker.removefile(
             $sampletracker.vmq.localqueuefile.($this.project))
+        
+            $sampletracker.removefile($sampletracker.mainlogbase('transfer'))
+        $log = logger -mpath $this.mpath -module 'transfer' -slideid $sampletracker.slideid
+        #
+        $this.setstart($sampletracker, $log, 'transfer')
+        Start-Sleep -s 2
+        $this.setfinish($sampletracker, $log, 'transfer')
+        #
         $sampletracker.removedir($sampletracker.informfolder())
         $sampletracker.removefile($sampletracker.slidelogbase('shredxml'))
+        $sampletracker.removefile($sampletracker.mainlogbase('shredxml'))
         $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
+        $sampletracker.removefile($sampletracker.mainlogbase('meanimage'))
         $sampletracker.removefile($sampletracker.slidelogbase('vminform'))
         $sampletracker.removefile($sampletracker.mainlogbase('vminform'))
         $this.removemeanimageexamples($sampletracker)
         $sampletracker.removefile($sampletracker.mainlogbase('batchmicomp'))
         $sampletracker.removefile($sampletracker.mainlogbase('batchflatfield'))
         $sampletracker.removefile($sampletracker.slidelogbase('warpoctets'))
+        $sampletracker.removefile($sampletracker.mainlogbase('warpoctets'))
         $this.removewarpoctetsexamples($sampletracker)
         $sampletracker.removefile($sampletracker.mainlogbase('batchwarpfits'))
         $this.removebatchwarpfitsexamples($sampletracker)
@@ -727,7 +708,7 @@
                 } | 
                 Foreach-object {
                     $_.algorithm = 'blah.ifr'
-                    $_.ProcessingLocation = 'go place'
+                    $_.ProcessingLocation = 'Processing: bki##'
                 }
             #
         }

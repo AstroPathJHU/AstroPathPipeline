@@ -13,7 +13,7 @@ using module .\testtools.psm1
  Class testpssampledb : testtools {
     #
     [string]$class = 'sampletracker'
-    [string]$module = ''
+    [string]$module = 'sampletracker'
     #
     testpssampledb() : base(){
         $this.launchtests()
@@ -27,33 +27,48 @@ using module .\testtools.psm1
         #
         $this.testpssampledbconstructors()
         $sampledb = sampledb -mpath $this.mpath
-        <#
+        #
         $this.cleanup($sampledb)
         $sampledb = sampledb -mpath $this.mpath
         $this.testpssampledbinit($sampledb)
         $this.testdefstages($sampledb)
         #$this.testdefsStagesParallel($sampledb)
         $this.testcreatewatchersmodulequeues($sampledb)
-        #>
+        #
         write-host '.'
         write-host 'get sample stages for test pipeline started'
         $sampledb.buildsampledb()
         $this.checkrowstatus($sampledb, 'transfer', 'FINISHED')
-        #s$this.removesetupvminform($sampledb)
-        <#
+        $sampledb.preparesample($this.slideid)
+        $this.savephenotypedata($sampledb)
+        $this.removesetupvminform($sampledb)
+        #
         $this.checkrowstatus($sampledb, 'transfer', 'FINISHED')
         $this.testwritemain($sampledb, 'transfer')
         $this.checkrowstatus($sampledb, 'transfer', 'FINISHED')
         $this.testaddrerun($sampledb, 'transfer')
         $this.testupdatemoduletables($sampledb, 'transfer')
         $this.setupbatchwarpkeys($sampledb)
+        $this.checkrowstatus($sampledb, 'shredxml', 'FINISHED')
+        write-host '.'
+        $this.checkrowstatus($sampledb, 'meanimage', 'FINISHED')
+        write-host '.'
+        $this.checkrowstatus($sampledb, 'batchflatfield', 'FINISHED')
+        write-host '.'
+        $this.checkrowstatus($sampledb, 'warpoctets', 'FINISHED')
+        write-host '.'
+        $this.checkrowstatus($sampledb, 'batchwarpkeys', 'FINISHED')
         $this.testupdatemoduletables($sampledb, 'batchwarpkeys')
-        #>
+        #
         $this.testupdatemoduletablesVM($sampledb)
+        $sampledb.preparesample($this.slideid)
         $this.removesetupvminform($sampledb)
+        $this.returnphenotypedata($sampledb)
+        $this.cleanup($sampledb)
+        $this.testcorrectionfile($sampledb, $true)
         $this.testgitstatus($sampledb)
         write-host 'get sample stages for test pipeline finished'
-        #>
+        #
         Write-Host '.'
         #
     }
@@ -213,7 +228,7 @@ using module .\testtools.psm1
         $this.checkrowstatus($sampledb, $cmodule, $sampledb.status.READY)
         Write-host '    edit a log for a finished message and add corresponding "finished" files'
         $this.addstartlog($sampledb, $cmodule)
-        start-sleep 10
+        start-sleep 2
         $this.addfinishlog($sampledb, $cmodule)
         Write-host '        check the corresponding current and next steps in module table'
         #
@@ -243,9 +258,9 @@ using module .\testtools.psm1
         #
         Write-host '    edit a log for a error message'
         $this.addstartlog($sampledb, $cmodule, 'CD8')
-        Start-Sleep 10
+        Start-Sleep 2
         $this.adderrorlog($sampledb, $cmodule, 'CD8')
-        Start-Sleep 10
+        Start-Sleep 2
         $this.addfinishlog($sampledb, $cmodule, 'CD8')
         $this.addproccessedalgorithms($sampledb)
         Write-host '        check the corresponding current and next steps in module table'
@@ -551,11 +566,11 @@ using module .\testtools.psm1
     }
     [void]setupbatchwarpkeys($sampledb){
         #
-        Write-host '    setting up batcharpkeys dependcies for the environment'
+        Write-host '    setting up batcharpkeys dependencies for the environment'
         #   
         $sampledb.modules | ForEach-Object {
             $this.addstartlog($sampledb, $_)
-            Start-Sleep 10
+            Start-Sleep 2
             $this.addfinishlog($sampledb, $_)
         }
         #
@@ -605,7 +620,7 @@ using module .\testtools.psm1
     #
     [void]setupvminform($sampledb){
         #
-        Write-host '    setting up inform dependcies for the environment'
+        Write-host '    setting up inform dependencies for the environment'
         #
         $sampledb.preparesample($this.slideid)
         $sampletracker = $sampledb
@@ -642,7 +657,7 @@ using module .\testtools.psm1
     #
     [void]removesetupvminform($sampledb){
         #
-        Write-host '    removing inform dependcies for the environment'
+        Write-host '    removing inform dependencies for the environment'
         #
         $sampledb.preparesample($this.slideid)
         $sampletracker = $sampledb
@@ -764,8 +779,9 @@ using module .\testtools.psm1
                     $_.ProcessingLocation = 'Processing: bki##'
                 }
                 #
-            $sampledb.vmq.writemainqueue($this.project)
         }
+        #
+        $sampledb.vmq.writemainqueue($this.project)
         #
     }
 }

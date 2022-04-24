@@ -20,6 +20,9 @@
         rerun = 'RERUN'
     }
     #
+    [string]$specialcasedeps = (@('scan','transfer',
+        'batchmicomp','merge','imageqa') -join '|')
+    #
     [string]$empty_time = 'NA'
     #
     $pipeline_steps = [ordered]@{
@@ -78,7 +81,13 @@
             $this.moduleinfo.($cmodule).status = $logoutput[1].Message
         } elseif ($logoutput) {
             #
-            switch ($this.('check'+$cmodule)()){
+            if ($cmodule -match $this.specialcasedeps){
+                $check = $this.('check'+$cmodule)()
+            } else {
+                $check = $this.checkmodule($cmodule)
+            }
+            #
+            switch ($check){
                 1 {$this.moduleinfo.($cmodule).status = $this.status.waiting}
                 2 {$this.moduleinfo.($cmodule).status = $this.status.ready}
                 3 {$this.moduleinfo.($cmodule).status = $this.status.finish}
@@ -98,11 +107,7 @@
         #
         $this.moduleinfo.($cmodule).($antibody) = @{}
         $logoutput = $this.checkloginit($cmodule, $antibody, $false)
-        <#
-        if ($logoutput[1]){
-            $this.moduleinfo.($cmodule).($antibody).status = $logoutput[1].Message
-        } elseif ($logoutput) {
-            #>
+        #
         if ($logoutput){
             switch ($this.('check'+$cmodule)($antibody)){
                 1 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.waiting}
@@ -141,54 +146,13 @@
     ----------------------------------------- #>
     [array]checklog($cmodule, $dependency){
         #
-        if (!($this.modulelogs.($cmodule).($this.project))){
-            return @($true)
-        }
-        #
-        $startdate = $this.moduleinfo.($cmodule).StartTime
-        $finishdate = $this.moduleinfo.($cmodule).FinishTime
-        $errorline = $this.moduleinfo.($cmodule).Errorline
-        #
-        return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
+        return $this.checklog($cmodule, '', $dependency)
         #
     }
     #
     [array]checkloginit($cmodule, $dependency){
         #
-        if (!($this.modulelogs.($cmodule).($this.project))){
-            $this.moduleinfo.($cmodule).StartTime = $this.empty_time
-            $this.moduleinfo.($cmodule).FinishTime = $this.empty_time
-            return @($true)
-        }
-        #
-        $loglines = $this.modulelogs.($cmodule).($this.project)
-        $vers = $this.setlogvers($cmodule)
-        $ID = $this.setlogid($cmodule)
-        #
-        $startdate = ($this.selectlogline($loglines,
-            $ID, $this.log_start, $vers)).Date
-        $finishdate = ($this.selectlogline($loglines,
-            $ID, $this.log_finish, $vers)).Date
-        $errorline = $this.selectlogline($loglines,
-            $ID, $this.log_error)
-        #
-        if ($startdate){
-            $this.moduleinfo.($cmodule).StartTime = $startdate
-        } else {
-            $this.moduleinfo.($cmodule).StartTime = $this.empty_time
-        }
-        #
-        if ($startdate -and $finishdate -and 
-                (get-date $finishdate) -gt (get-date $startdate)
-        ){
-            $this.moduleinfo.($cmodule).FinishTime = $finishdate
-        } else {
-            $this.moduleinfo.($cmodule).FinishTime = $this.empty_time
-        }
-        #
-        $this.moduleinfo.($cmodule).Errorline = $errorline
-        #
-        return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
+        return ($this.checkloginit($cmodule, '', $dependency))
         #
     }
     #
@@ -198,19 +162,32 @@
             return @($true)
         }
         #
-        $startdate = $this.moduleinfo.($cmodule).($antibody).StartTime
-        $finishdate = $this.moduleinfo.($cmodule).($antibody).FinishTime
-        $errorline = $this.moduleinfo.($cmodule).($antibody).Errorline
+        if ($antibody){
+            $cmoduleinfo =  $this.moduleinfo.($cmodule).($antibody)
+        } else {
+            $cmoduleinfo =  $this.moduleinfo.($cmodule)
+        }
         #
-        return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
+        $startdate = $cmoduleinfo.StartTime
+        $finishdate = $cmoduleinfo.FinishTime
+        $errorline = $cmoduleinfo.Errorline
+        #
+        return ($this.deflogstatus($startdate,
+            $finishdate, $errorline, $dependency))
         #
     }
     #
     [array]checkloginit($cmodule, $antibody, $dependency){
         #
+        if ($antibody){
+            $cmoduleinfo =  $this.moduleinfo.($cmodule).($antibody)
+        } else {
+            $cmoduleinfo =  $this.moduleinfo.($cmodule)
+        }
+        #
         if (!($this.modulelogs.($cmodule).($this.project))){
-            $this.moduleinfo.($cmodule).($antibody).StartTime = $this.empty_time
-            $this.moduleinfo.($cmodule).($antibody).FinishTime = $this.empty_time
+            $cmoduleinfo.StartTime = $this.empty_time
+            $cmoduleinfo.FinishTime = $this.empty_time
             return @($true)
         }
         #
@@ -218,30 +195,63 @@
         $vers = $this.setlogvers($cmodule)
         $ID = $this.setlogid($cmodule)
         #
+        if ($antibody){
+            $filteredloglines = $this.filterloglines($loglines, $ID, $vers, $antibody)
+        } else {
+            $filteredloglines = $this.filterloglines($loglines, $ID, $vers)
+        }
+        #
+        if ($filteredloglines.startdate){
+            $cmoduleinfo.StartTime = $filteredloglines.startdate
+        } else {
+            $cmoduleinfo.StartTime = $this.empty_time
+        }
+        #
+        if ($filteredloglines.startdate -and 
+            $filteredloglines.finishdate -and
+            (get-date $filteredloglines.finishdate) -gt 
+                (get-date $filteredloglines.startdate)
+        ){
+                $cmoduleinfo.FinishTime = $filteredloglines.finishdate
+        } else {
+            $cmoduleinfo.FinishTime = $this.empty_time
+        }
+        #
+        $cmoduleinfo.Errorline = $filteredloglines.errorline
+        #
+        return ($this.deflogstatus($filteredloglines.startdate,
+            $filteredloglines.finishdate, $filteredloglines.errorline, $dependency))
+        #
+    }
+    #
+    [hashtable]filterloglines($loglines, $ID, $vers){
+        $startdate = ($this.selectlogline($loglines,
+            $ID, $this.log_start, $vers)).Date
+        $finishdate = ($this.selectlogline($loglines,
+            $ID, $this.log_finish, $vers)).Date
+        $errorline = $this.selectlogline($loglines,
+            $ID, $this.log_error)
+        $filteredloglines = @{
+            startdate = $startdate;
+            finishdate = $finishdate;
+            errorline = $errorline
+        }
+        return $filteredloglines
+    }
+    #
+    [hashtable]filterloglines($loglines, $ID, $vers, $antibody){
         $startdate = ($this.selectlogline($loglines,
             $ID, $this.log_start, $vers, $antibody)).Date
         $finishdate = ($this.selectlogline($loglines,
-         $ID, $this.log_finish, $vers, $antibody)).Date
+            $ID, $this.log_finish, $vers, $antibody)).Date
         $errorline = $this.selectlogline($loglines,
-         $ID, $this.log_error, '', $antibody)
-        #
-        if ($startdate){
-            $this.moduleinfo.($cmodule).($antibody).StartTime = $startdate
-        } else {
-            $this.moduleinfo.($cmodule).($antibody).StartTime = $this.empty_time
+            $ID, $this.log_error, '', $antibody)
+        $filteredloglines = @{
+            startdate = $startdate;
+            finishdate = $finishdate;
+            errorline = $errorline
         }
-        #
-        if ($startdate -and $finishdate -and
-            (get-date $finishdate) -gt (get-date $startdate)){
-            $this.moduleinfo.($cmodule).($antibody).FinishTime = $finishdate
-        } else {
-            $this.moduleinfo.($cmodule).($antibody).FinishTime = $this.empty_time
-        }
-        #
-        $this.moduleinfo.($cmodule).($antibody).Errorline = $errorline
-        #
-        return ($this.deflogstatus($startdate, $finishdate, $errorline, $dependency))
-        #
+        return $filteredloglines
     }
     <# -----------------------------------------
      setlogid
@@ -291,10 +301,12 @@
         #
         if ( (!$startdate) -or ($startdate -eq $this.empty_time) -or
             $errorlogical -or (
-                !$dependency -and ($finishdate -ne $this.empty_time) -and
+                !$dependency -and $finishdate -and 
+                ($finishdate -ne $this.empty_time) -and
                 (get-date $finishdate) -gt (get-date $startdate)
             ) -or (
-                $dependency -and (($finishdate -eq $this.empty_time) -or
+                $dependency -and (!$finishdate -or 
+                ($finishdate -eq $this.empty_time) -or
                 (get-date $finishdate) -le (get-date $startdate))
             )
         ){
@@ -392,74 +404,7 @@
         return 3
         #
     }
-    <# -----------------------------------------
-     checkshredxml
-     check that the shredxml module has completed
-     and all products exist
-    ------------------------------------------
-     Input: 
-        - log[mylogger]: astropath log object
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkshredxml(log, dependency)
-    ----------------------------------------- #>
-    [int]checkshredxml(){
-        #
-        $cmodule = 'shredxml'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        } 
-        #
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }  
-        #
-        if (!$this.('test' + $cmodule + 'files')()){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
-    <# -----------------------------------------
-     checkmeanimage
-     check that the meanimage module has completed
-     and all products exist
-    ------------------------------------------
-     Input: 
-        - log[mylogger]: astropath log object
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkmeanimage(log, dependency)
-    ----------------------------------------- #>
-    [int]checkmeanimage(){
-        #
-        $cmodule = 'meanimage'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        } 
-        #
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }  
-        #
-        if (!$this.('test' + $cmodule + 'files')()){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
+    
     <# -----------------------------------------
      checkmeanimagecomparison
      check that the meanimagecomparison module has completed
@@ -481,12 +426,14 @@
         #
         if ($this.checkpreviousstep($cmodule)){
             return 1
-        } 
-        #
-        if ($this.moduleinfo.($cmodule).vers -match '0.0.1'){
-            return 3
         }
         #
+        $check = $this.versiondependentchecks($cmodule)
+        #
+        if ($check){
+            return $check
+        } 
+        <#
         if ($this.checklog($cmodule, $true)){
             return 2
         }  
@@ -494,222 +441,9 @@
         if (!$this.('test' + $cmodule + 'files')()){
             return 2
         }
-        #
+        #>
         return 3
         #
-    }
-    <# -----------------------------------------
-     checkbatchflatfield
-     check that the batchflatfield module has completed
-     and all products exist
-    ------------------------------------------
-     Input: 
-        - log[mylogger]: astropath log object
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkbatchflatfield(log, dependency)
-    ----------------------------------------- #>
-    [int]checkbatchflatfield(){
-        #
-        $cmodule = 'batchflatfield'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        }
-        #
-        if ($this.moduleinfo.batchflatfield.vers -notmatch '0.0.1'){
-            <#
-            #
-            if ($this.moduleinfo.batchmicomp.status -ne 'FINISHED'){
-                return 1
-            }
-            #
-            if ($this.moduleinfo.meanimage.status -ne $this.status.finish){
-                return 1
-            }
-            #>
-            if ($this.teststatus){
-                $ids = $this.ImportCorrectionModels($this.mpath, $false)
-            } else{ 
-                $ids = $this.ImportCorrectionModels($this.mpath)
-            }
-            #
-            if ($ids.slideid -notcontains $this.slideid){
-                return 2
-            }
-            #
-            if (!$this.testpybatchflatfield()){
-                return 2
-            }
-            #
-        } else {
-            <#
-            if ($this.moduleinfo.meanimage.status -ne $this.status.finish){
-                return 1
-            }
-            #>
-            if ($this.checklog($cmodule, $true)){
-                return 2
-            }
-            #
-            #
-            if (!$this.testbatchflatfield()){
-                return 2
-            }
-            #
-        }
-        #
-        return 3
-        #
-    }
-    <# -----------------------------------------
-     checkwarpoctets
-     check that the meanimage module has completed
-     and all products exist
-    ------------------------------------------
-     Input: 
-        - log[mylogger]: astropath log object
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkmeanimage(log, dependency)
-    ----------------------------------------- #>
-    [int]checkwarpoctets(){
-        #
-        $cmodule = 'warpoctets'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        } 
-        #
-        if ($this.moduleinfo.($cmodule).vers -match '0.0.1'){
-            return 3
-        }
-        #
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }  
-        #
-        if (!$this.('test' + $cmodule + 'files')()){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
-    <# -----------------------------------------
-     checkbatchwarpkeys
-     check that the batch warp keys module has completed
-     and all products exist for the batch
-    ------------------------------------------
-     Input: 
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module needs to be run,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkbatchwarpkeys(dependency)
-    ----------------------------------------- #>
-    [int]checkbatchwarpkeys(){
-        #
-        $cmodule = 'batchwarpkeys'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        } 
-        #
-        if ($this.moduleinfo.($cmodule).vers -match '0.0.1'){
-            return 3
-        }
-        #
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }  
-        #
-        if (!$this.('test' + $cmodule + 'files')()){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
-    <# -----------------------------------------
-     checkbatchwarpfits
-     check that the batch warp fits module has completed
-     and all products exist for the batch
-    ------------------------------------------
-     Input: 
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module needs to be run,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkbatchwarpfits(dependency)
-    ----------------------------------------- #>
-    [int]checkbatchwarpfits(){
-        #
-        $cmodule = 'batchwarpfits'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        } 
-        #
-        if ($this.moduleinfo.($cmodule).vers -match '0.0.1'){
-            return 3
-        }
-        #
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }  
-        #
-        if (!$this.('test' + $cmodule + 'files')()){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
-    <# -----------------------------------------
-     checkimagecorrection
-     check that the imagecorrection module has completed
-     and all products exist
-    ------------------------------------------
-     Input: 
-        - log[mylogger]: astropath log object
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkimagecorrection(log, dependency)
-    ----------------------------------------- #>
-    [int]checkimagecorrection(){
-        #
-        $cmodule = 'imagecorrection'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        } 
-        #
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }  
-        #
-        if (!$this.('test' + $cmodule + 'files')()){
-            return 2
-        }
-        #
-        return 3
     }
     <# -----------------------------------------
      checkvminform
@@ -844,32 +578,22 @@
         return 3
         #
     }
-    <# -----------------------------------------
-     checksegmaps
-     check if the segmaps step should be run. 
-     details on the checks follow:
-     first check that the previous steps have
-     finished then check for issues in the log,
-     finially check that there are as many seg
-     files as im3 files.
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checksegmaps(dependency)
-    ----------------------------------------- #>
-    [int]checksegmaps(){
-        #
-        $cmodule = 'segmaps'
+    #
+    [int]checkmodule($cmodule){
         #
         if ($this.checkpreviousstep($cmodule)){
             return 1
         } 
         #
+        $check = $this.versiondependentchecks($cmodule)
+        #
+        if ($check){
+            return $check
+        }
+        #
         if ($this.checklog($cmodule, $true)){
             return 2
-        }
+        }  
         #
         if (!$this.('test' + $cmodule + 'files')()){
             return 2
@@ -878,33 +602,7 @@
         return 3
         #
     }
-     <# -----------------------------------------
-     checkdbload
-     check if the slide is ready to be loaded 
-     into the database by checking all previous
-     steps.
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checksegmaps(dependency)
-    ----------------------------------------- #>
-    [int]checkdbload(){
-        #
-        $cmodule = 'dbload'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        } 
-        #
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
+    #
     <# -----------------------------------------
      Aggregatebatches
      check that all slides from each unqiue batch are on the list
@@ -959,4 +657,27 @@
         return $false
         #
     }
+    #
+    [int]versiondependentchecks($cmodule){
+        #
+        $vers = $this.moduleinfo.($cmodule).vers
+        if ($vers -match '0.0.1'){
+            switch -regex ($cmodule){
+                batchmicomp {return 3}
+                batchflatfield{
+                    if ($this.checklog($cmodule, $true)){
+                        return 2
+                    }
+                }
+                warpoctets {return 3}
+                batchwarpkeys {return 3}
+                batchwarpfits {return 3}
+
+            }
+        }
+        #
+        return 0
+        #
+    }
+    #
 }

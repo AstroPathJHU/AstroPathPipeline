@@ -28,10 +28,10 @@ using module .\testtools.psm1
         #
         $this.copypath = $this.mpath + '\vminform-queue.csv'
         $vminformqueue = vminformqueue -mpath $this.mpath
-
         $this.testvminformqueuecontstructors()
         $vminformqueue = vminformqueue -mpath $this.mpath
         $this.resetinformqueue($vminformqueue)
+        $vminformqueue = vminformqueue -mpath $this.mpath
         #
         $this.testopenmaininformqueue($vminformqueue)
         $this.testopenlocalqueue($vminformqueue)
@@ -51,6 +51,7 @@ using module .\testtools.psm1
         $this.testmismatchtaskid($vminformqueue)
         $this.testdoubletaskid($vminformqueue)
         $this.resetinformqueue($vminformqueue)
+        $vminformqueue.removedir($this.mpath + '\across_project_queues')
         $this.testgitstatus($vminformqueue)  
         #
         Write-Host '.'
@@ -59,7 +60,8 @@ using module .\testtools.psm1
     #
     [void]resetinformqueue($vminformqueue){
         $vminformqueue.removefile($vminformqueue.mainqueuelocation())
-        $vminformqueue.removefile($this.basepath + '\upkeep_and_progress\inForm_queue.csv')
+        $vminformqueue.removefile($this.basepath +
+            '\upkeep_and_progress\progress_tables\inForm_queue.csv')
         $vminformqueue.copy($this.copypath, ($this.mpath + $vminformqueue.mainqueue_path))
     }
     #
@@ -145,8 +147,8 @@ using module .\testtools.psm1
         #
         write-host ($vminformqueue.localqueue.($this.project) | Format-Table | Out-String)
         #
-        if ($vminformqueue.localqueue.($this.project)){
-            Throw 'local queue not read as empty intially'
+        if (!($vminformqueue.localqueue.($this.project))){
+            Throw 'local queue read as empty intially'
         }
         #
         Write-host 'test for local queue finished'
@@ -378,6 +380,6 @@ using module .\testtools.psm1
 try{
     [testpsvminformqueue]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0

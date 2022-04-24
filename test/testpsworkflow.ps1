@@ -19,7 +19,7 @@ Class testpsworkflow : testtools {
         #
         $this.testconstructors($cred) 
         $inp = astropathworkflow -Credential $cred -mpath $this.mpath -test
-        <#
+        #
         $this.testastropathupdate($inp)
         $inp.workerloglocation = $PSScriptRoot + '\data\workflowlogs\'
         $inp.createdirs($inp.workerloglocation)
@@ -472,6 +472,6 @@ Class testpsworkflow : testtools {
 try {
     [testpsworkflow]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0

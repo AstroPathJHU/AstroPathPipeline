@@ -13,8 +13,9 @@ Class testpssegmaps : testtools {
     #
     [string]$class = 'segmaps'
     #
-    testpssegmaps(){
+    testpssegmaps() : base (){
         #
+        write-host 'create segmaps object'
         $inp = segmaps $this.task
         #
         # Run Tests
@@ -70,6 +71,6 @@ Class testpssegmaps : testtools {
 try {
     [testpssegmaps]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0

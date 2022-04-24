@@ -11,6 +11,7 @@ class sampledb : sampletracker {
     #
     [vminformqueue]$vmq
     [hashtable]$moduleobjs = @{}
+    [array]$projects
     #
     [string]$vminform_nonab_keys = (@('project','slidelog','mainlog','starttime',
         'finishtime','version','status') -join '|')
@@ -89,10 +90,6 @@ class sampledb : sampletracker {
         $this.modules | ForEach-Object{
             $this.moduleobjs.($_).createwatchersqueues()
             $this.newtasks += $this.moduleobjs.($_).newtasks
-            if( $this.moduleobjs.($_).newtasks){
-                write-host $_
-                write-host $this.moduleobjs.($_).newtasks
-            }
             $this.moduleobjs.($_).newtasks = @()
         }
         #
@@ -432,7 +429,7 @@ class sampledb : sampletracker {
         $fpath = Split-Path $fullfile
         $file = Split-Path $fullfile -Leaf
         #
-        switch -regex ($file){
+        switch -exact ($file){
             $this.cohorts_file {
                 $this.importcohortsinfo($this.mpath, $false)
                 $this.updatetables('full_project_dat')
@@ -469,7 +466,7 @@ class sampledb : sampletracker {
         }
         #       
         $this.projects | foreach-object{
-            switch -regex ($fullfile){
+            switch -exact ($fullfile){
                 $this.vmq.localqueue.($_) {
                     $this.vmq.coalescevminformqueues($_)
                     $this.refreshmoduledb('vminform', $_)
@@ -477,15 +474,17 @@ class sampledb : sampletracker {
             }
         }
         #
-        $this.modules | ForEach-Object{
+        foreach ($cmodule in $this.modules){
             #
-            switch -regex ($fullfile){
-                $this.moduleobjs.($_).mainqueuelocation() {$this.refreshmoduledb($_)}
+            switch -exact ($fullfile){
+                $this.moduleobjs.($cmodule).mainqueuelocation() {
+                    $this.refreshmoduledb($cmodule)}
             }
             #
             foreach ($project in $this.projects){
-                switch -regex ($fullfile){
-                    $this.defprojectlogpath($_, $project) {$this.refreshsampledb($_, $project)}
+                switch -exact ($fullfile){
+                    $this.defprojectlogpath($cmodule, $project) {
+                        $this.refreshsampledb($cmodule, $project)}
                 }
             }
             #
