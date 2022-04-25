@@ -1,5 +1,5 @@
 #imports
-import shutil
+import re, shutil
 import numpy as np, SimpleITK as sitk
 from hashlib import sha512
 from .config import SEG_CONST
@@ -157,7 +157,7 @@ def run_mesmer_segmentation(batch_ims,app,pscale,batch_segmented_file_paths) :
     for bi in range(batch_ims.shape[0]) :
         assert batch_segmented_file_paths[bi].is_file()
 
-def initialize_app(appcls, *args, ntries=5, logger=None, **kwargs)
+def initialize_app(appcls, *args, ntries=5, logger=None, **kwargs):
     try:
         return appcls(*args, **kwargs)
     except Exception as e:
