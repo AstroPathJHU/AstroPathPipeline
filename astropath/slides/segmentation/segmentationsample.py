@@ -8,7 +8,7 @@ from ...shared.sample import ParallelSample, ReadRectanglesComponentAndIHCTiffFr
 from ...shared.sample import SampleWithSegmentationFolder, WorkflowSample
 from .config import SEG_CONST
 from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im
-from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation, run_mesmer_segmentation
+from .utilities import convert_nnunet_output, initialize_app, run_deepcell_nuclear_segmentation, run_mesmer_segmentation
 
 #some constants
 NNUNET_SEGMENT_FILE_APPEND = 'nnunet_nuclear_segmentation.npz'
@@ -235,7 +235,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
         self.logger.debug('Running nuclear segmentation with DeepCell....')
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but DeepCell segmentation cannot be run in parallel.')
-        app = NuclearSegmentation()
+        app = initialize_app(NuclearSegmentation, logger=self.logger)
         rects_to_run = []
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
@@ -308,7 +308,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
         self.logger.debug('Running whole-cell and nuclear segmentation with Mesmer....')
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but Mesmer segmentation cannot be run in parallel.')
-        app = Mesmer()
+        app = initialize_app(Mesmer, logger=self.logger)
         rects_to_run = []
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
