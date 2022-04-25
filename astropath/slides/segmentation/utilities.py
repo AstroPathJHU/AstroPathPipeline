@@ -156,3 +156,18 @@ def run_mesmer_segmentation(batch_ims,app,pscale,batch_segmented_file_paths) :
         np.savez_compressed(batch_segmented_file_paths[bi],labeled_img)
     for bi in range(batch_ims.shape[0]) :
         assert batch_segmented_file_paths[bi].is_file()
+
+def initialize_app(appcls, *args, ntries=5, **kwargs)
+    try:
+        return appcls(*args, **kwargs)
+    except Exception as e:
+        errno = None
+        try:
+            errno = e.errno
+        except AttributeError:
+            match = re.search(r"\[Errno ([0-9-]+)\]")
+            if match:
+                errno = int(match.group(1))
+        if errno == -3 and ntries > 1:  #Temporary failure in name resolution in aws download
+            return initialize_app(appcls, *args, ntries=ntries-1, **kwargs)
+        raise
