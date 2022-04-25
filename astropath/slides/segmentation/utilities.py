@@ -157,10 +157,11 @@ def run_mesmer_segmentation(batch_ims,app,pscale,batch_segmented_file_paths) :
     for bi in range(batch_ims.shape[0]) :
         assert batch_segmented_file_paths[bi].is_file()
 
-def initialize_app(appcls, *args, ntries=5, **kwargs)
+def initialize_app(appcls, *args, ntries=5, logger=None, **kwargs)
     try:
         return appcls(*args, **kwargs)
     except Exception as e:
+        if ntries <= 1: raise
         errno = None
         try:
             errno = e.errno
@@ -168,6 +169,13 @@ def initialize_app(appcls, *args, ntries=5, **kwargs)
             match = re.search(r"\[Errno ([0-9-]+)\]")
             if match:
                 errno = int(match.group(1))
-        if errno == -3 and ntries > 1:  #Temporary failure in name resolution in aws download
+        retry = False
+        if errno == -3:  #Temporary failure in name resolution in aws download
+            retry = True
+        if retry:
+            if logger is not None:
+                logger.debug(f"initializing {appcls.__name__} failed")
+                logger.debug(str(e))
+                logger.debug("trying again")
             return initialize_app(appcls, *args, ntries=ntries-1, **kwargs)
         raise

@@ -235,7 +235,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
         self.logger.debug('Running nuclear segmentation with DeepCell....')
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but DeepCell segmentation cannot be run in parallel.')
-        app = initialize_app(NuclearSegmentation)
+        app = initialize_app(NuclearSegmentation, logger=self.logger)
         rects_to_run = []
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
@@ -308,7 +308,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
         self.logger.debug('Running whole-cell and nuclear segmentation with Mesmer....')
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but Mesmer segmentation cannot be run in parallel.')
-        app = initialize_app(Mesmer)
+        app = initialize_app(Mesmer, logger=self.logger)
         rects_to_run = []
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
