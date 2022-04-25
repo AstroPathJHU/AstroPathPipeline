@@ -166,7 +166,7 @@ def initialize_app(appcls, *args, ntries=5, logger=None, **kwargs):
         try:
             errno = e.errno
         except AttributeError:
-            match = re.search(r"\[Errno ([0-9-]+)\]")
+            match = re.search(r"\[Errno ([0-9-]+)\]", str(e))
             if match:
                 errno = int(match.group(1))
         retry = False
