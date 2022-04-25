@@ -27,11 +27,6 @@ class OptionalImport:
     self.doimport()
     return getattr(self.__module, attr)
 
-  @property
-  def module(self):
-    if self.module is None: return self
-    return self.__module
-
 class OgrImport(OptionalImport):
   def __init__(self):
     super().__init__("osgeo.ogr", "gdal")
