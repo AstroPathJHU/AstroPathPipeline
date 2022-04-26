@@ -654,9 +654,10 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
     with open(xmlfile, "rb") as f:
       nodes = jxmlease.parse(f)["Annotations"]["Annotation"]
       if isinstance(nodes, jxmlease.XMLDictNode): nodes = [nodes]
-      nodedict = {node.get_xml_attr("Name").strip().lower(): node for node in nodes}
-      if len(nodes) != len(nodedict):
-        raise ValueError(f"Duplicate annotation names in {xmlfile}: {collections.Counter(node.get_xml_attr('Name').lower() for node in nodes)}")
+      def getname(node): return node.get_xml_attr("Name").strip().lower()
+      namecounter = collections.Counter(getname(node) for node in nodes if node["Regions"])
+      if max(namecounter.values()) > 1:
+        raise ValueError(f"Duplicate annotation names in {xmlfile}: {namecounter}")
 
     with open(xmlfile, "rb") as f:
       hash = hashlib.sha256()
@@ -671,16 +672,16 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
     annotationinfos = [
       AnnotationInfo(
         sampleid=self.SampleID,
-        originalname=name,
-        dbname=name,
-        annotationsource=self.annotationsource,
+        originalname=getname(node),
+        dbname=getname(node),
+        annotationsource=self.annotationsource if node["Regions"] else "dummy",
         position=self.annotationposition,
         pscale=self.pscale,
         apscale=self.apscale,
         xmlfile=xmlfile.name,
         xmlsha=xmlsha,
         scanfolder=self.scanfolder,
-      ) for name in nodedict
+      ) for node in nodes
     ]
 
     return annotationinfos
