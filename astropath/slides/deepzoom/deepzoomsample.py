@@ -282,11 +282,12 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     ]
 
   @classmethod
-  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, **workflowkwargs):
+  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, layers, **workflowkwargs):
     deepzoomfolder = deepzoomroot/SlideID
     return itertools.chain(
       deepzoomfolder.glob("L*_files/Z*/*.png"),
       deepzoomfolder.glob("L*.dzi"),
+      [deepzoomfolder/"zoomlist.csv"],
     )
 
   @property

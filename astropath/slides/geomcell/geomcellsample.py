@@ -149,9 +149,8 @@ class GeomCellSampleBase(GeomSampleBase, SampleWithSegmentations, ReadRectangles
       writetable(geomloadcsv, geomload, rowclass=CellGeomLoad)
 
   @classmethod
-  def getworkinprogressfiles(cls, SlideID, *, geomroot, **otherworkflowkwargs):
-    geomfolder = geomroot/SlideID/"geom"/cls.segmentationalgorithm()
-    return geomfolder.glob("*.csv")
+  def getworkinprogressfiles(cls, **kwargs):
+    return cls.getoutputfiles(**kwargs)
 
   @property
   def workflowkwargs(self):
