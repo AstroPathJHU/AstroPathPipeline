@@ -95,13 +95,17 @@ class WorkflowDependency(ThingWithRoots, ThingWithLogger, ThingWithWorkflowKwarg
 
   def cleanup(self):
     printed = False
+    canprint = False
     for filename in self.workinprogressfiles:
+      canprint = True
       if not printed and filename.exists():
         self.logger.info("Cleaning up files from previous runs")
         printed = True
       rm_missing_ok(filename)
     if printed:
       self.logger.info("Finished cleaning up")
+    elif canprint:
+      self.logger.info("Clean start")
 
   @classmethod
   @abc.abstractmethod
@@ -326,6 +330,8 @@ class SampleRunStatus(MyDataClass):
               lastattemptedcleanup = None
             elif "Finished cleaning up" in row["message"]:
               lastcleanstart = None #gets assigned to self in __post_init__
+            elif "Clean start" in row["message"]:
+              lastattemptedcleanup = lastcleanstart = None
             elif endmatch:
               ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
               result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart, SlideID=SlideID)

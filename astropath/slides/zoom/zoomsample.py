@@ -513,8 +513,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     wsifolder = zoomroot/SlideID/"wsi"
     return itertools.chain(
       bigfolder.glob("*.png"),
-      wsifolder.glob("*.png"),
-      wsifolder.glob("*.tiff"),
+      cls.getoutputfiles(SlideID=SlideID, zoomroot=zoomroot, **otherworkflowkwargs),
     )
 
   @classmethod
