@@ -11,10 +11,18 @@ function processseg(main)
 try
     tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
         'ReadVariableNames', true);
+    %
+    tbl2 = readtable([main, '\AstropathConfig.csv'], 'Delimiter' , ',',...
+        'ReadVariableNames', true);
+    %
 catch
     pause(10)
     tbl = readtable([main, '\AstropathPaths.csv'], 'Delimiter' , ',',...
         'ReadVariableNames', true);
+    %
+    tbl2 = readtable([main, '\AstropathConfig.csv'], 'Delimiter' , ',',...
+        'ReadVariableNames', true);
+    %
 end
 %
 for i1 = 1:height(tbl)
@@ -23,6 +31,14 @@ for i1 = 1:height(tbl)
     %
     td = tbl(i1,:);
     wd = ['\\', td.Dpath{1},'\', td.Dname{1}];
+    project = td.Project;
+    %
+    gostr = tbl2(tbl2.Project == project,'segmaps');
+    gostr = table2array(gostr);
+    gostr = gostr{1};
+    if strcmpi(gostr,'No')
+        continue
+    end
     %
     % get specimen names for the CS
     %
@@ -32,6 +48,7 @@ for i1 = 1:height(tbl)
     % 
     for i2 = 1:length(samplenames)
         sname = samplenames{i2};
+        disp(['Started ',sname, ' Slide Number: ',num2str(i2)]);   
         %
         % get the BatchID 
         %
@@ -58,20 +75,22 @@ end
 %%% 
 %% --------------------------------------------------------------------
 %%
-function startseg(wd,sname, MergeConfig)
+function startseg(wd, sname, MergeConfig)
 %
-wd1 = [wd,'\',sname,'\inform_data\Phenotyped\Results\Tables'];
+wd1 = [wd,'\',sname,'\im3\flatw'];
 fd = [wd,'\',sname,'\inform_data\Component_Tiffs'];
+wd2 = [wd,'\',sname,'\inform_data\Phenotyped\Results\Tables'];
 %
-if exist(fd, 'dir') && exist(wd1,'dir')
+if exist(fd, 'dir') && exist(wd2,'dir')
     fnames = dir([fd,'\*_w_seg.tif']);
-    t1 = max([fnames(:).datenum]);
-    fnames2 = dir([wd1, '\*.csv']);
-    t2 = max([fnames2(:).datenum]);
+    t1 = min([fnames(:).datenum]);
+    fnames2 = dir([wd1, '\*.im3']);
+    fnames3 = dir([wd2, '\*.csv']);
+    t3 = max([fnames3(:).datenum]);
     onedayago = datenum(datetime() - 1);
     %
-    if ~isempty(t2) && ...
-            (length(fnames)~=length(fnames2)|| t2 > t1) %&& t2 <= onedayago
+    if ~isempty(t3) && ...
+            (length(fnames) ~= length(fnames2)|| t3 > t1) %&& t2 <= onedayago
         %
         % start the parpool if it is not open;
         % attempt to open with local at max cores, if that does not work attempt
@@ -105,11 +124,9 @@ if exist(fd, 'dir') && exist(wd1,'dir')
             delete(poolobj);
         end
         %
-        wd1 = [wd,'\',sname,'\inform_data\Phenotyped'];
-        GetaSeg(wd1, sname, MergeConfig);
+        GetaSeg(wd, sname, MergeConfig);
         %
-        wd1 = [wd,'\',sname,'\inform_data'];
-        GetnoSeg(wd1, sname, MergeConfig)
+        GetnoSeg(wd, sname, MergeConfig)
         %
     end
 end

@@ -1,15 +1,15 @@
 ﻿<#
 --------------------------------------------------------
-batchmeanimagecomparison
-Created By: Andrew Jorquera
-Last Edit: 10/27/2021
+batchmicomp
+Benjamin Green, Andrew Jorquera
+Last Edit: 02.16.2022
 --------------------------------------------------------
 #>
 class batchmicomp : moduletools {
     #
     [string]$project
     #
-    batchmicomp([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    batchmicomp([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'
         $this.processloc = $this.sample.basepath + '\flatfield\' + $this.sample.batchID
         $this.sample.createdirs($this.processloc)

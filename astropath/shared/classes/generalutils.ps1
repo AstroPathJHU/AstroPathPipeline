@@ -104,11 +104,12 @@
     }
     #
     [string]defRoot(){
-        #
-        if ($PSScriptRoot[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$PSScriptRoot) -replace ":", "$"
+        ##
+        $r = $PSScriptRoot -replace( '/', '\')
+        if ($r[0] -ne '\'){
+            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
         } else{
-            $root = $PSScriptRoot -replace ":", "$"
+            $root = $r -replace ":", "$"
         }
         #
         return($root)
@@ -129,7 +130,6 @@
         return($server)
         #
     }
-    #
     <# -----------------------------------------
      createdirs
      create a directory if it does not exist 
@@ -137,12 +137,17 @@
      Usage: $this.createdirs()
     ----------------------------------------- #>   
     [void]CreateDirs($dir){
+        #
+        $dir = $this.CrossPlatformPaths($dir)
+        #
         if (!(test-path $dir)){
             new-item $dir -itemtype "directory" -EA STOP | Out-NULL
         }
     }
     #
     [void]CreateNewDirs($dir){
+        #
+        $dir = $this.CrossPlatformPaths($dir)
         #
         $this.removedir($dir)
         #
@@ -153,15 +158,23 @@
     }
     #
     [void]CreateFile($fpath){
+        #
+        $fpath = $this.CrossPlatformPaths($fpath)
+        #
+        $this.createDirs((Split-Path $fpath))
+        #
         if (!(test-path $fpath)){
             New-Item -path $fpath -itemtype file -Force -EA Stop | Out-Null
         }
+        #
     }
     #
     [void]removedir([string]$dir){
         #
-        if (test-path $dir){
-            gci $dir -Recurse | Remove-Item -force -Confirm:$false -recurse
+        $dir = $this.CrossPlatformPaths($dir)
+        #
+        if (test-path -literalpath $dir){
+            Get-ChildItem -Directory $dir | Remove-Item -force -Confirm:$false -recurse
             remove-item $dir -force -Confirm:$false -Recurse
         }
         #
@@ -169,31 +182,66 @@
     #
     [void]removefile([string]$file){
         #
-        if (test-path $file){
-            remove-item $file -force -Confirm:$false -ea Continue
+        $file = $this.CrossPlatformPaths($file)
+        #
+        if (test-path -literalpath $file){
+            remove-item -literalpath $file -force -Confirm:$false -ea Continue
         }
         #
     }
     #
     [void]removefile([string]$folder, [string] $filespec){
         #
+        $folder = $this.CrossPlatformPaths($folder)
+        #
         $filespec = '*' + $filespec
-        $files = gci ($folder+'\*') -Include  $filespec -Recurse 
-        if ($files ){ Remove-Item $files -force -recurse -Confirm:$false}
+        $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
+        if ($files ){ $files | Remove-Item -force -recurse -Confirm:$false}
         #
     }
-    <# ------------------------------------------
-    CheckPath
-    ------------------------------------------
-    check if a path exists
-    ------------------------------------------ #>
-    [switch]CheckPath([string]$p){
+    #
+    [void]renamefile([string]$folder, $sor, $des){
         #
-        if (test-path $p){
-            return $true
-        } else {
-            return $false
+        $folder = $this.CrossPlatformPaths($folder)
+        #
+        $filespec = '*' + $sor
+        $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
+        #
+        $files | Foreach-Object {
+            $newname = $_.name -replace $sor, $des   
+            Rename-Item $_.fullname $newname -ea stop 
         }
         #
     }
+    <# ------------------------------------------
+    LastWrite
+    ------------------------------------------
+    get the last write time for a path or file
+    ------------------------------------------ #>
+    [DateTime]LastWrite([string]$p){
+        #
+        $p = $this.CrossPlatformPaths($p)
+        #
+        if (test-path -literalpath $p){
+            return (Get-ChildItem $p).LastWriteTime
+        } else {
+            return Get-Date
+        }
+        #
+    }
+    #
+    <# -----------------------------------------
+     GetCreds
+     puts credentials in a string format
+     ------------------------------------------
+     Usage: $this.GetCreds()
+    ----------------------------------------- 
+    [array]GetCreds([Pscredential]$login){
+        #
+        $username = $login.UserName
+        $password = $login.GetNetworkCredential().Password
+        return @($username, $password)
+        #
+    }
+    #>
 }

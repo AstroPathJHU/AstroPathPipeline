@@ -7,32 +7,31 @@
  methods used to build the queues and check 
  dependencies
  -------------------------------------------#>
-class queue : vminformqueue{
+class queue : modulequeue {
     #
     [Array]$originaltasks
-    [Array]$cleanedtasks
-    [string]$queue_file
+    [system.object]$cleanedtasks
     [string]$informvers
     [string]$project
     #
-    queue($module){
-        $this.mpath = '\\bki04\astropath_processing'
-        $this.module = $module 
+    queue($module) : base($module){
+        $this.queueinit('\\bki04\astropath_processing', $module,'', '')
     }
-    queue($mpath, $module){
-        $this.mpath = $mpath
-        $this.module = $module 
+    queue($mpath, $module) : base($mpath, $module){
+        $this.queueinit($mpath, $module, '', '')
     }
-    queue($mpath, $module, $project){
-        $this.mpath = $mpath
-        $this.module = $module 
-        $this.project = $project
+    queue($mpath, $module, $project) : base($mpath, $module, $project){
+        $this.queueinit($mpath, $module, $project, '')
     }
-    queue($mpath, $module, $project, $slideid){
-        $this.mpath = $mpath
-        $this.module = $module 
-        $this.project = $project
+    queue($mpath, $module, $project, $slideid) : base($mpath, $module, $project){
+        $this.queueinit($mpath, $module, $project, $slideid)
+    }
+    #
+    queueinit($mpath, $module, $project, $slideid){
+        #
         $this.slideid = $slideid.trim()
+        $this.importaptables($this.mpath, $true)
+        #
     }
     <# -----------------------------------------
      ExtractQueue
@@ -47,7 +46,6 @@ class queue : vminformqueue{
             $this.buildqueue()
         } else {
             $this.('check'+$this.module)()
-            #$this.coalescevminformqueues()
         }
         #
     }
@@ -63,25 +61,26 @@ class queue : vminformqueue{
         #
         # select samples from the appropriate modules 
         #
-        $projects = $this.getapprojects()
+        $projects = $this.getapprojects($this.module)
         #
         $cleanedslides = $slides | 
             Where-Object {$projects -contains $_.Project}
         #
         $slidesnotcomplete = $this.defNotCompletedSlides($cleanedslides)
-        $slidearray = @()
-        $batcharray = @()
+        $slidearray = New-Object 'object[]' $slidesnotcomplete.count
+        $batcharray = New-Object 'object[]' $slidesnotcomplete.count
+        #
         if ($slidesnotcomplete.count -eq 1){
-            $slidearray += $slidesnotcomplete.Project + 
-                ',' + $slidesnotcomplete.Slideid
-            $batcharray += $slidesnotcomplete.Project + 
-                ',' + $slidesnotcomplete.Slideid
+            $slidearray[0] = ($slidesnotcomplete.Project,
+                $slidesnotcomplete.Slideid)
+            $batcharray[0] = ($slidesnotcomplete.Project, 
+                $slidesnotcomplete.Slideid)
         } else {
             for($i=0; $i -lt $slidesnotcomplete.count;$i++){
-                $slidearray += $slidesnotcomplete.Project[$i] + 
-                    ',' + $slidesnotcomplete.Slideid[$i]
-                $batcharray += $slidesnotcomplete.Project[$i] + 
-                    ',' + $slidesnotcomplete.BatchID[$i]
+                $slidearray[$i] = ($slidesnotcomplete.Project[$i],
+                    $slidesnotcomplete.Slideid[$i])
+                $batcharray[$i] = ($slidesnotcomplete.Project[$i],
+                    $slidesnotcomplete.BatchID[$i])
             }
         }
         #
@@ -92,7 +91,6 @@ class queue : vminformqueue{
         $this.cleanedtasks = $slidearray
         #
     }
-
     <# -----------------------------------------
      defNotCompletedSlides
      For each slide, check the current module 
@@ -104,19 +102,24 @@ class queue : vminformqueue{
     [array]defNotCompletedSlides($cleanedslides){
         #
         $slidesnotcomplete = @()
-        $c = 1
+        $c = 0
         $ctotal = $cleanedslides.count
+        if (!($cleanedslides)){
+            return $slidesnotcomplete
+        }
+        #
+        $log = [mylogger]::new($this.mpath, $this.module, $cleanedslides[0].slideid)
         #
         foreach($slide in $cleanedslides){
             #
             $p = [math]::Round(100 * ($c / $ctotal))
             Write-Progress -Activity "Checking slides" `
-                           -Status "$p% Complete:" `
-                           -PercentComplete $p `
-                           -CurrentOperation $slide.slideid
+                           -Status ("$p% Complete : Checking " + $slide.slideid) `
+                           -PercentComplete $p 
             $c += 1 
             #
-            $log = [mylogger]::new($this.mpath, $this.module, $slide.slideid)
+            $log.Sample($slide.slideid, $this.module, $cleanedslides)
+            $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project, 'short')
             #
             if ($this.module -match 'batch'){
                 $log.slidelog = $log.mainlog
@@ -161,11 +164,12 @@ class queue : vminformqueue{
             return $true
         }
         #
-        $loglines = $this.opencsvfile($log.slidelog, ';', @('Project','Cohort','slideid','Message','Date'))
+        $loglines = $this.opencsvfile($log.slidelog, ';',
+            @('Project','Cohort','slideid','Message','Date'))
         #
         # parse log
         #
-        $statustypes = @('START:','ERROR:','FINISH:')
+        $statustypes = @('^START:','^ERROR:','^FINISH:')
         $savelog = @()
         $vers = $log.vers -replace 'v', ''
         $vers = ($vers -split '\.')[0,1,2] -join '.'
@@ -180,7 +184,7 @@ class queue : vminformqueue{
             $savelog += $loglines |
                     where-object {
                         ($_.Message -match $vers) -and 
-                         ($_.Slideid -match $ID) -and 
+                         ($_.Slideid -contains $ID) -and 
                          ($_.Message -match $statustype)
                     } |
                     Select-Object -Last 1 
@@ -190,7 +194,7 @@ class queue : vminformqueue{
         $d2 = ($loglines |
                  Where-Object {
                     $_.Message -match $statustypes[1] -and
-                     ($_.Slideid -match $ID)
+                     ($_.Slideid -contains $ID)
                  }).Date |
                Select-Object -Last 1 
         $d3 = ($savelog | Where-Object {$_.Message -match $statustypes[2]}).Date
@@ -210,6 +214,14 @@ class queue : vminformqueue{
         }
         #
     }
+    [mylogger]updatelogger([mylogger]$log, $module){
+        #
+        $log.module = $module
+        $log.deflogpaths()
+        $log.vers = $log.GetVersion($this.mpath, $module, $log.project, 'short')
+        return $log
+        #
+    }
     <# -----------------------------------------
      checktransfer
      check that the transfer process has completed
@@ -227,7 +239,7 @@ class queue : vminformqueue{
     ----------------------------------------- #>
     [int]checktransfer([mylogger]$log){
         #
-        $log = [mylogger]::new($this.mpath, 'transfer', $log.slideid)
+        $log = $this.updatelogger($log, 'transfer')
         #
         if (!($log.vers -match '0.0.1') -and 
             $this.checklog($log, $true)){
@@ -239,7 +251,7 @@ class queue : vminformqueue{
         $file = $log.CheckSumsfile()
         $file2 = $log.qptifffile()
         $file3 = $log.annotationxml()
-        $im3s = (gci ($log.Scanfolder() + '\MSI\*') *im3).Count
+        $im3s = (get-childitem ($log.Scanfolder() + '\MSI\*') *im3).Count
         #
         #if (!(test-path $file)){
         #    return 2
@@ -278,7 +290,7 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'shredxml', $log.slideid)
+        $log = $this.updatelogger($log, 'shredxml')
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -311,7 +323,7 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'meanimage', $log.slideid)
+        $log = $this.updatelogger($log, 'meanimage')
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -354,8 +366,7 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'batchmicomp', $log.slideid)
-        $log.slidelog = $log.mainlog
+        $log = $this.updatelogger($log, 'batchmicomp')
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -400,23 +411,29 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'batchflatfield', $log.slideid)
+        $log = $this.updatelogger($log, 'batchflatfield')
         #
         # if the version is not 0.0.1 in batchflatfield, do meanimagecomparison
         # instead
         if ($log.vers -notmatch '0.0.1'){
-            #
+            <#
             if (!($this.checkbatchmicomp($log, $true) -eq 3)){
                 return 1
             }
+            #>
+            if (!($this.checkmeanimage($log, $true) -eq 3)){
+                return 1
+            }
+            #
+            $log = $this.updatelogger($log, 'batchflatfield')
             #
             $ids = $this.ImportCorrectionModels($this.mpath)
             if ($ids.slideid -notcontains $log.slideid){
-                return 2
+                return 1
             }
             #
             if (!$log.testpybatchflatfield()){
-                return 2
+                return 1
             }
             #
         } else {
@@ -424,6 +441,8 @@ class queue : vminformqueue{
             if (!($this.checkmeanimage($log, $true) -eq 3)){
                 return 1
             }
+            #
+            $log = $this.updatelogger($log, 'batchflatfield')
             #
             $log.slidelog = $log.mainlog
             if ($this.checklog($log, $true)){
@@ -460,12 +479,93 @@ class queue : vminformqueue{
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'warpoctets', $log.slideid)
+        $log = $this.updatelogger($log, 'warpoctets')
+        #
+        if ($log.vers -match '0.0.1'){
+            RETURN 3
+        }
+        #
         if ($this.checklog($log, $true)){
             return 2
         }
         #
         if (!$log.testwarpoctets()){
+            return 2
+        }
+        #
+        return 3
+        #
+    }
+    <# -----------------------------------------
+     checkbatchwarpkeys
+     check that the batch warp keys module has completed
+     and all products exist for the batch
+    ------------------------------------------
+     Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+     ------------------------------------------
+     Output: returns 1 if dependency fails, 
+     returns 2 if current module is still running,
+     returns 3 if current module is complete
+     ------------------------------------------
+     Usage: $this.checkmeanimage(log, dependency)
+    ----------------------------------------- #>
+    [int]checkbatchwarpkeys([mylogger]$log, $dependency){
+        #
+        if (!($this.checkwarpoctets($log, $true) -eq 3)){
+            return 1
+        }
+        #
+        $log = $this.updatelogger($log, 'batchwarpkeys')
+        #
+        if ($log.vers -match '0.0.1'){
+            RETURN 3
+        }
+        #
+        if ($this.checklog($log, $true)){
+            return 2
+        }
+        #
+        if (!$log.testbatchwarpkeysfiles()){
+            return 2
+        }
+        #
+        return 3
+        #
+    }
+    <# -----------------------------------------
+    checkbatchwarpfits
+    check that the batch warp keys module has completed
+    and all products exist for the batch
+    ------------------------------------------
+    Input: 
+        - log[mylogger]: astropath log object
+        - dependency[switch]: true or false
+    ------------------------------------------
+    Output: returns 1 if dependency fails, 
+    returns 2 if current module is still running,
+    returns 3 if current module is complete
+    ------------------------------------------
+    Usage: $this.checkmeanimage(log, dependency)
+    ----------------------------------------- #>
+    [int]checkbatchwarpfits([mylogger]$log, $dependency){
+        #
+        if (!($this.checkbatchwarpkeys($log, $true) -eq 3)){
+            return 1
+        }
+        #
+        $log = $this.updatelogger($log, 'batchwarpfits')
+        #
+        if ($log.vers -match '0.0.1'){
+            RETURN 3
+        }
+        #
+        if ($this.checklog($log, $true)){
+            return 2
+        }
+        #
+        if (!$log.testbatchwarpfitsfiles()){
             return 2
         }
         #
@@ -489,11 +589,11 @@ class queue : vminformqueue{
     ----------------------------------------- #>
     [int]checkimagecorrection([mylogger]$log, $dependency){
         #
-        if (!($this.checkbatchflatfield($log, $true) -eq 3)){
+        if (!($this.checkbatchwarpfits($log, $true) -eq 3)){
             return 1
         }
         #
-        $log = [mylogger]::new($this.mpath, 'imagecorrection', $log.slideid)
+        $log = $this.updatelogger($log, 'imagecorrection')
         if ($this.checklog($log, $true)){
             return 2
         }
@@ -523,9 +623,7 @@ class queue : vminformqueue{
         #
         $this.informvers = '2.4.8'
         #
-        $queue_path = $this.mpath + '\across_project_queues'
-        $this.queue_file = $queue_path + '\' + $this.module + '-queue.csv'
-        $queue_data = $this.getcontent($this.queue_file)
+        $queue_data = $this.getcontent($this.mainqueuelocation())
         #
         $current_queue_data = @()
         #
@@ -542,8 +640,66 @@ class queue : vminformqueue{
         }
         #
         $this.originaltasks = $current_queue_data
-        $this.cleanedtasks = $this.originaltasks -replace ('\s','')
-        $this.cleanedtasks = $this.cleanedtasks | ForEach {$_.Split(',')[0..3] -join(',')}
+        $tempcleanedtasks = $this.originaltasks -replace ('\s','')
+        #
+        $this.cleanedtasks = New-Object 'object[]' $tempcleanedtasks.count
+        $cnt = 0
+        #
+        foreach ($newtask in $tempcleanedtasks){
+           $this.cleanedtasks[$cnt] = ($newtask.split(',')[0..3])
+           $cnt ++
+        }
+        #
+    }
+    #
+    [void]UpdateQueue($currenttask, $currentworker, $tasktomatch){
+        #
+        $currenttask = $currenttask -join ','
+        #
+        if ($this.module -ne 'vminform'){
+            return
+        }
+        #
+        $D = Get-Date
+        $currenttask2 = "$currenttask" + ",Processing: " + 
+            $currentworker.server + '-' + $currentworker.location + "," + $D
+        $mxtstring = 'Global\' + ($this.mainqueuelocation()).replace('\', '_') + '.LOCK'
+        #
+        # add escape to '\'
+        #
+        $rg = [regex]::escape($tasktomatch) + "$"
+        #
+        $cnt = 0
+        $Max = 120
+        #
+        do{
+           $mxtx = New-Object System.Threading.Mutex($false, $mxtstring)
+            try{
+                $imxtx = $mxtx.WaitOne(60 * 10)
+                if($imxtx){
+                    $Q = get-content -Path $this.mainqueuelocation()
+                    $Q2 = $Q -replace $rg,$currenttask2
+                    Set-Content -Path $this.mainqueuelocation() -Value $Q2
+                    $mxtx.releasemutex()
+                    break
+                } else{
+                    $cnt = $cnt + 1
+                    Start-Sleep -s 5
+                }
+            }catch{
+                $cnt = $cnt + 1
+                Start-Sleep -s 5
+                Continue
+            }
+        } while($cnt -lt $Max)
+        #
+        # if the script could not access the queue file after 10 mins of trying every 2 secs
+        # there is an issue and exit the script
+        #
+        if ($cnt -ge $Max){
+            $ErrorMessage = "Could not access "+$this.module+"-queue.csv"
+            Throw $ErrorMessage 
+        }
         #
     }
     <# -----------------------------------------
@@ -562,19 +718,49 @@ class queue : vminformqueue{
     ----------------------------------------- #>
     [array]Aggregatebatches($batcharray){
         $batcharrayunique = $batcharray | Sort-Object | Get-Unique
-        $slides = $this.importslideids($this.mpath)
-        $batchescomplete = @()
+        $batchescomplete = New-Object 'object[]' $batcharrayunique.count
+        $cnt = 0
         #
-        $batcharrayunique | foreach-object {
-            $nslidescomplete = ($batcharray -match $_).count
-            $projectbatchpair = $_ -split ','
-            $sample = [sampledef]::new($this.mpath, $this.module, $projectbatchpair[1], $projectbatchpair[0])
+        if ($batcharrayunique.count -eq 2 -and $batcharrayunique[0].count -eq 1){
+            $nslidescomplete = ($batcharray -match $batcharrayunique).count
+            $sample = sample -mpath $this.mpath -module $this.module -batchid $batcharrayunique[1] -project $batcharrayunique[0]
             $nslidesbatch = $sample.batchslides.count
             if ($nslidescomplete -eq $nslidesbatch){
-                $batchescomplete += $_
+                $batchescomplete[$cnt] = $batcharrayunique
+                $cnt ++
+            }
+        } else {
+            #
+            $batcharrayunique | foreach-object {
+                $nslidescomplete = ($batcharray -match $_).count
+                $sample = sample -mpath $this.mpath -module $this.module -batchid $_[1] -project $_[0]
+                $nslidesbatch = $sample.batchslides.count
+                if ($nslidescomplete -eq $nslidesbatch){
+                    $batchescomplete[$cnt] = $_
+                    $cnt ++
+                }
             }
         }
-        return $batchescomplete
+        #
+        return ($batchescomplete -ne $null)
     }
     #
+    [void]handleAPevent($file){
+        #
+        $fpath = Split-Path $file
+        $file = Split-Path $file -Leaf
+        #
+        switch -regex ($file){
+            $this.cohorts_file {$this.importcohortsinfo($this.mpath, $false)}
+            $this.paths_file {$this.importcohortsinfo($this.mpath, $false)}
+            $this.config_file {$this.ImportConfigInfo($this.mpath, $false)}
+            $this.slide_file {$this.ImportSlideIDs($this.mpath, $false)}
+            $this.ffmodels_file {$this.ImportFlatfieldModels($this.mpath, $false)}
+            $this.corrmodels_file {$this.ImportCorrectionModels($this.mpath, $false)}
+            $this.micomp_file {$this.ImportMICOMP($this.mpath, $false)}
+            $this.worker_file {$this.Importworkerlist($this.mpath, $false)}
+            #$this.vmq.mainqueue_file {$this.vmq.openmainqueue($false)}
+            #$this.vmq.localqueue_file {}
+        }
+    }
 }

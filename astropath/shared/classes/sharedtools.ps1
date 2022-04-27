@@ -13,6 +13,25 @@
     [string]$slideid
     [string]$psroot = $pshome + "\powershell.exe"
     [string]$package = 'astropath'
+    [array]$modules
+    [switch]$checkpyenvswitch = $false
+    [switch]$teststatus = $false
+    [hashtable]$softwareurls = @{
+        'Miniconda3' = 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe';
+        'MikTeX' = '';
+        'matlab' = '';
+        'git' = '';
+        'python' = '';
+        'NET' = ''
+    }
+    [hashtable]$softwareargs = @{
+        'Miniconda3' = @('/InstallationType=AllUsers', '/RegisterPython=1','/S','/D=C:\ProgramData\Miniconda3')
+        'MikTeX' = @('');
+        'matlab' = @('');
+        'git' = @('');
+        'python' = @('');
+        'NET' = @('')
+    }
     #
     sharedtools(){}
     #
@@ -23,8 +42,15 @@
     }
     #
     [string]pyenv(){
-        $str = $this.pyinstalllocation() + $this.package + 'workflow'
+        #
+        if ($this.teststatus){
+            $str = $this.pyinstalllocation() + $this.package + 'workflow-test'
+        } else {
+            $str = $this.pyinstalllocation() + $this.package + 'workflow'
+        }
+        #
         return $str
+        #
     }
     #
     [string]pyinstalllog(){
@@ -34,6 +60,19 @@
     #
     [string]pypackagepath(){
         $str = $this.coderoot() + '\..\.'
+        if (!$this.isWindows()){
+            $str = $str -replace ('\\', '/')
+        }
+        #
+        return $str
+    }
+    #
+    [string]testpackagepath(){
+        $str = $this.coderoot() + '\..\test\data'
+        if (!$this.isWindows()){
+            $str = $str -replace ('\\', '/')
+        }
+        #
         return $str
     }
     <# -----------------------------------------
@@ -64,9 +103,8 @@
     ----------------------------------------- #>
     [string]GetVersion($mpath, $module, $project){
         #
-        $configfile = $this.ImportConfigInfo($mpath)
-        #
-        $projectconfig = $configfile | 
+        $this.ImportConfigInfo($mpath) | Out-Null
+        $projectconfig = $this.config_data | 
             Where-Object {$_.Project -eq $project}
         if (!$projectconfig){
             Throw ('Project not found for project number: '  + $project)
@@ -82,6 +120,29 @@
         }
         # 
         $vers = $this.getfullversion()
+        return $vers
+        #
+    }
+    #
+    [string]GetVersion($mpath, $module, $project, $short){
+        #
+        $this.ImportConfigInfo($mpath) | Out-Null
+        #
+        $projectconfig = $this.config_data | 
+            Where-Object {$_.Project -eq $project}
+        if (!$projectconfig){
+            Throw ('Project not found for project number: '  + $project)
+        }    
+        #
+        $vers = $projectconfig.($module+'version')    
+        if (!$vers){
+            Throw 'No version number found'
+        }
+        #
+        if ($this.apversionchecks($mpath, $module, $vers)){
+            return ("v" + $vers)
+        }
+        # 
         return $vers
         #
     }
@@ -136,7 +197,7 @@
             } 
         } else {
             $version = $this.getpackageversion() 
-            $version = $version, $this.getdate() -join '.' 
+            $version = $version
         }
         #
         return $version
@@ -159,7 +220,7 @@
     ----------------------------------------- #>
     [switch]checkgitinstalled(){
         try {
-            $gitversion = git --version
+            git --version | Out-NUll
             return $true
         } catch {
             return $false
@@ -177,7 +238,7 @@
     [switch]checkgitrepo(){
         if ($this.checkgitinstalled()){
             try {
-               $gitrepo = git -C $this.pypackagepath() rev-parse --is-inside-work-tree
+               git -C $this.pypackagepath() rev-parse --is-inside-work-tree | Out-Null
                return $true
             } catch {
                return $false
@@ -200,6 +261,15 @@
            } else {
                 return $false
            }
+    }
+    #
+    [switch]checkgitstatustest(){
+        $gitstatus = git -C $this.testpackagepath() status
+        if ($gitstatus -match "nothing to commit, working tree clean"){
+             return $true
+        } else {
+             return $false
+        }
     }
     <# -----------------------------------------
     getgitversion
@@ -225,14 +295,14 @@
      for some reason return the v0.0.0 versioning
     ----------------------------------------- #>
     [string]getpackageversion(){
-        $version = "v0.0.0.dev0+g0000000"
+        $version = "v0.0.0.dev0+g0000000", $this.getdate() -join '.' 
         if ($this.CheckpyEnvir()){
             #
             $this.checkconda()
             $condalist = conda list -p $this.pyenv()
             $astropath = $condalist -match $this.package
             if ($astropath[1]){
-                $version = 'v'+($astropath[1] -split ' ') -match 'dev'
+                $version = 'v'+(($astropath[1] -split ' ') -match 'dev')
             }
         }
         return $version                
@@ -249,71 +319,39 @@
         #
         # check if conda is a
         #
+        if (!$this.isWindows()){
+            return
+        }
+        #
         $server = $this.defServer()
         $drive = '\\'+$server+'\C$'
-        $condascripts = ''
         #
         $minicondapath = ($drive + '\ProgramData\Miniconda3')
+        $this.testcondainstall($minicondapath)
+        #
+        if ((get-module).name -notcontains 'Conda'){
+            $Env:CONDA_EXE = $minicondapath, 'Scripts\conda.exe' -join '\'
+            $Env:_CE_M = ""
+            $Env:_CE_CONDA = ""
+            $Env:_CONDA_ROOT = $minicondapath
+            $Env:_CONDA_EXE =  $minicondapath, 'Scripts\conda.exe' -join '\'
+            $CondaModuleArgs = @{ChangePs1 = $True}
+            $mname = "$Env:_CONDA_ROOT\shell\condabin\Conda.psm1"
+            Import-Module $mname -Global
+            #
+        } 
+    }
+    [void]testcondainstall($minicondapath){
+        #
+        if (!(test-path $minicondapath )){
+            $this.softwareinstall('Miniconda3', $minicondapath)
+        }
+        #
         if (!(test-path $minicondapath )){
             Throw "Miniconda must be installed for this code version " + 
                 $minicondapath
         }
         #
-        try{
-            conda activate
-            conda deactivate
-        }catch{
-            #
-            $myerror = $_.Exception.Message
-            if($myerror -match "The term 'conda' is not"){
-                    #
-                    $myenv = ($env:PATH -split ';')
-                    #
-                    # if conda is on the path use that installation 
-                    #
-                    if ($myenv -match 'Miniconda3'){
-                        $condainstalllocation = ($myenv -match 'Miniconda3')[0]
-                        $condascripts = $condainstalllocation + "\Scripts\conda.exe"
-                    } else {
-                        #
-                        # if conda is not already on the path attempt to 
-                        # check if it is installed on the parent system and
-                        # use that installation
-                        #
-                        $str = (";C:\ProgramData\Miniconda3;" +
-                               "C:\ProgramData\Miniconda3\Library\mingw-w64\bin;" +
-                               "C:\ProgramData\Miniconda3\Library\usr\bin;" +
-                               "C:\ProgramData\Miniconda3\Library\bin;" +
-                               "C:\ProgramData\Miniconda3\Scripts;"+
-                               "C:\ProgramData\Miniconda3\bin;").replace('C:', $drive)
-                        #
-                        $str2 = ($str -split ';').trim() -ne ''
-                        $str2 = $str2[0]
-                        if (!(test-path $str2)){
-                            Throw ("Conda install not found at " + $str2 + 
-                                ". Check that conda is installed on the C drive of the parent system " +
-                                " or add conda to the system path of each worker system.")
-                        }
-                        #
-                        $env:PATH += $str
-                        $condascripts = ("C:\ProgramData\Miniconda3\Scripts\conda.exe").replace('C:', $drive)
-                    }
-                    #
-                    (& $condascripts "shell.powershell" "hook") | Out-String | Invoke-Expression
-                    #
-                } else { Throw $myerror }
-        }
-        <#
-        try{
-            conda activate
-            conda deactivate
-        } catch {
-            Throw "The term conda is not a valid command. " + 
-                "Check that conda is installed on the C drive of the system. " +
-                $condascripts + "-env:PATH:" + $env:PATH + " " + 
-                $_.ExceptionMessage
-        }
-        #>
     }
     <# ------------------------------------------
     CheckMikTex
@@ -339,25 +377,38 @@
             Write-Host "WARNING: matlab command does not exist on the current system! v0.0.1 software not supported w/o matlab."
         }        
     }
+    #
+    [void]checkNET(){
+        if (!(Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Release -ge 461808){
+            Throw 'Please install .NET framework 4.7.2 or greater to run code'
+        }
+    }
+    #
+    [void]checksoftware(){
+        $this.checkNET()
+    }
      <# -----------------------------------------
      CheckpyEnvir
      Check if py\<packagename>workflow conda environment
      exists. If it does not create it and install
      the astropath package from the current working.
-     If it does exist check for updates.
+     If it does exist check for updates. Added 
+     a switch that assumes that the conda environment
+     is active. Should check the conda environment
+     higher up in the code. 
      ------------------------------------------
      Usage: $this.CheckpyEnvir()
     ----------------------------------------- #>        
     [switch]CheckpyEnvir(){
         #
         $this.checkconda()
-        try {
-            conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-            conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-            return $true
-        } catch {
-            return $false
-        }
+            try {
+                conda activate $this.pyenv() | Out-Null
+                conda deactivate | Out-Null
+                return $true
+            } catch {
+                return $false
+            }
         #
     }
     #
@@ -371,15 +422,23 @@
         $this.checkconda()
         $this.createdirs($this.pyinstalllocation())
         conda create -y -p $this.pyenv() python=3.8 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR CREATED `r`n"))
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+            " CONDA ENVIR CREATED; $time `r`n"))
         conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+            " CONDA ENVIR ACTIVATED; $time  `r`n"))
         conda install -y -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git `
               2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR INSTALLS COMPLETE  `r`n"))
-        pip -q install $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
-        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
-        conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+            " CONDA ENVIR INSTALLS COMPLETE; $time  `r`n"))
+        pip install $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
+        $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+            " PIP INSTALLS COMPLETE; $time `r`n"))
+        conda deactivate 2>&1 >> $this.pyinstalllog()
     }
     <# -----------------------------------------
      upgradepyenvir
@@ -391,10 +450,14 @@
         try{
             $this.checkconda()
             conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
-            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " CONDA ENVIR ACTIVATED  `r`n"))
-            pip -q install -U $this.pypackagepath()  2>&1 >> $this.pyinstalllog()
-            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + " PIP INSTALLS COMPLETE `r`n"))
-            conda deactivate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+            $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+                " CONDA ENVIR ACTIVATED; $time  `r`n"))
+            pip install -U $this.pypackagepath() 2>&1 >> $this.pyinstalllog()
+            $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
+                " PIP INSTALLS COMPLETE; $time `r`n"))
+            conda deactivate 2>&1 >> $this.pyinstalllog()
         } catch {
             $this.createpyenvir()
         }
@@ -413,4 +476,61 @@
         Write-Host -NoNewline $($writecurrent)
         #
     }
+    #
+    [void]getmodulenames(){
+        #
+        $project_dat = $this.ImportConfigInfo($this.mpath)
+        $this.modules = $project_dat[0].psobject.Properties.Name `
+          -notmatch ('version', 'Delete','Dname','Cohorts','Space_TB','Project' -join '|')
+        #
+    }
+    #
+    [PSCustomObject]getmodulestatus($project){
+        #
+        $project_dat = $this.ImportConfigInfo($this.mpath)
+        $project_dat = $project_dat | 
+                Where-Object {$project -contains $_.Project}
+        $this.modules = ($project_dat | Get-Member -MemberType NoteProperty).Name `
+          -notmatch ('version', 'Delete', 'Dname', 'Cohorts', 'Space_TB', 'Project' -join '|')
+        $modulestatus = $project_dat | Select-Object -Property $this.modules 
+        return $modulestatus
+        #
+    }
+    #
+    [void]softwareinstall($name){
+        $this.createdirs($this.pyinstalllocation())
+        $this.softwaredownload($name)
+        $this.softwareexe($name)
+        $this.removefile($this.softwarelinkpath($name))
+    }
+    #
+    [void]softwareinstall($name, $path){
+        Write-Verbose ('INSTALLING:' + $name)
+        $this.createdirs($this.pyinstalllocation())
+        $this.softwaredownload($name)
+        $this.softwareexe($name, $path)
+        $this.removefile($this.softwarelinkpath($name))
+    }
+    #
+    [void]softwaredownload($name){
+            $url = $this.softwareurls.($name)
+            curl $url -o $this.softwarelinkpath($name)
+    }
+    #
+    [void]softwareexe($name){
+        Start-Process -Filepath $this.softwarelinkpath($name) `
+            -ArgumentList $this.softwareargs.($name) -Wait -Verb RunAs
+    }
+    #
+    [void]softwareexe($name, $path){
+        $newargs = $this.softwareargs.($name) `
+            -replace [regex]::escape('C:\ProgramData\' + $name ), $path
+        Start-Process -Filepath $this.softwarelinkpath($name) `
+            -ArgumentList $newargs -Wait -Verb RunAs
+    }
+    #
+    [string]softwarelinkpath($name){
+            return ($this.pyinstalllocation() + $name + ".exe")
+    }
+    #
 }

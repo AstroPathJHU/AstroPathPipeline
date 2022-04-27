@@ -27,25 +27,25 @@ if isa(b.Opal,'double')
 end
 %
 if ~isa(b.Opal, 'cell')
-  fprintf(['WARNING: batch ', num2str(i1), 'batch file error: column Opal\n'])
+  fprintf(['WARNING: batch ', num2str(i1), ' batch file error: column Opal\n'])
   err_val = 1;
   return
 end
 %
 if ~iscell(b.Target)
-    fprintf(['WARNING: batch ', num2str(i1), 'batch file error: column Target\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' batch file error: column Target\n'])
     err_val = 2;
     return
 end
 %
 if ~iscell(b.TargetType)
-    fprintf(['WARNING: batch ', num2str(i1), 'batch file error: column TargeType\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' batch file error: column TargeType\n'])
     err_val = 3;
     return
 end
 %
 if ~iscell(b.Compartment)
-    fprintf(['WARNING: batch ', num2str(i1), 'batch file error: column Compartment\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' batch file error: column Compartment\n'])
     err_val = 4;
     return
 end
@@ -100,13 +100,13 @@ if iscell(SS)
 end
 %
 if ~iscell(b.ImageQA)
-    fprintf(['WARNING: batch ', num2str(i1), 'batch file error: column ImageQA\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' batch file error: column ImageQA\n'])
     err_val = 9;
     return
 end
 %
 if ~iscell(b.Colors)
-    fprintf(['WARNING: batch ', num2str(i1), 'batch file error: column Colors\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' batch file error: column Colors\n'])
     err_val = 10;
     return
 end

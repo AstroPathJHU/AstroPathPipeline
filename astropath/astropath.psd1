@@ -44,7 +44,7 @@ Copyright = 'Copyright 2021 AstroPath
 Description = 'Used to launch and maintain the HPFs and Scans modules of the AstroPath Pipeline.'
 
 # Minimum version of the Windows PowerShell engine required by this module
-PowerShellVersion = '3.0'
+PowerShellVersion = '7.0'
 
 # Name of the Windows PowerShell host required by this module
 # PowerShellHostName = 'Windows PowerShell ISE Host'
@@ -57,28 +57,38 @@ PowerShellVersion = '3.0'
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
  ScriptsToProcess = @('shared\classes\copyutils.ps1',
-                      'shared\classes\generalutils.ps1',
-                      'shared\classes\fileutils.ps1',
-                      'shared\classes\aptabletools.ps1',
-                      'shared\classes\sharedtools.ps1',
-		              'shared\classes\sampledef.ps1',
-                      'shared\classes\logging.ps1',
-		              'shared\classes\launchmodule.ps1',
-		              'shared\classes\moduletools.ps1',
-		              'hpfs\vminform\classes\vminformqueue.ps1',
-                      'shared\classes\queue.ps1',
-                      'shared\classes\dispatcher.ps1',
-                      'hpfs\vminform\classes\vminform.ps1',
-                      'hpfs\imagecorrection\classes\imagecorrection.ps1',
-                      'hpfs\flatfield\classes\meanimage.ps1',
-                      'hpfs\flatfield\classes\batchmicomp.ps1',
-                      'hpfs\flatfield\classes\batchflatfield.ps1',
-                      'hpfs\segmaps\classes\segmaps.ps1',
-                      'hpfs\shredxml\classes\shredxml.ps1',
-					  'hpfs\merge\classes\merge.ps1',
-		              'hpfs\warping\classes\warpoctets.ps1'
-
-                      )
+                        'shared\classes\generalutils.ps1',
+                        'shared\classes\fileutils.ps1',
+                        'shared\classes\aptabletools.ps1',
+                        'shared\classes\sharedtools.ps1',
+                        'shared\classes\sampledef.ps1',
+                        'shared\classes\samplefiles.ps1',
+                        'shared\classes\samplereqs.ps1',
+                        'shared\classes\logging.ps1',
+                        'shared\classes\launchmodule.ps1',
+                        'shared\classes\moduletools.ps1',
+                        'shared\classes\modulequeue.ps1',
+                        'hpfs\vminform\classes\vminformqueue.ps1',
+                        'shared\classes\queue.ps1',
+                        'shared\classes\dependencies.ps1',
+                        'shared\classes\sampletracker.ps1',
+                        'shared\classes\dispatchertools.ps1',
+                        'shared\classes\dispatcher.ps1',
+                        'shared\classes\sampledb.ps1',
+                        'shared\classes\astropathwftools.ps1',
+                        'shared\classes\astropathworkflow.ps1',
+                        'hpfs\vminform\classes\vminform.ps1',
+                        'hpfs\imagecorrection\classes\imagecorrection.ps1',
+                        'hpfs\flatfield\classes\meanimage.ps1',
+                        'hpfs\flatfield\classes\batchmicomp.ps1',
+                        'hpfs\flatfield\classes\batchflatfield.ps1',
+                        'hpfs\segmaps\classes\segmaps.ps1',
+                        'hpfs\shredxml\classes\shredxml.ps1',
+                        'hpfs\merge\classes\merge.ps1',
+                        'hpfs\warping\classes\warpoctets.ps1',
+                        'hpfs\warping\classes\batchwarpkeys.ps1',
+                        'hpfs\warping\classes\batchwarpfits.ps1'
+                        )
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
 # NestedModules = @()

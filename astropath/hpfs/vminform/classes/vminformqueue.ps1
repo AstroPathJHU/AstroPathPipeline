@@ -1,199 +1,319 @@
 ﻿<# -------------------------------------------
  vminformqueue
- created by: Benjamin Green - JHU
+ created by: Benjamin Green, Andrew Joqurea - JHU
  Last Edit: 10.13.2020
  --------------------------------------------
  Description
- a special case of the queue functionality
+ a special case of the module queue 
  -------------------------------------------#>
-class vminformqueue : sharedtools {
+class vminformqueue : modulequeue {
     #
-    vminformqueue() {}
+    [string]$informvers = '2.4.8'
+    #
+    vminformqueue() : base ('vminform'){
+        $this.vminformqueueinit()
+        $this.coalescevminformqueues()
+    }
+    vminformqueue($mpath): base ($mpath, 'vminform'){
+        $this.vminformqueueinit()
+        $this.coalescevminformqueues()
+    }
+    vminformqueue($mpath, $project) : base($mpath, 'vminform', $project){
+        $this.vminformqueueinit()
+        $this.coalescevminformqueues($project)
+    }
+    vminformqueueinit(){
+        $this.refobject = 'taskid'
+        $this.localqueue_filename = 'inForm_queue.csv'
+        $this.mainqueueheaders = 'TaskID,slideid,Antibody,Algorithm,ProcessingLocation,StartDate'
+        $this.localqueueheaders = 'TaskID,slideid,Antibody,Algorithm'
+    }
   <# -----------------------------------------
      coalescevminformqueues
      coalesce local and main vminform queues
+     for all projects. Do not force update 
+     the local queues if this option is run.
      ------------------------------------------
      Usage: $this.coalescevminformqueues()
     ----------------------------------------- #>
     [void]coalescevminformqueues(){
-         $projects = $this.getapprojects()
-         $mainqueue = $this.openmainvminformqueue()
-         #
-         $projects | ForEach-Object{
-            $currentprojecttasks = $mainqueue -match ('T' + $_.PadLeft(3,'0'))
-            $localqueuefile = $this.localvminfomqueuelocation($_)
-            $localqueue = $this.OpenCSVFile($localqueuefile)
-            $localqueue = $this.updatelocalvminfomqueue($currentprojecttasks, $localqueue)
-            $mainqueue = $this.updatemainvminfomqueue($project, $mainqueue, $localqueue)
-            $this.writelocalqueue($localqueue, $localqueuefile)
-         }
-         #
-         $this.writemainqueue($mainqueue, $this.mainvminformqueuelocation())
-    }
-    <# -----------------------------------------
-     mainvminfomqueuelocation
-     open main inform queue
-     ------------------------------------------
-     Usage: $this.mainvminfomqueuelocation()
-    ----------------------------------------- #>
-    [string]mainvminfomqueuelocation(){
         #
-        $mainqueuepath = $this.mpath + '\across_project_queues'
-        $mainqueuefile = $mainqueuepath + '\' + $this.module + '-queue.csv'
+        $projects = $this.getapprojects($this.module)
         #
-        return $mainqueuefile
-        #
-    } 
-    <# -----------------------------------------
-     openmainvminfomqueue
-     open main inform queue
-     ------------------------------------------
-     Usage: $this.openmainvminfomqueue()
-    ----------------------------------------- #>
-    [PSCustomObject]openmainvminformqueue(){
-        #
-        $mainqueuefile = $this.mainvminformqueuelocation()
-        $mainqueue = $this.OpenCSVFile($mainqueuefile)
-        $mainqueue = $mainqueue | where-object { $_.taskid.Length -eq 9}
-        $mainqueue | foreach-object {
-            $_ | Add-Member localtaskid $_.taskid.substring(4).trim('0') -PassThru
+        $this.openmainqueue($false)
+        $projects | ForEach-Object{
+            $this.coalescevminformqueues($_, $true)
         }
         #
-        return $mainqueue
+        $this.writemainqueue($this.mainqueuelocation())
         #
-    } 
-    <# -----------------------------------------
-     localvminfomqueuelocation
-     open local inform queue
+    }
+  <# -----------------------------------------
+     coalescevminformqueues
+     coalesce local and main vminform queues
+     for a particular project. Force updates
+     the local queue but do not create a new
+     file watcher. 
      ------------------------------------------
-     Usage: $this.localvminfomqueuelocation()
+     Usage: $this.coalescevminformqueues($project)
     ----------------------------------------- #>
-    [string]localvminfomqueuelocation($project){
+    [void]coalescevminformqueues($project){
         #
-        $cohortinfo = $this.GetProjectCohortInfo($this.mpath, $project)
-        $localqueuepath = $cohortinfo.Dpath + '\' + $cohortinfo.Dname + '\upkeep_and_progress'
-        $localqueuefile = $localqueuepath + '\inForm_queue.csv' 
+        $this.openmainqueue()
+        $this.coalescevminformqueues($project, $false)
+        $this.writemainqueue($this.mainqueuelocation())
         #
-        return $localqueuefile
-        #
-    } 
+    }
     <# -----------------------------------------
-     updatelocalvminfomqueue
+    # if all is false it will force the local queue to update
+    # this is not needed on startup or when the main queue is
+    # the one that has been updated (when coalesce is run w/o args)
+    ----------------------------------------- #>
+    [void]coalescevminformqueues($project, $all){
+        #
+        $this.openmainqueue()
+        #
+        $cproject = $project.ToString()
+        if ($all){
+            $this.getlocalqueue($cproject)
+        } else {
+            $this.getlocalqueue($cproject, $false)
+        }
+        $localtmp = $this.localqueue.($cproject)
+        $this.pairqueues($cproject)
+        #
+        if ($localtmp){
+            $cmp = Compare-Object -ReferenceObject $localtmp.taskid `
+                -DifferenceObject $this.localqueue.($cproject).taskid
+            if ($cmp){
+                $this.writelocalqueue($cproject)
+            }
+         } else {
+            $this.writelocalqueue($cproject)
+        }
+        #
+    }
+    <#------------------------------------------
+    will force update all local and main inform 
+    queues and create file watchers. to run after the
+    sampledb has been built
+    --------------------------------------------#>
+    [void]createwatchersvminformqueues(){
+        #
+        $projects = $this.getapprojects($this.module)
+            #
+        $this.openmainqueue($false)
+        $projects | ForEach-Object{
+            #
+            $this.coalescevminformqueues($_, $false)
+            $this.getlocalqueue($_, $true)
+            #
+        }
+        #
+        $this.writemainqueue($this.mainqueuelocation())
+        $this.openmainqueue($true)
+        #
+    }
+    #
+    [void]pairqueues($cproject){
+        #
+        $currentprojecttasks = $this.filtertasks($cproject)
+        $this.updatelocalvminformqueue($currentprojecttasks, $cproject)
+        $this.updatemainvminformqueue($cproject)
+        #
+    }
+    <# -----------------------------------------
+     updatelocalvminformqueue
      update local vminform queue
      ------------------------------------------
-     Usage: $this.updatelocalvminfomqueue()
+     Usage: $this.updatelocalvminformqueue()
     ----------------------------------------- #>
-    [PSCustomObject]updatelocalvminfomqueue($currentprojecttasks, $localqueue){
+    [void]updatelocalvminformqueue($currentprojecttasks, $project){
         #
-        $currentprojecttasks | foreach-object {
-            $localtaskid = $_.localtaskid
+        if (!$this.localqueue.($project)){
+            $this.localqueue.($project) = @()
+        }
+        #
+        if (!$currentprojecttasks){
+            return
+        }
+        #
+        foreach ($row in $currentprojecttasks){
+            $localtaskid = $row.localtaskid
             #
             # tasks in main not in local
             #
-            if ($localtaskid -notin $localqueue.TaskID) {
-                $NewRow =  $_ |
-                     select -Property Specimen, Antibody, Algorithm |
+            if ($localtaskid -notin $this.localqueue.($project).TaskID) {
+                $NewRow =  $row |
+                     select-object -Property slideid, Antibody, Algorithm |
                      Add-Member TaskID $localtaskid -PassThru
-                $localqueue += $NewRow
+               $this.localqueue.($project) += $NewRow
             }
             #
             # if local row does not match main, move local row to next taskid and 
             # replace old local row with the row in main
             #
-            $localrow = $localqueue | Where-Object -FilterScript {$_.TaskID -eq $row.TaskID}
-            if ($localrow -notmatch ($row | select -Property TaskID, Specimen, Antibody, Algorithm)) {
-                $addedrow = New-Object System.Object
-                $newid = ($localqueue.taskid | measure -maximum).Maximum + 1
-                $NewRow =  $localrow |
-                    select -Property Specimen, Antibody, Algorithm |
-                    Add-Member TaskID $newid -PassThru
-                $localqueue += $NewRow
+            $localrow = $this.localqueue.($project) |
+                Where-Object -FilterScript {$_.TaskID -eq $localtaskid}
+            #
+            while ($localrow.count -gt 1){
+                $localrow[1].TaskID = ($this.localqueue.($project).taskid |
+                    measure-object -maximum).Maximum + 1
+                $localrow = $this.localqueue.($project) |
+                    Where-Object -FilterScript {$_.TaskID -eq $localtaskid}
+            }
+            #
+            if (($localrow |
+                    select-object -Property slideid, Antibody, Algorithm) `
+                -notmatch ($row |
+                    select-object -Property slideid, Antibody, Algorithm)
+            ) {
                 #
-                $localrow.Specimen = $_.Specimen
-                $localrow.Antibody = $_.Antibody
-                $localrow.Algorithm = $_.Algorithm
+                $max = ($this.localqueue.($project).taskid | measure-object -maximum).Maximum
+                $newid = $max + 1
+                $NewRow =  $localrow |
+                select-object -Property slideid, Antibody, Algorithm |
+                    Add-Member TaskID $newid -PassThru
+                $this.localqueue.($project) += $NewRow
+                #
+                $localrow[0].slideid = $row.slideid
+                $localrow[0].Antibody = $row.Antibody
+                $localrow[0].Algorithm = $row.Algorithm
             }
         }
         #
-        return $localqueue
     }
     <# -----------------------------------------
-     updatemainvminfomqueue
+     updatemainvminformqueue
      update main vminform queue
      ------------------------------------------
-     Usage: $this.updatemainvminfomqueue()
+     Usage: $this.updatemainvminformqueue()
     ----------------------------------------- #>
-    [PSCustomObject]updatemainvminfomqueue($project, $mainqueue, $localqueue){
+    [void]updatemainvminformqueue($project){
         #
-           $localqueue | ForEach-Object{
-            if ($_.TaskID -notin $mainqueue.localtaskid -and $_.Algorithm -ne '') {
-                
-                $NewRow = $_ | select -Property TaskID, Specimen, Antibody, Specimen, Algorithm |
-                    Add-Member ProcessingLocation, StartDate '','' -PassThru
-                $NewRow.TaskID = 'T' + $project.PadLeft(3,'0') + ($NewRow.TaskID.ToString()).PadLeft(5,'0')
-                $mainqueue += $NewRow
-            }
+        if (!$this.maincsv){
+            $this.maincsv = @()
         }
         #
-        return $mainqueue
-    }
-    #
-    [void]writelocalqueue($localqueue, $localqueuelocation){
-        $updatedlocal = ($localqueue | ConvertTo-Csv -NoTypeInformation) -join "`n"
-        $this.SetFile($localqueuelocation, $updatedlocal)
-    }
-    #
-    [void]writemainqueue($mainqueue, $mainqueuelocation){
-        $mainqueue = $mainqueue | select -Property TaskID, Specimen, Antibody, Specimen, Algorithm, ProcessingLocation, StartDate
-        $updatedmain = ($mainqueue | ConvertTo-Csv -NoTypeInformation) -join "`n"
-        $this.SetFile($mainqueuelocation, $updatedmain)
-    }
-    #
-    [void]UpdateQueue($currenttask, $currentworker, $tasktomatch){
-        #
-        if ($this.module -ne 'vminform'){
-            return
-        }
-        #
-        $D = Get-Date
-        $currenttask2 = "$currenttask" + ",Processing: " + $currentworker.server + '-' + $currentworker.location + "," + $D
-        $mxtstring = 'Global\' + $this.queue_file.replace('\', '_') + '.LOCK'
-        #
-        # add escape to '\'
-        #
-        $rg = [regex]::escape($tasktomatch) + "$"
-        #
-        $cnt = 0
-        $Max = 120
-        #
-        do{
-           $mxtx = New-Object System.Threading.Mutex($false, $mxtstring)
-            try{
-                $imxtx = $mxtx.WaitOne(60 * 10)
-                if($imxtx){
-                    $Q = get-content -Path $this.queue_file
-                    $Q2 = $Q -replace $rg,$currenttask2
-                    Set-Content -Path $this.queue_file -Value $Q2
-                    $mxtx.releasemutex()
-                    break
-                } else{
-                    $cnt = $cnt + 1
-                    Start-Sleep -s 5
+        $this.localqueue.($project) | ForEach-Object{
+            #
+            if ($_.Algorithm.Trim() -ne ''){
+                #
+                $maintaskid = 'T', $project.PadLeft(3,'0'),
+                    ($_.TaskID.ToString()).PadLeft(5,'0') -join ''
+                #
+                if ($maintaskid -notin $this.maincsv.taskid) {
+                    $NewRow = $_ | 
+                        select-object -Property TaskID, slideid, Antibody, Algorithm |
+                        Add-Member -NotePropertyMembers @{
+                            ProcessingLocation = ''
+                            StartDate = ''
+                            localtaskid = $_.TaskID
+                        } -PassThru
+                    $NewRow.TaskID = $maintaskid
+                    $this.maincsv += $NewRow
                 }
-            }catch{
-                $cnt = $cnt + 1
-                Start-Sleep -s 5
-                Continue
             }
-        } while($cnt -lt $Max)
-        #
-        # if the script could not access the queue file after 10 mins of trying every 2 secs
-        # there is an issue and exit the script
-        #
-        if ($cnt -ge $Max){
-            $ErrorMessage = "Could not access "+$this.module+"-queue.csv"
-            Throw $ErrorMessage 
         }
         #
     }
+    <# -----------------------------------------
+     checkfornewtask
+     checks if the supplied project, slideid, 
+     and antibody present a new task for the 
+     queue. If they do the local queue is updated.
+     for a new row.
+     ------------------------------------------
+     Usage: $this.checkfornewtask()
+    ----------------------------------------- #>
+    [switch]checkfornewtask($project, $slideid, $antibody){
+        #
+        $this.getlocalqueue($project, $false)
+        #
+        $task = $this.localqueue.($project) |    
+            Where-Object {
+                $_.slideid -match $slideid -and 
+                $_.Antibody -match $antibody    
+            }
+        #
+        if (!$task){
+            $this.newlocalrow($project, $slideid, $antibody)
+            $this.writelocalqueue($project)
+            return $true
+        } 
+        #
+        return $false
+        #
+    }
+    <# -----------------------------------------
+     checkforreadytask
+     checks if the supplied project, slideid, 
+     and antibody present a task in the main
+     queue that is ready to be run
+     ------------------------------------------
+     Usage: $this.checkforreadytask()
+    ----------------------------------------- #>
+    [switch]checkforreadytask($project, $slideid, $antibody){
+        #
+        $task = $this.maincsv |    
+            Where-Object {$_.slideid -match $slideid -and 
+                $_.Antibody -match $antibody -and 
+                $_.Algorithm -ne '' -and
+                $_.ProcessingLocation -eq ''
+            
+            }
+        #
+        if ($task){
+            return $true
+        } 
+        #
+        return $false
+        #
+    }
+    <# -----------------------------------------
+     checkforidletask
+     checks if the supplied project, slideid, 
+     and antibody present a task in the main
+     queue that is ready to be run
+     ------------------------------------------
+     Usage: $this.checkforreadytask()
+    ----------------------------------------- #>
+    [switch]checkforidletask($project, $slideid, $antibody){
+        #
+        $this.getlocalqueue($project, $false)
+        #
+        $task = $this.localqueue.($project) |    
+            Where-Object {$_.slideid -match $slideid -and 
+                $_.Antibody -match $antibody -and 
+                $_.Algorithm -eq '' -and
+                $_.ProcessingLocation -eq ''
+            
+            }
+        #
+        if ($task){
+            return $true
+        } 
+        #
+        return $false
+        #
+    }
+    #
+    [void]newlocalrow($project, $slideid, $antibody){
+        #
+        if (!$this.localqueue.($project)){
+            $this.localqueue.($project) = @()
+        }
+        #
+        $newid = ($this.localqueue.($project).taskid | measure-object -maximum).Maximum + 1
+        $NewRow =  [PSCustomObject]@{
+            TaskID = $newid
+            slideid = $slideid
+            Antibody = $antibody
+            Algorithm = ''
+        }
+        # 
+        $this.localqueue.($project) += $NewRow
+        #
+    }
+    #
 }

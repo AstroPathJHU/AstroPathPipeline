@@ -26,17 +26,26 @@ pipeline {
           additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'"'
         }
       }
-
-      stages {
-        stage('ps module install') {
-          steps {
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
-          }
-        }
-
+      
+      stages{
+        /*
         stage('pip install') {
           steps {
             sh 'pip install .[all]'
+          }
+        }
+        */
+        stage('ps module install') {
+          steps {
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 	
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1' 	
           }
         }
 
@@ -55,14 +64,13 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
               }
             }
-
-/*
             stage('workflow') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
+                //sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
+                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsqueue.ps1'
+                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsworkflow.ps1' 	 	
               }
             }
-*/
             stage('prepdb') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
@@ -84,7 +92,7 @@ pipeline {
                   }
                 }
               }
-            }
+            }	
             stage('zoom') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
@@ -118,6 +126,12 @@ pipeline {
               }
             }
 
+            stage('segmaps') {
+              steps {
+              sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
+              }
+            }
+
             stage('geom') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeom'
@@ -141,7 +155,7 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcsvscan'
               }
             }
-
+            
             stage('warping') {
               stages {
                 stage('test warping') {
@@ -154,9 +168,16 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
                   }
                 }
+                stage('test ps warping workflow'){
+                  steps{
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpkeys.ps1'
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpfits.ps1'
+                  }
+                }
               }
             }
-
+           
             stage('meanimage') {
               stages {
                 stage('test meanimage') {
@@ -168,6 +189,11 @@ pipeline {
                   steps {
                     sh 'cd documents/flatfield; pdflatex flatfield_documentation.tex; bibtex flatfield_documentation; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
                     sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
+                  }
+                }
+                stage('test meanimage ps workflow') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'	
                   }
                 }
               }
@@ -199,7 +225,7 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
               }
             }
-
+		
             stage('segmentation') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testsegmentation'
@@ -235,9 +261,10 @@ pipeline {
           archiveArtifacts artifacts: 'documents/annowarp/annowarp.pdf', fingerprint: true
           archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
           archiveArtifacts artifacts: 'test/test_for_jenkins/**', fingerprint: true, allowEmptyArchive: true
-        }
+        }	
       }
     }
+
     stage('test without optional dependencies') {
       agent {
         dockerfile {

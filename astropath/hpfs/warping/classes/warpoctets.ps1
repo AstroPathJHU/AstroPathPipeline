@@ -18,7 +18,9 @@ Usage: $a = [warpoctets]::new($task, $sample)
 #>
 Class warpoctets : moduletools {
     #
-    warpoctets([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    [string]$pytype = 'sample'
+    #
+    warpoctets([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
         $this.flevel = [FileDownloads]::IM3
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
@@ -29,6 +31,7 @@ Class warpoctets : moduletools {
      Usage: $this.RunMeanImage()
     ----------------------------------------- #>
     [void]RunWarpOctets(){
+        $this.sample.CreateNewDirs($this.sample.warpoctetsfolder())
         $this.DownloadFiles()
         $this.ShredDat()
         $this.GetWarpOctets()
@@ -43,17 +46,42 @@ Class warpoctets : moduletools {
     ----------------------------------------- #>
     [void]GetWarpOctets(){
         $this.sample.info("started warp octets")
-        $taskname = 'warpoctets'
+        $this.getmodulename()
+        $taskname = $this.pythonmodulename
+        #
         $dpath = $this.sample.basepath
         $rpath = $this.processvars[1]
-        $this.pythonmodulename = 'warpingcohort'
+        $pythontask = $this.('getpythontask' + $this.pytype)($dpath, $rpath)
+        #
+        $this.runpythontask($taskname, $pythontask)
+        $this.sample.info("finished warp octets")
+    }
+    #
+    [string]getpythontasksample($dpath, $rpath){
+        $globalargs = $this.buildpyopts()
+        $pythontask = ($this.pythonmodulename,
+            $dpath,
+            $this.sample.slideid,
+            '--shardedim3root',  $rpath, 
+            '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
+            $this.gpuopt(), '--no-log', $globalargs
+         ) -join ' '
+        #
+        return $pythontask
+    }
+    #
+    [string]getpythontaskcohort($dpath, $rpath){
         $pythontask = $this.pythonmodulename, $dpath, `
          '--shardedim3root',  $rpath, `
          '--sampleregex',  $this.sample.slideid, `
-         '--flatfield-file',  $this.pybatchflatfieldfullpath(), `
-         '--octets-only --noGPU --allow-local-edits --skip-start-finish' -join ' '
-        $this.runpythontask($taskname, $pythontask)
-        $this.sample.info("finished warp octets")
+         '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), `
+         '--octets-only', $this.gpuopt(), $this.buildpyopts() -join ' '
+        #
+        return $pythontask
+    }
+    #
+    [void]getmodulename(){
+        $this.pythonmodulename = ('warping', $this.pytype -join '')
     }
     <# -----------------------------------------
      cleanup

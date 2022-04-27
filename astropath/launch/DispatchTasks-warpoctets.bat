@@ -2,13 +2,12 @@
 ::
 SETLOCAL
 ::
-SET code=%~dp0..
-:: for /f "delims=" %%a in ('dir  /b %code%\astropath*') do set "name=%%a"
-:: SET code=%code%\%name%
+SET code=%~dp0
+SET code1=%code:~0,-8%
 ::
 SET module=warpoctets
 ::
-PowerShell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command^
- "& {Start-Process PowerShell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -noexit -command ""&{Import-Module %code%; DispatchTasks %module%}""' -Verb RunAs}"
+pwsh -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command^
+ "& {Start-Process pwsh -ArgumentList '-NoProfile -ExecutionPolicy Bypass -noexit -command ""&{Import-Module %code1%; DispatchTasks %module%}""' -Verb RunAs}"
 ::
 ENDLOCAL&
