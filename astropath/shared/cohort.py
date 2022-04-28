@@ -1,4 +1,8 @@
 import abc, contextlib, datetime, job_lock, logging, pathlib, re
+try:
+  contextlib.nullcontext
+except AttributeError:
+  import contextlib2 as contextlib
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities import units
 from ..utilities.tableio import readtable, writetable
@@ -774,6 +778,8 @@ class WorkflowCohort(Cohort):
     return kwargs
 
   def processsample(self, sample, *, filters, print_errors, ignore_errors, **kwargs):
+    passedfilters = all(filters) and isinstance(sample, WorkflowDependency)
+
     if print_errors:
       if ignore_errors is None: ignore_errors = []
 
@@ -795,9 +801,9 @@ class WorkflowCohort(Cohort):
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       logger.info(f"{sample.SlideID} " + str(status).replace("\n", " "))
     else:
-      if isinstance(sample, WorkflowDependency):
-        with sample.joblock() as lock:
-          if not lock: return
+      with sample.joblock() if passedfilters else contextlib.nullcontext(True) as lock:
+        if not lock: return
+        if passedfilters:
           try:
             missinginputs = [file for file in sample.inputfiles(**kwargs) if not file.exists()]
             if missinginputs:
@@ -807,9 +813,10 @@ class WorkflowCohort(Cohort):
               raise
             return
 
-          with self.getlogger(sample):
-            result = super().processsample(sample, filters=filters, **kwargs)
+        with self.getlogger(sample) if passedfilters else contextlib.nullcontext():
+          result = super().processsample(sample, filters=filters, **kwargs)
 
+          if passedfilters:
             status = sample.runstatus(**kwargs)
             #we don't want to do anything if there's an error, because that
             #was already logged so no need to log it again and confuse the issue.
@@ -817,7 +824,7 @@ class WorkflowCohort(Cohort):
               status.started = status.ended = True #to get the missing files in the __str__
               raise RuntimeError(f"{sample.logger.SlideID} {status}")
 
-            return result
+          return result
 
   def run(self, *, print_errors=False, printnotrunning=None, **kwargs):
     if printnotrunning is None and print_errors:
