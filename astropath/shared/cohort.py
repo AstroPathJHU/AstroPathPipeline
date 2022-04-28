@@ -248,25 +248,39 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
         with self.handlesampleiniterror(samp, **kwargs):
           raise
 
-  def sampleswithfilters(self, **kwargs):
-    for samp, filters in self.filteredsampledefswithfilters(**kwargs):
-      try:
-        sample = self.initiatesample(samp)
-        if sample.logmodule() != self.logmodule():
-          raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
-      except Exception:
-        #enter the logger here to log exceptions in __init__ of the sample
-        #but not KeyboardInterrupt
-        with self.handlesampleiniterror(samp, **kwargs):
-          raise
-      else:
+  def samplesandsampledefswithfilters(self, **kwargs):
+    for samp, filters in self.sampledefswithfilters(**kwargs):
+      if all(filters):
         try:
-          yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
+          sample = self.initiatesample(samp)
+          if sample.logmodule() != self.logmodule():
+            raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
         except Exception:
           #enter the logger here to log exceptions in __init__ of the sample
           #but not KeyboardInterrupt
-          with self.handlesamplefiltererror(samp, **kwargs):
+          with self.handlesampleiniterror(samp, **kwargs):
             raise
+        else:
+          try:
+            yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
+          except Exception:
+            #enter the logger here to log exceptions in __init__ of the sample
+            #but not KeyboardInterrupt
+            with self.handlesamplefiltererror(samp, **kwargs):
+              raise
+      else:
+        yield samp, filters
+
+  def sampleswithfilters(self, *, printnotrunning=False, **kwargs):
+    for samp, filters in self.samplesandsampledefswithfilters(printnotrunning=printnotrunning, **kwargs):
+      if isinstance(samp, WorkflowDependency):
+        yield samp, filters
+      elif printnotrunning:
+        logger = self.printlogger(samp)
+        logger.info(f"Not running {samp.SlideID}:")
+        for filter in filters:
+          if not filter:
+            logger.info(filter.message)
 
   def handlesampledeffiltererror(self, samp, **kwargs):
     return self.getlogger(samp)
@@ -318,27 +332,27 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
       **self.rootkwargs,
     }
 
-  def run(self, *, printnotrunning=True, cleanup=False, **kwargs):
+  def run(self, *, cleanup=False, printnotrunning=True, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     result = []
-    for sample, filters in self.sampleswithfilters(printnotrunning=printnotrunning, **kwargs):
-      if all(filters):
-        result.append(self.processsample(sample, cleanup=cleanup or any(_.cleanup for _ in filters), **kwargs))
-      elif printnotrunning:
-        logger = self.printlogger(sample)
-        logger.info(f"Not running {sample.SlideID}:")
-        for filter in filters:
-          if not filter:
-            logger.info(filter.message)
+    for sample, filters in self.samplesandsampledefswithfilters(printnotrunning=printnotrunning, **kwargs):
+      result.append(self.processsample(sample, filters=filters, cleanup=cleanup, printnotrunning=printnotrunning, **kwargs))
     return result
 
-  def processsample(self, sample, *, cleanup=False, **kwargs):
-    with sample:
-      if cleanup:
-        sample.cleanup()
-      return self.runsample(sample, **kwargs)
+  def processsample(self, sample, *, filters, printnotrunning=True, cleanup=False, **kwargs):
+    if all(filters):
+      with sample:
+        if cleanup or any(_.cleanup for _ in filters):
+          sample.cleanup()
+        return self.runsample(sample, **kwargs)
+    elif printnotrunning:
+      logger = self.printlogger(sample)
+      logger.info(f"Not running {sample.SlideID}:")
+      for filter in filters:
+        if not filter:
+          logger.info(filter.message)
 
   def dryrun(self, *, cleanup=False, **kwargs):
     """
@@ -759,37 +773,51 @@ class WorkflowCohort(Cohort):
     }
     return kwargs
 
-  def processsample(self, sample, *, print_errors, ignore_errors, **kwargs):
+  def processsample(self, sample, *, filters, print_errors, ignore_errors, **kwargs):
     if print_errors:
       if ignore_errors is None: ignore_errors = []
+
+      logger = self.printlogger(sample)
+
+      message = None
+      for filter in filters:
+        if not filter:
+          if filter.message == "sample already ran": return
+          if filter.message == "Sample is not good": return
+          message = f"{sample.SlideID} {filter.message}"
+          break
+      if message is not None:
+        logger.info(message)
+        return
+
       status = sample.runstatus(**kwargs)
       if status: return
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
-      logger = self.printlogger(sample)
       logger.info(f"{sample.SlideID} " + str(status).replace("\n", " "))
     else:
-      with sample.joblock() as lock:
-        if not lock: return
-        try:
-          missinginputs = [file for file in sample.inputfiles(**kwargs) if not file.exists()]
-          if missinginputs:
-            raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
-        except Exception: #don't log KeyboardInterrupt here
-          with sample:
-            raise
-          return
+      if isinstance(sample, WorkflowDependency):
+        with sample.joblock() as lock:
+          if not lock: return
+          try:
+            missinginputs = [file for file in sample.inputfiles(**kwargs) if not file.exists()]
+            if missinginputs:
+              raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
+          except Exception: #don't log KeyboardInterrupt here
+            with sample:
+              raise
+            return
 
-        with self.getlogger(sample):
-          result = super().processsample(sample, **kwargs)
+          with self.getlogger(sample):
+            result = super().processsample(sample, filters=filters, **kwargs)
 
-          status = sample.runstatus(**kwargs)
-          #we don't want to do anything if there's an error, because that
-          #was already logged so no need to log it again and confuse the issue.
-          if status.missingfiles and status.error is None:
-            status.started = status.ended = True #to get the missing files in the __str__
-            raise RuntimeError(f"{sample.logger.SlideID} {status}")
+            status = sample.runstatus(**kwargs)
+            #we don't want to do anything if there's an error, because that
+            #was already logged so no need to log it again and confuse the issue.
+            if status.missingfiles and status.error is None:
+              status.started = status.ended = True #to get the missing files in the __str__
+              raise RuntimeError(f"{sample.logger.SlideID} {status}")
 
-          return result
+            return result
 
   def run(self, *, print_errors=False, printnotrunning=None, **kwargs):
     if printnotrunning is None and print_errors:
