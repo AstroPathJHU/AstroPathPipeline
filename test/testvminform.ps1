@@ -49,7 +49,8 @@ Class testvminform : testtools {
         $this.testlogbatcherror($inp)#>
 
         #$this.testinformoutputfiles($inp)
-        $this.testcheckforknownerrors($inp)
+        #$this.testcheckforknownerrors($inp)
+        $this.testfindfixableandmerge($inp)
         #throw 'Tests Complete'
         Write-Host '.'
     }
@@ -606,6 +607,63 @@ Class testvminform : testtools {
         }
         #
         Write-Host 'test check for known batch errors finished'
+    }
+    <# --------------------------------------------
+    testfindfixableandmerge
+    create lists for files to skip and rerun to 
+    test check for fixable files and merge output
+    directories. run inform twice to ensure error 
+    loop is working correctly
+    --------------------------------------------#>
+    [void]testfindfixableandmerge($inp) {
+        #
+        if ($this.jenkins) {
+            return
+        }
+        #
+        Write-Host '.'
+        Write-Host 'test find fixable files and merge loop started'
+        #
+        $inp.err = 0
+        $this.runinformbatcherror($inp)
+        $rerunerror = '2022-04-08 21:43:49,192 ERROR - Phenotyping problem processing image "M21_1_[45093,13253]": A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond'
+        $inp.sample.PopFile($inp.informbatchlog, $rerunerror)
+        $batchlog = $inp.sample.GetContent($inp.informbatchlog)
+        $inp.CheckInFormOutputFiles()
+        $inp.CheckForKnownErrors($batchlog)
+        #
+        $inp.CheckForFixableFiles()
+        if ($inp.err -ne 1) {
+            throw 'error number != 1'
+        }
+        $localflatw = $inp.outpath + '\' + $inp.sample.slideid + '\im3\flatw'
+        if ((Split-Path ($inp.sample.listfiles($localflatw, '*')) -Leaf) -ne 'M21_1_[45093,13253].im3') {
+            throw 'error in redownloading flatw file'
+        }
+        Write-Host '    first inform run test complete'
+        #
+        $this.reruninform($inp)
+        if ($inp.err -ne -1) {
+            throw 'error in completing inform successfully'
+        }
+        $inp.sample.info("inForm Batch Process Finished Successfully")
+        $inp.MergeOutputDirectories()
+        $inp.informoutpath = $this.outpath + "\" + $this.abx + '_0'
+        #
+        Write-Host 'test find fixable files and merge loop finished'
+    }
+    <# --------------------------------------------
+    reruninform
+    helperfunction to rerun inform without 
+    creating new output directory during setup
+    --------------------------------------------#>
+    [void]reruninform($inp) {
+        $inp.CreateOutputDir()
+        $inp.CreateImageList()
+        $inp.CheckExportOptions()
+        $inp.StartInForm()
+        $inp.WatchBatchInForm()
+        $inp.CheckErrors()
     }
     #
 }

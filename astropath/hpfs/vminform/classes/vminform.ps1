@@ -102,7 +102,6 @@ Class informinput : moduletools {
         $this.sample.createnewdirs($this.outpath)
         $this.DownloadFiles()
         while(($this.err -le 5) -AND ($this.err -ge 0)){
-            #
             $this.CreateOutputDir()
             $this.CreateImageList()
             $this.CheckExportOptions()
@@ -169,11 +168,9 @@ Class informinput : moduletools {
         #
         $this.sample.info("Compile image list")
         $p = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw\*'
-        if ($this.err -eq 0) {
-            $this.image_list = Get-ChildItem -Path $p -include *.im3 |
-                ForEach-Object {$_.FullName} |
-                foreach-object {$_+"`r`n"}
-        }
+        $this.image_list = Get-ChildItem -Path $p -include *.im3 |
+            ForEach-Object {$_.FullName} |
+            foreach-object {$_+"`r`n"}
         $this.sample.setfile($this.image_list_file, $this.image_list)
         #
     }
@@ -191,6 +188,17 @@ Class informinput : moduletools {
         $this.GetSegmentationData()
         #
         $procedure = $this.sample.GetContent($this.algpath)
+        $segmentationtableline = $procedure | Where-Object {$_ -match '<SegmentationTable>'}
+        if (!$segmentationtableline) {
+            throw 'error in reading <SegmentationTable> line in procedure'
+        }
+        if ($segmentationtableline -ne '<SegmentationTable>true</SegmentationTable>') {
+            $this.sample.info("Setting SegmentationTable setting to True")
+            $newtableline = '<SegmentationTable>true</SegmentationTable>'
+            (Get-Content $this.algpath).replace($segmentationtableline, $newtableline) | 
+                Set-Content $this.algpath
+        }
+        #
         $exportline = $procedure | Where-Object {$_ -match '<exporttypes>'}
         if (!$exportline) {
             throw 'error in reading <exporttypes> line in procedure'
@@ -485,17 +493,24 @@ Class informinput : moduletools {
      Usage: $this.CheckForFixableFiles()
     ----------------------------------------- #>
     [void]CheckForFixableFiles(){
+        #
         $corrupted = $this.corruptedfiles | Select-Object -Unique
         $skipped = $this.skippedfiles | Select-Object -Unique
         $filestorerun = $corrupted | Where-Object {$skipped -notcontains $_}
         #
         if ($filestorerun.length -gt 0) {
+            $flatwfolder = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw'
+            $this.sample.createnewdirs($flatwfolder)
             $filestorerun | ForEach-Object {
                 $source = $this.sample.flatwim3folder() + '\' + (Split-Path $_ -Leaf)
                 $this.sample.copy($source, (Split-Path $_))
             }
             $this.err++
         }
+        else {
+            $this.err = -1
+        }
+        #
     }
     <# -----------------------------------------
      MergeOutputDirectories
