@@ -192,9 +192,9 @@ Class informinput : moduletools {
         if (!$segmentationtableline) {
             throw 'error in reading <SegmentationTable> line in procedure'
         }
-        if ($segmentationtableline -ne '<SegmentationTable>true</SegmentationTable>') {
+        if ($segmentationtableline -ne '     <SegmentationTable>true</SegmentationTable>') {
             $this.sample.info("Setting SegmentationTable setting to True")
-            $newtableline = '<SegmentationTable>true</SegmentationTable>'
+            $newtableline = '     <SegmentationTable>true</SegmentationTable>'
             (Get-Content $this.algpath).replace($segmentationtableline, $newtableline) | 
                 Set-Content $this.algpath
         }

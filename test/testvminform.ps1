@@ -410,7 +410,6 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'run on inform with batch error started'
         #
-        #Write-Host '    waiting for expected inform to finish'
         Start-Sleep 20
         #
         $this.setupbatcherror($inp)
