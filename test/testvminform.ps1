@@ -47,7 +47,9 @@ Class testvminform : testtools {
         $this.testlogexpected($inp)
         $this.runinformbatcherror($inp)
         $this.testlogbatcherror($inp)#>
-        $this.testinformoutputfiles($inp)
+
+        #$this.testinformoutputfiles($inp)
+        $this.testcheckforknownerrors($inp)
         #throw 'Tests Complete'
         Write-Host '.'
     }
@@ -407,7 +409,7 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'run on inform with batch error started'
         #
-        Write-Host '    waiting for expected inform to finish'
+        #Write-Host '    waiting for expected inform to finish'
         Start-Sleep 20
         #
         $this.setupbatcherror($inp)
@@ -560,6 +562,50 @@ Class testvminform : testtools {
         #$inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         #
         Write-Host 'test check inform output files finished'
+    }
+    <# --------------------------------------------
+    testcheckforknownerrors
+    test that batch log errors are correctly
+    identified and files are sorted to corrupted
+    or skipped files
+    --------------------------------------------#>
+    [void]testcheckforknownerrors($inp) {
+        #
+        if ($this.jenkins) {
+            return
+        }
+        #
+        Write-Host '.'
+        Write-Host 'test check for known batch errors started'
+        #
+        $this.runinformbatcherror($inp)
+        $errorlines = (
+            '2022-04-09 02:06:26,645 ERROR - Phenotyping problem processing image "M21_1_[41633,16763]": Please segment cells.',
+            '2022-04-09 02:06:26,645 ERROR - C:\Users\Public\BatchProcessing\M21_1\im3\flatw\M21_1_[41633,16763].im3:',
+            '     Sequence contains no elements',
+            '2022-04-09 02:06:26,645 ERROR - Phenotyping problem processing image "M21_1_[47521,11163]": Please segment cells.',
+            '2022-04-09 02:06:26,645 ERROR - C:\Users\Public\BatchProcessing\M21_1\im3\flatw\M21_1_[47521,11163].im3:',
+            '     Sequence contains no elements',
+            '2022-04-08 21:43:49,192 ERROR - Phenotyping problem processing image "M21_1_[40866,11715]": A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond'
+        ) -join "`n"
+        $inp.sample.PopFile($inp.informbatchlog, $errorlines)
+        $batchlog = $inp.sample.GetContent($inp.informbatchlog)
+        $inp.CheckForKnownErrors($batchlog)
+        #
+        if ($inp.corruptedfiles.length -ne 1) {
+            throw 'check batch error failed - incorrect number of corrupted files'
+        }
+        if ($inp.skippedfiles.length -ne 43) {
+            throw 'check batch error failed - incorrect number of skipped files'
+        }
+        if ($inp.corruptedfiles -notmatch 'M21_1_\[40866,11715\]') {
+            throw 'connection error check failed to add corrupted file'
+        }
+        if (!($inp.skippedfiles -match 'M21_1_\[41633,16763\]' -and $inp.skippedfiles -match 'M21_1_\[47521,11163\]')) {
+            throw 'segment cell error check failed to add skipped files'
+        }
+        #
+        Write-Host 'test check for known batch errors finished'
     }
     #
 }

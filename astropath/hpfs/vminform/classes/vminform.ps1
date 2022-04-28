@@ -46,10 +46,10 @@ Class informinput : moduletools {
     }
     #
     $error_dictionary = @{
-        ConnectionFailed = '*A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond';
-        NoElements = '*Sequence contains no elements';
-        SegmentCells = '*Please segment cells';
-        CorruptIM3 = '*External component has thrown an exception'
+        ConnectionFailed = 'A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond';
+        NoElements = 'Sequence contains no elements';
+        SegmentCells = 'Please segment cells';
+        CorruptIM3 = 'External component has thrown an exception'
     }
     #
     informinput([array]$task, [launchmodule]$sample) : base ([array]$task, [launchmodule]$sample){
@@ -62,7 +62,7 @@ Class informinput : moduletools {
         $this.abpath = $this.sample.phenotypefolder() + '\' + $this.abx
         $this.algpath = $this.sample.basepath +
              '\tmp_inform_data\Project_Development\' + $this.alg
-        $this.informoutpath = $this.outpath + "\" + $this.abx
+        $this.informoutpath = $this.outpath + "\" + $this.abx + '_' +$this.err
         $this.informpath = '"'+"C:\Program Files\Akoya\inForm\" + 
             $task[4].trim() + "\inForm.exe"+'"'
         $this.informbatchlog = $this.informoutpath + "\Batch.log"
@@ -116,7 +116,7 @@ Class informinput : moduletools {
             } elseif ($this.err -eq -1){
                 $this.sample.info("inForm Batch Process Finished Successfully")
                 $this.MergeOutputDirectories()
-                $this.informoutpath = $this.outpath + "\" + $this.abx + '_1'
+                $this.informoutpath = $this.outpath + "\" + $this.abx + '_0'
             }
         }
         #
@@ -138,6 +138,7 @@ Class informinput : moduletools {
         $this.KillinFormProcess()
         $this.sample.info("Create inForm output location")
         $this.informoutpath = $this.outpath + "\" + $this.abx + '_' + $this.err
+        $this.informbatchlog = $this.informoutpath + '\Batch.log'
         $this.sample.createnewdirs($this.informoutpath)
         #
     }
@@ -370,8 +371,8 @@ Class informinput : moduletools {
         }
         #
         $this.CheckInFormOutputFiles()
-        $this.CheckBatchLogErrors($batchlog)
-        $this.GetFixableFiles()
+        $this.CheckForKnownErrors($batchlog)
+        $this.CheckForFixableFiles()
         #
     }
     <# -----------------------------------------
@@ -422,15 +423,15 @@ Class informinput : moduletools {
         #
     }
     <# -----------------------------------------
-     CheckBatchLogErrors
+     CheckForKnownErrors
      check errors given from the inform batch 
-     log and refeerence error dictionary to 
+     log and reference error dictionary to 
      see if image files need to be rerun or 
      skipped depending on the error.
      ------------------------------------------
-     Usage: $this.CheckBatchLogErrors($batchlog)
+     Usage: $this.CheckForKnownErrors($batchlog)
     ----------------------------------------- #>
-    [void]CheckBatchLogErrors($batchlog){
+    [void]CheckForKnownErrors($batchlog){
         $completestring = 'Batch process is completed'
         $errormessage = $batchlog.Where({$_ -match $completestring}, 'SkipUntil')
         $this.sample.warning(($errormessage | Select-Object -skip 1))
@@ -487,11 +488,12 @@ Class informinput : moduletools {
         $corrupted = $this.corruptedfiles | Select-Object -Unique
         $skipped = $this.skippedfiles | Select-Object -Unique
         $filestorerun = $corrupted | Where-Object {$skipped -notcontains $_}
+        #
         if ($filestorerun.length -gt 0) {
-            $this.image_list = $null
-            $this.image_list = Get-ChildItem $filestorerun -include *.im3 |
-                ForEach-Object {$_.FullName} |
-                foreach-object {$_+"`r`n"}
+            $filestorerun | ForEach-Object {
+                $source = $this.sample.flatwim3folder() + '\' + (Split-Path $_ -Leaf)
+                $this.sample.copy($source, (Split-Path $_))
+            }
             $this.err++
         }
     }
@@ -503,12 +505,18 @@ Class informinput : moduletools {
      Usage: $this.MergeOutputDirectories()
     ----------------------------------------- #>
     [void]MergeOutputDirectories(){
-        $finalpath = $this.outpath + "\" + $this.abx
-        $this.sample.CreateNewDirs($finalpath)
-        for ($i=0; $i -le 5; $i++) {
-            $errpath = $this.outpath + "\" + $this.abx + '_' + $i
+        $finalpath = $this.outpath + "\" + $this.abx + '_0'
+        foreach($count in (1..5)) {
+            $errpath = $this.outpath + "\" + $this.abx + '_' + $count
             if (Test-Path $errpath) {
-                robocopy $errpath $finalpath -r:3 -w:3 -np -E -mt:4 /IS | out-null
+                $batchfile = $errpath + '\batch.log'
+                $newbatchfile = 'batch_' + $count + '.log'
+                Rename-Item $batchfile $newbatchfile -ErrorAction Stop
+                $errorfiles = $this.sample.listfiles($errpath, '*')
+                foreach ($file in $errorfiles) {
+                    $this.sample.copy($file, $finalpath)
+                }
+                #robocopy $errpath $finalpath -r:3 -w:3 -np -E -mt:4 /IS | out-null
             }
         }
     }
