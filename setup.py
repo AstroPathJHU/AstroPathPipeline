@@ -73,6 +73,7 @@ setupkwargs = dict(
       "geomcellsampledeepcell=astropath.slides.geomcell.geomcellsample:deepcell",
       "geomcellsampleinform=astropath.slides.geomcell.geomcellsample:inform",
       "geomcellsamplemesmer=astropath.slides.geomcell.geomcellsample:mesmer",
+      "motifcsvscan=astropath.slides.csvscan.motifcsvscan:main",
       "motifdeepzoom=astropath.slides.deepzoom.motifdeepzoom:main",
       "motifgeomcell=astropath.slides.geomcell.motifgeomcell:main",
       "motifprepdb=astropath.slides.prepdb.motifprepdb:main",

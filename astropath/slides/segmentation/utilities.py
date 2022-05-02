@@ -1,5 +1,5 @@
 #imports
-import shutil
+import re, shutil
 import numpy as np, SimpleITK as sitk
 from hashlib import sha512
 from .config import SEG_CONST
@@ -156,3 +156,26 @@ def run_mesmer_segmentation(batch_ims,app,pscale,batch_segmented_file_paths) :
         np.savez_compressed(batch_segmented_file_paths[bi],labeled_img)
     for bi in range(batch_ims.shape[0]) :
         assert batch_segmented_file_paths[bi].is_file()
+
+def initialize_app(appcls, *args, ntries=5, logger=None, **kwargs):
+    try:
+        return appcls(*args, **kwargs)
+    except Exception as e:
+        if ntries <= 1: raise
+        errno = None
+        try:
+            errno = e.errno
+        except AttributeError:
+            match = re.search(r"\[Errno ([0-9-]+)\]", str(e))
+            if match:
+                errno = int(match.group(1))
+        retry = False
+        if errno == -3:  #Temporary failure in name resolution in aws download
+            retry = True
+        if retry:
+            if logger is not None:
+                logger.debug(f"initializing {appcls.__name__} failed")
+                logger.debug(str(e))
+                logger.debug("trying again")
+            return initialize_app(appcls, *args, ntries=ntries-1, **kwargs)
+        raise

@@ -510,11 +510,9 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   @classmethod
   def getworkinprogressfiles(cls, SlideID, *, zoomroot, **otherworkflowkwargs):
     bigfolder = zoomroot/SlideID/"big"
-    wsifolder = zoomroot/SlideID/"wsi"
     return itertools.chain(
       bigfolder.glob("*.png"),
-      wsifolder.glob("*.png"),
-      wsifolder.glob("*.tiff"),
+      cls.getoutputfiles(SlideID=SlideID, zoomroot=zoomroot, **otherworkflowkwargs),
     )
 
   @classmethod

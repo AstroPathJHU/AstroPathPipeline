@@ -203,8 +203,8 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
       result["slideidfilters"].append(SampleFilter(correctsegmentations, None, None))
     return result
 
-  def sampleswithfilters(self, **kwargs):
-    yield from super().sampleswithfilters(**kwargs)
+  def samplesandsampledefswithfilters(self, **kwargs):
+    yield from super().samplesandsampledefswithfilters(**kwargs)
     globalcsv = self.globalcsv()
     filters = [filter(self, globalcsv, **kwargs) for filter in self.samplefilters]
     yield self.globalcsv(), filters
