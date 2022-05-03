@@ -57,13 +57,13 @@ class Const :
                 'vectra_cy3':0.0035,
                 'vectra_texasred':0.0035,
                 'vectra_cy5':0.0035,
-                'polaris_dapi':0.120,
+                'polaris_dapi':0.100,
                 'polaris_opal780':0.0000,
-                'polaris_opal480':0.0700,
-                'polaris_cy5':0.0700,
-                'polaris_fitc':0.1200,
-                'polaris_cy3':0.1000,
-                'polaris_texasred':0.1000,
+                'polaris_opal480':0.0600,
+                'polaris_cy5':0.0600,
+                'polaris_fitc':0.1000,
+                'polaris_cy3':0.0800,
+                'polaris_texasred':0.0800,
             }
     @property
     def FOLD_MAX_MEANS(self) :
@@ -76,13 +76,13 @@ class Const :
                 'vectra_cy3':0.0030,
                 'vectra_texasred':0.0030,
                 'vectra_cy5':0.0030,
-                'polaris_dapi':0.100,
+                'polaris_dapi':0.085,
                 'polaris_opal780':0.000,
-                'polaris_opal480':0.060,
-                'polaris_cy5':0.060,
-                'polaris_fitc':0.100,
-                'polaris_cy3':0.085,
-                'polaris_texasred':0.085,
+                'polaris_opal480':0.050,
+                'polaris_cy5':0.050,
+                'polaris_fitc':0.085,
+                'polaris_cy3':0.07,
+                'polaris_texasred':0.07,
             }
     @property
     def DUST_MIN_PIXELS(self) :
