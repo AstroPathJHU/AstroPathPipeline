@@ -55,15 +55,15 @@ class Const :
         return {'vectra_dapi':0.0035,
                 'vectra_fitc':0.0035,
                 'vectra_cy3':0.0035,
-                'vectra_texas_red':0.0035,
+                'vectra_texasred':0.0035,
                 'vectra_cy5':0.0035,
                 'polaris_dapi':0.120,
-                'polaris_opal_780':0.0000,
-                'polaris_opal_480':0.0700,
+                'polaris_opal780':0.0000,
+                'polaris_opal480':0.0700,
                 'polaris_cy5':0.0700,
                 'polaris_fitc':0.1200,
                 'polaris_cy3':0.1000,
-                'polaris_texas_red':0.1000,
+                'polaris_texasred':0.1000,
             }
     @property
     def FOLD_MAX_MEANS(self) :
@@ -74,15 +74,15 @@ class Const :
         return {'vectra_dapi':0.0030,
                 'vectra_fitc':0.0030,
                 'vectra_cy3':0.0030,
-                'vectra_texas_red':0.0030,
+                'vectra_texasred':0.0030,
                 'vectra_cy5':0.0030,
                 'polaris_dapi':0.100,
-                'polaris_opal_780':0.000,
-                'polaris_opal_480':0.060,
+                'polaris_opal780':0.000,
+                'polaris_opal480':0.060,
                 'polaris_cy5':0.060,
                 'polaris_fitc':0.100,
                 'polaris_cy3':0.085,
-                'polaris_texas_red':0.085,
+                'polaris_texasred':0.085,
             }
     @property
     def DUST_MIN_PIXELS(self) :
@@ -96,7 +96,7 @@ class Const :
         local normalized laplacian variance below which a pixel is flagged as blurry for multiple layer masks 
         """
         return {'vectra_dapi':0.00085,
-                'polaris_dapi':0.01,
+                'polaris_dapi':0.025,
             }
     @property
     def DUST_MAX_MEANS(self) :
@@ -105,7 +105,7 @@ class Const :
         allowed to flag multilayer blur
         """
         return {'vectra_dapi':0.00065,
-                'polaris_dapi':0.0075,
+                'polaris_dapi':0.01875,
             }
     @property
     def BLUR_FLAG_STRING(self) :
@@ -124,15 +124,15 @@ class Const :
         return {'vectra_dapi':100,
                 'vectra_fitc':100,
                 'vectra_cy3':250,
-                'vectra_texas_red':400,
+                'vectra_texasred':400,
                 'vectra_cy5':150,
                 'polaris_dapi':100,
-                'polaris_opal_780':50,
-                'polaris_opal_480':250,
+                'polaris_opal780':50,
+                'polaris_opal480':250,
                 'polaris_cy5':250,
                 'polaris_fitc':150,
                 'polaris_cy3':100,
-                'polaris_texas_red':100,
+                'polaris_texasred':100,
             }
     @property
     def SATURATION_FLAG_STRING(self) :

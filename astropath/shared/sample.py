@@ -590,7 +590,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   @property
   def layer_group_names(self) :
     """
-    The layer group names (i.e. vectra_dapi / polaris_texas_red) for each image layer 
+    The layer group names (i.e. vectra_dapi / polaris_texasred) for each image layer 
     as interpreted from the wavelengths and filter names in the Full.xml file 
     """
     if len(self.wavelengths)!=len(self.filter_names) :
@@ -628,8 +628,18 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       else :
         raise ValueError(f'ERROR: unrecognized broadband filter_name "{fn}"! (wavelength = {wl})')
       filter_groups.append((to_add,wl))
-    layer_group_names = [fg[0] for fg in filter_groups]
-    unique_names = set(layer_group_names)
+    return [fg[0] for fg in filter_groups]
+  
+  @methodtools.lru_cache()
+  @property
+  def layer_group_names_with_targets(self) :
+    """
+    The layer group names with the targets they show for each image layer 
+    as interpreted from the wavelengths and filter names in the Full.xml file 
+    """
+    layer_group_names_with_targets = self.layer_group_names
+    filter_groups = [(lgn,wl) for lgn,wl in zip(layer_group_names_with_targets,self.wavelengths)]
+    unique_names = set(layer_group_names_with_targets)
     for group_name in unique_names :
       targets_contributing=[]
       wls = [fg[1] for fg in filter_groups if fg[0]==group_name]
@@ -640,22 +650,17 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       new_name = group_name
       for target in sorted(targets_contributing) :
         new_name+=f'_{target}'
-      for i in range(len(layer_group_names)) :
-        if layer_group_names[i]==group_name :
-          layer_group_names[i]=new_name
-    return layer_group_names
+      for i in range(len(layer_group_names_with_targets)) :
+        if layer_group_names_with_targets[i]==group_name :
+          layer_group_names_with_targets[i]=new_name
+    return layer_group_names_with_targets
 
   @methodtools.lru_cache()
   @property
-  def layer_groups(self) :
-    """
-    A dictionary where the keys are the names of each layer group and the values are tuples of
-    the first and last layers in each layer group
-    Determined from the Full.xml file
-    """
+  def __get_layer_groups_from_names(self,layer_group_names) :
     result = {}
     last_lgname = None; start_lgn = 1
-    for lgn,lgname in enumerate(self.layer_group_names,start=1) :
+    for lgn,lgname in enumerate(layer_group_names,start=1) :
       if last_lgname is None :
         last_lgname = lgname
       if lgname!=last_lgname :
@@ -675,6 +680,26 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @methodtools.lru_cache()
   @property
+  def layer_groups(self) :
+    """
+    A dictionary where the keys are the names of each layer group and the values are tuples of
+    the first and last layers in each layer group
+    Determined from the Full.xml file
+    """
+    return self.__get_layer_groups_from_names(self.layer_group_names)
+
+  @methodtools.lru_cache()
+  @property
+  def layer_groups_with_targets(self) :
+    """
+    A dictionary where the keys are the names of each layer group (including targets) 
+    and the values are tuples of the first and last layers in each layer group
+    Determined from the Full.xml file
+    """
+    return self.__get_layer_groups_from_names(self.layer_group_names_with_targets)
+
+  @methodtools.lru_cache()
+  @property
   def brightest_layers(self) :
     """
     The layer numbers showing the brightest overall images in each layer group
@@ -682,17 +707,17 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     result = []
     for lgn,lgb in self.layer_groups.items() :
-      if lgn.endswith('dapi') or lgn.endswith('cy5') or lgn=='vectra_texas_red' :
+      if lgn.endswith('dapi') or lgn.endswith('cy5') or lgn=='vectra_texasred' :
         result.append(int(0.5*(lgb[0]+lgb[1])))
       elif lgn.endswith('fitc') or lgn=='polaris_cy3' :
         result.append(lgb[0]+1)
       elif lgn=='vectra_cy3' :
         result.append(lgb[0]+2)
-      elif lgn=='polaris_opal_780' :
+      elif lgn=='polaris_opal780' :
         result.append(lgb[0])
-      elif lgn=='polaris_opal_480' :
+      elif lgn=='polaris_opal480' :
         result.append(lgb[1]-1)
-      elif lgn=='polaris_texas_red' :
+      elif lgn=='polaris_texasred' :
         result.append(lgb[1]-2)
       else :
         raise ValueError(f'ERROR: unrecognized layer group name "{lgn}"!')
