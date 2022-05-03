@@ -216,8 +216,9 @@
             $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\flatw'
             $sor = $this.sample.flatwim3folder()
             $this.sample.copy($sor, $des, 'im3', 30)
-            $flatwfiles = $this.sample.listfiles($des, '*')
-            $misnamedfiles = $flatwfiles.FullName -cmatch '.IM3'
+            $flatwfiles = @()
+            $flatwfiles += $this.sample.listfiles($des, '*')
+            $misnamedfiles = $flatwfiles -cmatch '.IM3'
             foreach ($file in $misnamedfiles) {
                 $newfilename = (Split-Path $file -Leaf) -replace 'IM3', 'im3'
                 Rename-Item $file $newfilename
