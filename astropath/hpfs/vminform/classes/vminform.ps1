@@ -62,7 +62,7 @@ Class informinput : moduletools {
         $this.abpath = $this.sample.phenotypefolder() + '\' + $this.abx
         $this.algpath = $this.sample.basepath +
              '\tmp_inform_data\Project_Development\' + $this.alg
-        $this.informoutpath = $this.outpath + "\" + $this.abx + '_' +$this.err
+        $this.informoutpath = $this.outpath + "\" + $this.abx + '_' + $this.err
         $this.informpath = '"'+"C:\Program Files\Akoya\inForm\" + 
             $task[4].trim() + "\inForm.exe"+'"'
         $this.informbatchlog = $this.informoutpath + "\Batch.log"

@@ -35,9 +35,9 @@ Class testvminform : testtools {
     [void]launchtests(){
         #
         $task = ($this.basepath, $this.slideid, $this.antibody, $this.algorithm, $this.informver, $this.mpath)
-        #$this.testvminformconstruction($task)
+        $this.testvminformconstruction($task)
         $inp = vminform $task
-        <#$this.setupjenkinspaths($inp)
+        $this.setupjenkinspaths($inp)
         $this.testoutputdir($inp)
         $this.testimagelist($inp)
         $this.testcheckexportoptions($inp)
@@ -46,11 +46,10 @@ Class testvminform : testtools {
         $this.runinformexpected($inp)
         $this.testlogexpected($inp)
         $this.runinformbatcherror($inp)
-        $this.testlogbatcherror($inp)#>
-
-        #$this.testinformoutputfiles($inp)
-        #$this.testcheckforknownerrors($inp)
-        #$this.testfindfixableandmerge($inp)
+        $this.testlogbatcherror($inp)
+        $this.testinformoutputfiles($inp)
+        $this.testcheckforknownerrors($inp)
+        $this.testfindfixableandmerge($inp)
         $this.testcheckexportoptions($inp)
         #throw 'Tests Complete'
         Write-Host '.'
@@ -96,7 +95,7 @@ Class testvminform : testtools {
         if ($this.jenkins) {
             $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
             $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
-            $inp.informoutpath = $this.outpath + '\' + $this.antibody
+            $inp.informoutpath = $this.outpath + '\' + $this.antibody + '_0'
             $inp.image_list_file = $this.outpath + '\image_list.tmp'
             $inp.informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
             $inp.processvars[0] = $this.outpath
@@ -136,7 +135,7 @@ Class testvminform : testtools {
         #
         $md_processloc = (
             $this.outpath,
-            $this.antibody
+            ($this.antibody + '_0')
         ) -join '\'
         #
         $inp.CreateOutputDir()
@@ -253,7 +252,7 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'compare [vminform] expected input to actual started'
         #
-        $informoutpath = $this.outpath, $this.antibody -join '\'
+        $informoutpath = $this.outpath, ($this.antibody + '_0') -join '\'
         $md_imageloc = $this.outpath, 'image_list.tmp' -join '\'
         $algpath = $this.basepath, 'tmp_inform_data', 'Project_Development', $this.algorithm -join '\'
         $informpath = '"'+"C:\Program Files\Akoya\inForm\" + $this.informver + "\inForm.exe"+'"'
@@ -497,24 +496,12 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'test check inform output files started'
         #
-        $inp.GetSegmentationData()
+        $inp.GetMergeConfigData()
         #
         Write-Host '    checking default export option'
         $inp.needsbinaryseg = $false
         $inp.needscomponent = $false
         $this.runinformexpected($inp)
-        $segdata = $inp.informoutpath + '\test_cell_seg_data.txt'
-        $bin = $inp.informoutpath + '\test_binary_seg_maps.tif'
-        $comp = $inp.informoutpath + '\test_component_data.tif'
-        
-        #
-        $inp.sample.CreateFile($segdata)
-        $inp.sample.CreateFile($bin)
-        $inp.sample.CreateFile($comp)
-        $inp.CheckInFormOutputFiles()
-        if ($inp -ne 0) {
-            throw 'error with corrupt files'
-        }
         Write-Host '    default export type successful'
         #
         Write-Host '    checking binary seg map export option'
@@ -539,29 +526,9 @@ Class testvminform : testtools {
         Write-Host '    default binary with component type successful'
         #
         $inp.sample.mergeconfig_data = $null
-        
-
         #
         $this.runinformexpected($inp)
         Write-Host '    batch process complete'
-
-        <#
-        $inp.CheckInformOutputFiles()
-        Write-Host '    Corrupted Files:' $inp.corruptedfiles
-        #
-        $segdata = $inp.informoutpath + '\test_cell_seg_data.txt'
-        $bin = $inp.informoutpath + '\test_binary_seg_maps.tif'
-        $comp = $inp.informoutpath + '\test_component_data.tif'
-        $inp.sample.CreateFile($segdata)
-        $inp.sample.CreateFile($bin)
-        $inp.sample.CreateFile($comp)
-        #
-        $inp.CheckInformOutputFiles()
-        Write-Host '    Corrupted Files:' $inp.corruptedfiles
-        #>
-        #$inp.sample.CreateNewDirs($this.outpath)
-        #$inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
-        #
         Write-Host 'test check inform output files finished'
     }
     <# --------------------------------------------
@@ -649,6 +616,8 @@ Class testvminform : testtools {
         $inp.sample.info("inForm Batch Process Finished Successfully")
         $inp.MergeOutputDirectories()
         $inp.informoutpath = $this.outpath + "\" + $this.abx + '_0'
+        $inp.sample.CreateNewDirs($this.outpath)
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         #
         Write-Host 'test find fixable files and merge loop finished'
     }
