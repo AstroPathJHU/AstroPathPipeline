@@ -390,7 +390,7 @@ Class informinput : moduletools {
     }
    <# -----------------------------------------
     CheckErrors
-    check the resulting process files for any 
+    Check the resulting process files for any 
     potential errors
     ------------------------------------------
     Usage: $this.CheckErrors()
@@ -422,12 +422,12 @@ Class informinput : moduletools {
     }
     <# -----------------------------------------
      CheckInFormOutputFiles
-     record the number of complete inform 
+     Record the number of complete inform 
      output files of each necessary type 
      (cell_seg, binary_seg_maps, component_data)
      check if any files needed - given the 
      files found in the image list - have 
-     0bytes, indicating a potential error.
+     0bytes, indicating a potential error
      ------------------------------------------
      Usage: $this.CheckInFormOutputFiles()
     ----------------------------------------- #>
@@ -469,10 +469,10 @@ Class informinput : moduletools {
     }
     <# -----------------------------------------
      CheckForKnownErrors
-     check errors given from the inform batch 
+     Check errors given from the inform batch 
      log and reference error dictionary to 
      see if image files need to be rerun or 
-     skipped depending on the error.
+     skipped depending on the error
      ------------------------------------------
      Usage: $this.CheckForKnownErrors($batchlog)
     ----------------------------------------- #>

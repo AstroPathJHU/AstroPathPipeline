@@ -25,4 +25,4 @@ Once algorithms are created we process the algorithms through the queued based s
   - [5.8.7.3. Instructions](docs/ProcessinginFormTasks.md#5873-instructions)
     - [5.8.7.3.1. Setting up the Virtual Machines for inForm®](docs/ProcessinginFormTasks.md#58731-setting-up-the-virtual-machines-for-inform)
     - [5.8.7.3.2. Running the VMinForm Module](docs/ProcessinginFormTasks.md#58732-running-the-vminform-module)
-	- [5.8.7.3.3. VMinForm Module Overview](docs/ProcessinginFormTasks.md#58733-vminform-module-overview)
+  - [5.8.7.4. VMinForm Module Overview](docs/ProcessinginFormTasks.md#5874-vminform-module-overview)
