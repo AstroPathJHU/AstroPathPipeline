@@ -176,30 +176,64 @@ Class informinput : moduletools {
     }
     <# -----------------------------------------
      CheckExportOptions
-     using information from the mergeconfig csv
-     file, check to make sure the outputted 
-     inform prototype has the correct export 
-     options and update if neccesary
+     Gets MergeConfig data and checks/updates
+     the inform procedure output options to 
+     toggle segmentation table data and 
+     file type data
      ------------------------------------------
      Usage: $this.CheckExportOptions()
     ----------------------------------------- #>
     [void]CheckExportOptions(){
         #
-        $this.GetSegmentationData()
+        $this.GetMergeConfigData()
         #
         $procedure = $this.sample.GetContent($this.algpath)
-        $segmentationtableline = $procedure | Where-Object {$_ -match '<SegmentationTable>'}
+        if ($this.abx -notmatch 'Component') {
+            $procedure = $this.CheckSegmentationTableOption($procedure, 'false', 'true')
+        }
+        else {
+            $procedure = $this.CheckSegmentationTableOption($procedure, 'true', 'false')
+        }
+        #
+        #$procedure = $this.CheckPixelOption($procedure)
+        $this.CheckExportLineOption($procedure)
+        #
+    } 
+    <# -----------------------------------------
+     CheckSegmentationTableOption
+     Checks the protocol file for the 
+     segmnetationtable option and sets it 
+     depending on whether the procedure name
+     is 'component'
+     ------------------------------------------
+     Usage: $this.CheckSegmentationTableOption()
+    ----------------------------------------- #>
+    [array]CheckSegmentationTableOption($procedure, $from, $to){
+        $segmentationtableline = $procedure | 
+            Where-Object {$_ -match '<SegmentationTable>'}
         if (!$segmentationtableline) {
             throw 'error in reading <SegmentationTable> line in procedure'
         }
-        if ($segmentationtableline -ne '     <SegmentationTable>true</SegmentationTable>') {
-            $this.sample.info("Setting SegmentationTable setting to True")
-            $newtableline = '     <SegmentationTable>true</SegmentationTable>'
-            (Get-Content $this.algpath).replace($segmentationtableline, $newtableline) | 
-                Set-Content $this.algpath
+        if ($segmentationtableline -match $from) {
+            $this.sample.info("Setting SegmentationTable setting")
+            $newtableline = $segmentationtableline.replace($from, $to)
+            $procedure = $procedure.replace($segmentationtableline, $newtableline)
+            $procedure | Set-Content $this.algpath
         }
-        #
-        $exportline = $procedure | Where-Object {$_ -match '<exporttypes>'}
+        return $procedure
+    }
+    <# -----------------------------------------
+     CheckExportLineOption
+     Using information from the mergeconfig csv
+     file, check to make sure the outputted 
+     inform prototype has the correct export 
+     options and update if neccesary
+     ------------------------------------------
+     Usage: $this.CheckExportLineOption()
+    ----------------------------------------- #>
+    [void]CheckExportLineOption($procedure){
+        $exportline = $procedure | 
+            Where-Object {$_ -match '<exporttypes>'}
         if (!$exportline) {
             throw 'error in reading <exporttypes> line in procedure'
         }
@@ -222,21 +256,24 @@ Class informinput : moduletools {
         }
         if ($exportline -ne $changedline) {
             $this.sample.info("Replacing exportline:" + $exportline + "with changedline:" + $changedline)
-            (Get-Content $this.algpath).replace($exportline, $changedline) | 
+            $procedure.replace($exportline, $changedline) | 
                 Set-Content $this.algpath
         }
-        #
     }
-    
     <# -----------------------------------------
-     GetSegmentationData
-     Get segmentation data from mergeconfig.csv
-     and return if it already exists
+     GetMergeConfigData
+     Get merge configuration data from 
+     mergeconfig.csv and return if it already 
+     exists
      ------------------------------------------
-     Usage: $this.GetSegmentationData()
+     Usage: $this.GetMergeConfigData()
     ----------------------------------------- #>
-    [void]GetSegmentationData(){
+    [void]GetMergeConfigData(){
         #
+        if ($this.abx -match 'Component') {
+            $this.needscomponent = $true
+            return
+        }
         if ($this.sample.mergeconfig_data) {
             return
         }

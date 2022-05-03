@@ -50,7 +50,8 @@ Class testvminform : testtools {
 
         #$this.testinformoutputfiles($inp)
         #$this.testcheckforknownerrors($inp)
-        $this.testfindfixableandmerge($inp)
+        #$this.testfindfixableandmerge($inp)
+        $this.testcheckexportoptions($inp)
         #throw 'Tests Complete'
         Write-Host '.'
     }
@@ -196,7 +197,7 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'test check segmentation options started'
         #
-        $inp.GetSegmentationData()
+        $inp.GetMergeConfigData()
         #
         Write-Host '    checking default export option'
         $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\CD8_Phenotype_Default.ifr'
