@@ -65,19 +65,19 @@ The workflow will ask for your credentials in a windows credential window, these
 The following is the overview workflow for the virtual machine inform process. This does not include the wrappers that go along with the code for the *AstroPath
 Pipeline*. 
 
-Input Parameters: ```<base>```, ```<SlideID>```, ```<Antibody>```, ```<Algorithm>```, ```<inFormVer>```, ```<MPath>```
+Input Parameters: ```<base>```, ```<SlideID>```, ```<Antibody>```, ```<Procedure>```, ```<inFormVer>```, ```<MPath>```
 
 - DownloadFiles: Downloads flatw im3 files to use for inform
-- CreateOutputDir: First kill any old inForm processes that are running on the system which would cause the current processing to crash. Next, delete any old processing directory and create anew processing directory. 
+- CreateOutputDir: Create a new processing directory. 
+  - Output
+    - Into ```C:\Users\Public\BatchProcessing```
 - CreateImageList: Create a list of images for inForm to process and save it to the processing directory
 - CheckExportOptions: Gets MergeConfig data and checks/updates the inform procedure output options to toggle segmentation table data and file type data
   - CheckSegmentationTableOption: Checks the protocol file for the segmnetationtable option and sets it depending on whether the procedure name is 'component'
     - Input
-	  - ```<procedure>```
-	  - ```<from>```
-	  - ```<to>```
-	- Output
-      - ```<procedure>```
+      - ```<Procedure>```
+    - Output
+      - ```<Procedure>```
   - CheckExportLineOption: Using information from the mergeconfig csv file, check to make sure the outputted inform prototype has the correct export options and update if neccesary
     - Input
       - ```<procedure>```
