@@ -655,8 +655,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
           layer_group_names_with_targets[i]=new_name
     return layer_group_names_with_targets
 
-  @methodtools.lru_cache()
-  @property
   def __get_layer_groups_from_names(self,layer_group_names) :
     result = {}
     last_lgname = None; start_lgn = 1
