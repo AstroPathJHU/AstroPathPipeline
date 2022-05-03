@@ -1,4 +1,4 @@
-import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
+import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, pandas as pd, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
 from ..hpfs.warping.utilities import WarpingSummary
@@ -380,8 +380,18 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def mergeconfigcsv(self):
     return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.csv"
   @property
+  def mergeconfigxlsx(self):
+    return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.xlsx"
+  @property
   def mergeconfig(self):
     return self.readtable(self.mergeconfigcsv, MergeConfig)
+  @property
+  def batchxlsx(self) :
+    fp = self.root/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
+    if fp.is_file() :
+      return fp
+    fp = self.root/"Batch"/f"BatchID_{self.BatchID:02d}.xlsx"
+    return fp
 
   @property
   def samplelog(self):
@@ -549,9 +559,38 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @methodtools.lru_cache()
   @property
+  def opals_targets(self) :
+    """
+    A list of tuples of (opal_string,target_string) from the MergeConfig_*.xlsx file 
+    (should exist as early as meanimage)
+    """
+    opals_targets = []
+    if self.batchxlsx.is_file() :
+      fp = self.batchxlsx
+    else :
+      fp = self.mergeconfigxlsx
+    if not fp.is_file() :
+      raise FileNotFoundError(f'ERROR: Neither a Batch nor MergeConfig Excel file were found in {fp.parent}!')
+    data = pd.DataFrame(pd.read_excel(fp))
+    for _,row in data.loc[:,['Opal','Target']].iterrows() :
+        #convert the opal to an integer if possible
+        opal = row['Opal']
+        try :
+          opal = int(opal)
+        except ValueError :
+          opal = opal.lower()
+        #make the target into a nice string
+        target = row['Target']
+        #skip any "NA" entries
+        if type(target)==str and target!='na' :
+          opals_targets.append((opal,target.replace('/','').lower()))
+    return opals_targets
+
+  @methodtools.lru_cache()
+  @property
   def layer_group_names(self) :
     """
-    The layer group names (i.e. vectra_dapi / polaris_texas_red) for each image layer 
+    The layer group names (i.e. vectra_dapi / polaris_texasred) for each image layer 
     as interpreted from the wavelengths and filter names in the Full.xml file 
     """
     if len(self.wavelengths)!=len(self.filter_names) :
@@ -569,39 +608,57 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       microscope_prepend = 'polaris'
     else :
       raise ValueError(f'ERROR: unrecognized number of wavelengths/filter_names/im3 layers ({len(self.wavelengths)})!')
-    result = []
+    filter_groups = []
     for wl,fn in zip(self.wavelengths,self.filter_names) :
       to_add = f'{microscope_prepend}_'
       if fn=='DAPI' :
         to_add+='dapi'
       elif fn=='DAPI / Opal 780' :
-        to_add+='dapi' if wl<700 else 'opal_780'
+        to_add+='dapi' if wl<700 else 'opal780'
       elif fn=='FITC' :
         to_add+='fitc'
       elif fn=='Cy3' :
         to_add+='cy3'
       elif fn=='Texas Red' :
-        to_add+='texas_red'
+        to_add+='texasred'
       elif fn=='Opal 480 / Cy5' :
-        to_add+='opal_480' if wl<600 else 'cy5'
+        to_add+='opal480' if wl<600 else 'cy5'
       elif fn=='Cy5' :
         to_add+='cy5'
       else :
         raise ValueError(f'ERROR: unrecognized broadband filter_name "{fn}"! (wavelength = {wl})')
-      result.append(to_add)
-    return result
-
+      filter_groups.append((to_add,wl))
+    return [fg[0] for fg in filter_groups]
+  
   @methodtools.lru_cache()
   @property
-  def layer_groups(self) :
+  def layer_group_names_with_targets(self) :
     """
-    A dictionary where the keys are the names of each layer group and the values are tuples of
-    the first and last layers in each layer group
-    Determined from the Full.xml file
+    The layer group names with the targets they show for each image layer 
+    as interpreted from the wavelengths and filter names in the Full.xml file 
     """
+    layer_group_names_with_targets = self.layer_group_names
+    filter_groups = [(lgn,wl) for lgn,wl in zip(layer_group_names_with_targets,self.wavelengths)]
+    unique_names = set(layer_group_names_with_targets)
+    for group_name in unique_names :
+      targets_contributing=[]
+      wls = [fg[1] for fg in filter_groups if fg[0]==group_name]
+      for opal,target in self.opals_targets :
+        if ( (opal=='dapi' and group_name.split('_')[1]=='dapi') 
+             or (type(opal)==int and opal>=min(wls) and opal<=max(wls)) ) :
+          targets_contributing.append(target)
+      new_name = group_name
+      for target in sorted(targets_contributing) :
+        new_name+=f'_{target}'
+      for i in range(len(layer_group_names_with_targets)) :
+        if layer_group_names_with_targets[i]==group_name :
+          layer_group_names_with_targets[i]=new_name
+    return layer_group_names_with_targets
+
+  def __get_layer_groups_from_names(self,layer_group_names) :
     result = {}
     last_lgname = None; start_lgn = 1
-    for lgn,lgname in enumerate(self.layer_group_names,start=1) :
+    for lgn,lgname in enumerate(layer_group_names,start=1) :
       if last_lgname is None :
         last_lgname = lgname
       if lgname!=last_lgname :
@@ -621,6 +678,26 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @methodtools.lru_cache()
   @property
+  def layer_groups(self) :
+    """
+    A dictionary where the keys are the names of each layer group and the values are tuples of
+    the first and last layers in each layer group
+    Determined from the Full.xml file
+    """
+    return self.__get_layer_groups_from_names(self.layer_group_names)
+
+  @methodtools.lru_cache()
+  @property
+  def layer_groups_with_targets(self) :
+    """
+    A dictionary where the keys are the names of each layer group (including targets) 
+    and the values are tuples of the first and last layers in each layer group
+    Determined from the Full.xml file
+    """
+    return self.__get_layer_groups_from_names(self.layer_group_names_with_targets)
+
+  @methodtools.lru_cache()
+  @property
   def brightest_layers(self) :
     """
     The layer numbers showing the brightest overall images in each layer group
@@ -628,17 +705,17 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     result = []
     for lgn,lgb in self.layer_groups.items() :
-      if lgn.endswith('dapi') or lgn.endswith('cy5') or lgn=='vectra_texas_red' :
+      if lgn.endswith('dapi') or lgn.endswith('cy5') or lgn=='vectra_texasred' :
         result.append(int(0.5*(lgb[0]+lgb[1])))
       elif lgn.endswith('fitc') or lgn=='polaris_cy3' :
         result.append(lgb[0]+1)
       elif lgn=='vectra_cy3' :
         result.append(lgb[0]+2)
-      elif lgn=='polaris_opal_780' :
+      elif lgn=='polaris_opal780' :
         result.append(lgb[0])
-      elif lgn=='polaris_opal_480' :
+      elif lgn=='polaris_opal480' :
         result.append(lgb[1]-1)
-      elif lgn=='polaris_texas_red' :
+      elif lgn=='polaris_texasred' :
         result.append(lgb[1]-2)
       else :
         raise ValueError(f'ERROR: unrecognized layer group name "{lgn}"!')

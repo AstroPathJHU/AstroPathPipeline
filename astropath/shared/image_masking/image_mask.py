@@ -72,7 +72,12 @@ class ImageMask() :
             elif nlayers<9 :
                 self.__fold_flag_cuts[lgn] = 1
             else :
-                self.__fold_flag_cuts[lgn] = 3
+                if lgn.startswith('vectra') :
+                    self.__fold_flag_cuts[lgn] = 3
+                elif lgn.startswith('polaris') :
+                    self.__fold_flag_cuts[lgn] = 1
+                else :
+                    raise ValueError(f'Could not determine fold flag cuts for layer group {lgn} with bounds {lgb}')
         #set which layers are the brightest
         self.__bright_layers=brightest_layers
         #apply smoothing to Vectra images only
