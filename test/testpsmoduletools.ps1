@@ -16,13 +16,12 @@
     testpsmoduletools() : base(){
         #
         $this.testmodulecontruction()
-        #
-        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        $inp = meanimage $task
+        $inp = meanimage $this.task
         #
         # $this.testslidelist()
         #
         $this.TestPaths($inp)
+        $this.testgitstatus($inp.sample)        
         Write-Host '.'
         #
     }
@@ -32,8 +31,7 @@
         Write-Host '.'
         Write-Host 'building a shredxml module object'
         try {
-            $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-            shredxml $task | Out-Null
+            shredxml $this.task| Out-Null
         } catch {
             Throw 'module could not be constructed'
         }
@@ -155,7 +153,7 @@
 try {
     [testpsmoduletools]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0
 

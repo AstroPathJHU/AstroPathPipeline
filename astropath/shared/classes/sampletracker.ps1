@@ -11,32 +11,80 @@ class sampletracker : dependencies {
     #
     [vminformqueue]$vmq
     #
-    sampletracker($mpath): base ($mpath){
+    sampletracker($mpath) : base ($mpath){
+        #
         $this.getmodulenames()
+        $this.importaptables($this.mpath, $false)
+        $this.getmodulelogs()
+        #
     }
     #
     sampletracker($mpath, $vmq): base ($mpath){
+        #
         $this.getmodulenames()
+        $this.importaptables($this.mpath, $false)
+        $this.getmodulelogs()
         $this.vmq = $vmq
+        #
     }
     #
-    sampletracker($mpath, $vmq, $slideid): base ($mpath, $slideid){
-        $this.getmodulenames()
-        $this.vmq = $vmq
-    }
-    #
-    sampletracker($mpath, $modules, $vmq, $slideid): base ($mpath, $slideid){
+    sampletracker($mpath, $vmq, $modules): base ($mpath){
+        #
         $this.modules = $modules
         $this.vmq = $vmq
+        $this.getmodulelogs()
+        #
+    }
+    #
+    sampletracker($mpath, $vmq, $modules, $modulelogs): base ($mpath){
+        #
+        $this.modules = $modules
+        $this.modulelogs = $modulelogs
+        $this.vmq = $vmq
+        #
+    }
+    #
+    sampletracker($mpath, $vmq, $modules, $modulelogs, $slideid): base ($mpath, $slideid){
+        #
+        $this.modules = $modules
+        $this.modulelogs = $modulelogs
+        $this.vmq = $vmq
+        #
     }
     #
     [void]defmodulestatus(){
         #
         $this.modules | ForEach-Object {
             $this.deflogpaths($_)
-            #$this.FileWatcher($this.moduleinfo.($_).mainlog, $this.slideid, $_)
             $this.getlogstatus($_)
         }
+        #
+    }
+    #
+    [void]preparesample($slide, $slides){
+        #
+        $this.ParseAPIDdef($slide.slideid, $slides)
+        $this.defbase()
+        $this.moduleinfo.project = $this.project
+        $this.defmodulestatus()
+        #
+    }
+    #
+    [void]preparesample($slide){
+        #
+        $this.importslideids($this.mpath) | Out-Null
+        $this.ParseAPIDdef($slide)
+        $this.defbase()
+        $this.moduleinfo.project = $this.project
+        $this.defmodulestatus()
+        #
+    }
+    #
+    [void]preparesample(){
+        #
+        $this.defbase()
+        $this.moduleinfo.project = $this.project
+        $this.defmodulestatus()
         #
     }
     #
@@ -49,22 +97,4 @@ class sampletracker : dependencies {
         }
     }
     #
-    [void]handleAPevent($file){
-        #
-        $fpath = Split-Path $file
-        $file = Split-Path $file -Leaf
-        #
-        switch -regex ($file){
-            $this.cohorts_file {$this.importcohortsinfo($this.mpath, $false)}
-            $this.paths_file {$this.importcohortsinfo($this.mpath, $false)}
-            $this.config_file {$this.ImportConfigInfo($this.mpath, $false)}
-            $this.slide_file {$this.ImportSlideIDs($this.mpath, $false)}
-            $this.ffmodels_file {$this.ImportFlatfieldModels($this.mpath, $false)}
-            $this.corrmodels_file {$this.ImportCorrectionModels($this.mpath, $false)}
-            $this.micomp_file {$this.ImportMICOMP($this.mpath, $false)}
-            $this.worker_file {$this.Importworkerlist($this.mpath, $false)}
-            $this.vmq.mainqueue_file {$this.vmq.openmainvminformqueue($false)}
-            $this.vmq.localqueue_file {}
-        }
-    }
 }

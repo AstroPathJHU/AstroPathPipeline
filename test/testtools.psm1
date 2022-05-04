@@ -26,6 +26,12 @@ Class testtools{
     [string]$slideid2 = 'M55_1'
     [string]$testrpath
     [string]$apfile_temp_constant = 'Template.csv'
+    [string]$pybatchwarpingfiletest = 'warping_BatchID_08.csv'
+    [string]$batchflatfieldgtest = 'BatchID_08'
+    [hashtable]$task 
+    [string]$informvers = '2.4.8'
+    [string]$informantibody = 'CD8'
+    [string]$informproject = 'blah.ifr'
     #
     testtools(){
        $this.importmodule()
@@ -76,7 +82,27 @@ Class testtools{
         $this.testrpath = $this.processloc, $this.slideid, 'rpath' -join '\'
         $this.verifyAPIDdef()
         $this.updatepaths()
+        $this.task = @{project =$this.project; slideid=$this.slideid;
+                    processloc=$this.processloc;mpath= $this.mpath;
+                    batchid=$this.batchid;module=$this.module;
+                    antibody=$this.informantibody; algorithm=$this.informproject;
+                    informvers=$this.informvers
+                    }
         #
+    }
+    #
+    [void]checkcreatepyenv($tools){
+        if ($tools.isWindows()){
+            if(!($tools.CheckpyEnvir())){
+                #
+                Write-Host '.'
+                Write-Host 'ap environment does not exist.'
+                Write-Host '    creating in' $tools.pyenv()
+                Write-Host '    log will be created at:' $tools.pyinstalllog()
+                #
+                $tools.CreatepyEnvir()
+            }
+        }
     }
     #
     [void]verifyAPIDdef(){
@@ -91,6 +117,8 @@ Class testtools{
                 try{
                     $sor = $_.FullName
                     $des = $file
+                    Write-Host '    creating:' $des
+                    Write-Host '    from:' $sor
                     $paths_data = $tools.OpencsvFileConfirm($sor)
                     $paths_data | Export-CSV $des
                 } catch {
@@ -103,13 +131,20 @@ Class testtools{
     #
     [void]updatepaths(){
         #
+        if ($this.dryrun){
+            return
+        }
+        #
         $tools = sharedtools
         #
         $cohort_csv_file =  $tools.cohorts_fullfile($this.mpath) 
         $project_data = $tools.OpencsvFileConfirm($cohort_csv_file)
         $p = $this.uncpath($PSScriptRoot)
         #
-        if ($project_data[0].Dpath -notcontains [regex]::escape($p)){
+        if ([regex]::escape($project_data[0].Dpath) -ne [regex]::escape($p)){
+            Write-Host '    paths do not match'
+            Write-host '   '$project_data[0].Dpath
+            Write-host '   '$p
             Write-Host '    UPDATING THE COHORTS & PATHS TABLES'
             $project_data[0].Dpath = $p 
             $project_data[1].Dpath = $p  + '\data'
@@ -246,8 +281,11 @@ Class testtools{
             $this.slideid
         ) -join '\'
         #
+        write-host '   user defined:' $md_processloc
+        write-host '    module defined:' $inp.processloc
+        #
         if (!([regex]::escape($md_processloc) -contains [regex]::escape($inp.processloc))){
-            Write-Host 'meanimage module process location not defined correctly:'
+            Write-Host 'module process location not defined correctly:'
             Write-Host $md_processloc '~='
             Throw ($inp.processloc)
         }
@@ -365,9 +403,9 @@ Class testtools{
         Write-Host ('test python ['+$this.class+'] with error input started')
         $inp.sample.CreateNewDirs($inp.processloc)
         $this.addwarpoctetsdep($inp)
-        $task = $this.getmoduletask($inp)
-        $pythontask = $task[0]
-        $externallog = $task[1] + '.err.log'
+        $mtask = $this.getmoduletask($inp)
+        $pythontask = $mtask[0]
+        $externallog = $mtask[1] + '.err.log'
         #
         $pythontask = $pythontask, '--blah' -join ' '
         #
@@ -558,24 +596,63 @@ Class testtools{
             return
         }
         #
-        $p2 = $inp.sample.mpath + '\AstroPathCorrectionModels.csv'
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
         #
-        $micomp_data = $inp.sample.ImportCorrectionModels($inp.sample.mpath)
+        $micomp_data = $inp.sample.ImportCorrectionModels($this.mpath)
         $newobj = [PSCustomObject]@{
             SlideID = $inp.sample.slideid
             Project = $inp.sample.project
             Cohort = $inp.sample.cohort
             BatchID = $inp.sample.batchid
-            FlatfieldVersion = 'melanoma_batches_3_5_6_7_8_9_v2'
+            FlatfieldVersion = $this.pybatchflatfieldtest
             WarpingFile = 'None'
         }
         #
-        $micomp_data += $newobj
+        if ($micomp_data.slideid -notmatch $inp.sample.slideid){
+            $micomp_data += $newobj
+            $micomp_data | Export-CSV $p2 -NoTypeInformation
+        }
         #
-        $micomp_data | Export-CSV $p2 -NoTypeInformation
-        $p3 = $inp.sample.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
-        $inp.sample.SetFile($p3, 'blah de blah')
-        ##
+        $p3 = $this.mpath + '\flatfield\flatfield_'+
+            $this.pybatchflatfieldtest + '.bin'
+        if (!(test-path $p3)){
+            $inp.sample.SetFile($p3, 'blah de blah')
+        }
+        #
+    }
+    #
+    [void]testcorrectionfile($tool, $tools){
+        #
+        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
+        #
+        $micomp_data = $tool.ImportCorrectionModels($this.mpath)
+        #
+        if (!$tool.slideid){
+            return
+        }
+        #
+        $newobj = [PSCustomObject]@{
+            SlideID = $tool.slideid
+            Project = $tool.project
+            Cohort = $tool.cohort
+            BatchID = $tool.batchid
+            FlatfieldVersion = $this.pybatchflatfieldtest
+            WarpingFile = 'None'
+        }
+        #
+        if ($tool.slideid -notmatch ($micomp_data.slideid -join '|')){
+            $micomp_data += $newobj
+            $micomp_data | Export-CSV $p2 -NoTypeInformation
+        }
+        #
+        $p3 = $this.mpath + '\flatfield\flatfield_'+
+            $this.pybatchflatfieldtest + '.bin'
+        if (!(test-path $p3)){
+            $tool.SetFile($p3, 'blah de blah')
+        }
+        #
+        $tool.ImportCorrectionModels($this.mpath, $false)
+        #
     }
     #
     [void]setupsample($inp){
@@ -589,6 +666,13 @@ Class testtools{
             'im3\meanimage') -join '\'
         #
         $inp.sample.copy($p1, $p2)
+        #
+        $this.createtestraw($inp)
+        #
+    #
+    }
+    #
+    [void]createtestraw($inp){
         #
         Write-Host '    creating mock raw directory'
         #
@@ -626,7 +710,6 @@ Class testtools{
         Write-Host '    copying regular raw files'
         $inp.sample.copy($rpath, $newtestrpath, '*')
         #
-    #
     }
     #
     [void]addoctetpatterns($inp){
@@ -671,13 +754,14 @@ Class testtools{
         Write-Host '    Task3:' $task3
         $task4 = "write_image_to_file(ff_img, outputdir/ff_file.name)" -join ''
         Write-Host '    Task4:' $task4
-        $task = $import, $task1, $task2, $task3, $task4 -join '; '
-        Write-Host '    Task:' $task
+        $taska = $import, $task1, $task2, $task3, $task4 -join '; '
+        Write-Host '    Task:' $taska
         #
         if ($inp.sample.isWindows()){
-            conda run -n $inp.sample.pyenv() python -c $task
+            $inp.sample.checkconda()
+            conda run -n $inp.sample.pyenv() python -c $taska
         } else{
-            python -c $task
+            python -c $taska
         }
         if (!(test-path $this.batchreferencefile )){
             Throw 'Batch flatfield reference file failed to create'
@@ -704,11 +788,16 @@ Class testtools{
     #
     [void]addtestfiles($sample, $path, $file, $source){
         #
-        $sample.('get' + $source + 'files')() | ForEach-Object{
+        $source = $source -replace '\.', ''
+        $file = $file -replace '\.', ''
+        $sample.getfiles($source, $false) | ForEach-Object{
             $sample.copy($_.FullName, $path)
-            $newname = $_.Name -replace $sample.($source + 'constant'),
+            if ($sample.($source + 'constant') `
+                -notcontains $sample.($file + 'constant')){
+                $newname = $_.Name -replace $sample.($source + 'constant'),
                  $sample.($file + 'constant')
-            rename-item ($path + '\' + $_.Name) $newname
+                rename-item ($path + '\' + $_.Name) $newname
+            }
         }
         #
     }
@@ -721,7 +810,6 @@ Class testtools{
                 $file = $this.slideid + $file
             }
             #
-            
             $fullpath = $path + '\' + $file
             write-host '    file to remove:' $fullpath
             $sample.removefile($fullpath)
@@ -733,6 +821,8 @@ Class testtools{
     #
     [void]removetestfiles($sample, $path, $file, $source){
         #
+        $source = $source -replace '\.', ''
+        $file = $file -replace '\.', ''
         $sample.getfiles($source, $false) | ForEach-Object{
             $newname = $_.Name -replace $($source + 'constant'),
                  $($file + 'constant')
@@ -750,6 +840,67 @@ Class testtools{
         #
     }
     #
-    
+    [void]testgitstatus($sample){
+        #
+        write-host '.'
+        write-host ('test git status after [' + $this.class + '] started')
+        #
+        if (!$sample.checkgitstatustest()){
+            $gitstatus = git -C $sample.testpackagepath() status
+            write-host $gitstatus
+            Throw 'git status not empty changes on branch'
+        }
+        #
+        write-host ('test git status after [' + $this.class + '] finished')
+        #
+    }
+    [void]resetvminform($sample){
+        $sample.removefile($this.mpath + '\across_project_queues\vminform-queue.csv')
+        $sample.copy(($this.mpath + '\vminform-queue.csv'),
+         ($this.mpath + '\across_project_queues'))
+        $sample.removefile(
+            $sample.vmq.localqueuefile.($this.project))
+    }
+    #
+    [void]showtable($table){
+        #
+        write-host ($table | Format-Table | Out-String)
+        #
+    }
+    #
+    [void]savephenotypedata($sampletracker){
+        #
+        write-host '    saving inform results'
+        if ((test-path ($this.processloc + '\tables')) -and
+            !(test-path $sampletracker.mergefolder())){
+                return 
+            }
+        #
+        $sampletracker.removedir($this.processloc + '\tables')
+        $sampletracker.copy($sampletracker.mergefolder(),
+            ($this.processloc + '\tables'))
+            $sampletracker.removedir($this.processloc + '\Component_Tiffs')
+        $sampletracker.copy($sampletracker.componentfolder(),
+            ($this.processloc + '\Component_Tiffs'))
+        #
+    }
+    #
+    [void]returnphenotypedata($sampletracker){
+        #
+        write-host '    returning inform results'
+        if (test-path ($this.processloc + '\tables')){
+            $sampletracker.removedir($sampletracker.mergefolder())
+            $sampletracker.copy(($this.processloc + '\tables'),
+                $sampletracker.mergefolder())
+        }
+        #
+        if (test-path ($this.processloc + '\Component_Tiffs')){
+            $sampletracker.removedir($sampletracker.componentfolder())
+            $sampletracker.copy(($this.processloc + '\Component_Tiffs'),
+                $sampletracker.componentfolder())
+            $sampletracker.removedir($this.processloc)
+        }
+        #
+    }
 }
 #

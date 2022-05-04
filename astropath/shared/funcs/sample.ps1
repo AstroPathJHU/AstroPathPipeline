@@ -1,4 +1,4 @@
-    function sampledef {
+    function sample {
         param(
             [parameter()][string]$mpath,
             [parameter()][string]$module,
@@ -8,29 +8,29 @@
         )
         #
         if (!($PSBoundParameters.ContainsKey('mpath'))){
-            return [sampledef]::new()
+            return [samplefiles]::new()
         }
         #
         if (!($PSBoundParameters.ContainsKey('module'))){
-            return [sampledef]::new()
+            return [samplefiles]::new()
         }
         #
         if (!($PSBoundParameters.ContainsKey('slideid')) -AND 
             !($PSBoundParameters.ContainsKey('batchid'))
         ){
-            return [sampledef]::new($mpath, $module)
+            return [samplefiles]::new($mpath, $module)
         }
         #
         if ($PSBoundParameters.ContainsKey('slideid')){
-            return [sampledef]::new($mpath, $module, $slideid)
+            return [samplefiles]::new($mpath, $module, $slideid)
         }
         #
         if (($PSBoundParameters.ContainsKey('project')) -AND 
             ($PSBoundParameters.ContainsKey('batchid'))
             ){
-            return [sampledef]::new($mpath, $module, $batchid, $project)
+            return [samplefiles]::new($mpath, $module, $batchid, $project)
         }
         #
-        Throw 'usage: logger [mpath [module [slideid] [project batchid]]]'
+        Throw 'usage: sample [mpath [module [slideid] [project batchid]]]'
         #
     }

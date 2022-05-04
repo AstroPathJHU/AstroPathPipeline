@@ -1,4 +1,4 @@
-  
+using module .\testtools.psm1
 <# -------------------------------------------
  testpsqueue
  created by: Benjamin Green
@@ -8,31 +8,23 @@
  test if the dispatcher works
  -------------------------------------------#>
 #
-Class testpsqueue {
+Class testpsqueue : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
-    [string]$slideid = "M21_1"
-    [string]$module = 'meanimage'
+    [string]$class = 'queue'
     #
     testpsqueue(){
         $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
+        $this.processloc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
         $this.launchtests()
     }
     #
-    testpsqueue($dryrun){
-        $this.slideid = "M1_1"
-        $this.mpath = '\\bki04\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_meanimage'
+    testpsqueue($dryrun): base('01', 'M1_1', $dryrun){
         $this.launchtests()
     }
     #
     [void]launchtests(){
-        Write-Host '---------------------test ps [queue]---------------------'
-        $this.importmodule()
         #
-        $inp = queue  $this.mpath $this.module
+        $inp = queue $this.mpath $this.module
         $this.teststartmess($inp)
         $this.testchecktransfer($inp)
         $this.testcheckshredxml($inp)
@@ -40,16 +32,11 @@ Class testpsqueue {
         $this.testcheckbatchflatfield($inp)
         $this.testcheckwarpoctets($inp)
         $this.testcheckbatchwarpkeys($inp)
+       # $this.testcheckbatchwarpfits($inp)
         $this.testbuildqueue($inp)
         $this.testextractqueue($inp)
+        $this.testgitstatus($inp)  
         Write-Host '.'
-    }
-    #
-    [void]importmodule(){
-        Write-Host '.'
-        Write-Host 'importing astropath ....'
-        $apmodule = $PSScriptRoot + '/../astropath'
-        Import-Module $apmodule -EA SilentlyContinue
     }
     #
     [void]testchecktransfer($inp){
@@ -184,7 +171,7 @@ Class testpsqueue {
         $log = logger $this.mpath $this.module 'L1_1'
         #
         Write-Host '    "update" log'
-        $log.Sample($this.slideid, $this.mpath, $slides)
+        $log.Sample($this.slideid, $this.module, $slides)
         Write-Host '    "update" vers'
         $log.vers = $log.GetVersion($this.mpath, $this.module, $log.project, 'short')
         #
@@ -253,7 +240,7 @@ Class testpsqueue {
 try {
     [testpsqueue]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0
 

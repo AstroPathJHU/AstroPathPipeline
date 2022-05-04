@@ -14,8 +14,26 @@
     [string]$psroot = $pshome + "\powershell.exe"
     [string]$package = 'astropath'
     [array]$modules
+    [hashtable]$modulelogs = @{}
     [switch]$checkpyenvswitch = $false
     [switch]$teststatus = $false
+    [array]$newtasks
+    [hashtable]$softwareurls = @{
+        'Miniconda3' = 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe';
+        'MikTeX' = '';
+        'matlab' = '';
+        'git' = '';
+        'python' = '';
+        'NET' = ''
+    }
+    [hashtable]$softwareargs = @{
+        'Miniconda3' = @('/InstallationType=AllUsers', '/RegisterPython=1','/S','/D=C:\ProgramData\Miniconda3')
+        'MikTeX' = @('');
+        'matlab' = @('');
+        'git' = @('');
+        'python' = @('');
+        'NET' = @('')
+    }
     #
     sharedtools(){}
     #
@@ -44,6 +62,15 @@
     #
     [string]pypackagepath(){
         $str = $this.coderoot() + '\..\.'
+        if (!$this.isWindows()){
+            $str = $str -replace ('\\', '/')
+        }
+        #
+        return $str
+    }
+    #
+    [string]testpackagepath(){
+        $str = $this.coderoot() + '\..\test\data'
         if (!$this.isWindows()){
             $str = $str -replace ('\\', '/')
         }
@@ -172,7 +199,7 @@
             } 
         } else {
             $version = $this.getpackageversion() 
-            $version = $version, $this.getdate() -join '.' 
+            $version = $version
         }
         #
         return $version
@@ -237,6 +264,15 @@
                 return $false
            }
     }
+    #
+    [switch]checkgitstatustest(){
+        $gitstatus = git -C $this.testpackagepath() status
+        if ($gitstatus -match "nothing to commit, working tree clean"){
+             return $true
+        } else {
+             return $false
+        }
+    }
     <# -----------------------------------------
     getgitversion
     ------------------------------------------
@@ -261,14 +297,14 @@
      for some reason return the v0.0.0 versioning
     ----------------------------------------- #>
     [string]getpackageversion(){
-        $version = "v0.0.0.dev0+g0000000"
+        $version = "v0.0.0.dev0+g0000000", $this.getdate() -join '.' 
         if ($this.CheckpyEnvir()){
             #
             $this.checkconda()
             $condalist = conda list -p $this.pyenv()
             $astropath = $condalist -match $this.package
             if ($astropath[1]){
-                $version = 'v'+($astropath[1] -split ' ') -match 'dev'
+                $version = 'v'+(($astropath[1] -split ' ') -match 'dev')
             }
         }
         return $version                
@@ -293,10 +329,7 @@
         $drive = '\\'+$server+'\C$'
         #
         $minicondapath = ($drive + '\ProgramData\Miniconda3')
-        if (!(test-path $minicondapath )){
-            Throw "Miniconda must be installed for this code version " + 
-                $minicondapath
-        }
+        $this.testcondainstall($minicondapath)
         #
         if ((get-module).name -notcontains 'Conda'){
             $Env:CONDA_EXE = $minicondapath, 'Scripts\conda.exe' -join '\'
@@ -309,6 +342,18 @@
             Import-Module $mname -Global
             #
         } 
+    }
+    [void]testcondainstall($minicondapath){
+        #
+        if (!(test-path $minicondapath )){
+            $this.softwareinstall('Miniconda3', $minicondapath)
+        }
+        #
+        if (!(test-path $minicondapath )){
+            Throw "Miniconda must be installed for this code version " + 
+                $minicondapath
+        }
+        #
     }
     <# ------------------------------------------
     CheckMikTex
@@ -333,6 +378,16 @@
         if ($myenv -notmatch 'matlab'){
             Write-Host "WARNING: matlab command does not exist on the current system! v0.0.1 software not supported w/o matlab."
         }        
+    }
+    #
+    [void]checkNET(){
+        if (!(Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Release -ge 461808){
+            Throw 'Please install .NET framework 4.7.2 or greater to run code'
+        }
+    }
+    #
+    [void]checksoftware(){
+        $this.checkNET()
     }
      <# -----------------------------------------
      CheckpyEnvir
@@ -443,5 +498,138 @@
         return $modulestatus
         #
     }
-   #
+    #
+    [void]softwareinstall($name){
+        $this.createdirs($this.pyinstalllocation())
+        $this.softwaredownload($name)
+        $this.softwareexe($name)
+        $this.removefile($this.softwarelinkpath($name))
+    }
+    #
+    [void]softwareinstall($name, $path){
+        Write-Verbose ('INSTALLING:' + $name)
+        $this.createdirs($this.pyinstalllocation())
+        $this.softwaredownload($name)
+        $this.softwareexe($name, $path)
+        $this.removefile($this.softwarelinkpath($name))
+    }
+    #
+    [void]softwaredownload($name){
+            $url = $this.softwareurls.($name)
+            curl $url -o $this.softwarelinkpath($name)
+    }
+    #
+    [void]softwareexe($name){
+        Start-Process -Filepath $this.softwarelinkpath($name) `
+            -ArgumentList $this.softwareargs.($name) -Wait -Verb RunAs
+    }
+    #
+    [void]softwareexe($name, $path){
+        $newargs = $this.softwareargs.($name) `
+            -replace [regex]::escape('C:\ProgramData\' + $name ), $path
+        Start-Process -Filepath $this.softwarelinkpath($name) `
+            -ArgumentList $newargs -Wait -Verb RunAs
+    }
+    #
+    [string]softwarelinkpath($name){
+            return ($this.pyinstalllocation() + $name + ".exe")
+    }
+     #
+     [void]getmodulelogs(){
+        $this.getmodulelogs($false)
+    }
+    #
+    [void]getmodulelogs($createwatcher){
+        #
+        $this.getmodulenames()
+        foreach ($module in $this.modules){
+            $projects = $this.getapprojects($module)
+            if ($this.modulelogs.($module).count -eq 0){
+                $this.modulelogs.($module) = @{} 
+            }
+            $projects | foreach-object{
+                #
+                $this.getmodulelogs($module, $_, $createwatcher )
+                #
+            }
+        }
+        #
+    }
+    [void]getmodulelogs($module, $project){
+        $this.getmodulelogs($module, $project, $false)
+    }
+    #
+    [void]getmodulelogs($module, $project, $createwatcher){
+        #
+        if($this.modulelogs.($module).($project)){
+            $oldlog = $this.getstoredtable($this.modulelogs.($module).($project))
+        } else {
+            $oldlog = @()
+        }
+        #
+        $this.modulelogs.($module).($project) = 
+            $this.importlogfile($module, $project, $createwatcher)
+        #
+        if (!$createwatcher){
+            $this.getnewloglines($oldlog, $project, $module)
+        }
+        #
+    }
+    #
+    [void]getnewloglines($oldlog, $project, $module){
+        #
+        if (!$this.newtasks){
+            $this.newtasks = @()
+        }
+        #
+        $newlog = $this.modulelogs.($module).($project)
+        $newlog_finishlines = $newlog |
+                Where-Object {$_.Message -match '^FINISH'}
+        #
+        if ($newlog_finishlines){
+            #
+            if ($oldlog){
+                $cmp = compare-object $newlog_finishlines $oldlog -Property 'SlideID','Date' |
+                    Where-Object {$_.SideIndicator -eq '<='}
+                $slidestocheck = $cmp.SlideID
+            } else {
+                $slidestocheck = $newlog_finishlines.slideid
+            } 
+            #
+            if ($module -match 'batch'){
+                $newslidestocheck = @()  
+                if ($slidestocheck){
+                    $slidestocheck | Foreach-object {
+                        $newslidestocheck +=
+                            $this.getbatchslideslight($_, $project)
+                    }
+                }
+                $slidestocheck = $newslidestocheck
+                #
+            }
+            #
+            $this.newtasks += $slidestocheck
+            $this.newtasks = ($this.newtasks | Sort-Object | Get-Unique)
+        }
+    }
+    #
+    [array]getbatchslideslight([string]$mbatchid, $project){
+        #
+        if ($mbatchid[0] -match '0'){
+            [string]$mbatchid = $mbatchid[1]
+        }
+        #
+        $batch = $this.slide_data | 
+            Where-Object {
+                $_.BatchID -eq $mbatchid.trim() -and 
+                $_.Project -eq $project.trim()
+            }
+        #
+        if (!$batch){
+            Throw 'Not a valid batchid'
+        }
+        return $batch.SlideID
+        #
+    }
+    #  
 }

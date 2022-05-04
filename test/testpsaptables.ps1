@@ -19,10 +19,11 @@
         $this.testapidfiles() | Out-Null
         $this.testapidfiles($tools)
         $this.testconfiginfo($tools)
-        $this.addbatchflatfieldexamples($tools)
+        $this.testcorrectionfile($tools, $true)
         $this.testcorrectioninfo($tools)
         $this.correctcohortsinfo($tools)
        # $this.testcohortsinfo($tools)
+        $this.testgitstatus($tools)        
         Write-Host '.'
         #
     }
@@ -170,20 +171,6 @@
         #
     }
     #
-    [void]addbatchflatfieldexamples($tools){
-        #
-        Write-Host '.'
-        Write-Host 'Add Correction Models file'
-        #
-        $p = $this.mpath + '\AstroPathCorrectionModelsTemplate.csv'
-        $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
-        #
-        $tools.removefile($p2)
-        $data = $tools.opencsvfile($p)
-        $data | Export-CSV $p2  -NoTypeInformation
-        #
-    }
-    #
 }
 #
 # launch test and exit if no error found
@@ -191,7 +178,7 @@
 try {
     [testpsaptables]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0
 

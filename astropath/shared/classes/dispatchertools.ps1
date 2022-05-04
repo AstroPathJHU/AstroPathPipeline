@@ -100,24 +100,41 @@ class DispatcherTools : queue {
         $task = $this.getcontent($this.workertaskfile($jobname))
         #
         # parse out necessary information
+        $file1 = $task -split 'module'
+        $ID = ($file1[4] -split '} 2')[0]
+        $ID = ($ID -split '-') -replace '"', ''
+        $cmodule = $ID[0].trim()
         #
-        $ID = ($task -split '-stringin:')[2]
-        $ID = ($ID -split '} 2')[0]
-        $ID = $ID -split '-'
+        $cslideid = ($ID -match 'slideid')
+        if ($cslideid){
+            $cslideid = ($cslideid -replace 'slideid', '').trim()
+        }
+        #
+        $cproject = ($ID -match 'project')
+        if ($cproject){
+            $cproject = ($cproject -replace 'project', '').trim()
+        }
+        #
+        $cbatchid = ($ID -match 'batchid')
+        if ($cbatchid){
+            $cbatchid = ($cbatchid -replace 'batchid', '').trim()
+        }
         #
         # create a logging object and check the
         # log for a finishing message
         #
         try{
-            if ($this.module -match 'batch'){
-                $log = [mylogger]::new($this.mpath, $this.module, $ID[1], ($ID[0] -replace '"', ''))
+            if ($cmodule -match 'batch'){
+                $log = logger -mpath:$this.mpath $cmodule -batchid:$cbatchid -project:$cproject
             } else {
-                $log = [mylogger]::new($this.mpath, $this.module, $ID[1])
+                $log = logger -mpath:$this.mpath -module:$cmodule -slide:$cslideid
             }
         } catch {
             Write-Host $_.Exception.Message
-            Write-Host 'ID:' $ID[1]
-            Write-Host 'Project:' $ID[0]
+            Write-Host $ID
+            Write-Host 'SlideID:' $cslideid
+            Write-Host 'BatchID:' $cbatchid
+            Write-Host 'Project:' $cproject
             return
         }
         #
@@ -127,7 +144,7 @@ class DispatcherTools : queue {
             } elseif ($level -match 'WARNING'){
                  $log.warning('Task did not seem to complete correctly, check results')
             }
-            $log.finish($this.module)
+            $log.finish($cmodule)
         }
     }
     <# -----------------------------------------
@@ -163,24 +180,23 @@ class DispatcherTools : queue {
     [void]buildtaskfile($jobname, $currenttaskinput){
         #
         $currenttasktowrite = (' Import-Module "', $this.coderoot(), '"
-                        $output.output = & {LaunchModule -mpath:"', `
-                        $this.mpath, '" -module:"', $this.module, '" -stringin:"', `
-                        $currenttaskinput,'"} 2>&1
-                    if ($output.output -ne 0){ 
-                        #
-                        $count = 1
-                        #
-                        $output.output | Foreach-object {
-                            $output.popfile("',$this.workerlogfile($jobname),'", ("ERROR: " + $count + "`r`n"))
-                            $output.popfile("',$this.workerlogfile($jobname),'", ("  " + $_.Exception.Message  + "`r`n"))
-                            $s = $_.ScriptStackTrace.replace("at", "`t at")
-                            $output.popfile("',$this.workerlogfile($jobname),'", ($s + "`r`n"))
-                            $count += 1
-                        }
-                        #
-                    } else {
-                        $output.popfile("',$this.workerlogfile($jobname),'", "Completed Successfully `r`n")
-                    }') -join ''
+        $output.output = & {LaunchModule -mpath:"',
+                $this.mpath, $currenttaskinput,'"} 2>&1
+            if ($output.output -ne 0){ 
+                #
+                $count = 1
+                #
+                $output.output | Foreach-object {
+                    $output.popfile("',$this.workerlogfile($jobname),'", ("ERROR: " + $count + "`r`n"))
+                    $output.popfile("',$this.workerlogfile($jobname),'", ("  " + $_.Exception.Message  + "`r`n"))
+                    $s = $_.ScriptStackTrace.replace("at", "`t at")
+                    $output.popfile("',$this.workerlogfile($jobname),'", ($s + "`r`n"))
+                    $count += 1
+                }
+                #
+            } else {
+                $output.popfile("',$this.workerlogfile($jobname),'", "Completed Successfully `r`n")
+            }') -join ''
         #
         $this.SetFile($this.workertaskfile($jobname), $currenttasktowrite)
         #
@@ -188,18 +204,32 @@ class DispatcherTools : queue {
     #
     [void]PrepareWorkerFiles($currenttask, $jobname, $currentworker){
         #
-        if (!(test-path $this.workerloglocation)){
-            new-item $this.workerloglocation -itemtype "directory" -EA STOP | Out-NULL
-        }
+        $this.createdirs($this.workerloglocation)
+        $currenttaskinput = $this.addedargs($currenttask, $currentworker)
+        $this.buildtaskfile($jobname, $currenttaskinput)
+        #
+    }
+    #
+    [string]addedargs($currenttask, $currentworker){
         #
         if ($this.module -match 'vminform'){
-            $currenttaskinput = ($currenttask, $this.informvers) -join ',' -replace ',','-'
+            $currenttaskinput = '" -module ', $this.module,
+                ' -project ', $currenttask[0], ' -slideid ', $currenttask[1],
+                ' -antibody ', $currenttask[2], ' -algorithm ', $currenttask[3],
+                ' -informvers ', $this.informvers -join '"'
+        } elseif ($this.module -match 'batch') {
+            $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
+            $currenttaskinput = '" -module ', $this.module,
+                ' -project ', $currenttask[0], ' -batchid ', $currenttask[1],
+                ' -processloc ', $currentworkerstring -join '"'
         } else {
             $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
-            $currenttaskinput = ($currenttask, $currentworkerstring) -join ',' -replace ',','-'
+            $currenttaskinput = '" -module ', $this.module, 
+                ' -project ', $currenttask[0], ' -slideid ', $currenttask[1],
+                ' -processloc ', $currentworkerstring -join '"'
         }
         #
-        $this.buildtaskfile($jobname, $currenttaskinput)
+        return $currenttaskinput
         #
     }
     #

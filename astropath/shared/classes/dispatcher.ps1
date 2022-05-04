@@ -54,7 +54,7 @@ class Dispatcher : DispatcherTools {
             Write-Host " Checking for tasks" -ForegroundColor Yellow
             $this.checknew()
             $this.DistributeTasks()
-            $this.WaitTask()
+            $this.WaitAny()
             $this.checknew()
         }
         #
@@ -194,7 +194,15 @@ class Dispatcher : DispatcherTools {
             #
             $currentworker, $this.workers = $this.workers 
             $tasktomatch, $this.originaltasks = $this.originaltasks
-            $currenttask, $this.cleanedtasks = $this.cleanedtasks
+            if ($this.cleanedtasks.count -eq 1){
+                $currenttask = $this.cleanedtasks[0]
+                $this.cleanedtasks = @()
+            } elseif ($this.cleanedtasks[0].count -eq 1) {
+                $currenttask = $this.cleanedtasks
+                $this.cleanedtasks = @()
+            } else{
+                $currenttask, $this.cleanedtasks = $this.cleanedtasks
+            }
             #
             Write-Host "  Launching Task on:" $currentworker.server $currentworker.location `
                     -ForegroundColor Yellow
@@ -289,13 +297,7 @@ class Dispatcher : DispatcherTools {
     }
     #
     [void]WaitTask(){
-        <#
-        $myevent = ''
-        While(!$myevent){
-           $myevent = Wait-Job -id $j -Timeout 1
-           $myevent = get-event -SourceIdentifier $filename -timeout 1
-        }
-        #>
+        #
         $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
         if (!$this.workers -and $run){
             Wait-Job -id $run -Any

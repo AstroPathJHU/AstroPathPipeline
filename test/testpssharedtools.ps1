@@ -21,6 +21,8 @@
         $this.testcreatedirs($tools)
         $this.testcopy($tools)
         $this.testcopylinux($tools)
+        $this.testfilehasher($tools)
+        $this.testgitstatus($tools)        
         Write-Host '.'
         #
     }
@@ -263,10 +265,14 @@
         }
         #
     }
+    #
     [void]testcopylinux($tools){
         #
         Write-Host '.'
         Write-Host 'test copy in linux started'
+        if ($tools.isWindows()){
+            return
+        }
         #
         $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
         $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
@@ -331,6 +337,111 @@
         Write-Host 'test copy in linux finished'
         #
     }
+    #
+    [void]testfilehasher($tools){
+        #
+        Write-Host '.'
+        Write-Host 'test file hasher started'
+        #
+        $slidepath = $this.basepath, $this.slideid, 
+        'im3\Scan1\MSI' -join '\'
+        $sor = $slidepath
+        $des = $this.processloc
+        $filespec = '*'
+        $filelist = $tools.listfiles($slidepath, '*')
+        $tools.removedir($this.processloc)
+        #
+        write-host '    compare on a single file'
+        #
+        $blankim3 = 'M21_1_[45628,12053].im3'
+        $testfile = $sor, $blankim3 -join '\'
+        $missingfiles = $tools.checknfiles($testfile, $des, $filespec)
+        Write-Host '    missing files:' $missingfiles
+        $this.comparehashes($testfile, $des, $filespec, $tools, 1)
+        #
+        #
+        Write-host '    copy im3s to new loc'
+        $tools.copy($slidepath, $this.processloc, '*')
+        #
+        write-host '    test missing files method'
+        $tools.removedir($this.processloc)
+        $missingfiles = $tools.checknfiles($sor, $des, $filespec)
+        if ($missingfiles.length -ne $filelist.length){
+            throw 'missing files not picking up all files'
+        }
+        #
+        Write-host '    test verfiy checksum on missing files'
+        $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
+        $this.comparepaths($slidepath, $this.processloc, $tools, $true)
+        #
+        Write-Host '    test compare hashes method with no corruption'
+        $this.comparehashes($sor, $des, $filespec, $tools, 0)
+        #
+        $fullim3 = 'M21_1_[45093,13253].im3'
+        Write-Host '    edit a true im3 and verify check sum \ file name'
+        $testfile = $des, $fullim3 -join '\'
+        Write-Host '        editing:' $testfile
+        $tools.setfile($testfile, 'blah')
+        $this.comparehashes($sor, $des, $filespec, $tools, 1)
+        $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
+        $this.comparepaths($slidepath, $this.processloc, $tools, $true)
+        #
+        Write-Host '    edit one of the blank im3s and run verfiy check sum'
+        $blankim3 = 'M21_1_[45628,12053].im3'
+        $testfile = $des, $blankim3 -join '\'
+        Write-Host '        editing:' $testfile
+        $tools.setfile($testfile, 'blah')
+        $this.comparehashes($sor, $des, $filespec, $tools, 1)
+        $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
+        $this.comparepaths($slidepath, $this.processloc, $tools, $true)
+        #
+        Write-Host '    remove one of the blank im3s and run verfiy check sum'
+        $blankim3 = 'M21_1_[45628,12053].im3'
+        $testfile = $des, $blankim3 -join '\'
+        Write-Host '        removing:' $testfile
+        $tools.removefile($testfile)
+        $this.comparehashes($sor, $des, $filespec, $tools, 1)
+        $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
+        $this.comparepaths($slidepath, $this.processloc, $tools, $true)
+        #
+        Write-host '    run verify with 49 attempts previously done'
+        $tools.removedir($this.processloc)
+        $tools.verifyChecksum($slidepath, $this.processloc, '*', 49)
+        $this.comparehashes($sor, $des, $filespec, $tools, 0)
+        #
+        write-host '    run verify with 50 attempts previously done'
+        $tools.removedir($this.processloc)
+        try {
+            $tools.verifyChecksum($slidepath, $this.processloc, '*', 50)
+            Throw 'no error'
+        } catch {
+            $e = $_.Exception.Message
+            if ($e -notmatch 'failed to copy'){
+                Throw 'not correct error'
+            }
+        }
+        #>
+        Write-host 'test file hasher finished'
+        #
+    }
+    #
+    [void]comparehashes($sor, $des, $filespec, $tools, $corruptcount){
+        #
+        write-host '    comparing hashes'
+        $hashes = $tools.FileHashHandler($sor, $des, $filespec)
+        [array]$files = $hashes[0].keys 
+        [array]$files2 = $hashes[1].keys
+        #
+        write-host '        source hash length:' $files.length
+        Write-host '        destination hash length:' $files2.length
+        $corruptfiles = $tools.comparehashes($hashes[0], $hashes[1])
+        Write-Host '        corrupt files:' $corruptfiles
+        Write-Host '        corrupt files length:' $corruptfiles.length
+        #
+        if ($corruptfiles.length -ne $corruptcount){
+            Throw 'wrong number of hashes returned should be one'
+        }
+    }
 }
 
 #
@@ -339,6 +450,6 @@
 try {
     [testpssharedtools]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0

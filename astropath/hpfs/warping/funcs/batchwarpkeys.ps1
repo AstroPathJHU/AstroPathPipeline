@@ -21,12 +21,12 @@ module.
 #
 Function batchwarpkeys {
     #
-    param($task, $log)
+    param($task, $log, [Parameter()][switch]$test)
     #
     # used for testing; when launched manually without launchmodule
     #
-    if (!($PSBoundParameters.ContainsKey('log'))){ 
-       $log = [launchmodule]::new($task[$task.Count-1], 'batchwarpkeys', $task) 
+    if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
+       $log = [launchmodule]::new($task.mpath, 'batchwarpkeys', $task) 
        $e = 1
     } else {$e = 0}
     #

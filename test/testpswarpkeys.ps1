@@ -17,18 +17,17 @@ using module .\testtools.psm1
         $this.launchtests()
     }
     #
-    testpsbatchwarpkeys($dryrun) : base('1', 'M10_2', '6', $dryrun){
+    testpsbatchwarpkeys($dryrun) : base('16', 'AP01600030', '2', $dryrun){
         #
         $this.processloc = '\\bki08\e$'
-        $this.basepath = '\\bki04\Clinical_Specimen'
+        $this.basepath = '\\bki-fs1\data01\Clinical_Specimen_14'
         $this.launchtests()
         #
     }
     #
     launchtests(){
-        $task = ($this.project, $this.batchid, $this.processloc, $this.mpath)
-        $this.testpsbatchwarpkeysconstruction($task)
-        $inp = batchwarpkeys $task  
+        $this.testpsbatchwarpkeysconstruction($this.task)
+        $inp = batchwarpkeys $this.task  
         $this.removewarpoctetsdep($inp)
         $this.testprocessroot($inp)
         $this.testwarpkeysinputbatch($inp)
@@ -47,6 +46,7 @@ using module .\testtools.psm1
         $this.testcleanup($inp)
         $inp.sample.finish(($this.module+'-test'))
         #
+        $this.testgitstatus($inp.sample)
         Write-Host '.'
     }
     <# --------------------------------------------
@@ -135,7 +135,7 @@ using module .\testtools.psm1
             '--sampleregex', $slides,
             '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
                          $this.pybatchflatfieldtest + '.bin'),
-            '--octets-only --noGPU --no-log --ignore-dependencies --allow-local-edits',
+            '--octets-only',$inp.gpuopt(), '--no-log --ignore-dependencies --allow-local-edits',
             '--use-apiddef --project', $this.project.PadLeft(2,'0')
         ) -join ' ') + $wd
         #
@@ -155,6 +155,11 @@ using module .\testtools.psm1
         #
         $this.addwarpoctetsdep($inp)
         #
+        $inp.getmodulename()
+        write-host $inp.pythonmodulename
+        write-host $inp.sample.pybatchflatfieldfullpath()
+        write-host $inp.workingdir()
+        write-host $inp.buildpyopts('cohort')
         $task = $this.getmoduletask($inp)
         $inp.getbatchwarpoctets()
         $this.runpytesttask($inp, $task[0], $task[1])
@@ -184,9 +189,10 @@ using module .\testtools.psm1
         Write-Host '    path expected to be removed:' $warpingkeysfolder
         #
         $inp.cleanup()
+        $inp.sample.removedir($warpingkeysfolder)
         #
         if (test-path $warpingkeysfolder){
-            Throw 'cleaup did not delete folder, path still exists'
+            Throw 'cleanup did not delete folder, path still exists'
         }
         #
         $inp.sample.removedir($this.mpath + '\warping')

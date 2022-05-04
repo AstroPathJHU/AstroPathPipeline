@@ -18,8 +18,7 @@ Class testpsshredxml : testtools {
         #
         # Setup Testing
         #
-        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        $inp = shredxml $task
+        $inp = shredxml $this.task
         #
         # Run Tests
         #
@@ -27,6 +26,7 @@ Class testpsshredxml : testtools {
         $this.ReturnDataTest($inp)
         $this.CleanupTest($inp)
         $inp.sample.finish(($this.module+'test'))
+        $this.testgitstatus($inp.sample)  
         Write-Host "."
         #
     }
@@ -68,7 +68,8 @@ Class testpsshredxml : testtools {
         $inp.sample.copy($sor, $des, '*')       
         #
         Write-Host '    copy old results to processing directory'
-        $userdefined = $this.processloc, 'astropath_ws', 'shredxml', $this.slideid -join '\'
+        $userdefined = $this.processloc, 'astropath_ws',
+            'shredxml', $this.slideid, $this.slideid -join '\'
         $inp.sample.copy($sor, $userdefined, '*')  
         #
         Write-Host '    run return data'
@@ -112,6 +113,6 @@ Class testpsshredxml : testtools {
 try {
     [testpsshredxml]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0

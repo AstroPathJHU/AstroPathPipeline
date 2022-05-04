@@ -1,23 +1,31 @@
 ﻿function LaunchModule{
     param(
-        [Parameter()][string]$slideid='',
         [Parameter()][string]$mpath='\\bki04\astropath_processing',
         [Parameter()][string]$module = '',
-        [Parameter()][array]$stringin= ''
+        [Parameter()][string]$project='',
+        [Parameter()][string]$slideid='',
+        [Parameter()][string]$batchid='',
+        [Parameter()][string]$processloc='',
+        [Parameter()][string]$taskid='',
+        [Parameter()][string]$antibody='',
+        [Parameter()][string]$algorithm='',
+        [Parameter()][string]$informvers='',
+        [Parameter()][switch]$test
     )
     #
-    $arrayin = $stringin -split '-'
-    #
-    if (!($PSBoundParameters.ContainsKey('slideid'))){
-        $slideid = $arrayin[1]
+    if ($PSBoundParameters.test){
+        $inp = $( & $module $PSBoundParameters)    
+        return $inp
     }
     #
     if ($module -match 'batch'){
-        $m = [launchmodule]::new($mpath, $module, $slideid, $arrayin[0], $arrayin)
+        $m = [launchmodule]::new($mpath, $module, $batchid, $project, $PSBoundParameters)
+        #
     } else {
-        $m = [launchmodule]::new($mpath, $module, $slideid, $arrayin)
+        $m = [launchmodule]::new($mpath, $module, $slideid, $PSBoundParameters)
     }        
     #
     return $m
     #
 }
+#

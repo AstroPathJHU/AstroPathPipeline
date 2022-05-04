@@ -130,17 +130,6 @@
         return($server)
         #
     }
-    #
-    [string]CrossPlatformPaths($dir){
-        #
-        if (!$this.isWindows()){
-            $dir = $dir -replace '\\', '/'
-        } else{
-            $dir = $dir -replace '/', '\'
-        }
-        #
-        return $dir
-    }
     <# -----------------------------------------
      createdirs
      create a directory if it does not exist 
@@ -184,7 +173,7 @@
         #
         $dir = $this.CrossPlatformPaths($dir)
         #
-        if (test-path $dir){
+        if (test-path -literalpath $dir){
             Get-ChildItem -Directory $dir | Remove-Item -force -Confirm:$false -recurse
             remove-item $dir -force -Confirm:$false -Recurse
         }
@@ -195,8 +184,8 @@
         #
         $file = $this.CrossPlatformPaths($file)
         #
-        if (test-path $file){
-            remove-item $file -force -Confirm:$false -ea Continue
+        if (test-path -literalpath $file){
+            remove-item -literalpath $file -force -Confirm:$false -ea Continue
         }
         #
     }
@@ -207,22 +196,20 @@
         #
         $filespec = '*' + $filespec
         $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
-        if ($files ){ Remove-Item $files -force -recurse -Confirm:$false}
+        if ($files ){ $files | Remove-Item -force -recurse -Confirm:$false}
         #
     }
-    <# ------------------------------------------
-    CheckPath
-    ------------------------------------------
-    check if a path exists
-    ------------------------------------------ #>
-    [switch]CheckPath([string]$p){
+    #
+    [void]renamefile([string]$folder, $sor, $des){
         #
-        $p = $this.CrossPlatformPaths($p)
+        $folder = $this.CrossPlatformPaths($folder)
         #
-        if (test-path $p){
-            return $true
-        } else {
-            return $false
+        $filespec = '*' + $sor
+        $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
+        #
+        $files | Foreach-Object {
+            $newname = $_.name -replace $sor, $des   
+            Rename-Item $_.fullname $newname -ea stop 
         }
         #
     }
@@ -235,11 +222,22 @@
         #
         $p = $this.CrossPlatformPaths($p)
         #
-        if (test-path $p){
+        if (test-path -literalpath $p){
             return (Get-ChildItem $p).LastWriteTime
         } else {
             return Get-Date
         }
+        #
+    }
+    #
+    [PSCustomObject]getstoredtable($table){
+        #
+        $names = $table |
+         Get-Member -MemberType NoteProperty |
+         Select-Object -ExpandProperty Name
+        $storedtable = $table | 
+            Select-Object -Property $names
+        return $storedtable
         #
     }
     #

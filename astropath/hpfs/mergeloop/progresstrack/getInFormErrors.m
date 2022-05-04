@@ -22,7 +22,19 @@ if ~isempty(informlog)
         %
         expectedinform = actualim3num_internal - InformErrors;
     else %new version (cmd line)
-        expectedinform = actualim3num_internal;
+        ii = find(contains(Batch, 'Batch run had errors:'));
+        if (any(ii))
+            BatchErrors = Batch(ii:end);
+            BatchErrors = extractBefore(BatchErrors, ']');
+            ErrorCoords = extractAfter(BatchErrors, '_[');
+            unqiueErrorCoords = unique(ErrorCoords);
+            unqiueErrorCoordsnotnull = ~cellfun(@isempty, unqiueErrorCoords);
+            InformErrors = sum(unqiueErrorCoordsnotnull);
+            %
+            expectedinform = actualim3num_internal - InformErrors;
+        else
+            expectedinform = actualim3num_internal;
+        end
     end
 else
     expectedinform = actualim3num_internal;

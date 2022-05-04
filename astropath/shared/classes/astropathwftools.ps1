@@ -113,6 +113,7 @@ class astropathwftools : sampledb {
                     $this.removefile($workertasklog)
                     $this.CheckTaskLog($jobname, 'ERROR')
                     $this.removefile($workertaskfile)
+                    $this.worker_data[$worker].Status = 'IDLE'
                     Write-Host ('  Orphaned job completed and cleared: ' + $workertasklog) `
                         -ForegroundColor Yellow
                 }catch {
@@ -189,21 +190,37 @@ class astropathwftools : sampledb {
      ------------------------------------------
      Usage: $this.PrepareWorkerFiles($currenttask, jobname, $currentworker)
     ----------------------------------------- #>
-    [void]PrepareWorkerFiles($currenttask, $jobname, $currentworker){
+    [void]PrepareWorkerFiles($module, $currenttask, $jobname, $currentworker){
         #
         $this.createdirs($this.workerloglocation)
-        #
-        if ($this.module -match 'vminform'){
-            $currenttaskinput = ($currenttask, $this.informvers) -join ',' -replace ',','-'
-        } else {
-            $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
-            $currenttaskinput = ($currenttask, $currentworkerstring) -join ',' -replace ',','-'
-        }
-        #
+        $currenttaskinput = $this.addedargs($module, $currenttask, $currentworker)
         $this.buildtaskfile($jobname, $currenttaskinput)
         #
     }
-     <# -----------------------------------------
+    #
+    [string]addedargs($module, $currenttask, $currentworker){
+        #
+        if ($module -match 'vminform'){
+            $currenttaskinput = '" -module ', $module,
+                ' -project ', $currenttask[0], ' -slideid ', $currenttask[1],
+                ' -antibody ', $currenttask[2], ' -algorithm ', $currenttask[3],
+                ' -informvers ', $this.informvers -join '"'
+        } elseif ($module -match 'batch') {
+            $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
+            $currenttaskinput = '" -module ', $module,
+                ' -project ', $currenttask[0], ' -batchid ', $currenttask[1],
+                ' -processloc ', $currentworkerstring -join '"'
+        } else {
+            $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
+            $currenttaskinput = '" -module ', $module, 
+                ' -project ', $currenttask[0], ' -slideid ', $currenttask[1],
+                ' -processloc ', $currentworkerstring -join '"'
+        }
+        #
+        return $currenttaskinput
+        #
+    }
+    <# -----------------------------------------
      buildtaskfile
      create the string to be added to the task
      file.
@@ -213,9 +230,8 @@ class astropathwftools : sampledb {
     [void]buildtaskfile($jobname, $currenttaskinput){
         #
         $currenttasktowrite = (' Import-Module "', $this.coderoot(), '"
-                $output.output = & {LaunchModule -mpath:"', `
-                $this.mpath, '" -module:"', $this.module, '" -stringin:"', `
-                $currenttaskinput,'"} 2>&1
+        $output.output = & {LaunchModule -mpath:"',
+                $this.mpath, $currenttaskinput,'"} 2>&1
             if ($output.output -ne 0){ 
                 #
                 $count = 1
@@ -302,7 +318,7 @@ class astropathwftools : sampledb {
      <# -----------------------------------------
      workertaskfile
      the task to launch. the string task is 
-     created in $this.buildtaskfile
+     created in $this.workertaskfile
      ------------------------------------------
      Usage: $this.workertaskfile($jobname)
     ----------------------------------------- #>
@@ -339,7 +355,7 @@ class astropathwftools : sampledb {
      vminform## rather than their unique names
      VM_inForm## that the were created
      ------------------------------------------
-     Usage: $this.DefJobName($currentworker)
+     Usage: $this.DefCurrentWorkerip($currentworker)
     ----------------------------------------- #> #
     [string]DefCurrentWorkerip($currentworker){
         #
@@ -362,29 +378,32 @@ class astropathwftools : sampledb {
         #
         # open the workertaskfile
         #
-        $task = $this.getcontent($this.workertaskfile($jobname))
+        $mtask = $this.getcontent($this.workertaskfile($jobname))
         #
         # parse out necessary information
         #
-        $ID = ($task -split '-stringin:')[2]
-        $ID = ($ID -split '} 2')[0]
-        $ID = $ID -split '-'
+        $file1 = $mtask -split 'module'
+        $ID = ($file1[4] -split '} 2')[0]
+        $ID = ($ID -split '-') -replace '"', ''
+        $cmodule = $ID[0].trim()
         #
         # create a logging object and check the
         # log for a finishing message
         #
-        $cmodule = ($jobname -split '-')[2]
-        #
         try{
             if ($cmodule -match 'batch'){
-                $log = [mylogger]::new($this.mpath, $cmodule, $ID[1], ($ID[0] -replace '"', ''))
+                $cproject = ($ID[1] -replace 'project', '').trim()
+                $cbatchid = ($ID[2] -replace 'batchid', '').trim()
+                $log = logger -mpath:$this.mpath $cmodule -batchid:$cbatchid -project:$cproject
             } else {
-                $log = [mylogger]::new($this.mpath, $cmodule, $ID[1])
+                $cslideid = ($ID[2] -replace 'slideid', '').trim()
+                $log = logger -mpath:$this.mpath -module:$cmodule -slide:$cslideid
             }
         } catch {
             Write-Host $_.Exception.Message
-            Write-Host 'ID:' $ID[1]
-            Write-Host 'Project:' $ID[0]
+            Write-Host $ID
+            Write-Host 'ID:' (($ID[2] -replace 'slideid', '').trim())
+            Write-Host 'Project:' (($ID[1] -replace 'project', '').trim())
             return
         }
         #
@@ -482,6 +501,79 @@ class astropathwftools : sampledb {
             $events = get-event
             #
         }
+        #
+    }
+    #
+    <# -----------------------------------------
+     LaunchTask
+     Launch a task on a current worker
+     ------------------------------------------
+     Usage: $this.LaunchTask($currenttask, $currentworker)
+     ------------------------------------------
+     Input: 
+        $currenttask: the task array inputs. for a:
+            slide task: @(project, slideid)
+            batch task: @(project, batchid)
+            vminform task: @(project, slideid, antibody, algorithm)
+        $[system.object]currentworker: four part array
+            of a task object with fields:
+                module, server, location, status
+    ----------------------------------------- #>
+    [void]LaunchTask($currenttask, $currentworker){
+        #
+        $securestrings = $this.Getlogin()       
+        $currentworkerip = $this.defcurrentworkerip($currentworker)
+        $jobname = $this.defjobname($currentworker)
+        $this.PrepareWorkerFiles($currenttask, $jobname, $currentworker)
+        #
+        $this.executetask($currenttask, $currentworker,
+            $securestrings, $currentworkerip, $jobname)
+        #
+    }
+    #
+    [void]executetask($currenttask, $currentworker,
+        $securestrings, $currentworkerip, $jobname){
+        #
+        if ($currentworker.location -match 'VM'){
+            $myscriptblock = {
+                param($username, $securestring, $currentworkerip, $workertaskfile)
+                psexec -i -nobanner -accepteula -u $username -p $securestring \\$currentworkerip `
+                    pwsh -noprofile -executionpolicy bypass -command "$workertaskfile" `
+                    *>> ($workertaskfile -replace '.ps1', '-job.log')
+            }
+        } else {
+            $myscriptblock = {
+                param($username, $securestring, $currentworkerip, $workertaskfile)
+                psexec -nobanner -accepteula -u $username -p $securestring \\$currentworkerip `
+                    pwsh -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" `
+                    *>> ($workertaskfile -replace '.ps1', '-job.log')
+            }
+        }
+        #
+        $myparameters = @{
+            ScriptBlock = $myscriptblock
+            ArgumentList = $securestrings[0], $securestrings[1],
+             $currentworkerip, $this.workertaskfile($jobname)
+            name = $jobname
+            }
+        #
+        Start-Job @myparameters
+        $taskid = ($jobname, (Get-Date)) -join '-'
+        [string]$logline = @("START: ", $taskid,"`r`n") -join ''
+        $this.popfile($this.workerlogfile($jobname), $logline)
+        #
+    }
+    <# -----------------------------------------
+     GetCreds
+     puts credentials in a string format for psexec 
+     ------------------------------------------
+     Usage: $this.GetCreds()
+    ----------------------------------------- #>
+    [array]Getlogin(){
+        #
+        $username = $this.login.UserName
+        $password = $this.login.GetNetworkCredential().Password
+        return @($username, $password)
         #
     }
     #

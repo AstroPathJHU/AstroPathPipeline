@@ -20,7 +20,7 @@ Class warpoctets : moduletools {
     #
     [string]$pytype = 'sample'
     #
-    warpoctets([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    warpoctets([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
         $this.flevel = [FileDownloads]::IM3
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'  
     }
@@ -64,9 +64,7 @@ Class warpoctets : moduletools {
             $this.sample.slideid,
             '--shardedim3root',  $rpath, 
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
-            '--noGPU',
-            '--no-log',
-            $globalargs
+            $this.gpuopt(), '--no-log', $globalargs
          ) -join ' '
         #
         return $pythontask
@@ -77,7 +75,7 @@ Class warpoctets : moduletools {
          '--shardedim3root',  $rpath, `
          '--sampleregex',  $this.sample.slideid, `
          '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), `
-         '--octets-only --noGPU', $this.buildpyopts() -join ' '
+         '--octets-only', $this.gpuopt(), $this.buildpyopts() -join ' '
         #
         return $pythontask
     }

@@ -1,7 +1,7 @@
 ﻿<#
 --------------------------------------------------------
 segmaps
-Created By: Andrew Jorquera
+Benjamin Green, Andrew Jorquera
 Last Edit: 09/29/2021
 --------------------------------------------------------
 Description
@@ -18,7 +18,7 @@ Usage: $a = [segmaps]::new($task, $sample)
 #>
 Class segmaps : moduletools {
     #
-    segmaps([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    segmaps([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'
         $this.processloc = $this.sample.componentfolder()  
     }

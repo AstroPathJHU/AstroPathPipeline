@@ -1,4 +1,3 @@
-  
 using module .\testtools.psm1
 <# -------------------------------------------
  testpsdistpatcher
@@ -20,6 +19,7 @@ Class testpsworkflow : testtools {
         #
         $this.testconstructors($cred) 
         $inp = astropathworkflow -Credential $cred -mpath $this.mpath -test
+        #
         $this.testastropathupdate($inp)
         $inp.workerloglocation = $PSScriptRoot + '\data\workflowlogs\'
         $inp.createdirs($inp.workerloglocation)
@@ -27,6 +27,14 @@ Class testpsworkflow : testtools {
         $this.testorphanjobmonitor($inp)
         $this.testwait($inp)
         $inp.removedir($PSScriptRoot + '\data\workflowlogs')
+        $this.testgitstatus($inp)
+        #
+        # add user name and password to runtestjob(4) for these to work
+        <#
+        #$this.launchremotejobbatch($inp)  
+        #$this.launchremotejob($inp) 
+        #$this.launchremotetestjob($inp)  
+        #>
         Write-Host '.'
         #
     }
@@ -132,7 +140,14 @@ Class testpsworkflow : testtools {
             Throw 'orphaned task monitor did not close correctly'
         }
         #
-        Receive-Job $j -ErrorAction Stop
+        Receive-Job $j -ErrorAction Stop 
+        Receive-Job $testj -ErrorAction Stop 
+        remove-job $testj
+        remove-job $j
+        #
+        if (get-job){
+            Throw (get-job.Name)
+        }
         #
         Write-Host 'test orphan job monitor finished'
         #
@@ -157,7 +172,7 @@ Class testpsworkflow : testtools {
         $sb = {
             param($workertasklog, $n)
             pwsh -noprofile -executionpolicy bypass -command `
-                "&{Write-Host 'Launched'; Start-Sleep -s ($n); Write-Host 'Finished'}" *>> $workertasklog
+                "&{Write-Host 'Launched'; write-host '-stringin:1-M21_1} 2'; Start-Sleep -s ($n); Write-Host 'Finished'}" *>> $workertasklog
         }
         #
         $myparameters = @{
@@ -194,8 +209,12 @@ Class testpsworkflow : testtools {
         $inp.setfile($filename, 'Event START')
         Write-Host '        detect intial creation event'
         #
-        if (get-event) {$a = $true} else {$a = $false}
-        Write-Host '    event trigger:' $a
+        if (get-event) {
+            Write-Host '    event trigger:' $true
+        } else {
+            Throw ' Error in detecting event after creation'
+        }
+        #
         get-event | remove-event
         #
         Write-Host '    event watcher launched'
@@ -231,6 +250,9 @@ Class testpsworkflow : testtools {
         Write-Host '    event trigger:' $a
         get-event | remove-event
         Write-Host '    job state:' $j.State
+        if (!$a){
+            Throw 'event did not trigger execution'
+        }
         #
         Write-Host '    wait for the second event to trigger'
         $inp.waitany($j.id)
@@ -240,7 +262,11 @@ Class testpsworkflow : testtools {
         Write-Host '    event trigger:' $a
         Write-Host '    job state:' $j.State
         #
-        Receive-Job $j -ErrorAction Stop
+        if ($j.State -notmatch 'COMPLETED'){
+            Throw 'job did not exit correctly'
+        }
+        #
+        Receive-Job $j -ErrorAction Stop | Remove-Job
         $inp.UnregisterEvent($filename)
         Write-Host 'test waiting for a job or task finished'
         #
@@ -285,7 +311,7 @@ Class testpsworkflow : testtools {
             Throw 'slide id test is not in the slide variable'
         }
         #
-        Write-HOst '    test slide confirmed'
+        Write-Host '    test slide confirmed'
         Write-Host '    remove the slideid test from the table'
         #
         $import_csv_file = $this.mpath + '\AstroPathAPIDdef.csv'
@@ -305,10 +331,140 @@ Class testpsworkflow : testtools {
         #
         Write-Host 'test that astropath files update with the file watchers appropriately finished'
         #
-
     }
     #
-
+    [void]launchremotetestjob($inp){
+        #
+        write-host '.'
+        write-host 'test launching a remote job started'
+        #
+        $module = 'shredxml'
+        $currenttask = @('0', $this.slideid)
+        $currentworker = [PSCustomObject]@{
+            module = $module
+            server = 'bki02'
+            location = 'e$'
+            status = 'IDLE'
+        }
+        #
+        $jobname = $inp.defjobname($currentworker)
+        if (test-path $inp.workertasklog($jobname)){
+            remove-item $inp.workertasklog($jobname) -force -confirm:$false
+        }
+        #
+        $currenttaskinput = $inp.addedargs($module, $currenttask, $currentworker)
+        #
+        $newtask =  (' Import-Module "', $inp.coderoot(), '"
+            $output = & {LaunchModule -mpath "', 
+            $this.uncpath($inp.mpath), $currenttaskinput, '" -test} 2>&1
+            $output.sample.popfile("',$inp.workerlogfile($jobname),'", $output.sample.vers)
+            ') -join ''
+        #
+        set-content $inp.workertaskfile($jobname) $newtask
+        #
+        $this.runtestjob($inp, $jobname, $currentworker, $currenttask)
+        $this.checkjob($inp, $jobname)
+        #
+    }
+    #
+    [void]launchremotejob($inp){
+        #
+        write-host '.'
+        write-host 'test launching a remote job started'
+        #
+        $inp.mpath = '\\bki04\astropath_processing'
+        #
+        $module = 'imagecorrection'
+        $currenttask = @('16', 'AP0160021')
+        $currentworker = [PSCustomObject]@{
+            module = $module
+            server = 'bki09'
+            location = 'g$'
+            status = 'IDLE'
+        }
+        #
+        $jobname = $inp.defjobname($currentworker)
+        if (test-path $inp.workertasklog($jobname)){
+            remove-item $inp.workertasklog($jobname) -force -confirm:$false
+        }
+        #
+        $currenttaskinput = $inp.addedargs($module, $currenttask, $currentworker)
+        Write-host '   '$currenttaskinput
+        #
+        $inp.buildtaskfile($jobname, $currenttaskinput)
+        $this.runtestjob($inp, $jobname, $currentworker, $currenttask)
+        $this.checkjob($inp, $jobname)
+        #
+        write-host 'test launching a remote job finished'
+    }
+    #
+    [void]runtestjob($inp, $jobname, $currentworker, $currenttask){
+        #
+        $password = ConvertTo-SecureString "ZLP19PLZ*" -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential ("WIN\BGREEN42", $password)  
+        #
+        $inp.login = $cred
+        #
+        $mtask = get-content $inp.workertaskfile($jobname)
+        write-host '   '$mtask
+        #
+        $securestrings = $inp.Getlogin()       
+        $currentworkerip = $inp.defcurrentworkerip($currentworker)
+        #
+        $inp.executetask($currenttask, $currentworker,
+            $securestrings, $currentworkerip, $jobname)
+    }
+    #
+    [void]launchremotejobbatch($inp){
+        #
+        write-host '.'
+        write-host 'test launching a remote job started'
+        #
+        $inp.mpath = '\\bki04\astropath_processing'
+        #
+        $module = 'batchwarpkeys'
+        $currenttask = @('16', '3')
+        $currentworker = [PSCustomObject]@{
+            module = $module
+            server = 'bki06'
+            location = 'n$'
+            status = 'IDLE'
+        }
+        #
+        $jobname = $inp.defjobname($currentworker)
+        if (test-path $inp.workertasklog($jobname)){
+            remove-item $inp.workertasklog($jobname) -force -confirm:$false
+        }
+        #
+        $currenttaskinput = $inp.addedargs($module, $currenttask, $currentworker)
+        Write-host '   '$currenttaskinput
+        #
+        $inp.buildtaskfile($jobname, $currenttaskinput)
+        $this.runtestjob($inp, $jobname, $currentworker, $currenttask)
+        $this.checkjob($inp, $jobname)
+        #
+        write-host 'test launching a remote job finished'
+    }
+    #
+    [void]checkjob($inp, $jobname){
+        #
+        if (get-job){
+            $j = get-job
+            Write-host '    job launched'
+            Write-host '    job state:' $j.state
+            wait-job $j
+            Write-host '    job state:' $j.state
+            Receive-Job $j -ErrorAction Stop 
+        }
+        #
+        if (test-path $inp.workertasklog($jobname)){
+            #
+            $file = get-content $inp.workertasklog($jobname)
+            write-host '    worker log:' $file
+            #
+        }
+        #
+    }
 }
 #
 # launch test and exit if no error found
@@ -316,6 +472,6 @@ Class testpsworkflow : testtools {
 try {
     [testpsworkflow]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0

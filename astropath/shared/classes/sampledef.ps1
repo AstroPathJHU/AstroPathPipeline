@@ -114,6 +114,11 @@ class sampledef : sharedtools{
         $this.deflogpaths()
     }
     #
+    [void]ParseAPIDdef([string]$slideid){
+        $this.ParseAPIDdef($slideid, $this.slide_data)
+        #
+    }
+    #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
         $slide = $slides | 
                 Where-Object -FilterScript {$_.SlideID -eq $slideid.trim()}
@@ -126,6 +131,11 @@ class sampledef : sharedtools{
         $this.project = $slide.Project
         $this.cohort = $slide.Cohort
         $this.BatchID = $slide.BatchID.padleft(2, '0')
+        #
+    }
+    #
+    [void]ParseAPIDdefbatch([string]$mbatchid){
+        $this.ParseAPIDdefbatch($mbatchid, $this.slide_data)
         #
     }
     #
@@ -163,14 +173,9 @@ class sampledef : sharedtools{
         $project_dat = $this.full_project_dat| 
                     Where-Object -FilterScript {$_.Project -eq $this.project}
         #
-        $r = $project_dat.dpath -replace( '/', '\')
-        if ($r[0] -ne '\'){
-            $root = '\\' + $project_dat.dpath 
-        } else{
-            $root = $project_dat.dpath
-        }
+        $root = $this.uncpaths($project_dat.dpath)
         #
-        $this.basepath = $root, '\', $project_dat.dname -join ''
+        $this.basepath = $root, $project_dat.dname -join '\'
         #
         $this.project_data = $project_dat
         #
@@ -208,7 +213,7 @@ class sampledef : sharedtools{
                     $this.slideid + '\logfiles\' +
                     $this.slideid + '-' + $cmodule + '.log'
         }
-        $vers = $this.GetVersion($this.mpath, $cmodule, $this.project)
+        $vers = $this.GetVersion($this.mpath, $cmodule, $this.project, $true)
         $this.moduleinfo.($cmodule) = @{mainlog =$cmainlog; slidelog=$cslidelog; version=$vers}
         #
     }

@@ -1,7 +1,7 @@
 ﻿<# -------------------------------------------
  moduletools
- Benjamin Green - JHU
- Last Edit: 02.16.2022
+ Benjamin Green, Andrew Jorquera- JHU
+ Last Edit: 05.04.2022
  --------------------------------------------
  Description
  general functions which may be needed by
@@ -30,11 +30,12 @@
     [array]$batchslides
     [switch]$all = $false
     #
-    moduletools([array]$task,[launchmodule]$sample){
+    moduletools([hashtable]$task, [launchmodule]$sample){
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
         $this.vers = $this.sample.GetVersion(
-            $this.sample.mpath, $this.sample.module, $this.sample.project)  
+            $this.sample.mpath, $this.sample.module, $task.project)
+        $this.sample.checksoftware()   
     }
     <# -----------------------------------------
     BuildProcessLocPath
@@ -53,9 +54,14 @@
         # If processloc is not '*' a processing destination was added as 
         # input, correct the paths to analyze from there
         #
-        if ($task[2] -AND !($task[2] -match '\*')){
-            $this.processloc = ($task[2] + '\astropath_ws\' + 
-                $this.sample.module + '\'+$task[1])
+        if ($task.processloc -AND !($task.processloc -match '\*')){
+            if ($this.sample.module -match 'batch'){
+                $this.processloc = ($task.processloc + '\astropath_ws\' + 
+                    $this.sample.module + '\'+$task.batchid)
+            } else {
+                $this.processloc = ($task.processloc + '\astropath_ws\' + 
+                    $this.sample.module + '\'+$task.slideid)
+            }
             #
             $processvarsa = $this.processvars[0,2,3] -replace `
                 [regex]::escape($this.sample.basepath), $this.processloc 
@@ -137,10 +143,12 @@
         #
         if (($this.flevel -band [FileDownloads]::FLATFIELD) -eq 
             [FileDownloads]::FLATFIELD){
-            $flatfieldfolder = $this.processvars[0]+'\flatfield'
-            $this.sample.removedir($flatfieldfolder)
-            $this.sample.CreateDirs($flatfieldfolder)
-            $this.sample.copy($this.sample.batchflatfield(), $flatfieldfolder)
+            if ($this.sample.vers -match '0.0.1'){
+                $flatfieldfolder = $this.processvars[0]+'\flatfield'
+                $this.sample.removedir($flatfieldfolder)
+                $this.sample.CreateDirs($flatfieldfolder)
+                $this.sample.copy($this.sample.batchflatfield(), $flatfieldfolder)
+            }
         }
         #
     }
@@ -157,8 +165,8 @@
             [FileDownloads]::IM3){
             $des = $this.processvars[0] +'\'+
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
-            $sor = $this.sample.MSIfolder()
-            $this.sample.copy($sor, $des, 'im3', 30)
+            $sor = $this.sample.im3folder()
+            $this.sample.copy($sor, $des, 'im3', 10)
             if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
                 Throw 'im3s did not download correctly'
             }
@@ -195,7 +203,7 @@
             [FileDownloads]::XML){
             $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
             $sor = $this.sample.xmlfolder()
-            $this.sample.copy($sor, $des, 'xml', 30)
+            $this.sample.copy($sor, $des, 'xml', 20)
             if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
                 Throw 'xmls did not download correctly'
             }
@@ -353,7 +361,7 @@
     [void]fixM2(){
         #
         $this.sample.info("Fix M# files")
-        $msi = $this.sample.MSIfolder() +'\*'
+        $msi = $this.sample.im3folder() +'\*'
         $m2s = Get-ChildItem $msi -include '*_M*.im3' -Exclude '*].im3'
         $errors = $m2s | ForEach-Object {($_.Name -split ']')[0] + ']'}
         #
@@ -378,7 +386,7 @@
     [void]fixSIDs(){
         #
         $this.sample.info("Fix M# files")
-        $msi = $this.sample.MSIfolder() +'\*'
+        $msi = $this.sample.im3folder() +'\*'
         $slideid = $this.sample.slideid + '_*.im3'
         $sampleidim3s = Get-ChildItem $msi -exclude $slideid  -include '*.im3'
         #
@@ -486,6 +494,18 @@
         return $str
     }
     #
+    [string]gpuopt(){
+        $gpu = Get-WmiObject win32_VideoController
+        if (($gpu.Name.count) -gt 1 -or 
+            ($gpu.name -match 'NVIDIA') -or 
+            ($gpu.name -match 'AMD')
+        ){
+            return ''
+        } else {
+            return '--noGPU'
+        }
+    }
+    #
     [string]pyoptsnoaxquiredannos(){
         #
         $str = ''
@@ -531,6 +551,7 @@
     [void]runpythontask($taskname, $pythontask){
         #
         $externallog = $this.ProcessLog($taskname)
+        $this.sample.info(('python task: ' + $pythontask))
         if ($this.sample.isWindows()){
             $this.sample.checkconda()
             conda activate $this.sample.pyenv()
@@ -540,6 +561,21 @@
             Invoke-Expression $pythontask *>> $externallog
         }
         $this.getexternallogs($externallog)
+        #
+    }
+    #
+    [void]runpythontask($taskname, $pythontask, $nolog){
+        #
+        $externallog = $this.ProcessLog($taskname)
+        $this.sample.info(('python task: ' + $pythontask))
+        if ($this.sample.isWindows()){
+            $this.sample.checkconda()
+            conda activate $this.sample.pyenv()
+            Invoke-Expression $pythontask *>> $externallog
+            conda deactivate 
+        } else{
+            Invoke-Expression $pythontask *>> $externallog
+        }
         #
     }
     #
@@ -593,7 +629,7 @@
                 Throw 'Error in launching python task'
             }
             #
-            if ($this.sample.module -match 'warpoctets'){
+            if ($this.sample.module -match 'warpoctets|imagecorrection'){
                 $this.parsepysamplelog()
             }
             #
@@ -692,7 +728,7 @@
         # parse log
         #
         if ($this.sample.module -match 'batch'){
-            $ID= $this.sample.BatchID
+            $ID= $this.sample.BatchID.padleft(2,'0')
         } else {
             $ID = $this.sample.slideid
         }
@@ -704,14 +740,14 @@
         foreach ($statustype in $statustypes){
             $savelog += $loglines |
                     where-object {($_.Slideid -contains $ID) -and 
-                        ($_.Message -match $statustype)} |
+                        ($_.Message -match "^$statustype")} |
                     Select-Object -Last 1 
         }
         #
         $d1 = ($savelog | Where-Object {$_.Message -match $statustypes[0]}).Date
         $d2 = ($savelog | Where-Object {$_.Message -match $statustypes[1]}).Date
         #
-        if ($d2 -gt $d1){
+        if (($d2) -and ($d2 -gt $d1)){
             $this.silentcleanup()
             Throw 'detected error in external task'
         }

@@ -1,6 +1,7 @@
-﻿<# -------------------------------------------
+﻿using module .\testtools.psm1
+<# -------------------------------------------
  testpssegmaps
- created by: Andrew Jorquera
+ Benjamin Green, Andrew Jorquera
  Last Edit: 01.28.2022
  --------------------------------------------
  Description
@@ -8,31 +9,21 @@
  functioning as intended
  -------------------------------------------#>
 #
-Class testpssegmaps {
+Class testpssegmaps : testtools {
     #
-    [string]$mpath 
-    [string]$process_loc
+    [string]$class = 'segmaps'
     #
-    testsegmaps(){
+    testpssegmaps() : base (){
         #
-        # Setup Testing
-        #
-        $this.importmodule()
-        #
-        $task = ('0', 'M21_1', $this.process_loc, $this.mpath)
-        $inp = segmaps $task
+        write-host 'create segmaps object'
+        $inp = segmaps $this.task
         #
         # Run Tests
         #
         $this.CleanupTest($inp)
         $this.SegMapsTest($inp)
-    }
-    #
-    importmodule(){
-        $module = $PSScriptRoot + '/../astropath'
-        Import-Module $module -EA SilentlyContinue
-        $this.mpath = $PSScriptRoot + '\data\astropath_processing'
-        $this.process_loc = $PSScriptRoot + '\test_for_jenkins\testing_segmaps'
+        $this.testgitstatus($inp.sample)
+        #
     }
     #
     [void]CleanupTest($inp){
@@ -40,16 +31,16 @@ Class testpssegmaps {
         Write-Host 'Starting Cleanup Test'
         $sor = $inp.sample.componentfolder()
         Write-Host 'Component Folder: ' $sor
-        $seg_files = (gci -Path $sor -Include *w_seg.tif -Recurse)
+        $seg_files = (get-childitem -Path $sor -Include *w_seg.tif -Recurse)
         Write-Host 'Deleting component data with segmentation data: ' $seg_files
         #
-        $inp.sample.copy($sor, $this.process_loc, 'W_seg.tif', 8)
+        $inp.sample.copy($sor, $this.processloc, 'W_seg.tif', 8)
         $inp.cleanup()
-        $seg_files = (gci -Path $sor -Include *w_seg.tif -Recurse)
+        $seg_files = (get-childitem -Path $sor -Include *w_seg.tif -Recurse)
         if (!($seg_files.Count -eq 0)) {
             Throw 'Error deleting component data with segmentation data'
         }
-        $inp.sample.copy($this.process_loc, $sor, 'w_seg.tif', 8)
+        $inp.sample.copy($this.processloc, $sor, 'w_seg.tif', 8)
         Write-Host 'Passed Cleanup Test'
         #
     }
@@ -63,8 +54,8 @@ Class testpssegmaps {
         }
         Write-Host 'Phenotype tables checked'
         #
-        $comp = (gci ($table + '\*') '*csv').Count
-        $seg = (gci ($inp.sample.componentfolder() + '\*') '*data_w_seg.tif').Count
+        $comp = (get-childitem ($table + '\*') '*csv').Count
+        $seg = (get-childitem ($inp.sample.componentfolder() + '\*') '*data_w_seg.tif').Count
         if (!($comp -eq $seg)){
             Throw 'Component data count ~= Segmentation Data count'
         }
@@ -80,6 +71,6 @@ Class testpssegmaps {
 try {
     [testpssegmaps]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0

@@ -358,10 +358,11 @@ class fileutils : generalutils {
      Usage: $this.WriteFile(fpath, fstring, opt)
     ----------------------------------------- #>
      [void]WriteFile([string]$fpath,[array]$fstring, [string]$opt){
+        #
         if ($opt -eq 'Set'){
-            Set-Content -Path $fpath -Value $fstring -NoNewline -EA Stop
+            Set-Content -LiteralPath $fpath -Value $fstring -NoNewline -EA Stop
         } elseif ($opt -eq 'Pop') {
-            Add-Content -Path $fpath -Value $fstring -NoNewline -EA Stop
+            Add-Content -LiteralPath $fpath -Value $fstring -NoNewline -EA Stop
         }
      }
     <# -----------------------------------------
@@ -451,6 +452,8 @@ class fileutils : generalutils {
     #
     [string]FileWatcher($fpath, $fname){
         #
+        $this.createdirs($fpath)
+        #
         $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
         $newwatcher.Filter = $fname
         $newwatcher.NotifyFilter = 'LastWrite'
@@ -464,6 +467,8 @@ class fileutils : generalutils {
     }
     #
     [string]FileWatcher($fpath, $fname, $SI){
+        #
+        $this.createdirs($fpath)
         #
         $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
         $newwatcher.Filter = $fname
@@ -503,7 +508,7 @@ class fileutils : generalutils {
      Usage: $this.UnregisterEvent(SI)
     ----------------------------------------- #>
     [void]UnregisterEvent($SI){
-        Unregister-Event -SourceIdentifier $SI -Force 
+        Unregister-Event -SourceIdentifier $SI -Force -EA Stop
     }
     <# -----------------------------------------
      UnregisterEvent

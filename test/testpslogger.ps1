@@ -22,6 +22,7 @@
         #
         $this.testwritestartmessage($log)
         $this.testeditsampleid($log)
+        $this.testgitstatus($log)        
         Write-Host '.'
         #
     }
@@ -121,7 +122,7 @@
 try {
     [testpslogger]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0
 

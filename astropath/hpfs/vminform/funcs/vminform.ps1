@@ -17,12 +17,16 @@ $vers[string]: The version number of inform to use
 #
 Function vminform {
      #
-     param($task, $log)
+     param(
+        $task,
+        $log,
+        [Parameter()][switch]$test
+    )
      #
      # used for testing; when launched manually without launchmodule
      #
-     if (!($PSBoundParameters.ContainsKey('log'))){ 
-        $log = [launchmodule]::new($task[$task.Count-1], 'vminform', $task) 
+     if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
+        $log = [launchmodule]::new($task.mpath, 'vminform', $task) 
         $e = 1
      } else {$e = 0}
      #

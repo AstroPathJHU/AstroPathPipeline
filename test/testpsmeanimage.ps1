@@ -34,9 +34,9 @@ Class testpsmeanimage : testtools {
     #
     [void]launchtests(){
         #
-        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        $this.testpsmeanimageconstruction($task)
-        $inp = meanimage $task 
+        $this.testpsmeanimageconstruction($this.task)
+        $inp = meanimage $this.task 
+        $this.checkcreatepyenv($inp.sample)
         $this.testprocessroot($inp, $true)
         $this.testcleanupbase($inp)
         $this.comparepymeanimageinput($inp)
@@ -54,6 +54,7 @@ Class testpsmeanimage : testtools {
         $this.testmasks($inp)
         $this.testcleanup($inp)
         $inp.sample.finish(($this.module+'-test'))
+        $this.testgitstatus($inp.sample)
         Write-Host '.'
     }
     <# --------------------------------------------
