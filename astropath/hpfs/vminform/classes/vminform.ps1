@@ -195,7 +195,7 @@ Class informinput : moduletools {
             $procedure = $this.CheckSegmentationTableOption($procedure, 'true', 'false')
         }
         #
-        #$procedure = $this.CheckPixelOption($procedure)
+        #$procedure = $this.CheckCoordinateSpaceIndexOption($procedure)
         $this.CheckExportLineOption($procedure)
         #
     } 
@@ -222,6 +222,29 @@ Class informinput : moduletools {
         }
         return $procedure
     }
+    
+    <# -----------------------------------------
+     CheckCoordinateSpaceIndexOption
+     Checks the protocol file for the 
+     coordinatespaceindex option and sets it 
+     to use pixels
+     ------------------------------------------
+     Usage: $this.CheckCoordinateSpaceIndexOption()
+    ----------------------------------------- #>
+    <#[array]CheckCoordinateSpaceIndexOption($procedure){
+        $segmentationtableline = $procedure | 
+            Where-Object {$_ -match '<CoordinateSpaceIndex>'}
+        if (!$segmentationtableline) {
+            throw 'error in reading <CoordinateSpaceIndex> line in procedure'
+        }
+        if ($segmentationtableline -match '0') {
+            $this.sample.info("Setting CoordinateSpaceIndex setting to use pixels")
+            $newtableline = $segmentationtableline.replace('0', '1')
+            $procedure = $procedure.replace($segmentationtableline, $newtableline)
+            $procedure | Set-Content $this.algpath
+        }
+        return $procedure
+    }#>
     <# -----------------------------------------
      CheckExportLineOption
      Using information from the mergeconfig csv
