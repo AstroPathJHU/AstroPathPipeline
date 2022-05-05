@@ -34,9 +34,8 @@ Class testvminform : testtools {
     #
     [void]launchtests(){
         #
-        $task = ($this.basepath, $this.slideid, $this.antibody, $this.algorithm, $this.informver, $this.mpath)
-        $this.testvminformconstruction($task)
-        $inp = vminform $task
+        $this.testvminformconstruction($this.task)
+        $inp = vminform $this.task
         $this.setupjenkinspaths($inp)
         $this.testoutputdir($inp)
         $this.testimagelist($inp)

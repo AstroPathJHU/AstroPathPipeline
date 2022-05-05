@@ -207,14 +207,14 @@ class sampledef : sharedtools{
         #
         $cmainlog = $this.basepath + '\logfiles\' + $cmodule + '.log'
         if ($cmodule -match 'batch'){
-                $cslidelog = $cmainlog
-            } else {
-                $cslidelog = $this.basepath + '\' +
-                    $this.slideid + '\logfiles\' +
-                    $this.slideid + '-' + $cmodule + '.log'
+            $cslidelog = $cmainlog
+        } else {
+            $cslidelog = $this.basepath + '\' + 
+                $this.slideid + '\logfiles\' + 
+                $this.slideid + '-' + $cmodule + '.log'
         }
         $vers = $this.GetVersion($this.mpath, $cmodule, $this.project, $true)
-        $this.moduleinfo.($cmodule) = @{mainlog =$cmainlog; slidelog=$cslidelog; version=$vers}
+        $this.moduleinfo.($cmodule) = @{mainlog=$cmainlog; slidelog=$cslidelog; version=$vers}
         #
     }
     #

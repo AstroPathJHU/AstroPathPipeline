@@ -39,15 +39,24 @@
     [string]$node_idle = 'IDLE'
     #
     $color_hex = @{
-        Red = 'D10000'; R = 'D10000';
-        Green = '11FF00'; G = '11FF00';
-        Blue = '888888'; B = '888888';
-        Cyan = '0077FF'; C = '0077FF';
-        Yellow = 'FFF300'; Y = 'FFF300';
-        Magenta = 'FF00FF'; M = 'FF00FF';
-        White = 'FFFFFF'; W = 'FFFFFF';
-        Black = '000000'; K = '000000';
-        Orange = '923D00'; O = '923D00'
+        Red = 'D10000'
+        R = 'D10000'
+        Green = '11FF00'
+        G = '11FF00'
+        Blue = '888888'
+        B = '888888'
+        Cyan = '0077FF'
+        C = '0077FF'
+        Yellow = 'FFF300'
+        Y = 'FFF300'
+        Magenta = 'FF00FF'
+        M = 'FF00FF'
+        White = 'FFFFFF'
+        W = 'FFFFFF'
+        Black = '000000'
+        K = '000000'
+        Orange = '923D00'
+        O = '923D00'
     }
     #
     [string]apfullname($mpath, $file){
@@ -71,7 +80,7 @@
     }
     #
     [string]ffmodels_fullfile($mpath){
-    return $this.apfullname($mpath, $this.ffmodels_file)
+        return $this.apfullname($mpath, $this.ffmodels_file)
     }
     #
     [string]corrmodels_fullfile($mpath){
@@ -311,7 +320,7 @@
         return $projects
         #
      }
-         #
+    #
     [PSCustomObject]GetAPProjects($module, $createwatcher){
         #
         $project_dat = $this.ImportConfigInfo($this.mpath, $createwatcher)
@@ -565,7 +574,7 @@
         #
         $worker_csv_file = $this.worker_fullfile($mpath)
         $this.worker_data = $this.opencsvfileconfirm($worker_csv_file)
-        $this.worker_data |
+        $this.worker_data | 
             Add-Member -NotePropertyName 'Status' -NotePropertyValue $this.node_idle
         if ($createwatcher){
             $this.FileWatcher($worker_csv_file)
@@ -675,12 +684,12 @@
      [string]defprojectlogpath($module, $project){
             #
             $this.importcohortsinfo() | Out-Null
-            $project_dat = $this.full_project_dat |
+            $project_dat = $this.full_project_dat | 
                 Where-Object {$_.project -contains $project}
             #
             $root = $this.uncpaths($project_dat.dpath)
             $fpath = $root, $project_dat.dname, 'logfiles',
-             ($module,'.log' -join '') -join '\'
+                ($module,'.log' -join '') -join '\'
             #
             return $fpath
             #

@@ -15,7 +15,7 @@
     FLATWIM3 = 16
  }
  #
- Class moduletools{
+ class moduletools{
     #
     [array]$externaltasks
     [launchmodule]$sample
@@ -33,8 +33,8 @@
     moduletools([hashtable]$task, [launchmodule]$sample){
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
-        $this.vers = $this.sample.GetVersion(
-            $this.sample.mpath, $this.sample.module, $task.project)
+        $this.vers = $this.sample.GetVersion($this.sample.mpath,
+             $this.sample.module, $task.project)
         $this.sample.checksoftware()   
     }
     <# -----------------------------------------
