@@ -10,7 +10,6 @@
  class astropathworkflow : astropathwftools {
     #
     [hashtable]$samplestatus
-
     #
     astropathworkflow(){}
     astropathworkflow($login) : base($login){}
@@ -18,14 +17,16 @@
     astropathworkflow($login, $mpath, $project) : base($login, $mpath, $project){}
     #
     [void]launchworkflow(){
-        $this.defsampledb()
+        $this.buildsampledb()
+        while(1){
+            $this.distributetasks()
+            $this.WaitAny()
+        }
     }
     #
-    [void]defsampledb(){
+    [void]launchworkflow($notasks){
         $this.buildsampledb()
+        $this.WaitAny()
     }
-
-
-
-
+    #
  }

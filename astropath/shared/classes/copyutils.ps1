@@ -617,4 +617,8 @@ class copyutils{
         $this.verifyChecksum($tempsor, $des, '*', $copycount)
         #
     }
+    #
+    [void]writeoutput($mess){
+        Write-Host ("$mess - " + (Get-Date)) -ForegroundColor Yellow
+    }
 }

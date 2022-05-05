@@ -1,7 +1,7 @@
 ﻿class aptabletools : fileutils {
     #
     [PSCustomObject]$full_project_dat
-    [PSCustomObject]$config_data
+    [PSCustomObject]$dependency_data
     [PSCustomObject]$micomp_data
     [PSCustomObject]$corrmodels_data
     [PSCustomObject]$ffmodels_data
@@ -9,12 +9,15 @@
     [PSCustomObject]$worker_data
     [PSCustomObject]$mergeconfig_data
     [PSCustomObject]$imageqa_data
+    [array]$projects
     #
     [array]$antibodies
+    [array]$allprojects
     #
     [string]$cohorts_file = 'AstroPathCohortsProgress.csv' 
     [string]$paths_file = 'AstroPathPaths.csv'
     [string]$config_file = 'AstroPathConfig.csv'
+    [string]$dependency_file = 'AstroPathDependencies.csv'
     [string]$slide_file = 'AstroPathAPIDdef.csv'
     [string]$ffmodels_file = 'AstroPathFlatfieldModels.csv' 
     [string]$corrmodels_file = 'AstroPathCorrectionModels.csv' 
@@ -72,7 +75,11 @@
     }
     #
     [string]config_fullfile($mpath){
-    return $this.apfullname($mpath, $this.config_file)
+        return $this.apfullname($mpath, $this.config_file)
+    }
+    #
+    [string]dependency_fullfile($mpath){
+        return $this.apfullname($mpath, $this.dependency_file)
     }
     #
     [string]slide_fullfile($mpath){
@@ -95,24 +102,28 @@
         return $this.apfullname($mpath, $this.worker_file)
     }
     #
+    importaptables(){
+        $this.importaptables($this.mpath)
+    }
+    #
     importaptables($mpath){
-        $this.importcohortsinfo($mpath)
-        $this.importconfiginfo($mpath)
-        $this.importslideids($mpath)
-        $this.ImportFlatfieldModels($mpath)
-        $this.ImportCorrectionModels($mpath)
-        $this.ImportMICOMP($mpath)
-        $this.Importworkerlist($mpath)
+        $this.importcohortsinfo($mpath) | Out-Null
+        $this.importdependencyinfo($mpath) | Out-Null
+        $this.importslideids($mpath) | Out-Null
+        $this.ImportFlatfieldModels($mpath) | Out-Null
+        $this.ImportCorrectionModels($mpath) | Out-Null
+        $this.ImportMICOMP($mpath) | Out-Null
+        $this.Importworkerlist($mpath) | Out-Null
     }
     #
     importaptables($mpath, $createwatcher){
-        $this.importcohortsinfo($mpath, $createwatcher)
-        $this.importconfiginfo($mpath, $createwatcher)
-        $this.importslideids($mpath, $createwatcher)
-        $this.ImportFlatfieldModels($mpath, $createwatcher)
-        $this.ImportCorrectionModels($mpath, $createwatcher)
-        $this.ImportMICOMP($mpath, $createwatcher)
-        $this.Importworkerlist($mpath, $createwatcher)
+        $this.importcohortsinfo($mpath, $createwatcher) | Out-Null
+        $this.importdependencyinfo($mpath, $createwatcher) | Out-Null
+        $this.importslideids($mpath, $createwatcher) | Out-Null
+        $this.ImportFlatfieldModels($mpath, $createwatcher) | Out-Null
+        $this.ImportCorrectionModels($mpath, $createwatcher) | Out-Null
+        $this.ImportMICOMP($mpath, $createwatcher) | Out-Null
+        $this.Importworkerlist($mpath, $createwatcher) | Out-Null
     }
     <# -----------------------------------------
      ImportCohortsInfo
@@ -131,33 +142,54 @@
         #
         $cohort_csv_file = $this.cohorts_fullfile($mpath)
         #
-        $project_data = $this.OpencsvFileConfirm($cohort_csv_file)
+        $cohort_data = $this.OpencsvFileConfirm($cohort_csv_file)
+        #
         if ($createwatcher){
             $this.FileWatcher($cohort_csv_file)
         }
         #
         $paths_csv_file = $this.paths_fullfile($mpath)
         #
-        $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
-        #
-        $this.full_project_dat = $this.MergeCustomObject(
-            $project_data, $paths_data, 'Project')
         if ($createwatcher){
             $this.FileWatcher($paths_csv_file)
         }
+        #
+        $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
+        #
+        $config_csv_file = $this.config_fullfile($mpath)
+        #
+        if ($createwatcher){
+            $this.FileWatcher($config_csv_file)
+        }
+        #
+        $config_data = $this.OpencsvFileConfirm($config_csv_file)
+        #
+        $merged_project_dat = $this.MergeCustomObject(
+            $cohort_data, $paths_data, 'Project')
+        #
+        $this.full_project_dat = $this.MergeCustomObject(
+            $merged_project_dat, $config_data, 'Project')
+        #
+        $this.defallprojects()
         #
         return $this.full_project_dat
         #
     }
     #
-    [PSCustomObject]ImportCohortsInfo(){
+    [void]defallprojects(){
         #
-        if(!$this.full_project_dat){
-            $this.importcohortsinfo($this.mpath, $false) | Out-NULL
+        $this.allprojects = @()
+        #
+        if ($this.projects){
+            $this.allprojects = $this.projects
+        } else{
+            $this.full_project_dat | ForEach-Object{
+                $p = $this.uncpaths(($_.dpath, $_.dname -join '\'))
+                if (test-path $p){
+                    $this.allprojects += $_.project
+                }
+            }
         }
-        #
-        return $this.full_project_dat
-        #
     }
     #
     [PSCustomObject]ImportCohortsInfo([string] $mpath){
@@ -169,44 +201,47 @@
         return $this.full_project_dat
         #
     }
+    #
+    [PSCustomObject]ImportCohortsInfo(){
+        #
+         return $this.importcohortsinfo($this.mpath) 
+        #
+    }
     <# -----------------------------------------
-     ImportConfigInfo
+     ImportDependencyInfo
      open the config info for the astropath
      processing pipeline with error checking from 
-     the AstropathConfig.csv in the mpath location
+     the AstroPathDependency.csv in the mpath location
      ------------------------------------------
      Input: 
         -mpath: main path for the astropath processing
          which contains all necessary processing files
      ------------------------------------------
-     Usage: ImportConfigInfo(mpath)
+     Usage: ImportDependencyInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportConfigInfo([string] $mpath, $createwatcher){
+    [PSCustomObject]ImportDependencyInfo([string] $mpath, $createwatcher){
         #
-        $config_csv_file = $this.config_fullfile($mpath)
-        $this.config_data = $this.OpencsvFileConfirm($config_csv_file)
+        $dependency_csv_file = $this.dependency_fullfile($mpath)
+        $this.dependency_data = $this.OpencsvFileConfirm($dependency_csv_file)
         if ($createwatcher){
-            $this.FileWatcher($config_csv_file)
+            $this.FileWatcher($dependency_csv_file)
         }
-        return $this.config_data
+        return $this.dependency_data
         #
     }
     #
-    [PSCustomObject]ImportConfigInfo([string] $mpath){
+    [PSCustomObject]ImportDependencyInfo([string] $mpath){
         #
-        if(!$this.config_data){
-            $this.ImportConfigInfo($mpath, $false) | Out-Null
+        if(!$this.dependency_data){
+            $this.ImportDependencyInfo($mpath, $false) | Out-Null
         }
-        return $this.config_data
+        return $this.dependency_data
         #
     }
     #
-    [PSCustomObject]ImportConfigInfo(){
+    [PSCustomObject]ImportDependencyInfo(){
         #
-        if(!$this.config_data){
-            $this.ImportConfigInfo($this.mpath, $false) | Out-Null
-        }
-        return $this.config_data
+        return $this.ImportDependencyInfo($this.mpath)
         #
     }
     <# -----------------------------------------
@@ -239,6 +274,18 @@
         return $this.slide_data
         #
     }
+    #
+    [PSCustomObject]ImportSlideIDs(){
+        #
+        return $this.ImportSlideIDs($this.mpath)
+        #
+    }
+    #
+    [PSCustomObject]ImportSlide($mpath, $createwatcher){
+        #
+        return $this.ImportSlideIDs($mpath, $createwatcher)
+        #
+    }
     <# -----------------------------------------
      ImportFlatfieldModels
      open the AstropathAPIDdef.csv to get all slide
@@ -269,6 +316,12 @@
         return $this.ffmodels_data
         #
      }
+     #
+    [PSCustomObject]Importffmodels($mpath, $createwatcher){
+        #
+        return $this.ImportFlatfieldModels($mpath, $createwatcher)
+        #
+    }
     <# -----------------------------------------
      GetAPProjects
      Select the projects from the import config
@@ -281,57 +334,31 @@
      Usage: GetAPProjects(mpath, module, project)
      Usage: GetAPProjects()
     ----------------------------------------- #>
-    [PSCustomObject]GetAPProjects([string] $mpath,
-     [string] $module, [string] $project){
-        #
-        $project_dat = $this.ImportConfigInfo($mpath)
-        #
-        if (!$project){
-            $projects = ($project_dat | 
-                Where-object {$_.($module) -match $this.onstrings}).Project
-        } else {
-            $projects = $project
-        }
-        return $projects
-        #
-     }
     #
     [PSCustomObject]GetAPProjects(){
         #
-        $project_dat = $this.ImportConfigInfo($this.mpath)
-        #
         if (!$this.project){
-            $projects = ($project_dat | 
-                Where-object {$_.($this.module) -match $this.onstrings}).Project
+            $cprojects = $this.getapprojects($this.module)
         } else {
-            $projects = $this.project
+            $cprojects = $this.project
         }
-        return $projects
+        return $cprojects
         #
      } 
     #
     [PSCustomObject]GetAPProjects($module){
         #
-        $project_dat = $this.ImportConfigInfo($this.mpath)
+        $this.ImportCohortsInfo($this.mpath) | out-null
+        $headers = $this.gettablenames($this.full_project_dat)
         #
-        $projects = ($project_dat | 
-            Where-object {$_.($module) -match $this.onstrings}).Project
-    
-        return $projects
-        #
-     }
-    #
-    [PSCustomObject]GetAPProjects($module, $createwatcher){
-        #
-        $project_dat = $this.ImportConfigInfo($this.mpath, $createwatcher)
-        #
-        if (!$this.project){
-            $projects = ($project_dat | 
+        if ($module -match ('^' + ($headers -join '$|^') + '$')){
+            $cprojects = ($this.full_project_dat | 
                 Where-object {$_.($module) -match $this.onstrings}).Project
         } else {
-            $projects = $this.project
+            $cprojects = $this.full_project_dat.Project
         }
-        return $projects
+        #
+        return $cprojects
         #
      }
     <# -----------------------------------------
@@ -386,6 +413,12 @@
         }
         #
         return $this.corrmodels_data 
+        #
+    }
+    #
+    [PSCustomObject]Importcorrmodels($mpath, $createwatcher){
+        #
+        return $this.ImportCorrectionModels($mpath, $createwatcher)
         #
     }
     <# -----------------------------------------
@@ -574,8 +607,14 @@
         #
         $worker_csv_file = $this.worker_fullfile($mpath)
         $this.worker_data = $this.opencsvfileconfirm($worker_csv_file)
-        $this.worker_data | 
-            Add-Member -NotePropertyName 'Status' -NotePropertyValue $this.node_idle
+        $headers = $this.gettablenames($this.worker_data)
+        if ('Status' -notmatch ($headers -join '|')){
+            $this.worker_data |
+                Add-Member -NotePropertyName 'Status' -NotePropertyValue $this.node_idle
+        } else {
+            $this.worker_data | 
+                Where-Object {$_.Status -match $this.onstrings}
+        }
         if ($createwatcher){
             $this.FileWatcher($worker_csv_file)
         }
@@ -658,7 +697,32 @@
         $this.popfile($this.imageqa_fullpath($basepath), $str)
         #
     }
-    <# -----------------------------------------
+    #
+    [void]removelogwatcher($module, $project){
+        #
+        $fpath = $this.defprojectlogpath($module, $project)
+        try{
+            $this.UnregisterEvent($fpath)
+        } catch {
+            Write-Host 'ERROR removing watcher on:' $fpath
+        }
+        #
+     }
+     #
+     [string]defprojectlogpath($module, $project){
+            #
+            $this.importcohortsinfo() | Out-Null
+            $project_dat = $this.full_project_dat |
+                Where-Object {$_.project -contains $project}
+            #
+            $root = $this.uncpaths($project_dat.dpath)
+            $fpath = $root, $project_dat.dname, 'logfiles',
+             ($module,'.log' -join '') -join '\'
+            #
+            return $fpath
+            #
+     }
+     <# -----------------------------------------
      Importlogfile
      import and return a log file object
      ------------------------------------------
@@ -681,20 +745,6 @@
         #
      }
      #
-     [string]defprojectlogpath($module, $project){
-            #
-            $this.importcohortsinfo() | Out-Null
-            $project_dat = $this.full_project_dat | 
-                Where-Object {$_.project -contains $project}
-            #
-            $root = $this.uncpaths($project_dat.dpath)
-            $fpath = $root, $project_dat.dname, 'logfiles',
-                ($module,'.log' -join '') -join '\'
-            #
-            return $fpath
-            #
-     }
-     #
     [PSCustomObject]Importlogfile($module, $project){
         #
         $logfile = $this.importlogfile(
@@ -711,6 +761,7 @@
             $logfile = $this.opencsvfile($fpath, `
                 ';', $this.logfileheaders)
         } else {
+            $this.createfile($fpath)
             $logfile = ''
         }
         #

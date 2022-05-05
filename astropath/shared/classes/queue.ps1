@@ -753,7 +753,7 @@ class queue : modulequeue {
         switch -regex ($file){
             $this.cohorts_file {$this.importcohortsinfo($this.mpath, $false)}
             $this.paths_file {$this.importcohortsinfo($this.mpath, $false)}
-            $this.config_file {$this.ImportConfigInfo($this.mpath, $false)}
+            $this.config_file {$this.importcohortsinfo($this.mpath, $false)}
             $this.slide_file {$this.ImportSlideIDs($this.mpath, $false)}
             $this.ffmodels_file {$this.ImportFlatfieldModels($this.mpath, $false)}
             $this.corrmodels_file {$this.ImportCorrectionModels($this.mpath, $false)}

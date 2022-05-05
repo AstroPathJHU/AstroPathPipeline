@@ -13,16 +13,16 @@ class sampletracker : dependencies {
     #
     sampletracker($mpath) : base ($mpath){
         #
-        $this.getmodulenames()
         $this.importaptables($this.mpath, $false)
+        $this.getmodulestatus()
         $this.getmodulelogs()
         #
     }
     #
     sampletracker($mpath, $vmq): base ($mpath){
         #
-        $this.getmodulenames()
         $this.importaptables($this.mpath, $false)
+        $this.getmodulestatus()
         $this.getmodulelogs()
         $this.vmq = $vmq
         #
@@ -32,6 +32,7 @@ class sampletracker : dependencies {
         #
         $this.modules = $modules
         $this.vmq = $vmq
+        $this.getmodulestatus()
         $this.getmodulelogs()
         #
     }
@@ -39,6 +40,7 @@ class sampletracker : dependencies {
     sampletracker($mpath, $vmq, $modules, $modulelogs): base ($mpath){
         #
         $this.modules = $modules
+        $this.getmodulestatus()
         $this.modulelogs = $modulelogs
         $this.vmq = $vmq
         #
@@ -47,6 +49,7 @@ class sampletracker : dependencies {
     sampletracker($mpath, $vmq, $modules, $modulelogs, $slideid): base ($mpath, $slideid){
         #
         $this.modules = $modules
+        $this.getmodulestatus()
         $this.modulelogs = $modulelogs
         $this.vmq = $vmq
         #

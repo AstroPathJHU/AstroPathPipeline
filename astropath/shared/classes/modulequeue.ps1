@@ -74,10 +74,11 @@
     ----------------------------------------- #>
     [void]coalescequeues(){
          #
-         $projects = $this.getapprojects($this.module)
+         $this.getmodulestatus($this.module)
          #
          $this.openmainqueue($false)
-         $projects | ForEach-Object{
+         #
+         $this.allprojects | ForEach-Object{
             $this.coalescequeues($_, $true)
          }
          #
@@ -271,7 +272,10 @@
         $cohortinfo = $this.GetProjectCohortInfo($this.mpath, $project)
         $localqueuepath = $cohortinfo.Dpath +
             '\' + $cohortinfo.Dname + '\upkeep_and_progress' + $this.localqueue_path
-            $localqueuepath = $this.CrossPlatformPaths($localqueuepath)
+        #
+        $localqueuepath = $this.CrossPlatformPaths(
+                $this.uncpaths($localqueuepath)
+        )
         return $localqueuepath
     }
     <# -----------------------------------------
@@ -313,6 +317,11 @@
         if ($q){
             $q = $q | where-object { 
                 $_.($this.refobject) -and $_.($this.refobject).trim().length -gt 0
+            }
+            if ($this.type -match 'queue'){
+                $q | foreach-object {
+                    $_ | Add-Member localtaskid $_.taskid -PassThru
+                }
             }
         }
         #
@@ -527,11 +536,11 @@
             return
         }
         #
-        $projects = $this.getapprojects($this.module)
+        $this.getmodulestatus($this.module)
         #
         $this.writemainqueue()
         $this.openmainqueue($true)
-        $projects | ForEach-Object{
+        $this.allprojects | ForEach-Object{
             $this.coalescequeues($_, $false)
             $this.getlocalqueue($_, $true)
         }

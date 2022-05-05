@@ -19,7 +19,7 @@ Class testpsworkflow : testtools {
         #
         $this.testconstructors($cred) 
         $inp = astropathworkflow -Credential $cred -mpath $this.mpath -test
-        #
+        <#
         $this.testastropathupdate($inp)
         $inp.workerloglocation = $PSScriptRoot + '\data\workflowlogs\'
         $inp.createdirs($inp.workerloglocation)
@@ -27,6 +27,21 @@ Class testpsworkflow : testtools {
         $this.testorphanjobmonitor($inp)
         $this.testwait($inp)
         $inp.removedir($PSScriptRoot + '\data\workflowlogs')
+        #
+        $inp.preparesample($this.slideid)
+        $this.savephenotypedata($inp)
+        $this.removesetupvminform($inp)
+        $this.testastropathupdate2('shredxml', $cred)
+        $this.setupbatchwarpkeys($inp)
+        #>
+        $this.testastropathupdate2('batchwarpkeys', $cred)
+        $this.setupvminform($inp)
+        throw 'stop'
+        $this.testastropathupdate2('vminform', $cred)
+        $this.removesetupvminform($inp)
+        $this.returnphenotypedata($inp)
+        $this.cleanup($inp)
+        $this.testcorrectionfile($inp, $true)
         $this.testgitstatus($inp)
         #
         # add user name and password to runtestjob(4) for these to work
@@ -36,6 +51,17 @@ Class testpsworkflow : testtools {
         #$this.launchremotetestjob($inp)  
         #>
         Write-Host '.'
+        #
+    }
+    #
+    [void]cleanup($sampledb){
+        #
+        write-host '.'
+        write-host 'clean up started'
+        $sampledb.removedir($this.mpath + '\across_project_queues')
+        $sampledb.removedir($this.basepath + '\upkeep_and_progress\progress_tables')
+        $sampledb.createnewdirs($this.basepath + '\logfiles')
+        write-host 'clean up finished'
         #
     }
     #
@@ -333,6 +359,46 @@ Class testpsworkflow : testtools {
         #
     }
     #
+    [void]testastropathupdate2($module, $cred){
+        #
+        Write-Host '.'
+        Write-Host 'test that astropath files update with the file watchers appropriately started'
+        #
+        write-host '    create new log'
+        if ($module -match 'batch'){
+            $log = logger -mpath 'v:\astropath_processing' `
+                -module $module -project $this.project -batchid $this.batchid
+        } else {
+            $log = logger -mpath 'v:\astropath_processing' -module $module -slideid $this.slideid
+        }
+        $log.removefile($log.mainlog)
+        #
+        write-host '    create astropath db'
+        $workflow = astropathworkflow -MPATH 'V:\ASTROPATH_PROCESSING' -TEST -Credential $cred
+        $workflow.buildsampledb()
+        write-host '    update as a running task'
+        #
+        $log.start($module)
+        $workflow.WaitAny()
+        $status = ($workflow.moduleobjs.($module).maincsv |
+            Where-Object {$_.slideid -match 'M21_1'}).Status
+        if ($status -notmatch 'RUNNING'){
+            Throw ('status after module launch not RUNNING: ' + $status)
+        }
+        write-host '    update as a finished task'
+        #
+        $log.finish($module)
+        $workflow.WaitAny()
+        $status = ($workflow.moduleobjs.($module).maincsv |
+            Where-Object {$_.slideid -match 'M21_1'}).Status
+        if ($status -notmatch 'FINISHED'){
+            Throw ('status after module launch not FINISHED: ' + $status)
+        }
+        #
+        Write-Host 'test that astropath files update with the file watchers appropriately finished'
+        #
+    }
+    #
     [void]launchremotetestjob($inp){
         #
         write-host '.'
@@ -400,8 +466,8 @@ Class testpsworkflow : testtools {
     #
     [void]runtestjob($inp, $jobname, $currentworker, $currenttask){
         #
-        $password = ConvertTo-SecureString "ZLP19PLZ*" -AsPlainText -Force
-        $cred = New-Object System.Management.Automation.PSCredential ("WIN\BGREEN42", $password)  
+        $password = ConvertTo-SecureString "password" -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential ("username", $password)  
         #
         $inp.login = $cred
         #

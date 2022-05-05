@@ -42,10 +42,10 @@ class vminformqueue : modulequeue {
     ----------------------------------------- #>
     [void]coalescevminformqueues(){
         #
-        $projects = $this.getapprojects($this.module)
+        $this.getmodulestatus($this.module)
         #
         $this.openmainqueue($false)
-        $projects | ForEach-Object{
+        $this.allprojects | ForEach-Object{
             $this.coalescevminformqueues($_, $true)
         }
         #
@@ -111,11 +111,11 @@ class vminformqueue : modulequeue {
     --------------------------------------------#>
     [void]createwatchersvminformqueues(){
         #
-        $projects = $this.getapprojects($this.module)
+        $this.getmodulestatus($this.module)
         #
         $this.writemainqueue()
         $this.openmainqueue($false)
-        $projects | ForEach-Object{
+        $this.allprojects | ForEach-Object{
             #
             $this.coalescevminformqueues($_, $false)
             $this.getlocalqueue($_, $true)
@@ -153,6 +153,12 @@ class vminformqueue : modulequeue {
         if (!$currentprojecttasks){
             return
         }
+        <#
+        $cmp2 = Compare-Object -ReferenceObject $currentprojecttasks `
+            -DifferenceObject $this.localqueue.($project) `
+            -Property 'localtaskid','SlideID','Antibody','Algorithm'
+        #>
+
         #
         foreach ($row in $currentprojecttasks){
             $localtaskid = $row.localtaskid
@@ -301,8 +307,7 @@ class vminformqueue : modulequeue {
         $task = $this.localqueue.($project) |    
             Where-Object {$_.slideid -match $slideid -and 
                 $_.Antibody -match $antibody -and 
-                $_.Algorithm -eq '' -and
-                $_.ProcessingLocation -eq ''
+                $_.Algorithm -eq ''
             
             }
         #

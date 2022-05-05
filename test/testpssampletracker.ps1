@@ -1,4 +1,4 @@
-﻿using module .\testtools.psm1
+using module .\testtools.psm1
  <# -------------------------------------------
  testsampletracker
  Benjamin Green - JHU
@@ -642,40 +642,6 @@
             $sampletracker.imagecorrectionreqfiles[2], 
             $sampletracker.im3constant
         )
-        #
-    }
-    #
-    [void]addalgorithms($sampletracker){
-        #
-        $sampletracker.findantibodies()
-        foreach ($abx in $sampletracker.antibodies) {
-            #
-            $sampletracker.vmq.checkfornewtask($this.project, $this.slideid, $abx)
-            $sampletracker.vmq.localqueue.($this.project) |    
-                Where-Object {
-                    $_.slideid -match $this.slideid -and 
-                    $_.Antibody -match $abx   
-                } |
-                Foreach-object {
-                    $_.algorithm = 'blah.ifr'
-                }
-            $sampletracker.vmq.writelocalqueue($this.project)
-            #
-            $sampletracker.vmq.coalescevminformqueues($this.project)
-            #
-            $sampletracker.vmq.maincsv | 
-                Where-Object {
-                    $_.slideid -match $this.slideid -and 
-                    $_.Antibody -match $abx   
-                } | 
-                Foreach-object {
-                    $_.algorithm = 'blah.ifr'
-                    $_.ProcessingLocation = ''
-                }
-                #
-        }
-        #
-        
         #
     }
     #

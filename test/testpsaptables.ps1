@@ -18,11 +18,14 @@
         $tools = sharedtools
         $this.testapidfiles() | Out-Null
         $this.testapidfiles($tools)
-        $this.testconfiginfo($tools)
         $this.testcorrectionfile($tools, $true)
         $this.testcorrectioninfo($tools)
-        $this.correctcohortsinfo($tools)
+       # $this.correctcohortsinfo($tools)
        # $this.testcohortsinfo($tools)
+        $tools.importaptables($this.mpath, $false)
+        $tools.getmodulestatus()
+        $tools.getmodulelogs()
+        write-host $tools.module_project_data.scan[0].tostring()
         $this.testgitstatus($tools)        
         Write-Host '.'
         #
@@ -94,21 +97,6 @@
         #
     }
     #
-    [void]testconfiginfo($tools){
-        #
-        Write-Host '.'
-        Write-Host 'Testing config info method. Output below:'
-        #
-        try {
-            $internal_apids = $tools.ImportConfigInfo($this.mpath)
-        } Catch {
-            Throw ('Cannot open config file. ' + $_.Exception.Message)
-        }
-        #
-        write-host " " $internal_apids | Format-Table
-        #
-    }
-    #
     [void]testcohortsinfo($tools){
         #
         Write-Host '.'
@@ -120,7 +108,7 @@
             Throw ('Cannot open config file. ' + $_.Exception.Message)
         }
         #
-        write-host " " ($internal_apids | Out-String)
+        write-host " " ($internal_apids | Format-Table  Out-String)
         #
     }
     #
@@ -167,8 +155,12 @@
         $paths_data | Export-CSV $paths_csv_file
         #
         $internal_apids = $tools.ImportCohortsInfo($this.mpath)
-        write-host " " ($internal_apids | Out-String)
+        write-host " " ($internal_apids | fORMAT-TABLE | Out-String)
         #
+    }
+    #
+    [void]dothething(){
+
     }
     #
 }

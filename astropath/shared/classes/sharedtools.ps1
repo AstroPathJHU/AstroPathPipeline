@@ -14,6 +14,7 @@
     [string]$psroot = $pshome + "\powershell.exe"
     [string]$package = 'astropath'
     [array]$modules
+    [hashtable]$module_project_data = @{}
     [hashtable]$modulelogs = @{}
     [switch]$checkpyenvswitch = $false
     [switch]$teststatus = $false
@@ -105,8 +106,8 @@
     ----------------------------------------- #>
     [string]GetVersion($mpath, $module, $project){
         #
-        $this.ImportConfigInfo($mpath) | Out-Null
-        $projectconfig = $this.config_data | 
+        $this.ImportCohortsInfo($mpath) | Out-Null
+        $projectconfig = $this.full_project_dat | 
             Where-Object {$_.Project -eq $project}
         if (!$projectconfig){
             Throw ('Project not found for project number: '  + $project)
@@ -114,23 +115,24 @@
         #
         $vers = $projectconfig.($module+'version')    
         if (!$vers){
-            Throw 'No version number found'
+            $this.checkmoduleexists($mpath, $module)
         }
         #
         if ($this.apversionchecks($mpath, $module, $vers)){
             return ("v" + $vers)
+        } else {
+            $vers = $this.getfullversion()
         }
         # 
-        $vers = $this.getfullversion()
         return $vers
         #
     }
     #
     [string]GetVersion($mpath, $module, $project, $short){
         #
-        $this.ImportConfigInfo($mpath) | Out-Null
+        $this.ImportCohortsInfo($mpath) | Out-Null
         #
-        $projectconfig = $this.config_data | 
+        $projectconfig = $this.full_project_dat | 
             Where-Object {$_.Project -eq $project}
         if (!$projectconfig){
             Throw ('Project not found for project number: '  + $project)
@@ -138,14 +140,11 @@
         #
         $vers = $projectconfig.($module+'version')    
         if (!$vers){
-            Throw 'No version number found'
+           $this.checkmoduleexists($mpath, $module)
+           $vers = '0.0.2'
         }
         #
-        if ($this.apversionchecks($mpath, $module, $vers)){
-            return ("v" + $vers)
-        }
-        # 
-        return $vers
+        return ("v" + $vers)
         #
     }
     <# -----------------------------------------
@@ -158,22 +157,24 @@
     ----------------------------------------- #>
     [switch]APVersionChecks($mpath, $module, $vers){
         #
-        if (
-            ($module -contains  @('warping')) -and 
-                $vers -match '0.0.1'
-            ){
-            #
-            Throw 'module not supported in this version (' + $vers + 
-                '): ' + $module
-            #
-        }
-        #
-        if ($this.package -match 'astropath' -and $vers -match '0.0.1'){
+        if ($this.package -match 'astropath' -and
+            $vers -match '0.0.1'){
             return $true
         } else {
             return $false
         }
         #
+    }
+    [void]checkmoduleexists($mpath, $module){
+        $this.importdependencyinfo($mpath) | Out-Null
+        $headers = '^' + ($this.dependency_data.module -join '$|^') + '$'
+           if ($module -notmatch $headers){
+               write-host 'Valid module regex:' $headers
+                throw ($module + 
+                    ' not defined. Please define module '+
+                    'in AstroPathDependency and optionally AstroPathConfig for version selection'
+                )
+            }
     }
     <# -----------------------------------------
     getfullversion
@@ -464,40 +465,6 @@
             $this.createpyenvir()
         }
     }
-    <# -----------------------------------------
-     progressindicator
-     ------------------------------------------
-     Usage: $this.progressindicator()
-    ----------------------------------------- #>    
-    [void]progressindicator($previous, $current, $c, $ctotal){
-        #
-        $prepend = 'Checking Slides'
-        $append = '% Complete'
-        $p = [math]::Round(100 * ($c / $ctotal))
-        $writecurrent = "`r" + $prepend + ': ' + $p + $append + ' ' + $current
-        Write-Host -NoNewline $($writecurrent)
-        #
-    }
-    #
-    [void]getmodulenames(){
-        #
-        $project_dat = $this.ImportConfigInfo($this.mpath)
-        $this.modules = $project_dat[0].psobject.Properties.Name `
-          -notmatch ('version', 'Delete','Dname','Cohorts','Space_TB','Project' -join '|')
-        #
-    }
-    #
-    [PSCustomObject]getmodulestatus($project){
-        #
-        $project_dat = $this.ImportConfigInfo($this.mpath)
-        $project_dat = $project_dat | 
-                Where-Object {$project -contains $_.Project}
-        $this.modules = ($project_dat | Get-Member -MemberType NoteProperty).Name `
-          -notmatch ('version', 'Delete', 'Dname', 'Cohorts', 'Space_TB', 'Project' -join '|')
-        $modulestatus = $project_dat | Select-Object -Property $this.modules 
-        return $modulestatus
-        #
-    }
     #
     [void]softwareinstall($name){
         $this.createdirs($this.pyinstalllocation())
@@ -534,6 +501,93 @@
     [string]softwarelinkpath($name){
             return ($this.pyinstalllocation() + $name + ".exe")
     }
+    <# -----------------------------------------
+     progressindicator
+     ------------------------------------------
+     Usage: $this.progressindicator()
+    ----------------------------------------- #>    
+    [void]progressindicator($previous, $current, $c, $ctotal){
+        #
+        $prepend = 'Checking Slides'
+        $append = '% Complete'
+        $p = [math]::Round(100 * ($c / $ctotal))
+        $writecurrent = "`r" + $prepend + ': ' + $p + $append + ' ' + $current
+        Write-Host -NoNewline $($writecurrent)
+        #
+    }
+    <#
+        reads in the module names from the dependency data.
+        Optional overload (1) will force update the modulenames.
+        Otherwise this just checks if the modules were previously
+        defined
+    #>
+    [void]getmodulenames(){
+        #
+        if (!$this.modules){
+            $this.getmodulenames($true)
+        }
+        #
+    }
+    #
+    [void]getmodulenames($update){
+        #
+        $this.ImportDependencyInfo() | Out-Null
+        $this.modules = $this.dependency_data.module 
+        #
+    }
+    <#
+        updates the module status for each module.
+        optional overload (1) to update for a specified 
+        module
+    #>
+    [void]updatemodulestatus(){
+        #
+        $this.getmodulenames()
+        $this.module | ForEach-Object{
+            $this.getmodulestatus($_, $true)
+        }
+        #
+    }
+    #
+    [void]updatemodulestatus($module){
+        #
+        $this.getmodulestatus($module, $true)
+        #
+    }
+    <#
+        defines $this.module_project_data hashtable for each
+        module, i.e. a list of active projects for the module
+        referenced by $this.module_project_data.($module). Optional 
+        overload (1) for a specified module and (2) for a 
+        specfied module and to force update. If projects
+        to use are specified it will use those.
+    #>
+    [void]getmodulestatus(){
+        #
+        $this.getmodulenames()
+        $this.modules | ForEach-Object{
+            $this.getmodulestatus($_)
+        }
+        #
+    }
+    #
+    [void]getmodulestatus($module){
+        #
+        if (!$this.module_project_data.($module)){
+            $this.getmodulestatus($module, $true)
+        }
+        #
+    }
+    #
+    [void]getmodulestatus($module, $update){
+        #
+        if (!$this.projects){
+            $this.module_project_data.($module) = $this.GetAPProjects($module)
+        } else {
+            $this.module_project_data.($module) = $this.projects
+       }
+        #
+    }
      #
      [void]getmodulelogs(){
         $this.getmodulelogs($false)
@@ -543,11 +597,10 @@
         #
         $this.getmodulenames()
         foreach ($module in $this.modules){
-            $projects = $this.getapprojects($module)
             if ($this.modulelogs.($module).count -eq 0){
                 $this.modulelogs.($module) = @{} 
             }
-            $projects | foreach-object{
+            $this.allprojects | foreach-object{
                 #
                 $this.getmodulelogs($module, $_, $createwatcher )
                 #
@@ -570,21 +623,18 @@
         $this.modulelogs.($module).($project) = 
             $this.importlogfile($module, $project, $createwatcher)
         #
-        if (!$createwatcher){
+       # if (!$createwatcher){
             $this.getnewloglines($oldlog, $project, $module)
-        }
+       # }
         #
     }
     #
     [void]getnewloglines($oldlog, $project, $module){
         #
-        if (!$this.newtasks){
-            $this.newtasks = @()
-        }
-        #
         $newlog = $this.modulelogs.($module).($project)
         $newlog_finishlines = $newlog |
-                Where-Object {$_.Message -match '^FINISH'}
+                Where-Object {$_.Message -match
+                        ('^' + $this.log_finish + '|^' + $this.log_start)}
         #
         if ($newlog_finishlines){
             #
@@ -608,12 +658,22 @@
                 #
             }
             #
-            $this.newtasks += $slidestocheck
-            $this.newtasks = ($this.newtasks | Sort-Object | Get-Unique)
+            $this.addnewtasks($slidestocheck)
         }
     }
     #
-    [array]getbatchslideslight([string]$mbatchid, $project){
+    [void]addnewtasks($slidestocheck){
+        #
+        if (!$this.newtasks){
+            $this.newtasks = @()
+        }
+        #
+        $this.newtasks += $slidestocheck
+        $this.newtasks = ($this.newtasks | Sort-Object | Get-Unique)
+        #
+    }   
+    #
+    [array]getbatchslideslight([string]$mbatchid, $cproject){
         #
         if ($mbatchid[0] -match '0'){
             [string]$mbatchid = $mbatchid[1]
@@ -622,13 +682,13 @@
         $batch = $this.slide_data | 
             Where-Object {
                 $_.BatchID -eq $mbatchid.trim() -and 
-                $_.Project -eq $project.trim()
+                $_.Project -eq $cproject.trim()
             }
         #
-        if (!$batch){
-            Throw 'Not a valid batchid'
+        if ($batch){
+            return $batch.SlideID
         }
-        return $batch.SlideID
+        return @()
         #
     }
     #  
