@@ -20,32 +20,18 @@
         rerun = 'RERUN'
     }
     #
-    [string]$specialcasedeps = (@('scan','transfer',
-        'batchmicomp','merge','imageqa') -join '|')
+    [string]$specialcasedeps = '^' + (@('scan','scanvalidation','transfer',
+        'batchmicomp','merge','imageqa') -join '$|^') + '$'
     #
     [string]$empty_time = 'NA'
     #
-    $pipeline_steps = [ordered]@{
-        step1 = 'scan';
-        step2 = 'transfer';
-        step3 = 'shredxml';
-        step4 = 'meanimage';
-        step5 = 'batchmicomp';
-        step6 = 'batchflatfield';
-        step7 = 'warpoctets';
-        step8 = 'batchwarpkeys';
-        step9 = 'batchwarpfits';
-        step10 = 'imagecorrection';
-        step11 = 'vminform';
-        step12 = 'merge';
-        step13 = 'imageqa';
-        step14 = 'segmaps';
-        step15 = 'dbload'
+    dependencies($mpath): base ($mpath){$this.initdependencies()}
+    #
+    dependencies($mpath, $slideid): base ($mpath, '', $slideid){$this.initdependencies()}
+    #
+    [void]initdependencies(){
+        $this.importdependencyinfo($this.mpath) | Out-Null
     }
-    #
-    dependencies($mpath): base ($mpath){}
-    #
-    dependencies($mpath, $slideid): base ($mpath, '', $slideid){}
     #
     # dependencies($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
     #
@@ -88,8 +74,16 @@
             }
             #
             switch ($check){
-                1 {$this.moduleinfo.($cmodule).status = $this.status.waiting}
-                2 {$this.moduleinfo.($cmodule).status = $this.status.ready}
+                1 {
+                    $this.moduleinfo.($cmodule).status = $this.status.waiting
+                    $this.moduleinfo.($cmodule).starttime = $this.empty_time
+                    $this.moduleinfo.($cmodule).finishtime = $this.empty_time
+                }
+                2 {
+                    $this.moduleinfo.($cmodule).status = $this.status.ready
+                    $this.moduleinfo.($cmodule).starttime = $this.empty_time
+                    $this.moduleinfo.($cmodule).finishtime = $this.empty_time
+                }
                 3 {$this.moduleinfo.($cmodule).status = $this.status.finish}
                 4 {$this.moduleinfo.($cmodule).status = $this.status.na}
                 Default {$this.moduleinfo.($cmodule).status = $this.status.unknown}
@@ -110,8 +104,16 @@
         #
         if ($logoutput){
             switch ($this.('check'+$cmodule)($antibody)){
-                1 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.waiting}
-                2 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.ready}
+                1 {
+                    $this.moduleinfo.($cmodule).($antibody).status = $this.status.waiting
+                    $this.moduleinfo.($cmodule).($antibody).starttime = $this.empty_time
+                    $this.moduleinfo.($cmodule).($antibody).finishtime = $this.empty_time
+                }
+                2 {
+                    $this.moduleinfo.($cmodule).($antibody).status = $this.status.ready
+                    $this.moduleinfo.($cmodule).($antibody).starttime = $this.empty_time
+                    $this.moduleinfo.($cmodule).($antibody).finishtime = $this.empty_time
+                }
                 3 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.finish}
                 4 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.na}
                 5 {$this.moduleinfo.($cmodule).($antibody).status = $logoutput[1].Message}
@@ -226,9 +228,15 @@
     #
     [hashtable]filterloglines($loglines, $ID, $vers){
         $startdate = ($this.selectlogline($loglines,
-            $ID, $this.log_start, $vers)).Date
+            $ID, $this.log_start, $vers)).Date[0..18] -join ''
+        if ($startdate){
+            $startdate = $startdate.Date[0..18] -join ''
+        }
         $finishdate = ($this.selectlogline($loglines,
-            $ID, $this.log_finish, $vers)).Date
+            $ID, $this.log_finish, $vers)).Date[0..18] -join ''
+        if ($finishdate){
+            $finishdate = $finishdate.Date[0..18] -join ''
+        }
         $errorline = $this.selectlogline($loglines,
             $ID, $this.log_error)
         $filteredloglines = @{
@@ -241,9 +249,15 @@
     #
     [hashtable]filterloglines($loglines, $ID, $vers, $antibody){
         $startdate = ($this.selectlogline($loglines,
-            $ID, $this.log_start, $vers, $antibody)).Date
+            $ID, $this.log_start, $vers, $antibody)).Date[0..18] -join ''
+        if ($startdate){
+            $startdate = $startdate.Date[0..18] -join ''
+        }
         $finishdate = ($this.selectlogline($loglines,
-            $ID, $this.log_finish, $vers, $antibody)).Date
+            $ID, $this.log_finish, $vers, $antibody)).Date[0..18] -join ''
+        if ($finishdate){
+            $finishdate = $finishdate.Date[0..18] -join ''
+        }
         $errorline = $this.selectlogline($loglines,
             $ID, $this.log_error, '', $antibody)
         $filteredloglines = @{
@@ -323,6 +337,9 @@
     [switch]errorlogical($startdate, $finishdate, $errorline){
         #
         $errordate = $errorline.Date
+        if ($errordate){
+            $errordate = $errorline.Date[0..18] -join ''
+        }
         $errorlogical = (
             $startdate -and $startdate -ne $this.empty_time -and
             $errordate -and $errordate -ne $this.empty_time -and
@@ -350,6 +367,27 @@
      Usage: $this.checkscan(log, dependency)
     ----------------------------------------- #>
     [int]checkscan(){
+        #
+        if (!($this.moduleinfo.transfer.version -match '0.0.1') -and 
+            $this.checklog('transfer', $true)){
+            return 2
+        }
+        #
+        if (!$this.testtransferfiles()){
+            return 2
+        }
+        #
+        $im3s = (Get-ChildItem ($this.Scanfolder() + '\MSI\*') *im3).Count
+        #    
+        if (!$im3s){
+            return 2
+        }
+        #
+        return 3
+        #
+    }
+    #
+    [int]checkscanvalidation(){
         #
         if (!($this.moduleinfo.transfer.version -match '0.0.1') -and 
             $this.checklog('transfer', $true)){
@@ -487,6 +525,8 @@
         #
         $taskid = $this.vmq.checkforreadytask($this.project, 
             $this.slideid, $antibody)
+        #
+        $this.moduleinfo.($cmodule).($antibody).taskid = $taskid
         #
         if ($taskid){
             return 2
@@ -634,21 +674,10 @@
         return $batchescomplete
     }
     #
-    [string]previousstep($step){
-        #
-        $id = $($this.pipeline_steps.Values).indexOf($step)
-        if ($id -eq 0){
-            return $step
-        } else {
-            $newid = $id - 1
-            return $this.pipeline_steps[$newid]
-        }
-        #
-    }
-    #
     [switch]checkpreviousstep($step){
         #
-        $previousstep = $this.previousstep($step)
+        $previousstep = ($this.dependency_data |
+            Where-Object {$_.module -contains $step}).dependency
         #
         if ($this.moduleinfo.($previousstep).status -ne $this.status.finish){
             return $true

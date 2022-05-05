@@ -19,10 +19,12 @@
     }
     #
     if ($module -match 'batch'){
-        $m = [launchmodule]::new($mpath, $module, $batchid, $project, $PSBoundParameters)
+        $m = [launchmodule]::new($mpath, $module,
+            $batchid, $project, $PSBoundParameters)
         #
     } else {
-        $m = [launchmodule]::new($mpath, $module, $slideid, $PSBoundParameters)
+        $m = [launchmodule]::new($mpath, $module,
+            $slideid, $PSBoundParameters)
     }        
     #
     return $m

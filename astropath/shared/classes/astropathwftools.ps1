@@ -1,6 +1,4 @@
 #
-#
-#
 class astropathwftools : sampledb {
     #
     [Pscredential]$login
@@ -34,13 +32,9 @@ class astropathwftools : sampledb {
         $this.login = $login
         if ($modules){
             $this.modules = $modules
-        } else {
-            $this.getmodulenames()
-        }
+        } 
         #
-        Write-Host "Starting the AstroPath Pipeline" -ForegroundColor Yellow
-        Write-Host ("Modules: " + $this.modules) -ForegroundColor Yellow
-        Write-Host ("Username: " + $this.login.UserName) -ForegroundColor Yellow
+        $this.writeoutput(" Username: " + $this.login.UserName)
         #
     }
     <# -----------------------------------------
@@ -202,7 +196,7 @@ class astropathwftools : sampledb {
         #
         if ($module -match 'vminform'){
             $currenttaskinput = '" -module ', $module,
-                ' -project ', $currenttask[0], ' -slideid ', $currenttask[1],
+                ' -slideid ', $currenttask[1],
                 ' -antibody ', $currenttask[2], ' -algorithm ', $currenttask[3],
                 ' -informvers ', $this.informvers -join '"'
         } elseif ($module -match 'batch') {
@@ -337,16 +331,6 @@ class astropathwftools : sampledb {
     [string]workerlogfile($jobname){
         return $this.workerloglocation+$jobname+'.log'
     }
-     <# -----------------------------------------
-     deftaskqueues
-     ------------------------------------------
-     Usage: $this.deftaskqueues()
-    ----------------------------------------- #>
-    [void]deftaskqueues(){
-        $this.modules | ForEach-Object{
-
-        }
-    }
     <# -----------------------------------------
      DefCurrentWorkerip
      define the current worker IP address. The
@@ -387,23 +371,36 @@ class astropathwftools : sampledb {
         $ID = ($ID -split '-') -replace '"', ''
         $cmodule = $ID[0].trim()
         #
+        $cslideid = ($ID -match 'slideid')
+        if ($cslideid){
+            $cslideid = ($cslideid -replace 'slideid', '').trim()
+        }
+        #
+        $cproject = ($ID -match 'project')
+        if ($cproject){
+            $cproject = ($cproject -replace 'project', '').trim()
+        }
+        #
+        $cbatchid = ($ID -match 'batchid')
+        if ($cbatchid){
+            $cbatchid = ($cbatchid -replace 'batchid', '').trim()
+        }
+        #
         # create a logging object and check the
         # log for a finishing message
         #
         try{
             if ($cmodule -match 'batch'){
-                $cproject = ($ID[1] -replace 'project', '').trim()
-                $cbatchid = ($ID[2] -replace 'batchid', '').trim()
                 $log = logger -mpath:$this.mpath $cmodule -batchid:$cbatchid -project:$cproject
             } else {
-                $cslideid = ($ID[2] -replace 'slideid', '').trim()
                 $log = logger -mpath:$this.mpath -module:$cmodule -slide:$cslideid
             }
         } catch {
             Write-Host $_.Exception.Message
             Write-Host $ID
-            Write-Host 'ID:' (($ID[2] -replace 'slideid', '').trim())
-            Write-Host 'Project:' (($ID[1] -replace 'project', '').trim())
+            Write-Host 'SlideID:' $cslideid
+            Write-Host 'BatchID:' $cbatchid
+            Write-Host 'Project:' $cproject
             return
         }
         #
@@ -429,7 +426,9 @@ class astropathwftools : sampledb {
                 break
             }
             #
-            $myevent = Wait-Job -id $run -Any -Timeout 1
+            if ($run){
+                $myevent = Wait-Job -id $run -Any -Timeout 1
+            }
             #
          }
          #
@@ -504,6 +503,36 @@ class astropathwftools : sampledb {
         #
     }
     #
+    [void]distributetasks(){
+        #
+        foreach ($module in $this.modules){
+            $currentworkers = $this.worker_data  | 
+                where-object {
+                    $_.module -match $module -and 
+                    $_.status -match 'IDLE'
+                }
+            #
+            $cqueue = $this.moduletaskqueue.($module)
+            #
+            while ($cqueue.count -ne 0 -and $currentworkers){
+                #
+                $currenttask = $cqueue.dequeue()
+                $currentworker, $currentworkers = $currentworkers
+                #
+                Write-Host "  Launching Task on:" $currentworker.server $currentworker.location `
+                    -ForegroundColor Yellow
+                Write-Host "    "$currenttask -ForegroundColor Yellow
+                #
+                $this.launchtask($currenttask, $currentworker)
+                #
+                $currentworker.status = 'RUNNING'
+                #
+            }
+            #
+        }
+        #
+    }
+    #
     <# -----------------------------------------
      LaunchTask
      Launch a task on a current worker
@@ -524,7 +553,8 @@ class astropathwftools : sampledb {
         $securestrings = $this.Getlogin()       
         $currentworkerip = $this.defcurrentworkerip($currentworker)
         $jobname = $this.defjobname($currentworker)
-        $this.PrepareWorkerFiles($currenttask, $jobname, $currentworker)
+        $currenttask = $this.getvminformtask($currenttask, $currentworker)
+        $this.PrepareWorkerFiles($currentworker.module, $currenttask, $jobname, $currentworker)
         #
         $this.executetask($currenttask, $currentworker,
             $securestrings, $currentworkerip, $jobname)
@@ -575,6 +605,26 @@ class astropathwftools : sampledb {
         $password = $this.login.GetNetworkCredential().Password
         return @($username, $password)
         #
+    }
+    #
+    [array]getvminformtask($currenttask, $currentworker){
+        #
+        if ($currentworker.module -notmatch 'vminform'){
+            return $currenttask
+        }
+        #
+        $row = $this.vmq.maincsv | Where-Object {
+            $_.taskid -contains $currenttask[0]
+        }
+        #
+        $row.ProcessingLocation = 'Processing:' + $currentworker.location
+        $row.StartDate = Get-Date
+        #
+        $this.vmq.writemainqueue()
+        #
+        $currenttask = @($row.taskid, $row.slideid, $row.antibody, $row.algorithm)
+        #
+        return $currenttask
     }
     #
 }

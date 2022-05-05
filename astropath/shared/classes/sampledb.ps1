@@ -1,4 +1,4 @@
-﻿<# -------------------------------------------
+<# -------------------------------------------
  sampledb
  created by: Benjamin Green - JHU
  Last Edit: 11.02.2021
@@ -11,7 +11,7 @@ class sampledb : sampletracker {
     #
     [vminformqueue]$vmq
     [hashtable]$moduleobjs = @{}
-    [array]$projects
+    [hashtable]$moduletaskqueue = @{}
     #
     [string]$vminform_nonab_keys = (@('project','slidelog','mainlog','starttime',
         'finishtime','version','status') -join '|')
@@ -31,7 +31,10 @@ class sampledb : sampletracker {
     #
     sampledbinit(){
         #
-        $this.importaptables($this.mpath, $true)
+        $this.writeoutput("Starting the AstroPath Pipeline")
+        $this.writeoutput(" Imported AstroPath tables from: " + $this.mpath)
+        $this.writeoutput(" Modules: " + $this.modules)
+        #
         $this.defmodulequeues()
         $this.status_settings = @{
             rerun_reset_status = (@($this.status.ready,
@@ -50,9 +53,13 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]buildsampledb(){
         #
+        $this.writeoutput(" building sample status database")
+        $this.newtasks = @()
         $this.defsampleStages()
+        $this.writeoutput(" creating file watchers")
         $this.defmodulewatchers()
         $this.defmodulelogwatchers()
+        $this.writeoutput(" checking for updates during aggregation")
         $this.refreshmoduledb()
         #
     }
@@ -64,10 +71,15 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]defmodulequeues(){
         #
+        $this.writeoutput(" building module tables")
+        $this.writeoutput("     updating: vminform queue")
         $this.vmq = vminformqueue $this.mpath
+        $this.writeoutput("     vminform queue updated")
         $this.getmodulenames()
         $this.modules | ForEach-Object{
+            $this.writeoutput("     updating: $_")
             $this.moduleobjs.($_) = modulequeue $this.mpath $_
+            $this.moduletaskqueue.($_) = New-Object System.Collections.Generic.Queue[array]
         }
         #
     }
@@ -82,14 +94,11 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]defmodulewatchers(){
         #
-        if(!$this.newtasks){
-            $this.newtasks = @()
-        }
-        #
         $this.vmq.createwatchersvminformqueues()
+        #
         $this.modules | ForEach-Object{
             $this.moduleobjs.($_).createwatchersqueues()
-            $this.newtasks += $this.moduleobjs.($_).newtasks
+            $this.newtasks += $this.addnewtasks($this.moduleobjs.($_).newtasks)
             $this.moduleobjs.($_).newtasks = @()
         }
         #
@@ -152,21 +161,10 @@ class sampledb : sampletracker {
         }
         #
     }
-    #
-    [void]refreshmoduledb(){
-        #
-        $this.refreshsampledb()
-        #
-        $this.modules | ForEach-Object{
-            $this.moduleobjs.($_).writemainqueue()
-            $this.refreshmoduledb($_)
-        }
-        #
-    }
-    #
+    <# -----------------------------------------
     # refresh all the module tables for a particular sample
     # runs if a logging 'newtask' is created (i.e. a finish event)
-    #
+    ----------------------------------------- #>
     [void]refreshsampledb(){
         #
         while($this.newtasks){
@@ -176,11 +174,43 @@ class sampledb : sampletracker {
         }
         #
     }
-    #
-    [void]refreshsampledb($cmodule, $project){
+    [void]refreshsampledb($cmodule){
         #
-        $this.getmodulelogs($cmodule, $project)
+        while($this.newtasks){
+            $slide, $this.newtasks = $this.newtasks
+            $this.preparesample($slide)
+            $this.refreshmoduledb($cmodule, $slide)
+            $this.moduleobjs.($cmodule).writelocalqueue(
+                $this.project)
+        }
+        #
+        $this.refreshmoduledb($cmodule)
+        #
+    }
+    #
+    [void]refreshsampledb($cmodule, $cproject){
+        #
+        $this.getmodulelogs($cmodule, $cproject)
         $this.refreshmoduledb()
+        #
+    }
+    <# -----------------------------------------
+    refreshmoduledb
+    check the status of 'updated' slideids in
+    the newtasks variable. then check the 
+    corresponding module tables and queues. 
+    ------------------------------------------
+    Usage: $this.refreshmoduledb()
+    ----------------------------------------- #>
+    #
+    [void]refreshmoduledb(){
+        #
+        $this.refreshsampledb()
+        #
+        $this.modules | ForEach-Object{
+            $this.moduleobjs.($_).writemainqueue()
+            $this.refreshmoduledb($_)
+        }
         #
     }
     <# -----------------------------------------
@@ -216,8 +246,8 @@ class sampledb : sampletracker {
     refreshmoduledb
     check the module level status for the specified
     sample against the module db. update the status
-    for module if needed and write out main
-    and project level tables.
+    for module if needed and enqueue the tasks if
+    needed and project is in module_project_data.(cmodule)
     ------------------------------------------
     Usage: $this.refreshmoduledb(cmodule, slideid)
     ----------------------------------------- #>
@@ -238,7 +268,13 @@ class sampledb : sampletracker {
         return $antibodies
         #
     }
-    #
+    <# -----------------------------------------
+    refreshmoduledbsub
+    -----------------------------------------
+    preforms the module table updates for the
+    specified slide and moduel. overload (3) 
+    to include the project for vminform task
+    ----------------------------------------- #>
     [void]refreshmoduledbsub($cmodule, $slideid){
         #
         $row = $this.moduleobjs.($cmodule).maincsv |
@@ -251,6 +287,24 @@ class sampledb : sampletracker {
         #
     }
     #
+    [void]refreshmoduledbsub($cmodule, $slideid, $cproject){
+        #
+        $row = $this.moduleobjs.($cmodule).localqueue.($cproject) |
+            Where-Object {$_.slideid -match $slideid}
+        if ($row){
+            $this.updatemoduleline($cmodule, $slideid, $cproject)
+        } else{
+            $this.createmoduleline($cmodule, $slideid, $cproject)
+        }
+        #
+    }
+    <# -----------------------------------------
+    createmoduleline
+    -----------------------------------------
+    creates the module lines for the
+    specified slide. overload (3) to include the
+    project for vminform task
+    ----------------------------------------- #>
     [void]createmoduleline($cmodule, $slideid){
         #
         $currentobj = $this.moduleinfo.($cmodule)
@@ -270,67 +324,19 @@ class sampledb : sampletracker {
         }
         $this.moduleobjs.($cmodule).maincsv += $row 
         #
-    }
-    #
-    [void]updatemoduleline($cmodule, $slideid){
-        #
-        $row = $this.moduleobjs.($cmodule).maincsv |
-            Where-Object {$_.slideid -match $slideid}
-        #
-        $slidestatus = $this.moduleinfo.($cmodule).status -replace ',', ';'
-        $modulestatus = $row.status
-        #
-        if ($modulestatus -notmatch $slidestatus -and 
-            $slidestatus -match $this.status.ready){
-            # enqueue the slide and update module status in table
-            $row.status = $slidestatus
-        }
-         #
-        if ($modulestatus -notmatch ($slidestatus, $this.status.rerun -join '|') -and 
-            $slidestatus -match $this.status_settings.update_status){
-            $row.status = $slidestatus
-        }
-        #
-        if ($modulestatus -match $this.status.rerun -and 
-                $slidestatus -match $this.status_settings.rerun_reset_status){
-            # enqueue the slide and update module status in table
-            $row.status = $this.status.ready
-            $this.moduleinfo.($cmodule).StartTime = $this.empty_time
-            $this.moduleinfo.($cmodule).FinishTime = $this.empty_time
-        }
-        #
-        if (
-            ($row.StartTime -ne $this.moduleinfo.($cmodule).StartTime)
-        ) {
-            $row.StartTime = $this.moduleinfo.($cmodule).StartTime
-        }
-        #
-        if (
-            ($row.FinishTime -ne $this.moduleinfo.($cmodule).FinishTime)
-        ) {
-            $row.FinishTime = $this.moduleinfo.($cmodule).FinishTime
+        if ($currentobj.status -match 'READY'){
+            $this.enqueuetask($cmodule, $slideid, $currentobj)
         }
         #
     }
     #
-    [void]refreshmoduledbsub($cmodule, $slideid, $project){
+    [void]createmoduleline($cmodule, $slideid, $cproject){
         #
-        $row = $this.moduleobjs.($cmodule).localqueue.($project) |
-            Where-Object {$_.slideid -match $slideid}
-        if ($row){
-            $this.updatemoduleline($cmodule, $slideid, $project)
-        } else{
-            $this.createmoduleline($cmodule, $slideid, $project)
+        if(!$this.moduleobjs.($cmodule).localqueue.($cproject)){
+            $this.moduleobjs.($cmodule).localqueue.($cproject) = @()
         }
         #
-    }
-    #
-    [void]createmoduleline($cmodule, $slideid, $project){
-        #
-        if(!$this.moduleobjs.($cmodule).localqueue.($project)){
-            $this.moduleobjs.($cmodule).localqueue.($project) = @()
-        }
-        #
+        $cmoduleinfo = $this.moduleinfo.($cmodule)
         $antibodies = $this.getslideantibodies($slideid)
         #
         $row = [PSCustomObject]@{
@@ -344,6 +350,9 @@ class sampledb : sampletracker {
             $startname = ($_ + '_StartTime') 
             $finishname = ($_ + '_FinishTime')
             $status = $this.moduleinfo.($cmodule).($_).status -replace ',', ';'
+            if ($status -match 'READY'){
+                $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
+            }
             $row | Add-Member -NotePropertyMembers @{
                 $statusname =  $status
                 $startname =  $this.moduleinfo.($cmodule).($_).StartTime
@@ -351,14 +360,36 @@ class sampledb : sampletracker {
             } -PassThru
         }
         #
-        $this.moduleobjs.($cmodule).localqueue.($project) += $row
+        $this.moduleobjs.($cmodule).localqueue.($cproject) += $row
+        #
+    }
+    <# -----------------------------------------
+    updatemoduleline    
+    -----------------------------------------
+    updates the preexisting module lines for the
+    specified slide. overload (3) to include the
+    project for vminform task
+    ----------------------------------------- #>
+    [void]updatemoduleline($cmodule, $slideid){
+        #
+        $row = $this.moduleobjs.($cmodule).maincsv |
+            Where-Object {$_.slideid -match $slideid}
+        #
+        $statlabel = 'Status'
+        $startlabel = 'StartTime'
+        $finishlabel = 'FinishTime'
+        #
+        $cmoduleinfo = $this.moduleinfo.($cmodule)
+        #
+        $this.updatemodulesub($cmodule, $slideid, $row, $cmoduleinfo,
+            $statlabel, $startlabel, $finishlabel)
         #
     }
     #
-    [void]updatemoduleline($cmodule, $slideid, $project){
+    [void]updatemoduleline($cmodule, $slideid, $cproject){
         #
         $antibodies = $this.getslideantibodies($slideid)
-        $row = $this.moduleobjs.($cmodule).localqueue.($project) |
+        $row = $this.moduleobjs.($cmodule).localqueue.($cproject) |
                 Where-Object {$_.slideid -match $slideid}
         #
         $antibodies | foreach-object{
@@ -367,55 +398,171 @@ class sampledb : sampletracker {
             $startlabel = ($_ + '_StartTime')
             $finishlabel = ($_ + '_FinishTime')
             #
-            $slidestatus = $this.moduleinfo.($cmodule).($_).status `
-                -replace ',', ';'
-            $modulestatus = $row.($statlabel)
+            $cmoduleinfo = $this.moduleinfo.($cmodule).($_)
             #
-            if ($modulestatus -notmatch $slidestatus -and 
-                $slidestatus -match $this.status.ready){
-                # enqueue the slide 
-                $row.($statlabel)= $slidestatus
-            }
+            $this.updatemodulesub($cmodule, $slideid, $row, $cmoduleinfo,
+                $statlabel, $startlabel, $finishlabel)
             #
-            if ($modulestatus -notmatch ($slidestatus, $this.status.rerun -join '|') -and 
-                    $slidestatus -match $this.status_settings.update_status){
-                $row.($statlabel) = $slidestatus
-            }
-            #
-            if ($modulestatus -match $this.status.rerun -and 
-                $slidestatus -match $this.status_settings.rerun_reset_status){
-                # enqueue the slide 
-                $row.($statlabel) = $this.status.ready
-                $this.moduleinfo.($cmodule).($_).StartTime = $this.empty_time
-                $this.moduleinfo.($cmodule).($_).FinishTime = $this.empty_time
-            }
-            #
-            if (
-                $row.($startlabel) -ne 
-                    $this.moduleinfo.($cmodule).($_).starttime
-            ) {
-                $row.($startlabel) = 
-                    $this.moduleinfo.($cmodule).($_).starttime
-            }
-            #
-            if (
-                $row.($finishlabel) -ne 
-                    $this.moduleinfo.($cmodule).($_).finishtime
-            ) {
-                $row.($finishlabel) = 
-                    $this.moduleinfo.($cmodule).($_).finishtime
-            }
         }
          #
     }
+    <# -----------------------------------------
+    updatemodulesub
+    -----------------------------------------
+    performs the specified updating actions 
+    for either vminform or a normal module
+    ----------------------------------------- #>
+    [void]updatemodulesub($cmodule, $slideid, $row, 
+        $cmoduleinfo, $statlabel,
+        $startlabel, $finishlabel){
+        #
+        $slidestatus = $cmoduleinfo.status -replace ',', ';'
+        $modulestatus = $row.($statlabel)
+        #
+        if ($slidestatus -match $this.status.ready){
+            $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
+            $row.($statlabel) = $slidestatus
+        }
+         #
+        if ($modulestatus -notmatch ($slidestatus, $this.status.rerun -join '|') -and 
+            $slidestatus -match $this.status_settings.update_status){
+            $row.($statlabel) = $slidestatus
+        }
+        #
+        if ($modulestatus -match $this.status.rerun -and 
+            $slidestatus -match $this.status_settings.rerun_reset_status){
+            $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
+            $row.($statlabel) = $this.status.ready
+            $cmoduleinfo.StartTime = $this.empty_time
+            $cmoduleinfo.FinishTime = $this.empty_time
+        }
+        #
+        if (
+            ($row.($startlabel) -ne $cmoduleinfo.StartTime)
+        ) {
+            $row.($startlabel)= $cmoduleinfo.StartTime
+        }
+        #
+        if (
+            ($row.($finishlabel) -ne $cmoduleinfo.FinishTime)
+        ) {
+            $row.($finishlabel)= $cmoduleinfo.FinishTime
+        }
+        #
+    }
     #
+    [void]enqueuetask($cmodule, $slideid, $cmoduleinfo){
+        #
+        $cqueue = $this.moduletaskqueue.($cmodule)
+        #
+        if ($this.moduleinfo.project -and 
+            $this.moduleinfo.project -notmatch
+            ($this.module_project_data.($cmodule) -join '|')){
+            return
+        }
+        #
+        if ($cmodule -match 'vminform'){
+            #
+            if ($cmoduleinfo.taskid -and 
+                !($cqueue -match ('^' + $cmoduleinfo.taskid))){
+                $cqueue.enqueue(@($cmoduleinfo.taskid, $slideid))
+            }
+            #
+        } elseif ($cmodule -match 'batch'){
+            #
+            $mymatch = $cqueue -match ('^' + $this.moduleinfo.project)
+            if(!($mymatch -match ($this.batchid + '$'))){
+                $cqueue.enqueue(@($this.moduleinfo.project, $this.batchid))
+            }
+            #
+        } else  {
+            #
+            if (!($cqueue -match ($slideid + '$'))){
+                $cqueue.enqueue(@($this.moduleinfo.project, $slideid))
+            }
+            #
+        }
+        #
+    }
+    <# -----------------------------------
+    updatetables
+    -----------------------------------
+    updates the module level tables when
+    modules are added \ removed or new
+    projects are added \ removed. For
+    each module, if the moduleobj does 
+    not exist the module must be new. 
+    throw an error. For new projects,
+    recheck the slides for that project,
+    update the module files and project status.   
+    ----------------------------------- #>
     [void]updatetables($filetype){
         $this.vmq.($filetype) = $this.($filetype)
-        #$this.($filetype) = $this.($filetype)
         $this.modules | ForEach-Object {
+            #
+            if (!$this.moduleobjs.($_)){
+                $this.newmodule()
+            }
+            #
+            $previousprojects = $this.moduleobjs.($_).module_project_data.($_) 
+            $currentprojects = $this.GetAPProjects($_)
+            #
+            $turnedon = $currentprojects -notmatch ($previousprojects -join '|') 
+            #
+            if ($turnedon){
+                foreach ( $newproject in $turnedon) {
+                    $tasks = ($this.slide_data |
+                        Where-Object {$_.project -match $newproject}).SlideID
+                    $this.addnewtasks($tasks)
+                }
+            }
+            #
             $this.moduleobjs.($_).($filetype) = $this.($filetype)
+            $this.moduleobjs.($_).updatemodulestatus($_)
+            #
         }
+        #
+        $this.refreshsampledb()
+        #
     }
+    <# -----------------------------------
+    newmodule
+    -----------------------------------
+    if a module is added to the workflow
+    all sample status should be updated. 
+    Right now we have to pull down 
+    ----------------------------------- #>
+    [void]newmodule(){
+        Throw 'A new module was detected. Support for adding modules while running does not exist'
+    }
+    <# -----------------------------------
+    updatefullprojectdata
+    -----------------------------------
+    If any of the cohorts data sheets are
+    updated (cohorts, paths, config) 
+    import the files, check for a change in the
+    module names, then update 
+    the module level tables. 
+    ----------------------------------- #>
+    [void]updatefullprojectdata(){
+        #
+        $this.importcohortsinfo($this.mpath, $false)
+        $this.getmodulenames($true)
+        #
+        $this.updatemodulestatus()
+        $this.updatetables('full_project_dat')
+        #
+    }
+    #
+    [void]fileupdate($filetype){
+        $storedtable = $this.getstoredtable($this.($filetype + '_data'))
+        $this.('Import' + ($filetype))($this.mpath, $false)
+        $tasks = $this.('changed' + $filetype)(
+            $storedtable, $this.($filetype + '_data'))
+        $this.addnewtasks($tasks)
+        $this.updatetables($filetype + '_data')
+    }
+    #
     <# -----------------------------------------
     handleAPevent
     For a sample change the moduledb
@@ -431,45 +578,42 @@ class sampledb : sampletracker {
         #
         switch -exact ($file){
             $this.cohorts_file {
-                $this.importcohortsinfo($this.mpath, $false)
-                $this.updatetables('full_project_dat')
+                $this.updatefullprojectdata()
             }
             $this.paths_file {
-                $this.importcohortsinfo($this.mpath, $false)
-                $this.updatetables('full_project_dat')
+                $this.updatefullprojectdata()
             }
             $this.config_file {
-                $this.ImportConfigInfo($this.mpath, $false)
-                $this.updatetables('config_data')
+                $this.updatefullprojectdata()
             }
             $this.slide_file {
-                $this.ImportSlideIDs($this.mpath, $false)
-                $this.updatetables('slide_data')
+                $this.fileupdate('slide')
             }
             $this.ffmodels_file {
-                $this.ImportFlatfieldModels($this.mpath, $false)
-                $this.updatetables('ffmodels_data')
+                $this.fileupdate('ffmodels')
             }
             $this.corrmodels_file {
-                $this.ImportCorrectionModels($this.mpath, $false)
-                $this.updatetables('corrmodels_data')
+                $this.fileupdate('corrmodels')
             }
             $this.micomp_file {
-                $this.ImportMICOMP($this.mpath, $false)
-                $this.updatetables('micomp_data')
+                $this.fileupdate('micomp')
             }
             $this.worker_file {$this.Importworkerlist($this.mpath, $false)}
             $this.vmq.mainqueuelocation() {
                 $this.vmq.coalescevminformqueues()
-                $this.refreshmoduledb('vminform')
+                $this.addnewtasks($this.vmq.newtasks)
+                $this.vmq.newtasks = @()
+                $this.refreshsampledb('vminform')
             }
         }
-        #       
-        $this.projects | foreach-object{
+        #
+        foreach ($cproject in  $this.module_project_data.('vminform')){ 
             switch -exact ($fullfile){
-                $this.vmq.localqueue.($_) {
-                    $this.vmq.coalescevminformqueues($_)
-                    $this.refreshmoduledb('vminform', $_)
+                $this.vmq.localqueuefile.($cproject) {
+                    $this.vmq.coalescevminformqueues($cproject)
+                    $this.addnewtasks($this.vmq.newtasks)
+                    $this.vmq.newtasks = @()
+                    $this.refreshsampledb('vminform')
                 }
             }
         }
@@ -481,10 +625,10 @@ class sampledb : sampletracker {
                     $this.refreshmoduledb($cmodule)}
             }
             #
-            foreach ($project in $this.projects){
+            foreach ($cproject in $this.module_project_data.($cmodule)){
                 switch -exact ($fullfile){
-                    $this.defprojectlogpath($cmodule, $project) {
-                        $this.refreshsampledb($cmodule, $project)}
+                    $this.defprojectlogpath($cmodule, $cproject) {
+                        $this.refreshsampledb($cmodule, $cproject)}
                 }
             }
             #

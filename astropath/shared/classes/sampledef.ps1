@@ -120,7 +120,8 @@ class sampledef : sharedtools{
                     $_.Project -eq $this.project.trim()}
         #
         if (!$batch){
-            Throw 'Not a valid batchid'
+            Throw ('Not a valid batchid: project - ' + $this.project +
+                 '; batchid - ' + $mbatchid.trim() + '; module - ' + $this.module)
         } elseif ($batch.Count -eq 1){
             $this.project = $batch.Project
             $this.cohort = $batch.Cohort
