@@ -28,10 +28,10 @@ Class testtools{
     [string]$apfile_temp_constant = 'Template.csv'
     [string]$pybatchwarpingfiletest = 'warping_BatchID_08.csv'
     [string]$batchflatfieldgtest = 'BatchID_08'
-    [hashtable]$task 
+    [hashtable]$task
     [string]$informvers = '2.4.8'
-    [string]$informantibody = 'CD8'
-    [string]$informproject = 'blah.ifr'
+    [string]$informantibody = 'FoxP3'
+    [string]$informproject = 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr'
     #
     testtools(){
        $this.importmodule()

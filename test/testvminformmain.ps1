@@ -27,8 +27,6 @@ Class testvminformmain : testtools {
         Write-Host '.'
         Write-Host 'test run on inform started'
         #
-        $this.importmodule()
-        #
         $cred = Get-Credential -Message "Provide a user name (domain\username) and password"
         $dis = dispatchtasks $this.module $cred $this.mpath -test
         $this.starttestjob($dis)

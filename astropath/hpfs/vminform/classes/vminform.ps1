@@ -51,7 +51,7 @@ Class informinput : moduletools {
         CorruptIM3 = 'External component has thrown an exception'
     }
     #
-    informinput([hashtable]$task,[launchmodule]$sample) {
+    informinput([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample){
         #
         $this.flevel = [FileDownloads]::FLATWIM3
         #

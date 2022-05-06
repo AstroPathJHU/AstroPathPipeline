@@ -12,8 +12,8 @@ using module .\testtools.psm1
 Class testvminform : testtools {
     #
     [string]$module = 'vminform'
-    [string]$antibody = 'CD8'
-    [string]$algorithm = 'CD8_Phenotype.ifr'
+    [string]$antibody = 'FoxP3'
+    [string]$algorithm = 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr'
     [string]$informver = '2.4.8'
     [string]$outpath = "C:\Users\Public\BatchProcessing"
     [string]$referenceim3
@@ -22,7 +22,7 @@ Class testvminform : testtools {
     #
     testvminform() : base(){
         #
-        $this.launchtests()
+        [testvminform]::new('2.4.8', $this.algorithm) | Out-Null
         #
     }
     testvminform($jenkins) : base(){
@@ -30,6 +30,11 @@ Class testvminform : testtools {
         $this.jenkins = $true
         $this.launchtests()
         #
+    }
+    testvminform($ver, $alg) : base(){
+        $this.informver = $ver
+        $this.algorithm = $alg
+        $this.launchtests()
     }
     #
     [void]launchtests(){
@@ -111,6 +116,7 @@ Class testvminform : testtools {
         Write-Host "."
         Write-Host 'test [vminform] constructors started'
         try {
+            Write-Host 'Task:' ($task | Out-String)
             vminform $task | Out-Null
         } catch {
             Throw ('[vminform] construction with [1] input(s) failed. ' + $_.Exception.Message)
