@@ -502,23 +502,11 @@
         #
     }
     #
-    [PSCustomObject]ImportMergeConfigCSV([string] $basepath){
-        #
-        $micomp_csv_file = $this.mergeconfigcsv_fullfile($basepath)
-        $this.mergeconfig_data = Import-CSV $micomp_csv_file
-    }
     [PSCustomObject]ImportMergeConfig(){
         #
         $this.ImportMergeConfig($this.basepath) | Out-NULL
         #
         return $this.mergeconfig_data
-        #
-    }
-    #
-    [void]MergeConfigToCSV([string] $basepath, $batch){
-        #
-        $this.MergeConfigToCSV(
-            $basepath, $batch, $this.project, $this.cohort)
         #
     }
     #
@@ -572,7 +560,21 @@
                 SegmentationStatus,SegmentationHierarchy, `
                 NumberofSegmentations,ImageQA,Colors | 
             Export-Csv -Path $csvfile -NoTypeInformation
-
+    }
+    #
+    [void]MergeConfigToCSV([string] $basepath, $batch){
+        #
+        $this.MergeConfigToCSV(
+            $basepath, $batch, $this.project, $this.cohort)
+        #
+    }
+    #
+    [void]ImportMergeConfigCSV([string] $basepath){
+        #
+        $micomp_csv_file = $this.mergeconfigcsv_fullfile($basepath)
+        $this.mergeconfig_data = Import-CSV $micomp_csv_file
+    }
+    #
     [void]findantibodies(){
         $this.findantibodies($this.basepath)
     }
