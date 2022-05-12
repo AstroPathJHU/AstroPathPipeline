@@ -388,3 +388,6 @@ class ThingWithLogger(abc.ABC):
   @property
   @abc.abstractmethod
   def logger(self): pass
+  @property
+  def uselogfiles(self):
+    return self.logger.uselogfiles

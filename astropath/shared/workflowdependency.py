@@ -99,6 +99,8 @@ class WorkflowDependency(ThingWithRoots, ThingWithLogger, ThingWithWorkflowKwarg
     for filename in self.workinprogressfiles:
       canprint = True
       if not printed and filename.exists():
+        if not self.uselogfiles:
+          raise RuntimeError("Can't clean up if not using log files for tracking")
         self.logger.info("Cleaning up files from previous runs")
         printed = True
       rm_missing_ok(filename)
