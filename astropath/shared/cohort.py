@@ -24,7 +24,7 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
     self.__logroot = pathlib.Path(logroot)
     if sampledefroot is None: sampledefroot = self.__root
     self.__sampledefroot = pathlib.Path(sampledefroot)
-    self.uselogfiles = uselogfiles
+    self.__uselogfiles = uselogfiles
     self.reraiseexceptions = reraiseexceptions
     self.moremainlogroots = moremainlogroots
     self.skipstartfinish = skipstartfinish
@@ -78,7 +78,7 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
     if isinstance(samp, WorkflowDependency):
       isglobal = isglobal or samp.usegloballogger()
       samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=uselogfiles and self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=self.skipstartfinish, printthreshold=self.printthreshold, **kwargs)
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=uselogfiles and self.__uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=self.skipstartfinish, printthreshold=self.printthreshold, **kwargs)
 
   @classmethod
   @abc.abstractmethod
@@ -213,11 +213,17 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
 
   def sampledefswithfilters(self, **kwargs):
     for samp in self.sampledefs():
-      try:
-        yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
-      except Exception: #don't log KeyboardInterrupt here
-        with self.handlesampledeffiltererror(samp, **kwargs):
-          raise
+      filterresults = []
+      exceptions = []
+      for filter in self.slideidfilters:
+        try:
+          filterresults.append(filter(self, samp, **kwargs))
+        except Exception as e:
+          exceptions.append(e)
+      if exceptions and all(filterresults):
+        #with self.handlesampledeffiltererror(samp, **kwargs):
+          raise exceptions[0]
+      yield samp, filterresults
 
   def filteredsampledefswithfilters(self, *, printnotrunning=False, **kwargs):
     """

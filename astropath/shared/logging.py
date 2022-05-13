@@ -1,4 +1,4 @@
-import abc, collections, contextlib, datetime, functools, job_lock, logging, os, pathlib, sys, time, traceback
+import abc, collections, contextlib, datetime, functools, job_lock, logging, methodtools, os, pathlib, sys, time, traceback
 
 class MyLogger:
   r"""
@@ -388,6 +388,7 @@ class ThingWithLogger(abc.ABC):
   @property
   @abc.abstractmethod
   def logger(self): pass
+  @methodtools.lru_cache()
   @property
   def uselogfiles(self):
     return self.logger.uselogfiles
