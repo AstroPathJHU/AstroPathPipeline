@@ -16,17 +16,29 @@
     astropathworkflow($login, $mpath) : base($login, $mpath){}
     astropathworkflow($login, $mpath, $project) : base($login, $mpath, $project){}
     #
-    [void]launchworkflow(){
-        $this.buildsampledb()
+    [void]launchwf(){
+        #
+        $this.buildsampledb() 
+        #
         while(1){
+            $this.defworkerlist()
             $this.distributetasks()
             $this.WaitAny()
         }
     }
     #
-    [void]launchworkflow($notasks){
+    [void]launchwfnoloop($notasks){
+        #
         $this.buildsampledb()
-        $this.WaitAny()
+        $this.defworkerlist()
+        #
+        if ($notasks){
+            $this.WaitAny()
+        } else {
+            $this.distributetasks()
+            $this.WaitAny()
+        }
+        #
     }
     #
  }

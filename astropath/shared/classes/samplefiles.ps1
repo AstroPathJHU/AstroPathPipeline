@@ -62,25 +62,33 @@
     samplefiles($mpath, $module) : base($mpath, $module){}
     samplefiles($mpath, $module, $slideid) : base($mpath, $module, $slideid){}
     samplefiles($mpath, $module, $batchid, $project) : base($mpath, $module, $batchid, $project){}
-       #
+    #
+    [string]spath(){
+        return ($this.project_data.spath, $this.slideid -join '\')
+    }
+    #
+    [PSCustomObject]spathscans(){
+        if (test-path $this.spath()){
+            return (get-childitem ($this.spath(), 'Scan*' -join '\'))
+        } else {
+            return @()
+        }
+    }
+    #
     [string]im3mainfolder(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3'
-        return $path
+        return ($this.basepath + '\' + $this.slideid + '\im3')
     }
     #
     [string]upkeepfolder(){
-        $path = $this.basepath + '\upkeep_and_progress'
-        return $path
+        return ($this.basepath + '\upkeep_and_progress')
     }
     #
     [string]Scan(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3\Scan*'
-        $paths = get-childitem $path
-        $scan = $paths | 
+        $paths = get-childitem ($this.im3mainfolder(), 'Scan*' -join '\')
+        return ($paths | 
             select-object *, @{n = "IntVal"; e = {[int]$_.Name.substring(4)}} |
             sort-object IntVal |
-            Select-Object -Last 1
-        return $scan.Name
+            Select-Object -Last 1).name
     }
     #
     [string]Scanfolder(){
@@ -130,14 +138,18 @@
     }
     #
     [string]pybatchflatfield(){
-        $ids = $this.ImportCorrectionModels($this.mpath)
+        $this.ImportCorrectionModels($this.mpath)
         if ($this.slideid -notcontains $this.batchid){
-            $file = ($ids | Where-Object { $_.slideid `
-                    -contains $this.slideid}).FlatfieldVersion
+            $file = ($this.corrmodels_data | & { process {
+                if ( $_.slideid -contains $this.slideid) {$_}
+            }}).FlatfieldVersion
         } else  {
-            $file1 = ($ids |
-                Where-Object { $_.BatchID.padleft(2, '0') -contains $this.batchid.padleft(2, '0') `
-                -and $_.Project.padleft(3,'0') -contains $this.project.padleft(3,'0') }).FlatfieldVersion
+            $file1 = ($this.corrmodels_data | & { process { 
+                if (
+                    $_.BatchID.padleft(2, '0') -contains $this.batchid.padleft(2, '0') -and
+                    $_.Project.padleft(3,'0') -contains $this.project.padleft(3,'0') 
+                ) { $_ }
+            }}).FlatfieldVersion
            if ($file1.Count -gt 1){
                 $file = $file1[0]
            } elseif ($file1.Count -eq 1){
@@ -362,8 +374,9 @@
     [array]getnames($source, $type, $forceupdate){
         #
         if ($forceupdate){
-            $names = ($this.getfiles(
-                $source, $forceupdate)).($type)
+            $names = $this.('get' + $type)(
+                $this.($source + 'folder')(), $this.($source + 'constant')
+            )
         } else {
             $names = ($this.getfiles(
                 $source)).($type)

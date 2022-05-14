@@ -6,28 +6,31 @@ class astropathwftools : sampledb {
         '\c$\users\public\astropath\'   
     #
     astropathwftools(){
-        $this.init("NA", '')
+        $this.apwftoolsinit("NA", '')
     }
     #
     astropathwftools($login){
-        $this.init($login, '')
+        $this.apwftoolsinit($login, '')
     }
     #
     astropathwftools($login, $mpath) : base($mpath) {
-        $this.init($login, '')
+        $this.apwftoolsinit($login, '')
     }
     #
     astropathwftools($login, $mpath, $projects) : base($mpath, $projects){
-        $this.init($login, '')
+        $this.apwftoolsinit($login, '')
     }
         #
     astropathwftools($login, $mpath, $projects, $modules) : base($mpath, $projects){
-        $this.init($login, $modules)
+        $this.apwftoolsinit($login, $modules)
     }
-    #
-    # initialize the code
-    #
-    [void]init([Pscredential]$login, $modules){
+    <# -----------------------------------------
+    apwftoolsinit
+    store the input 
+    ------------------------------------------
+    Usage: $this.apwftoolsinit()
+   ----------------------------------------- #>  
+    [void]apwftoolsinit([Pscredential]$login, $modules){
         #
         $this.login = $login
         if ($modules){
@@ -46,11 +49,9 @@ class astropathwftools : sampledb {
    ----------------------------------------- #>   
    [void]defworkerlist(){
         #
-        Write-Host " Starting-Task-Distribution" -ForegroundColor Yellow
-        Write-Host " Finding Workers" -ForegroundColor Yellow
+        $this.writeoutput(" Finding Workers")
         $this.importworkerlist($this.mpath)
         $this.CheckOrphan()
-        #
         $this.printworkerlist()
         #
     }
@@ -62,14 +63,15 @@ class astropathwftools : sampledb {
     Usage: $this.defworkerlist()
    ----------------------------------------- #>   
    [void]printworkerlist(){
-        write-host " Current Workers for Processing:" -ForegroundColor Yellow
-        write-host " " ($this.worker_data | 
+        $this.writeoutput("    Worker Status:")
+        write-host "    " ($this.worker_data | 
             Format-Table  -AutoSize @{Name="module";Expression = { $_.module }; Alignment="left" },
                             @{Name="server";Expression = { $_.server }; Alignment="left" },
                             @{Name="location";Expression = { $_.location }; Alignment="left" },
-                            @{Name="status";Expression = { $_.Status }; Alignment="left" } |
+                            @{Name="state";Expression = { $_.Status }; Alignment="left" },
+                            @{Name="status";Expression = { $_.Status }; Alignment="left" }  |
             Out-String).Trim() -ForegroundColor Yellow
-        Write-Host "  ." -ForegroundColor Yellow    
+       $this.writeoutput(" .") 
    }
     <# -----------------------------------------
     CheckOrphan
@@ -85,10 +87,10 @@ class astropathwftools : sampledb {
     ----------------------------------------- #>
     [void]CheckOrphan(){
         #
-        foreach ($worker in @(0..($this.worker_data.Length - 1))){
+        $idleworkers = $this.worker_data | where-object {$_.status -match 'IDLE'}
+        foreach ($worker in @(0..($idleworkers.Length - 1))){
             #
-            $currentjob = $this.worker_data[$worker]
-            $jobname = $this.defjobname($currentjob)
+            $jobname = $this.defjobname($idleworkers[$worker])
             $workertasklog = $this.workertasklog($jobname)
             $workertaskfile = $this.workertaskfile($jobname)
             #
@@ -96,7 +98,7 @@ class astropathwftools : sampledb {
                 #
                 $fileInfo = New-Object System.IO.FileInfo $workertasklog
                 #
-                Write-Host ('  Orphaned job found: ' + $workertasklog) -ForegroundColor Yellow
+                $this.writeoutput("     Orphaned job found: $workertasklog")
                 #
                 try {
                     #
@@ -107,15 +109,17 @@ class astropathwftools : sampledb {
                     $this.removefile($workertasklog)
                     $this.CheckTaskLog($jobname, 'ERROR')
                     $this.removefile($workertaskfile)
-                    $this.worker_data[$worker].Status = 'IDLE'
-                    Write-Host ('  Orphaned job completed and cleared: ' + $workertasklog) `
-                        -ForegroundColor Yellow
+                    $idleworkers[$worker].Status = 'IDLE'
+                    $this.writeoutput(
+                        "     Orphaned job completed and cleared: $workertasklog"
+                    )
                 }catch {
                     #
                     $this.StartOrphanMonitor($jobname)
-                    $this.worker_data[$worker].Status = 'RUNNING'
-                    Write-Host ('  Orphaned job not completed: ' + $workertasklog + ' ... created worker log watchdog') `
-                        -ForegroundColor Yellow
+                    $idleworkers[$worker].Status = 'RUNNING'
+                    $this.writeoutput(
+                        "     Orphaned job not completed: $workertasklog ... created worker log watchdog"
+                    )
                 }
             }
         }
@@ -176,7 +180,101 @@ class astropathwftools : sampledb {
         Start-Job @myparameters
         #
     }
-     <# -----------------------------------------
+    <# -----------------------------------------
+     distributetasks
+     distribute tasks to active workers for 
+     each module
+     ------------------------------------------
+     Usage: $this.distributetasks()
+    ----------------------------------------- #>
+    [void]distributetasks(){
+        #
+        foreach ($module in $this.modules){
+            $currentworkers = $this.worker_data  | 
+                where-object {
+                    $_.module -match $module -and 
+                    $_.status -match 'IDLE' -and 
+                    $_.state -match $this.onstrings
+                }
+            #
+            $cqueue = $this.moduletaskqueue.($module)
+            if ($cqueue.count -ne 0 -and $currentworkers){
+                $this.writeoutput(" Starting task distribution for $module")
+            }
+            #
+            while ($cqueue.count -ne 0 -and $currentworkers){
+                #
+                $currenttask = $cqueue.dequeue()
+                $currentworker, $currentworkers = $currentworkers
+                #
+                $this.writeoutput("     Launching Task on:" + 
+                    $currentworker.server + $currentworker.location)
+                $this.writeoutput("     $currenttask")
+                #
+                $this.launchtask($currenttask, $currentworker)
+                #
+                $currentworker.status = 'RUNNING'
+                #
+            }
+            #
+        }
+        #
+    }
+    <# -----------------------------------------
+     LaunchTask
+     Launch a task on a current worker
+     ------------------------------------------
+     Usage: $this.LaunchTask($currenttask, $currentworker)
+     ------------------------------------------
+     Input: 
+        $currenttask: the task array inputs. for a:
+            slide task: @(project, slideid)
+            batch task: @(project, batchid)
+            vminform task: @(project, slideid, antibody, algorithm)
+        $[system.object]currentworker: four part array
+            of a task object with fields:
+                module, server, location, status
+    ----------------------------------------- #>
+    [void]LaunchTask($currenttask, $currentworker){
+        #
+        $securestrings = $this.Getlogin()       
+        $currentworkerip = $this.defcurrentworkerip($currentworker)
+        $jobname = $this.defjobname($currentworker)
+        $currenttask = $this.getvminformtask($currenttask, $currentworker)
+        $this.PrepareWorkerFiles(
+            $currentworker.module, $currenttask, $jobname, $currentworker)
+        $this.executetask($currenttask, $currentworker,
+            $securestrings, $currentworkerip, $jobname)
+        #
+    }
+    <# -----------------------------------------
+     getvminformtask
+     get the current info for the vminform task
+     and update the main queue for launching the
+     task
+     ------------------------------------------
+     Usage: $this.getvminformtask($currenttask, $currentworker)
+    ----------------------------------------- #>
+    [array]getvminformtask($currenttask, $currentworker){
+        #
+        if ($currentworker.module -notmatch 'vminform'){
+            return $currenttask
+        }
+        #
+        $row = $this.vmq.maincsv | Where-Object {
+            $_.taskid -contains $currenttask[0]
+        }
+        #
+        $row.ProcessingLocation = 'Processing:' + $currentworker.location
+        $row.StartDate = Get-Date
+        #
+        $this.vmq.writemainqueue()
+        #
+        $currenttask = @($row.taskid, $row.slideid, $row.antibody, $row.algorithm)
+        #
+        return $currenttask
+    }
+    <# -----------------------------------------
      PrepareWorkerFiles
      set up the worker task file locations and 
      prepare the unique task input string to
@@ -191,24 +289,36 @@ class astropathwftools : sampledb {
         $this.buildtaskfile($jobname, $currenttaskinput)
         #
     }
-    #
-    [string]addedargs($module, $currenttask, $currentworker){
+    <# -----------------------------------------
+    addedargs
+    add the current task input for the various 
+    module types: vminform, batch, or slide
+    ----------------------------------------- #>
+    [string]addedargs($cmodule, $currenttask, $currentworker){
         #
-        if ($module -match 'vminform'){
-            $currenttaskinput = '" -module ', $module,
-                ' -slideid ', $currenttask[1],
-                ' -antibody ', $currenttask[2], ' -algorithm ', $currenttask[3],
-                ' -informvers ', $this.informvers -join '"'
-        } elseif ($module -match 'batch') {
-            $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
-            $currenttaskinput = '" -module ', $module,
-                ' -project ', $currenttask[0], ' -batchid ', $currenttask[1],
-                ' -processloc ', $currentworkerstring -join '"'
-        } else {
-            $currentworkerstring = '\\' + $currentworker.server + '\' + $currentworker.location
-            $currenttaskinput = '" -module ', $module, 
-                ' -project ', $currenttask[0], ' -slideid ', $currenttask[1],
-                ' -processloc ', $currentworkerstring -join '"'
+        $currenttaskinput = ''
+        #
+        switch -regex ($cmodule) {
+            'vminform'{
+                $currenttaskinput = '" -module ', $cmodule,
+                    ' -slideid ', $currenttask[1],
+                    ' -antibody ', $currenttask[2], ' -algorithm ', $currenttask[3],
+                    ' -informvers ', $this.informvers -join '"'
+            } 
+            'batch' {
+                $currentworkerstring = '\', $currentworker.server,
+                    $currentworker.location -join '\'
+                $currenttaskinput = '" -module ', $cmodule,
+                    ' -project ', $currenttask[0], ' -batchid ', $currenttask[1],
+                    ' -processloc ', $currentworkerstring -join '"'
+            }
+            default {
+                $currentworkerstring = '\', $currentworker.server,
+                    $currentworker.location -join '\'
+                $currenttaskinput = '" -module ', $cmodule, 
+                    ' -project ', $currenttask[0], ' -slideid ', $currenttask[1],
+                    ' -processloc ', $currentworkerstring -join '"'
+            }
         }
         #
         return $currenttaskinput
@@ -231,18 +341,146 @@ class astropathwftools : sampledb {
                 $count = 1
                 #
                 $output.output | Foreach-object {
-                    $output.popfile("',$this.workerlogfile($jobname),'", ("ERROR: " + $count + "`r`n"))
-                    $output.popfile("',$this.workerlogfile($jobname),'", ("  " + $_.Exception.Message  + "`r`n"))
+                    $output.popfile("',
+                        $this.workerlogfile($jobname),
+                        '", ("ERROR: " + $count + "`r`n"))
+                    $output.popfile("',
+                        $this.workerlogfile($jobname),
+                        '", ("  " + $_.Exception.Message  + "`r`n"))
                     $s = $_.ScriptStackTrace.replace("at", "`t at")
-                    $output.popfile("',$this.workerlogfile($jobname),'", ($s + "`r`n"))
+                    $output.popfile("',
+                        $this.workerlogfile($jobname),'", ($s + "`r`n"))
                     $count += 1
                 }
                 #
             } else {
-                $output.popfile("',$this.workerlogfile($jobname),'", "Completed Successfully `r`n")
+                $output.popfile("',
+                    $this.workerlogfile($jobname),
+                    '", "Completed Successfully `r`n")
             }') -join ''
         #
         $this.SetFile($this.workertaskfile($jobname), $currenttasktowrite)
+        #
+    }
+    #
+    [void]executetask($currenttask, $currentworker,
+        $securestrings, $currentworkerip, $jobname){
+        #
+        if ($currentworker.location -match 'VM'){
+            $myscriptblock = {
+                param($username, $securestring, $currentworkerip, $workertaskfile)
+                psexec -i -nobanner -accepteula -u $username -p $securestring \\$currentworkerip `
+                    pwsh -noprofile -executionpolicy bypass -command "$workertaskfile" `
+                    *>> ($workertaskfile -replace '.ps1', '-job.log')
+            }
+        } else {
+            $myscriptblock = {
+                param($username, $securestring, $currentworkerip, $workertaskfile)
+                psexec -nobanner -accepteula -u $username -p $securestring \\$currentworkerip `
+                    pwsh -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" `
+                    *>> ($workertaskfile -replace '.ps1', '-job.log')
+            }
+        }
+        #
+        $myparameters = @{
+            ScriptBlock = $myscriptblock
+            ArgumentList = $securestrings[0], $securestrings[1],
+             $currentworkerip, $this.workertaskfile($jobname)
+            name = $jobname
+            }
+        #
+        Start-Job @myparameters
+        $taskid = ($jobname, (Get-Date)) -join '-'
+        [string]$logline = @("START: ", $taskid,"`r`n") -join ''
+        $this.popfile($this.workerlogfile($jobname), $logline)
+        #
+    }
+   <# -----------------------------------------
+     WaitAny
+     after jobs are launched from the queue 
+     wait for events or jobs
+     ------------------------------------------
+     Usage: $this.WaitAny()
+    ----------------------------------------- #>
+    [void]WaitAny(){
+        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
+        $myevent = ''
+        While(!$myevent){
+            #
+            $myevent = Wait-Event -timeout 1
+            if ($myevent){
+                break
+            }
+            #
+            if ($run){
+                $myevent = Wait-Job -id $run -Any -Timeout 1
+            }
+            #
+         }
+         #
+         if (($myevent[0].GetType()).Name -match 'job'){
+            $this.CheckCompletedWorkers()
+         } else {
+             $this.CheckCompletedEvents()
+         }
+         #
+    }
+    #
+    [void]WaitAny($run){
+        #
+        $myevent = ''
+        While(!$myevent){
+            #
+            $myevent = Wait-Event -timeout 1
+            if ($myevent){
+                break
+            }
+            $myevent = Wait-Job -id $run -Any -Timeout 1
+            #
+        }
+        #
+    }
+    #
+    [void]WaitTask(){
+        #
+        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
+        if (!$this.workers -and $run){
+            Wait-Job -id $run -Any
+        }
+        $this.CheckCompletedWorkers()
+        #
+    }
+    #
+    [void]CheckCompletedWorkers(){
+        #
+        $donejobs = Get-Job | 
+            Where-Object { $_.State -eq 'Completed'}
+        #
+        if ($donejobs){
+            $donejobs | Remove-Job
+            $donejobs | ForEach-Object {
+                #
+                $this.checkpsexeclog($_.Name)
+                $this.checkworkerlog($_)
+                $this.updatecurrentworker($_.Name, 'IDLE')
+                #
+            }
+        }
+        #
+    }
+    #
+    [void]CheckCompletedEvents(){
+        #
+        $events = get-event
+        #
+        while($events){
+            #
+            $currentevent = $events[0]
+            remove-event -SourceIdentifier $currentevent.SourceIdentifier
+            $this.handleAPevent($currentevent.SourceIdentifier)
+            $events = get-event
+            #
+        }
         #
     }
     #
@@ -253,12 +491,12 @@ class astropathwftools : sampledb {
         $psexectask = $this.getcontent($psexeclog)
         #
         if ($psexectask -match 'PsExec could not start powershell'){
-            Write-Host 'task could not be started on the remote machine, check psexec input'
-            Write-Host $psexectask
+            $this.writeoutput(" task could not be started on the remote machine, check psexec input")
+            $this.writeoutput(" $psexectask")
             $this.CheckTaskLog($workertaskfile, 'ERROR')
         } elseif ($psexectask -match 'error code 1'){
-            Write-Host 'powershell task did not exit successfully, might be a syntax error'
-            Write-Host $psexectask
+            $this.writeoutput(" powershell task did not exit successfully, might be a syntax error")
+            $this.writeoutput(" $psexectask")
             $this.CheckTaskLog($workertaskfile, 'ERROR')
         }
         #
@@ -278,8 +516,8 @@ class astropathwftools : sampledb {
             $mymatches = $output -match [regex]::escape($_.Name)
             $idx = [array]::IndexOf($output, $mymatches[-1])
             $newerror = $output[($idx+1)..($output.count-1)]
-            write-host $taskid
-            Write-host $newerror
+            $this.writeoutput(" $taskid")
+            $this.writeoutput(" $newerror")
         }
         #
         $this.CheckTaskLog($job.Name, 'WARNING')
@@ -288,67 +526,16 @@ class astropathwftools : sampledb {
         $this.popfile(($this.workerlogfile($job.Name)), $logline)
         #
     }
-    <# -----------------------------------------
-     DefJobName
-     define the job name as server-location-module
-     ------------------------------------------
-     Usage: $this.DefJobName($currentworker)
-    ----------------------------------------- #>
-    [string]DefJobName($currentworker){
-        $jobname = ($currentworker.server, $currentworker.location, $currentworker.module) -join '-'     
-        return $jobname
-    }
-    <# -----------------------------------------
-     workertasklog
-     the log for the psexc job. errors in this
-     file indicate errors in launching the 
-     psexc and not the module itself
-     ------------------------------------------
-     Usage: $this.workertasklog($jobname)
-    ----------------------------------------- #>
-    [string]workertasklog($jobname){
-        return $this.workerloglocation+$jobname+'-taskfile-job.log'
-    }
-     <# -----------------------------------------
-     workertaskfile
-     the task to launch. the string task is 
-     created in $this.workertaskfile
-     ------------------------------------------
-     Usage: $this.workertaskfile($jobname)
-    ----------------------------------------- #>
-    [string]workertaskfile($jobname){
-        return $this.workerloglocation+$jobname+'-taskfile.ps1'
-    }
-     <# -----------------------------------------
-     workerlogfile
-     the log file for the powershell module
-     errors in this file indicate unhandled
-     exceptions in the powershell module or 
-     launching code. 
-     ------------------------------------------
-     Usage: $this.workerlogfile($currentworker)
-    ----------------------------------------- #>
-    [string]workerlogfile($jobname){
-        return $this.workerloglocation+$jobname+'.log'
-    }
-    <# -----------------------------------------
-     DefCurrentWorkerip
-     define the current worker IP address. The
-     server names can be used as aliases but the 
-     jhu bki VMs were added to the domain as
-     vminform## rather than their unique names
-     VM_inForm## that the were created
-     ------------------------------------------
-     Usage: $this.DefCurrentWorkerip($currentworker)
-    ----------------------------------------- #> #
-    [string]DefCurrentWorkerip($currentworker){
+    #
+    [void]updatecurrentworker($jobname, $newstatus){
         #
-        if ($currentworker.location -match 'VM'){
-            $currentworkerip = ($currentworker.location -replace '_', '').tolower()
-        } else {
-            $currentworkerip = $currentworker.server
+        $currentworkerstrings = $this.parseJobName($jobname)
+        $currentworker = $this.worker_data | Where-Object {
+            $_.server -match $currentworkerstrings[0] -and 
+            $_.location -match $currentworkerstrings[1] -and 
+            $_.module -match $currentworkerstrings[2]
         }
-        return $currentworkerip
+        $currentworker.status = $newstatus
         #
     }
     <# -----------------------------------------
@@ -396,11 +583,11 @@ class astropathwftools : sampledb {
                 $log = logger -mpath:$this.mpath -module:$cmodule -slide:$cslideid
             }
         } catch {
-            Write-Host $_.Exception.Message
-            Write-Host $ID
-            Write-Host 'SlideID:' $cslideid
-            Write-Host 'BatchID:' $cbatchid
-            Write-Host 'Project:' $cproject
+            $this.writeoutput(" "+$_.Exception.Message)
+            $this.writeoutput(" $ID")
+            $this.writeoutput(" SlideID: $cslideid")
+            $this.writeoutput(" SlideID: $cbatchid")
+            $this.writeoutput(" SlideID: $cproject")
             return
         }
         #
@@ -413,191 +600,11 @@ class astropathwftools : sampledb {
             $log.finish($cmodule)
         }
     }
-    #
-    # after jobs are launched from the queue wait for events or jobs
-    #
-    [void]WaitAny(){
-        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
-        $myevent = ''
-        While(!$myevent){
-            #
-            $myevent = Wait-Event -timeout 1
-            if ($myevent){
-                break
-            }
-            #
-            if ($run){
-                $myevent = Wait-Job -id $run -Any -Timeout 1
-            }
-            #
-         }
-         #
-         if (($myevent[0].GetType()).Name -match 'job'){
-            $this.CheckCompletedWorkers()
-         } else {
-             $this.CheckCompletedEvents()
-         }
-         #
-    }
-    #
-    [void]WaitAny($run){
-        #
-        $myevent = ''
-        While(!$myevent){
-            #
-            $myevent = Wait-Event -timeout 1
-            if ($myevent){
-                break
-            }
-            $myevent = Wait-Job -id $run -Any -Timeout 1
-            #
-        }
-        #
-    }
-    #
-    [void]WaitTask(){
-        <#
-        $myevent = ''
-        While(!$myevent){
-           $myevent = Wait-Job -id $j -Timeout 1
-           $myevent = get-event -SourceIdentifier $filename -timeout 1
-        }
-        #>
-        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
-        if (!$this.workers -and $run){
-            Wait-Job -id $run -Any
-        }
-        $this.CheckCompletedWorkers()
-        #
-    }
-    #
-    [void]CheckCompletedWorkers(){
-        #
-        $donejobs = Get-Job | 
-            Where-Object { $_.State -eq 'Completed'}
-        #
-        if ($donejobs){
-            $donejobs | Remove-Job
-            $donejobs | ForEach-Object {
-                #
-                $this.checkpsexeclog($_.Name)
-                $this.checkworkerlog($_)
-                #
-            }
-        }
-        #
-    }
-    #
-    [void]CheckCompletedEvents(){
-        #
-        $events = get-event
-        #
-        while($events){
-            #
-            $currentevent = $events[0]
-            remove-event -SourceIdentifier $currentevent.SourceIdentifier
-            $this.handleAPevent($currentevent.SourceIdentifier)
-            $events = get-event
-            #
-        }
-        #
-    }
-    #
-    [void]distributetasks(){
-        #
-        foreach ($module in $this.modules){
-            $currentworkers = $this.worker_data  | 
-                where-object {
-                    $_.module -match $module -and 
-                    $_.status -match 'IDLE'
-                }
-            #
-            $cqueue = $this.moduletaskqueue.($module)
-            #
-            while ($cqueue.count -ne 0 -and $currentworkers){
-                #
-                $currenttask = $cqueue.dequeue()
-                $currentworker, $currentworkers = $currentworkers
-                #
-                Write-Host "  Launching Task on:" $currentworker.server $currentworker.location `
-                    -ForegroundColor Yellow
-                Write-Host "    "$currenttask -ForegroundColor Yellow
-                #
-                $this.launchtask($currenttask, $currentworker)
-                #
-                $currentworker.status = 'RUNNING'
-                #
-            }
-            #
-        }
-        #
-    }
-    #
     <# -----------------------------------------
-     LaunchTask
-     Launch a task on a current worker
-     ------------------------------------------
-     Usage: $this.LaunchTask($currenttask, $currentworker)
-     ------------------------------------------
-     Input: 
-        $currenttask: the task array inputs. for a:
-            slide task: @(project, slideid)
-            batch task: @(project, batchid)
-            vminform task: @(project, slideid, antibody, algorithm)
-        $[system.object]currentworker: four part array
-            of a task object with fields:
-                module, server, location, status
-    ----------------------------------------- #>
-    [void]LaunchTask($currenttask, $currentworker){
-        #
-        $securestrings = $this.Getlogin()       
-        $currentworkerip = $this.defcurrentworkerip($currentworker)
-        $jobname = $this.defjobname($currentworker)
-        $currenttask = $this.getvminformtask($currenttask, $currentworker)
-        $this.PrepareWorkerFiles($currentworker.module, $currenttask, $jobname, $currentworker)
-        #
-        $this.executetask($currenttask, $currentworker,
-            $securestrings, $currentworkerip, $jobname)
-        #
-    }
-    #
-    [void]executetask($currenttask, $currentworker,
-        $securestrings, $currentworkerip, $jobname){
-        #
-        if ($currentworker.location -match 'VM'){
-            $myscriptblock = {
-                param($username, $securestring, $currentworkerip, $workertaskfile)
-                psexec -i -nobanner -accepteula -u $username -p $securestring \\$currentworkerip `
-                    pwsh -noprofile -executionpolicy bypass -command "$workertaskfile" `
-                    *>> ($workertaskfile -replace '.ps1', '-job.log')
-            }
-        } else {
-            $myscriptblock = {
-                param($username, $securestring, $currentworkerip, $workertaskfile)
-                psexec -nobanner -accepteula -u $username -p $securestring \\$currentworkerip `
-                    pwsh -noprofile -WindowStyle Hidden -executionpolicy bypass -command "$workertaskfile" `
-                    *>> ($workertaskfile -replace '.ps1', '-job.log')
-            }
-        }
-        #
-        $myparameters = @{
-            ScriptBlock = $myscriptblock
-            ArgumentList = $securestrings[0], $securestrings[1],
-             $currentworkerip, $this.workertaskfile($jobname)
-            name = $jobname
-            }
-        #
-        Start-Job @myparameters
-        $taskid = ($jobname, (Get-Date)) -join '-'
-        [string]$logline = @("START: ", $taskid,"`r`n") -join ''
-        $this.popfile($this.workerlogfile($jobname), $logline)
-        #
-    }
-    <# -----------------------------------------
-     GetCreds
+     Getlogin
      puts credentials in a string format for psexec 
      ------------------------------------------
-     Usage: $this.GetCreds()
+     Usage: $this.Getlogin()
     ----------------------------------------- #>
     [array]Getlogin(){
         #
@@ -606,25 +613,72 @@ class astropathwftools : sampledb {
         return @($username, $password)
         #
     }
-    #
-    [array]getvminformtask($currenttask, $currentworker){
-        #
-        if ($currentworker.module -notmatch 'vminform'){
-            return $currenttask
-        }
-        #
-        $row = $this.vmq.maincsv | Where-Object {
-            $_.taskid -contains $currenttask[0]
-        }
-        #
-        $row.ProcessingLocation = 'Processing:' + $currentworker.location
-        $row.StartDate = Get-Date
-        #
-        $this.vmq.writemainqueue()
-        #
-        $currenttask = @($row.taskid, $row.slideid, $row.antibody, $row.algorithm)
-        #
-        return $currenttask
+     <# -----------------------------------------
+     DefJobName
+     define the job name as server-location-module
+     ------------------------------------------
+     Usage: $this.DefJobName($currentworker)
+    ----------------------------------------- #>
+    [string]DefJobName($currentworker){
+        return ($currentworker.server,
+            $currentworker.location, $currentworker.module) -join '_'     
     }
-    #
+    <# -----------------------------------------
+     parseJobName
+     define the job name as server-location-module
+     ------------------------------------------
+     Usage: $this.parseJobName($currentworker)
+    ----------------------------------------- #>
+    [array]parseJobName($jobname){
+        return ($jobname -split '_')   
+    }
+    <# -----------------------------------------
+     workertasklog
+     the log for the psexc job. errors in this
+     file indicate errors in launching the 
+     psexc and not the module itself
+    ----------------------------------------- #>
+    [string]workertasklog($jobname){
+        return (
+            $this.workerloglocation, $jobname, '-taskfile-job.log' -join ''
+        )
+    }
+     <# -----------------------------------------
+     workertaskfile
+     the task to launch. the string task is 
+     created in $this.workertaskfile
+    ----------------------------------------- #>
+    [string]workertaskfile($jobname){
+        return (
+            $this.workerloglocation, $jobname, '-taskfile.ps1' -join ''
+        )
+    }
+     <# -----------------------------------------
+     workerlogfile
+     the log file for the powershell module
+     errors in this file indicate unhandled
+     exceptions in the powershell module or 
+     launching code. 
+    ----------------------------------------- #>
+    [string]workerlogfile($jobname){
+        return ($this.workerloglocation, $jobname, '.log' -join '')
+    }
+    <# -----------------------------------------
+     DefCurrentWorkerip
+     define the current worker IP address. The
+     server names can be used as aliases but the 
+     jhu bki VMs were added to the domain as
+     vminform## rather than their unique names
+     VM_inForm## that the were created
+    ----------------------------------------- #> #
+    [string]DefCurrentWorkerip($currentworker){
+        #
+        if ($currentworker.location -match 'VM'){
+            $currentworkerip = ($currentworker.location -replace '_', '').tolower()
+        } else {
+            $currentworkerip = $currentworker.server
+        }
+        return $currentworkerip
+        #
+    }
 }

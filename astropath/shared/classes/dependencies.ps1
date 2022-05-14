@@ -20,8 +20,8 @@
         rerun = 'RERUN'
     }
     #
-    [string]$specialcasedeps = '^' + (@('scan','scanvalidation','transfer',
-        'batchmicomp','merge','imageqa') -join '$|^') + '$'
+    [string]$nolog_modules = '^' + (@('stain', 'scan','scanvalidation', 
+        'transfer', 'batchmicomp','imageqa') -join '$|^') + '$'
     #
     [string]$empty_time = 'NA'
     #
@@ -30,7 +30,7 @@
     dependencies($mpath, $slideid): base ($mpath, '', $slideid){$this.initdependencies()}
     #
     [void]initdependencies(){
-        $this.importdependencyinfo($this.mpath) | Out-Null
+        $this.importdependencyinfo($this.mpath) 
     }
     #
     # dependencies($mpath, $module, $batchid, $project) : base ($mpath, $module, $batchid, $project){}
@@ -50,15 +50,6 @@
         #
     }
     #
-    [void]getantibodies(){
-        try{
-            $this.findantibodies($this.basepath)
-        } catch {
-            Write-Host $_.Exception.Message
-            return
-        }
-    }
-    #
     [void]getlogstatussub($cmodule){
         #
         $logoutput = $this.checkloginit($cmodule, $false)
@@ -67,11 +58,7 @@
             $this.moduleinfo.($cmodule).status = $logoutput[1].Message
         } elseif ($logoutput) {
             #
-            if ($cmodule -match $this.specialcasedeps){
-                $check = $this.('check'+$cmodule)()
-            } else {
-                $check = $this.checkmodule($cmodule)
-            }
+            $check = $this.checkmodule($cmodule)
             #
             switch ($check){
                 1 {
@@ -228,14 +215,14 @@
     #
     [hashtable]filterloglines($loglines, $ID, $vers){
         $startdate = ($this.selectlogline($loglines,
-            $ID, $this.log_start, $vers)).Date[0..18] -join ''
+            $ID, $this.log_start, $vers)).Date
         if ($startdate){
-            $startdate = $startdate.Date[0..18] -join ''
+            $startdate = $startdate[0..18] -join ''
         }
         $finishdate = ($this.selectlogline($loglines,
-            $ID, $this.log_finish, $vers)).Date[0..18] -join ''
+            $ID, $this.log_finish, $vers)).Date
         if ($finishdate){
-            $finishdate = $finishdate.Date[0..18] -join ''
+            $finishdate = $finishdate[0..18] -join ''
         }
         $errorline = $this.selectlogline($loglines,
             $ID, $this.log_error)
@@ -249,14 +236,14 @@
     #
     [hashtable]filterloglines($loglines, $ID, $vers, $antibody){
         $startdate = ($this.selectlogline($loglines,
-            $ID, $this.log_start, $vers, $antibody)).Date[0..18] -join ''
+            $ID, $this.log_start, $vers, $antibody)).Date
         if ($startdate){
-            $startdate = $startdate.Date[0..18] -join ''
+            $startdate = $startdate[0..18] -join ''
         }
         $finishdate = ($this.selectlogline($loglines,
-            $ID, $this.log_finish, $vers, $antibody)).Date[0..18] -join ''
+            $ID, $this.log_finish, $vers, $antibody)).Date
         if ($finishdate){
-            $finishdate = $finishdate.Date[0..18] -join ''
+            $finishdate = $finishdate[0..18] -join ''
         }
         $errorline = $this.selectlogline($loglines,
             $ID, $this.log_error, '', $antibody)
@@ -294,7 +281,7 @@
     ----------------------------------------- #>
     [string]setlogvers($cmodule){
         #
-        $vers = $this.moduleinfo.($cmodule).vers -replace 'v', ''
+        $vers = $this.moduleinfo.($cmodule).version -replace 'v', ''
         $vers = ($vers -split '\.')[0,1,2] -join '.'
         return $vers
         #
@@ -338,7 +325,7 @@
         #
         $errordate = $errorline.Date
         if ($errordate){
-            $errordate = $errorline.Date[0..18] -join ''
+            $errordate = $errordate[0..18] -join ''
         }
         $errorlogical = (
             $startdate -and $startdate -ne $this.empty_time -and
@@ -348,139 +335,6 @@
             (get-date $finishdate) -ge (get-date $errordate)
         )
         return $errorlogical
-        #
-    }
-    <# -----------------------------------------
-     checkscan
-     check that the slide has been scanned,
-     all scan products exist and the 
-     slides are ready to be transferred.
-    ------------------------------------------
-     Input: 
-        - log[mylogger]: astropath log object
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module needs to be run,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkscan(log, dependency)
-    ----------------------------------------- #>
-    [int]checkscan(){
-        #
-        if (!($this.moduleinfo.transfer.version -match '0.0.1') -and 
-            $this.checklog('transfer', $true)){
-            return 2
-        }
-        #
-        if (!$this.testtransferfiles()){
-            return 2
-        }
-        #
-        $im3s = (Get-ChildItem ($this.Scanfolder() + '\MSI\*') *im3).Count
-        #    
-        if (!$im3s){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
-    #
-    [int]checkscanvalidation(){
-        #
-        if (!($this.moduleinfo.transfer.version -match '0.0.1') -and 
-            $this.checklog('transfer', $true)){
-            return 2
-        }
-        #
-        if (!$this.testtransferfiles()){
-            return 2
-        }
-        #
-        $im3s = (Get-ChildItem ($this.Scanfolder() + '\MSI\*') *im3).Count
-        #    
-        if (!$im3s){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
-    <# -----------------------------------------
-     checktransfer
-     check that the transfer process has completed
-     and all transfer products exist
-    ------------------------------------------
-     Input: 
-        - log[mylogger]: astropath log object
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module needs to be run,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checktransfer(log, dependency)
-    ----------------------------------------- #>
-    [int]checktransfer(){
-        #
-        if (!($this.moduleinfo.transfer.version -match '0.0.1') -and 
-            $this.checklog('transfer', $true)){
-            return 2
-        }
-        #
-        if (!$this.testtransferfiles()){
-            return 2
-        }
-        #
-        $im3s = (Get-ChildItem ($this.Scanfolder() + '\MSI\*') *im3).Count
-        #    
-        if (!$im3s){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
-    
-    <# -----------------------------------------
-     checkmeanimagecomparison
-     check that the meanimagecomparison module has completed
-     and all products exist
-    ------------------------------------------
-     Input: 
-        - log[mylogger]: astropath log object
-        - dependency[switch]: true or false
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkmeanimagecomparison(log, dependency)
-    ----------------------------------------- #>
-    [int]checkbatchmicomp(){
-        #
-        $cmodule = 'batchmicomp'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        }
-        #
-        $check = $this.versiondependentchecks($cmodule)
-        #
-        if ($check){
-            return $check
-        } 
-        <#
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }  
-        #
-        if (!$this.('test' + $cmodule + 'files')()){
-            return 2
-        }
-        #>
-        return 3
         #
     }
     <# -----------------------------------------
@@ -542,82 +396,6 @@
         return 3
         #
     }
-    <# -----------------------------------------
-     checkmerge
-     checks if the merge function needs to be 
-     run. Details on checks follows:
-     checks all vminform ab logs for finished,
-     checks the mergelog for previously run,
-     tests the mergefiles exist and the dates
-     are newer than the most recent inform run.
-    ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete.
-     ------------------------------------------
-     Usage: $this.checkmerge(dependency)
-    ----------------------------------------- #>
-    [int]checkmerge(){
-        #
-        $cmodule = 'merge'
-        #
-        $this.getantibodies()
-        #
-        foreach ($abx in $this.antibodies){
-            #
-            if ($this.moduleinfo.vminform.($abx).status -ne $this.status.finish){
-                return 1
-            }
-            #
-        }
-        #
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }
-        #
-        if (!$this.testmergefiles($this.antibodies)){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
-    <# -----------------------------------------
-     checkimageqa
-     check if image qa has finished or not. 
-     Details on checks follows:
-     first check that the slide has finished 
-     previous steps then check that the slides
-     have been checked off manually in the 
-     image qa spreadsheet. 
-     ------------------------------------------
-     Output: returns 1 if dependency fails, 
-     returns 2 if current module is still running,
-     returns 3 if current module is complete
-     ------------------------------------------
-     Usage: $this.checkimageqa(dependency)
-    ----------------------------------------- #>
-    [int]checkimageqa(){
-        #
-        $cmodule = 'imageqa'
-        #
-        if ($this.checkpreviousstep($cmodule)){
-            return 1
-        } 
-        #
-        $this.getantibodies()
-        #
-        if ($this.checknewimageqa($this.antibodies)){
-            return 2
-        }
-        #
-        if(!$this.testimageqafile($this.antibodies)){
-            return 2
-        }
-        #
-        return 3
-        #
-    }
     #
     [int]checkmodule($cmodule){
         #
@@ -631,9 +409,11 @@
             return $check
         }
         #
-        if ($this.checklog($cmodule, $true)){
-            return 2
-        }  
+        if ($cmodule -notmatch $this.nolog_modules){
+            if ($this.checklog($cmodule, $true)){
+                return 2
+            }  
+        }
         #
         if (!$this.('test' + $cmodule + 'files')()){
             return 2
@@ -661,7 +441,7 @@
         $batcharrayunique = $batcharray | Sort-Object | Get-Unique
         $batchescomplete = @()
         #
-        $batcharrayunique | foreach-object {
+        $batcharrayunique | & { process {
             $nslidescomplete = ($batcharray -match $_).count
             $projectbatchpair = $_ -split ','
             $sample = sampledef -mpath $this.mpath -module $cmodule `
@@ -670,14 +450,33 @@
             if ($nslidescomplete -eq $nslidesbatch){
                 $batchescomplete += $_
             }
-        }
+        }}
         return $batchescomplete
     }
     #
     [switch]checkpreviousstep($step){
         #
-        $previousstep = ($this.dependency_data |
-            Where-Object {$_.module -contains $step}).dependency
+        $previousstep = ($this.dependency_data | & { process { 
+                if ($_.module -contains $step) {$_}
+            }}).dependency
+        #
+        if ($previousstep -match 'NONE'){
+            return $false 
+        }
+        #
+        if ($previousstep -match 'vminform'){
+            #
+            $this.getantibodies()
+            #
+            foreach ($abx in $this.antibodies){
+                #
+                if ($this.moduleinfo.vminform.($abx).status -ne $this.status.finish){
+                    return $true
+                }
+                #
+            }
+            #
+        }
         #
         if ($this.moduleinfo.($previousstep).status -ne $this.status.finish){
             return $true
@@ -689,7 +488,7 @@
     #
     [int]versiondependentchecks($cmodule){
         #
-        $vers = $this.moduleinfo.($cmodule).vers
+        $vers = $this.moduleinfo.($cmodule).version
         if ($vers -match '0.0.1'){
             switch -regex ($cmodule){
                 batchmicomp {return 3}
@@ -702,6 +501,24 @@
                 batchwarpkeys {return 3}
                 batchwarpfits {return 3}
 
+            }
+        } else {
+            switch -regex ($cmodule){
+                transfer{
+                    if ($this.checklog($cmodule, $true)){
+                        return 2
+                    }
+                }
+                scan{
+                    if ($this.checklog($cmodule, $true)){
+                        return 2
+                    }
+                }
+                scanvalidation{
+                    if ($this.checklog($cmodule, $true)){
+                        return 2
+                    }
+                }
             }
         }
         #

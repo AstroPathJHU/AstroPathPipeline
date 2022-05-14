@@ -42,7 +42,7 @@ class launchmodule : mylogger{
         $this.start($this.module)
         #
         try {
-            $( & $this.module $this.val $this)  
+            initmodule -module $this.module -task $this.val -log $this
             $this.output = 0
         } catch {
             $this.error($_.Exception.Message)

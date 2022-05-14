@@ -1,6 +1,6 @@
 ﻿<#
 --------------------------------------------------------
-informinput
+vminform
 Created By: Benjamin Green -JHU
 Last Edit: 07/23/2021
 --------------------------------------------------------
@@ -17,7 +17,7 @@ Usage: $a = [informinput]::new($task, $sample)
        $a.RunBatchInForm()
 --------------------------------------------------------
 #>
-Class informinput {
+Class vminform {
     #
     [string]$abx
     [string]$alg
@@ -33,7 +33,7 @@ Class informinput {
     [int]$err
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     #
-    informinput([hashtable]$task,[launchmodule]$sample) {
+    vminform([hashtable]$task,[launchmodule]$sample) {
         #
         $this.sample = $sample
         $this.abx = $task.antibody.trim()
@@ -73,7 +73,7 @@ Class informinput {
      ------------------------------------------
      Usage: $this.RunBatchInForm()
     ----------------------------------------- #>
-    [void]RunBatchInForm(){
+    [void]Runvminform(){
         #
         $this.DownloadIm3()
         while(($this.err -le 5) -AND ($this.err -ge 0)){

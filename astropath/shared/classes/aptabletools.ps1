@@ -1,4 +1,20 @@
-﻿class aptabletools : fileutils {
+﻿<# -------------------------------------------
+ aptabletools
+ created by: Benjamin Green, Andrew Jorquera 
+ Last Edit: 11.02.2021
+ --------------------------------------------
+ Description
+ methods used assess, open and process the 
+ astropath tables in the astropath processing
+ so called <mpath> directory. 
+
+ Note that:
+ logic to replace where-object with process block is from:
+ https://powershell.one/tricks/performance/pipeline
+ logic may be used elsewhere in astropath module.
+ dramatic preformance improvement
+ -------------------------------------------#>
+class aptabletools : fileutils {
     #
     [PSCustomObject]$full_project_dat
     [PSCustomObject]$dependency_data
@@ -13,6 +29,7 @@
     #
     [array]$antibodies
     [array]$allprojects
+    [hashtable]$allantibodies = @{}
     #
     [string]$cohorts_file = 'AstroPathCohortsProgress.csv' 
     [string]$paths_file = 'AstroPathPaths.csv'
@@ -86,23 +103,25 @@
     }
     #
     importaptables($mpath){
-        $this.importcohortsinfo($mpath) | Out-Null
-        $this.importdependencyinfo($mpath) | Out-Null
-        $this.importslideids($mpath) | Out-Null
-        $this.ImportFlatfieldModels($mpath) | Out-Null
-        $this.ImportCorrectionModels($mpath) | Out-Null
-        $this.ImportMICOMP($mpath) | Out-Null
-        $this.Importworkerlist($mpath) | Out-Null
+        $this.importcohortsinfo($mpath)
+        $this.importdependencyinfo($mpath) 
+        $this.importslideids($mpath) 
+        $this.ImportFlatfieldModels($mpath) 
+        $this.ImportCorrectionModels($mpath) 
+        $this.ImportMICOMP($mpath) 
+        $this.Importworkerlist($mpath) 
+        $this.findallantibodies()
     }
     #
     importaptables($mpath, $createwatcher){
-        $this.importcohortsinfo($mpath, $createwatcher) | Out-Null
-        $this.importdependencyinfo($mpath, $createwatcher) | Out-Null
-        $this.importslideids($mpath, $createwatcher) | Out-Null
-        $this.ImportFlatfieldModels($mpath, $createwatcher) | Out-Null
-        $this.ImportCorrectionModels($mpath, $createwatcher) | Out-Null
-        $this.ImportMICOMP($mpath, $createwatcher) | Out-Null
-        $this.Importworkerlist($mpath, $createwatcher) | Out-Null
+        $this.importcohortsinfo($mpath, $createwatcher) 
+        $this.importdependencyinfo($mpath, $createwatcher) 
+        $this.importslideids($mpath, $createwatcher) 
+        $this.ImportFlatfieldModels($mpath, $createwatcher)
+        $this.ImportCorrectionModels($mpath, $createwatcher) 
+        $this.ImportMICOMP($mpath, $createwatcher) 
+        $this.Importworkerlist($mpath, $createwatcher)
+        $this.findallantibodies($createwatcher)
     }
     <# -----------------------------------------
      ImportCohortsInfo
@@ -117,7 +136,7 @@
      ------------------------------------------
      Usage: ImportCohortsInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportCohortsInfo([string] $mpath, $createwatcher){
+    [void]ImportCohortsInfo([string] $mpath, $createwatcher){
         #
         $cohort_csv_file = $this.cohorts_fullfile($mpath)
         #
@@ -151,8 +170,6 @@
         #
         $this.defallprojects()
         #
-        return $this.full_project_dat
-        #
     }
     #
     [void]defallprojects(){
@@ -171,19 +188,17 @@
         }
     }
     #
-    [PSCustomObject]ImportCohortsInfo([string] $mpath){
+    [void]ImportCohortsInfo([string] $mpath){
         #
         if(!$this.full_project_dat){
-            $this.importcohortsinfo($mpath, $false) | Out-NULL
+            $this.importcohortsinfo($mpath, $false) 
         }
-        #
-        return $this.full_project_dat
         #
     }
     #
-    [PSCustomObject]ImportCohortsInfo(){
+    [void]ImportCohortsInfo(){
         #
-         return $this.importcohortsinfo($this.mpath) 
+        $this.importcohortsinfo($this.mpath) 
         #
     }
     <# -----------------------------------------
@@ -198,29 +213,27 @@
      ------------------------------------------
      Usage: ImportDependencyInfo(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportDependencyInfo([string] $mpath, $createwatcher){
+    [void]ImportDependencyInfo([string] $mpath, $createwatcher){
         #
         $dependency_csv_file = $this.dependency_fullfile($mpath)
         $this.dependency_data = $this.OpencsvFileConfirm($dependency_csv_file)
         if ($createwatcher){
             $this.FileWatcher($dependency_csv_file)
         }
-        return $this.dependency_data
         #
     }
     #
-    [PSCustomObject]ImportDependencyInfo([string] $mpath){
+    [void]ImportDependencyInfo([string] $mpath){
         #
         if(!$this.dependency_data){
-            $this.ImportDependencyInfo($mpath, $false) | Out-Null
+            $this.ImportDependencyInfo($mpath, $false) 
         }
-        return $this.dependency_data
         #
     }
     #
-    [PSCustomObject]ImportDependencyInfo(){
+    [void]ImportDependencyInfo(){
         #
-        return $this.ImportDependencyInfo($this.mpath)
+        $this.ImportDependencyInfo($this.mpath)
         #
     }
     <# -----------------------------------------
@@ -234,35 +247,39 @@
      ------------------------------------------
      Usage: ImportSlideIDs(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportSlideIDs([string] $mpath, $createwatcher){
+    [void]ImportSlideIDs([string] $mpath, $createwatcher){
         #
         $defpath = $this.slide_fullfile($mpath)
         $this.slide_data = $this.OpencsvFileConfirm($defpath)
+        $this.slide_data = $this.slide_data | & { process {
+            if (
+                $_.project -match ($this.matcharray($this.allprojects))
+            ){$_}
+        }}
+        #
         if ($createwatcher){
             $this.FileWatcher($defpath)
         }
-        return $this.slide_data 
         #
     }
     #
-    [PSCustomObject]ImportSlideIDs([string] $mpath){
+    [void]ImportSlideIDs([string] $mpath){
         #
         if(!$this.slide_data){
-            $this.ImportSlideIDs($mpath, $false) | Out-Null
+            $this.ImportSlideIDs($mpath, $false) 
         }
-        return $this.slide_data
         #
     }
     #
-    [PSCustomObject]ImportSlideIDs(){
+    [void]ImportSlideIDs(){
         #
-        return $this.ImportSlideIDs($this.mpath)
+        $this.ImportSlideIDs($this.mpath)
         #
     }
     #
-    [PSCustomObject]ImportSlide($mpath, $createwatcher){
+    [void]ImportSlide($mpath, $createwatcher){
         #
-        return $this.ImportSlideIDs($mpath, $createwatcher)
+        $this.ImportSlideIDs($mpath, $createwatcher)
         #
     }
     <# -----------------------------------------
@@ -276,29 +293,27 @@
      ------------------------------------------
      Usage: ImportFlatfieldModels(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportFlatfieldModels([string] $mpath, $createwatcher){
+    [void]ImportFlatfieldModels([string] $mpath, $createwatcher){
         #
         $defpath = $this.ffmodels_fullfile($mpath)
         $this.ffmodels_data = $this.opencsvfile($defpath)
         if ($createwatcher){
             $this.FileWatcher($defpath)
         }
-        return $this.ffmodels_data
         #
      }
      #
-    [PSCustomObject]ImportFlatfieldModels([string] $mpath){
+    [void]ImportFlatfieldModels([string] $mpath){
         #
         if(!$this.ffmodels_data){
-            $this.ImportFlatfieldModels($mpath, $false) | Out-NUll
+            $this.ImportFlatfieldModels($mpath, $false) 
         }
-        return $this.ffmodels_data
         #
      }
      #
-    [PSCustomObject]Importffmodels($mpath, $createwatcher){
+    [void]Importffmodels($mpath, $createwatcher){
         #
-        return $this.ImportFlatfieldModels($mpath, $createwatcher)
+        $this.ImportFlatfieldModels($mpath, $createwatcher)
         #
     }
     <# -----------------------------------------
@@ -327,12 +342,15 @@
     #
     [PSCustomObject]GetAPProjects($module){
         #
-        $this.ImportCohortsInfo($this.mpath) | out-null
+        $this.ImportCohortsInfo($this.mpath) 
         $headers = $this.gettablenames($this.full_project_dat)
         #
-        if ($module -match ('^' + ($headers -join '$|^') + '$')){
-            $cprojects = ($this.full_project_dat | 
-                Where-object {$_.($module) -match $this.onstrings}).Project
+        if ($module -match $this.matcharray($headers)){
+            $cprojects = ($this.full_project_dat | & { process {
+                if (
+                    $_.($module) -match $this.onstrings
+                ) {$_}
+            }}).Project
         } else {
             $cprojects = $this.full_project_dat.Project
         }
@@ -353,10 +371,11 @@
     ----------------------------------------- #>
     [PSCustomObject]GetProjectCohortInfo([string] $mpath, [string] $project){
         #
-        $project_dat = $this.ImportCohortsInfo($mpath)
+        $this.ImportCohortsInfo($mpath)
         #
-        $cleaned_project_dat = $project_dat | 
-                Where-Object {$project -contains $_.Project}
+        $cleaned_project_dat = $this.full_project_dat | & { process {
+            if ( $project -contains $_.Project ) { $_ }
+        }}
         #
         return $cleaned_project_dat
         #
@@ -373,7 +392,7 @@
      ------------------------------------------
      Usage: ImportCorrectionModels(mpath)
     ----------------------------------------- #>
-    [PSCustomObject]ImportCorrectionModels([string] $mpath, $createwatcher){
+    [void]ImportCorrectionModels([string] $mpath, $createwatcher){
         #
         $corr_csv_file = $this.corrmodels_fullfile($mpath)
         $this.corrmodels_data = $this.opencsvfile($corr_csv_file)
@@ -381,23 +400,19 @@
             $this.FileWatcher($corr_csv_file)
         }
         #
-        return $this.corrmodels_data 
-        #
     }
     #
-    [PSCustomObject]ImportCorrectionModels([string] $mpath){
+    [void]ImportCorrectionModels([string] $mpath){
         #
         if (!$this.corrmodels_data){
-            $this.ImportCorrectionModels($mpath, $false) | Out-NULL
+            $this.ImportCorrectionModels($mpath, $false)
         }
-        #
-        return $this.corrmodels_data 
         #
     }
     #
-    [PSCustomObject]Importcorrmodels($mpath, $createwatcher){
+    [void]Importcorrmodels($mpath, $createwatcher){
         #
-        return $this.ImportCorrectionModels($mpath, $createwatcher)
+        $this.ImportCorrectionModels($mpath, $createwatcher)
         #
     }
     <# -----------------------------------------
@@ -413,7 +428,7 @@
      Usage: ImportMICOMP(mpath)
     ----------------------------------------- #>
     #
-    [PSCustomObject]ImportMICOMP([string] $mpath, $createwatcher){
+    [void]ImportMICOMP([string] $mpath, $createwatcher){
         #
         $micomp_csv_file = $this.micomp_fullfile($mpath)
         $this.micomp_data = $this.opencsvfile($micomp_csv_file)
@@ -421,17 +436,13 @@
             $this.FileWatcher($micomp_csv_file)
         }
         #
-        return $this.micomp_data
-        #
     }
     #
-    [PSCustomObject]ImportMICOMP([string] $mpath){
+    [void]ImportMICOMP([string] $mpath){
         #
         if (!$this.micomp_data){
-            $this.importmicomp($mpath, $false) | Out-NULL
+            $this.importmicomp($mpath, $false)
         }
-        #
-        return $this.micomp_data
         #
     }
     #
@@ -447,33 +458,43 @@
         #
     }
     #
-    [PSCustomObject]ImportMergeConfig([string] $basepath, $createwatcher){
+    [void]ImportMergeConfig([string] $basepath, $createwatcher){
         #
         $micomp_csv_file = $this.mergeconfig_fullfile($basepath)
-        $this.mergeconfig_data = $this.importexcel($micomp_csv_file)
+        $this.mergeconfig_data = $this.importexcel($this.mergeconfig_fullfile($basepath))
         if ($createwatcher){
             $this.FileWatcher($micomp_csv_file)
         }
         #
-        return $this.mergeconfig_data
-        #
     }
     #
-    [PSCustomObject]ImportMergeConfig([string] $basepath){
+    [void]ImportMergeConfig([string] $basepath){
         #
         if (!$this.mergeconfig_data){
-            $this.ImportMergeConfig($basepath, $false) | Out-NULL
+            $this.ImportMergeConfig($basepath, $false) 
         }
-        #
-        return $this.mergeconfig_data
         #
     }
     #
-    [PSCustomObject]ImportMergeConfig(){
+    [void]ImportMergeConfig(){
         #
-        $this.ImportMergeConfig($this.basepath) | Out-NULL
+        $this.ImportMergeConfig($this.basepath) 
         #
-        return $this.mergeconfig_data
+    }
+    #
+    [void]findallantibodies(){
+        $this.findallantibodies($false)
+    }
+    #
+    [void]findallantibodies($createwatcher){
+        #
+        $this.full_project_dat | & { process{
+            $p = $this.uncpaths(($_.dpath, $_.dname -join '\'))
+            if (test-path $p){
+                $this.allantibodies.($_.project) = 
+                    $this.findantibodies($p, $createwatcher)
+            }
+        }}
         #
     }
     #
@@ -484,17 +505,94 @@
     [void]findantibodies($basepath){
         #
         $this.ImportMergeConfig($basepath)
-        $data = $this.mergeconfig_data | 
-            Where-Object {$_.Opal -notcontains 'DAPI' `
-                -and $_.Target -notcontains 'Membrane'}
-        $targets = $data.Target
-        $qa = $data.ImageQA.indexOf('Tumor')
+        $lintargets = $this.deflineagemarkers()
+        $exprtargets = $this.defexpressionmarkers()
         #
-        if ($qa -ge 0){
-            $targets[$qa] = 'Tumor'
+        $this.antibodies = $lintargets + $exprtargets
+        #
+    }
+    #
+    [array]findantibodies($basepath, $createwatcher){
+        #
+        $this.ImportMergeConfig($basepath, $createwatcher)
+        if (!$this.mergeconfig_data){
+            throw ('no merge config file for: ' + $basepath)
+        }
+        $lintargets = $this.deflineagemarkers()
+        $exprtargets = $this.defexpressionmarkers()
+        #
+        return ($lintargets + $exprtargets)
+        #
+    }
+    #
+    [void]getantibodies($project){
+        #
+        if (!($this.allantibodies.($project))){
+            $p1 = $this.full_project_dat | Where-Object {$_.project -eq $project}
+            $p = $this.uncpaths(($p1.dpath, $p1.dname -join '\'))
+            $this.allantibodies.($project) = $this.findantibodies($p, $false)
         }
         #
-        $this.antibodies = $targets
+        $this.antibodies = $this.allantibodies.($project)
+        #
+    }
+    #
+    [void]getantibodies(){
+        $this.getantibodies($this.project)
+    }
+    #
+    [array]deflineagemarkers(){
+        #
+        $data = $this.mergeconfig_data | & { process {
+            if (
+                $_.Opal -notcontains 'DAPI' -and
+                $_.Target -notmatch 'Membrane' -and
+                $_.TargetType -match 'Lineage'
+            ) {$_}
+        }}
+        #
+        if ($data){
+            $lintargets = $data.Target
+            $qa = $data.ImageQA.indexOf('Tumor')
+            #
+            if ($qa -ge 0){
+                $lintargets[$qa] = 'Tumor'
+            }
+            return $lintargets
+        } else {
+            return @()
+        }
+        #
+    }
+    #
+    [array]defexpressionmarkers(){
+        #
+        $data = $this.mergeconfig_data | & { process {
+            if (
+                $_.Opal -notcontains 'DAPI' -and
+                $_.Target -notmatch 'Membrane' -and
+                $_.TargetType -match 'Expression'
+            ) {$_}
+        }}
+        #
+        if ($data){
+            $exprtargets = $data.Target
+            #
+            $multisegs = $data | Where-Object {
+                $_.numberofsegmentations -gt 1
+            }
+            #
+            foreach ($multiseg in $multisegs){
+                $nextrasegs = $multiseg.numberofsegmentations
+                2..$nextrasegs | foreach-object{
+                    $exprtargets += ($multiseg.Target + '_' + [string]$_)
+                }
+            }
+            #
+            return $exprtargets
+        } else {
+            return @()
+        }
         #
     }
     <# -----------------------------------------
@@ -507,7 +605,7 @@
      Usage: Importworkerlist($fpath)
     ----------------------------------------- #>
     #
-    [PSCustomObject]Importworkerlist([string] $mpath, $createwatcher){
+    [void]Importworkerlist([string] $mpath, $createwatcher){
         #
         $worker_csv_file = $this.worker_fullfile($mpath)
         $this.worker_data = $this.opencsvfileconfirm($worker_csv_file)
@@ -516,24 +614,21 @@
             $this.worker_data |
                 Add-Member -NotePropertyName 'Status' -NotePropertyValue $this.node_idle
         } else {
-            $this.worker_data | 
-                Where-Object {$_.Status -match $this.onstrings}
+            $this.worker_data |  & { process { 
+                if ($_.Status -match $this.onstrings){ $_ }
+            }}
         }
         if ($createwatcher){
             $this.FileWatcher($worker_csv_file)
         }
         #
-        return $this.worker_data
-        #
     }
     #
-    [PSCustomObject]Importworkerlist([string] $mpath){
+    [void]Importworkerlist([string] $mpath){
         #
         if (!$this.worker_data){
-            $this.Importworkerlist($mpath, $false) | Out-NULL
+            $this.Importworkerlist($mpath, $false) 
         }
-        #
-        return $this.worker_data
         #
     }
     #
@@ -615,15 +710,16 @@
      #
      [string]defprojectlogpath($module, $project){
             #
-            $this.importcohortsinfo() | Out-Null
-            $project_dat = $this.full_project_dat |
-                Where-Object {$_.project -contains $project}
+            $this.importcohortsinfo()
+            $project_dat = $this.full_project_dat | & { process {
+                if ($_.project -contains $project){ $_ }
+            }}
             #
-            $root = $this.uncpaths($project_dat.dpath)
-            $fpath = $root, $project_dat.dname, 'logfiles',
-             ($module,'.log' -join '') -join '\'
-            #
-            return $fpath
+            return( 
+                $this.uncpaths($project_dat.dpath),
+                $project_dat.dname, 'logfiles',
+                ($module,'.log' -join '') -join '\'
+            )
             #
      }
      <# -----------------------------------------
@@ -651,11 +747,9 @@
      #
     [PSCustomObject]Importlogfile($module, $project){
         #
-        $logfile = $this.importlogfile(
+        return $this.importlogfile(
             $this.defprojectlogpath($module, $project)
         )
-        #
-        return $logfile
         #
      }
      #
@@ -691,45 +785,46 @@
     [PSCustomObject]selectlogline([PSCustomObject] $loglines,
      [string] $ID, [string] $status){    
         #
-        $logline = $loglines |
-                where-object {
-                        ($_.Slideid -match $ID) -and 
-                        ($_.Message -match ('^' + $status))
-                } |
-                Select-Object -Last 1
-        #
-        return $logline
+        return ( $loglines | &{ process {
+                if (
+                    ($_.Slideid -match $ID) -and 
+                    ($_.Message -match ('^' + $status))
+                ) { $_ }
+            }} |
+            Select-Object -Last 1
+        )
         #
     }
     #
     [PSCustomObject]selectlogline([PSCustomObject] $loglines,
      [string] $ID, [string] $status, [string] $vers){    
         #
-        $logline = $loglines |
-                where-object {
-                    ($_.Message -match $vers) -and 
-                        ($_.Slideid -match $ID) -and 
-                        ($_.Message -match ('^' + $status))
-                } |
-                Select-Object -Last 1
-        #
-        return $logline
+        return (
+            $loglines | &{ process {
+            if (
+                ($_.Message -match $vers) -and 
+                ($_.Slideid -match $ID) -and 
+                ($_.Message -match ('^' + $status))
+                ) { $_ }
+            }} |
+            Select-Object -Last 1
+        )
         #
     }
     #
     [PSCustomObject]selectlogline([PSCustomObject] $loglines,
      [string] $ID, [string] $status, [string] $vers, [string] $antibody){    
         #
-        $logline = $loglines |
-                where-object {
-                    ($_.Slideid -match $ID) -and 
-                        ($_.Message -match ('^' + $status)) -and 
-                        ($_.Message -match ('Antibody: ' +
-                         $antibody + ' - Algorithm:'))
-                } |
-                Select-Object -Last 1
-        #
-        return $logline
+        return ( $loglines | &{ process {
+            if (
+                ($_.Slideid -match $ID) -and 
+                ($_.Message -match ('^' + $status)) -and 
+                ($_.Message -match ('Antibody: ' +
+                    $antibody + ' - Algorithm:'))
+                ) { $_ }
+            }} |
+            Select-Object -Last 1
+        )
         #
     } 
     #
@@ -737,16 +832,17 @@
      [string] $ID, [string] $status, [string] $vers, [string] $antibody,
      [string] $algorithm){    
         #
-        $logline = $loglines |
-                where-object {
-                    ($_.Slideid -match $ID) -and 
-                        ($_.Message -match ('^' + $status)) -and 
-                        ($_.Message -match ('Antibody: ' +
-                         $antibody + ' - Algorithm: ' + $algorithm))
-                } |
-                Select-Object -Last 1
-        #
-        return $logline
+        return  (
+            $loglines | &{ process {
+            if (
+                ($_.Slideid -match $ID) -and 
+                ($_.Message -match ('^' + $status)) -and 
+                ($_.Message -match ('Antibody: ' +
+                    $antibody + ' - Algorithm: ' + $algorithm))
+            ) { $_ }
+            }} |
+            Select-Object -Last 1
+        )
         #
     } 
     # 

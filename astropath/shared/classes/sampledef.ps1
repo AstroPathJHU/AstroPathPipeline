@@ -45,14 +45,14 @@ class sampledef : sharedtools{
     }
     #
     sampledefslide($slideid){
-        $slides = $this.importslideids($this.mpath)
-        $this.Sample($slideid, $slides)
+        $this.importslideids($this.mpath)
+        $this.Sample($slideid, $this.slide_data)
     }
     #
     sampledefbatch($batchid, $project){
         $this.project = $project
-        $slides = $this.importslideids($this.mpath)
-        $this.Batch($batchid, $slides)
+        $this.importslideids($this.mpath)
+        $this.Batch($batchid, $this.slide_data)
     }
     #
     Sample(
@@ -90,8 +90,9 @@ class sampledef : sharedtools{
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
-        $slide = $slides | 
-                Where-Object -FilterScript {$_.SlideID -eq $slideid.trim()}
+        $slide = $slides | & { process { 
+            if ($_.SlideID -eq $slideid.trim()){ $_ }
+        }}
         #
         if (!$slide){
             Throw ($slideid.trim() +
@@ -115,9 +116,12 @@ class sampledef : sharedtools{
             [string]$mbatchid = $mbatchid[1]
         }
         #
-        $batch = $slides | 
-                Where-Object -FilterScript {$_.BatchID -eq $mbatchid.trim() -and 
-                    $_.Project -eq $this.project.trim()}
+        $batch = $slides | & {process { 
+            if (
+                {$_.BatchID -eq $mbatchid.trim() -and 
+                $_.Project -eq $this.project.trim()}
+            ) { $_ }
+        }}
         #
         if (!$batch){
             Throw ('Not a valid batchid: project - ' + $this.project +
@@ -139,16 +143,16 @@ class sampledef : sharedtools{
     #
     [void]defbase(){
         #
-        $this.importcohortsinfo($this.mpath) | Out-Null
+        $this.importcohortsinfo($this.mpath)
         #
-        $project_dat = $this.full_project_dat| 
-                    Where-Object -FilterScript {$_.Project -eq $this.project}
+        $this.project_data = $this.full_project_dat | & { process {
+            if ($_.Project -eq $this.project) {$_}
+        }}
         #
-        $root = $this.uncpaths($project_dat.dpath)
-        #
-        $this.basepath = $root, $project_dat.dname -join '\'
-        #
-        $this.project_data = $project_dat
+        $this.basepath = (
+            $this.uncpaths($this.project_data.dpath),
+            $this.project_data.dname -join '\'
+        )
         #
     }
     #
@@ -187,40 +191,37 @@ class sampledef : sharedtools{
         $vers = $this.GetVersion($this.mpath, $cmodule, $this.project, $true)
         $this.moduleinfo.($cmodule) = @{mainlog =$cmainlog; slidelog=$cslidelog; version=$vers}
         #
+        $cmainlog = $null
+        $cslidelog = $null
+        $vers = $null
+        #
     }
     #
     [string]slidelogfolder(){
-        $path = $this.basepath + '\' + $this.slideid + '\logfiles'
-        return $path
-
+        return ($this.basepath + '\' + $this.slideid + '\logfiles')
     }
     #
     [string]slidelogbase(){
-        $path = $this.slidelogfolder() +
-            '\' + $this.slideid + '-'
-        return $path
+        return ($this.slidelogfolder() +
+            '\' + $this.slideid + '-' )
     }
     #
     [string]slidelogbase($cmodule){
-        $path = $this.slidelogfolder() + 
-            '\' + $this.slideid + '-' + $cmodule + '.log'
-        return $path
+        return ($this.slidelogfolder() + 
+            '\' + $this.slideid + '-' + $cmodule + '.log')
     }
     #
     [string]mainlogfolder(){
-        $path = $this.basepath + '\logfiles'
-        return $path
+        return ($this.basepath + '\logfiles' )
 
     }
     #
     [string]mainlogbase(){
-        $path = $this.mainlogfolder() + '\' 
-        return $path
+        return ($this.mainlogfolder() + '\' )
     }
     #
     [string]mainlogbase($cmodule){
-        $path = $this.mainlogfolder() + '\' + $cmodule + '.log'
-        return $path
+        return ($this.mainlogfolder() + '\' + $cmodule + '.log')
     }
    #
 }

@@ -53,13 +53,13 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]buildsampledb(){
         #
-        $this.writeoutput(" building sample status database")
         $this.newtasks = @()
         $this.defsampleStages()
-        $this.writeoutput(" creating file watchers")
+        $this.writeoutput(" Creating file watchers")
         $this.defmodulewatchers()
         $this.defmodulelogwatchers()
-        $this.writeoutput(" checking for updates during aggregation")
+        $this.importaptables($this.mpath, $true)
+        $this.writeoutput(" Checking for updates during aggregation")
         $this.refreshmoduledb()
         #
     }
@@ -71,16 +71,16 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]defmodulequeues(){
         #
-        $this.writeoutput(" building module tables")
-        $this.writeoutput("     updating: vminform queue")
+        $this.writeoutput(" Building module tables")
+        $this.writeoutput("     Updating: [vminform] queue")
         $this.vmq = vminformqueue $this.mpath
-        $this.writeoutput("     vminform queue updated")
+        $this.writeoutput("     [vminform] queue updated")
         $this.getmodulenames()
-        $this.modules | ForEach-Object{
-            $this.writeoutput("     updating: $_")
+        $this.modules | & { process {
+            $this.writeoutput("     Updating: [$_]")
             $this.moduleobjs.($_) = modulequeue $this.mpath $_
             $this.moduletaskqueue.($_) = New-Object System.Collections.Generic.Queue[array]
-        }
+        }}
         #
     }
     <# -----------------------------------------
@@ -94,13 +94,15 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]defmodulewatchers(){
         #
-        $this.vmq.createwatchersvminformqueues()
+        $this.vmq.createwatchersvminformqueues()    
         #
-        $this.modules | ForEach-Object{
+        $this.modules | & { process {
             $this.moduleobjs.($_).createwatchersqueues()
             $this.newtasks += $this.addnewtasks($this.moduleobjs.($_).newtasks)
             $this.moduleobjs.($_).newtasks = @()
-        }
+        }}
+        #
+        [System.GC]::GetTotalMemory($true) | out-null
         #
     }
     <# -----------------------------------------
@@ -128,21 +130,19 @@ class sampledb : sampletracker {
         #
         $c = 1
         $ctotal = $this.slide_data.count
+        $this.writeoutput(" Building sample status database")
         #
         foreach($slide in $this.slide_data){
             #
-            $p = [math]::Round(100 * ($c / $ctotal))
-            Write-Progress -Activity "Checking slides" `
-                            -Status ("$p% Complete: Slide " +  $slide.slideid)`
-                            -PercentComplete $p `
-                            -CurrentOperation $slide.slideid
+            $this.progressbar($c, $ctotal, $slide.slideid)
             $c += 1 
-            #
             $this.preparesample($slide, $this.slide_data)
             $this.defmoduletables($slide.slideid)
+            #
         }
         #
-        write-progress -Activity "Checking slides" -Status "100% Complete:" -Completed
+        $this.progressbarfinish()
+        $this.writeoutput(" Sample status database built")
         #
     }
     <# -----------------------------------------
@@ -156,9 +156,9 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]defmoduletables($slideid){
         #
-        $this.modules | ForEach-Object{
+        $this.modules | & { process {
             $this.refreshmoduledb($_, $slideid)
-        }
+        }}
         #
     }
     <# -----------------------------------------
@@ -167,17 +167,38 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]refreshsampledb(){
         #
+        if ($this.newtasks){
+            $this.writeoutput(" refreshing sample data base for new tasks")
+        }
+        #
+        $ctotal = $this.newtasks.count
+        $c = 1
+        #
         while($this.newtasks){
+            #
             $slide, $this.newtasks = $this.newtasks
+            $this.progressbar($c, $ctotal, $slide)
+            $c += 1 
             $this.preparesample($slide)
             $this.defmoduletables($slide)
+            #
         }
         #
     }
+    #
     [void]refreshsampledb($cmodule){
+        #
+        $ctotal = $this.newtasks.count
+        $c = 1
+        #
+        if ($this.newtasks){
+            $this.writeoutput(" updating module database: $cmodule")
+        }
         #
         while($this.newtasks){
             $slide, $this.newtasks = $this.newtasks
+            $this.progressbar($c, $ctotal, $slide)
+            $c += 1 
             $this.preparesample($slide)
             $this.refreshmoduledb($cmodule, $slide)
             $this.moduleobjs.($cmodule).writelocalqueue(
@@ -207,10 +228,10 @@ class sampledb : sampletracker {
         #
         $this.refreshsampledb()
         #
-        $this.modules | ForEach-Object{
-            $this.moduleobjs.($_).writemainqueue()
+        $this.modules | & { process {
+            $this.moduleobjs.($_).writemoduledb()
             $this.refreshmoduledb($_)
-        }
+        }}
         #
     }
     <# -----------------------------------------
@@ -226,15 +247,24 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]refreshmoduledb($cmodule){
         #
+        $ctotal = $this.moduleobjs.($cmodule).newtasks.count
+        $c = 1
+        #
         $this.moduleobjs.($cmodule).openmainqueue($false)
+        if ($this.moduleobjs.($cmodule).newtasks){
+            $this.writeoutput(" updating module database: $cmodule")
+        }
+        #
         while($this.moduleobjs.($cmodule).newtasks){
             $slide, $this.moduleobjs.($cmodule).newtasks =
              $this.moduleobjs.($cmodule).newtasks
+            $this.progressbar($c, $ctotal, $slide)
+            $c += 1 
             $this.preparesample($slide)
             $this.refreshmoduledb($cmodule, $slide)
         }
         #
-        $this.moduleobjs.($cmodule).writemainqueue()
+        $this.moduleobjs.($cmodule).writemoduledb()
         $this.moduleobjs.($cmodule).coalescequeues()
         #
         if ($this.moduleobjs.($cmodule).newtasks){
@@ -260,14 +290,6 @@ class sampledb : sampletracker {
         }
         #
     }
-    #
-    [array]getslideantibodies($slideid){
-        #
-        $modulekeys = $this.moduleinfo.vminform.Keys
-        $antibodies = $modulekeys -notmatch $this.vminform_nonab_keys
-        return $antibodies
-        #
-    }
     <# -----------------------------------------
     refreshmoduledbsub
     -----------------------------------------
@@ -277,8 +299,8 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]refreshmoduledbsub($cmodule, $slideid){
         #
-        $row = $this.moduleobjs.($cmodule).maincsv |
-            Where-Object {$_.slideid -match $slideid}
+        $row = $this.moduleobjs.($cmodule).maincsv | & { process {
+            if ($_.slideid -contains $slideid) { $_ }}}
         if (!$row){
             $this.createmoduleline($cmodule, $slideid)
         } else {
@@ -289,8 +311,8 @@ class sampledb : sampletracker {
     #
     [void]refreshmoduledbsub($cmodule, $slideid, $cproject){
         #
-        $row = $this.moduleobjs.($cmodule).localqueue.($cproject) |
-            Where-Object {$_.slideid -match $slideid}
+        $row = $this.moduleobjs.($cmodule).localqueue.($cproject) | & { process {
+            if ($_.slideid -contains $slideid) { $_ }}}
         if ($row){
             $this.updatemoduleline($cmodule, $slideid, $cproject)
         } else{
@@ -324,7 +346,7 @@ class sampledb : sampletracker {
         }
         $this.moduleobjs.($cmodule).maincsv += $row 
         #
-        if ($currentobj.status -match 'READY'){
+        if ($currentobj.status -match $this.status.ready){
             $this.enqueuetask($cmodule, $slideid, $currentobj)
         }
         #
@@ -337,7 +359,7 @@ class sampledb : sampletracker {
         }
         #
         $cmoduleinfo = $this.moduleinfo.($cmodule)
-        $antibodies = $this.getslideantibodies($slideid)
+        $this.getantibodies($cproject)
         #
         $row = [PSCustomObject]@{
             Project = $this.project
@@ -345,12 +367,12 @@ class sampledb : sampletracker {
             SlideID = $slideid
         }
         #
-        $antibodies | ForEach-Object {
+        $this.antibodies | & { process {
             $statusname = ($_ + '_Status')
             $startname = ($_ + '_StartTime') 
             $finishname = ($_ + '_FinishTime')
             $status = $this.moduleinfo.($cmodule).($_).status -replace ',', ';'
-            if ($status -match 'READY'){
+            if ($status -match $this.status.ready){
                 $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
             }
             $row | Add-Member -NotePropertyMembers @{
@@ -358,7 +380,7 @@ class sampledb : sampletracker {
                 $startname =  $this.moduleinfo.($cmodule).($_).StartTime
                 $finishname =  $this.moduleinfo.($cmodule).($_).FinishTime
             } -PassThru
-        }
+        }}
         #
         $this.moduleobjs.($cmodule).localqueue.($cproject) += $row
         #
@@ -372,8 +394,8 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]updatemoduleline($cmodule, $slideid){
         #
-        $row = $this.moduleobjs.($cmodule).maincsv |
-            Where-Object {$_.slideid -match $slideid}
+        $row = $this.moduleobjs.($cmodule).maincsv | & { process {
+            if ($_.slideid -contains $slideid) { $_ }}}
         #
         $statlabel = 'Status'
         $startlabel = 'StartTime'
@@ -388,11 +410,11 @@ class sampledb : sampletracker {
     #
     [void]updatemoduleline($cmodule, $slideid, $cproject){
         #
-        $antibodies = $this.getslideantibodies($slideid)
-        $row = $this.moduleobjs.($cmodule).localqueue.($cproject) |
-                Where-Object {$_.slideid -match $slideid}
+        $this.getantibodies($cproject)
+        $row = $this.moduleobjs.($cmodule).localqueue.($cproject) | & { process {
+                if ($_.slideid -contains $slideid) { $_ }}}
         #
-        $antibodies | foreach-object{
+        $this.antibodies | & { process {
             #
             $statlabel = ($_ + '_Status')
             $startlabel = ($_ + '_StartTime')
@@ -403,7 +425,7 @@ class sampledb : sampletracker {
             $this.updatemodulesub($cmodule, $slideid, $row, $cmoduleinfo,
                 $statlabel, $startlabel, $finishlabel)
             #
-        }
+        }}
          #
     }
     <# -----------------------------------------
@@ -424,7 +446,8 @@ class sampledb : sampletracker {
             $row.($statlabel) = $slidestatus
         }
          #
-        if ($modulestatus -notmatch ($slidestatus, $this.status.rerun -join '|') -and 
+        if ($modulestatus -notmatch (
+                [regex]::Escape($slidestatus), $this.status.rerun -join '|') -and 
             $slidestatus -match $this.status_settings.update_status){
             $row.($statlabel) = $slidestatus
         }
@@ -457,30 +480,36 @@ class sampledb : sampletracker {
         #
         if ($this.moduleinfo.project -and 
             $this.moduleinfo.project -notmatch
-            ($this.module_project_data.($cmodule) -join '|')){
+            ($this.matcharray(
+                $this.module_project_data.($cmodule)
+        ))){
             return
         }
         #
-        if ($cmodule -match 'vminform'){
-            #
-            if ($cmoduleinfo.taskid -and 
-                !($cqueue -match ('^' + $cmoduleinfo.taskid))){
-                $cqueue.enqueue(@($cmoduleinfo.taskid, $slideid))
+        switch -exact ($cmodule){
+            'vminform' {
+                #
+                if ($cmoduleinfo.taskid -and 
+                    !($cqueue -match ('^' + $cmoduleinfo.taskid))){
+                    $cqueue.enqueue(@($cmoduleinfo.taskid, $slideid))
+                }
+                #
+            } 
+            'batch' {
+                #
+                $mymatch = $cqueue -match ('^' + $this.moduleinfo.project)
+                if(!($mymatch -match ($this.batchid + '$'))){
+                    $cqueue.enqueue(@($this.moduleinfo.project, $this.batchid))
+                }
             }
             #
-        } elseif ($cmodule -match 'batch'){
-            #
-            $mymatch = $cqueue -match ('^' + $this.moduleinfo.project)
-            if(!($mymatch -match ($this.batchid + '$'))){
-                $cqueue.enqueue(@($this.moduleinfo.project, $this.batchid))
+            default {
+                #
+                if (!($cqueue -match ($slideid + '$'))){
+                    $cqueue.enqueue(@($this.moduleinfo.project, $slideid))
+                }
+                #
             }
-            #
-        } else  {
-            #
-            if (!($cqueue -match ($slideid + '$'))){
-                $cqueue.enqueue(@($this.moduleinfo.project, $slideid))
-            }
-            #
         }
         #
     }
@@ -498,7 +527,7 @@ class sampledb : sampletracker {
     ----------------------------------- #>
     [void]updatetables($filetype){
         $this.vmq.($filetype) = $this.($filetype)
-        $this.modules | ForEach-Object {
+        $this.modules | & { process {
             #
             if (!$this.moduleobjs.($_)){
                 $this.newmodule()
@@ -511,8 +540,9 @@ class sampledb : sampletracker {
             #
             if ($turnedon){
                 foreach ( $newproject in $turnedon) {
-                    $tasks = ($this.slide_data |
-                        Where-Object {$_.project -match $newproject}).SlideID
+                    $tasks = ($this.slide_data | & { process {
+                        if ($_.project -match $newproject) {$_}
+                    }}).SlideID
                     $this.addnewtasks($tasks)
                 }
             }
@@ -520,7 +550,7 @@ class sampledb : sampletracker {
             $this.moduleobjs.($_).($filetype) = $this.($filetype)
             $this.moduleobjs.($_).updatemodulestatus($_)
             #
-        }
+        }}
         #
         $this.refreshsampledb()
         #
@@ -578,38 +608,53 @@ class sampledb : sampletracker {
         #
         switch -exact ($file){
             $this.cohorts_file {
+                $this.writeoutput(" cohorts file updated")
                 $this.updatefullprojectdata()
             }
             $this.paths_file {
+                $this.writeoutput(" paths file updated")
                 $this.updatefullprojectdata()
             }
             $this.config_file {
+                $this.writeoutput(" config file updated")
                 $this.updatefullprojectdata()
             }
             $this.slide_file {
+                $this.writeoutput(" apid file updated")
                 $this.fileupdate('slide')
             }
             $this.ffmodels_file {
+                $this.writeoutput(" ffmodels file updated")
                 $this.fileupdate('ffmodels')
             }
             $this.corrmodels_file {
+                $this.writeoutput(" corrmodels file updated")
                 $this.fileupdate('corrmodels')
             }
             $this.micomp_file {
+                $this.writeoutput(" micomp file updated")
                 $this.fileupdate('micomp')
             }
-            $this.worker_file {$this.Importworkerlist($this.mpath, $false)}
-            $this.vmq.mainqueuelocation() {
+            $this.worker_file {
+                $this.writeoutput(" workers file updated")
+                $this.Importworkerlist($this.mpath, $false)}
+            $this.vmq.mainqueue_filename {
+                $this.writeoutput(" main inform file updated")
                 $this.vmq.coalescevminformqueues()
                 $this.addnewtasks($this.vmq.newtasks)
                 $this.vmq.newtasks = @()
                 $this.refreshsampledb('vminform')
+            }
+            'MergeConfig' {
+                $this.writeoutput(" merge config file updated")
+                $this.findallantibodies()
             }
         }
         #
         foreach ($cproject in  $this.module_project_data.('vminform')){ 
             switch -exact ($fullfile){
                 $this.vmq.localqueuefile.($cproject) {
+                    $this.writeoutput(" local inform file updated for project: $cproject")
                     $this.vmq.coalescevminformqueues($cproject)
                     $this.addnewtasks($this.vmq.newtasks)
                     $this.vmq.newtasks = @()
@@ -622,12 +667,14 @@ class sampledb : sampletracker {
             #
             switch -exact ($fullfile){
                 $this.moduleobjs.($cmodule).mainqueuelocation() {
+                    $this.writeoutput(" main module file updated: $cmodule")
                     $this.refreshmoduledb($cmodule)}
             }
             #
             foreach ($cproject in $this.module_project_data.($cmodule)){
                 switch -exact ($fullfile){
                     $this.defprojectlogpath($cmodule, $cproject) {
+                        $this.writeoutput(" logfile updated: $cmodule $cproject")
                         $this.refreshsampledb($cmodule, $cproject)}
                 }
             }

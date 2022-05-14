@@ -1,6 +1,6 @@
-﻿<#
+<#
 --------------------------------------------------------
-segmaps
+initmodule
 Benjamin Green, Andrew Jorquera
 --------------------------------------------------------
 Description
@@ -15,23 +15,23 @@ $vers[string]: The version number of inform to use
 --------------------------------------------------------
 #>
 #
-Function segmaps {
-     #
-     param($task, $log, [Parameter()][switch]$test)
-     #
-     # used for testing; when launched manually without launchmodule
-     #
-     if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
-        $log = [launchmodule]::new($task.mpath, 'segmaps', $task) 
-        $e = 1
-     } else {$e = 0}
-     #
-     $inp = New-Object 'segmaps' -ArgumentList ($task, $log)
-     if ($e -ne 1){
-         $inp.RunSegMaps()
-     } else{
-        return $inp
-     }
-     #
+Function initmodule {
+    #
+    param($task, $log, $module, [Parameter()][switch]$test)
+    #
+    # used for testing; when launched manually without launchmodule
+    #
+    if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
+       $log = [launchmodule]::new($task.mpath, $module, $task) 
+       $e = 1
+    } else {$e = 0}
+    #
+    $inp = New-Object $module -ArgumentList ($task, $log)
+    if ($e -ne 1){
+        $inp.('run' + $module)()
+    } else{
+       return $inp
+    }
+    #
 }
 #

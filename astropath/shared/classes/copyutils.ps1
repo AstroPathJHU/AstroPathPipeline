@@ -258,19 +258,42 @@ class copyutils{
         return $files
     }
     #
+    [system.object]fastlistfiles([string]$sor, [array]$filespec){
+        #
+        if (!(test-path $sor)){
+            return @()
+        }
+        #
+        $files = cmd /c "dir /a-d /b /s $sor"
+        $sor = $sor + '\*'
+        #
+        if (!($filespec -match '\*')){
+            $filespec = ($filespec | foreach-object {'.*' + $_ + '$'}) -join '|'
+            $files = $files | & { process { 
+                if ($_ -match $filespec){ $_ }
+            }}
+        }
+        #
+        if (!$files) {
+            $files = @()
+        }
+        return $files
+        #
+    }
+    #
     [int]countfiles([string]$sor, [array]$filespec){
-        $files = $this.listfiles($sor, $filespec)
+        $files = $this.fastlistfiles($sor, $filespec)
         return $files.count
     }
     #
     [array]getfullnames([string]$sor, [array]$filespec){
-        $files = $this.listfiles($sor, $filespec)
-        return $files.fullnames
+        $files = $this.fastlistfiles($sor, $filespec)
+        return $files
     }
     #
     [array]getnames([string]$sor, [array]$filespec){
-        $files = $this.listfiles($sor, $filespec)
-        return $files.names
+        $files = $this.fastlistfiles($sor, $filespec)
+        return (split-path $files -leaf)
     }
     <#------------------------------------------
     handlebrackets
@@ -363,7 +386,9 @@ class copyutils{
             $sourcefiles = $this.listfiles($sor, $filespec)
             $desfiles = $this.listfiles($des, $filespec)
             $missingfiles = ($sourcefiles | 
-                Where-Object {$desfiles.name -notcontains $_.Name}
+                & { process {
+                    if ( $desfiles.name -notcontains $_.Name) { $_ }
+                }}
                 ).FullName
 
         } else {
@@ -525,7 +550,7 @@ class copyutils{
         try{
             $notmatch = Compare-Object -ReferenceObject $sourcehash.values `
                                     -DifferenceObject $destinationhash.values |
-                    Where-Object -FilterScript {$_.SideIndicator -eq '<='}
+                    & { process { if ($_.SideIndicator -eq '<=') {$_}}}
         } catch {
             if ($_.Exception.Message -match 'ReferenceObject'){
                 Throw ('source hash values not valid: ' +  $sourcehash.Values)
@@ -554,11 +579,11 @@ class copyutils{
             }
             #
             $notmatch = Compare-Object $shashstrings $dhashstrings |
-                Where-Object {$_.SideIndicator -eq '<='}
+                & {process { if ($_.SideIndicator -eq '<=') {$_}}}
             #
-            $notmatch = $notmatch.InputObject | ForEach-Object{
+            $notmatch = $notmatch.InputObject | &{ process {
                     return ($path + '\' + ($_ -split ';')[0])
-            }
+            }}
             #
         }
         #

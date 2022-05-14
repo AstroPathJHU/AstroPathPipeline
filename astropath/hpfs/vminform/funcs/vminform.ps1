@@ -30,9 +30,9 @@ Function vminform {
         $e = 1
      } else {$e = 0}
      #
-     $inp = [informinput]::new($task, $log)
+     $inp = [vminform]::new($task, $log)
      if ($e -ne 1){
-         $inp.RunBatchInForm()
+         $inp.Runvminform()
      } else{
         return $inp
      }
