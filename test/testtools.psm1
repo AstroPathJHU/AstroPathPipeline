@@ -31,7 +31,7 @@ Class testtools{
     [hashtable]$task
     [string]$informvers = '2.4.8'
     [string]$informantibody = 'FoxP3'
-    [string]$informproject = 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr'
+    [string]$informproject = 'FoxP3_Phenotyping_NE_v4_EC.ifr'
     #
     testtools(){
        $this.importmodule()
