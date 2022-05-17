@@ -79,11 +79,14 @@ Input Parameters: ```<base>```, ```<SlideID>```, ```<Antibody>```, ```<Procedure
 - **CheckExportOptions**
   - Get MergeConfig data from ```<Mpath>\Batch\MergeConfig_<Batch>.csv```
   - Check and updates ```Procedure``` output options if needed
-  - Run the methods **CheckSegmentationTableOption** and **CheckExportLineOption**
+  - Run the methods **CheckSegmentationTableOption**,  **CheckCoordinateSpaceIndexOption**, and **CheckExportLineOption**
 - **CheckSegmentationTableOption** 
   - Check the protocol file for the *segmentationtable* option
   - Set option depending on whether the procedure name is 'Component'
   - Component procedures should only give component data, all other options are turned off
+- **CheckCoordinateSpaceIndexOption**
+  - Check the protocol file for the *coordinatespaceindex* option
+  - Update line to always use pixel coordinates rather than micron coordinates
 - **CheckExportLineOption**
   - Check the protocol file for the *exportline* option
   - Update line depending on MergeConfig data so inform has correct exports

@@ -199,7 +199,7 @@ Class informinput : moduletools {
             $procedure = $this.CheckSegmentationTableOption($procedure, 'true', 'false')
         }
         #
-        #$procedure = $this.CheckCoordinateSpaceIndexOption($procedure)
+        $procedure = $this.CheckCoordinateSpaceIndexOption($procedure)
         $this.CheckExportLineOption($procedure)
         #
     } 
@@ -235,7 +235,7 @@ Class informinput : moduletools {
      ------------------------------------------
      Usage: $this.CheckCoordinateSpaceIndexOption()
     ----------------------------------------- #>
-    <#[array]CheckCoordinateSpaceIndexOption($procedure){
+    [array]CheckCoordinateSpaceIndexOption($procedure){
         $segmentationtableline = $procedure | 
             Where-Object {$_ -match '<CoordinateSpaceIndex>'}
         if (!$segmentationtableline) {
@@ -248,7 +248,7 @@ Class informinput : moduletools {
             $procedure | Set-Content $this.algpath
         }
         return $procedure
-    }#>
+    }
     <# -----------------------------------------
      CheckExportLineOption
      Using information from the mergeconfig csv
