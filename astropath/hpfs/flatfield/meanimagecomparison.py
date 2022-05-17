@@ -412,7 +412,7 @@ class MeanImageComparison :
         samples = []
         for rd,sids in self.slide_ids_by_rootdir.items() :
             for sid in sids :
-                samples.append(BatchFlatfieldSample(rd,sid))
+                samples.append(BatchFlatfieldSample(rd,sid,version=None)) #version is not needed for anything we use in this function
         ordered_tuples = []
         lines_after = []
         if sort_by=='project_cohort_batch' :
