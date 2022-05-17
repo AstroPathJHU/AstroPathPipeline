@@ -43,23 +43,24 @@ Class testvminform : testtools {
     #
     [void]launchtests(){
         #
-        $this.testvminformconstruction($this.task)
+        #$this.testvminformconstruction($this.task)
         $inp = vminform $this.task
-        $this.setupjenkinspaths($inp)
-        $this.testoutputdir($inp)
-        $this.testimagelist($inp)
-        $this.testcheckexportoptions($inp)
-        $this.comparevminforminput($inp)
-        $this.testkillinformprocess($inp)
-        $this.runinformexpected($inp)
-        $this.testlogexpected($inp)
-        $this.runinformbatcherror($inp)
-        $this.testlogbatcherror($inp)
-        $this.testinformoutputfiles($inp)
-        $this.testcheckforknownerrors($inp)
-        $this.testfindfixableandmerge($inp)
-        $this.testcheckexportoptions($inp)
-        $this.runversioncheck($inp)
+        #$this.setupjenkinspaths($inp)
+        #$this.testoutputdir($inp)
+        #$this.testimagelist($inp)
+        #$this.testcheckexportoptions($inp)
+        #$this.comparevminforminput($inp)
+        #$this.testkillinformprocess($inp)
+        #$this.runinformexpected($inp)
+        #$this.testlogexpected($inp)
+        #$this.runinformbatcherror($inp)
+        #$this.testlogbatcherror($inp)
+        $this.testpixelconversion($inp)
+        #$this.testinformoutputfiles($inp)
+        #$this.testcheckforknownerrors($inp)
+        #$this.testfindfixableandmerge($inp)
+        #$this.testcheckexportoptions($inp)
+        #$this.runversioncheck($inp)
         Write-Host '.'
         #
     }
@@ -237,27 +238,6 @@ Class testvminform : testtools {
         $inp.sample.mergeconfig_data = $null
         $inp.GetMergeConfigData()
         Write-Host 'test check export options finished'
-    }
-    
-    <# --------------------------------------------
-    testpixelconversion
-    test the manual micron to pixel conversion in 
-    the inform project file against the checkbox 
-    option in inform
-    --------------------------------------------#>
-    [void]testpixelconversion($inp) {
-        #
-        if ($this.jenkins) {
-            return
-        }
-        #
-        Write-Host '.'
-        Write-Host 'test check export options started'
-        #
-        $this.informproject = 'FoxP3_Phenotyping_NE_v4_EC_Micron_from_inForm.ifr'
-        $this.informproject = 'FoxP3_Phenotyping_NE_v4_EC_Micron_from_Project'
-        $this.informproject = 'FoxP3_Phenotyping_NE_v4_EC_Original'
-        #
     }
     <# --------------------------------------------
     checkprotocol
@@ -521,6 +501,47 @@ Class testvminform : testtools {
         #
     }
     <# --------------------------------------------
+    testpixelconversion
+    test the manual micron to pixel conversion in 
+    the inform project file against the checkbox 
+    option in inform
+    --------------------------------------------#>
+    [void]testpixelconversion($inp) {
+        #
+        if ($this.jenkins) {
+            return
+        }
+        #
+        Write-Host '.'
+        Write-Host 'test pixel conversion started'
+        #
+        Write-Host '    testing conversion from project file'
+        $sor = $inp.sample.basepath + '\tmp_inform_data\Project_Development\FoxP3_Phenotyping_NE_v4_EC_Micron_from_Project.ifr'
+        $des = $inp.sample.basepath + '\tmp_inform_data\Project_Development\' + $inp.alg
+        $inp.sample.copy($sor, $des)
+        $this.runinformexpected($inp)
+        Write-Host '    comparing output with reference'
+        $reference = $inp.sample.basepath + '\reference\vminform\coordinatespacetests\micron_from_project'
+        $excluded = @('*.log', '*.ifr')
+        $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
+        Write-Host '    compare successful'
+        #
+        Write-Host '    testing conversion from inform'
+        $sor = $inp.sample.basepath + '\tmp_inform_data\Project_Development\FoxP3_Phenotyping_NE_v4_EC_Micron_from_inForm.ifr'
+        $inp.sample.copy($sor, $des)
+        $this.runinformexpected($inp)
+        Write-Host '    comparing output with reference'
+        $reference = $inp.sample.basepath + '\reference\vminform\coordinatespacetests\micron_from_inform'
+        $excluded = @('*.log', '*.ifr')
+        $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
+        Write-Host '    compare successful'
+        #
+        $sor = $inp.sample.basepath + '\tmp_inform_data\Project_Development\FoxP3_Phenotyping_NE_v4_EC_Original.ifr'
+        $inp.sample.copy($sor, $des)
+        Write-Host 'test pixel conversion finished'
+        #
+    }
+    <# --------------------------------------------
     testinformoutputfiles
     test that the checking of inform files output
     from the expected outcome works correctly
@@ -748,7 +769,7 @@ Class testvminform : testtools {
         Write-Host '    open log output'
         $logoutput = $inp.sample.GetContent($inp.informbatchlog)
         Write-Host '    test log output'
-
+        #
         $completestring = 'Batch process is completed'
         if ($logoutput -match $completestring) {
             $errormessage = $logoutput.Where({$_ -match $completestring}, 'SkipUntil')
@@ -768,7 +789,7 @@ Class testvminform : testtools {
 #
 # launch test and exit if no error found
 #
-#[testvminform]::new() | Out-Null
+[testvminform]::new() | Out-Null
 
 #
 # add $jenkins parameter to constructor if testing on jenkins
@@ -778,5 +799,5 @@ Class testvminform : testtools {
 #
 # add version and project parameters to constructor to test different versions of inform
 #
-[testvminform]::new('2.6.0', 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr') | Out-Null
+#[testvminform]::new('2.6.0', 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr') | Out-Null
 exit 0
