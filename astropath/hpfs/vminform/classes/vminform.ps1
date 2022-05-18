@@ -231,20 +231,21 @@ Class informinput : moduletools {
      CheckCoordinateSpaceIndexOption
      Checks the protocol file for the 
      coordinatespaceindex option and sets it 
-     to use pixels
+     to use pixels. Since there are multiple
+     lines, uses first match to fix the rest
      ------------------------------------------
      Usage: $this.CheckCoordinateSpaceIndexOption()
     ----------------------------------------- #>
     [array]CheckCoordinateSpaceIndexOption($procedure){
-        $segmentationtableline = $procedure | 
+        $coordinatespaceline = $procedure | 
             Where-Object {$_ -match '<CoordinateSpaceIndex>'}
-        if (!$segmentationtableline) {
+        if (!$coordinatespaceline) {
             throw 'error in reading <CoordinateSpaceIndex> line in procedure'
         }
-        if ($segmentationtableline -match '0') {
+        if ($coordinatespaceline -match '0') {
             $this.sample.info("Setting CoordinateSpaceIndex setting to use pixels")
-            $newtableline = $segmentationtableline.replace('0', '1')
-            $procedure = $procedure.replace($segmentationtableline, $newtableline)
+            $newcoordinateline = $coordinatespaceline[0].replace('0', '1')
+            $procedure = $procedure.replace($coordinatespaceline[0], $newcoordinateline)
             $procedure | Set-Content $this.algpath
         }
         return $procedure

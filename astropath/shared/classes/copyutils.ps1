@@ -173,7 +173,7 @@ class copyutils{
         $sor1 = $sor -replace '\\', '/'
         $des1 = $des -replace '\\', '/'
         mkdir -p $des1
-        cp $sor1 $des1 -r
+        Copy-Item $sor1 $des1 -r
         #
     }
     <# -----------------------------------------
@@ -211,12 +211,12 @@ class copyutils{
         $files = $this.listfiles($sor1, $filespec)
         #
         $files | foreach-Object -Parallel { 
-            cp $_ -r $using:des1 
+            Copy-Item $_ -r $using:des1 
         } -ThrottleLimit 20
         #
         $gitignore = $sor1 + '/.gitignore'
         if (test-path -LiteralPath $gitignore){
-            cp $gitignore $des1
+            Copy-Item $gitignore $des1
         }
         #
     }
