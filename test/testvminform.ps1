@@ -508,38 +508,31 @@ Class testvminform : testtools {
     --------------------------------------------#>
     [void]testpixelconversion($inp) {
         #
-        if ($this.jenkins) {
+        if ($this.jenkins -or $this.versioncheck) {
             return
         }
         #
         Write-Host '.'
         Write-Host 'test pixel conversion started'
         #
-        Write-Host '    testing conversion from project file'
-        $sor = $inp.sample.basepath + '\tmp_inform_data\Project_Development\FoxP3_Phenotyping_NE_v4_EC_Micron_from_Project.ifr'
-        $des = $inp.sample.basepath + '\tmp_inform_data\Project_Development\' + $inp.alg
-        $inp.sample.copy($sor, $des)
-        $this.runinformexpected($inp)
-        Write-Host '    comparing output with reference'
-        $reference = $inp.sample.basepath + '\reference\vminform\coordinatespacetests\micron_from_project'
-        $excluded = @('*.log', '*.ifr')
-        $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
-        Write-Host '    compare successful'
+        $des = $inp.sample.basepath + '\tmp_inform_data\Project_Development\' + $this.informproject
         #
-        Write-Host '    testing conversion from inform'
+        Write-Host '    testing pixel conversion against micron file'
         $sor = $inp.sample.basepath + '\tmp_inform_data\Project_Development\FoxP3_Phenotyping_NE_v4_EC_Micron_from_inForm.ifr'
-        $inp.sample.copy($sor, $des)
+        xcopy $sor $des /q /y /z /j /v | Out-Null
         $this.runinformexpected($inp)
+        #
         Write-Host '    comparing output with reference'
-        $reference = $inp.sample.basepath + '\reference\vminform\coordinatespacetests\micron_from_inform'
+        $reference = $inp.sample.basepath + '\reference\vminform\coordinatespacetests\pixel_from_inform'
         $excluded = @('*.log', '*.ifr')
         $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
         Write-Host '    compare successful'
         #
+        Write-Host '    setting project file back to original'
         $sor = $inp.sample.basepath + '\tmp_inform_data\Project_Development\FoxP3_Phenotyping_NE_v4_EC_Original.ifr'
-        $inp.sample.copy($sor, $des)
-        Write-Host 'test pixel conversion finished'
+        xcopy $sor $des /q /y /z /j /v | Out-Null
         #
+        Write-Host 'test pixel conversion finished'
     }
     <# --------------------------------------------
     testinformoutputfiles
