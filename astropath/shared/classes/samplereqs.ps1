@@ -104,7 +104,7 @@
     #
     [switch]testtransferfiles(){
         #
-        $im3s = $this.countfiles(($this.Scanfolder() + '\MSI\*'), 'im3')
+        $im3s = $this.countfiles(($this.Scanfolder() + '\MSI'), 'im3')
         #    
         if ($im3s -eq 0){
             return $false
@@ -122,25 +122,7 @@
         #
         return $this.testfiles($this.xmlfolder(), 
             $this.im3constant, $this.xmlreqfiles)
-        <#
-        $xml = $this.xmlfolder()
-        $im3s = get-childitem ($this.Scanfolder() + '\MSI\*') *im3
-        $im3n = ($im3s).Count + 2
         #
-        if (!(test-path $xml)){
-            return $false
-        }
-        #
-        # check xml files = im3s
-        #
-        $xmls = get-childitem ($xml + '\*') '*xml'
-        $files = ($xmls).Count
-        if (!($im3n -eq $files)){
-            return $false
-        }
-        #
-        return $true
-        #>
     }
     #
     [void]testim3mainfolder(){

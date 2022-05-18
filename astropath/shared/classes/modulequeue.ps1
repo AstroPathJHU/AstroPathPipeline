@@ -151,8 +151,9 @@
         #
         if ($this.localqueue.($project)){
             if ($localtmp){
-                $cmp = Compare-Object -ReferenceObject $localtmp.($this.refobject) `
-                    -DifferenceObject $this.localqueue.($project).($this.refobject)
+                $cmp = Compare-Object -ReferenceObject $localtmp `
+                    -DifferenceObject $this.localqueue.($project) `
+                    -Property $this.gettablenames($localtmp)
                 if ($cmp){
                     $this.writelocalqueue($project)
                 }
@@ -591,7 +592,7 @@
         #
         $headers = @('Project','Cohort','SlideID')
         #
-        $this.antibodies | ForEach-Object{
+        $this.antibodies | foreach-object{
             $statusname = ($_ + '_Status')
             $startname = ($_ + '_StartTime') 
             $finishname = ($_ + '_FinishTime')

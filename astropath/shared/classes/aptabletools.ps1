@@ -249,6 +249,8 @@ class aptabletools : fileutils {
     ----------------------------------------- #>
     [void]ImportSlideIDs([string] $mpath, $createwatcher){
         #
+        $this.importcohortsinfo($mpath)
+        #
         $defpath = $this.slide_fullfile($mpath)
         $this.slide_data = $this.OpencsvFileConfirm($defpath)
         $this.slide_data = $this.slide_data | & { process {
@@ -263,7 +265,7 @@ class aptabletools : fileutils {
         #
     }
     #
-    [void]ImportSlideIDs([string] $mpath){
+    [void]ImportSlideIDs([string] $mpath){  
         #
         if(!$this.slide_data){
             $this.ImportSlideIDs($mpath, $false) 

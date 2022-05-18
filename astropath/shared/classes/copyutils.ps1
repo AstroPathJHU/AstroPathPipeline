@@ -282,8 +282,18 @@ class copyutils{
     }
     #
     [int]countfiles([string]$sor, [array]$filespec){
-        $files = $this.fastlistfiles($sor, $filespec)
-        return $files.count
+        #
+        $cnt = 0
+        if (!(test-path $sor)){
+            return $cnt
+        }
+        $filespec | & { process { 
+          $cnt +=  @([System.IO.Directory]::EnumerateFiles(
+              $sor,  ('.*' + $_ + '$'))).Count 
+
+        }}
+        return $cnt
+        #
     }
     #
     [array]getfullnames([string]$sor, [array]$filespec){
