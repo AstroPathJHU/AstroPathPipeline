@@ -212,7 +212,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
     self.samplefilters = samplefilters
     self.xmlfolders = xmlfolders
 
-  def sampledefswithfilters(self, **kwargs):
+  def sampledefswithfilters(self, *, check_all_filters=False, **kwargs):
     for samp in self.sampledefs():
       filterresults = []
       exceptions = []
@@ -221,6 +221,8 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
           filterresults.append(filter(self, samp, **kwargs))
         except Exception as e:
           exceptions.append(e)
+        if not check_all_filters and not all(filterresults):
+          break
       if exceptions and all(filterresults):
         #with self.handlesampledeffiltererror(samp, **kwargs):
           raise exceptions[0]
@@ -259,8 +261,8 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
         with self.handlesampleiniterror(samp, **kwargs):
           raise
 
-  def samplesandsampledefswithfilters(self, **kwargs):
-    for samp, filters in self.sampledefswithfilters(**kwargs):
+  def samplesandsampledefswithfilters(self, *, check_all_filters=False, **kwargs):
+    for samp, filters in self.sampledefswithfilters(check_all_filters=check_all_filters, **kwargs):
       if all(filters):
         try:
           sample = self.initiatesample(samp)
@@ -272,13 +274,16 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
           with self.handlesampleiniterror(samp, **kwargs):
             raise
         else:
-          try:
-            yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
-          except Exception:
-            #enter the logger here to log exceptions in __init__ of the sample
-            #but not KeyboardInterrupt
-            with self.handlesamplefiltererror(samp, **kwargs):
-              raise
+          for filter in self.samplefilters:
+            try:
+              filters.append(filter(self, sample, **kwargs))
+            except Exception:
+              #enter the logger here to log exceptions in __init__ of the sample
+              #but not KeyboardInterrupt
+              with self.handlesamplefiltererror(samp, **kwargs):
+                raise
+            if not check_all_filters and not all(filters): break
+          yield sample, filters
       else:
         yield samp, filters
 
@@ -725,6 +730,7 @@ class WorkflowCohort(Cohort):
     p.add_argument("--require-commit", type=thisrepo.getcommit, help="rerun samples that already finished with an AstroPath pipeline version earlier than this commit")
     p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
+    p.add_argument("--check-all-filters", action="store_true", help="check all filters, even if one of them fails, in order to print more info")
     return p
 
   @classmethod
@@ -781,6 +787,7 @@ class WorkflowCohort(Cohort):
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "print_errors": parsed_args_dict.pop("print_errors"),
       "ignore_errors": parsed_args_dict.pop("ignore_errors"),
+      "check_all_filters": parsed_args_dict.pop("check_all_filters"),
     }
     return kwargs
 
