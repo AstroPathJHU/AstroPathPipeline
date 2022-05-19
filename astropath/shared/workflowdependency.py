@@ -283,7 +283,7 @@ class SampleRunStatus(MyDataClass):
     lastattemptedcleanup = None
     lastcleanstart = None
     with contextlib.ExitStack() as stack:
-      stack.enter_context(field_size_limit_context(1000000))
+      stack.enter_context(field_size_limit_context(100000000))
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:
