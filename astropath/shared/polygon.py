@@ -95,7 +95,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
       for component in e.validcomponents:
         if "MULTI" in str(component):
           assert False
-        if "LINESTRING" in str(component):
+        elif "LINESTRING" in str(component):
+          continue
+        elif "POINT" in str(component):
           continue
         elif "POLYGON" in str(component):
           polygons.append(component)
