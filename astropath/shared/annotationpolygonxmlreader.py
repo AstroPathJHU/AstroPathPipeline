@@ -325,9 +325,7 @@ class MergedAnnotationFiles(ThingWithAnnotationInfos):
             xmldict[info.xmlpath] = {node.get_xml_attr("Name").strip().lower(): AnnotationNodeXML(node, annoscale=info.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")}
     return xmldict
   def getannotationnode(self, info):
-    if info.isdummy:
-      return None
-    if info.isfromxml:
+    if info.isfromxml or info.isdummy:
       return self.__xmldict[info.xmlpath][info.originalname.lower()]
     else:
       raise ValueError(f"Don't know how to get the node for {info}")
