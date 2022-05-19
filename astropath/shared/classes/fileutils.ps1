@@ -401,13 +401,16 @@ class fileutils : generalutils {
     [void]ReleaseMxtx([System.Threading.Mutex]$mxtx, [string] $fpath){
         try{
             $mxtx.ReleaseMutex()
+            $mxtx.Dispose()
             #
             # if another process crashes the mutex is never given up,
             # but is passed to the next grabbing process.
             # this attempts to close it again for the off chance there
             # is a duplicate grab
             #
-            try { $mxtx.ReleaseMutex() } catch {} 
+            try { $mxtx.ReleaseMutex() 
+                    $mxtx.Dispose()} catch {} 
+            $Error.Clear()
         } catch {
             Throw "mutex not released: " + $fpath
         }

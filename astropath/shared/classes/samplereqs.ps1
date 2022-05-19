@@ -48,8 +48,70 @@
     samplereqs($mpath, $module, $slideid) : base($mpath, $module, $slideid){}
     samplereqs($mpath, $module, $batchid, $project) : base($mpath, $module, $batchid, $project){}
     #
+    [switch]teststainfiles(){
+        #
+        $scans = $this.spathscans()
+        #
+        if ($scans -or (test-path $this.basepath)){
+            return $true
+        }
+        #
+        return $false
+        #
+    }
+    #
+    [switch]testscanfiles(){
+        #
+        if (test-path $this.basepath){
+            return $true
+        }
+        #
+        $scans = $this.spathscans()
+        #
+        if ($scans){
+            foreach ($scan in $scans){
+                $file = get-childitem ($scan.fullname, '*' -join '') -Include 'annotations.xml'
+                if (get-content $file | Select-String "Acquired"){
+                    return $true
+                }
+            }
+        }
+        #
+        return $false 
+        #
+    }
+    #
+    [switch]testscanvalidationfiles(){
+        #
+        if (test-path $this.basepath){
+            return $true
+        }
+        #
+        $scans = $this.spathscans()
+        #
+        if ($scans){
+            foreach ($scan in $scans){
+                $file = get-childitem ($scan.fullname, '*' -join '') -Include 'BatchID.txt'
+                if ($file){
+                    return $true
+                }
+            }
+        }
+        #
+        return $false 
+        #
+    }
+    #
     [switch]testtransferfiles(){
+        #
+        $im3s = $this.countfiles(($this.Scanfolder() + '\MSI'), 'im3')
+        #    
+        if ($im3s -eq 0){
+            return $false
+        }
+        #
         return $this.testfiles($this.scanfolder(), $this.transferreqfiles)
+        #
     }
     #
     [switch]testshredxmlfiles(){
@@ -60,25 +122,7 @@
         #
         return $this.testfiles($this.xmlfolder(), 
             $this.im3constant, $this.xmlreqfiles)
-        <#
-        $xml = $this.xmlfolder()
-        $im3s = get-childitem ($this.Scanfolder() + '\MSI\*') *im3
-        $im3n = ($im3s).Count + 2
         #
-        if (!(test-path $xml)){
-            return $false
-        }
-        #
-        # check xml files = im3s
-        #
-        $xmls = get-childitem ($xml + '\*') '*xml'
-        $files = ($xmls).Count
-        if (!($im3n -eq $files)){
-            return $false
-        }
-        #
-        return $true
-        #>
     }
     #
     [void]testim3mainfolder(){
@@ -102,7 +146,7 @@
     }
     #
     [switch]testbatchmicompfiles(){
-        #
+        <#
         if ($this.teststatus){
             $micomp_data = $this.ImportMICOMP($this.mpath, $false)
         } else {
@@ -117,7 +161,8 @@
         }
         #
         return $false
-        #
+        #>
+        return $true
     }
     #
     [switch]testbatchflatfieldfiles(){
@@ -140,12 +185,12 @@
     [switch]testpybatchflatfield(){
         #
         if ($this.teststatus){
-            $ids = $this.ImportCorrectionModels($this.mpath, $false)
+            $this.ImportCorrectionModels($this.mpath, $false)
         } else{ 
-            $ids = $this.ImportCorrectionModels($this.mpath)
+            $this.ImportCorrectionModels($this.mpath)
         }
         #
-        if ($ids.slideid -notcontains $this.slideid){
+        if ($this.corrmodels_data.slideid -notcontains $this.slideid){
             return $false
         }
         #
@@ -154,27 +199,6 @@
         }
         #
         return $true
-    }
-    #
-    [switch]testimagecorrectionfiles(){
-        #
-        if (!$this.testfiles($this.flatwfolder(), 
-                $this.im3constant, $this.imagecorrectionreqfiles[0])){
-                    return $false
-                }
-        #
-        if (!$this.testfiles($this.flatwfolder(), 
-                $this.im3constant, $this.imagecorrectionreqfiles[1])){
-                    return $false
-                }
-        #
-        if (!$this.testfiles($this.flatwim3folder(), 
-                $this.im3constant, $this.imagecorrectionreqfiles[2])){
-                    return $false
-                }
-        #
-        return $true
-        #
     }
     #
     [switch]testwarpoctets(){
@@ -221,6 +245,27 @@
         #
     }
     #
+    [switch]testimagecorrectionfiles(){
+        #
+        if (!$this.testfiles($this.flatwfolder(), 
+                $this.im3constant, $this.imagecorrectionreqfiles[0])){
+                    return $false
+                }
+        #
+        if (!$this.testfiles($this.flatwfolder(), 
+                $this.im3constant, $this.imagecorrectionreqfiles[1])){
+                    return $false
+                }
+        #
+        if (!$this.testfiles($this.flatwim3folder(), 
+                $this.im3constant, $this.imagecorrectionreqfiles[2])){
+                    return $false
+                }
+        #
+        return $true
+        #
+    }
+    #
     [switch]testmergefiles($cantibodies){
         #
         $this.getfiles('merge', $true)
@@ -239,6 +284,22 @@
                 return $false
             }            
             #
+        }
+        #
+        return $true
+        #
+    }
+    #
+    [switch]testimageqafiles(){
+        #
+        $this.getantibodies()
+        #
+        if ($this.checknewimageqa($this.antibodies)){
+            return $false
+        }
+        #
+        if(!$this.testimageqafile($this.antibodies)){
+            return $false
         }
         #
         return $true
@@ -266,7 +327,9 @@
         $this.importimageqa($this.basepath, $cantibodies)
         #
         $data = $this.imageqa_data | 
-            Where-Object {$_.SlideID -contains $this.slideid}
+            & { process {
+                if ($_.SlideID -contains $this.slideid) { $_ }
+            }}
         #
         foreach($antibody in $cantibodies){
             #
@@ -357,19 +420,14 @@
 
     [switch]testfile($path, $file){
         #
-        #if ($file[0] -match '-'){
         if ($file -match ($this.addslideid -join '|')){
             $file = $this.slideid + $file
         }
         #
-        #if (($file[0] -match '_') -or
-        #    ($file -match '.qptiff')){
         if ($file -match ($this.addslideidscan -join '|')){
             $file = $this.slideid + '_' + $this.Scan() +  $file
         }
         #
-        #if (($file -match 'Parameters') -or
-        #    ($file -match 'Full')){
         if ($file -match ($this.addslideiddot -join '|')){
             $file = $this.slideid + '.' + $file
         }
@@ -388,9 +446,15 @@
         $source = $source -replace '\.', ''
         $testfile = $testfile -replace '\.', ''
         #
-        if ($this.getcount($source, $true) -ne `
-            $this.getcount($testfile, $true) 
-        ){
+        $count1 = $this.countfiles(
+            $this.($source + 'folder')(), $this.($source + 'constant')
+        )
+        #
+        $count2 = $this.countfiles(
+            $this.($testfile + 'folder')(), $this.($testfile + 'constant')
+        )
+        #
+        if ($count1 -ne $count2){
             return $false
         }
         #

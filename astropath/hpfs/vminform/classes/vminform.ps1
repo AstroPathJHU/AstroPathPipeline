@@ -17,7 +17,7 @@ Usage: $a = [informinput]::new($task, $sample)
        $a.RunBatchInForm()
 --------------------------------------------------------
 #>
-Class informinput : moduletools {
+Class vminform : moduletools {
     #
     [string]$abx
     [string]$alg
@@ -51,7 +51,7 @@ Class informinput : moduletools {
         CorruptIM3 = 'External component has thrown an exception'
     }
     #
-    informinput([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample){
+    vminform([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample) {
         #
         $this.flevel = [FileDownloads]::FLATWIM3
         #
@@ -96,7 +96,7 @@ Class informinput : moduletools {
      ------------------------------------------
      Usage: $this.RunBatchInForm()
     ----------------------------------------- #>
-    [void]RunBatchInForm(){
+    [void]Runvminform(){
         #
         $this.sample.createnewdirs($this.outpath)
         $this.DownloadFiles()

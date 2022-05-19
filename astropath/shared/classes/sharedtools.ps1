@@ -19,6 +19,7 @@
     [switch]$checkpyenvswitch = $false
     [switch]$teststatus = $false
     [array]$newtasks
+    [string]$processname
     [hashtable]$softwareurls = @{
         'Miniconda3' = 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe';
         'MikTeX' = '';
@@ -36,7 +37,7 @@
         'NET' = @('')
     }
     #
-    sharedtools(){}
+    sharedtools(){$this.processname = ([System.Diagnostics.Process]::GetCurrentProcess()).name }
     #
     [string]pyinstalllocation(){
          $str = '\\' + $this. defserver() + 
@@ -106,9 +107,9 @@
     ----------------------------------------- #>
     [string]GetVersion($mpath, $module, $project){
         #
-        $this.ImportCohortsInfo($mpath) | Out-Null
+        $this.ImportCohortsInfo($mpath)
         $projectconfig = $this.full_project_dat | 
-            Where-Object {$_.Project -eq $project}
+            & { process { if ($_.Project -eq $project) { $_ }}}
         if (!$projectconfig){
             Throw ('Project not found for project number: '  + $project)
         }    
@@ -130,10 +131,10 @@
     #
     [string]GetVersion($mpath, $module, $project, $short){
         #
-        $this.ImportCohortsInfo($mpath) | Out-Null
+        $this.ImportCohortsInfo($mpath) 
         #
         $projectconfig = $this.full_project_dat | 
-            Where-Object {$_.Project -eq $project}
+            & { process { if ($_.Project -eq $project) {$_}}}
         if (!$projectconfig){
             Throw ('Project not found for project number: '  + $project)
         }    
@@ -166,7 +167,7 @@
         #
     }
     [void]checkmoduleexists($mpath, $module){
-        $this.importdependencyinfo($mpath) | Out-Null
+        $this.importdependencyinfo($mpath) 
         $headers = '^' + ($this.dependency_data.module -join '$|^') + '$'
            if ($module -notmatch $headers){
                write-host 'Valid module regex:' $headers
@@ -515,6 +516,21 @@
         Write-Host -NoNewline $($writecurrent)
         #
     }
+    #
+    [void]progressbar($c, $ctotal, $current){
+        #
+        $p = [math]::Round(100 * ($c / $ctotal))
+        Write-Progress -Activity "Checking slides" `
+            -Status ("$p% Complete: Slide " +  $current)`
+            -PercentComplete $p `
+            -CurrentOperation $current
+        #
+    }
+    #
+    [void]progressbarfinish(){
+        write-progress -Activity "Checking slides" -Status "100% Complete:" -Completed
+    }
+    #
     <#
         reads in the module names from the dependency data.
         Optional overload (1) will force update the modulenames.
@@ -531,7 +547,7 @@
     #
     [void]getmodulenames($update){
         #
-        $this.ImportDependencyInfo() | Out-Null
+        $this.ImportDependencyInfo() 
         $this.modules = $this.dependency_data.module 
         #
     }
@@ -543,9 +559,9 @@
     [void]updatemodulestatus(){
         #
         $this.getmodulenames()
-        $this.module | ForEach-Object{
-            $this.getmodulestatus($_, $true)
-        }
+        $this.module | & { process {
+            $this.updatemodulestatus($_)
+        }}
         #
     }
     #
@@ -565,9 +581,9 @@
     [void]getmodulestatus(){
         #
         $this.getmodulenames()
-        $this.modules | ForEach-Object{
+        $this.modules | & { process {
             $this.getmodulestatus($_)
-        }
+        }}
         #
     }
     #
@@ -596,69 +612,74 @@
     [void]getmodulelogs($createwatcher){
         #
         $this.getmodulenames()
-        foreach ($module in $this.modules){
-            if ($this.modulelogs.($module).count -eq 0){
-                $this.modulelogs.($module) = @{} 
+        foreach ($cmodule in $this.modules){
+            if ($this.modulelogs.($cmodule).count -eq 0){
+                $this.modulelogs.($cmodule) = @{} 
             }
-            $this.allprojects | foreach-object{
+            $this.allprojects | &{ process {
                 #
-                $this.getmodulelogs($module, $_, $createwatcher )
+                $this.getmodulelogs($cmodule, $_, $createwatcher )
                 #
-            }
+            }}
+            #
         }
         #
     }
-    [void]getmodulelogs($module, $project){
-        $this.getmodulelogs($module, $project, $false)
+    [void]getmodulelogs($cmodule, $project){
+        $this.getmodulelogs($cmodule, $project, $false)
     }
     #
-    [void]getmodulelogs($module, $project, $createwatcher){
+    [void]getmodulelogs($cmodule, $project, $createwatcher){
         #
-        if($this.modulelogs.($module).($project)){
-            $oldlog = $this.getstoredtable($this.modulelogs.($module).($project))
-        } else {
-            $oldlog = @()
-        }
-        #
-        $this.modulelogs.($module).($project) = 
-            $this.importlogfile($module, $project, $createwatcher)
-        #
-       # if (!$createwatcher){
-            $this.getnewloglines($oldlog, $project, $module)
-       # }
+        $newlog = $this.importlogfile($cmodule, $project, $createwatcher)
+        $this.getnewloglines($newlog, $project, $cmodule)
+        $this.modulelogs.($cmodule).($project) = $newlog
         #
     }
     #
-    [void]getnewloglines($oldlog, $project, $module){
+    [void]getnewloglines($newlog, $project, $cmodule){
         #
-        $newlog = $this.modulelogs.($module).($project)
-        $newlog_finishlines = $newlog |
-                Where-Object {$_.Message -match
-                        ('^' + $this.log_finish + '|^' + $this.log_start)}
+        $newlog_finishlines =  $newlog | 
+            & { process { 
+                if(
+                    $_.Message -match ('^' + $this.log_finish + '|^' + $this.log_start)
+                ) { $_ }
+            }}
         #
         if ($newlog_finishlines){
             #
-            if ($oldlog){
-                $cmp = compare-object $newlog_finishlines $oldlog -Property 'SlideID','Date' |
-                    Where-Object {$_.SideIndicator -eq '<='}
-                $slidestocheck = $cmp.SlideID
+            if ($this.modulelogs.($cmodule).($project)){
+                $slidestocheck = (
+                    compare-object $newlog_finishlines $this.modulelogs.($cmodule).($project) `
+                        -Property 'SlideID','Date' |
+                    & { process { 
+                        if ($_.SideIndicator -eq '<=') { $_ }
+                    }}
+                ).SlideID
             } else {
                 $slidestocheck = $newlog_finishlines.slideid
             } 
             #
-            if ($module -match 'batch'){
+            if ($cmodule -match 'batch'){
                 $newslidestocheck = @()  
                 if ($slidestocheck){
-                    $slidestocheck | Foreach-object {
+                    $slidestocheck | &{ process {
                         $newslidestocheck +=
                             $this.getbatchslideslight($_, $project)
-                    }
+                    }}
                 }
                 $slidestocheck = $newslidestocheck
                 #
             }
             #
             $this.addnewtasks($slidestocheck)
+            #
+            $newlog_finishlines = $null
+            $newslidestocheck = $null
+            $slidestocheck = $null
+            $cmodule = $null
+            $project = $null
+            #
         }
     }
     #
@@ -670,6 +691,7 @@
         #
         $this.newtasks += $slidestocheck
         $this.newtasks = ($this.newtasks | Sort-Object | Get-Unique)
+        $slidestocheck = $null
         #
     }   
     #
@@ -679,15 +701,16 @@
             [string]$mbatchid = $mbatchid[1]
         }
         #
-        $batch = $this.slide_data | 
-            Where-Object {
+        $batch = $this.slide_data | & { process { 
+            if (
                 $_.BatchID -eq $mbatchid.trim() -and 
                 $_.Project -eq $cproject.trim()
-            }
+            ) {$_}}}
         #
         if ($batch){
             return $batch.SlideID
         }
+        #
         return @()
         #
     }

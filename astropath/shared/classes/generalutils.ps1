@@ -1,5 +1,4 @@
 ﻿class generalutils : copyutils {
-     #
     <# -----------------------------------------
      MergePSCustomObject
      Merge two PS Custom Objects based on a property
@@ -104,22 +103,18 @@
     }
     #
     [string]defRoot(){
-        ##
+        #
         $r = $PSScriptRoot -replace( '/', '\')
         if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
+            return( ('\\' + $env:computername+'\'+$r) -replace ":", "$")
         } else{
-            $root = $r -replace ":", "$"
+            return ( $r -replace ":", "$")
         }
-        #
-        return($root)
         #
     }
     #
-    [string]defDrive(){
-        $root = $this.defRoot()
-        $drive = ($root -split '\$')[0] + '$'
-        return($drive)
+    [string]defDrive(){ 
+        return (($this.defRoot() -split '\$')[0] + '$')
     }
     #
     [string]defServer(){
@@ -207,10 +202,10 @@
         $filespec = '*' + $sor
         $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
         #
-        $files | Foreach-Object {
+        $files | & { process {
             $newname = $_.name -replace $sor, $des   
             Rename-Item $_.fullname $newname -ea stop 
-        }
+        }}
         #
     }
     <# ------------------------------------------
@@ -220,10 +215,8 @@
     ------------------------------------------ #>
     [DateTime]LastWrite([string]$p){
         #
-        $p = $this.CrossPlatformPaths($p)
-        #
-        if (test-path -literalpath $p){
-            return (Get-ChildItem $p).LastWriteTime
+        if (test-path -literalpath $this.CrossPlatformPaths($p)){
+            return (Get-ChildItem $this.CrossPlatformPaths($p)).LastWriteTime
         } else {
             return Get-Date
         }
@@ -232,53 +225,54 @@
     #
     [PSCustomObject]getstoredtable($table){
         #
-        $names = $this.gettablenames($table)
-        $storedtable = $table | 
-            Select-Object -Property $names
-        return $storedtable
+        return (
+            $table | 
+            Select-Object -Property ($this.gettablenames($table))
+        )
         #
     }
     #
     [array]gettablenames($table){
-        $names = $table |
-         Get-Member -MemberType NoteProperty |
-         Select-Object -ExpandProperty Name
-        return $names
+        return (
+            $table |
+            Get-Member -MemberType NoteProperty |
+            Select-Object -ExpandProperty Name
+        )
     }
     #
     [PSCustomObject]changedrows($old, $new){
-        $headers = ($new | Get-Member -MemberType NoteProperty).Name
-        $cmp = compare-object $old $new -Property $headers
-        return $cmp 
+        return (compare-object $old $new `
+            -Property ($new | Get-Member -MemberType NoteProperty).Name)
     }
     #
     [array]changedprojects($old, $new){
-        $table = $this.changedrows($old, $new)
-        return $table.project
+        return ($this.changedrows($old, $new)).project
     }
     #
     [array]changedslide($old, $new){
-        $cmp = $this.changedrows($old, $new)
-        $table = ($cmp | where-object {$_.SideIndicator -match '=>'})
-        return $table.slideid
+        return ($this.changedrows($old, $new) | 
+            where-object {$_.SideIndicator -match '=>'}).slideid 
     }
     #
     [array]changedffmodels($old, $new){
-        $cmp = $this.changedrows($old, $new)
-        $table = ($cmp | where-object {$_.SideIndicator -match '=>'})
-        return $table.slideid
+        return ($this.changedrows($old, $new) | 
+            where-object {$_.SideIndicator -match '=>'}).slideid 
     }
     #
     [array]changedcorrmodels($old, $new){
-        $cmp = $this.changedrows($old, $new)
-        $table = ($cmp | where-object {$_.SideIndicator -match '=>'})
-        return $table.slideid
+        return ($this.changedrows($old, $new) | 
+            where-object {$_.SideIndicator -match '=>'}).slideid 
     }
     #
     [array]changedmicomp($old, $new){
-        $cmp = $this.changedrows($old, $new)
-        $table = ($cmp | where-object {$_.SideIndicator -match '=>'})
-        return $table.slideid
+        return ($this.changedrows($old, $new) | 
+            where-object {$_.SideIndicator -match '=>'}).slideid 
+    }
+    #
+    [string]matcharray($ar){
+        return (
+            '^', ($ar -join '$|^'), '$' -join ''
+        )
     }
     <# -----------------------------------------
      GetCreds

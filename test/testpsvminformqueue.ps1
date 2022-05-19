@@ -52,6 +52,7 @@ using module .\testtools.psm1
         $this.testdoubletaskid($vminformqueue)
         $this.resetinformqueue($vminformqueue)
         $vminformqueue.removedir($this.mpath + '\across_project_queues')
+        #
         $this.testgitstatus($vminformqueue)  
         #
         Write-Host '.'
@@ -62,6 +63,8 @@ using module .\testtools.psm1
         $vminformqueue.removefile($vminformqueue.mainqueuelocation())
         $vminformqueue.removefile($this.basepath +
             '\upkeep_and_progress\progress_tables\inForm_queue.csv')
+        $vminformqueue.removefile($this.basepath +
+            '\test\upkeep_and_progress\progress_tables\inForm_queue.csv')
         $vminformqueue.copy($this.copypath, ($this.mpath + $vminformqueue.mainqueue_path))
     }
     #
@@ -198,7 +201,7 @@ using module .\testtools.psm1
         $this.checklocalqueue($vminformqueue, 5)
         #
         write-host '    update main queue'
-        $vminformqueue.updatemainvminformqueue($this.project)
+        $vminformqueue.updatemainvminformqueue($currentprojecttasks, $this.project)
         write-host ($vminformqueue.maincsv | Format-Table | Out-String)
         if ($vminformqueue.maincsv.Length -ne 11){
             Throw 'main queue tasks were added with no new local tasks'
@@ -229,7 +232,7 @@ using module .\testtools.psm1
         $this.checklocalqueue($vminformqueue, 5)
         #
         write-host '    update main queue'
-        $vminformqueue.updatemainvminformqueue($this.project)
+        $vminformqueue.updatemainvminformqueue($currentprojecttasks, $this.project)
         $this.checkmainqueue($vminformqueue, 5)
         #
         $vminformqueue.writelocalqueue($this.project)
@@ -297,8 +300,9 @@ using module .\testtools.psm1
         $vminformqueue.checkfornewtask($this.project, $this.slideid, 'NewAB')
         $this.checklocalqueue($vminformqueue, 6)
         #
+        $currentprojecttasks = $vminformqueue.maincsv -match ('T' + $this.project.PadLeft(3,'0'))
         $vminformqueue.openmainqueue()
-        $vminformqueue.updatemainvminformqueue($this.project)
+        $vminformqueue.updatemainvminformqueue($currentprojecttasks, $this.project)
         $this.checkmainqueue($vminformqueue, 11)
         #
         write-host 'check that new local tasks are written to local w/o alg finished'
@@ -313,6 +317,7 @@ using module .\testtools.psm1
         #
         $NewRow =  [PSCustomObject]@{
             TaskID = '99'
+            localTaskID = '99'
             SlideID = 'newslide'
             Antibody = 'Newab'
             Algorithm = 'newalg.ifp'
@@ -359,6 +364,7 @@ using module .\testtools.psm1
             SlideID = 'newslide'
             Antibody = 'Newab'
             Algorithm = 'newalg.ifp'
+            localTaskID = '1'
         } 
         $vminformqueue.localqueue.($this.project) += $NewRow
         write-host ($vminformqueue.localqueue.($this.project) | Format-Table | Out-String)

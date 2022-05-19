@@ -57,10 +57,10 @@ class sampletracker : dependencies {
     #
     [void]defmodulestatus(){
         #
-        $this.modules | ForEach-Object {
+        $this.modules | & { process { 
             $this.deflogpaths($_)
             $this.getlogstatus($_)
-        }
+        }}
         #
     }
     #
@@ -75,7 +75,7 @@ class sampletracker : dependencies {
     #
     [void]preparesample($slide){
         #
-        $this.importslideids($this.mpath) | Out-Null
+        $this.importslideids($this.mpath)
         $this.ParseAPIDdef($slide)
         $this.defbase()
         $this.moduleinfo.project = $this.project
