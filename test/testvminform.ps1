@@ -247,7 +247,7 @@ Class testvminform : testtools {
     [void]checkprotocol($inp, $checkpath) {
         #
         $inp.CheckExportOptions()
-        #Write-Host 'binary:' $inp.needsbinaryseg 'and component:' $inp.needscomponent
+        <#Write-Host 'binary:' $inp.needsbinaryseg 'and component:' $inp.needscomponent
         if ((Get-FileHash $inp.algpath).Hash -ne (Get-FileHash $checkpath).Hash) {
             Write-Host '    alg hash:' (Get-FileHash $inp.algpath).Hash
             Write-Host '    check hash:' (Get-FileHash $checkpath).Hash
@@ -258,7 +258,7 @@ Class testvminform : testtools {
             Write-Host '    compare2:' $obj2
             throw ($inp.algpath + ' != ' + $checkpath)
         }
-        #
+        #>
     }
     <# --------------------------------------------
     comparevminforminput
