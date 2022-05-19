@@ -321,7 +321,7 @@ class DataClassWithAnnotationInfo(DataClassWithPscale, DataClassWithApscale, Dat
       raise TypeError("Provided both annotationinfo and annotationinfos")
 
     if annotationinfos is not None:
-      infos = [annotationinfo for annotationinfo in annotationinfos if re.sub(" 1$", "", annotationinfo.dbname) == re.sub(" 1$", "", name)]
+      infos = [annotationinfo for annotationinfo in annotationinfos if re.sub(" 1$", "", annotationinfo.dbname) == re.sub(" 1$", "", name) and not annotationinfo.isdummy]
       try:
         annotationinfo, = infos
       except ValueError:
