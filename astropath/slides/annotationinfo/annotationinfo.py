@@ -1,4 +1,4 @@
-import collections, methodtools, numpy as np, re
+import collections, itertools, methodtools, numpy as np, re
 from ...shared.annotationpolygonxmlreader import AllowedAnnotation, XMLPolygonAnnotationFile, XMLPolygonAnnotationFileInfoWriter
 from ...shared.argumentparser import DbloadArgumentParser, XMLPolygonFileArgumentParser
 from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, WorkflowCohort
@@ -213,14 +213,20 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
     )
 
   def renameannotationinfos(self, infos):
-    for oldname, newname in self.renameannotations.items():
+    rename_iterator = itertools.chain(
+      ((oldname, newname, True) for oldname, newname in self.renameannotations.items()),
+      ((synonym, allowedannotation.name, False) for allowedannotation in AllowedAnnotation.allowedannotations() for synonym in allowedannotation.synonyms if synonym not in self.renameannotations),
+    )
+    for oldname, newname, require_existence in rename_iterator:
       found = False
       for info in infos:
         if info.originalannotationtype == oldname:
           found = True
           info.dbannotationtype = newname
-      if not found:
+          self.logger.warning(f"renaming {info.originalannotationtype} to {info.dbannotationtype}")
+      if require_existence and not found:
         raise ValueError(f"Trying to rename annotation {oldname}, which doesn't exist")
+
     ctr = collections.Counter(info.dbname for info in infos if info.annotationsource != "dummy")
     if max(ctr.values()) > 1:
       raise ValueError(f"Multiple annotations with the same name after renaming: {ctr}")
