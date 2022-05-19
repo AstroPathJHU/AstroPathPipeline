@@ -43,24 +43,24 @@ Class testvminform : testtools {
     #
     [void]launchtests(){
         #
-        #$this.testvminformconstruction($this.task)
+        $this.testvminformconstruction($this.task)
         $inp = vminform $this.task
-        #$this.setupjenkinspaths($inp)
-        #$this.testoutputdir($inp)
-        #$this.testimagelist($inp)
-        #$this.testcheckexportoptions($inp)
-        #$this.comparevminforminput($inp)
-        #$this.testkillinformprocess($inp)
-        #$this.runinformexpected($inp)
-        #$this.testlogexpected($inp)
-        #$this.runinformbatcherror($inp)
-        #$this.testlogbatcherror($inp)
+        $this.setupjenkinspaths($inp)
+        $this.testoutputdir($inp)
+        $this.testimagelist($inp)
+        $this.testcheckexportoptions($inp)
+        $this.comparevminforminput($inp)
+        $this.testkillinformprocess($inp)
+        $this.runinformexpected($inp)
+        $this.testlogexpected($inp)
+        $this.runinformbatcherror($inp)
+        $this.testlogbatcherror($inp)
         $this.testpixelconversion($inp)
-        #$this.testinformoutputfiles($inp)
-        #$this.testcheckforknownerrors($inp)
-        #$this.testfindfixableandmerge($inp)
-        #$this.testcheckexportoptions($inp)
-        #$this.runversioncheck($inp)
+        $this.testinformoutputfiles($inp)
+        $this.testcheckforknownerrors($inp)
+        $this.testfindfixableandmerge($inp)
+        $this.testcheckexportoptions($inp)
+        $this.runversioncheck($inp)
         Write-Host '.'
         #
     }
@@ -248,16 +248,16 @@ Class testvminform : testtools {
         #
         $inp.CheckExportOptions()
         #Write-Host 'binary:' $inp.needsbinaryseg 'and component:' $inp.needscomponent
-        #if ((Get-FileHash $inp.algpath).Hash -ne (Get-FileHash $checkpath).Hash) {
-        #    Write-Host '    alg hash:' (Get-FileHash $inp.algpath).Hash
-        #    Write-Host '    check hash:' (Get-FileHash $checkpath).Hash
-            #$obj = Compare-Object $inp.algpath $checkpath
-            #Write-Host 'compare:' $obj
+        if ((Get-FileHash $inp.algpath).Hash -ne (Get-FileHash $checkpath).Hash) {
+            Write-Host '    alg hash:' (Get-FileHash $inp.algpath).Hash
+            Write-Host '    check hash:' (Get-FileHash $checkpath).Hash
+            $obj = Compare-Object $inp.algpath $checkpath
+            Write-Host 'compare:' $obj
 
-        #    $obj2 = Compare-Object (Get-Content $inp.algpath) (Get-Content $checkpath)
-        #    Write-Host '    compare2:' $obj2
-        #    throw ($inp.algpath + ' != ' + $checkpath)
-        #}
+            $obj2 = Compare-Object (Get-Content $inp.algpath) (Get-Content $checkpath)
+            Write-Host '    compare2:' $obj2
+            throw ($inp.algpath + ' != ' + $checkpath)
+        }
         #
     }
     <# --------------------------------------------
@@ -782,12 +782,12 @@ Class testvminform : testtools {
 #
 # launch test and exit if no error found
 #
-[testvminform]::new() | Out-Null
+#[testvminform]::new() | Out-Null
 
 #
 # add $jenkins parameter to constructor if testing on jenkins
 #
-#[testvminform]::new($jenkins) | Out-Null
+[testvminform]::new($jenkins) | Out-Null
 
 #
 # add version and project parameters to constructor to test different versions of inform
