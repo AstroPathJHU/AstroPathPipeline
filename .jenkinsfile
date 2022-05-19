@@ -44,15 +44,16 @@ pipeline {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
           //  sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
+          //  sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
+          //  sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testvminform.ps1'
-			sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 	
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
+			//sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 	
+            //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
+            //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
           }
         }
-
+	/*
+	
         stage('run tests') {
           parallel {
 			stage('console scripts and documents') {
@@ -251,6 +252,7 @@ pipeline {
             }
           }
         }
+		*/
         stage('check that the repo is clean') {
           steps {
             //make sure normal execution doesn't make files that aren't ignored by .gitignore
