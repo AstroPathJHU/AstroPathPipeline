@@ -56,9 +56,10 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
     Cohort, = {_.Cohort for _ in self.sampledefs()}
     return Cohort
 
-  def globallogger(self, **kwargs):
+  def globallogger(self, *, SlideID=None, **kwargs):
     from .samplemetadata import SampleDef
-    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=f"project{self.Project}")
+    if SlideID is None: SlideID = f"project{self.Project}"
+    samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=SlideID)
     return self.getlogger(samp, isglobal=True, **kwargs)
 
   def printlogger(self, *args, **kwargs): return self.getlogger(*args, uselogfiles=False, **kwargs)
