@@ -87,6 +87,7 @@ class astropathwftools : sampledb {
     ----------------------------------------- #>
     [void]CheckOrphan(){
         #
+        #$this.checkvms()
         $idleworkers = $this.worker_data | where-object {$_.status -match 'IDLE'}
         foreach ($worker in @(0..($idleworkers.Length - 1))){
             #
@@ -123,6 +124,20 @@ class astropathwftools : sampledb {
                 }
             }
         }
+        #
+    }
+    #
+    [void]checkvms(){
+        #
+        $vmworkers = $this.worker_data | 
+            where-object {
+                (
+                    $_.status -match 'IDLE' -or 
+                    $_.status -match 'OFF' 
+                ) -and $_.module -match 'vminform'
+            }
+        #
+        #$vmworkers
         #
     }
     <# -----------------------------------------
@@ -640,7 +655,7 @@ class astropathwftools : sampledb {
     ----------------------------------------- #>
     [string]DefJobName($currentworker){
         return ($currentworker.server,
-            $currentworker.location, $currentworker.module) -join ';'     
+            $currentworker.location, $currentworker.module) -join '.'     
     }
     <# -----------------------------------------
      parseJobName
@@ -649,7 +664,7 @@ class astropathwftools : sampledb {
      Usage: $this.parseJobName($currentworker)
     ----------------------------------------- #>
     [array]parseJobName($jobname){
-        return ($jobname -split ';')   
+        return ($jobname -split '.')   
     }
     <# -----------------------------------------
      workertasklog
