@@ -169,6 +169,9 @@ class sampledb : sampletracker {
         #
         if ($this.newtasks){
             $this.writeoutput(" refreshing sample data base for new tasks")
+            $new = $true
+        } else {
+            $new = $false
         }
         #
         $ctotal = $this.newtasks.count
@@ -184,6 +187,10 @@ class sampledb : sampletracker {
             #
         }
         #
+        if ($new){
+            $this.progressbarfinish()
+        }
+        #
     }
     #
     [void]refreshsampledb($cmodule){
@@ -193,6 +200,9 @@ class sampledb : sampletracker {
         #
         if ($this.newtasks){
             $this.writeoutput(" updating module database: $cmodule")
+            $new = $true
+        } else {
+            $new = $false
         }
         #
         while($this.newtasks){
@@ -205,6 +215,9 @@ class sampledb : sampletracker {
                 $this.project)
         }
         #
+        if ($new){
+            $this.progressbarfinish()
+        }
         $this.refreshmoduledb($cmodule)
         #
     }
@@ -253,6 +266,9 @@ class sampledb : sampletracker {
         $this.moduleobjs.($cmodule).openmainqueue($false)
         if ($this.moduleobjs.($cmodule).newtasks){
             $this.writeoutput(" updating module database: $cmodule")
+            $new = $true
+        } else {
+            $new = $false
         }
         #
         while($this.moduleobjs.($cmodule).newtasks){
@@ -262,6 +278,10 @@ class sampledb : sampletracker {
             $c += 1 
             $this.preparesample($slide)
             $this.refreshmoduledb($cmodule, $slide)
+        }
+        #
+        if ($new){
+            $this.progressbarfinish()
         }
         #
         $this.moduleobjs.($cmodule).writemoduledb()
@@ -358,7 +378,6 @@ class sampledb : sampletracker {
             $this.moduleobjs.($cmodule).localqueue.($cproject) = @()
         }
         #
-        $cmoduleinfo = $this.moduleinfo.($cmodule)
         $this.getantibodies($cproject)
         #
         $row = [PSCustomObject]@{
@@ -371,14 +390,15 @@ class sampledb : sampletracker {
             $statusname = ($_ + '_Status')
             $startname = ($_ + '_StartTime') 
             $finishname = ($_ + '_FinishTime')
-            $status = $this.moduleinfo.($cmodule).($_).status -replace ',', ';'
+            $cmoduleinfo = $this.moduleinfo.($cmodule).($_)
+            $status = $cmoduleinfo.status -replace ',', ';'
             if ($status -match $this.status.ready){
                 $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
             }
             $row | Add-Member -NotePropertyMembers @{
                 $statusname =  $status
-                $startname =  $this.moduleinfo.($cmodule).($_).StartTime
-                $finishname =  $this.moduleinfo.($cmodule).($_).FinishTime
+                $startname =  $cmoduleinfo.StartTime
+                $finishname =  $cmoduleinfo.FinishTime
             } -PassThru
         }}
         #
@@ -603,6 +623,10 @@ class sampledb : sampletracker {
     #
     [void]handleAPevent($fullfile){
         #
+        $fullfile = ($fullfile -split ';')[0]
+        #
+        start-sleep 2
+        #
         $fpath = Split-Path $fullfile
         $file = Split-Path $fullfile -Leaf
         #
@@ -667,14 +691,14 @@ class sampledb : sampletracker {
             #
             switch -exact ($fullfile){
                 $this.moduleobjs.($cmodule).mainqueuelocation() {
-                    $this.writeoutput(" main module file updated: $cmodule")
+                    $this.writeoutput(" main module file updated for [$cmodule]")
                     $this.refreshmoduledb($cmodule)}
             }
             #
-            foreach ($cproject in $this.module_project_data.($cmodule)){
+            foreach ($cproject in $this.allprojects){
                 switch -exact ($fullfile){
                     $this.defprojectlogpath($cmodule, $cproject) {
-                        $this.writeoutput(" logfile updated: $cmodule $cproject")
+                        $this.writeoutput(" logfile updated for [$cmodule] - project: $cproject")
                         $this.refreshsampledb($cmodule, $cproject)}
                 }
             }

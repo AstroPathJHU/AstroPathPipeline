@@ -393,4 +393,42 @@
         #
     }
     #
+    [switch]checkforfiles($source, $filetype){
+        #
+        if (test-path ($source, '*' -join '\') -include ('*' + $filetype)){
+            return $true
+        } 
+        #
+        return $false
+        #
+    }
+    #
+    [switch]checkforfiles($filetype){
+        return $this.checkforfiles(
+            $this.($filetype + 'folder')(),
+            $this.($filetype + 'constant')
+        )
+    }
+    #
+    [switch]checkforcontents($source, $filetype, $contents){
+        if (
+            get-childitem ($source, '*' -join '\') `
+                -Include ('*' + $filetype) | 
+                get-content | 
+                select-string $contents
+        ){
+            return $true
+        }
+        return $false
+    }
+    #
+    [switch]checkforcontents($filetype){
+        return (
+            $this.checkforcontents(
+                $this.($filetype + 'folder')(),
+                $this.($filetype + 'constant'),
+                $this.($filetype + 'contents')
+            )
+        )
+    }
  }

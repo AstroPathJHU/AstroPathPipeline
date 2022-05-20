@@ -459,11 +459,15 @@ class fileutils : generalutils {
         #
         $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
         $newwatcher.Filter = $fname
-        $newwatcher.NotifyFilter = 'LastWrite'
+        $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite'
         #
         Register-ObjectEvent $newwatcher `
             -EventName Changed `
-            -SourceIdentifier ($fpath + '\' + $fname) | Out-Null
+            -SourceIdentifier ($fpath + '\' + $fname + ';changed') | Out-Null
+        #
+        Register-ObjectEvent $newwatcher `
+            -EventName Renamed `
+            -SourceIdentifier ($fpath + '\' + $fname+ ';renamed') | Out-Null
         #
         return ($fpath + '\' + $fname)
         #
@@ -475,11 +479,15 @@ class fileutils : generalutils {
         #
         $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
         $newwatcher.Filter = $fname
-        $newwatcher.NotifyFilter = 'LastWrite'
+        $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite'
         #
         Register-ObjectEvent $newwatcher `
             -EventName Changed `
-            -SourceIdentifier $SI | Out-Null
+            -SourceIdentifier ($SI + ';changed') | Out-Null
+        #
+        Register-ObjectEvent $newwatcher `
+            -EventName Renamed `
+            -SourceIdentifier ($SI + ';renamed')| Out-Null
         #
         return $SI
         #
@@ -511,19 +519,7 @@ class fileutils : generalutils {
      Usage: $this.UnregisterEvent(SI)
     ----------------------------------------- #>
     [void]UnregisterEvent($SI){
-        Unregister-Event -SourceIdentifier $SI -Force -EA Stop
-    }
-    <# -----------------------------------------
-     UnregisterEvent
-     wait for an event to trigger optionally
-     remove the event subscriber and the event
-     ------------------------------------------
-     Input: 
-        -SI: the source identifier
-     ------------------------------------------
-     Usage: $this.UnregisterEvent(SI)
-    ----------------------------------------- #>
-    [void]File($SI){
-        Unregister-Event -SourceIdentifier $SI -Force 
+        Unregister-Event -SourceIdentifier ($SI+ ';changed') -Force -EA Stop
+        Unregister-Event -SourceIdentifier ($SI+ ';renamed') -Force -EA Stop
     }
 }

@@ -260,7 +260,7 @@ class copyutils{
     #
     [system.object]fastlistfiles([string]$sor, [array]$filespec){
         #
-        if (!(test-path $sor)){
+        if (!([System.IO.Directory]::Exists($sor))){
             return @()
         }
         #
@@ -284,26 +284,26 @@ class copyutils{
     [int]countfiles([string]$sor, [array]$filespec){
         #
         $cnt = 0
-        if (!(test-path $sor)){
+        if (!([System.IO.Directory]::Exists($sor))){
             return $cnt
         }
-        $filespec | & { process { 
+        $filespec | foreach-object {
           $cnt +=  @([System.IO.Directory]::EnumerateFiles(
-              $sor,  ('.*' + $_ + '$'))).Count 
+              $sor,  ('*' + $_ ))).Count 
 
-        }}
+        }
         return $cnt
         #
     }
     #
     [array]getfullnames([string]$sor, [array]$filespec){
-        $files = $this.fastlistfiles($sor, $filespec)
-        return $files
+        return ($this.fastlistfiles($sor, $filespec))
     }
     #
     [array]getnames([string]$sor, [array]$filespec){
-        $files = $this.fastlistfiles($sor, $filespec)
-        return (split-path $files -leaf)
+        return (
+            split-path ($this.fastlistfiles($sor, $filespec)) -leaf
+        )
     }
     <#------------------------------------------
     handlebrackets

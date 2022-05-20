@@ -45,13 +45,13 @@ class sampledef : sharedtools{
     }
     #
     sampledefslide($slideid){
-        $this.importslideids($this.mpath)
+        $this.importslide($this.mpath)
         $this.Sample($slideid, $this.slide_data)
     }
     #
     sampledefbatch($batchid, $project){
         $this.project = $project
-        $this.importslideids($this.mpath)
+        $this.importslide($this.mpath)
         $this.Batch($batchid, $this.slide_data)
     }
     #

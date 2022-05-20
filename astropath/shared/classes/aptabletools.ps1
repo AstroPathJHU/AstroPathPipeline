@@ -279,9 +279,15 @@ class aptabletools : fileutils {
         #
     }
     #
-    [void]ImportSlide($mpath, $createwatcher){
+    [void]ImportSlide($mpath){
         #
-        $this.ImportSlideIDs($mpath, $createwatcher)
+        if ($this.slide_data){
+            return
+        }
+        #
+        $this.slide_data = $this.OpencsvFileConfirm(
+            $this.slide_fullfile($mpath)
+        )
         #
     }
     <# -----------------------------------------
@@ -784,12 +790,24 @@ class aptabletools : fileutils {
      ------------------------------------------
      Usage: selectlogline($fpath)
     ----------------------------------------- #>
+    [PSCustomObject]selectloglines([PSCustomObject] $loglines,
+     [string] $ID){    
+        #
+        return ( $loglines | &{ process {
+                if (
+                    $_.Slideid -contains $ID
+                ) { $_ }
+            }}
+        )
+        #
+    }
+    #
     [PSCustomObject]selectlogline([PSCustomObject] $loglines,
      [string] $ID, [string] $status){    
         #
         return ( $loglines | &{ process {
                 if (
-                    ($_.Slideid -match $ID) -and 
+                    ($_.Slideid -contains $ID) -and 
                     ($_.Message -match ('^' + $status))
                 ) { $_ }
             }} |
@@ -805,7 +823,7 @@ class aptabletools : fileutils {
             $loglines | &{ process {
             if (
                 ($_.Message -match $vers) -and 
-                ($_.Slideid -match $ID) -and 
+                ($_.Slideid -contains $ID) -and 
                 ($_.Message -match ('^' + $status))
                 ) { $_ }
             }} |
@@ -819,7 +837,7 @@ class aptabletools : fileutils {
         #
         return ( $loglines | &{ process {
             if (
-                ($_.Slideid -match $ID) -and 
+                ($_.Slideid -contains $ID) -and 
                 ($_.Message -match ('^' + $status)) -and 
                 ($_.Message -match ('Antibody: ' +
                     $antibody + ' - Algorithm:'))
@@ -837,7 +855,7 @@ class aptabletools : fileutils {
         return  (
             $loglines | &{ process {
             if (
-                ($_.Slideid -match $ID) -and 
+                ($_.Slideid -contains $ID) -and 
                 ($_.Message -match ('^' + $status)) -and 
                 ($_.Message -match ('Antibody: ' +
                     $antibody + ' - Algorithm: ' + $algorithm))
