@@ -615,19 +615,37 @@ class aptabletools : fileutils {
     #
     [void]Importworkerlist([string] $mpath, $createwatcher){
         #
-        $worker_csv_file = $this.worker_fullfile($mpath)
-        $this.worker_data = $this.opencsvfileconfirm($worker_csv_file)
-        $headers = $this.gettablenames($this.worker_data)
-        if ('Status' -notmatch ($headers -join '|')){
-            $this.worker_data |
-                Add-Member -NotePropertyName 'Status' -NotePropertyValue $this.node_idle
+        $tbl = $this.opencsvfileconfirm(
+            $this.worker_fullfile($mpath)
+        )
+        #
+        if ($this.worker_data){
+            #
+            foreach ($row in $tbl){
+                #
+                $oldrow = $this.worker_data | where-object {
+                    $_.server -contains $row.server -and
+                    $_.location -contains $row.location -and
+                    $_.module -contains $row.module
+                }
+                #
+                if ($oldrow){
+                   $row | Add-Member status $oldrow.status -PassThru
+                } else {
+                    $row | Add-Member status 'IDLE' -PassThru
+                }
+                #
+            }
+            #
         } else {
-            $this.worker_data |  & { process { 
-                if ($_.Status -match $this.onstrings){ $_ }
-            }}
+            $tbl |
+                Add-Member -NotePropertyName 'Status' -NotePropertyValue $this.node_idle
         }
+        #
+        $this.worker_data = $tbl
+        #
         if ($createwatcher){
-            $this.FileWatcher($worker_csv_file)
+            $this.FileWatcher($this.worker_fullfile($mpath))
         }
         #
     }

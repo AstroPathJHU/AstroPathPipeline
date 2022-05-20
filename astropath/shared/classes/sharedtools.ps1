@@ -383,8 +383,10 @@
     }
     #
     [void]checkNET(){
-        if (!(Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Release -ge 461808){
-            Throw 'Please install .NET framework 4.7.2 or greater to run code'
+        if ($this.iswindows()){
+            if (!(Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Release -ge 461808){
+                Throw 'Please install .NET framework 4.7.2 or greater to run code'
+            }
         }
     }
     #
