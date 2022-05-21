@@ -19,6 +19,11 @@ Function initmodule {
     #
     param($task, $log, $module, [Parameter()][switch]$test)
     #
+    if ($task.ContainsKey('tasklogfile')){
+        updateprocessinglog -logfile $tasklogfile -sample $log -lineoutput (
+            'processname:', $log.processname, '- processid:', $log.processid -join ' ')
+    }
+    #
     # used for testing; when launched manually without launchmodule
     #
     if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 

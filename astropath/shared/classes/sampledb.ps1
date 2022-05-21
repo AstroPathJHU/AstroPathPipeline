@@ -145,9 +145,9 @@ class sampledb : sampletracker {
     #
     [int]updatesample($c, $ctotal, $slideid){
         #
-        $this.progressbar($c, $ctotal, ($slideid, 'update sample status', -join '-'))
+        $this.progressbar($c, $ctotal, ($slideid, 'update sample status' -join ' - '))
         $this.preparesample($slideid)
-        $this.progressbar($c, $ctotal, ($slideid, 'update module table', -join '-'))
+        $this.progressbar($c, $ctotal, ($slideid, 'update module table' -join ' - '))
         $this.defmoduletables($slideid)
         $c += 1 
         return $c
@@ -175,7 +175,7 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]refreshsampledb(){
         #
-        $this.writeoutput(" refreshing sample data base for new tasks started")
+        $this.writeoutput("     refreshing sample data base for new tasks started")
         #
         if ($this.newtasks){
             $new = $true
@@ -197,7 +197,7 @@ class sampledb : sampletracker {
             $this.progressbarfinish()
         }
         #
-        $this.writeoutput(" refreshing sample data base for new tasks finished")
+        $this.writeoutput("     refreshing sample data base for new tasks finished")
         #
     }
     #
@@ -207,7 +207,7 @@ class sampledb : sampletracker {
         $c = 1
         #
         if ($this.newtasks){
-            $this.writeoutput(" refreshing sample data base for [$cmodule] started")
+            $this.writeoutput("     refreshing sample data base for [$cmodule] started")
             $new = $true
         } else {
             $new = $false
@@ -215,14 +215,14 @@ class sampledb : sampletracker {
         #
         while($this.newtasks){
             $slide, $this.newtasks = $this.newtasks
-            $c = $this.updatesample($c, $ctotal, $slide.slideid)
+            $c = $this.updatesample($c, $ctotal, $slide)
             $this.moduleobjs.($cmodule).writelocalqueue(
                 $this.project)
         }
         #
         if ($new){
             $this.progressbarfinish()
-            $this.writeoutput(" refreshing sample data base for [$cmodule] finished")
+            $this.writeoutput("     refreshing sample data base for [$cmodule] finished")
         }
         $this.refreshmoduledb($cmodule)
         #
@@ -266,7 +266,7 @@ class sampledb : sampletracker {
     ----------------------------------------- #>
     [void]refreshmoduledb($cmodule){
         #
-        $this.writeoutput(" updating module database: [$cmodule] started")
+        $this.writeoutput("     updating module database: [$cmodule] started")
         $ctotal = $this.moduleobjs.($cmodule).newtasks.count
         $c = 1
         #
@@ -280,7 +280,7 @@ class sampledb : sampletracker {
         while($this.moduleobjs.($cmodule).newtasks){
             $slide, $this.moduleobjs.($cmodule).newtasks =
                 $this.moduleobjs.($cmodule).newtasks
-            $c = $this.updatesample($c, $ctotal, $slide.slideid)
+            $c = $this.updatesample($c, $ctotal, $slide)
         }
         #
         if ($new){
@@ -293,7 +293,7 @@ class sampledb : sampletracker {
         if ($this.moduleobjs.($cmodule).newtasks){
             $this.refreshmoduledb($cmodule)
         }
-        $this.writeoutput(" updating module database: [$cmodule] finished")
+        $this.writeoutput("     updating module database: [$cmodule] finished")
         #
     }
     <# -----------------------------------------
@@ -638,34 +638,42 @@ class sampledb : sampletracker {
             $this.cohorts_file {
                 $this.writeoutput(" cohorts file updated")
                 $this.updatefullprojectdata()
+                $this.writeoutput(" cohorts file checks finished")
             }
             $this.paths_file {
                 $this.writeoutput(" paths file updated")
                 $this.updatefullprojectdata()
+                $this.writeoutput(" paths file checks finished")
             }
             $this.config_file {
                 $this.writeoutput(" config file updated")
                 $this.updatefullprojectdata()
+                $this.writeoutput(" config file checks finished")
             }
             $this.slide_file {
                 $this.writeoutput(" apid file updated")
                 $this.fileupdate('slide')
+                $this.writeoutput(" apid file checks finished")
             }
             $this.ffmodels_file {
                 $this.writeoutput(" ffmodels file updated")
                 $this.fileupdate('ffmodels')
+                $this.writeoutput(" ffmodels file checks finished")
             }
             $this.corrmodels_file {
                 $this.writeoutput(" corrmodels file updated")
                 $this.fileupdate('corrmodels')
+                $this.writeoutput(" corrmodels file checks finished")
             }
             $this.micomp_file {
                 $this.writeoutput(" micomp file updated")
                 $this.fileupdate('micomp')
+                $this.writeoutput(" micomp file checks finished")
             }
             $this.worker_file {
                 $this.writeoutput(" workers file updated")
                 $this.Importworkerlist($this.mpath, $false)
+                $this.writeoutput(" workers file checks finished")
             }
             $this.vmq.mainqueue_filename {
                 $this.writeoutput(" main inform file updated")

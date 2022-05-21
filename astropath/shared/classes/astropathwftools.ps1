@@ -366,31 +366,11 @@ class astropathwftools : sampledb {
     ----------------------------------------- #>
     [void]buildtaskfile($jobname, $currenttaskinput){
         #
-        $currenttasktowrite = (' Import-Module "', $this.coderoot(), '"
-        $output.output = & {LaunchModule -mpath:"',
-                $this.mpath, $currenttaskinput,'"} 2>&1
-            if ($output.output -ne 0){ 
-                #
-                $count = 1
-                #
-                $output.output | Foreach-object {
-                    $output.popfile("',
-                        $this.workerlogfile($jobname),
-                        '", ("ERROR: " + $count + "`r`n"))
-                    $output.popfile("',
-                        $this.workerlogfile($jobname),
-                        '", ("  " + $_.Exception.Message  + "`r`n"))
-                    $s = $_.ScriptStackTrace.replace("at", "`t at")
-                    $output.popfile("',
-                        $this.workerlogfile($jobname),'", ($s + "`r`n"))
-                    $count += 1
-                }
-                #
-            } else {
-                $output.popfile("',
-                    $this.workerlogfile($jobname),
-                    '", "Completed Successfully `r`n")
-            }') -join ''
+        $currenttasktowrite = (' Import-Module "', $this.coderoot(), '" -ea stop
+        $output = & {LaunchModule -mpath:"', $this.mpath, $currenttaskinput,
+            '" -tasklogfile "', $this.workerlogfile($jobname),'"} 2>&1
+        UpdateProcessingLog -logfile "', $this.workerlogfile($jobname),
+            '" -sample $output -erroroutput $output.output') -join ''
         #
         $this.SetFile($this.workertaskfile($jobname), $currenttasktowrite)
         #
@@ -664,7 +644,7 @@ class astropathwftools : sampledb {
      Usage: $this.parseJobName($currentworker)
     ----------------------------------------- #>
     [array]parseJobName($jobname){
-        return ($jobname -split '.')   
+        return ($jobname -split '\.')   
     }
     <# -----------------------------------------
      workertasklog

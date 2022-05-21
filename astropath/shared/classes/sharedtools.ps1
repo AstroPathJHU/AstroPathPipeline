@@ -20,6 +20,7 @@
     [switch]$teststatus = $false
     [array]$newtasks
     [string]$processname
+    [string]$processid
     [hashtable]$softwareurls = @{
         'Miniconda3' = 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe';
         'MikTeX' = '';
@@ -37,7 +38,10 @@
         'NET' = @('')
     }
     #
-    sharedtools(){$this.processname = ([System.Diagnostics.Process]::GetCurrentProcess()).name }
+    sharedtools(){
+        $this.processname = ([System.Diagnostics.Process]::GetCurrentProcess()).name 
+        $this.processid = ([System.Diagnostics.Process]::GetCurrentProcess()).name 
+    }
     #
     [string]pyinstalllocation(){
          $str = '\\' + $this. defserver() + 
