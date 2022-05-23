@@ -158,6 +158,14 @@ Check out\ download the github repository. In MATLAB, add the entire *AstroPath 
    - [7.4. Load Zoomed Images for CellView](astropath/samples/loadzoom/)
    - [7.5. Prepare the Merge for Database](astropath/samples/prepmerge/)
    - [7.6. Merge the Sample Databases](astropath/samples/mergedb/)
+- [8. Powershell](documents/AstropathPSWorkflow.md#81-astropath-powershell-workflow)
+   - [8.1 AstroPath Powershell Workflow](documents/AstropathPSWorkflow.md#81-astropath-powershell-workflow)
+      - [8.1.1. PS Workflow](documents/AstropathPSWorkflow.md#811-ps-workflow)
+	  - [8.1.2. AstroPath Task Distribution](documents/AstropathPSWorkflow.md#812-astropath-task-distribution)
+	  - [8.1.3. AstroPath File Change Monitors](documents/AstropathPSWorkflow.md#813-astropath-file-change-monitors)
+	  - [8.1.4. Adding Modules](documents/AstropathPSWorkflow.md#814-adding-modules)
+	  - [8.1.5. AstroPath Requirements](documents/AstropathPSWorkflow.md#815-astropath-requirements)
+	  - [8.1.6. AstroPath Dependencies](documents/AstropathPSWorkflow.md#816-astropath-dependencies)
 
 ## Credits
 #### <div align="center">Created by: Benjamin Green<sup>1</sup>, Jeffrey S. Roskes<sup>4</sup>, Margaret Eminizer<sup>4</sup>, Richard Wilton<sup>4</sup>, Sigfredo Soto-Diaz<sup>2</sup>, Andrew Jorquera<sup>1</sup>, Sneha Berry<sup>2</sup>, Elizabeth Engle<sup>2</sup>, Nicolas Giraldo<sup>3</sup>, Peter Nguyen<sup>2</sup>, Tricia Cottrell<sup>3</sup>, Janis Taube<sup>1,2,3</sup>, and Alex Szalay<sup>4</sup></div>

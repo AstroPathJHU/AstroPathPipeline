@@ -1,6 +1,6 @@
-# 5.?.?. AstroPath Powershell Workflow
+# 8.1. AstroPath Powershell Workflow
 
-## 5.?.?.1. PS Workflow
+## 8.1.1. PS Workflow
 1.	On startup
 	1.	Imports all AstroPath tables and stores in respective ‘data’ objects
 		1.	full_project_data, slide_data, worker_data, etc. 
@@ -18,7 +18,7 @@
 1.	Launch the tasks from the queue
 1.	Wait for a task to finish or an event to trigger. Take the corresponding action of updating the memory variables for file changes or launch a new task 
 
-## 5.?.?.2. AstroPath Task Distribution
+## 8.1.2. AstroPath Task Distribution
 1.	Build the sample db
 	1.	builds the module task queues with the tasks to launch
 1.	Define the worker list
@@ -49,7 +49,7 @@ Defines three tasks files:
  - Workerlogfile: [jobname]’.log’
     - The log file for the launched task from psexec
 
-## 5.?.?.3. AstroPath File Change Monitors
+## 8.1.3. AstroPath File Change Monitors
 - Update dependency table
     - Changes could result in:
        - New module
@@ -109,7 +109,7 @@ Defines three tasks files:
     - Changes could result in:
     - Actions
 
-## 5.?.?.4. Adding Modules
+## 8.1.4. Adding Modules
 Adding modules to the powershell astropath workflow is easy. There are three steps:
 
 1.	Create the module class
@@ -143,7 +143,7 @@ Optional:
 	1.	This file also allows you to run a specified version for a project. The code typically checks for the 3-part version number rather than the full version number.
 	1.	Both columns [modulename] and [modulename]version must be added to this file when adding the module
 
-## 5.?.?.5. AstroPath Requirements
+## 8.1.5. AstroPath Requirements
 1.	Check for required software in the code and install them or throw an error if necessary. Some code does part of this already in shared tools
 1.	Check if miniconda is installed on the system
 	1.	If not prompt the user to download and install it
@@ -154,7 +154,7 @@ Optional:
 	1.	Entering: “conda init powershell” to a conda powershell window and restarting powershell
 	1.	Need to check the installation of packages
 
-## 5.?.?.6. AstroPath Dependencies
+## 8.1.6. AstroPath Dependencies
  - Scan
     - Output:
        - Check for the dpath\slideid if it does exist the deps passed
