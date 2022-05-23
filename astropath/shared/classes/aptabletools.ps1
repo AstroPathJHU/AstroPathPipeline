@@ -300,9 +300,15 @@ class aptabletools : fileutils {
         #
     }
     #
-    [void]ImportSlide($mpath, $createwatcher){
+    [void]ImportSlide($mpath){
         #
-        $this.ImportSlideIDs($mpath, $createwatcher)
+        if ($this.slide_data){
+            return
+        }
+        #
+        $this.slide_data = $this.OpencsvFileConfirm(
+            $this.slide_fullfile($mpath)
+        )
         #
     }
     <# -----------------------------------------
@@ -707,19 +713,37 @@ class aptabletools : fileutils {
     #
     [void]Importworkerlist([string] $mpath, $createwatcher){
         #
-        $worker_csv_file = $this.worker_fullfile($mpath)
-        $this.worker_data = $this.opencsvfileconfirm($worker_csv_file)
-        $headers = $this.gettablenames($this.worker_data)
-        if ('Status' -notmatch ($headers -join '|')){
-            $this.worker_data |
-                Add-Member -NotePropertyName 'Status' -NotePropertyValue $this.node_idle
+        $tbl = $this.opencsvfileconfirm(
+            $this.worker_fullfile($mpath)
+        )
+        #
+        if ($this.worker_data){
+            #
+            foreach ($row in $tbl){
+                #
+                $oldrow = $this.worker_data | where-object {
+                    $_.server -contains $row.server -and
+                    $_.location -contains $row.location -and
+                    $_.module -contains $row.module
+                }
+                #
+                if ($oldrow){
+                   $row | Add-Member status $oldrow.status -PassThru
+                } else {
+                    $row | Add-Member status 'IDLE' -PassThru
+                }
+                #
+            }
+            #
         } else {
-            $this.worker_data |  & { process { 
-                if ($_.Status -match $this.onstrings){ $_ }
-            }}
+            $tbl |
+                Add-Member -NotePropertyName 'Status' -NotePropertyValue $this.node_idle
         }
+        #
+        $this.worker_data = $tbl
+        #
         if ($createwatcher){
-            $this.FileWatcher($worker_csv_file)
+            $this.FileWatcher($this.worker_fullfile($mpath))
         }
         #
     }
@@ -882,12 +906,24 @@ class aptabletools : fileutils {
      ------------------------------------------
      Usage: selectlogline($fpath)
     ----------------------------------------- #>
+    [PSCustomObject]selectloglines([PSCustomObject] $loglines,
+     [string] $ID){    
+        #
+        return ( $loglines | &{ process {
+                if (
+                    $_.Slideid -contains $ID
+                ) { $_ }
+            }}
+        )
+        #
+    }
+    #
     [PSCustomObject]selectlogline([PSCustomObject] $loglines,
      [string] $ID, [string] $status){    
         #
         return ( $loglines | &{ process {
                 if (
-                    ($_.Slideid -match $ID) -and 
+                    ($_.Slideid -contains $ID) -and 
                     ($_.Message -match ('^' + $status))
                 ) { $_ }
             }} |
@@ -903,7 +939,7 @@ class aptabletools : fileutils {
             $loglines | &{ process {
             if (
                 ($_.Message -match $vers) -and 
-                ($_.Slideid -match $ID) -and 
+                ($_.Slideid -contains $ID) -and 
                 ($_.Message -match ('^' + $status))
                 ) { $_ }
             }} |
@@ -917,7 +953,7 @@ class aptabletools : fileutils {
         #
         return ( $loglines | &{ process {
             if (
-                ($_.Slideid -match $ID) -and 
+                ($_.Slideid -contains $ID) -and 
                 ($_.Message -match ('^' + $status)) -and 
                 ($_.Message -match ('Antibody: ' +
                     $antibody + ' - Algorithm:'))
@@ -935,7 +971,7 @@ class aptabletools : fileutils {
         return  (
             $loglines | &{ process {
             if (
-                ($_.Slideid -match $ID) -and 
+                ($_.Slideid -contains $ID) -and 
                 ($_.Message -match ('^' + $status)) -and 
                 ($_.Message -match ('Antibody: ' +
                     $antibody + ' - Algorithm: ' + $algorithm))

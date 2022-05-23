@@ -68,7 +68,7 @@ class astropathwftools : sampledb {
             Format-Table  -AutoSize @{Name="module";Expression = { $_.module }; Alignment="left" },
                             @{Name="server";Expression = { $_.server }; Alignment="left" },
                             @{Name="location";Expression = { $_.location }; Alignment="left" },
-                            @{Name="state";Expression = { $_.Status }; Alignment="left" },
+                            @{Name="state";Expression = { $_.State }; Alignment="left" },
                             @{Name="status";Expression = { $_.Status }; Alignment="left" }  |
             Out-String).Trim() -ForegroundColor Yellow
        $this.writeoutput(" .") 
@@ -87,6 +87,7 @@ class astropathwftools : sampledb {
     ----------------------------------------- #>
     [void]CheckOrphan(){
         #
+        #$this.checkvms()
         $idleworkers = $this.worker_data | where-object {$_.status -match 'IDLE'}
         foreach ($worker in @(0..($idleworkers.Length - 1))){
             #
@@ -123,6 +124,20 @@ class astropathwftools : sampledb {
                 }
             }
         }
+        #
+    }
+    #
+    [void]checkvms(){
+        #
+        $vmworkers = $this.worker_data | 
+            where-object {
+                (
+                    $_.status -match 'IDLE' -or 
+                    $_.status -match 'OFF' 
+                ) -and $_.module -match 'vminform'
+            }
+        #
+        #$vmworkers
         #
     }
     <# -----------------------------------------
@@ -197,9 +212,14 @@ class astropathwftools : sampledb {
                     $_.state -match $this.onstrings
                 }
             #
-            $cqueue = $this.moduletaskqueue.($module)
+            $cqueue = $this.moduletaskqueue.($module) 
+            #
             if ($cqueue.count -ne 0 -and $currentworkers){
                 $this.writeoutput(" Starting task distribution for $module")
+                if ($module -match 'vminform'){
+                    $this.sortvmqqueue($cqueue)
+                    $cqueue = $this.moduletaskqueue.($module) 
+                }
             }
             #
             while ($cqueue.count -ne 0 -and $currentworkers){
@@ -207,8 +227,8 @@ class astropathwftools : sampledb {
                 $currenttask = $cqueue.dequeue()
                 $currentworker, $currentworkers = $currentworkers
                 #
-                $this.writeoutput("     Launching Task on:" + 
-                    $currentworker.server + $currentworker.location)
+                $this.writeoutput(("     Launching Task on:", 
+                    $currentworker.server, $currentworker.location -join ' '))
                 $this.writeoutput("     $currenttask")
                 #
                 $this.launchtask($currenttask, $currentworker)
@@ -218,6 +238,19 @@ class astropathwftools : sampledb {
             }
             #
         }
+        #
+    }
+    #
+    [void]sortvmqqueue($cqueue){
+        #
+        $taskids = $cqueue | foreach-object {$_[0]}
+        $this.moduletaskqueue.vminform = New-Object System.Collections.Generic.Queue[array]
+        #
+        $this.vmq.maincsv | 
+            Where-Object {$_.taskid -in $taskids} |
+            foreach-object {
+                $this.moduletaskqueue.vminform.enqueue(@($_.taskid, $_.slideid))
+            }
         #
     }
     <# -----------------------------------------
@@ -303,7 +336,7 @@ class astropathwftools : sampledb {
                 $currenttaskinput = '" -module ', $cmodule,
                     ' -slideid ', $currenttask[1],
                     ' -antibody ', $currenttask[2], ' -algorithm ', $currenttask[3],
-                    ' -informvers ', $this.informvers -join '"'
+                    ' -informvers ', $this.vmq.informvers -join '"'
             } 
             'batch' {
                 $currentworkerstring = '\', $currentworker.server,
@@ -333,31 +366,11 @@ class astropathwftools : sampledb {
     ----------------------------------------- #>
     [void]buildtaskfile($jobname, $currenttaskinput){
         #
-        $currenttasktowrite = (' Import-Module "', $this.coderoot(), '"
-        $output.output = & {LaunchModule -mpath:"',
-                $this.mpath, $currenttaskinput,'"} 2>&1
-            if ($output.output -ne 0){ 
-                #
-                $count = 1
-                #
-                $output.output | Foreach-object {
-                    $output.popfile("',
-                        $this.workerlogfile($jobname),
-                        '", ("ERROR: " + $count + "`r`n"))
-                    $output.popfile("',
-                        $this.workerlogfile($jobname),
-                        '", ("  " + $_.Exception.Message  + "`r`n"))
-                    $s = $_.ScriptStackTrace.replace("at", "`t at")
-                    $output.popfile("',
-                        $this.workerlogfile($jobname),'", ($s + "`r`n"))
-                    $count += 1
-                }
-                #
-            } else {
-                $output.popfile("',
-                    $this.workerlogfile($jobname),
-                    '", "Completed Successfully `r`n")
-            }') -join ''
+        $currenttasktowrite = (' Import-Module "', $this.coderoot(), '" -ea stop
+        $output = & {LaunchModule -mpath:"', $this.mpath, $currenttaskinput,
+            '" -tasklogfile "', $this.workerlogfile($jobname),'"} 2>&1
+        UpdateProcessingLog -logfile "', $this.workerlogfile($jobname),
+            '" -sample $output -erroroutput $output.output') -join ''
         #
         $this.SetFile($this.workertaskfile($jobname), $currenttasktowrite)
         #
@@ -403,7 +416,7 @@ class astropathwftools : sampledb {
      Usage: $this.WaitAny()
     ----------------------------------------- #>
     [void]WaitAny(){
-        $run = @(Get-Job | Where-Object { $_.State -eq 'Running'}).id
+        $run = @(Get-Job).id
         $myevent = ''
         While(!$myevent){
             #
@@ -457,7 +470,6 @@ class astropathwftools : sampledb {
             Where-Object { $_.State -eq 'Completed'}
         #
         if ($donejobs){
-            $donejobs | Remove-Job
             $donejobs | ForEach-Object {
                 #
                 $this.checkpsexeclog($_.Name)
@@ -465,6 +477,9 @@ class astropathwftools : sampledb {
                 $this.updatecurrentworker($_.Name, 'IDLE')
                 #
             }
+            #
+            $donejobs | Remove-Job
+            #
         }
         #
     }
@@ -487,17 +502,16 @@ class astropathwftools : sampledb {
     [void]checkpsexeclog($jobname){
         #
         $psexeclog = $this.workertasklog($jobname)
-        $workertaskfile = $this.workertaskfile($jobname)
         $psexectask = $this.getcontent($psexeclog)
         #
         if ($psexectask -match 'PsExec could not start powershell'){
             $this.writeoutput(" task could not be started on the remote machine, check psexec input")
             $this.writeoutput(" $psexectask")
-            $this.CheckTaskLog($workertaskfile, 'ERROR')
+            $this.CheckTaskLog($jobname, 'ERROR')
         } elseif ($psexectask -match 'error code 1'){
             $this.writeoutput(" powershell task did not exit successfully, might be a syntax error")
             $this.writeoutput(" $psexectask")
-            $this.CheckTaskLog($workertaskfile, 'ERROR')
+            $this.CheckTaskLog($jobname, 'ERROR')
         }
         #
         $this.removefile($psexeclog)
@@ -531,9 +545,9 @@ class astropathwftools : sampledb {
         #
         $currentworkerstrings = $this.parseJobName($jobname)
         $currentworker = $this.worker_data | Where-Object {
-            $_.server -match $currentworkerstrings[0] -and 
-            $_.location -match $currentworkerstrings[1] -and 
-            $_.module -match $currentworkerstrings[2]
+            $_.server -contains $currentworkerstrings[0] -and 
+            $_.location -contains $currentworkerstrings[1] -and 
+            $_.module -contains $currentworkerstrings[2]
         }
         $currentworker.status = $newstatus
         #
@@ -586,8 +600,8 @@ class astropathwftools : sampledb {
             $this.writeoutput(" "+$_.Exception.Message)
             $this.writeoutput(" $ID")
             $this.writeoutput(" SlideID: $cslideid")
-            $this.writeoutput(" SlideID: $cbatchid")
-            $this.writeoutput(" SlideID: $cproject")
+            $this.writeoutput(" BatchID: $cbatchid")
+            $this.writeoutput(" ProjectID: $cproject")
             return
         }
         #
@@ -621,7 +635,7 @@ class astropathwftools : sampledb {
     ----------------------------------------- #>
     [string]DefJobName($currentworker){
         return ($currentworker.server,
-            $currentworker.location, $currentworker.module) -join '_'     
+            $currentworker.location, $currentworker.module) -join '.'     
     }
     <# -----------------------------------------
      parseJobName
@@ -630,7 +644,7 @@ class astropathwftools : sampledb {
      Usage: $this.parseJobName($currentworker)
     ----------------------------------------- #>
     [array]parseJobName($jobname){
-        return ($jobname -split '_')   
+        return ($jobname -split '\.')   
     }
     <# -----------------------------------------
      workertasklog

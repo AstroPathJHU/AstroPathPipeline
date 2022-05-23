@@ -10,11 +10,13 @@
         [Parameter()][string]$antibody='',
         [Parameter()][string]$algorithm='',
         [Parameter()][string]$informvers='',
+        [Parameter()][string]$tasklogfile='',
         [Parameter()][switch]$test
+
     )
     #
     if ($PSBoundParameters.test){
-        $inp = $( & $module $PSBoundParameters)    
+        $inp = initmodule -task $PSBoundParameters -module $module -test    
         return $inp
     }
     #

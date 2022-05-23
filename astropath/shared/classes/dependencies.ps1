@@ -21,7 +21,7 @@
     }
     #
     [string]$nolog_modules = '^' + (@('stain', 'scan','scanvalidation', 
-        'transfer', 'batchmicomp','imageqa') -join '$|^') + '$'
+        'transfer', 'batchmicomp', 'batchflatfield', 'imageqa') -join '$|^') + '$'
     #
     [string]$empty_time = 'NA'
     #
@@ -180,15 +180,26 @@
             return @($true)
         }
         #
-        $loglines = $this.modulelogs.($cmodule).($this.project)
-        $vers = $this.setlogvers($cmodule)
         $ID = $this.setlogid($cmodule)
+        $loglines = $this.selectloglines(
+            $this.modulelogs.($cmodule).($this.project), $ID
+        )
+        $vers = $this.setlogvers($cmodule)
         #
         if ($antibody){
             $filteredloglines = $this.filterloglines($loglines, $ID, $vers, $antibody)
         } else {
             $filteredloglines = $this.filterloglines($loglines, $ID, $vers)
         }
+        #
+        $this.setlogtimes($filteredloglines, $cmoduleinfo)
+        #
+        return ($this.deflogstatus($filteredloglines.startdate,
+            $filteredloglines.finishdate, $filteredloglines.errorline, $dependency))
+        #
+    }
+    #
+    [void]setlogtimes($filteredloglines, $cmoduleinfo){
         #
         if ($filteredloglines.startdate){
             $cmoduleinfo.StartTime = $filteredloglines.startdate
@@ -198,7 +209,7 @@
         #
         if ($filteredloglines.startdate -and 
             $filteredloglines.finishdate -and
-            (get-date $filteredloglines.finishdate) -gt 
+            (get-date $filteredloglines.finishdate) -ge 
                 (get-date $filteredloglines.startdate)
         ){
                 $cmoduleinfo.FinishTime = $filteredloglines.finishdate
@@ -207,9 +218,6 @@
         }
         #
         $cmoduleinfo.Errorline = $filteredloglines.errorline
-        #
-        return ($this.deflogstatus($filteredloglines.startdate,
-            $filteredloglines.finishdate, $filteredloglines.errorline, $dependency))
         #
     }
     #
@@ -304,11 +312,11 @@
             $errorlogical -or (
                 !$dependency -and $finishdate -and 
                 ($finishdate -ne $this.empty_time) -and
-                (get-date $finishdate) -gt (get-date $startdate)
+                (get-date $finishdate) -ge (get-date $startdate)
             ) -or (
                 $dependency -and (!$finishdate -or 
                 ($finishdate -eq $this.empty_time) -or
-                (get-date $finishdate) -le (get-date $startdate))
+                (get-date $finishdate) -lt (get-date $startdate))
             )
         ){
             if ($errorlogical){
@@ -403,7 +411,7 @@
             return 1
         } 
         #
-        $check = $this.versiondependentchecks($cmodule)
+        $check = $this.checkversiondependencies($cmodule)
         #
         if ($check){
             return $check
@@ -422,7 +430,6 @@
         return 3
         #
     }
-    #
     <# -----------------------------------------
      Aggregatebatches
      check that all slides from each unqiue batch are on the list
@@ -486,43 +493,56 @@
         #
     }
     #
-    [int]versiondependentchecks($cmodule){
+    [int]checkv1dependencies($cmodule){
         #
-        $vers = $this.moduleinfo.($cmodule).version
-        if ($vers -match '0.0.1'){
-            switch -regex ($cmodule){
-                batchmicomp {return 3}
-                batchflatfield{
-                    if ($this.checklog($cmodule, $true)){
-                        return 2
-                    }
+        switch -regex ($cmodule){
+            batchmicomp {return 3}
+            batchflatfield{
+                if ($this.checklog($cmodule, $true)){
+                    return 2
                 }
-                warpoctets {return 3}
-                batchwarpkeys {return 3}
-                batchwarpfits {return 3}
-
             }
-        } else {
-            switch -regex ($cmodule){
-                transfer{
-                    if ($this.checklog($cmodule, $true)){
-                        return 2
-                    }
+            warpoctets {return 3}
+            batchwarpkeys {return 3}
+            batchwarpfits {return 3}
+        }
+        #
+        return 0
+        #
+    }
+    #
+    [int]checkv2dependencies($cmodule){
+        #
+        switch -regex ($cmodule){
+            transfer{
+                if ($this.checklog($cmodule, $true)){
+                    return 2
                 }
-                scan{
-                    if ($this.checklog($cmodule, $true)){
-                        return 2
-                    }
+            }
+            scan{
+                if ($this.checklog($cmodule, $true)){
+                    return 2
                 }
-                scanvalidation{
-                    if ($this.checklog($cmodule, $true)){
-                        return 2
-                    }
+            }
+            scanvalidation{
+                if ($this.checklog($cmodule, $true)){
+                    return 2
                 }
             }
         }
         #
         return 0
+        #
+    }
+    #
+    [int]checkversiondependencies($cmodule){
+        #
+        $vers = $this.moduleinfo.($cmodule).version
+        if ($vers -match '0.0.1'){
+            return $this.checkv1dependencies($cmodule)
+        } else {
+            return $this.checkv2dependencies($cmodule)
+        }
         #
     }
     #

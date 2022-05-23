@@ -20,6 +20,7 @@
     [switch]$teststatus = $false
     [array]$newtasks
     [string]$processname
+    [string]$processid
     [hashtable]$softwareurls = @{
         'Miniconda3' = 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe';
         'MikTeX' = '';
@@ -37,7 +38,10 @@
         'NET' = @('')
     }
     #
-    sharedtools(){$this.processname = ([System.Diagnostics.Process]::GetCurrentProcess()).name }
+    sharedtools(){
+        $this.processname = ([System.Diagnostics.Process]::GetCurrentProcess()).name 
+        $this.processid = ([System.Diagnostics.Process]::GetCurrentProcess()).name 
+    }
     #
     [string]pyinstalllocation(){
          $str = '\\' + $this. defserver() + 
@@ -383,8 +387,10 @@
     }
     #
     [void]checkNET(){
-        if (!(Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Release -ge 461808){
-            Throw 'Please install .NET framework 4.7.2 or greater to run code'
+        if ($this.iswindows()){
+            if (!(Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full").Release -ge 461808){
+                Throw 'Please install .NET framework 4.7.2 or greater to run code'
+            }
         }
     }
     #

@@ -52,7 +52,7 @@
         #
         $scans = $this.spathscans()
         #
-        if ($scans -or (test-path $this.basepath)){
+        if ($scans -or ([System.IO.Directory]::Exists($this.basepath))){
             return $true
         }
         #
@@ -62,7 +62,7 @@
     #
     [switch]testscanfiles(){
         #
-        if (test-path $this.basepath){
+        if ([System.IO.Directory]::Exists($this.basepath)){
             return $true
         }
         #
@@ -70,8 +70,9 @@
         #
         if ($scans){
             foreach ($scan in $scans){
-                $file = get-childitem ($scan.fullname, '*' -join '') -Include 'annotations.xml'
-                if (get-content $file | Select-String "Acquired"){
+                if (
+                    $this.checkforcontents($scan.fullname, 'annotations.xml', 'Acquired')
+                ){
                     return $true
                 }
             }
@@ -83,7 +84,7 @@
     #
     [switch]testscanvalidationfiles(){
         #
-        if (test-path $this.basepath){
+        if ([System.IO.Directory]::Exists($this.basepath)){
             return $true
         }
         #
@@ -91,8 +92,7 @@
         #
         if ($scans){
             foreach ($scan in $scans){
-                $file = get-childitem ($scan.fullname, '*' -join '') -Include 'BatchID.txt'
-                if ($file){
+                if ($this.checkforfiles('BatchID.txt')){
                     return $true
                 }
             }
@@ -103,10 +103,8 @@
     }
     #
     [switch]testtransferfiles(){
-        #
-        $im3s = $this.countfiles(($this.Scanfolder() + '\MSI'), 'im3')
         #    
-        if ($im3s -eq 0){
+        if (!($this.checkforfiles('im3'))){
             return $false
         }
         #
@@ -126,14 +124,14 @@
     }
     #
     [void]testim3mainfolder(){
-        if (!(test-path $this.im3mainfolder())){
+        if (!([System.IO.Directory]::Exists($this.im3mainfolder()))){
             Throw "im3 folder not found for:" + $this.im3mainfolder()
         }
     }
     #
     [switch]testmeanimagefiles(){
         #
-        if ($this.vers -match '0.0.1'){
+        if ($this.moduleinfo.meanimage.version -match '0.0.1'){
             #
             return $this.testfiles($this.im3mainfolder(), $this.meanimagereqfilesv1)
             #
@@ -166,7 +164,7 @@
     }
     #
     [switch]testbatchflatfieldfiles(){
-        if ($this.moduleinfo.batchflatfield.vers -notmatch '0.0.1'){
+        if ($this.moduleinfo.batchflatfield.version -notmatch '0.0.1'){
             return $this.testpybatchflatfield()
         } else {
             return $this.testbatchflatfield()
@@ -175,7 +173,7 @@
     #
     [switch]testbatchflatfield(){
         #
-        if (!(test-path $this.batchflatfield())){
+        if (!([System.IO.File]::Exists($this.batchflatfield()))){
             return $false
         }
         #
@@ -194,7 +192,7 @@
             return $false
         }
         #
-        if (!(test-path $this.pybatchflatfieldfullpath())){
+        if (!([System.IO.File]::Exists( $this.pybatchflatfieldfullpath()))){
             return $false
         }
         #
@@ -203,20 +201,17 @@
     #
     [switch]testwarpoctets(){
         #
-        $logfile = $this.basepath, '\', $this.slideid,
-            '\logfiles\', $this.slideid, '-warpoctets.log' -join ''
-        #
-        if (test-path $logfile){
-            $log = $this.importlogfile($logfile)
+        if ([System.IO.File]::Exists($this.slidelogbase('warpoctets'))){
+            $log = $this.importlogfile($this.slidelogbase('warpoctets'))
             if ($log.Message -match "Sample is not good"){
                 return $true
             }
         }
         #
         $p = ($this.meanimagefolder() + '\' +
-         $this.slideid + '-mask_stack.bin')
+            $this.slideid + '-mask_stack.bin')
         #
-        if (!(test-path $p)){
+        if (!([System.IO.File]::Exists($p))){
             return $true
         }
         #
@@ -375,7 +370,7 @@
     -------------------------------------------- #>
     [switch]testfiles($path, [array]$testfiles){
         #
-        if (!(test-path $path)){
+        if (!([System.IO.Directory]::Exists($path))){
             return $false
         }
         #
@@ -392,7 +387,7 @@
     #
     [switch]testfiles($path, $source, [array]$testfiles){
         #
-        if (!(test-path $path)){
+        if (!([System.IO.Directory]::Exists($path))){
             return $false
         }
         #
@@ -420,20 +415,22 @@
 
     [switch]testfile($path, $file){
         #
-        if ($file -match ($this.addslideid -join '|')){
-            $file = $this.slideid + $file
-        }
-        #
-        if ($file -match ($this.addslideidscan -join '|')){
-            $file = $this.slideid + '_' + $this.Scan() +  $file
-        }
-        #
-        if ($file -match ($this.addslideiddot -join '|')){
-            $file = $this.slideid + '.' + $file
+        switch -regex ($file) {
+            ($this.addslideid -join '|'){
+                $file = $this.slideid + $file
+            }
+            #
+            ($this.addslideidscan -join '|'){
+                $file = $this.slideid + '_' + $this.Scan() +  $file
+            }
+            #
+            ($this.addslideiddot -join '|'){
+                $file = $this.slideid + '.' + $file
+            }
         }
         #
         $fullpath = $path + '\' + $file
-        if (!(test-path $fullpath)){
+        if (!([System.IO.File]::Exists($fullpath))){
             return $false
         }
         #
