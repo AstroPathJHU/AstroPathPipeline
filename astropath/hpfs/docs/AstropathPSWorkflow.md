@@ -50,64 +50,64 @@ Defines three tasks files:
     - The log file for the launched task from psexec
 
 ## 5.?.?.3. AstroPath File Change Monitors
-Update dependency table
- - Changes could result in:
-    - New module
-    - Change in dependency
- - Actions:
-    - For new modules, throw an error:
-       - Must restart
-    - For change in dependency:
-       - Update dependencies
-       - Update all samples
-       - Update all module queues
-Update cohorts file, paths file, config file 
- - Changes could result in:
-    - New project
-    - Change in project location 
-    - Update to version for a module
-    - Update to module status for a project
- - Actions:
-    - Update cohorts_data for new projects
-       - Only includes projects in config, cohorts, and paths file
-       - Checks that the dpath \ dname exists
-    - Update $this.allprojects, $this.project_data (module projects turned on)
-    - For project with changed row rerun sample db and module db. 
-    - For new project
-       - Add the file watchers 
-       - Slides will be added on running them
-Update to slide file
- - Changes could result in:
-    - updated slide data
-    - new slides
- - Actions:
-    - Update the slide_data in the workflow
-Update to ffmodels, corrmodels, micomp
- - Changes could result in:
-    - Change in dependencies for slides
- - Actions:
-    - Get the new slide rows and update slide statuses
-Update to worker_file:
- - Changes could result in:
-    - Updated workers or worker status
- - Actions 
-    - should update the worker status in the code base
-    - should try to relaunch tasks
-Update to main inform queue
- - Changes could result in:
- - Actions 
-Update to local inform queue
- - Changes could result in:
- - Actions
-Update to log files
- - Changes could result in:
- - Actions
-Update to mergeconfig files
- - Changes could result in:
- - Actions
-Update to image qa files
- - Changes could result in:
- - Actions
+- Update dependency table
+    - Changes could result in:
+       - New module
+       - Change in dependency
+    - Actions:
+       - For new modules, throw an error:
+          - Must restart
+       - For change in dependency:
+          - Update dependencies
+          - Update all samples
+          - Update all module queues<br>
+ - Update cohorts file, paths file, config file 
+    - Changes could result in:
+       - New project
+       - Change in project location 
+       - Update to version for a module
+       - Update to module status for a project
+    - Actions:
+       - Update cohorts_data for new projects
+          - Only includes projects in config, cohorts, and paths file
+          - Checks that the dpath \ dname exists
+       - Update $this.allprojects, $this.project_data (module projects turned on)
+       - For project with changed row rerun sample db and module db. 
+       - For new project
+          - Add the file watchers 
+          - Slides will be added on running them
+- Update to slide file
+    - Changes could result in:
+       - updated slide data
+       - new slides
+    - Actions:
+       - Update the slide_data in the workflow
+ - Update to ffmodels, corrmodels, micomp
+    - Changes could result in:
+       - Change in dependencies for slides
+    - Actions:
+       - Get the new slide rows and update slide statuses
+ - Update to worker_file:
+    - Changes could result in:
+       - Updated workers or worker status
+    - Actions 
+       - should update the worker status in the code base
+       - should try to relaunch tasks
+ - Update to main inform queue
+    - Changes could result in:
+    - Actions 
+ - Update to local inform queue
+    - Changes could result in:
+    - Actions
+ - Update to log files
+    - Changes could result in:
+    - Actions
+ - Update to mergeconfig files
+    - Changes could result in:
+    - Actions
+ - Update to image qa files
+    - Changes could result in:
+    - Actions
 
 ## 5.?.?.4. Adding Modules
 Adding modules to the powershell astropath workflow is easy. There are three steps:
@@ -206,76 +206,76 @@ Optional:
     - Dependencies:
        - meanimage
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
  - batchflatfield
     - Dependencies:
        - batchmicomp
     - Actions:
-       - 	
-    - Output: 
-       - 	
+       - *To be added*
+    - Output:
+       - *To be added*
  - warpoctets
     - Dependencies:
        - batchflatfield
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
  - batchwarpkeys
     - Dependencies:
        - warpoctets
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
  - batchwarpfits
     - Dependencies:
        - batchwarpkeys
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
  - imagecorrection
     - Dependencies:
        - batchwarpfits
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
  - Vminform
     - Dependencies:
        - imagecorrection
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
  - merge
     - Dependencies:
        - vminform
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
  - imageqa
     - Dependencies:
        - merge
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
  - segmaps
     - Dependencies:
        - imageqa
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
  - dbload
     - Dependencies:
        - segmaps
     - Actions:
-       - 	
+       - *To be added*
     - Output: 
-       - 	
+       - *To be added*
