@@ -261,6 +261,20 @@
         #
     }
     #
+    [switch]testinformfiles($cantibody, $algorithm){
+        #
+        $informlogfile = get-content $this.informantibodylogfile($cantibody) | 
+            & { process {  
+                if ($_ -match $algorithm) { $_ }
+            }}
+        if($informlogfile) { 
+            return $true
+        }
+        #
+        return $false
+        #
+    }
+    #
     [switch]testmergefiles($cantibodies){
         #
         $this.getfiles('merge', $true)

@@ -201,9 +201,14 @@
             [FileDownloads]::XML){
             $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
             $sor = $this.sample.xmlfolder()
-            $this.sample.copy($sor, $des, 'xml', 20)
-            if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
-                Throw 'xmls did not download correctly'
+            try {
+                $this.sample.copy($sor, $des, 'xml', 20)
+                if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
+                    Throw 'xmls did not download correctly'
+                }
+            } catch {
+                $this.silentcleanup()
+                Throw $_.Exception
             }
         }
         #

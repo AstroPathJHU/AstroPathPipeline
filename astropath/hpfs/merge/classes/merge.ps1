@@ -28,7 +28,23 @@ Class merge : moduletools {
      Usage: $this.RunMerge()
     ----------------------------------------- #>
     [void]RunMerge(){
+        $this.getalgorithmlist()
         $this.GetMerge()
+    }
+    #
+    [void]getalgorithmlist(){
+        #
+        $this.sample.info('printing algorithms used')
+        $algs = $this.sample.getalgorithms()
+        $algs | foreach-object {
+            $this.sample.setfile(
+                $this.sample.mergealgorithmsfile(),
+                ($_ + '`r`n' )
+            )
+        }
+        #
+        $this.sample.info($algs)
+        #
     }
     <# -----------------------------------------
      GetMerge
@@ -60,6 +76,10 @@ Class merge : moduletools {
      Usage: $this.silentcleanup()
     ----------------------------------------- #>
     [void]silentcleanup(){
+        #
+        if ($this.processvars[4]){
+            $this.sample.removedir($this.processloc)
+        }
         #
     }
 }

@@ -205,6 +205,12 @@
 
     }
     #
+    [string]informantibodylogfile($antibody){
+        return (
+            $this.phenotypefolder(), $antibody, 'batch.log' -join '\'
+        )
+    }
+    #
     [string]cantibodyfolder(){
         return (
             $this.phenotypefolder(), $this.cantibody -join '\'
@@ -215,6 +221,14 @@
         return (
             $this.basepath, $this.slideid, 
                 'inform_data\Phenotyped\Results\Tables' -join '\'
+        )
+
+    }
+    #
+    [string]mergealgorithmsfile(){
+        return (
+            $this.basepath, $this.slideid, 
+                'inform_data\Phenotyped\Results\algorithms.txt' -join '\'
         )
 
     }
@@ -302,6 +316,25 @@
             $this.basepath + '\warping\Project_' +
                 $this.project + '\octets'
         )
+    }
+    #
+    [array]getalgorithms(){
+        #
+        $this.findantibodies() 
+        return (
+            $this.antibodies | 
+            foreach-object {
+                $this.getalgorithms($_)
+            }
+        )
+        #
+    }
+    #
+    [string]getalgorithms($cantibody){
+        #
+        return ((get-content $this.informantibodylogfile($cantibody) | 
+            Where-Object {$_ -match 'algorithm'}) -split 'algorithm')[1].trim()
+        #
     }
     #
     [int]getcount($source, $forceupdate){

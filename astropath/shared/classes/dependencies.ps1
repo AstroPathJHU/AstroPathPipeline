@@ -104,11 +104,15 @@
                 3 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.finish}
                 4 {$this.moduleinfo.($cmodule).($antibody).status = $this.status.na}
                 5 {$this.moduleinfo.($cmodule).($antibody).status = $logoutput[1].Message}
+                6 {$this.moduleinfo.($cmodule).($antibody).status = 'ERROR: batch log algorithm does not match last queued algorithm'}
                 Default {$this.moduleinfo.($cmodule).($antibody).status = $this.status.unknown}
             }
             #
         } else {
             #
+            $taskid = $this.vmq.checkforfinishtask($this.project, 
+                $this.slideid, $antibody)
+            $this.moduleinfo.($cmodule).($antibody).algorithm = $taskid.algorithm
             $this.moduleinfo.($cmodule).($antibody).status = $this.status.running
             #
         }
@@ -370,6 +374,7 @@
     [int]checkvminform($antibody){
         #
         $cmodule = 'vminform'
+        $this.moduleinfo.($cmodule).($antibody).algorithm  = ''
         #
         if ($this.checkpreviousstep($cmodule)){
             return 1
@@ -388,17 +393,26 @@
         $taskid = $this.vmq.checkforreadytask($this.project, 
             $this.slideid, $antibody)
         #
-        $this.moduleinfo.($cmodule).($antibody).taskid = $taskid
+        $this.moduleinfo.($cmodule).($antibody).taskid = $taskid.taskid
+        $this.moduleinfo.($cmodule).($antibody).algorithm = $taskid.algorithm
         #
         if ($taskid){
             return 2
         }
         #
+        $taskid = $this.vmq.checkforfinishtask($this.project, 
+            $this.slideid, $antibody)
+        #
+        $this.moduleinfo.($cmodule).($antibody).taskid = $taskid.taskid
+        $this.moduleinfo.($cmodule).($antibody).algorithm = $taskid.algorithm
+        #
         $logoutput = $this.checklog($cmodule, $antibody, $true)
         if ($logoutput[1]){
             return 5
-        } elseif ($logoutput){
-            return 2
+        }
+        #
+        if (!$this.testinformfiles($antibody, $taskid.algorithm)) {
+            return 6
         }
         #
         return 3
@@ -483,10 +497,10 @@
                 #
             }
             #
-        }
-        #
-        if ($this.moduleinfo.($previousstep).status -ne $this.status.finish){
-            return $true
+        } else {
+            if ($this.moduleinfo.($previousstep).status -ne $this.status.finish){
+                return $true
+            }
         } 
         #
         return $false

@@ -133,10 +133,26 @@ class sampledb : sampletracker {
         $this.writeoutput(" Building sample status database")
         #
         foreach($slide in $this.slide_data){
-            #
             $c = $this.updatesample($c, $ctotal, $slide.slideid)
-            #
         }
+        #
+        $this.progressbarfinish()
+        $this.writeoutput(" Sample status database built")
+        #
+    }
+    #
+    [void]defsampleStages($project){
+        #
+        $c = 1
+        $ctotal = ($this.slide_data |
+            Where-Object {$_.project -contains $project}).count
+        $this.writeoutput(" Building sample status database")
+        #
+        $this.slide_data |
+            Where-Object {$_.project -contains $project} | 
+            & { process {
+                $c = $this.updatesample($c, $ctotal, $_.slideid)
+            }}
         #
         $this.progressbarfinish()
         $this.writeoutput(" Sample status database built")
@@ -392,6 +408,7 @@ class sampledb : sampletracker {
         #
         $this.antibodies | & { process {
             $statusname = ($_ + '_Status')
+            $algname = ($_ + '_Algorithm')
             $startname = ($_ + '_StartTime') 
             $finishname = ($_ + '_FinishTime')
             $cmoduleinfo = $this.moduleinfo.($cmodule).($_)
@@ -399,10 +416,12 @@ class sampledb : sampletracker {
             if ($status -match $this.status.ready){
                 $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
             }
+            #
             $row | Add-Member -NotePropertyMembers @{
                 $statusname =  $status
                 $startname =  $cmoduleinfo.StartTime
                 $finishname =  $cmoduleinfo.FinishTime
+                $algname = $cmoduleinfo.algorithm
             } -PassThru
         }}
         #
@@ -441,10 +460,12 @@ class sampledb : sampletracker {
         $this.antibodies | & { process {
             #
             $statlabel = ($_ + '_Status')
+            $algname = ($_ + '_Algorithm')
             $startlabel = ($_ + '_StartTime')
             $finishlabel = ($_ + '_FinishTime')
             #
             $cmoduleinfo = $this.moduleinfo.($cmodule).($_)
+            $row.algname = $cmoduleinfo.algorithm
             #
             $this.updatemodulesub($cmodule, $slideid, $row, $cmoduleinfo,
                 $statlabel, $startlabel, $finishlabel)
@@ -487,7 +508,7 @@ class sampledb : sampletracker {
         if (
             ($row.($startlabel) -ne $cmoduleinfo.StartTime)
         ) {
-            $row.($startlabel)= $cmoduleinfo.StartTime
+            $row.($startlabel) = $cmoduleinfo.StartTime
         }
         #
         if (
