@@ -11,9 +11,8 @@
 % wd = working directory of current specimen up to inform_data\Phenotyped
 % tim = contains different file and time information
 %%
-function err_val = mywritetolog(wd, sname, logstring, err_str, locs, version, tasktype)
+function err_val = mywritetolog(wd, sname, logstring, err_str, locs, tasktype, version)
 %
-tim = datestr(now,'yyyy-mm-dd HH:MM:SS');
 logp = [wd,'\Phenotyped\Results\', tasktype];
 err_val = 0;
 %
@@ -23,9 +22,7 @@ if locs == 1
         try
             delete([logp,'\*'])
         catch
-            err_val = 9;
-            warning(['ERROR IN path:', wd,' ', sname]);
-            return
+            error(['ERROR IN path:', wd,' ', sname, ' ne:', logp ]);
         end
     else
         mkdir(logp)
@@ -36,9 +33,7 @@ if locs == 1
             try
                 delete([wd,'\Phenotyped\Results\tmp_ForFiguresTables\*'])
             catch
-                err_val = 10;
-                warning(['ERROR IN Results path:', wd,' ', sname]);
-                return
+                error(['ERROR IN Results path:', wd,' ', sname, ' ne:', logp]);
             end
         else
             mkdir (wd,'\Phenotyped\Results\tmp_ForFiguresTables')
@@ -47,8 +42,7 @@ if locs == 1
     %
     % create first line of file
     %
-    str = [logstring, sname, ';MaSS - ',...
-        tasktype, ' protocol started-v',version,';', tim, '\n'];
+    str = ['MaSS-', tasktype, ' protocol started-v',version, '\n'];
     %
     fprintf(str);
     %
@@ -58,7 +52,11 @@ end
 %
 if locs == 2
     %
-    fprintf([logstring, sname, ';',err_str,';', tim, '\n']);
+    if strcmpi(err_str, 'Error:')
+        error(err_str);
+    end
+    %
+    fprintf([err_str, '\n'])
     %
 end
 %

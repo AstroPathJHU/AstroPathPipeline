@@ -60,6 +60,9 @@
 %%
 function CreateImageQAQC(wd, uc, MergeConfig, logstring, allimages)
 %
+filepath = fileparts(mfilename('fullpath'));
+addpath(genpath(filepath))
+%
 version = '0.01.0001';
 if nargin < 4
     logstring = '';
@@ -67,24 +70,25 @@ end
 %
 doseg = 1; %option whether or not to generate images with segmentation maps
 %
-err_val = mywritetolog(wd, uc, logstring, '', 1, version, 'QA_QC');
+err_val = mywritetolog(wd, uc, logstring, '', 1, 'QA_QC', version);
 e_code = err_handl(wd, uc, logstring, [], err_val, 'QA_QC');
 if e_code == 1
     return
 end
 %
+err_str = ['-wd: ', replace(wd, '\', '\\'), ' -sname: ', uc];
+mywritetolog(wd, sname, logstring, err_str, 2, 'QA_QC');
+%
+% get Markers structure
+%
+err_str = ['parsing MergeConfig file: ', replace(MergeConfig, '\', '\\')];
+mywritetolog(wd, sname, logstring, err_str, 2, 'QA_QC');
+%
 % get Markers structure
 %
 try
-    err_str = 'parsing MergeConfig file';
-    mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
     %    
     [Markers, err_val] = createmarks(MergeConfig);
-    %
-    e_code = err_handl(wd, uc, logstring, Markers, err_val, 'QA_QC');
-    if e_code == 1
-        return
-    end
     %
 catch
     err_val = 8;
@@ -92,6 +96,10 @@ catch
     return
 end
 %
+e_code = err_handl(wd, uc, logstring, Markers, err_val, 'QA_QC');
+if e_code == 1
+    return
+end
 %
 % start the parpool if it is not open;
 % attempt to open with local at max cores, if that does not work attempt
@@ -119,16 +127,12 @@ if nargin < 5
     allimages = 0;
 end
 %
+err_str = 'determining hotspot images';
+mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
+%
 try
-    err_str = 'determining hotspot images';
-    mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
     %
     [charts, err_val] = mkpaths(Markers, wd, allimages, doseg);
-    %
-    e_code = err_handl(wd, uc, logstring, Markers, err_val, 'QA_QC');
-    if e_code == 1
-        return
-    end
     %
 catch
     err_val = 11;
@@ -136,19 +140,26 @@ catch
     return
 end
 %
+e_code = err_handl(wd, uc, logstring, Markers, err_val, 'QA_QC');
+if e_code == 1
+    return
+end
+%
+err_str = ['creating output for ', num2str(length(charts)),' fields'];
+mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
+%
 try 
-    err_str = ['creating output for ', num2str(length(charts)),' fields'];
-    mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
     %
     err_val = imageloop(wd, uc, logstring, Markers, charts, doseg);
-    e_code = err_handl(wd, uc, logstring, Markers, err_val, 'QA_QC');
-    if e_code == 1
-        return
-    end
     %
 catch
     err_val = 14;
     err_handl(wd, uc, logstring, Markers, err_val, 'QA_QC');
+    return
+end
+%
+e_code = err_handl(wd, uc, logstring, Markers, err_val, 'QA_QC');
+if e_code == 1
     return
 end
 %
