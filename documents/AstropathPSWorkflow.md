@@ -201,28 +201,36 @@ Optional:
        - shredxml
     - Actions:
        - Performs the meanimage computation on a directory
-    - Output: 
+    - Output:
+       -  A new meanimage folder containing:
+          -  <Slide_ID>-sum_images_squared.bin
+          -  <Slide_ID>-std_err_of_mean_image.bin
+          -  <Slide_ID>-mean_image.bin
  - batchmicomp
     - Dependencies:
        - meanimage
     - Actions:
-       - *To be added*
+       - Finds the set of samples whose mean images should be used to determine a single flatfield correction model
     - Output: 
-       - *To be added*
+       - A meanimagecomparison folder containing:
+          - meanimagecomparison_table.csv
+          - meanimage_comparison_average_over_all_layers.png
  - batchflatfield
     - Dependencies:
        - batchmicomp
     - Actions:
-       - *To be added*
+       - Combines meanimages into a single flatfield correction model
     - Output:
-       - *To be added*
+       - Checks if the batch flatfield folder exists
  - warpoctets
     - Dependencies:
        - batchflatfield
     - Actions:
        - *To be added*
     - Output: 
-       - *To be added*
+       - Check if the slide log base for warpoctets exists, if so:
+          - check if the <Slide_ID>-mask_stack.bin file exists in the meanimage folder
+       - Creates a <Batch_ID>-all_overlap_octets.csv
  - batchwarpkeys
     - Dependencies:
        - warpoctets
