@@ -6,7 +6,6 @@ from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing
 from ...utilities.miscimage import vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
 from ...utilities.optionalimports import pyvips
-from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, StitchAstroPathTissueMaskSample
 from .zoomsamplebase import ZoomSampleBase
