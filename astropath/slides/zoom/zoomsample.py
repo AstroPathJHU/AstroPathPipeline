@@ -395,9 +395,6 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
                 tilex2 -= (newlocalx2 - shifted.shape[1] * onepixel)
                 newlocalx2 -= (newlocalx2 - shifted.shape[1] * onepixel)
               kw = {"atol": 1e-7}
-              print(f"local: {newlocalx1, newlocaly1} {newlocalx2, newlocaly2}")
-              print(f"tile: {tilex1, tiley1} {tilex2, tiley2}")
-              print(f"global: {globalx1, globaly1} {globalx2, globaly2}")
               tileimage[
                 floattoint(float(tiley1/onepixel), **kw):floattoint(float(tiley2/onepixel), **kw),
                 floattoint(float(tilex1/onepixel), **kw):floattoint(float(tilex2/onepixel), **kw),
