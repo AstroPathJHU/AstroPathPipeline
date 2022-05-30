@@ -6,9 +6,8 @@ from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing
 from ...utilities.miscimage import vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
 from ...utilities.optionalimports import pyvips
-from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiffMultiLayer
-from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample
+from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, StitchAstroPathTissueMaskSample
 from .zoomsamplebase import ZoomSampleBase
 
 class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
@@ -538,7 +537,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [AlignSample] + super().workflowdependencyclasses(**kwargs)
+    return [StitchAstroPathTissueMaskSample] + super().workflowdependencyclasses(**kwargs)
 
 def main(args=None):
   ZoomSample.runfromargumentparser(args)
