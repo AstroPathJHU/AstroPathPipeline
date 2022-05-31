@@ -337,6 +337,20 @@ Class vminform : moduletools {
                 -ArgumentList $arginput `
                 *>> $processoutputlog | Out-Null
         #
+        # check if temporary license has expired
+        #
+        foreach ($count in 1..20) {
+            $process = get-process | where-object {$_.MainWindowTitle -eq 'License Expired'}
+                if ($process) {
+                    $process | ForEach-Object{$_.CloseMainWindow()} | out-null
+                    Start-Sleep 20
+                    $this.KillinFormProcess()
+                    $this.silentcleanup()
+                    throw 'inForm temporary license is expired, please follow protocol to renew license'
+                }
+            Start-Sleep 1
+        }
+        #
         # let inform open and close temporary license window
         #
         foreach ($count in 1..20) {
@@ -647,6 +661,15 @@ Class vminform : moduletools {
         $this.sample.info("Data transfer finished")
         #
     }
-#
+    <# -----------------------------------------
+     silentcleanup
+     silentcleanup
+     ------------------------------------------
+     Usage: $this.silentcleanup()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
+        $this.sample.CreateNewDirs($this.outpath)
+    }
+    #
 }
 #

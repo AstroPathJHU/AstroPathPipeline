@@ -166,10 +166,16 @@
             $des = $this.processvars[0] +'\'+
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
             $sor = $this.sample.im3folder()
-            $this.sample.copy($sor, $des, 'im3', 10)
-            if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
-                Throw 'im3s did not download correctly'
+            try {
+                $this.sample.copy($sor, $des, 'im3', 10)
+                if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
+                    Throw 'im3s did not download correctly'
+                }
+            } catch {
+                $this.silentcleanup()
+                Throw $_.Exception
             }
+            
         }
         #
     }
@@ -203,9 +209,14 @@
             [FileDownloads]::XML){
             $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
             $sor = $this.sample.xmlfolder()
-            $this.sample.copy($sor, $des, 'xml', 20)
-            if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
-                Throw 'xmls did not download correctly'
+            try {
+                $this.sample.copy($sor, $des, 'xml', 20)
+                if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
+                    Throw 'xmls did not download correctly'
+                }
+            } catch {
+                $this.silentcleanup()
+                Throw $_.Exception
             }
         }
         #
@@ -286,16 +297,21 @@
     [void]ConvertPath($type){
         $this.sample.info(($type + " data started"))
         $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
-        if ($type -match 'inject'){
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -inject -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shreddat') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -shred -dat -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shredxml') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -shred -xml -verbose 4>&1 >> $externallog
-        } 
+        try {
+            if ($type -match 'inject'){
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -inject -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shreddat') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -shred -dat -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shredxml') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -shred -xml -verbose 4>&1 >> $externallog
+            } 
+        } catch {
+            $this.silentcleanup()
+            Throw $_.Exception
+        }
         #
         $this.parseconvertpathlog($externallog, $type)
         #
@@ -304,34 +320,44 @@
     [void]ConvertPath($type, [array]$images){
         $this.sample.info(($type + " data started"))
         $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
-        if ($type -match 'inject'){
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -images:$images -inject -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shreddat') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shredxml') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
-        } 
+        try {
+            if ($type -match 'inject'){
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -images:$images -inject -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shreddat') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shredxml') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
+            } 
+        } catch {
+            $this.silentcleanup()
+            Throw $_.Exception
+        }
         #
         $this.parseconvertpathlog($externallog, $type)
         #
     }
     #
     [void]ConvertPath($type, $slideid, [array]$images){
-        $this.sample.info(($type + " data started"))
-        $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
-        if ($type -match 'inject'){
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $slideid -images:$images -inject -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shreddat') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shredxml') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
-        } 
+        try {
+            $this.sample.info(($type + " data started"))
+            $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
+            if ($type -match 'inject'){
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $slideid -images:$images -inject -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shreddat') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shredxml') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
+            } 
+        } catch {
+            $this.silentcleanup()
+            Throw $_.Exception
+        }
         #
         $this.parseconvertpathlog($externallog, $type)
         #
