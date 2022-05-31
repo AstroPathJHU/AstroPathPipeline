@@ -47,7 +47,7 @@ class launchmodule : mylogger{
         } catch {
             $this.error($_.Exception.Message)
             $this.output = $_
-        } finally { # end messages
+        } finally { # end message
             $this.finish($this.module)
         }
         #
