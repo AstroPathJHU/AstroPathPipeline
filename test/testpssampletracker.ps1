@@ -27,6 +27,7 @@ using module .\testtools.psm1
         #
         $this.testsampletrackerconstructors()
         $sampletracker = sampletracker -mpath $this.mpath -vmq (vminformqueue $this.mpath)
+        #
         $this.testchecklog($sampletracker)
         $this.testmodules($sampletracker)
         #
@@ -105,7 +106,7 @@ using module .\testtools.psm1
         #
         Write-Host '    Modules:' $sampletracker.modules 
         #
-        $cmodules = @('transfer', 'shredxml', 'meanimage', 'batchflatfield', 'batchmicomp', 'imagecorrection',
+        $cmodules = @('scan', 'scanvalidation', 'transfer', 'shredxml', 'meanimage', 'batchflatfield', 'batchmicomp', 'imagecorrection',
             'warpoctets', 'batchwarpkeys', 'batchwarpfits', 'vminform', 'merge', 'imageqa', 'segmaps', 'dbload')
         $out = Compare-Object -ReferenceObject $sampletracker.modules  -DifferenceObject $cmodules
         if ($out){
@@ -386,7 +387,7 @@ using module .\testtools.psm1
     [string]getstatus($sampletracker, $module){
         #
         $sampletracker.getmodulelogs()
-        $sampletracker.preparesample($This.slideid)
+        $sampletracker.preparesample($this.slideid)
         #
         if ($module -contains 'vminform'){
             $status = ''
@@ -524,7 +525,7 @@ using module .\testtools.psm1
         #
         $p2 = $sampletracker.micomp_fullfile($this.mpath)
         #
-        $micomp_data = $sampletracker.importmicomp($sampletracker.mpath, $false)
+        $sampletracker.importmicomp($sampletracker.mpath, $false)
         $newobj = [PSCustomObject]@{
             root_dir_1 = $sampletracker.basepath + '\'
             slide_ID_1 = $sampletracker.slideid
@@ -533,9 +534,9 @@ using module .\testtools.psm1
             layer_n = 1
             delta_over_sigma_std_dev = .95
         }
-        $micomp_data += $newobj
+        $sampletracker.micomp_data += $newobj
         #
-        $micomp_data | Export-CSV $p2 -NoTypeInformation
+        $sampletracker.micomp_data | Export-CSV $p2 -NoTypeInformation
         #
         $this.addbatchflatfieldexamples($sampletracker)
         #

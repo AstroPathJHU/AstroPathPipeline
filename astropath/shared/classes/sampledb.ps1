@@ -162,7 +162,7 @@ class sampledb : sampletracker {
     [int]updatesample($c, $ctotal, $slideid){
         #
         $this.progressbar($c, $ctotal, ($slideid, 'update sample status' -join ' - '))
-        $this.preparesample($slideid)
+        $this.preparesample($slideid, $c, $ctotal)
         $this.progressbar($c, $ctotal, ($slideid, 'update module table' -join ' - '))
         $this.defmoduletables($slideid)
         $c += 1 
@@ -465,7 +465,7 @@ class sampledb : sampletracker {
             $finishlabel = ($_ + '_FinishTime')
             #
             $cmoduleinfo = $this.moduleinfo.($cmodule).($_)
-            $row.algname = $cmoduleinfo.algorithm
+            $row.($algname) = $cmoduleinfo.algorithm
             #
             $this.updatemodulesub($cmodule, $slideid, $row, $cmoduleinfo,
                 $statlabel, $startlabel, $finishlabel)

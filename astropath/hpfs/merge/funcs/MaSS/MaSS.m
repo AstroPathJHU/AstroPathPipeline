@@ -278,7 +278,7 @@ if isempty(gcp('nocreate'))
         end
         %
         if numcores > 12
-            numcores = 24; %#ok<NASGU>
+            numcores = 12; %#ok<NASGU>
         end
         evalc('parpool("local",numcores)');
     catch

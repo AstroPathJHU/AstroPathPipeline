@@ -77,12 +77,12 @@ if e_code == 1
 end
 %
 err_str = ['-wd: ', replace(wd, '\', '\\'), ' -sname: ', uc];
-mywritetolog(wd, sname, logstring, err_str, 2, 'QA_QC');
+mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
 %
 % get Markers structure
 %
 err_str = ['parsing MergeConfig file: ', replace(MergeConfig, '\', '\\')];
-mywritetolog(wd, sname, logstring, err_str, 2, 'QA_QC');
+mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
 %
 % get Markers structure
 %
@@ -147,6 +147,8 @@ end
 %
 err_str = ['creating output for ', num2str(length(charts)),' fields'];
 mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
+err_val = imageloop(wd, uc, logstring, Markers, charts, doseg);
+
 %
 try 
     %

@@ -55,6 +55,16 @@ class sampletracker : dependencies {
         #
     }
     #
+    [void]defmodulestatus($c, $ctotal){
+        #
+        $this.modules | & { process {
+            $this.progressbar($c, $ctotal, ($this.slideid, "update $_" -join ' - ')) 
+            $this.deflogpaths($_)
+            $this.getlogstatus($_)
+        }}
+        #
+    }
+    #
     [void]defmodulestatus(){
         #
         $this.modules | & { process { 
@@ -64,11 +74,23 @@ class sampletracker : dependencies {
         #
     }
     #
+    [void]preparesample($slide, $c, $ctotal){
+        #
+        $this.importslideids($this.mpath)
+        $this.ParseAPIDdef($slide)
+        $this.defbase()
+        $this.moduleinfo.project = $this.project
+        $this.getantibodies()
+        $this.defmodulestatus($c, $ctotal)
+        #
+    }
+    #
     [void]preparesample($slide, $slides){
         #
         $this.ParseAPIDdef($slide.slideid, $slides)
         $this.defbase()
         $this.moduleinfo.project = $this.project
+        $this.getantibodies()
         $this.defmodulestatus()
         #
     }
@@ -79,6 +101,7 @@ class sampletracker : dependencies {
         $this.ParseAPIDdef($slide)
         $this.defbase()
         $this.moduleinfo.project = $this.project
+        $this.getantibodies()
         $this.defmodulestatus()
         #
     }
@@ -87,6 +110,7 @@ class sampletracker : dependencies {
         #
         $this.defbase()
         $this.moduleinfo.project = $this.project
+        $this.getantibodies()
         $this.defmodulestatus()
         #
     }

@@ -598,7 +598,8 @@ Class testtools{
         #
         $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
         #
-        $micomp_data = $inp.sample.ImportCorrectionModels($this.mpath)
+        $inp.sample.ImportCorrectionModels($this.mpath, $false)
+        $micomp_data = $inp.sample.corrmodels_data
         $newobj = [PSCustomObject]@{
             SlideID = $inp.sample.slideid
             Project = $inp.sample.project
@@ -625,7 +626,8 @@ Class testtools{
         #
         $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
         #
-        $micomp_data = $tool.ImportCorrectionModels($this.mpath)
+        $tool.ImportCorrectionModels($this.mpath, $false)
+        $micomp_data = $tool.corrmodels_data
         #
         if (!$tool.slideid){
             return

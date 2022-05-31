@@ -118,8 +118,8 @@ class sampledef : sharedtools{
         #
         $batch = $slides | & {process { 
             if (
-                {$_.BatchID -eq $mbatchid.trim() -and 
-                $_.Project -eq $this.project.trim()}
+                $_.BatchID -eq $mbatchid.trim() -and 
+                $_.Project -eq $this.project.trim()
             ) { $_ }
         }}
         #

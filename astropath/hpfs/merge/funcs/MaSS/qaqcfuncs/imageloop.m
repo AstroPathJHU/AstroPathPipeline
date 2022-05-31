@@ -26,7 +26,7 @@ parfor i2 = 1:length(charts)
         %open mat lab data structure
         %
         err_str = ['CreateQAQC ', log_name, ' started'];
-        mywritetolog(wd, uc, logstring, err_str, 2);
+        mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
         %
         [s{i2}, imageid{i2}, mycol{i2}, imc, simage]...
             =  mkimageid(charts, i2, wd, Markers, doseg); %#ok<PFOUS,PFBNS>
@@ -47,12 +47,12 @@ parfor i2 = 1:length(charts)
             mycol{i2}, imageid{i2}, imc, Markers, ima, imas);
         %
         err_str = ['CreateQAQC ', log_name, ' finished'];
-        mywritetolog(wd, uc, logstring, err_str, 2);
+        mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
         e{i2} = 0;
     catch
         e{i2} = 1;
         err_str = ['ERROR: CreateQAQC ', log_name, ' failed'];
-        mywritetolog(wd, uc, logstring, err_str, 2);
+        mywritetolog(wd, uc, logstring, err_str, 2, 'QA_QC');
     end
     %
 end

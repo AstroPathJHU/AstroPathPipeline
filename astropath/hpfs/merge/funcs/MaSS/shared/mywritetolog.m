@@ -19,11 +19,16 @@ err_val = 0;
 if locs == 1
     %
     if exist(logp,'dir')
-        try
-            delete([logp,'\*'])
-        catch
-            error(['ERROR IN path:', wd,' ', sname, ' ne:', logp ]);
-        end
+        %try
+            if strcmpi(tasktype, 'Tables')
+                delete([logp,'\*'])
+            else
+                rmdir(logp, 's')
+                mkdir(logp)
+            end
+        %catch
+        %    error(['ERROR IN removing path - TASK:', wd,' ', sname, ' PATH:', logp ]);
+        %end
     else
         mkdir(logp)
     end

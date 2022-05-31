@@ -30,6 +30,7 @@ Class merge : moduletools {
     [void]RunMerge(){
         $this.getalgorithmlist()
         $this.GetMerge()
+        $this.GetQAQC()
     }
     #
     [void]getalgorithmlist(){
@@ -53,6 +54,7 @@ Class merge : moduletools {
      Usage: $this.GetMerge()
     ----------------------------------------- #>
     [void]GetMerge(){
+        #
         $this.sample.info("started merge")
         $taskname = 'MaSS'
         $matlabtask = ";MaSS('" + $this.sample.informfolder() + "', '" + 
@@ -61,6 +63,15 @@ Class merge : moduletools {
         $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished merge")
         #
+    }
+    <# -----------------------------------------
+     GetQAQC
+        Get QAQC using matlab code
+     ------------------------------------------
+     Usage: $this.GetQAQC()
+    ----------------------------------------- #>
+    [void]GetQAQC(){
+        #
         $this.sample.info("started image QAQC")
         $taskname = 'CreateImageQAQC'
         $matlabtask = ";CreateImageQAQC('" + $this.sample.informfolder() + "', '" + 
@@ -68,6 +79,7 @@ Class merge : moduletools {
             $this.sample.project.PadLeft(2,'0') + ";" + $this.sample.cohort.PadLeft(2, '0') + ";');exit(0);"
         $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished image QAQC")
+        #
     }
     <# -----------------------------------------
      silentcleanup

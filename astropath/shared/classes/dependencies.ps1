@@ -39,7 +39,6 @@
         #
         if ($cmodule -match 'vminform'){
             #
-            $this.getantibodies()
             foreach ($abx in $this.antibodies) {
                 $this.getlogstatussub($cmodule, $abx)
             }
@@ -486,8 +485,6 @@
         }
         #
         if ($previousstep -match 'vminform'){
-            #
-            $this.getantibodies()
             #
             foreach ($abx in $this.antibodies){
                 #

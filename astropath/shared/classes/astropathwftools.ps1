@@ -497,6 +497,8 @@ class astropathwftools : sampledb {
             #
         }
         #
+        $this.CheckCompletedWorkers()
+        #
     }
     #
     [void]checkpsexeclog($jobname){
