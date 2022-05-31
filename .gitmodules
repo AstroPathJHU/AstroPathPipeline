@@ -4,3 +4,6 @@
 [submodule "astropath/hpfs/merge/funcs/--"]
 	path = astropath/hpfs/merge/funcs/--
 	url = https://github.com/AstroPathJHU/MaSS
+[submodule "astropath/hpfs/merge/funcs/MaSS"]
+	path = astropath/hpfs/merge/funcs/MaSS
+	url = https://github.com/AstroPathJHU/MaSS
