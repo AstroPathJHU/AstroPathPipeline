@@ -539,18 +539,16 @@ class aptabletools : fileutils {
         #
     }
     #
-    [void]MergeConfigToCSV([string] $basepath, $batch, $project, $cohort){
+    [void]MergeConfigToCSV($basepath, $batch, $project, $cohort){
         #
         $batchid = ([string]$batch).PadLeft(2, '0')
         #
         $csvfile = $basepath + '\Batch\MergeConfig_' + $batchid + '.csv'
         if (Test-Path $csvfile){
-            Throw ('csv file already created for ' + $basepath)
+           return
         }
         #
-        if (!$this.mergeconfig_data){
-            $this.ImportMergeConfig($basepath, $false) | Out-NULL
-        }
+        $this.mergeconfig_data = $this.importexcel($this.mergeconfig_fullfile($basepath))
         #
         $mergeconfig = $this.mergeconfig_data
         $count = 1
@@ -591,31 +589,25 @@ class aptabletools : fileutils {
             Export-Csv -Path $csvfile -NoTypeInformation
     }
     #
-    [void]MergeConfigToCSV([string] $basepath, $batch){
+    [void]MergeConfigToCSV($basepath, $batchid){
         #
         $this.MergeConfigToCSV(
-            $basepath, $batch, $this.project, $this.cohort)
+            $basepath, $batchid, $this.project, $this.cohort
+        )
+        #
+    }
+    #
+    [void]MergeConfigToCSV(){
+        #
+        $this.MergeConfigToCSV(
+            $this.basepath, $this.batchid, $this.project, $this.cohort
+        )
         #
     }
     #
     [void]ImportMergeConfigCSV([string] $basepath){
         #
-        $micomp_csv_file = $this.mergeconfigcsv_fullfile($basepath)
-        $this.mergeconfig_data = Import-CSV $micomp_csv_file
-    }
-    #
-    [void]findantibodies(){
-        $this.findantibodies($this.basepath)
-    }
-    #
-    [void]findantibodies($basepath){
-        #
-        $this.ImportMergeConfig($basepath)
-        $lintargets = $this.deflineagemarkers()
-        $exprtargets = $this.defexpressionmarkers()
-        #
-        $this.antibodies = $lintargets + $exprtargets
-        #
+        $this.mergeconfig_data = Import-CSV ($this.mergeconfigcsv_fullfile($basepath))
     }
     #
     [array]findantibodies($basepath, $createwatcher){
@@ -631,6 +623,22 @@ class aptabletools : fileutils {
         #
     }
     #
+    [void]findantibodies($basepath){
+        #
+        $this.mergeconfigtocsv()
+        #
+        $this.ImportMergeConfigCSV($basepath)
+        $lintargets = $this.deflineagemarkers()
+        $exprtargets = $this.defexpressionmarkers()
+        #
+        $this.antibodies = $lintargets + $exprtargets
+        #
+    }
+    #
+    [void]findantibodies(){
+        $this.findantibodies($this.basepath)
+    }
+    #
     [void]getantibodies($project){
         #
         if (!($this.allantibodies.($project))){
@@ -644,7 +652,10 @@ class aptabletools : fileutils {
     }
     #
     [void]getantibodies(){
+        #
+        $this.mergeconfigtocsv()
         $this.getantibodies($this.project)
+        #
     }
     #
     [array]deflineagemarkers(){

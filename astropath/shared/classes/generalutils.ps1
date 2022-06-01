@@ -209,8 +209,8 @@
         #
     }
     #
-    [DateTime]getformatdate(){
-        return (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+    [string]getformatdate(){
+        return ([string](Get-Date -Format "yyyy-MM-dd HH:mm:ss"))
     }
     <# ------------------------------------------
     LastWrite
