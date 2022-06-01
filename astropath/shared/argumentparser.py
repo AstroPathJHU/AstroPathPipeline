@@ -57,6 +57,7 @@ class InitAndRunFromArgumentParserBase(RunFromArgumentParserBase):
     initkwargs = cls.initkwargsfromargumentparser(parsed_args_dict)
     misckwargs = cls.misckwargsfromargumentparser(parsed_args_dict)
     runkwargs = cls.runkwargsfromargumentparser(parsed_args_dict)
+    parsed_args_dict.pop(argparse.SUPPRESS, None)
 
     if parsed_args_dict:
       raise TypeError(f"Unused command line options:\n{parsed_args_dict}")
