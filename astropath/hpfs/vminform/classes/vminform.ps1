@@ -92,12 +92,12 @@ Class vminform : moduletools {
         #
     }
     <# -----------------------------------------
-     RunBatchInForm
-     Run the batch process 
+     RunVMinForm
+     Run the virtual machine inform process 
      ------------------------------------------
-     Usage: $this.RunBatchInForm()
+     Usage: $this.RunVMinForm()
     ----------------------------------------- #>
-    [void]Runvminform(){
+    [void]RunVMinForm(){
         #
         $this.sample.createnewdirs($this.outpath)
         $this.DownloadFiles()

@@ -32,7 +32,7 @@ Function vminform {
      #
      $inp = [vminform]::new($task, $log)
      if ($e -ne 1){
-         $inp.Runvminform()
+         $inp.RunVMinForm()
      } else{
         return $inp
      }
