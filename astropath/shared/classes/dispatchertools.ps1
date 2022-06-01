@@ -9,28 +9,17 @@ class DispatcherTools : queue {
     #
     DispatcherTools($mpath, $module, $cred) : base($mpath, $module){
         #
-        $this.init($cred)
-        $this.Run()
-        #
     }
     #
     DispatcherTools($mpath, $module, $project, $cred) : base($mpath, $module, $project){
-        #
-        $this.init($cred)
-        $this.Run()
         #
     }
     #
     Dispatchertools($mpath, $module, $project, $slideid, $cred) : base($mpath, $module, $project, $slideid){
         #
-        $this.init($cred)
-        $this.Run()
-        #
     }
     #
     Dispatchertools($mpath, $module, $project, $slideid, $test, $cred) : base($mpath, $module){
-        # constructor for testing code will not run
-        $this.init($cred)
         #
     }
     #

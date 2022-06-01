@@ -20,6 +20,9 @@ Class merge : moduletools {
     #
     merge([hashtable]$task, [launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample){
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs\MaSS"'
+        if ($this.processvars[4]){
+            $this.sample.createdirs($this.processloc)
+        }
     }
     <# -----------------------------------------
      RunMerge
@@ -92,6 +95,12 @@ Class merge : moduletools {
         if ($this.processvars[4]){
             $this.sample.removedir($this.processloc)
         }
+        #
+    }
+    #
+    [void]cleanup(){
+        #
+        $this.silentcleanup()
         #
     }
 }

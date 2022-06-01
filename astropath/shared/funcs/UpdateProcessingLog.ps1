@@ -20,11 +20,11 @@ function UpdateProcessingLog {
                 $sample.popfile($logfile, ($errormess + $count + $endline))
                 $sample.popfile($logfile, ($errormess + $_.Exception.Message + $endline))
                 $s = $_.ScriptStackTrace.replace("at", "`t at")
-                $output.popfile($logfie, ($errormess + $s + $endline))
+                $sample.popfile($logfie, ($errormess + $s + $endline))
                 $count += 1
             }
         } else {
-            $output.popfile($logfile, "INFO: Task completed successfully `r`n")
+            $sample.popfile($logfile, "INFO: Task completed successfully `r`n")
         }
     } 
     #

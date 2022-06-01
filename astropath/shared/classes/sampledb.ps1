@@ -12,6 +12,7 @@ class sampledb : sampletracker {
     [vminformqueue]$vmq
     [hashtable]$moduleobjs = @{}
     [hashtable]$moduletaskqueue = @{}
+    [switch]$wfon = $true
     #
     [string]$vminform_nonab_keys = (@('project','slidelog','mainlog','starttime',
         'finishtime','version','status') -join '|')
@@ -30,10 +31,6 @@ class sampledb : sampletracker {
     }
     #
     sampledbinit(){
-        #
-        $this.writeoutput("Starting the AstroPath Pipeline")
-        $this.writeoutput(" Imported AstroPath tables from: " + $this.mpath)
-        $this.writeoutput(" Modules: " + $this.modules)
         #
         $this.defmodulequeues()
         $this.status_settings = @{

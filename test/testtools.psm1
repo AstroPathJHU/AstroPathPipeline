@@ -28,10 +28,10 @@ Class testtools{
     [string]$apfile_temp_constant = 'Template.csv'
     [string]$pybatchwarpingfiletest = 'warping_BatchID_08.csv'
     [string]$batchflatfieldgtest = 'BatchID_08'
-    [hashtable]$task 
+    [hashtable]$task
     [string]$informvers = '2.4.8'
-    [string]$informantibody = 'CD8'
-    [string]$informproject = 'blah.ifr'
+    [string]$informantibody = 'FoxP3'
+    [string]$informproject = 'FoxP3_Phenotyping_NE_v4_EC.ifr'
     #
     testtools(){
        $this.importmodule()
@@ -307,7 +307,7 @@ Class testtools{
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
             Throw ('user defined and ['+$this.class+'] defined tasks do not match')
         }
-        Write-Host ('python ['+$this.class+'] input matches -- finished')
+        Write-Host ('['+$this.class+'] input matches -- finished')
         #
     }
     #

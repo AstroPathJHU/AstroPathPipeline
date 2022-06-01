@@ -58,6 +58,27 @@ class aptabletools : fileutils {
     #
     [string]$node_idle = 'IDLE'
     #
+    $color_hex = @{
+        Red = 'D10000'
+        R = 'D10000'
+        Green = '11FF00'
+        G = '11FF00'
+        Blue = '888888'
+        B = '888888'
+        Cyan = '0077FF'
+        C = '0077FF'
+        Yellow = 'FFF300'
+        Y = 'FFF300'
+        Magenta = 'FF00FF'
+        M = 'FF00FF'
+        White = 'FFFFFF'
+        W = 'FFFFFF'
+        Black = '000000'
+        K = '000000'
+        Orange = '923D00'
+        O = '923D00'
+    }
+    #
     [string]apfullname($mpath, $file){
         return ($mpath + '\' + $file)
     }
@@ -466,6 +487,18 @@ class aptabletools : fileutils {
         #
     }
     #
+    [string]mergeconfigcsv_fullfile($basepath){
+        #
+        $mergefile = get-childitem ($basepath + '\Batch\*') "MergeConfig*csv"
+        #
+        if (!$mergefile){
+            Throw ('merge config file could not be found for ' + $basepath)
+        }
+        #
+        return $mergefile[0].fullname
+        #
+    }
+    #
     [void]ImportMergeConfig([string] $basepath, $createwatcher){
         #
         $micomp_csv_file = $this.mergeconfig_fullfile($basepath)
@@ -504,6 +537,71 @@ class aptabletools : fileutils {
             }
         }}
         #
+    }
+    #
+    [void]MergeConfigToCSV([string] $basepath, $batch, $project, $cohort){
+        #
+        $batchid = ([string]$batch).PadLeft(2, '0')
+        #
+        $csvfile = $basepath + '\Batch\MergeConfig_' + $batchid + '.csv'
+        if (Test-Path $csvfile){
+            Throw ('csv file already created for ' + $basepath)
+        }
+        #
+        if (!$this.mergeconfig_data){
+            $this.ImportMergeConfig($basepath, $false) | Out-NULL
+        }
+        #
+        $mergeconfig = $this.mergeconfig_data
+        $count = 1
+        foreach ($row in $mergeconfig) {
+            $row | Add-Member -NotePropertyName Project `
+                -NotePropertyValue $project -PassThru
+            $row | Add-Member -NotePropertyName Cohort  `
+                -NotePropertyValue $cohort -PassThru
+            $row | Add-Member -NotePropertyName layer `
+                -NotePropertyValue $count -PassThru
+            $row.Colors = $this.color_hex.($row.Colors)
+            $count++
+        }
+        #
+        $AFlayer = [PSCustomObject]@{
+            Project = $project
+            Cohort = $cohort
+            BatchID = $batch
+            layer = $count
+            Opal = 'AF'
+            Target = 'NA'
+            Compartment = 'Nucleus'
+            TargetType = 'NA'
+            CoexpressionStatus = 'NA'
+            SegmentationStatus = '0'
+            SegmentationHierarchy = '0'
+            NumberofSegmentations = '0'
+            ImageQA = 'NA'
+            Colors = $this.color_hex.('Black')
+        }
+        $mergeconfig += $AFlayer
+        #
+        $mergeconfig | 
+            Select-Object -Property Project,Cohort,BatchID,layer, `
+                Opal,Target,Compartment,TargetType,CoexpressionStatus, `
+                SegmentationStatus,SegmentationHierarchy, `
+                NumberofSegmentations,ImageQA,Colors | 
+            Export-Csv -Path $csvfile -NoTypeInformation
+    }
+    #
+    [void]MergeConfigToCSV([string] $basepath, $batch){
+        #
+        $this.MergeConfigToCSV(
+            $basepath, $batch, $this.project, $this.cohort)
+        #
+    }
+    #
+    [void]ImportMergeConfigCSV([string] $basepath){
+        #
+        $micomp_csv_file = $this.mergeconfigcsv_fullfile($basepath)
+        $this.mergeconfig_data = Import-CSV $micomp_csv_file
     }
     #
     [void]findantibodies(){

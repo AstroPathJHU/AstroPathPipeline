@@ -278,7 +278,7 @@
     [string]mergeconfigfile(){
         return (
             $this.basepath + '\Batch\MergeConfig_' + 
-                $this.BatchID
+                $this.BatchID + '.xlsx'
         )
     }
     #

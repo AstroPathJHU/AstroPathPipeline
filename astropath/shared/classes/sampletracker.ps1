@@ -10,11 +10,21 @@
 class sampletracker : dependencies {
     #
     [vminformqueue]$vmq
+    [switch]$wfon = $false
     #
     sampletracker($mpath) : base ($mpath){
         #
+        if ($this.wfon){
+            $this.writeoutput("Starting the AstroPath Pipeline")
+            $this.writeoutput(" Importing AstroPath tables from: " + $this.mpath)
+        }
         $this.importaptables($this.mpath, $false)
         $this.getmodulestatus()
+        #
+        if ($this.wfon){
+            $this.writeoutput(" AstroPath Modules: " + $this.modules)
+            $this.writeoutput(" Importing AstroPath logs")
+        }
         $this.getmodulelogs()
         #
     }
@@ -55,10 +65,14 @@ class sampletracker : dependencies {
         #
     }
     #
+    sampletrackerinit(){
+        
+    }
+    #
     [void]defmodulestatus($c, $ctotal){
         #
         $this.modules | & { process {
-            $this.progressbar($c, $ctotal, ($this.slideid, "update $_" -join ' - ')) 
+            $this.progressbar($c, $ctotal, ($this.slideid, "update [$_]" -join ' - ')) 
             $this.deflogpaths($_)
             $this.getlogstatus($_)
         }}

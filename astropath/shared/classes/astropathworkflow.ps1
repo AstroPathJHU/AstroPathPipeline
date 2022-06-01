@@ -73,4 +73,10 @@
             Out-String)
     }
     #
+    [void]visTABLE($mytable){
+        Write-host ($mytable |
+            Format-Table |
+            Out-String)
+    }
+    #
  }
