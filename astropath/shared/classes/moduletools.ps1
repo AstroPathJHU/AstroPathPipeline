@@ -234,18 +234,24 @@
             [FileDownloads]::FLATWIM3){
             $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\flatw'
             $sor = $this.sample.flatwim3folder()
-            $this.sample.copy($sor, $des, 'im3', 30)
-            $flatwfiles = @()
-            $flatwfiles += $this.sample.listfiles($des, '*')
-            $misnamedfiles = $flatwfiles -cmatch '.IM3'
-            foreach ($file in $misnamedfiles) {
-                $newfilename = (Split-Path $file -Leaf) -replace 'IM3', 'im3'
-                Rename-Item $file $newfilename
+            try {
+                $this.sample.copy($sor, $des, 'im3', 30)
+                $flatwfiles = @()
+                $flatwfiles += $this.sample.listfiles($des, '*')
+                $misnamedfiles = $flatwfiles -cmatch '.IM3'
+                foreach ($file in $misnamedfiles) {
+                    $newfilename = (Split-Path $file -Leaf) -replace 'IM3', 'im3'
+                    Rename-Item $file $newfilename
+                }
+                #if ($this.getcount('flatwim3', $true) -eq (get-childitem $des).count))
+                if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
+                    Throw 'flatw im3s did not download correctly'
+                }
+            } catch {
+                $this.silentcleanup()
+                Throw $_.Exception
             }
-            #if ($this.getcount('flatwim3', $true) -eq (get-childitem $des).count))
-            if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
-                Throw 'flatw im3s did not download correctly'
-            }
+            
         }
         #
     }
