@@ -19,8 +19,9 @@
     [string]$mainqueue_path = '\across_project_queues'
     [string]$localqueue_path = '\progress_tables'
     [string]$project
-    [string]$mainqueueheaders = 'Project,Cohort,SlideID,Status,isGood,StartTime,FinishTime'
-    [string]$localqueueheaders = 'Project,Cohort,SlideID,Status,isGood,StartTime,FinishTime'
+    [string]$mainqueueheaders = 'Project,Cohort,BatchID,SlideID,Status,isGood,StartTime,FinishTime'
+    [string]$localqueueheaders = 'Project,Cohort,BatchID,SlideID,Status,isGood,StartTime,FinishTime'
+    [array]$localqueueheadersvm =  @('Project','Cohort','BatchID','SlideID')
     [string]$refobject 
     [string]$type = 'table'
     #
@@ -595,7 +596,7 @@
         #
         $this.getantibodies($project)
         #
-        $headers = @('Project','Cohort','SlideID')
+        $headers = $this.localqueueheadersvm
         #
         $this.antibodies | foreach-object{
             $statusname = ($_ + '_Status')

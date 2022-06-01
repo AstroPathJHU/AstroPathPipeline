@@ -22,7 +22,7 @@ class sampledb : sampletracker {
     sampledb(): base ('\\bki04\astropath_processing'){
         $this.sampledbinit()
     }
-    sampledb($mpath) : base ($mpath) {
+    sampledb($mpath) : base ($mpath) {ZW
         $this.sampledbinit()
     }
     sampledb($mpath, $projects) : base ($mpath){
@@ -161,7 +161,7 @@ class sampledb : sampletracker {
         $this.progressbar($c, $ctotal, ($slideid, 'update sample status' -join ' - '))
         $this.preparesample($slideid, $c, $ctotal)
         $this.progressbar($c, $ctotal, ($slideid, 'update module table' -join ' - '))
-        $this.defmoduletables($slideid)
+        $this.defmoduletables()
         $c += 1 
         return $c
         #
@@ -175,10 +175,10 @@ class sampledb : sampletracker {
     ------------------------------------------
     Usage: $this.defmoduletables()
     ----------------------------------------- #>
-    [void]defmoduletables($slideid){
+    [void]defmoduletables(){
         #
         $this.modules | & { process {
-            $this.refreshmoduledb($_, $slideid)
+            $this.refreshmoduledb($_, $true)
         }}
         #
     }
@@ -318,12 +318,12 @@ class sampledb : sampletracker {
     ------------------------------------------
     Usage: $this.refreshmoduledb(cmodule, slideid)
     ----------------------------------------- #>
-    [void]refreshmoduledb($cmodule, $slideid){
+    [void]refreshmoduledb($cmodule, $isslide){
         #
         if ($cmodule -match 'vminform'){
-            $this.refreshmoduledbsub($cmodule, $slideid, $this.project)
+            $this.refreshmoduledbsubvm($cmodule)
         } else {
-            $this.refreshmoduledbsub($cmodule, $slideid)
+            $this.refreshmoduledbsub($cmodule)
         }
         #
     }
@@ -334,26 +334,30 @@ class sampledb : sampletracker {
     specified slide and moduel. overload (3) 
     to include the project for vminform task
     ----------------------------------------- #>
-    [void]refreshmoduledbsub($cmodule, $slideid){
+    [void]refreshmoduledbsub($cmodule){
         #
-        $row = $this.moduleobjs.($cmodule).maincsv | & { process {
-            if ($_.slideid -contains $slideid) { $_ }}}
+        $row = $this.moduleobjs.($cmodule).maincsv |
+         & { process {
+            if ($_.slideid -contains $this.slideid) { $_ }
+        }}
         if ($row){
-            $this.updatemoduleline($cmodule, $slideid)
+            $this.updatemoduleline($cmodule)
         } else {
-            $this.createmoduleline($cmodule, $slideid)
+            $this.createmoduleline($cmodule)
         }
         #
     }
     #
-    [void]refreshmoduledbsub($cmodule, $slideid, $cproject){
+    [void]refreshmoduledbsubvm($cmodule){
         #
-        $row = $this.moduleobjs.($cmodule).localqueue.($cproject) | & { process {
-            if ($_.slideid -contains $slideid) { $_ }}}
+        $row = $this.moduleobjs.($cmodule).localqueue.($this.project) |
+         & { process {
+            if ($_.slideid -contains $this.slideid) { $_ }
+        }}
         if ($row){
-            $this.updatemoduleline($cmodule, $slideid, $cproject)
+            $this.updatemodulelinevm($cmodule)
         } else{
-            $this.createmoduleline($cmodule, $slideid, $cproject)
+            $this.createmodulelinevm($cmodule)
         }
         #
     }
@@ -364,19 +368,17 @@ class sampledb : sampletracker {
     specified slide. overload (3) to include the
     project for vminform task
     ----------------------------------------- #>
-    [void]createmoduleline($cmodule, $slideid){
+    [void]createmoduleline($cmodule){
         #
         $currentobj = $this.moduleinfo.($cmodule)
         #
-        $row = [PSCustomObject]@{
-            Project = $this.project
-            Cohort = $this.cohort
-            SlideID = $slideid
-            Status = ($currentobj.status -replace ',', ';')
-            isGood = 1
-            StartTime = $currentobj.StartTime
-            FinishTime = $currentobj.FinishTime
-        }
+        $row = $this.buildbaserow()
+        $row | Add-Member -NotePropertyMembers @{
+                Status = ($currentobj.status -replace ',', ';')
+                isGood = 1
+                StartTime = $currentobj.StartTime
+                FinishTime = $currentobj.FinishTime
+            } -PassThru
         #
         if(!$this.moduleobjs.($cmodule).maincsv){
             $this.moduleobjs.($cmodule).maincsv = @()
@@ -384,46 +386,52 @@ class sampledb : sampletracker {
         $this.moduleobjs.($cmodule).maincsv += $row 
         #
         if ($currentobj.status -match $this.status.ready){
-            $this.enqueuetask($cmodule, $slideid, $currentobj)
+            $this.enqueuetask($cmodule, $currentobj)
         }
         #
     }
     #
-    [void]createmoduleline($cmodule, $slideid, $cproject){
+    [void]createmodulelinevm($cmodule){
         #
-        if(!$this.moduleobjs.($cmodule).localqueue.($cproject)){
-            $this.moduleobjs.($cmodule).localqueue.($cproject) = @()
+        if(!$this.moduleobjs.($cmodule).localqueue.($this.project)){
+            $this.moduleobjs.($cmodule).localqueue.($this.project) = @()
         }
         #
-        $this.getantibodies($cproject)
+        $this.getantibodies($this.project)
+        #
+        $row = $this.buildbaserow()
+        #
+        $this.antibodies | & { process {
+            #
+            $currentobj = $this.moduleinfo.($cmodule).($_)
+            $status = $currentobj.status -replace ',', ';'
+            #
+            if ($status -match $this.status.ready){
+                $this.enqueuetask($cmodule, $currentobj)
+            }
+            #
+            $row | Add-Member -NotePropertyMembers @{
+                ($_ + '_Status') =  $status
+                ($_ + '_StartTime') =  $currentobj.StartTime
+                ($_ + '_FinishTime') =  $currentobj.FinishTime
+                ($_ + '_Algorithm') = $currentobj.algorithm
+            } -PassThru
+        }}
+        #
+        $this.moduleobjs.($cmodule).localqueue.($this.project) += $row
+        #
+    }
+    #
+    [PSCustomObject]buildbaserow(){
         #
         $row = [PSCustomObject]@{
             Project = $this.project
             Cohort = $this.cohort
-            SlideID = $slideid
+            BatchID = $this.batchid
+            SlideID = $this.slideid
         }
         #
-        $this.antibodies | & { process {
-            $statusname = ($_ + '_Status')
-            $algname = ($_ + '_Algorithm')
-            $startname = ($_ + '_StartTime') 
-            $finishname = ($_ + '_FinishTime')
-            $cmoduleinfo = $this.moduleinfo.($cmodule).($_)
-            $status = $cmoduleinfo.status -replace ',', ';'
-            if ($status -match $this.status.ready){
-                $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
-            }
-            #
-            $row | Add-Member -NotePropertyMembers @{
-                $statusname =  $status
-                $startname =  $cmoduleinfo.StartTime
-                $finishname =  $cmoduleinfo.FinishTime
-                $algname = $cmoduleinfo.algorithm
-            } -PassThru
-        }}
-        #
-        $this.moduleobjs.($cmodule).localqueue.($cproject) += $row
-        #
+        return $row
     }
     <# -----------------------------------------
     updatemoduleline    
@@ -432,10 +440,12 @@ class sampledb : sampletracker {
     specified slide. overload (3) to include the
     project for vminform task
     ----------------------------------------- #>
-    [void]updatemoduleline($cmodule, $slideid){
+    [void]updatemoduleline($cmodule){
         #
-        $row = $this.moduleobjs.($cmodule).maincsv | & { process {
-            if ($_.slideid -contains $slideid) { $_ }}}
+        $row = $this.moduleobjs.($cmodule).maincsv |
+         & { process {
+            if ($_.slideid -contains $this.slideid) { $_ }
+        }}
         #
         $statlabel = 'Status'
         $startlabel = 'StartTime'
@@ -443,16 +453,18 @@ class sampledb : sampletracker {
         #
         $cmoduleinfo = $this.moduleinfo.($cmodule)
         #
-        $this.updatemodulesub($cmodule, $slideid, $row, $cmoduleinfo,
+        $this.updatemodulesub($cmodule, $row, $cmoduleinfo,
             $statlabel, $startlabel, $finishlabel)
         #
     }
     #
-    [void]updatemoduleline($cmodule, $slideid, $cproject){
+    [void]updatemodulelinevm($cmodule){
         #
-        $this.getantibodies($cproject)
-        $row = $this.moduleobjs.($cmodule).localqueue.($cproject) | & { process {
-                if ($_.slideid -contains $slideid) { $_ }}}
+        $this.getantibodies($this.project)
+        $row = $this.moduleobjs.($cmodule).localqueue.($this.project) |
+         & { process {
+            if ($_.slideid -contains $this.slideid) { $_ }
+        }}
         #
         $this.antibodies | & { process {
             #
@@ -464,7 +476,7 @@ class sampledb : sampletracker {
             $cmoduleinfo = $this.moduleinfo.($cmodule).($_)
             $row.($algname) = $cmoduleinfo.algorithm
             #
-            $this.updatemodulesub($cmodule, $slideid, $row, $cmoduleinfo,
+            $this.updatemodulesub($cmodule, $row, $cmoduleinfo,
                 $statlabel, $startlabel, $finishlabel)
             #
         }}
@@ -476,15 +488,14 @@ class sampledb : sampletracker {
     performs the specified updating actions 
     for either vminform or a normal module
     ----------------------------------------- #>
-    [void]updatemodulesub($cmodule, $slideid, $row, 
-        $cmoduleinfo, $statlabel,
+    [void]updatemodulesub($cmodule, $row, $cmoduleinfo, $statlabel,
         $startlabel, $finishlabel){
         #
         $slidestatus = $cmoduleinfo.status -replace ',', ';'
         $modulestatus = $row.($statlabel)
         #
         if ($slidestatus -match $this.status.ready){
-            $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
+            $this.enqueuetask($cmodule, $cmoduleinfo)
             $row.($statlabel) = $slidestatus
         }
          #
@@ -496,7 +507,7 @@ class sampledb : sampletracker {
         #
         if ($modulestatus -match $this.status.rerun -and 
             $slidestatus -match $this.status_settings.rerun_reset_status){
-            $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
+            $this.enqueuetask($cmodule, $cmoduleinfo)
             $row.($statlabel) = $this.status.ready
             $cmoduleinfo.StartTime = $this.empty_time
             $cmoduleinfo.FinishTime = $this.empty_time
@@ -516,7 +527,7 @@ class sampledb : sampletracker {
         #
     }
     #
-    [void]enqueuetask($cmodule, $slideid, $cmoduleinfo){
+    [void]enqueuetask($cmodule, $cmoduleinfo){
         #
         $cqueue = $this.moduletaskqueue.($cmodule)
         #
@@ -528,31 +539,49 @@ class sampledb : sampletracker {
             return
         }
         #
-        switch -exact ($cmodule){
+        switch -regex ($cmodule){
             'vminform' {
                 #
                 if ($cmoduleinfo.taskid -and 
                     !($cqueue -match ('^' + $cmoduleinfo.taskid))){
-                    $cqueue.enqueue(@($cmoduleinfo.taskid, $slideid))
+                    $cqueue.enqueue(@($cmoduleinfo.taskid, $this.slideid))
                 }
                 #
             } 
             'batch' {
                 #
-                $mymatch = $cqueue -match ('^' + $this.moduleinfo.project)
-                if(!($mymatch -match ($this.batchid + '$'))){
-                    $cqueue.enqueue(@($this.moduleinfo.project, $this.batchid))
+                if ($this.checkbatch($cmodule)){
+                    $mymatch = $cqueue -match ('^' + $this.moduleinfo.project)
+                    if(!($mymatch -match ($this.batchid + '$'))){
+                        $cqueue.enqueue(@($this.moduleinfo.project, $this.batchid))
+                    }
                 }
             }
             #
             default {
                 #
-                if (!($cqueue -match ($slideid + '$'))){
-                    $cqueue.enqueue(@($this.moduleinfo.project, $slideid))
+                if (!($cqueue -match ($this.slideid + '$'))){
+                    $cqueue.enqueue(@($this.moduleinfo.project, $this.slideid))
                 }
                 #
             }
         }
+        #
+    }
+    #
+    [switch]checkbatch($cmodule){
+        #
+        if (
+            ($this.moduleobjs.($cmodule).maincsv |
+                & { process {
+                    if (
+                        $_.project -contains $this.project.trim() -and 
+                        $_.batchid -contains $this.batchid.trim()
+                    ) {$_}}}
+            ).status -notmatch $this.status.ready
+        ) { return $false }
+        #
+        return $true
         #
     }
     <# -----------------------------------
@@ -605,7 +634,11 @@ class sampledb : sampletracker {
     Right now we have to pull down 
     ----------------------------------- #>
     [void]newmodule(){
-        Throw 'A new module was detected. Support for adding modules while running does not exist'
+        Throw (
+            'A new module was detected.',
+            'Support for adding modules',
+            'while running does not exist'
+        ) -join ' '
     }
     <# -----------------------------------
     updatefullprojectdata
