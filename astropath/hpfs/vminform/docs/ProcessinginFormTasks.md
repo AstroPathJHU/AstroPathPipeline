@@ -92,6 +92,13 @@ Input Parameters: ```<base>```, ```<SlideID>```, ```<Antibody>```, ```<Procedure
   - Update line depending on MergeConfig data so inform has correct exports
 - **StartInForm**
   - Start an InForm process
+  - Runs the methods **CheckForExpiredLicense** and **CloseTempInformWindow** 
+- **CheckForExpiredLicense**
+  - Check if temporary license has expired
+  - If it has, throw error and exit vminform
+- **CloseTempInformWindow**
+  - Let inform open
+  - Close temporary license window
 - **WatchBatchInForm** 
   - Check that inForm starts properly
   - Close the temporary inForm window and wait for the process to complete

@@ -38,10 +38,22 @@ Class vminform : moduletools {
     [bool]$needscomponent
     #
     $export_type_setting = @{
-        Default          = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>';
-        BinaryMaps       = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>';
-        Component        = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>';
-        BinaryWComponent = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>'
+        Default          = (('     <ExportTypes>eet_NucSegmentation,',
+                                      'eet_CytoSegmentation,',
+                                      'eet_MembraneSegmentation</ExportTypes>') -join " ");
+        BinaryMaps       = (('     <ExportTypes>eet_Segmentation,',
+                                      'eet_NucSegmentation,',
+                                      'eet_CytoSegmentation,',
+                                      'eet_MembraneSegmentation</ExportTypes>') -join " ");
+        Component        = (('     <ExportTypes>eet_NucSegmentation,',
+                                      'eet_CytoSegmentation,',
+                                      'eet_MembraneSegmentation,',
+                                      'eet_ComponentData</ExportTypes>') -join " ");
+        BinaryWComponent = (('     <ExportTypes>eet_Segmentation,',
+                                      'eet_NucSegmentation,',
+                                      'eet_CytoSegmentation,',
+                                      'eet_MembraneSegmentation,',
+                                      'eet_ComponentData</ExportTypes>') -join " ")
     }
     #
     $error_dictionary = @{
@@ -69,6 +81,7 @@ Class vminform : moduletools {
         $this.processvars[0] = $this.outpath
         $this.processvars[1] = $this.outpath
         $this.processvars[2] = $this.outpath
+        $this.processvars += 1
         #
         $this.TestPaths()
         $this.KillinFormProcess()
@@ -338,8 +351,25 @@ Class vminform : moduletools {
                 -ArgumentList $arginput `
                 *>> $processoutputlog | Out-Null
         #
-        # check if temporary license has expired
+        $this.CheckForExpiredLicense()
+        $this.CloseTempInformWindow()
         #
+        foreach ($count in 1..20) {
+            $process = get-process -name inform -EA SilentlyContinue
+            if ($process) {
+                break
+            }
+            Start-Sleep 1
+        }
+        #
+    }
+    <# -----------------------------------------
+     CheckForExpiredLicense
+     Check if temporary license has expired
+     ------------------------------------------
+     Usage: $this.CheckForExpiredLicense()
+    ----------------------------------------- #>
+    [void]CheckForExpiredLicense(){
         foreach ($count in 1..20) {
             $process = get-process | where-object {$_.MainWindowTitle -eq 'License Expired'}
                 if ($process) {
@@ -351,9 +381,14 @@ Class vminform : moduletools {
                 }
             Start-Sleep 1
         }
-        #
-        # let inform open and close temporary license window
-        #
+    }
+    <# -----------------------------------------
+     CloseTempInformWindow
+     Let inform open and close temporary license window
+     ------------------------------------------
+     Usage: $this.CloseTempInformWindow()
+    ----------------------------------------- #>
+    [void]CloseTempInformWindow(){
         foreach ($count in 1..20) {
             $process = get-process | where-object {$_.MainWindowTitle -eq 'License Information'}
                 if ($process) {
@@ -362,17 +397,13 @@ Class vminform : moduletools {
                 }
             Start-Sleep 1
         }
-        #
-        foreach ($count in 1..20) {
-            $process = get-process -name inform -EA SilentlyContinue
-            if ($process) {
-                break
-            }
-            Start-Sleep 1
-        }
-        #
     }
-    #
+    <# -----------------------------------------
+     getinformtask
+     Get string version of inform task
+     ------------------------------------------
+     Usage: $this.getinformtask()
+    ----------------------------------------- #>
     [string]getinformtask() {
         $processoutputlog =  $this.outpath + "\processoutput.log"
         $arginput = " -a",  $this.algpath, `
