@@ -279,18 +279,14 @@
              return $false
         }
     }
-    [switch]checkgitsubmodule($submodule){
+    [void]checkgitsubmodule($submodule){
         $gitsubmodule = git submodule status
-        <#if ($gitsubmodule -match "MaSS") {
-            cd $(git rev-parse --show-toplevel)
-            ##go to astropath/hpfs/merge/funcs
-            git submodule add https://github.com/AstroPathJHU/MaSS
-            return $true
-        }#>
-        if ($gitsubmodule -match $submodule){
-             return $true
-        } else {
-             return $false
+        $modulematch = $gitsubmodule -match $submodule
+        if ($null -ne $modulematch) {
+            $linematch = '^-.*' + $submodule
+            if ($modulematch -match $linematch) {
+                git submodule update --init
+            }
         }
     }
     <# -----------------------------------------
