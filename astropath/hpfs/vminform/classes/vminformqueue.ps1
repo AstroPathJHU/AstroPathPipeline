@@ -336,7 +336,7 @@ class vminformqueue : modulequeue {
      ------------------------------------------
      Usage: $this.checkforreadytask()
     ----------------------------------------- #>
-    [string]checkforreadytask($project, $slideid, $antibody){
+    [PSCustomObject]checkforreadytask($project, $slideid, $antibody){
         #
         $this.getmainslide($slideid)
         #
@@ -348,7 +348,26 @@ class vminformqueue : modulequeue {
             ) { $_ }}}
         #
         if ($task){
-            return $task.taskid
+            return $task[0]
+        } 
+        #
+        return ''
+        #
+    }
+    #
+    [PSCustomObject]checkforfinishtask($project, $slideid, $antibody){
+        #
+        $this.getmainslide($slideid)
+        #
+        $task = $this.mainslide | & { process {   
+            if (
+                $_.Antibody -contains $antibody -and 
+                $_.Algorithm -ne '' -and
+                $_.ProcessingLocation -ne ''
+            ) { $_ }}}
+        #
+        if ($task){
+            return $task[-1]
         } 
         #
         return ''

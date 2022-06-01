@@ -12,6 +12,7 @@ class sampledb : sampletracker {
     [vminformqueue]$vmq
     [hashtable]$moduleobjs = @{}
     [hashtable]$moduletaskqueue = @{}
+    [switch]$wfon = $true
     #
     [string]$vminform_nonab_keys = (@('project','slidelog','mainlog','starttime',
         'finishtime','version','status') -join '|')
@@ -30,10 +31,6 @@ class sampledb : sampletracker {
     }
     #
     sampledbinit(){
-        #
-        $this.writeoutput("Starting the AstroPath Pipeline")
-        $this.writeoutput(" Imported AstroPath tables from: " + $this.mpath)
-        $this.writeoutput(" Modules: " + $this.modules)
         #
         $this.defmodulequeues()
         $this.status_settings = @{
@@ -133,10 +130,26 @@ class sampledb : sampletracker {
         $this.writeoutput(" Building sample status database")
         #
         foreach($slide in $this.slide_data){
-            #
             $c = $this.updatesample($c, $ctotal, $slide.slideid)
-            #
         }
+        #
+        $this.progressbarfinish()
+        $this.writeoutput(" Sample status database built")
+        #
+    }
+    #
+    [void]defsampleStages($project){
+        #
+        $c = 1
+        $ctotal = ($this.slide_data |
+            Where-Object {$_.project -contains $project}).count
+        $this.writeoutput(" Building sample status database")
+        #
+        $this.slide_data |
+            Where-Object {$_.project -contains $project} | 
+            & { process {
+                $c = $this.updatesample($c, $ctotal, $_.slideid)
+            }}
         #
         $this.progressbarfinish()
         $this.writeoutput(" Sample status database built")
@@ -146,7 +159,7 @@ class sampledb : sampletracker {
     [int]updatesample($c, $ctotal, $slideid){
         #
         $this.progressbar($c, $ctotal, ($slideid, 'update sample status' -join ' - '))
-        $this.preparesample($slideid)
+        $this.preparesample($slideid, $c, $ctotal)
         $this.progressbar($c, $ctotal, ($slideid, 'update module table' -join ' - '))
         $this.defmoduletables($slideid)
         $c += 1 
@@ -392,6 +405,7 @@ class sampledb : sampletracker {
         #
         $this.antibodies | & { process {
             $statusname = ($_ + '_Status')
+            $algname = ($_ + '_Algorithm')
             $startname = ($_ + '_StartTime') 
             $finishname = ($_ + '_FinishTime')
             $cmoduleinfo = $this.moduleinfo.($cmodule).($_)
@@ -399,10 +413,12 @@ class sampledb : sampletracker {
             if ($status -match $this.status.ready){
                 $this.enqueuetask($cmodule, $slideid, $cmoduleinfo)
             }
+            #
             $row | Add-Member -NotePropertyMembers @{
                 $statusname =  $status
                 $startname =  $cmoduleinfo.StartTime
                 $finishname =  $cmoduleinfo.FinishTime
+                $algname = $cmoduleinfo.algorithm
             } -PassThru
         }}
         #
@@ -441,10 +457,12 @@ class sampledb : sampletracker {
         $this.antibodies | & { process {
             #
             $statlabel = ($_ + '_Status')
+            $algname = ($_ + '_Algorithm')
             $startlabel = ($_ + '_StartTime')
             $finishlabel = ($_ + '_FinishTime')
             #
             $cmoduleinfo = $this.moduleinfo.($cmodule).($_)
+            $row.($algname) = $cmoduleinfo.algorithm
             #
             $this.updatemodulesub($cmodule, $slideid, $row, $cmoduleinfo,
                 $statlabel, $startlabel, $finishlabel)
@@ -487,7 +505,7 @@ class sampledb : sampletracker {
         if (
             ($row.($startlabel) -ne $cmoduleinfo.StartTime)
         ) {
-            $row.($startlabel)= $cmoduleinfo.StartTime
+            $row.($startlabel) = $cmoduleinfo.StartTime
         }
         #
         if (

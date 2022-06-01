@@ -479,12 +479,14 @@
         if ($this.type -match 'queue'){
             #
             $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID', 'Antibody', 'Algorithm'
+                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID',
+                 'Antibody', 'Algorithm'
             #
         } else {
             #
             $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 'StartTime', 'FinishTime'
+                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 
+                'StartTime', 'FinishTime'
             #
         }
         #
@@ -519,7 +521,8 @@
         } else {
             #
             $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 'StartTime', 'FinishTime'
+                -DifferenceObject $oldqueue -Property 'SlideID', 'Status',
+                     'StartTime', 'FinishTime'
             #
         }
         #
@@ -545,12 +548,14 @@
         if ($this.type -match 'queue'){
             #
             $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID', 'ProcessingLocation', 'StartDate'
+                -DifferenceObject $oldqueue -Property 'TaskID',
+                 'SlideID', 'ProcessingLocation', 'StartDate'
             #
         } else {
             #
             $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 'StartTime', 'FinishTime'
+                -DifferenceObject $oldqueue -Property 'SlideID', 'Status',
+                 'StartTime', 'FinishTime'
             #
         }
         #
@@ -594,9 +599,10 @@
         #
         $this.antibodies | foreach-object{
             $statusname = ($_ + '_Status')
+            $algname = ($_ + '_Algorithm')
             $startname = ($_ + '_StartTime') 
             $finishname = ($_ + '_FinishTime')
-            $headers += @($statusname, $startname, $finishname)
+            $headers += @($statusname, $algname, $startname, $finishname)
         }
         #
         return $headers

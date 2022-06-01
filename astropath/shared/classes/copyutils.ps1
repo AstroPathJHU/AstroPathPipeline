@@ -245,12 +245,22 @@ class copyutils{
      Usage: copy(sor, filespec)
     ----------------------------------------- #>
     [system.object]listfiles([string]$sor, [array]$filespec){
-        $sor = $sor + '\*'
+        #
+        if (!([System.IO.Directory]::Exists($sor))){
+            return @()
+        }
+        #
         if ($filespec -match '\*'){
-            $files = get-ChildItem $sor -Recurse -EA SilentlyContinue
+            $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
+                 & {process{[System.IO.FileInfo]$_}}
         } else {
-            $filespec = $filespec | foreach-object {'*' + $_}
-            $files = get-ChildItem $sor -Include  $filespec -Recurse -EA SilentlyContinue
+            $filespec = ($filespec | foreach-object {'.*' + $_ + '$'}) -join '|'
+            $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
+                 & {process{
+                     if ($_ -match $filespec){
+                        [System.IO.FileInfo]$_
+                     }
+                }}
         }
         if (!$files) {
             $files = @()

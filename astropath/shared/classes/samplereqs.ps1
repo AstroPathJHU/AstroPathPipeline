@@ -192,7 +192,7 @@
             return $false
         }
         #
-        if (!([System.IO.File]::Exists( $this.pybatchflatfieldfullpath()))){
+        if (!([System.IO.File]::Exists($this.pybatchflatfieldfullpath()))){
             return $false
         }
         #
@@ -261,7 +261,21 @@
         #
     }
     #
-    [switch]testmergefiles($cantibodies){
+    [switch]testinformfiles($cantibody, $algorithm){
+        #
+        $informlogfile = get-content $this.informantibodylogfile($cantibody) | 
+            & { process {  
+                if ($_ -match $algorithm) { $_ }
+            }}
+        if($informlogfile) { 
+            return $true
+        }
+        #
+        return $false
+        #
+    }
+    #
+    [switch]testmergefiles(){
         #
         $this.getfiles('merge', $true)
         if (!$this.mergefiles){
@@ -270,7 +284,7 @@
         #
         $date1 =  $this.getmindate('merge', $true)
         #
-        foreach($antibody in $cantibodies){
+        foreach($antibody in $this.cantibodies){
             #
             $this.cantibody = $antibody
             $date2 = $this.getmaxdate('cantibody', $true)

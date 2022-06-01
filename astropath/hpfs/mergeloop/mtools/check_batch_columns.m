@@ -6,13 +6,13 @@ function [err_val, b] = check_batch_columns(b, i1)
 err_val = 0;
 %
 if ~iscell(b.OpalLot)
-    fprintf(['WARNING: batch ', num2str(i1), 'Batch file error: column OpalLot\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' Batch file error: column OpalLot\n'])
     err_val = 1;
     return
 end
 %
 if ~iscell(b.OpalDilution)
-    fprintf(['WARNING: batch ', num2str(i1), 'Batch file error: column OpalDilution\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' Batch file error: column OpalDilution\n'])
     err_val = 2;
     return
 end
@@ -39,37 +39,37 @@ if isa(b.Opal,'double')
 end
 %
 if ~isa(b.Opal, 'cell')
-  fprintf(['WARNING: batch ', num2str(i1), 'Batch file error: column Opal\n'])
+  fprintf(['WARNING: batch ', num2str(i1), ' Batch file error: column Opal\n'])
   err_val = 3;
   return
 end
 %
 if ~iscell(b.Target)
-    fprintf(['WARNING: batch ', num2str(i1), 'Batch file error: column Target\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' Batch file error: column Target\n'])
     err_val = 4;
     return
 end
 %
 if ~iscell(b.Target)
-    fprintf(['WARNING: batch ', num2str(i1), 'Batch file error: column Target\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' Batch file error: column Target\n'])
     err_val = 4;
     return
 end
 %
 if ~iscell(b.Compartment)
-    fprintf(['WARNING: batch ', num2str(i1), 'Batch file error: column Compartment\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' Batch file error: column Compartment\n'])
     err_val = 5;
     return
 end
 %
 if ~iscell(b.AbLot)
-    fprintf(['WARNING: batch ', num2str(i1), 'Batch file error: column AbLot\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' Batch file error: column AbLot\n'])
     err_val = 6;
     return
 end
 %
 if ~iscell(b.AbDilution)
-    fprintf(['WARNING: batch ', num2str(i1), 'Batch file error: column AbDilution\n'])
+    fprintf(['WARNING: batch ', num2str(i1), ' Batch file error: column AbDilution\n'])
     err_val = 7;
     return
 end

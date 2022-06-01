@@ -148,8 +148,8 @@ class sampledef : sharedtools{
         #
         $batch = $slides | & {process { 
             if (
-                {$_.BatchID -eq $mbatchid.trim() -and 
-                $_.Project -eq $this.project.trim()}
+                $_.BatchID -eq $mbatchid.trim() -and 
+                $_.Project -eq $this.project.trim()
             ) { $_ }
         }}
         #
@@ -464,27 +464,9 @@ class sampledef : sharedtools{
         return $path
     }
     #
-    [void]findantibodies(){
-        $this.findantibodies($this.basepath)
-    }
-    #
-    [void]findantibodies($basepath){
-        #
-        $this.ImportMergeConfig($basepath)
-        $targets = $this.mergeconfig_data.Target
-        $qa = $this.mergeconfig_data.ImageQA.indexOf('Tumor')
-        #
-        if ($qa -ge 0){
-            $targets[$qa] = 'Tumor'
-        }
-        #
-        $this.antibodies = $targets
-        #
-    }
-    #
     [void]findsegmentationtargets(){
         #
-        $this.ImportMergeConfig($this.basepath)
+        $this.ImportMergeConfigCSV($this.basepath)
         $targets = $this.mergeconfig_data
         #
         $sorted = $targets | 

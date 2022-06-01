@@ -40,7 +40,7 @@
     #
     sharedtools(){
         $this.processname = ([System.Diagnostics.Process]::GetCurrentProcess()).name 
-        $this.processid = ([System.Diagnostics.Process]::GetCurrentProcess()).name 
+        $this.processid = ([System.Diagnostics.Process]::GetCurrentProcess()).ID 
     }
     #
     [string]pyinstalllocation(){

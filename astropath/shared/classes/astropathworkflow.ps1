@@ -41,4 +41,42 @@
         #
     }
     #
+    [void]visLOCALQUEUE($cmodule, $cproject){
+        Write-host ($this.moduleobjs.($cmodule).localqueue.($cproject) |
+            Format-Table |
+            Out-String)
+    }
+    #
+    [void]visLOCALQUEUE($cmodule, $cproject, $COLUMN){
+        Write-host ($this.moduleobjs.($cmodule).localqueue.($cproject).($COLUMN) |
+            Format-Table |
+            Out-String)
+    }
+    #
+    [void]visMAINQUEUE($cmodule){
+        Write-host ($this.moduleobjs.($cmodule).MAINCSV |
+            Format-Table |
+            Out-String)
+    }
+    #
+    [void]visMAINQUEUE($cmodule, $cproject){
+        Write-host ($this.moduleobjs.($cmodule).MAINCSV |
+            where-object { $_.project -contains $cproject} |
+            Format-Table |
+            Out-String)
+    }
+    #
+    [void]visMAINQUEUE($cmodule, $cproject, $COLUMN){
+        Write-host ($this.moduleobjs.($cmodule).MAINCSV.($COLUMN) |
+            where-object { $_.project -contains $cproject} |
+            Format-Table |
+            Out-String)
+    }
+    #
+    [void]visTABLE($mytable){
+        Write-host ($mytable |
+            Format-Table |
+            Out-String)
+    }
+    #
  }

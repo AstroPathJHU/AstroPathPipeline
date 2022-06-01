@@ -229,7 +229,6 @@ class astropathwftools : sampledb {
                 #
                 $this.writeoutput(("     Launching Task on:", 
                     $currentworker.server, $currentworker.location -join ' '))
-                $this.writeoutput("     $currenttask")
                 #
                 $this.launchtask($currenttask, $currentworker)
                 #
@@ -274,6 +273,7 @@ class astropathwftools : sampledb {
         $currentworkerip = $this.defcurrentworkerip($currentworker)
         $jobname = $this.defjobname($currentworker)
         $currenttask = $this.getvminformtask($currenttask, $currentworker)
+        $this.writeoutput("     $currenttask")
         $this.PrepareWorkerFiles(
             $currentworker.module, $currenttask, $jobname, $currentworker)
         $this.executetask($currenttask, $currentworker,
@@ -299,7 +299,7 @@ class astropathwftools : sampledb {
         }
         #
         $row.ProcessingLocation = 'Processing:' + $currentworker.location
-        $row.StartDate = Get-Date
+        $row.StartDate = $this.getformatdate()
         #
         $this.vmq.writemainqueue()
         #
@@ -403,8 +403,13 @@ class astropathwftools : sampledb {
             }
         #
         Start-Job @myparameters
-        $taskid = ($jobname, (Get-Date)) -join '-'
+        #
+        $taskid = ($jobname, $this.getformatdate()) -join ';'
         [string]$logline = @("START: ", $taskid,"`r`n") -join ''
+        $this.popfile($this.workerlogfile($jobname), $logline)
+        #
+        $mtask = ($currenttask -join ' ', $this.getformatdate()) -join ';'
+        [string]$logline = @("INFO: ", $mtask,"`r`n") -join ''
         $this.popfile($this.workerlogfile($jobname), $logline)
         #
     }
@@ -497,6 +502,8 @@ class astropathwftools : sampledb {
             #
         }
         #
+        $this.CheckCompletedWorkers()
+        #
     }
     #
     [void]checkpsexeclog($jobname){
@@ -520,7 +527,7 @@ class astropathwftools : sampledb {
     #
     [void]checkworkerlog($job){
         #
-        $taskid = ($job.Name, $job.PSBeginTime, $job.PSEndTime) -join '-'
+        $taskid = ($job.Name, $job.PSEndTime) -join ';'
         $output = $this.getcontent($this.workerlogfile($job.Name)) 
         #
         # if there is output and the last line does not match the Regex write lines 

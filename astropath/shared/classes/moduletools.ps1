@@ -34,7 +34,7 @@
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
         $this.vers = $this.sample.GetVersion($this.sample.mpath,
-             $this.sample.module, $task.project)
+             $this.sample.module, $this.sample.project)
         $this.sample.checksoftware()   
     }
     <# -----------------------------------------
@@ -631,7 +631,7 @@
     ----------------------------------------- #>
     [void]checkexternalerrors(){
         #
-        if ($this.vers -match '0.0.1'){
+        if ($this.vers -match '0.0.1' -or $this.sample.module -match 'merge'){
             $test = 'ERROR'
             if ($this.logoutput -match $test){
                 $this.silentcleanup()
@@ -645,7 +645,7 @@
         } else {
             if ($this.sample.module -match 'batchmicomp'){
                 $test = $this.pythonmodulename + ' : '
-            } else {
+            }else {
                 $test = ($this.sample.project, ';', $this.sample.cohort -join '')
             }
             if ($this.logoutput -and $this.logoutput[0] -notmatch $test) {

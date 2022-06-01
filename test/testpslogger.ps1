@@ -105,8 +105,7 @@
         Write-Host '        old slide log:' $log.slidelog
         #
         Write-Host '   '$this.slideid2
-        $slides = $log.importslideids($this.mpath)
-        $log.Sample($this.slideid2, $this.mpath, $slides)
+        $log.Sample($this.slideid2, $log.slide_data)
         #
         Write-Host '        new slideid:' $log.slideid
         Write-Host '        new basepath:' $log.basepath
