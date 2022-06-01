@@ -13,7 +13,7 @@ $task[hashtable]: must contain slideid,
     E.g. @('\\bki04\Clinical_Specimen_2','M18_1','CD8,CD8_12.05.2018_highTH.ifr','2.4.8.)
 $sample[launchmodule]: A launchmodule object 
 --------------------------------------------------------
-Usage: $a = [informinput]::new($task, $sample)
+Usage: $a = [vminform]::new($task, $sample)
        $a.RunBatchInForm()
 --------------------------------------------------------
 #>
@@ -38,17 +38,30 @@ Class vminform : moduletools {
     [bool]$needscomponent
     #
     $export_type_setting = @{
-        Default          = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>';
-        BinaryMaps       = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation</ExportTypes>';
-        Component        = '     <ExportTypes>eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>';
-        BinaryWComponent = '     <ExportTypes>eet_Segmentation, eet_NucSegmentation, eet_CytoSegmentation, eet_MembraneSegmentation, eet_ComponentData</ExportTypes>'
+        Default          = (('     <ExportTypes>eet_NucSegmentation,',
+                                      'eet_CytoSegmentation,',
+                                      'eet_MembraneSegmentation</ExportTypes>') -join " ");
+        BinaryMaps       = (('     <ExportTypes>eet_Segmentation,',
+                                      'eet_NucSegmentation,',
+                                      'eet_CytoSegmentation,',
+                                      'eet_MembraneSegmentation</ExportTypes>') -join " ");
+        Component        = (('     <ExportTypes>eet_NucSegmentation,',
+                                      'eet_CytoSegmentation,',
+                                      'eet_MembraneSegmentation,',
+                                      'eet_ComponentData</ExportTypes>') -join " ");
+        BinaryWComponent = (('     <ExportTypes>eet_Segmentation,',
+                                      'eet_NucSegmentation,',
+                                      'eet_CytoSegmentation,',
+                                      'eet_MembraneSegmentation,',
+                                      'eet_ComponentData</ExportTypes>') -join " ")
     }
     #
     $error_dictionary = @{
         ConnectionFailed = 'A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond';
         NoElements = 'Sequence contains no elements';
         SegmentCells = 'Please segment cells';
-        CorruptIM3 = 'External component has thrown an exception'
+        CorruptIM3 = 'External component has thrown an exception';
+        OverlappedObjects = 'The stencil contains overlapped objects'
     }
     #
     vminform([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample) {
@@ -68,6 +81,7 @@ Class vminform : moduletools {
         $this.processvars[0] = $this.outpath
         $this.processvars[1] = $this.outpath
         $this.processvars[2] = $this.outpath
+        $this.processvars += 1
         #
         $this.TestPaths()
         $this.KillinFormProcess()
@@ -91,12 +105,12 @@ Class vminform : moduletools {
         #
     }
     <# -----------------------------------------
-     RunBatchInForm
-     Run the batch process 
+     RunVMinForm
+     Run the virtual machine inform process 
      ------------------------------------------
-     Usage: $this.RunBatchInForm()
+     Usage: $this.RunVMinForm()
     ----------------------------------------- #>
-    [void]Runvminform(){
+    [void]RunVMinForm(){
         #
         $this.sample.createnewdirs($this.outpath)
         $this.DownloadFiles()
@@ -337,8 +351,25 @@ Class vminform : moduletools {
                 -ArgumentList $arginput `
                 *>> $processoutputlog | Out-Null
         #
-        # check if temporary license has expired
+        $this.CheckForExpiredLicense()
+        $this.CloseTempInformWindow()
         #
+        foreach ($count in 1..20) {
+            $process = get-process -name inform -EA SilentlyContinue
+            if ($process) {
+                break
+            }
+            Start-Sleep 1
+        }
+        #
+    }
+    <# -----------------------------------------
+     CheckForExpiredLicense
+     Check if temporary license has expired
+     ------------------------------------------
+     Usage: $this.CheckForExpiredLicense()
+    ----------------------------------------- #>
+    [void]CheckForExpiredLicense(){
         foreach ($count in 1..20) {
             $process = get-process | where-object {$_.MainWindowTitle -eq 'License Expired'}
                 if ($process) {
@@ -350,9 +381,14 @@ Class vminform : moduletools {
                 }
             Start-Sleep 1
         }
-        #
-        # let inform open and close temporary license window
-        #
+    }
+    <# -----------------------------------------
+     CloseTempInformWindow
+     Let inform open and close temporary license window
+     ------------------------------------------
+     Usage: $this.CloseTempInformWindow()
+    ----------------------------------------- #>
+    [void]CloseTempInformWindow(){
         foreach ($count in 1..20) {
             $process = get-process | where-object {$_.MainWindowTitle -eq 'License Information'}
                 if ($process) {
@@ -361,17 +397,13 @@ Class vminform : moduletools {
                 }
             Start-Sleep 1
         }
-        #
-        foreach ($count in 1..20) {
-            $process = get-process -name inform -EA SilentlyContinue
-            if ($process) {
-                break
-            }
-            Start-Sleep 1
-        }
-        #
     }
-    #
+    <# -----------------------------------------
+     getinformtask
+     Get string version of inform task
+     ------------------------------------------
+     Usage: $this.getinformtask()
+    ----------------------------------------- #>
     [string]getinformtask() {
         $processoutputlog =  $this.outpath + "\processoutput.log"
         $arginput = " -a",  $this.algpath, `
@@ -557,6 +589,9 @@ Class vminform : moduletools {
                 $this.skippedfiles += $filepath
             }
             $this.error_dictionary.CorruptIM3 {
+                $this.skippedfiles += $filepath
+            }
+            $this.error_dictionary.OverlappedObjects {
                 $this.skippedfiles += $filepath
             }
         }
