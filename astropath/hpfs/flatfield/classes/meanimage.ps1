@@ -8,7 +8,7 @@ Description
 Task to be launched remotely to ANY computer from ANYWHERE
 --------------------------------------------------------
 Input:
-$task[array]: the 3 part array of project, slideid, process loc
+$task[hashtable]: the 3 part array of project, slideid, process loc
     E.g. @('7','M18_1','\\bki08\e$')
 $sample[launchmodule]: A launchmodule object 
 --------------------------------------------------------

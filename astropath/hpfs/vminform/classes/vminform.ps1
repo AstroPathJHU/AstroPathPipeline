@@ -13,7 +13,7 @@ $task[hashtable]: must contain slideid,
     E.g. @('\\bki04\Clinical_Specimen_2','M18_1','CD8,CD8_12.05.2018_highTH.ifr','2.4.8.)
 $sample[launchmodule]: A launchmodule object 
 --------------------------------------------------------
-Usage: $a = [informinput]::new($task, $sample)
+Usage: $a = [vminform]::new($task, $sample)
        $a.RunBatchInForm()
 --------------------------------------------------------
 #>
@@ -48,7 +48,8 @@ Class vminform : moduletools {
         ConnectionFailed = 'A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond';
         NoElements = 'Sequence contains no elements';
         SegmentCells = 'Please segment cells';
-        CorruptIM3 = 'External component has thrown an exception'
+        CorruptIM3 = 'External component has thrown an exception';
+        OverlappedObjects = 'The stencil contains overlapped objects'
     }
     #
     vminform([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample) {
@@ -557,6 +558,9 @@ Class vminform : moduletools {
                 $this.skippedfiles += $filepath
             }
             $this.error_dictionary.CorruptIM3 {
+                $this.skippedfiles += $filepath
+            }
+            $this.error_dictionary.OverlappedObjects {
                 $this.skippedfiles += $filepath
             }
         }
