@@ -139,7 +139,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       #rescale the image intensity
       with self.using_tissuemask() as mask:
         meanintensity = np.mean(bigimage[:,:,0][mask])
-        bigimage = skimage.img_as_ubyte((bigimage * (tissuemeanintensity / meanintensity)).clip(0, 1))
+        bigimage = skimage.img_as_ubyte((bigimage * (tissuemeanintensity / 255 / meanintensity)).clip(0, 1))
 
       #save the wsi
       self.wsifolder.mkdir(parents=True, exist_ok=True)
