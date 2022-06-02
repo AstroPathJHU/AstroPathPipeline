@@ -431,7 +431,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               continue
             self.logger.info(f"  saving {filename.name}")
             image = PIL.Image.fromarray(slc[:, :, layer-1])
-            image.save(filename, "PNG")
+            image.save(filename, "TIFF")
 
     return tissuemeanintensity / (meanintensitynumerator / meanintensitydenominator)
 
@@ -457,7 +457,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
         bigfilename = self.bigfilename(layer, tilex, tiley)
         if bigfilename.exists():
-          images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)).linear(255*scaleby, 0)).cast_uchar()
+          images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)).linear(scaleby, 0).cast(vips_format_dtype(np.uint8)))
           removefilenames.append(bigfilename)
         else:
           if blank is None:
@@ -510,7 +510,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   def getworkinprogressfiles(cls, SlideID, *, zoomroot, **otherworkflowkwargs):
     bigfolder = zoomroot/SlideID/"big"
     return itertools.chain(
-      bigfolder.glob("*.png"),
+      bigfolder.glob("*.tiff"),
       cls.getoutputfiles(SlideID=SlideID, zoomroot=zoomroot, **otherworkflowkwargs),
     )
 
