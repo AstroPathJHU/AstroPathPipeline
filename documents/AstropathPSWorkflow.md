@@ -226,7 +226,8 @@ Optional:
     - Dependencies:
        - batchflatfield
     - Actions:
-       - *To be added*
+       - Measures the warping affecting raw data files in a cohort
+       - Only finds the octets for each sample and writes them out
     - Output: 
        - Check if the slide log base for warpoctets exists, if so:
           - check if the <Slide_ID>-mask_stack.bin file exists in the meanimage folder
@@ -235,23 +236,28 @@ Optional:
     - Dependencies:
        - warpoctets
     - Actions:
-       - *To be added*
+       - Finds warping keys for batch
     - Output: 
-       - *To be added*
+       - A batch warp keys folder containing:
+         - final_pattern_octets_selected.csv
+         - initial_pattern_octets_selected.csv
+         - image_keys_needed.txt
+         - principal_point_octets_selected.csv
  - batchwarpfits
     - Dependencies:
        - batchwarpkeys
     - Actions:
-       - *To be added*
+       - Finds warping fits for batch
     - Output: 
-       - *To be added*
+       - A single file with batch warp fits:
+         - weighted_average_warp.csv
  - imagecorrection
     - Dependencies:
        - batchwarpfits
     - Actions:
-       - *To be added*
+       - Creates a directory of flat field and warping corrected .im3 images files for each slide
     - Output: 
-       - *To be added*
+       - Tests that there are the correct number of .fw, .fw01, and .flatwim3 for given batch
  - Vminform
     - Dependencies:
        - imagecorrection
