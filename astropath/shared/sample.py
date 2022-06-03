@@ -960,7 +960,7 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
     """
     Zoom filename for a given layer and tile.
     """
-    return self.bigfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.png"
+    return self.bigfolder/f"{self.SlideID}-Z{self.zmax}-L{layer}-X{tilex}-Y{tiley}-big.tiff"
   def wsifilename(self, layer):
     """
     Wsi filename for a given layer.
