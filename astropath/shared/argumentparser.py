@@ -1,4 +1,4 @@
-import abc, argparse, contextlib, logging, pathlib, re
+import abc, argparse, contextlib, job_lock, logging, pathlib, re
 from ..utilities.tableio import TableReader
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
@@ -57,6 +57,7 @@ class InitAndRunFromArgumentParserBase(RunFromArgumentParserBase):
     initkwargs = cls.initkwargsfromargumentparser(parsed_args_dict)
     misckwargs = cls.misckwargsfromargumentparser(parsed_args_dict)
     runkwargs = cls.runkwargsfromargumentparser(parsed_args_dict)
+    parsed_args_dict.pop(argparse.SUPPRESS, None)
 
     if parsed_args_dict:
       raise TypeError(f"Unused command line options:\n{parsed_args_dict}")
@@ -162,6 +163,7 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
     g.add_argument("--no-log", action="store_true", help="do not write to log files.")
     p.add_argument("--skip-start-finish", action="store_true", help="do not write the START: and FINISH: lines to the log (this should only be used if external code writes those lines).")
     p.add_argument("--print-threshold", choices=("all", "info", "warning", "error", "critical", "none"), default="all", help="minimum level of log messages that should be printed to stderr (default: all)")
+    p.add_argument("--squeue-output-file", type=lambda x: job_lock.setsqueueoutput(filename=x), help="file containing the output of squeue, if running on a machine that doesn't have squeue available", dest=argparse.SUPPRESS)
     return p
 
   @classmethod

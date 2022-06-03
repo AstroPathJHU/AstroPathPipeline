@@ -88,7 +88,7 @@ class TestZoom(TestBaseSaveOutput):
                PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
             imgarray = np.asarray(img)
             targetarray = np.asarray(targetimg)
-            np.testing.assert_array_equal(imgarray, targetarray)
+            np.testing.assert_allclose(imgarray, targetarray, atol=1)
 
         for tiffpage, targettiffpage in more_itertools.zip_equal(tiff.pages, targettiff.pages):
           sample.logger.info("comparing tiff")
