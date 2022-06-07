@@ -231,7 +231,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
           x = int(match.group(1))
           y = int(match.group(2))
 
-          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, name=filename))
+          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, name=filename.relative_to(self.deepzoomroot)))
 
     lst.sort()
     writetable(self.deepzoomfolder/"zoomlist.csv", lst)
