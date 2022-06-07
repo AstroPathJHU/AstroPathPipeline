@@ -22,7 +22,7 @@ class sampledb : sampletracker {
     sampledb(): base ('\\bki04\astropath_processing'){
         $this.sampledbinit()
     }
-    sampledb($mpath) : base ($mpath) {ZW
+    sampledb($mpath) : base ($mpath) {
         $this.sampledbinit()
     }
     sampledb($mpath, $projects) : base ($mpath){
@@ -280,8 +280,6 @@ class sampledb : sampletracker {
     [void]refreshmoduledb($cmodule){
         #
         $this.writeoutput("     updating module database: [$cmodule] started")
-        $ctotal = $this.moduleobjs.($cmodule).newtasks.count
-        $c = 1
         #
         $this.moduleobjs.($cmodule).openmainqueue($false)
         if ($this.moduleobjs.($cmodule).newtasks){
@@ -289,6 +287,9 @@ class sampledb : sampletracker {
         } else {
             $new = $false
         }
+        #
+        $ctotal = $this.moduleobjs.($cmodule).newtasks.count
+        $c = 1
         #
         while($this.moduleobjs.($cmodule).newtasks){
             $slide, $this.moduleobjs.($cmodule).newtasks =
@@ -425,11 +426,21 @@ class sampledb : sampletracker {
     [PSCustomObject]buildbaserow(){
         #
         $row = [PSCustomObject]@{
-            Project = $this.project
-            Cohort = $this.cohort
-            BatchID = $this.batchid
+            Project = ($this.project).trimstart('0')
+            Cohort = ($this.cohort).trimstart('0')
+            BatchID = ($this.batchid).trimstart('0')
             SlideID = $this.slideid
         }
+        #
+        return $row
+    }
+    #
+    [PSCustomObject]buildbaserow($row){
+        #
+        $row.Project = ($this.project).trimstart('0')
+        $row.Cohort = ($this.cohort).trimstart('0')
+        $row.BatchID = ($this.batchid).trimstart('0')
+        $row.SlideID = $this.slideid
         #
         return $row
     }
@@ -491,6 +502,7 @@ class sampledb : sampletracker {
     [void]updatemodulesub($cmodule, $row, $cmoduleinfo, $statlabel,
         $startlabel, $finishlabel){
         #
+        $this.buildbaserow($row)
         $slidestatus = $cmoduleinfo.status -replace ',', ';'
         $modulestatus = $row.($statlabel)
         #
@@ -531,8 +543,8 @@ class sampledb : sampletracker {
         #
         $cqueue = $this.moduletaskqueue.($cmodule)
         #
-        if ($this.moduleinfo.project -and 
-            $this.moduleinfo.project -notmatch
+        if ($this.project -and 
+            $this.project -notmatch
             ($this.matcharray(
                 $this.module_project_data.($cmodule)
         ))){

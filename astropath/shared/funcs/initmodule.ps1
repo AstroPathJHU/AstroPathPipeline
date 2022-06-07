@@ -20,7 +20,8 @@ Function initmodule {
     param($task, $log, $module, [Parameter()][switch]$test)
     #
     if ($task.ContainsKey('tasklogfile')){
-        updateprocessinglog -logfile $tasklogfile -sample $log -lineoutput (
+        updateprocessinglog -logfile $task.tasklogfile -jobname $task.jobname `
+            -sample $log -lineoutput (
             'processname:', $log.processname, '- processid:', $log.processid -join ' ')
     }
     #
@@ -32,11 +33,17 @@ Function initmodule {
     } else {$e = 0}
     #
     $inp = New-Object $module -ArgumentList ($task, $log)
-    if ($e -ne 1){
-        $inp.('run' + $module)()
-    } else{
+    if ($e -eq 1){
        return $inp
     }
     #
+    $inp.('run' + $module)()
+    <#
+    if ($task.ContainsKey('tasklogfile')){
+        updateprocessinglog -logfile $task.tasklogfile -jobname $task.jobname `
+            -sample $log -lineoutput (
+            #### processing statistics')
+    }
+    #>
 }
 #

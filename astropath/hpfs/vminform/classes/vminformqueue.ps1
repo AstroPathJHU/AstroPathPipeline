@@ -31,8 +31,9 @@ class vminformqueue : modulequeue {
     vminformqueueinit(){
         $this.refobject = 'taskid'
         $this.localqueue_filename = 'inForm_queue.csv'
-        $this.mainqueueheaders = 'TaskID,slideid,Antibody,Algorithm,ProcessingLocation,StartDate'
-        $this.localqueueheaders = 'TaskID,slideid,Antibody,Algorithm'
+        $this.mainqueueheaders = @('TaskID','slideid','Antibody',
+            'Algorithm','ProcessingLocation','StartDate')
+        $this.localqueueheaders = @('TaskID','slideid','Antibody','Algorithm')
     }
   <# -----------------------------------------
      coalescevminformqueues

@@ -448,28 +448,15 @@ class fileutils : generalutils {
         $fpath = Split-Path $file
         $fname = Split-Path $file -Leaf
         #
-        $SI = $this.FileWatcher($fpath, $fname)
-        return $SI
+        return($this.FileWatcher($fpath, $fname))
         #
     }
     #
     [string]FileWatcher($fpath, $fname){
         #
-        $this.createdirs($fpath)
-        #
-        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-        $newwatcher.Filter = $fname
-        $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite'
-        #
-        Register-ObjectEvent $newwatcher `
-            -EventName Changed `
-            -SourceIdentifier ($fpath + '\' + $fname + ';changed') | Out-Null
-        #
-        Register-ObjectEvent $newwatcher `
-            -EventName Renamed `
-            -SourceIdentifier ($fpath + '\' + $fname+ ';renamed') | Out-Null
-        #
-        return ($fpath + '\' + $fname)
+        return (
+            $this.filewatcher($fpath, $fname, ($fpath, $fname -join '\'))
+        )
         #
     }
     #
@@ -477,19 +464,65 @@ class fileutils : generalutils {
         #
         $this.createdirs($fpath)
         #
-        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-        $newwatcher.Filter = $fname
-        $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite'
+        $testw = $true
+        $c = 0
         #
-        Register-ObjectEvent $newwatcher `
-            -EventName Changed `
-            -SourceIdentifier ($SI + ';changed') | Out-Null
-        #
-        Register-ObjectEvent $newwatcher `
-            -EventName Renamed `
-            -SourceIdentifier ($SI + ';renamed')| Out-Null
+        while ($testw){
+            $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+            $newwatcher.Filter = $fname
+            $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite'
+            #
+            Register-ObjectEvent $newwatcher `
+                -EventName Changed `
+                -SourceIdentifier ($SI + ';changed') | Out-Null
+            #
+            Register-ObjectEvent $newwatcher `
+                -EventName Renamed `
+                -SourceIdentifier ($SI + ';renamed')| Out-Null
+            #
+            $testw = $this.testwatcher(($fpath, $fname -join '\'), $SI)
+            $c ++ 
+            if ($c -ge 5){
+                $this.writeoutput("WARNING: File watcher was not trigger on test for: $SI")
+                break
+            }
+        }
         #
         return $SI
+        #
+    }
+    #
+    [switch]testwatcher($file, $SI){
+        #
+        $data = $this.getcontent($file)
+        $data += 'test line'
+        #
+        $this.setcontent($file, $data)
+        $this.setcontent($file, $data[0..($data.length - 2)])
+        #
+        $mevents = get-event | 
+            Where-Object{$_.sourceidentifier -match $SI}
+        #
+        if ($mevents){
+            $mevents |
+                foreach-object {
+                    remove-event -eventidentifier $_.eventidentifier
+                }
+            return $true
+        } else {
+            $this.UnregisterEvent($SI)
+        }
+        #
+        return $false
+        #
+    }
+    #
+    [void]clearevents($mevent){
+        #
+        $mevent = ($mevent -split ';')[0]
+        get-event | 
+            Where-Object {$_.SourceIdentifier -match $mevent} |
+            remove-event
         #
     }
     <# -----------------------------------------

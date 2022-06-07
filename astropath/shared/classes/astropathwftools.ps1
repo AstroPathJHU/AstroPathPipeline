@@ -3,7 +3,9 @@ class astropathwftools : sampledb {
     #
     [Pscredential]$login
     [string]$workerloglocation = '\\' + $env:ComputerName +
-        '\c$\users\public\astropath\'   
+        '\c$\users\public\astropath\' 
+    [array]$apworkerheaders = @('server','location','module','message','date')
+    [array]$apworkerlog
     #
     astropathwftools(){
         $this.apwftoolsinit("NA", '')
@@ -87,112 +89,133 @@ class astropathwftools : sampledb {
     ----------------------------------------- #>
     [void]CheckOrphan(){
         #
-        #$this.checkvms()
-        $idleworkers = $this.worker_data | where-object {$_.status -match 'IDLE'}
+        $idleworkers = $this.worker_data |
+            where-object {$_.status -match 'IDLE'}
         foreach ($worker in @(0..($idleworkers.Length - 1))){
             #
             $jobname = $this.defjobname($idleworkers[$worker])
             $workertasklog = $this.workertasklog($jobname)
             $workertaskfile = $this.workertaskfile($jobname)
+            $processid = $this.checkprocessid($jobname)
             #
-            if (test-path $workertasklog){
-                #
-                $fileInfo = New-Object System.IO.FileInfo $workertasklog
+            if ($processid -ne 0){
+                $this.writeoutput("     Orphaned job found: $workertasklog")
+                $this.StartOrphanMonitor($jobname, $processid)
+                $idleworkers[$worker].Status = 'RUNNING'
+                $this.writeoutput(
+                        "     Orphaned job not completed: $workertasklog ... created processid watchdog"
+                    )
+                
+            }  elseif (test-path $workertasklog) {
                 #
                 $this.writeoutput("     Orphaned job found: $workertasklog")
+                $this.removefile($workertasklog)
+                $this.CheckTaskLog($jobname, 'ERROR')
+                $this.removefile($workertaskfile)
+                $idleworkers[$worker].Status = 'IDLE'
+                $this.writeoutput(
+                    "     Orphaned job completed and cleared: $workertasklog"
+                )
                 #
-                try {
-                    #
-                    # check if I can access and remove the worker task file
-                    #
-                    $fileStream = $fileInfo.Open([System.IO.FileMode]::Open)
-                    $fileStream.Dispose()
-                    $this.removefile($workertasklog)
-                    $this.CheckTaskLog($jobname, 'ERROR')
-                    $this.removefile($workertaskfile)
-                    $idleworkers[$worker].Status = 'IDLE'
-                    $this.writeoutput(
-                        "     Orphaned job completed and cleared: $workertasklog"
-                    )
-                }catch {
-                    #
-                    $this.StartOrphanMonitor($jobname)
-                    $idleworkers[$worker].Status = 'RUNNING'
-                    $this.writeoutput(
-                        "     Orphaned job not completed: $workertasklog ... created worker log watchdog"
-                    )
-                }
-            }
+            }               
+          
         }
         #
     }
     #
-    [void]checkvms(){
+    [int]checkprocessid($jobname){
         #
-        $vmworkers = $this.worker_data | 
-            where-object {
-                (
-                    $_.status -match 'IDLE' -or 
-                    $_.status -match 'OFF' 
-                ) -and $_.module -match 'vminform'
+        $this.importaplog()
+        $logline = $this.selectaploglines($jobname).message -match 'processid'
+        if (!$logline){
+            return 0
+        }
+        $processid = ($logline -split 'processid: ')[1]
+        #
+        $jobid = $this.parsejobname($jobname)
+        $currentworker = $this.jobtoworker($jobid)
+        $ip = $this.defcurrentworkerip($currentworker)
+        #
+        if (
+            $env:computername -match $currentworker.server -and 
+            $currentworker.module -notmatch 'vminform'
+        ){
+            $proc = get-process -id $processid -ErrorAction silentlycontinue
+        } else {
+            try {
+                $proc = invoke-command -computername $ip -credential $this.login -EA Stop `
+                    -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue}
+            } catch {
+                $this.enableremoting($ip)
+                $proc = invoke-command -computername $ip -credential $this.login -EA Stop `
+                    -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue} 
             }
+        }
         #
-        #$vmworkers
+        if ($proc){
+            return $processid
+        }
+        #
+        return 0
         #
     }
+    #
+    [void]enableremoting($cname){
+        #
+        $SessionArgs = @{
+            ComputerName  = $cname
+            Credential    = $this.login
+            SessionOption = New-CimSessionOption -Protocol Dcom
+        }
+        $MethodArgs = @{
+            ClassName     = 'Win32_Process'
+            MethodName    = 'Create'
+            CimSession    = New-CimSession @SessionArgs
+            Arguments     = @{
+                CommandLine = "powershell Start-Process powershell -ArgumentList 'Enable-PSRemoting -Force'"
+            }
+        }
+        Invoke-CimMethod @MethodArgs
+        #
+    }
+    #
     <# -----------------------------------------
      StartOrphanMonitor
      Start an orphaned job monitor 
      ------------------------------------------
      Usage: $this.StartOrphanMonitor()
     ----------------------------------------- #>
-    [void]StartOrphanMonitor($jobname){
+    [void]StartOrphanMonitor($jobname, $processid){
         #
         # start a new job monitoring this file with the same job name 
         #
-        $myscriptblock = {
-            param($workertasklog)
-            #
-            $workertasklog = $workertasklog -replace '\\', '/'
-            $fpath = Split-Path $workertasklog
-            $fname = Split-Path $workertasklog -Leaf
-            #
-            $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-            $newwatcher.Filter = $fname
-            $newwatcher.NotifyFilter = 'LastWrite'
-            #
-            $SI = ($workertasklog) 
-            #
-            Register-ObjectEvent $newwatcher `
-                -EventName Changed `
-                -SourceIdentifier $SI | Out-Null
-            #
-            while (1) {
-                try { 
-                    $fileInfo = New-Object System.IO.FileInfo $workertasklog
-                    $fileStream = $fileInfo.Open([System.IO.FileMode]::Open)
-                    $fileStream.Dispose()
-                    break
-                } catch {
-                    #
-                    wait-event $SI  
-                    remove-event -SourceIdentifier $SI
-                    Start-Sleep -s 10
-                    #
-                }
-                #
-            }
-            #
-            Unregister-Event -SourceIdentifier $SI -Force 
-            #
+        $jobid = $this.parsejobname($jobname)
+        $currentworker = $this.jobtoworker($jobid)
+        $ip = $this.defcurrentworkerip($currentworker)
+        #
+        $sb = {
+            param($processid)
+            wait-process -id $processid -ea silentlycontinue
         }
         #
-        $myparameters = @{
-            ScriptBlock = $myscriptblock
-            ArgumentList = $this.workertasklog($jobname)
-            name = $jobname
-        }
-        Start-Job @myparameters
+        if (
+            $env:computername -match $currentworker.server -and 
+            $currentworker.module -notmatch 'vminform'
+        ){
+            #
+            $myparameters = @{
+                ScriptBlock = $sb
+                ArgumentList = $processid
+                name = $jobname
+            }
+            Start-Job @myparameters
+            #
+         } else {
+            #
+            invoke-command -computername $ip -credential $this.login `
+                -scriptblock $sb -asjob -jobname $jobname -ArgumentList $processid
+            #
+        }    
         #
     }
     <# -----------------------------------------
@@ -224,8 +247,15 @@ class astropathwftools : sampledb {
             #
             while ($cqueue.count -ne 0 -and $currentworkers){
                 #
-                $currenttask = $cqueue.dequeue()
                 $currentworker, $currentworkers = $currentworkers
+                if (!($this.fastping($currentworker))){
+                    $this.writeoutput(('WARNING:', 
+                        $currentworker.server, $currentworker.location,
+                        'is set to ON but state is OFF!' -join ' '))
+                    continue
+                }
+                #
+                $currenttask = $cqueue.dequeue()
                 #
                 $this.writeoutput(("     Launching Task on:", 
                     $currentworker.server, $currentworker.location -join ' '))
@@ -368,8 +398,8 @@ class astropathwftools : sampledb {
         #
         $currenttasktowrite = (' Import-Module "', $this.coderoot(), '" -ea stop
         $output = & {LaunchModule -mpath:"', $this.mpath, $currenttaskinput,
-            '" -tasklogfile "', $this.workerlogfile($jobname),'"} 2>&1
-        UpdateProcessingLog -logfile "', $this.workerlogfile($jobname),
+            '" -tasklogfile "', $this.workerlogfile(),'" -jobname "', $jobname,'"} 2>&1
+        UpdateProcessingLog -logfile "', $this.workerlogfile(),'" -jobname "', $jobname,
             '" -sample $output -erroroutput $output.output') -join ''
         #
         $this.SetFile($this.workertaskfile($jobname), $currenttasktowrite)
@@ -404,13 +434,11 @@ class astropathwftools : sampledb {
         #
         Start-Job @myparameters
         #
-        $taskid = ($jobname, $this.getformatdate()) -join ';'
-        [string]$logline = @("START: ", $taskid,"`r`n") -join ''
-        $this.popfile($this.workerlogfile($jobname), $logline)
+        $this.popfile($this.workerlogfile(),
+            $this.aplogstart($jobname, $jobname))
         #
-        $mtask = ($currenttask -join ' ', $this.getformatdate()) -join ';'
-        [string]$logline = @("INFO: ", $mtask,"`r`n") -join ''
-        $this.popfile($this.workerlogfile($jobname), $logline)
+        $this.popfile($this.workerlogfile(),
+             $this.aploginfo($jobname, ($currenttask -join ' ')))
         #
     }
    <# -----------------------------------------
@@ -496,7 +524,7 @@ class astropathwftools : sampledb {
         while($events){
             #
             $currentevent = $events[0]
-            remove-event -SourceIdentifier $currentevent.SourceIdentifier
+            $this.clearevents($currentevent)
             $this.handleAPevent($currentevent.SourceIdentifier)
             $events = get-event
             #
@@ -527,24 +555,18 @@ class astropathwftools : sampledb {
     #
     [void]checkworkerlog($job){
         #
-        $taskid = ($job.Name, $job.PSEndTime) -join ';'
-        $output = $this.getcontent($this.workerlogfile($job.Name)) 
-        #
-        # if there is output and the last line does not match the Regex write lines 
-        # to console 
-        #
-        if ($output -and $output[$output.count-1] -notmatch [regex]::escape($_.Name)) {
-            $mymatches = $output -match [regex]::escape($_.Name)
-            $idx = [array]::IndexOf($output, $mymatches[-1])
-            $newerror = $output[($idx+1)..($output.count-1)]
-            $this.writeoutput(" $taskid")
-            $this.writeoutput(" $newerror")
-        }
+        $this.importaplog()
+        $this.writeoutput($job.Name)
+        $this.selectaploglines($job.Name) | 
+            ForEach-Object {
+                $this.writeoutput($_.Message)
+            }
         #
         $this.CheckTaskLog($job.Name, 'WARNING')
         $this.removefile($this.workertaskfile($job.Name))
-        [string]$logline = @("FINISH: ", $taskid,"`r`n") -join ''
-        $this.popfile(($this.workerlogfile($job.Name)), $logline)
+        #
+        $this.popfile($this.workerlogfile(),
+          $this.aplogfinish($job.name, $job.name))
         #
     }
     #
@@ -681,8 +703,72 @@ class astropathwftools : sampledb {
      exceptions in the powershell module or 
      launching code. 
     ----------------------------------------- #>
-    [string]workerlogfile($jobname){
-        return ($this.workerloglocation, $jobname, '.log' -join '')
+    [string]workerlogfile(){
+        return ($this.workerloglocation, 'astropath-workers.log' -join '')
+    }
+    #
+    [string]aplogerror($jobname, $message){
+        return $this.formatwlogfile($jobname, ('ERROR:', $message -join ' '))
+    }
+    #
+    [string]aplogwarning($jobname, $message){
+        return $this.formatwlogfile($jobname, ('WARNING:', $message -join ' '))
+    }
+    #
+    [string]aploginfo($jobname, $message){
+        return $this.formatwlogfile($jobname, ('INFO:', $message -join ' '))
+    }
+    #
+    [string]aplogstart($jobname, $message){
+        return $this.formatwlogfile($jobname, ('START:', $message -join ' '))
+    }
+    #
+    [string]aplogfinish($jobname, $message){
+        return $this.formatwlogfile($jobname, ('FINISH:', $message -join ' '))
+    }
+    #
+    [string]formatwlogfile($jobname, $message){
+        return (
+            (($this.parsejobname($jobname) -join ';'),
+             $message, $this.getformatdate() -join ';') + "`r`n"
+        )
+    }
+    #
+    [void]importaplog(){
+        $this.apworkerlog = $this.opencsvfile(
+            $this.workerlogfile(), ';', $this.apworkerheaders
+        )
+    }
+    #
+    [array]selectaploglines($jobname){
+        #
+        $jobname1 = $this.parseJobName($jobname)
+        return (
+            $this.apworkerlog |
+                Where-Object {
+                    $_.server -contains $jobname1[0] -and 
+                    $_.location -contains $jobname1[1] -and 
+                    $_.module -contains $jobname1[2] -and 
+                    $_.Date -ge ($this.selectaploglines($jobname, 'START').date)
+                }
+        )
+        #
+    }
+    #
+    [array]selectaploglines($jobname, $status){
+        #
+        $jobname = $this.parseJobName($jobname)
+        return (
+            $this.apworkerlog |
+                Where-Object {
+                    $_.server -contains $jobname[0] -and 
+                    $_.location -contains $jobname[1] -and 
+                    $_.module -contains $jobname[2] -AND
+                    $_.Message -match ('^' + $status)
+                } |
+                Select-Object -Last 1
+        )
+        #
     }
     <# -----------------------------------------
      DefCurrentWorkerip
@@ -700,6 +786,29 @@ class astropathwftools : sampledb {
             $currentworkerip = $currentworker.server
         }
         return $currentworkerip
+        #
+    }
+    #
+    [PSCustomObject]jobtoworker($jobname){
+        #
+        $hash = @{ 
+            server =$jobname[0];
+            location = $jobname[1];
+            module = $jobname[2]
+        }
+        #
+        return [PSCustomObject]$hash
+        #
+    }
+    #
+    [switch]fastping($currentworker){
+        #
+        $obj = New-Object System.Net.NetworkInformation.Ping
+        return (
+            (
+                $obj.send($this.defcurrentworkerip($currentworker), 2000)
+            ).status -match 'Success'
+        )
         #
     }
 }

@@ -19,8 +19,10 @@
     [string]$mainqueue_path = '\across_project_queues'
     [string]$localqueue_path = '\progress_tables'
     [string]$project
-    [string]$mainqueueheaders = 'Project,Cohort,BatchID,SlideID,Status,isGood,StartTime,FinishTime'
-    [string]$localqueueheaders = 'Project,Cohort,BatchID,SlideID,Status,isGood,StartTime,FinishTime'
+    [array]$mainqueueheaders = @('Project','Cohort','BatchID','SlideID',
+        'Status','isGood','StartTime','FinishTime')
+    [array]$localqueueheaders = @('Project','Cohort','BatchID','SlideID',
+        'Status','isGood','StartTime','FinishTime')
     [array]$localqueueheadersvm =  @('Project','Cohort','BatchID','SlideID')
     [string]$refobject 
     [string]$type = 'table'
@@ -216,7 +218,7 @@
         #
         if (!(test-path $mainqueuefile)){
             $this.setfile($mainqueuefile,
-                $this.mainqueueheaders)
+                ($this.mainqueueheaders -join ','))
         }
         #
         [array]$mainqueue = $this.OpenCSVFile($mainqueuefile)
@@ -243,7 +245,6 @@
         $this.maincsv = $null
         $this.maincsv = $mainqueue
         #
-        $this.lastopenmaincsv = $null
         if($this.lastopenmaincsv){
             $this.getnewtasksmain($this.lastopenmaincsv, $this.maincsv)
         }
@@ -318,7 +319,7 @@
                 $headers = $this.createvmtableheaders($project)
                 $headers = ($headers -join ',')
             } else {
-                $headers = $this.localqueueheaders
+                $headers = ($this.localqueueheaders  -join ',')
             }
             #
             $this.setfile($this.localqueuefile.($project), `
@@ -361,7 +362,7 @@
             $this.type -match 'table') {
             $heads = $this.createvmtableheaders($project)
         } else {
-            $heads = $this.localqueueheaders -split ','
+            $heads = $this.localqueueheaders
         }
         #
         $updatedlocal = (($this.localqueue.($project) | 
@@ -399,8 +400,6 @@
             return
         }
         #
-        [array]$heads = ($this.mainqueueheaders -split ',')
-        #
         $stable = $this.getstoredtable($this.lastopenmaincsv)
         $this.lastopenmaincsv = $null
         #
@@ -408,24 +407,15 @@
         $this.openmainqueue($false)
         $this.getnewtasksmain($stable, $this.lastopenmaincsv)
         #
-        if ($this.module -match 'vminform'){
-            if ($this.comparetablesvmmain($mainqueue, $this.maincsv)){
-                $this.maincsv = $mainqueue
-                $this.lastopenmaincsv = $this.getstoredtable($this.maincsv) 
-            } else {
-                return
-            }
+        if ($this.comparetables($mainqueue, $this.maincsv)){
+            $this.maincsv = $mainqueue
+            $this.lastopenmaincsv = $this.getstoredtable($this.maincsv) 
         } else {
-            if ($this.comparetables($mainqueue, $this.maincsv)){
-                $this.maincsv = $mainqueue
-                $this.lastopenmaincsv = $this.getstoredtable($this.maincsv) 
-            } else {
-                return
-            }
+            return
         }
         #
         $mainqueue = $this.maincsv | 
-            select-object -Property $heads
+            select-object -Property $this.mainqueueheaders 
         #
         $updatedmain = (($mainqueue |
             ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
@@ -480,14 +470,13 @@
         if ($this.type -match 'queue'){
             #
             $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID',
+                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID'
                  'Antibody', 'Algorithm'
             #
         } else {
             #
             $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'SlideID', 'Status', 
-                'StartTime', 'FinishTime'
+                -DifferenceObject $oldqueue -Property ($this.mainqueueheaders -notmatch 'Time')
             #
         }
         #
@@ -514,51 +503,8 @@
             return $true
         }
         #
-        if ($this.type -match 'queue'){
-            #
-            $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'TaskID', 'SlideID'
-            #
-        } else {
-            #
-            $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'SlideID', 'Status',
-                     'StartTime', 'FinishTime'
-            #
-        }
-        #
-        if ($cmp){
-            $cmp = $null
-            return $true
-        } else {
-            return $false
-        }
-        #
-    }
-    #
-    [switch]comparetablesvmmain($oldqueue, $newqueue){
-        #
-        if (!$oldqueue){
-            return $false
-        }
-        #
-        if (!$newqueue){
-            return $true
-        }
-        #
-        if ($this.type -match 'queue'){
-            #
-            $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'TaskID',
-                 'SlideID', 'ProcessingLocation', 'StartDate'
-            #
-        } else {
-            #
-            $cmp = Compare-Object -ReferenceObject $newqueue `
-                -DifferenceObject $oldqueue -Property 'SlideID', 'Status',
-                 'StartTime', 'FinishTime'
-            #
-        }
+        $cmp = Compare-Object -ReferenceObject $newqueue `
+            -DifferenceObject $oldqueue -Property $this.mainqueueheaders
         #
         if ($cmp){
             $cmp = $null

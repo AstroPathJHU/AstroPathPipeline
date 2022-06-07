@@ -11,6 +11,7 @@
         [Parameter()][string]$algorithm='',
         [Parameter()][string]$informvers='',
         [Parameter()][string]$tasklogfile='',
+        [Parameter()][string]$jobname='',
         [Parameter()][switch]$test
 
     )

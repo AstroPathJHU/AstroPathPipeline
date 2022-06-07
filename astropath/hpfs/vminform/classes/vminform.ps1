@@ -36,6 +36,9 @@ Class vminform : moduletools {
     [array]$skippedfiles
     [bool]$needsbinaryseg
     [bool]$needscomponent
+    [string]$inputimagepath
+    [array]$inputimageids
+    [switch]$islocal = $true
     #
     $export_type_setting = @{
         Default          = (('     <ExportTypes>eet_NucSegmentation,',
@@ -81,6 +84,8 @@ Class vminform : moduletools {
         $this.processvars[0] = $this.outpath
         $this.processvars[1] = $this.outpath
         $this.processvars[2] = $this.outpath
+        #
+        $this.inputimagepath = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw'
         $this.processvars += 1
         #
         $this.TestPaths()
@@ -113,7 +118,9 @@ Class vminform : moduletools {
     [void]RunVMinForm(){
         #
         $this.sample.createnewdirs($this.outpath)
-        $this.DownloadFiles()
+        if (!$this.islocal){
+            $this.DownloadFiles()
+        }
         while(($this.err -le 5) -AND ($this.err -ge 0)){
             $this.CreateOutputDir()
             $this.CreateImageList()
@@ -185,9 +192,10 @@ Class vminform : moduletools {
     [void]CreateImageList(){
         #
         $this.sample.info("Compile image list")
-        $p = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw\*'
-        $this.image_list = Get-ChildItem -Path $p -include *.im3 |
-            ForEach-Object {$_.FullName} |
+        if (!$this.inputimageids){
+            $this.inputimageids = (Get-ChildItem -Path ($this.inputimagepath + '\*') -include *.im3).FullName
+        }
+        $this.image_list =  $this.inputimageids |
             foreach-object {$_+"`r`n"}
         $this.sample.setfile($this.image_list_file, $this.image_list)
         #
@@ -576,7 +584,7 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]CheckErrorDictionary($errorline, $imageid){
         #
-        $filepath = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw\' + 
+        $filepath = $this.inputimagepath + '\' + 
                     $this.sample.slideid + '_' + $imageid + '.im3'
         switch -regex ($errorline) {
             $this.error_dictionary.ConnectionFailed {
@@ -610,14 +618,20 @@ Class vminform : moduletools {
         #
         $corrupted = $this.corruptedfiles | Select-Object -Unique
         $skipped = $this.skippedfiles | Select-Object -Unique
-        $filestorerun = $corrupted | Where-Object {$skipped -notcontains $_}
+        $this.inputimageids = $corrupted | Where-Object {$skipped -notcontains $_}
         #
-        if ($filestorerun.length -gt 0) {
-            $flatwfolder = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw'
-            $this.sample.createnewdirs($flatwfolder)
-            $filestorerun | ForEach-Object {
-                $source = $this.sample.flatwim3folder() + '\' + (Split-Path $_ -Leaf)
-                $this.sample.copy($source, (Split-Path $_))
+        if ($this.inputimageids.length -gt 0) {
+            #
+            if (!$this.islocal){
+                $flatwfolder = $this.inputimagepath
+                $this.sample.createnewdirs($flatwfolder)
+                $this.inputimageids | ForEach-Object {
+                    $source = $this.sample.flatwim3folder() + '\' + (Split-Path $_ -Leaf)
+                    $this.sample.copy($source, (Split-Path $_))
+                }
+                #
+                $this.inputimageids = @()
+                #
             }
             $this.err++
         }

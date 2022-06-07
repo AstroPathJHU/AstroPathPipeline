@@ -664,6 +664,14 @@ class copyutils{
     }
     #
     [void]writeoutput($mess){
-        Write-Host ("$mess - " + (Get-Date)) -ForegroundColor Yellow
+        Write-Host ("$mess - " + ($this.getformatdate())) -ForegroundColor Yellow
+    }
+    #
+    [string]getformatdate(){
+        return ([string](Get-Date -Format "yyyy-MM-dd HH:mm:ss"))
+    }
+    #
+    [string]getformatdate($d){
+        return ([string](Get-Date $d -Format "yyyy-MM-dd HH:mm:ss"))
     }
 }

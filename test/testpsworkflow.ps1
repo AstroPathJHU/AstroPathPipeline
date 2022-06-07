@@ -19,13 +19,15 @@ Class testpsworkflow : testtools {
         #
         $this.testconstructors($cred) 
         $inp = astropathworkflow -Credential $cred -mpath $this.mpath -test
-        <#
+        #
         $this.testastropathupdate($inp)
         $inp.workerloglocation = $PSScriptRoot + '\data\workflowlogs\'
         $inp.createdirs($inp.workerloglocation)
         $this.testworkerlistdef($inp)
+        <#
         $this.testorphanjobmonitor($inp)
         $this.testwait($inp)
+        #>
         $inp.removedir($PSScriptRoot + '\data\workflowlogs')
         #
         $inp.preparesample($this.slideid)
@@ -33,7 +35,7 @@ Class testpsworkflow : testtools {
         $this.removesetupvminform($inp)
         $this.testastropathupdate2('shredxml', $cred)
         $this.setupbatchwarpkeys($inp)
-        #>
+        #
         $this.testastropathupdate2('batchwarpkeys', $cred)
         $this.setupvminform($inp)
         throw 'stop'
