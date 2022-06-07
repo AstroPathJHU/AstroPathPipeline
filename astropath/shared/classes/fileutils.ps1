@@ -494,14 +494,14 @@ class fileutils : generalutils {
     #
     [switch]testwatcher($file, $SI){
         #
-        $data = $this.getcontent($file)
-        $data += 'test line'
-        #
-        $this.setcontent($file, $data)
-        $this.setcontent($file, $data[0..($data.length - 2)])
+        $this.popfile($file, 'test line')
+        $a = (Get-Content $file | Measure-Object)
+        (Get-Content $file) |
+            Where-Object {($a.count) -notcontains $_.ReadCount} |
+            Set-Content $file
         #
         $mevents = get-event | 
-            Where-Object{$_.sourceidentifier -match $SI}
+            Where-Object{$_.sourceidentifier -match [regex]::Escape($SI)}
         #
         if ($mevents){
             $mevents |
@@ -521,7 +521,7 @@ class fileutils : generalutils {
         #
         $mevent = ($mevent -split ';')[0]
         get-event | 
-            Where-Object {$_.SourceIdentifier -match $mevent} |
+            Where-Object {$_.SourceIdentifier -match [regex]::Escape($mevent)} |
             remove-event
         #
     }

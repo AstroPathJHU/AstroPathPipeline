@@ -27,6 +27,15 @@
         }
     }
     #
+    [void]launchwfnobuild(){
+        #
+        while(1){
+            $this.defworkerlist()
+            $this.distributetasks()
+            $this.WaitAny()
+        }
+    }
+    #
     [void]launchwfnoloop($notasks){
         #
         $this.buildsampledb()
