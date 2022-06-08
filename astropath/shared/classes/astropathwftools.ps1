@@ -91,6 +91,8 @@ class astropathwftools : sampledb {
         #
         $idleworkers = $this.worker_data |
             where-object {$_.status -match 'IDLE'}
+        $this.importaplog()
+        #
         foreach ($worker in @(0..($idleworkers.Length - 1))){
             #
             $jobname = $this.defjobname($idleworkers[$worker])
@@ -125,7 +127,6 @@ class astropathwftools : sampledb {
     #
     [int]checkprocessid($jobname){
         #
-        $this.importaplog()
         $logline = $this.selectaploglines($jobname).message -match 'processid'
         if (!$logline){
             return 0
