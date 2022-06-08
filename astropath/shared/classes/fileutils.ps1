@@ -464,10 +464,10 @@ class fileutils : generalutils {
         #
         $this.createdirs($fpath)
         #
-        $testw = $true
+        $testw = $false
         $c = 0
         #
-        while ($testw){
+        while (!$testw){
             $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
             $newwatcher.Filter = $fname
             $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite'
@@ -498,7 +498,10 @@ class fileutils : generalutils {
         $a = (Get-Content $file | Measure-Object)
         (Get-Content $file) |
             Where-Object {($a.count) -notcontains $_.ReadCount} |
-            Set-Content $file
+            Set-Content ($file + '.tmp')
+        (Get-Content ($file + '.tmp')) | Set-Content $file
+        #
+        $this.removefile(($file + '.tmp'))
         #
         $mevents = get-event | 
             Where-Object{$_.sourceidentifier -match [regex]::Escape($SI)}

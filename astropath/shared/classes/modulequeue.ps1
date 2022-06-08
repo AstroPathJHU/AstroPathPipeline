@@ -368,20 +368,12 @@
         $updatedlocal = (($this.localqueue.($project) | 
             select-object -Property $heads | 
             ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
-        try {
-            $this.UnregisterEvent($this.localqueuefile.($project))
-            $isevent = $true
-        } catch {
-            $isevent = $false
-        }
         #
         try{
             $this.SetFile($this.localqueuefile.($project), $updatedlocal)
         } catch {}
         #
-        if ($isevent){
-            $this.FileWatcher($this.localqueuefile.($project))
-        }
+        $this.clearevents(($this.localqueuefile.($project), 'changed' -join ';'))
         #
     }
     #
@@ -421,19 +413,10 @@
             ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
         #
         try {
-            $this.UnregisterEvent($mainqueuelocation)
-            $isevent = $true
-        } catch {
-            $isevent = $false
-        }
-        #
-        try {
             $this.SetFile($mainqueuelocation, $updatedmain)
         } catch {}
         #
-        if ($isevent){
-            $this.FileWatcher($mainqueuelocation)
-        }
+        $this.clearevents(($mainqueuelocation, 'changed' -join ';'))
         #
      }
     #

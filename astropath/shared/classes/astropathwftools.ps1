@@ -228,6 +228,9 @@ class astropathwftools : sampledb {
     [void]distributetasks(){
         #
         foreach ($module in $this.modules){
+            #
+            $writequeue = $false
+            #
             $currentworkers = $this.worker_data  | 
                 where-object {
                     $_.module -match $module -and 
@@ -242,6 +245,7 @@ class astropathwftools : sampledb {
                 if ($module -match 'vminform'){
                     $this.sortvmqqueue($cqueue)
                     $cqueue = $this.moduletaskqueue.($module) 
+                    $writequeue = $true
                 }
             }
             #
@@ -266,6 +270,10 @@ class astropathwftools : sampledb {
                 #
             }
             #
+            if ($writequeue){
+                $this.vmq.writemainqueue()
+            }
+            #
         }
         #
     }
@@ -276,7 +284,10 @@ class astropathwftools : sampledb {
         $this.moduletaskqueue.vminform = New-Object System.Collections.Generic.Queue[array]
         #
         $this.vmq.maincsv | 
-            Where-Object {$_.taskid -in $taskids} |
+            Where-Object {
+                $_.ProcessingLocation -eq '' -and
+                $_.taskid -in $taskids
+            } |
             foreach-object {
                 $this.moduletaskqueue.vminform.enqueue(@($_.taskid, $_.slideid))
             }
@@ -330,8 +341,6 @@ class astropathwftools : sampledb {
         #
         $row.ProcessingLocation = 'Processing:' + $currentworker.location
         $row.StartDate = $this.getformatdate()
-        #
-        $this.vmq.writemainqueue()
         #
         $currenttask = @($row.taskid, $row.slideid, $row.antibody, $row.algorithm)
         #
@@ -523,9 +532,9 @@ class astropathwftools : sampledb {
         #
         while($events){
             #
-            $currentevent = $events[0]
+            $currentevent = $events[0].SourceIdentifier
             $this.clearevents($currentevent)
-            $this.handleAPevent($currentevent.SourceIdentifier)
+            $this.handleAPevent($currentevent)
             $events = get-event
             #
         }

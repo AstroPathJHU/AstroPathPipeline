@@ -677,24 +677,13 @@
             } 
             #
             if ($cmodule -match 'batch'){
-                $newslidestocheck = @()  
-                if ($slidestocheck){
-                    $slidestocheck | &{ process {
-                        $newslidestocheck +=
-                            $this.getbatchslideslight($_, $project)
-                    }}
-                }
-                $slidestocheck = $newslidestocheck
-                #
+                $slidestocheck = $slidestocheck |
+                 &{ process {
+                    $this.getbatchslideslight($_, $project)
+                }}
             }
             #
             $this.addnewtasks($slidestocheck)
-            #
-            $newlog_finishlines = $null
-            $newslidestocheck = $null
-            $slidestocheck = $null
-            $cmodule = $null
-            $project = $null
             #
         }
     }
@@ -707,7 +696,6 @@
         #
         $this.newtasks += $slidestocheck
         $this.newtasks = ($this.newtasks | Sort-Object | Get-Unique)
-        $slidestocheck = $null
         #
     }   
     #

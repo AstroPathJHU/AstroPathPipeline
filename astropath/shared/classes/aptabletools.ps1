@@ -142,7 +142,7 @@ class aptabletools : fileutils {
         $this.ImportCorrectionModels($mpath, $createwatcher) 
         $this.ImportMICOMP($mpath, $createwatcher) 
         $this.Importworkerlist($mpath, $createwatcher)
-        $this.findallantibodies($createwatcher)
+        $this.findallantibodies($false) ##### no file watchers on merge files!!!!
     }
     <# -----------------------------------------
      ImportCohortsInfo

@@ -50,7 +50,7 @@
     [string]$algorithmconstant = '.ifp'
     [string]$projectconstant = '.ifp'
     [string]$segmapconstant = '_component_data_w_seg.tif'
-    [string]$mergeconstant = '_cleaned_phenotype_data.csv'
+    [string]$mergeconstant = '_cleaned_phenotype_table.csv'
     [string]$cellsegconstant = '_cell_seg_data.txt'
     [string]$binsegconstant = '_binary_seg_maps.tif'
     [string]$cellsegsumconstant = '_cell_seg_data_summary.txt'

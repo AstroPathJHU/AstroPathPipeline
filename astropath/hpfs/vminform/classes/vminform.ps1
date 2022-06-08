@@ -85,7 +85,11 @@ Class vminform : moduletools {
         $this.processvars[1] = $this.outpath
         $this.processvars[2] = $this.outpath
         #
-        $this.inputimagepath = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw'
+        if ($this.islocal){
+            $this.inputimagepath = $this.sample.flatwim3folder()
+        } else {
+            $this.inputimagepath = $this.outpath + '\' + $this.sample.slideid + '\im3\flatw'
+        }
         $this.processvars += 1
         #
         $this.TestPaths()
@@ -117,10 +121,8 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]RunVMinForm(){
         #
-        $this.sample.createnewdirs($this.outpath)
-        if (!$this.islocal){
-            $this.DownloadFiles()
-        }
+        $this.setupvmdirs()
+        #
         while(($this.err -le 5) -AND ($this.err -ge 0)){
             $this.CreateOutputDir()
             $this.CreateImageList()
@@ -143,6 +145,23 @@ Class vminform : moduletools {
         #
     }
     <# -----------------------------------------
+     setupvmdirs
+     ------------------------------------------
+     Usage: $this.setupvmdirs()
+    ----------------------------------------- #>
+    [void]setupvmdirs(){
+        #
+        $this.sample.info("Set up batch processing dir")
+        $this.sample.createnewdirs($this.outpath)
+        $this.sample.copy($this.algpath, $this.outpath)
+        $this.algpath = $this.outpath + '\' + $this.alg
+        #
+        if (!$this.islocal){
+            $this.DownloadFiles()
+        }
+        #
+    }
+    <# -----------------------------------------
      CreateOutputDir
      First kill any old inForm processes that are
      running on the system which would cause the 
@@ -154,8 +173,8 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]CreateOutputDir(){
         #
-        $this.KillinFormProcess()
         $this.sample.info("Create inForm output location")
+        $this.KillinFormProcess()
         $this.informoutpath = $this.outpath + "\" + $this.abx + '_' + $this.err
         $this.informbatchlog = $this.informoutpath + '\Batch.log'
         $this.sample.createnewdirs($this.informoutpath)
