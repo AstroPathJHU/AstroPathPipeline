@@ -422,15 +422,15 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     if len(set(bigtilexs)) == 1:
       floatedparams[4] = floatedparams[6] = False
       if mus[4] is None: mus[4] = 0
-      if sigmas[4] is None: sigmas[4] = .001*alignmentresults[0].onepixel
+      if sigmas[4] is None: sigmas[4] = .001*alignmentresults[0].oneimpixel
       if mus[6] is None: mus[6] = 0
-      if sigmas[6] is None: sigmas[6] = .001*alignmentresults[0].onepixel
+      if sigmas[6] is None: sigmas[6] = .001*alignmentresults[0].oneimpixel
     if len(set(bigtileys)) == 1:
       floatedparams[5] = floatedparams[7] = False
       if mus[5] is None: mus[5] = 0
-      if sigmas[5] is None: sigmas[5] = .001*alignmentresults[0].onepixel
+      if sigmas[5] is None: sigmas[5] = .001*alignmentresults[0].oneimpixel
       if mus[7] is None: mus[7] = 0
-      if sigmas[7] is None: sigmas[7] = .001*alignmentresults[0].onepixel
+      if sigmas[7] is None: sigmas[7] = .001*alignmentresults[0].oneimpixel
 
     return floatedparams, mus, sigmas
 
