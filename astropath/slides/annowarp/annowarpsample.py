@@ -1213,6 +1213,9 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
   @property
+  def dxpscale(self):
+    return self.imscale
+  @property
   def center(self):
     """
     the center of the tile
@@ -1232,13 +1235,14 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     the wsi and qptiff images before they are shifted
     """
     wsi, qptiff = self.imageshandle()
+    bigshift = abs(floattoint((np.rint(units.nominal_values(self.dxvec / self.tilesize))).astype(float)) + 2) * self.tilesize
     wsitile = wsi[
-      units.pixels(self.y, pscale=self.imscale):units.pixels(self.y+self.tilesize, pscale=self.imscale),
-      units.pixels(self.x, pscale=self.imscale):units.pixels(self.x+self.tilesize, pscale=self.imscale),
+      floattoint(float(units.pixels(self.y, pscale=self.imscale))):int(float(units.pixels(self.y+self.tilesize+bigshift[1], pscale=self.imscale))),
+      floattoint(float(units.pixels(self.x, pscale=self.imscale))):int(float(units.pixels(self.x+self.tilesize+bigshift[0], pscale=self.imscale))),
     ]
     qptifftile = qptiff[
-      units.pixels(self.y, pscale=self.imscale):units.pixels(self.y+self.tilesize, pscale=self.imscale),
-      units.pixels(self.x, pscale=self.imscale):units.pixels(self.x+self.tilesize, pscale=self.imscale),
+      floattoint(float(units.pixels(self.y, pscale=self.imscale))):int(float(units.pixels(self.y+self.tilesize+bigshift[1], pscale=self.imscale))),
+      floattoint(float(units.pixels(self.x, pscale=self.imscale))):int(float(units.pixels(self.x+self.tilesize+bigshift[0], pscale=self.imscale))),
     ]
     return wsitile, qptifftile
 

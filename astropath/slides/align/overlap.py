@@ -30,6 +30,12 @@ class AlignmentComparison(abc.ABC):
     """
     The relative shift of the two images
     """
+  @property
+  @abc.abstractmethod
+  def dxpscale(self):
+    """
+    The pscale units of dxvec
+    """
 
   @property
   @abc.abstractmethod
@@ -42,7 +48,8 @@ class AlignmentComparison(abc.ABC):
     """
     The images shifted by dxvec
     """
-    return shiftimg(self.unshifted, *units.nominal_values(self.result.dxvec/self.onepixel),use_gpu=self.use_gpu)
+    shifted = shiftimg(self.unshifted, *units.nominal_values(self.dxvec/units.onepixel(self.dxpscale)),use_gpu=self.use_gpu)
+    return shifted
   @property
   def scaleratio(self):
     """
