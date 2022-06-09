@@ -242,7 +242,7 @@ class astropathwftools : sampledb {
             $cqueue = $this.moduletaskqueue.($module) 
             #
             if ($cqueue.count -ne 0 -and $currentworkers){
-                $this.writeoutput(" Starting task distribution for $module")
+                $this.writeoutput(" Starting task distribution for [$module]")
                 if ($module -match 'vminform'){
                     $this.sortvmqqueue($cqueue)
                     $cqueue = $this.moduletaskqueue.($module) 
@@ -566,7 +566,7 @@ class astropathwftools : sampledb {
     [void]checkworkerlog($job){
         #
         $this.importaplog()
-        $this.writeoutput($job.Name)
+        $this.writeoutput(('JOB FINISHED: ' + $job.Name + '. Writing out worker log...'))
         $this.selectaploglines($job.Name) | 
             ForEach-Object {
                 $this.writeoutput($_.Message)

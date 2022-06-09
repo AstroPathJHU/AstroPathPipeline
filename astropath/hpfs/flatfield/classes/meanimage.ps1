@@ -33,6 +33,8 @@ Class meanimage : moduletools {
     [void]RunMeanImage(){
         $this.cleanupbase()
         $this.sample.CreateNewDirs($this.processloc)
+        $this.checkapiddef()
+        $this.checksampledef()
         $this.fixSIDs()
         $this.fixmlids()
         $this.DownloadFiles()

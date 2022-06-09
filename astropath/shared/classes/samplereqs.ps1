@@ -277,17 +277,18 @@
     #
     [switch]testmergefiles(){
         #
-        $this.getfiles('merge', $true)
+        $this.getfiles('merge', $true) | out-null
         if (!$this.mergefiles){
             return $false 
         }
         #
         $date1 =  $this.getmindate('merge', $true)
         #
-        foreach($antibody in $this.cantibodies){
+        foreach($antibody in $this.antibodies){
             #
-            $this.cantibody = $antibody
-            $date2 = $this.getmaxdate('cantibody', $true)
+            $date2 = ([system.io.fileinfo](
+                $this.informantibodylogfile($antibody)
+            )).lastwritetime
             #
             if ($date2 -ge $date1){
                 return $false

@@ -22,6 +22,9 @@ class aptabletools : fileutils {
     [PSCustomObject]$corrmodels_data
     [PSCustomObject]$ffmodels_data
     [PSCustomObject]$slide_data
+    [PSCustomObject]$slide_local_data
+    [PSCustomObject]$sampledef_data
+    [PSCustomObject]$sampledef_local_data
     [PSCustomObject]$worker_data
     [PSCustomObject]$mergeconfig_data
     [PSCustomObject]$imageqa_data
@@ -36,12 +39,16 @@ class aptabletools : fileutils {
     [string]$config_file = 'AstroPathConfig.csv'
     [string]$dependency_file = 'AstroPathDependencies.csv'
     [string]$slide_file = 'AstroPathAPIDdef.csv'
+    [string]$slide_local_file = 'AstroPathAPIDdef'
+    [string]$sampledef_file = 'AstroPathSampledef.csv'
+    [string]$sampledef_local_file = 'Sampledef.csv'
     [string]$ffmodels_file = 'AstroPathFlatfieldModels.csv' 
     [string]$corrmodels_file = 'AstroPathCorrectionModels.csv' 
     [string]$micomp_file = 'meanimagecomparison_table.csv' 
     [string]$worker_file = 'AstroPathHPFWLocs.csv' 
     [string]$imageqa_file = 'imageqa_upkeep.csv'
     [string]$imageqa_path = '\upkeep_and_progress'
+    [string]$slide_local_path = 'upkeep_and_progress'
     [system.object]$mergefiles
     [system.object]$cantibodyfiles
     #
@@ -101,6 +108,18 @@ class aptabletools : fileutils {
     #
     [string]slide_fullfile($mpath){
         return $this.apfullname($mpath, $this.slide_file)
+    }
+    #
+    [string]slide_local_fullfile($mpath){
+        return ($mpath, $this.slide_local_path, $this.slide_local_file -join '\')
+    }
+    #
+    [string]sampledef_fullfile($mpath){
+        return $this.apfullname($mpath, $this.sampledef_file)
+    }
+    #
+    [string]sampledef_local_fullfile($mpath){
+        return $this.apfullname($mpath, $this.sampledef_local_file)
     }
     #
     [string]ffmodels_fullfile($mpath){
@@ -311,6 +330,108 @@ class aptabletools : fileutils {
         )
         #
     }
+    #
+    [void]ImportSlide($mpath, $createwatcher){
+        #
+        $this.importslideid($mpath, $createwatcher)
+        #
+    }
+    #
+    [void]Importsampledef([string] $mpath, $createwatcher){
+        #
+        $this.importcohortsinfo($mpath)
+        #
+        $defpath = $this.sampledef_fullfile($mpath)
+        $this.sampledef_data = $this.OpencsvFileConfirm($defpath)
+        $this.sampledef_data = $this.sampledef_data | & { process {
+            if (
+                $_.project -match ($this.matcharray($this.allprojects))
+            ){$_}
+        }}
+        #
+        if ($createwatcher){
+            $this.FileWatcher($defpath)
+        }
+        #
+    }
+    #
+    [void]Importsampledef([string] $mpath){  
+        #
+        if(!$this.sampledef_data){
+            $this.Importsampledef($mpath, $false) 
+        }
+        #
+    }
+    #
+    [void]Importsampledef(){
+        #
+        $this.Importsampledef($this.mpath)
+        #
+    }
+    #
+    [void]Importsampledef_local([string] $mpath, $createwatcher){
+        #
+        $this.importcohortsinfo($mpath)
+        #
+        $defpath = $this.sampledef_local_fullfile($mpath)
+        $this.sampledef_local_data = $this.OpencsvFileConfirm($defpath)
+        $this.sampledef_local_data = $this.sampledef_local_data | & { process {
+            if (
+                $_.project -match ($this.matcharray($this.allprojects))
+            ){$_}
+        }}
+        #
+        if ($createwatcher){
+            $this.FileWatcher($defpath)
+        }
+        #
+    }
+    #
+    [void]Importsampledef_local([string] $mpath){  
+        #
+        if(!$this.sampledef_local_data){
+            $this.Importsampledef($mpath, $false) 
+        }
+        #
+    }
+    #
+    [void]Importsampledef_local(){
+        #
+        $this.Importsampledef($this.basepath)
+        #
+    }
+    #
+    [void]Importslideids_local([string] $mpath, $createwatcher){
+        #
+        $this.importcohortsinfo($mpath)
+        #
+        $defpath = $this.slide_local_fullfile($mpath)
+        $this.slide_local_data = $this.OpencsvFileConfirm($defpath)
+        $this.slide_local_data = $this.slide_local_data | & { process {
+            if (
+                $_.project -match ($this.matcharray($this.allprojects))
+            ){$_}
+        }}
+        #
+        if ($createwatcher){
+            $this.FileWatcher($defpath)
+        }
+        #
+    }
+    #
+    [void]Importslideids_local([string] $mpath){  
+        #
+        if(!$this.slide_local_data){
+            $this.Importslideids_local($mpath, $false) 
+        }
+        #
+    }
+    #
+    [void]Importslideids_local(){
+        #
+        $this.Importslideids_local($this.basepath)
+        #
+    }
     <# -----------------------------------------
      ImportFlatfieldModels
      open the AstropathAPIDdef.csv to get all slide
@@ -487,6 +608,80 @@ class aptabletools : fileutils {
         #
     }
     #
+    [string]mergeconfig_fullfile($basepath, $batch){
+        #
+        $batchid = $batch.padleft(2,'0')
+        return "$basepath\Batch\MergeConfig_$batchid.xlsx"
+        #
+    }
+    #
+    [string]mergeconfig_noerror_fullfile($basepath){
+        #
+        $mergefile = get-childitem ($basepath + '\Batch\*') "MergeConfig*xlsx"
+        #
+        if (!$mergefile){
+            return @()
+        }
+        #
+        return $mergefile[0].fullname
+        #
+    }
+    #
+    [string]mergeconfig_spath_fullfile($basepath){
+        #
+        $mergefile = get-childitem ($basepath + '\Batch\*') "MergeConfig*xlsx"
+        #
+        if (!$mergefile){
+            Throw ('merge config file could not be found for basepath or spath: ' + $basepath)
+        }
+        #
+        return $mergefile[0].fullname
+        #
+    }
+    #
+    [string]batch_fullfile($basepath){
+        #
+        $mergefile = get-childitem ($basepath + '\Batch\*') "Batch*xlsx"
+        #
+        if (!$mergefile){
+            Throw ('batch file could not be found for ' + $basepath)
+        }
+        #
+        return $mergefile[0].fullname
+        #
+    }
+    #
+    [string]batch_fullfile($basepath, $batch){
+        #
+        $batchid = $batch.padleft(2,'0')
+        return "$basepath\Batch\BatchID_$batchid.xlsx"
+        #
+    }
+    #
+    [string]batch_noerror_fullfile($basepath){
+        #
+        $mergefile = get-childitem ($basepath + '\Batch\*') "Batch*xlsx"
+        #
+        if (!$mergefile){
+            return @()
+        }
+        #
+        return $mergefile[0].fullname
+        #
+    }
+    #
+    [string]batch_spath_fullfile($basepath){
+        #
+        $mergefile = get-childitem ($basepath + '\Batch\*') "Batch*xlsx"
+        #
+        if (!$mergefile){
+            Throw ('batch file could not be found for basepath or spath:' + $basepath)
+        }
+        #
+        return $mergefile[0].fullname
+        #
+    }
+    #
     [string]mergeconfigcsv_fullfile($basepath){
         #
         $mergefile = get-childitem ($basepath + '\Batch\*') "MergeConfig*csv"
@@ -496,6 +691,13 @@ class aptabletools : fileutils {
         }
         #
         return $mergefile[0].fullname
+        #
+    }
+    #
+    [string]mergeconfigcsv_fullfile($basepath, $batch){
+        #
+        $batchid = $batch.padleft(2,'0')
+        return "$basepath\Batch\MergeConfig_$batchid.csv"
         #
     }
     #
@@ -532,6 +734,9 @@ class aptabletools : fileutils {
         $this.full_project_dat | & { process{
             $p = $this.uncpaths(($_.dpath, $_.dname -join '\'))
             if (test-path $p){
+                #
+                $this.checksourcemergeconfig($p, ($_.spath, $_.dname -join '\'))
+                #
                 $this.allantibodies.($_.project) = 
                     $this.findantibodies($p, $createwatcher)
             }
@@ -543,12 +748,15 @@ class aptabletools : fileutils {
         #
         $batchid = ([string]$batch).PadLeft(2, '0')
         #
-        $csvfile = $basepath + '\Batch\MergeConfig_' + $batchid + '.csv'
+        $csvfile = $this.mergeconfigcsv_fullfile($basepath, $batchid)
+        #
         if (Test-Path $csvfile){
            return
         }
         #
-        $this.mergeconfig_data = $this.importexcel($this.mergeconfig_fullfile($basepath))
+        $this.checksourcemergeconfig($basepath, $batchid, $project)
+        #
+        $this.mergeconfig_data = $this.importexcel($this.mergeconfig_fullfile($basepath, $batch))
         #
         $mergeconfig = $this.mergeconfig_data
         $count = 1
@@ -605,9 +813,67 @@ class aptabletools : fileutils {
         #
     }
     #
+    [void]checksourcemergeconfig($basepath, $spath){
+        #
+        if (!($this.mergeconfig_noerror_fullfile($basepath))){     
+            $file = $this.mergeconfig_spath_fullfile($this.uncpaths($spath))
+            $this.copy($file, ($basepath + '\Batch'))
+        }
+        #
+        if (!($this.batch_noerror_fullfile($basepath))){  
+            $file = $this.batch_spath_fullfile($this.uncpaths($spath))
+            $this.copy($file, ($basepath + '\Batch'))
+        }
+        #   
+    }
+    #
+    [void]checksourcemergeconfig($basepath, $batch, $project){
+        #
+        if (!(test-path $this.mergeconfig_fullfile($basepath, $batch))){
+            #
+            $mdat = ($this.full_project_dat |
+                where-object {$_.project -contains $project})
+            $spathbase = $this.uncpaths($mdat.spath + '\' + $mdat.dname)
+            #
+            $path = $this.mergeconfig_fullfile($spathbase, $batch)
+            #
+            if (test-path $path){
+                $this.copy($path, ($basepath + '\Batch'))
+            } else {
+                Throw "no merge file for project: $project - batch: $batch"
+            }
+            #
+        }
+        #
+        if (!(test-path $this.batch_fullfile($basepath, $batch))){
+            #
+            $mdat = ($this.full_project_dat |
+                where-object {$_.project -contains $project})
+            $spathbase = $this.uncpaths($mdat.spath + '\' + $mdat.dname)
+            #
+            $path = $this.batch_fullfile($spathbase, $batch)
+            #
+            if (test-path $path){
+                $this.copy($path, ($basepath + '\Batch'))
+            } else {
+                Throw "no batch file for in base or spath for project: $project - batch: $batch"
+            }
+            #
+        }
+        #   
+    }
+    #
     [void]ImportMergeConfigCSV([string] $basepath){
         #
-        $this.mergeconfig_data = Import-CSV ($this.mergeconfigcsv_fullfile($basepath))
+        $this.mergeconfig_data =  $this.opencsvfile(
+            $this.mergeconfigcsv_fullfile($basepath))
+    }
+    #
+    [void]ImportMergeConfigCSV([string] $basepath, $batch){
+        #
+        $this.mergeconfig_data = $this.opencsvfile(
+            $this.mergeconfigcsv_fullfile($basepath, $batch)
+        )
     }
     #
     [array]findantibodies($basepath, $createwatcher){
@@ -663,7 +929,7 @@ class aptabletools : fileutils {
         $data = $this.mergeconfig_data | & { process {
             if (
                 $_.Opal -notcontains 'DAPI' -and
-                $_.Target -notmatch 'Membrane' -and
+                $_.ImageQA -notmatch 'membrane' -and
                 $_.TargetType -match 'Lineage'
             ) {$_}
         }}
@@ -687,7 +953,7 @@ class aptabletools : fileutils {
         $data = $this.mergeconfig_data | & { process {
             if (
                 $_.Opal -notcontains 'DAPI' -and
-                $_.Target -notmatch 'Membrane' -and
+                $_.ImageQA -notmatch 'membrane' -and
                 $_.TargetType -match 'Expression'
             ) {$_}
         }}

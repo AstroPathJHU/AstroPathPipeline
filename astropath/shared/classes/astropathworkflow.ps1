@@ -88,4 +88,9 @@
             Out-String)
     }
     #
+    [void]recheckslide($slideid){
+        $this.newtasks = $slideid
+        $this.refreshmoduledb()
+    }
+    #
  }

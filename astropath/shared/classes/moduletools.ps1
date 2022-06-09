@@ -452,6 +452,76 @@
         #
     }
     #
+    [void]checkapiddef(){
+        #
+        $this.sample.importslideids()
+        $row = $this.sample.slide_data | Where-Object {
+            $_.slideid -contains $this.sample.slideid
+        } 
+        #
+        if ($row.scan -ne $this.sample.scannumber()){
+            $row.scan = $this.sample.scannumber()
+            $this.sample.writecsv(
+                $this.sample.slide_fullfile($this.sample.mpath),
+                $this.sample.slide_data
+            )
+        }
+        #
+        $this.sample.slide_local_file += '_' + $this.sample.project + '.csv'
+        $this.sample.importslideids_local()
+        $row = $this.sample.slide_local_data | Where-Object {
+            $_.slideid -contains $this.sample.slideid
+        }
+        #
+        if (!$row){
+            $this.sample.slide_local_data +=  $row
+            $this.sample.writecsv(
+                $this.sample.slide_local_fullfile($this.sample.mpath),
+                $this.sample.slide_local_data
+            )
+        #
+        } elseif ($row.scan -ne $this.sample.scannumber()){
+            $row.scan = $this.sample.scannumber()
+            $this.sample.writecsv(
+                $this.sample.slide_local_fullfile($this.sample.mpath),
+                $this.sample.slide_local_data
+            )
+        }
+        #
+    }
+    #
+    [void]checksampledef(){
+        #
+        $this.sample.importsampledef_local()
+        $row = $this.sample.sampledef_local_data | Where-Object {
+            $_.slideid -contains $this.sample.slideid
+        } 
+        #
+        if (!$row){
+            $this.sample.sampledef_local_data += [PSCustomObject]@{
+                sampleid = 0
+                slideid = $this.sample.slideid
+                project = $this.sample.project
+                cohort = $this.sample.cohort
+                scan = $this.sample.scannumber()
+                batchid = $this.sample.batchid
+                isGood = 1
+            }
+            $this.sample.writecsv(
+                $this.sample.sampledef_local_fullfile($this.sample.mpath),
+                $this.sample.sampledef_local_data
+            )
+        #
+        } elseif ($row.scan -ne $this.sample.scannumber()){
+            $row.scan = $this.sample.scannumber()
+            $this.sample.writecsv(
+                $this.sample.sampledef_local_fullfile($this.sample.mpath),
+                $this.sample.sampledef_local_data
+            )
+        }
+        #
+    }
+    #
     [void]checkfile($file1, $filename2){
         #
         $path = Split-Path $file1

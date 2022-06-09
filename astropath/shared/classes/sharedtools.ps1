@@ -575,7 +575,7 @@
     [void]updatemodulestatus(){
         #
         $this.getmodulenames()
-        $this.module | & { process {
+        $this.modules | & { process {
             $this.updatemodulestatus($_)
         }}
         #

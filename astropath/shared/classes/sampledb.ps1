@@ -34,7 +34,7 @@ class sampledb : sampletracker {
         #
         $this.defmodulequeues()
         $this.status_settings = @{
-            rerun_reset_status = (@($this.status.ready,
+            rerun_reset_status = (@($this.status.ready, $this.status.running,
                  $this.status.finish, $this.status.error) -join '|');
             update_status = (@($this.status.waiting, $this.status.error, 
                 $this.status.finish, $this.status.running) -join '|')
@@ -619,14 +619,14 @@ class sampledb : sampletracker {
             $previousprojects = $this.moduleobjs.($_).module_project_data.($_) 
             $currentprojects = $this.GetAPProjects($_)
             #
-            $turnedon = $currentprojects -notmatch ($previousprojects -join '|') 
+            $turnedon = $currentprojects -notmatch $this.matcharray($previousprojects) 
             #
             if ($turnedon){
                 foreach ( $newproject in $turnedon) {
-                    $tasks = ($this.slide_data | & { process {
+                    $tasks = ($workflow.slide_data | & { process {
                         if ($_.project -match $newproject) {$_}
                     }}).SlideID
-                    $this.addnewtasks($tasks)
+                    $workflow.addnewtasks($tasks)
                 }
             }
             #

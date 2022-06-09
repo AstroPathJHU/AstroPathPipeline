@@ -92,21 +92,24 @@
     }
     #
     [string]Scanfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\im3\'+$this.Scan()
-        return $path
-
+        return(
+            $this.basepath, $this.slideid, 'im3', $this.Scan() -join '\'
+        )
+    }
+    #
+    [string]ScanNumber(){
+        return (($this.Scan() -split 'Scan')[1])
     }
     #
     [string]batchfolder(){
-        $path = $this.basepath + '\Batch'
-        return $path
+        return ($this.basepath, 'Batch' -join '\')
     }
     #
     [string]qptifffile(){
-        $path = $this.Scanfolder() + '\' + $this.slideid + 
-            '_' + $this.Scan() + '.qptiff'
-        return $path
+        return ( 
+            $this.Scanfolder() + '\' + $this.slideid + 
+                '_' + $this.Scan() + '.qptiff'
+        )
     }
     #
     [string]annotationxml(){
@@ -116,13 +119,11 @@
     }
     #
     [string]batchIDfile(){
-        $path = $this.Scanfolder() + '\BatchID.txt'
-        return $path
+        return ($this.Scanfolder(), 'BatchID.txt' -join '\')
     }
     #
     [string]flatfieldfolder(){
-        $path = $this.basepath +'\flatfield'
-        return $path
+        return ($this.basepath, 'flatfield' -join '\')
     }
     #
     [string]batchflatfield(){
@@ -169,11 +170,11 @@
     }
     #
     [string]CheckSumsfile(){
-        return ($this.Scanfolder() + '\CheckSums.txt')
+        return ($this.Scanfolder(), 'CheckSums.txt' -join '\')
     }
     #
     [string]im3folder(){
-        return ($this.Scanfolder() + '\MSI')
+        return ($this.Scanfolder(), 'MSI' -join '\')
     }
     #
     [string]informfolder(){

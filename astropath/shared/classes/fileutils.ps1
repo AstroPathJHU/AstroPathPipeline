@@ -170,6 +170,14 @@ class fileutils : generalutils {
         $this.setfile($fpath, $newheaders)
         #
     }
+    #
+    [void]writecsv($fpath, $content){
+        #
+        $contentout = (($content |
+            ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
+        $this.setfile($fpath, $contentout)
+        #
+    }
     <# -----------------------------------------
      GetContent
      open a file with error checking where each
@@ -496,10 +504,14 @@ class fileutils : generalutils {
         #
         $this.popfile($file, 'test line')
         $a = (Get-Content $file | Measure-Object)
-        (Get-Content $file) |
-            Where-Object {($a.count) -notcontains $_.ReadCount} |
-            Set-Content ($file + '.tmp')
-        (Get-Content ($file + '.tmp')) | Set-Content $file
+        if ($a.count -eq 1){
+            set-content $file ""
+        } else {
+            (Get-Content $file) |
+                Where-Object {($a.count) -notcontains $_.ReadCount} |
+                Set-Content ($file + '.tmp')
+            (Get-Content ($file + '.tmp')) | Set-Content $file
+        }
         #
         $this.removefile(($file + '.tmp'))
         #

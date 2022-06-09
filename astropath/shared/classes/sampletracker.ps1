@@ -18,7 +18,7 @@ class sampletracker : dependencies {
             $this.writeoutput("Starting the AstroPath Pipeline")
             $this.writeoutput(" Importing AstroPath tables from: " + $this.mpath)
         }
-        $this.importaptables($this.mpath, $false)
+        $this.importaptables($this.mpath)
         $this.getmodulestatus()
         #
         if ($this.wfon){
@@ -31,7 +31,7 @@ class sampletracker : dependencies {
     #
     sampletracker($mpath, $vmq): base ($mpath){
         #
-        $this.importaptables($this.mpath, $false)
+        $this.importaptables($this.mpath)
         $this.getmodulestatus()
         $this.getmodulelogs()
         $this.vmq = $vmq
