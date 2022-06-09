@@ -247,7 +247,7 @@ def shiftimg(images, dx, dy, *, clip=True, use_gpu=False, shiftwhich=None):
 
   if clip:
     ww = 10*(1+int(max(np.abs([dx, dy]))/10))
-    clipslice = slice(ww*shifta, -ww*shiftb or None), slice(ww*shifta, -ww*shiftb or None)
+    clipslice = slice(ww*shifta//2, -ww*shiftb//2 or None), slice(ww*shifta//2, -ww*shiftb//2 or None)
   else:
     clipslice = ...
 
