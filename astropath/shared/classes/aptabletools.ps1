@@ -390,14 +390,14 @@ class aptabletools : fileutils {
     [void]Importsampledef_local([string] $mpath){  
         #
         if(!$this.sampledef_local_data){
-            $this.Importsampledef($mpath, $false) 
+            $this.importsampledef_local($mpath, $false) 
         }
         #
     }
     #
     [void]Importsampledef_local(){
         #
-        $this.Importsampledef($this.basepath)
+        $this.importsampledef_local($this.basepath)
         #
     }
     #

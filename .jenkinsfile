@@ -29,25 +29,23 @@ pipeline {
       
       stages{
         
-		/*
-        stage('pip install') {
+		    stage('pip install') {
           steps {
             sh 'pip install .[all]'
           }
         }
-		*/
-        
+		        
         stage('ps module install') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
-          //  sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
-           // sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
-           // sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
-            //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
-           // sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
-           // sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledef.ps1'         
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testvminform.ps1'
-			//sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 	
+			      //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 	
             //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
             //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
           }
@@ -174,6 +172,7 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
                   }
                 }
+                /*
                 stage('test ps warping workflow'){
                   steps{
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
@@ -181,6 +180,7 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpfits.ps1'
                   }
                 }
+                */
               }
             }
            

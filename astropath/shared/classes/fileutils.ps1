@@ -8,7 +8,7 @@
  error checking and using file locking mutexes
  -------------------------------------------#>
 class fileutils : generalutils {
-    [INT]$MAX = 5
+    [INT]$MAX = 500
 
     <# -----------------------------------------
      OpenCSVFile

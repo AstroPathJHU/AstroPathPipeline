@@ -459,6 +459,8 @@ class astropathwftools : sampledb {
      Usage: $this.WaitAny()
     ----------------------------------------- #>
     [void]WaitAny(){
+        #
+        $this.writeoutput("Waiting for events or jobs...")
         $run = @(Get-Job).id
         $myevent = ''
         While(!$myevent){
