@@ -753,7 +753,7 @@ class sampledb : sampletracker {
             }
         }
         #
-        foreach ($cproject in  $this.module_project_data.('vminform')){ 
+        foreach ($cproject in  $this.allprojects)){ 
             switch -exact ($fullfile){
                 $this.vmq.localqueuefile.($cproject) {
                     $this.writeoutput(" local inform file updated for project: $cproject")
