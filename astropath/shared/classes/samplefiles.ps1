@@ -133,8 +133,7 @@
     }
     #
     [string]batchwarpingfile(){
-        $path = $this.basepath +'\warping\warping_BatchID_' + 
-            $this.BatchID + '.csv'
+        $path = 'warping_BatchID_' + $this.BatchID + '.csv'
         return $path
     }
     #
@@ -299,6 +298,10 @@
     #
     [string]warpbatchfolder(){
         return ($this.basepath +'\warping\Batch_' + $this.BatchID)
+    }
+    #
+    [string]warpfolder(){
+        return ($this.basepath +'\warping')
     }
     #
     [string]warpprojectfolder(){

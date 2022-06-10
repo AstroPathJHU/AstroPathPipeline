@@ -235,8 +235,8 @@
     #
     [switch]testbatchwarpfitsfiles(){
         #
-        return $this.testfiles($this.warpbatchfolder(),
-         $this.batchwarpfitsreqfiles)
+        return $this.testfiles($this.warpfolder(),
+         $this.batchwarpingfile())
         #
     }
     #

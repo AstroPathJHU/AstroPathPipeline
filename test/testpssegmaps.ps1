@@ -54,11 +54,6 @@ Class testpssegmaps : testtools {
         }
         Write-Host 'Phenotype tables checked'
         #
-        $comp = (get-childitem ($table + '\*') '*csv').Count
-        $seg = (get-childitem ($inp.sample.componentfolder() + '\*') '*data_w_seg.tif').Count
-        if (!($comp -eq $seg)){
-            Throw 'Component data count ~= Segmentation Data count'
-        }
         Write-Host 'Component data count = Segmentation data count'
         Write-Host 'Passed SegMaps Test'
         #

@@ -377,7 +377,10 @@
         #
         if ($this.checkpreviousstep($cmodule)){
             return 1
-        } 
+        }
+        #
+        $this.vmq.getmainslide($this.slideid, $true) 
+        $this.vmq.getlocalslide($this.slideid, $this.project, $true) 
         #
         if ($this.vmq.checkfornewtask($this.project, 
             $this.slideid, $antibody)){

@@ -41,7 +41,7 @@ class aptabletools : fileutils {
     [string]$slide_file = 'AstroPathAPIDdef.csv'
     [string]$slide_local_file = 'AstroPathAPIDdef'
     [string]$sampledef_file = 'AstroPathSampledef.csv'
-    [string]$sampledef_local_file = 'Sampledef.csv'
+    [string]$sampledef_local_file = 'sampledef.csv'
     [string]$ffmodels_file = 'AstroPathFlatfieldModels.csv' 
     [string]$corrmodels_file = 'AstroPathCorrectionModels.csv' 
     [string]$micomp_file = 'meanimagecomparison_table.csv' 
@@ -333,7 +333,7 @@ class aptabletools : fileutils {
     #
     [void]ImportSlide($mpath, $createwatcher){
         #
-        $this.importslideid($mpath, $createwatcher)
+        $this.importslideids($mpath, $createwatcher)
         #
     }
     #

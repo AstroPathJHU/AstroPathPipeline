@@ -136,7 +136,7 @@
         $dir = $this.CrossPlatformPaths($dir)
         #
         if (!(test-path $dir)){
-            new-item $dir -itemtype "directory" -EA STOP | Out-NULL
+            new-item $dir -itemtype directory -EA STOP | Out-NULL
         }
     }
     #
@@ -147,7 +147,7 @@
         $this.removedir($dir)
         #
         if (!(test-path $dir)){
-            new-item $dir -itemtype "directory" -EA STOP | Out-NULL
+            new-item $dir -itemtype directory -EA STOP | Out-NULL
         }
         #
     }
@@ -241,8 +241,11 @@
     }
     #
     [PSCustomObject]changedrows($old, $new){
-        return (compare-object $old $new `
-            -Property ($new | Get-Member -MemberType NoteProperty).Name)
+        if ($old){
+            return (compare-object $old $new `
+                -Property ($new | Get-Member -MemberType NoteProperty).Name)
+        } 
+        return ($new | Add-Member 'SideIndicator' '=>')
     }
     #
     [array]changedprojects($old, $new){
@@ -250,8 +253,8 @@
     }
     #
     [array]changedslide($old, $new){
-        return ($this.changedrows($old, $new) | 
-            where-object {$_.SideIndicator -match '=>'}).slideid 
+        return (($this.changedrows($old, $new) | 
+            where-object {$_.SideIndicator -match '=>'}).slideid)
     }
     #
     [array]changedffmodels($old, $new){

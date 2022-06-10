@@ -38,7 +38,6 @@ Class testpsworkflow : testtools {
         #
         $this.testastropathupdate2('batchwarpkeys', $cred)
         $this.setupvminform($inp)
-        throw 'stop'
         $this.testastropathupdate2('vminform', $cred)
         $this.removesetupvminform($inp)
         $this.returnphenotypedata($inp)
@@ -373,6 +372,12 @@ Class testpsworkflow : testtools {
         } else {
             $log = logger -mpath 'v:\astropath_processing' -module $module -slideid $this.slideid
         }
+        #
+        if ($module -match 'vminform'){
+            $log.val = @{antibody = $this.informantibody; 
+                algorithm = $this.informproject; informvers = $this.informvers}
+        }
+        #
         $log.removefile($log.mainlog)
         #
         write-host '    create astropath db'
@@ -382,17 +387,33 @@ Class testpsworkflow : testtools {
         #
         $log.start($module)
         $workflow.WaitAny()
-        $status = ($workflow.moduleobjs.($module).maincsv |
-            Where-Object {$_.slideid -match 'M21_1'}).Status
+        #
+        if ($module -match 'vminform'){
+            $status = ($workflow.moduleobjs.($module).localqueue.($workflow.project) |
+                Where-Object {$_.slideid -match 'M21_1'}).($this.informantibody + '_Status')
+            $this.addinformbatchlogs($workflow)
+        } else {
+            $status = ($workflow.moduleobjs.($module).maincsv |
+                Where-Object {$_.slideid -match 'M21_1'}).Status
+        }
+        #
         if ($status -notmatch 'RUNNING'){
             Throw ('status after module launch not RUNNING: ' + $status)
         }
         write-host '    update as a finished task'
         #
+        $this.addproccessedalgorithms($workflow)
         $log.finish($module)
         $workflow.WaitAny()
-        $status = ($workflow.moduleobjs.($module).maincsv |
-            Where-Object {$_.slideid -match 'M21_1'}).Status
+        #
+        if ($module -match 'vminform'){
+            $status = ($workflow.moduleobjs.($module).localqueue.($workflow.project) |
+                Where-Object {$_.slideid -match 'M21_1'}).($this.informantibody + '_Status')
+        } else {
+            $status = ($workflow.moduleobjs.($module).maincsv |
+                Where-Object {$_.slideid -match 'M21_1'}).Status
+        }
+        #
         if ($status -notmatch 'FINISHED'){
             Throw ('status after module launch not FINISHED: ' + $status)
         }

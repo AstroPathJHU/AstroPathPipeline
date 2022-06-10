@@ -91,11 +91,11 @@ class astropathwftools : sampledb {
         #
         $idleworkers = $this.worker_data |
             where-object {$_.status -match 'IDLE'}
-        $this.importaplog()
         #
         foreach ($worker in @(0..($idleworkers.Length - 1))){
             #
             $jobname = $this.defjobname($idleworkers[$worker])
+            $this.importaplog($jobname)
             $workertasklog = $this.workertasklog($jobname)
             $workertaskfile = $this.workertaskfile($jobname)
             $processid = $this.checkprocessid($jobname)
@@ -408,8 +408,8 @@ class astropathwftools : sampledb {
         #
         $currenttasktowrite = (' Import-Module "', $this.coderoot(), '" -ea stop
         $output = & {LaunchModule -mpath:"', $this.mpath, $currenttaskinput,
-            '" -tasklogfile "', $this.workerlogfile(),'" -jobname "', $jobname,'"} 2>&1
-        UpdateProcessingLog -logfile "', $this.workerlogfile(),'" -jobname "', $jobname,
+            '" -tasklogfile "', $this.workerlogfile($jobname),'" -jobname "', $jobname,'"} 2>&1
+        UpdateProcessingLog -logfile "', $this.workerlogfile($jobname),'" -jobname "', $jobname,
             '" -sample $output -erroroutput $output.output') -join ''
         #
         $this.SetFile($this.workertaskfile($jobname), $currenttasktowrite)
@@ -444,10 +444,10 @@ class astropathwftools : sampledb {
         #
         Start-Job @myparameters
         #
-        $this.popfile($this.workerlogfile(),
+        $this.popfile($this.workerlogfile($jobname),
             $this.aplogstart($jobname, $jobname))
         #
-        $this.popfile($this.workerlogfile(),
+        $this.popfile($this.workerlogfile($jobname),
              $this.aploginfo($jobname, ($currenttask -join ' ')))
         #
     }
@@ -567,7 +567,7 @@ class astropathwftools : sampledb {
     #
     [void]checkworkerlog($job){
         #
-        $this.importaplog()
+        $this.importaplog($job.name)
         $this.writeoutput(('JOB FINISHED: ' + $job.Name + '. Writing out worker log...'))
         $this.selectaploglines($job.Name) | 
             ForEach-Object {
@@ -577,7 +577,7 @@ class astropathwftools : sampledb {
         $this.CheckTaskLog($job.Name, 'WARNING')
         $this.removefile($this.workertaskfile($job.Name))
         #
-        $this.popfile($this.workerlogfile(),
+        $this.popfile($this.workerlogfile($job.name),
           $this.aplogfinish($job.name, $job.name))
         #
     }
@@ -715,8 +715,8 @@ class astropathwftools : sampledb {
      exceptions in the powershell module or 
      launching code. 
     ----------------------------------------- #>
-    [string]workerlogfile(){
-        return ($this.workerloglocation, 'astropath-workers.log' -join '')
+    [string]workerlogfile($jobname){
+        return ($this.workerloglocation, $jobname, '-astropath-worker.log' -join '')
     }
     #
     [string]aplogerror($jobname, $message){
@@ -746,9 +746,9 @@ class astropathwftools : sampledb {
         )
     }
     #
-    [void]importaplog(){
+    [void]importaplog($jobname){
         $this.apworkerlog = $this.opencsvfile(
-            $this.workerlogfile(), ';', $this.apworkerheaders
+            $this.workerlogfile($jobname), ';', $this.apworkerheaders
         )
     }
     #

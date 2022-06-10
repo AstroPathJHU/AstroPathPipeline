@@ -25,6 +25,7 @@ class batchwarpfits : moduletools {
         $this.getslideidregex('batchwarpfits')
         $this.getwarpdats()
         $this.Getbatchwarpfits()
+        $this.copyfinalfile()
         $this.cleanup()
         #
     }
@@ -131,6 +132,16 @@ class batchwarpfits : moduletools {
     #
     [void]getmodulename(){
         $this.pythonmodulename = 'warpingcohort'
+    }
+    #
+    [void]copyfinalfile(){
+        if (!$this.all){
+            $file = $this.workingdir(), 'weighted_average_warp.csv' -join '\'
+            $this.sample.copy($file, $this.sample.warpfolder())
+            $this.sample.renamefile($this.sample.warpfolder(),
+                'weighted_average_warp.csv',
+                $this.batchwarpingfile())
+        }
     }
     <# -----------------------------------------
      cleanup

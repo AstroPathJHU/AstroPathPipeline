@@ -28,10 +28,9 @@ Class testpsimagecorrection : testtools {
     #
     launchtests(){
         #
-        $task = ($this.project, $this.slideid, $this.processloc, $this.mpath)
-        $this.testpsimconstruction($task)
-        $inp = imagecorrection $task
-        <#
+        $this.testpsimconstruction($this.task)
+        $inp = imagecorrection $this.task
+        #
         $this.testrpath = $inp.processvars[1]
         #
         $this.testprocessroot($inp, $true)
@@ -47,7 +46,7 @@ Class testpsimagecorrection : testtools {
         $this.CleanupTest($inp)
         #>
         $inp.runimagecorrection()
-        <#
+        #
         $this.removedeps($inp)
         $this.testgitstatus($inp.sample)
         Write-Host '.'

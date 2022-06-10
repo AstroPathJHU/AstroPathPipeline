@@ -35,17 +35,19 @@ using module .\testtools.psm1
         Write-Host 'preparing sampletracker & dir started'
         Write-Host '    sample def slide'
         $sampletracker.sampledefslide($this.slideid)
+        <#
         Write-Host '    cleanup'
         $sampletracker.teststatus = $true
         $this.savephenotypedata($sampletracker)
         $this.cleanup($sampletracker)
+        #>
         $sampletracker.getmodulelogs()
         #
         Write-Host '    module status'
         $sampletracker.defmodulestatus()
         $this.showtable($sampletracker.moduleinfo.transfer)
         Write-Host 'prepareing sampletracker & dir finished'
-        #
+        <#
         $this.teststatus($sampletracker)
         $this.testupdate($sampletracker, 'transfer', 'shredxml')
         $this.testupdate($sampletracker, 'shredxml', 'meanimage')
@@ -57,17 +59,18 @@ using module .\testtools.psm1
         $this.testupdate($sampletracker, 'batchwarpkeys', 'batchwarpfits')
         $this.testupdate($sampletracker, 'batchwarpfits', 'imagecorrection')
         $this.testupdate($sampletracker, 'imagecorrection', 'vminform')
+        #>
         $this.testupdate($sampletracker, 'vminform', 'merge')
         $this.testupdate($sampletracker, 'merge', 'imageqa')
         $this.testupdate($sampletracker, 'imageqa', 'segmaps')
         $this.testupdate($sampletracker, 'segmaps', 'dbload')
-        #
+        <#
         $this.cleanup($sampletracker)
         $this.testcorrectionfile($sampletracker, $true)
         $this.returnphenotypedata($sampletracker)
-        #>
-        $this.testgitstatus($sampletracker)  
         #
+        $this.testgitstatus($sampletracker)  
+        #>
         Write-Host '.'
         #
     }
@@ -398,7 +401,7 @@ using module .\testtools.psm1
                 }
             }
         } else {
-            $status = $sampletracker.moduleinfo[$module].status
+            $status = $sampletracker.moduleinfo.($module).status
         }
         #
         return $status
@@ -602,16 +605,16 @@ using module .\testtools.psm1
     [void]removebatchwarpfitsexamples($sampletracker){
         #
         $this.removetestfiles($sampletracker, 
-            $sampletracker.warpbatchfolder(),
-            $sampletracker.batchwarpfitsreqfiles)
+            $sampletracker.warpfolder(),
+            $sampletracker.batchwarpingfile())
         #
     }
     #
     [void]addbatchwarpfitsexamples($sampletracker){
         #
         $this.addtestfiles($sampletracker, 
-            $sampletracker.warpbatchfolder(),
-            $sampletracker.batchwarpfitsreqfiles)
+            $sampletracker.warpfolder(),
+            $sampletracker.batchwarpingfile())
         #
     }
     #
@@ -659,26 +662,25 @@ using module .\testtools.psm1
         #
         foreach ($abx in $sampletracker.antibodies ) {
             $sampletracker.cantibody = $abx
-            $this.addtestfiles($sampletracker, 
-                $sampletracker.cantibodyfolder(),
-                $sampletracker.vminformreqfiles[0], 
-                $sampletracker.im3constant)
-            $this.addtestfiles($sampletracker, 
-                $sampletracker.cantibodyfolder(),
-                $sampletracker.vminformreqfiles[1], 
-                $sampletracker.im3constant)
-                #
+            #
+            $sampletracker.copy(
+                ($sampletracker.basepath, 'reference\vminform\batcherror\batch.log' -join '\'),
+                ($sampletracker.phenotypefolder(), $abx -join '\')
+            )
+            #
             $sampletracker.vmq.maincsv | 
                 Where-Object {
                     $_.slideid -match $this.slideid -and 
                     $_.Antibody -match $abx   
                 } | 
                 Foreach-object {
-                    $_.algorithm = 'blah.ifr'
+                    $_.algorithm = $this.informproject
                     $_.ProcessingLocation = 'Processing: bki##'
                 }
             #
         }
+        #
+        #$sampletracker.vmq.coalescevminformqueues($sampletracker.project)
         $sampletracker.vmq.writemainqueue($sampletracker.vmq.mainqueuelocation())
         #
         $this.addtestfiles($sampletracker, 

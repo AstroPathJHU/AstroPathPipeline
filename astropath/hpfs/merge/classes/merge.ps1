@@ -34,6 +34,7 @@ Class merge : moduletools {
         $this.getalgorithmlist()
         $this.GetMerge()
         $this.GetQAQC()
+        $this.cleanup()
     }
     #
     [void]getalgorithmlist(){

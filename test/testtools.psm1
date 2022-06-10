@@ -16,6 +16,7 @@ Class testtools{
     [string]$class
     [string]$slideid = 'M21_1'
     [string]$project = '0'
+    [string]$cohort = '0'
     [string]$batchid = '8'
     [string]$apmodule = "$PSScriptRoot/../astropath"
     [string]$pytype = 'sample'
@@ -917,7 +918,7 @@ Class testtools{
                     $_.Antibody -match $abx   
                 } |
                 Foreach-object {
-                    $_.algorithm = 'blah.ifr'
+                    $_.algorithm = $this.informproject
                 }
             $sampletracker.vmq.writelocalqueue($this.project)
             #
@@ -929,7 +930,7 @@ Class testtools{
                     $_.Antibody -match $abx   
                 } | 
                 Foreach-object {
-                    $_.algorithm = 'blah.ifr'
+                    $_.algorithm = $this.informproject
                     $_.ProcessingLocation = ''
                 }
                 #
@@ -1000,8 +1001,8 @@ Class testtools{
         $sampletracker.teststatus = $true
         #
         $this.addtestfiles($sampletracker, 
-        $sampletracker.warpbatchfolder(),
-        $sampletracker.batchwarpfitsreqfiles)
+        $sampletracker.warpfolder(),
+        $sampletracker.batchwarpingfile())
         #
         $this.addalgorithms($sampledb)
         #
@@ -1063,8 +1064,8 @@ Class testtools{
         $sampletracker.removefile($sampletracker.mainlogbase('batchwarpfits'))
         #
         $this.removetestfiles($sampletracker, 
-            $sampletracker.warpbatchfolder(),
-            $sampletracker.batchwarpfitsreqfiles)
+            $sampletracker.warpfolder(),
+            $sampletracker.batchwarpingfile())
         #
         $sampletracker.removefile($sampletracker.mainlogbase('batchwarpkeys'))
         #
@@ -1104,7 +1105,7 @@ Class testtools{
                     $_.Antibody -match $abx   
                 } |
                 Foreach-object {
-                    $_.algorithm = 'blah.ifr'
+                    $_.algorithm = $this.informproject
                 }
             $sampledb.vmq.writelocalqueue($this.project)
             #
@@ -1116,13 +1117,39 @@ Class testtools{
                     $_.Antibody -match $abx   
                 } | 
                 Foreach-object {
-                    $_.algorithm = 'blah.ifr'
+                    $_.algorithm = $this.informproject
                     $_.ProcessingLocation = 'Processing: bki##'
                 }
                 #
         }
         #
         $sampledb.vmq.writemainqueue($this.project)
+        #
+    }
+    #
+    [void]addinformbatchlogs($workflow){
+        #
+        foreach ($abx in $workflow.antibodies ) {
+            $workflow.cantibody = $abx
+            #
+            $workflow.copy(
+                ($workflow.basepath, 'reference\vminform\batcherror\batch.log' -join '\'),
+                ($workflow.phenotypefolder(), $abx -join '\')
+            )
+            #
+            $workflow.vmq.maincsv | 
+                Where-Object {
+                    $_.slideid -match $this.slideid -and 
+                    $_.Antibody -match $abx   
+                } | 
+                Foreach-object {
+                    $_.algorithm = $this.informproject
+                    $_.ProcessingLocation = 'Processing: bki##'
+                }
+            #
+        }
+        #
+        $workflow.vmq.writemainqueue($workflow.vmq.mainqueuelocation())
         #
     }
     #
@@ -1134,10 +1161,14 @@ Class testtools{
         #   
         if ($cmodule -match 'batch') {
             $mess = $this.project, $this.cohort,
-                $this.batchid.PadLeft(2,'0'), ('FINISH:' + $cmodule), (Get-Date) -join ';'
+                $this.batchid.PadLeft(2,'0'), ('FINISH:' + $cmodule +
+                '-' + $sampledb.moduleinfo.($cmodule).version),
+                 $sampledb.getformatdate() -join ';'
         } else {
             $mess = $this.project, $this.cohort,
-                $this.slideid, ('FINISH:' + $cmodule), (Get-Date) -join ';'
+                $this.slideid, ('FINISH:' + $cmodule +
+                    '-' + $sampledb.moduleinfo.($cmodule).version),
+                     $sampledb.getformatdate() -join ';'
         }
         $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
         #
@@ -1154,10 +1185,15 @@ Class testtools{
         #
         if ($cmodule -match 'batch') {
             $mess = $this.project, $this.cohort,
-                $this.batchid.PadLeft(2,'0'), ('START:' + $cmodule), (Get-Date) -join ';'
+                $this.batchid.PadLeft(2,'0'), 
+                ('START:' + $cmodule +
+                '-' + $sampledb.moduleinfo.($cmodule).version), 
+                $sampledb.getformatdate() -join ';'
         } else {
             $mess = $this.project, $this.cohort,
-                $this.slideid, ('START:' + $cmodule), (Get-Date) -join ';'
+                $this.slideid, ('START:' + $cmodule + 
+                '-' + $sampledb.moduleinfo.($cmodule).version),
+                $sampledb.getformatdate() -join ';'
         }
         $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
         #
@@ -1170,7 +1206,8 @@ Class testtools{
         #
         $mess = $this.project, $this.cohort,
             $this.slideid, ('ERROR:' + $cmodule +
-                ' - Antibody: ' + $antibody + ' - Algorithm:'), (Get-Date) -join ';'
+                ' - Antibody: ' + $antibody +
+                ' - Algorithm:'), $sampledb.getformatdate() -join ';'
         $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
         #
         $mess += "`r`n"    
@@ -1181,7 +1218,9 @@ Class testtools{
     [void]addfinishlog($sampledb, $cmodule, $antibody){
         #
         $mess = $this.project, $this.cohort,
-            $this.slideid, ('FINISH:' + $cmodule + ' - Antibody: ' + $antibody + ' - Algorithm:'), (Get-Date) -join ';'
+            $this.slideid, ('FINISH:' + $cmodule + 
+            ' - Antibody: ' + $antibody + ' - Algorithm:'), 
+            $sampledb.getformatdate() -join ';'
         $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
         #
         $mess += "`r`n"    
@@ -1192,7 +1231,9 @@ Class testtools{
     [void]addstartlog($sampledb, $cmodule, $antibody){
         #
         $mess = $this.project, $this.cohort,
-            $this.slideid, ('START:' + $cmodule + ' - Antibody: ' + $antibody + ' - Algorithm:'), (Get-Date) -join ';'
+            $this.slideid, ('START:' + $cmodule +
+             ' - Antibody: ' + $antibody + ' - Algorithm:'),
+              $sampledb.getformatdate() -join ';'
         $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
         #
         $mess += "`r`n"    

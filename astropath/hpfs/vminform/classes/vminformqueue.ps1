@@ -321,12 +321,18 @@ class vminformqueue : modulequeue {
     [void]getlocalslide($slideid, $cproject){
         #
         if (!($this.localslide.slideid -contains $slideid)){
-            $this.localslide = $this.localqueue.($cproject) |
-             & { process {   
-                if (
-                    $_.slideid -contains $slideid
-                ) { $_ }}}
+            $this.getlocalslide($slideid, $cproject, $true)
         }
+        #
+    }
+    #
+    [void]getlocalslide($slideid, $cproject, $forceupdate){
+        #
+        $this.localslide = $this.localqueue.($cproject) |
+            & { process {   
+            if (
+                $_.slideid -contains $slideid
+            ) { $_ }}}
         #
     }
     <# -----------------------------------------
@@ -378,12 +384,18 @@ class vminformqueue : modulequeue {
     [void]getmainslide($slideid){
         #
         if (!($this.mainslide.slideid -contains $slideid)){
-            $this.mainslide = $this.maincsv |
-             & { process {   
-                if (
-                    $_.slideid -contains $slideid
-                ) { $_ }}}
+            $this.getmainslide($slideid, $true)
         }
+        #
+    }
+    #
+    [void]getmainslide($slideid, $forceupdate){
+        #
+        $this.mainslide = $this.maincsv |
+            & { process {   
+            if (
+                $_.slideid -contains $slideid
+            ) { $_ }}}
         #
     }
     <# -----------------------------------------

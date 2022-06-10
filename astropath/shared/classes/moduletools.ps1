@@ -476,14 +476,14 @@
         if (!$row){
             $this.sample.slide_local_data +=  $row
             $this.sample.writecsv(
-                $this.sample.slide_local_fullfile($this.sample.mpath),
+                $this.sample.slide_local_fullfile($this.sample.basepath),
                 $this.sample.slide_local_data
             )
         #
         } elseif ($row.scan -ne $this.sample.scannumber()){
             $row.scan = $this.sample.scannumber()
             $this.sample.writecsv(
-                $this.sample.slide_local_fullfile($this.sample.mpath),
+                $this.sample.slide_local_fullfile($this.sample.basepath),
                 $this.sample.slide_local_data
             )
         }
@@ -508,14 +508,14 @@
                 isGood = 1
             }
             $this.sample.writecsv(
-                $this.sample.sampledef_local_fullfile($this.sample.mpath),
+                $this.sample.sampledef_local_fullfile($this.sample.basepath),
                 $this.sample.sampledef_local_data
             )
         #
         } elseif ($row.scan -ne $this.sample.scannumber()){
             $row.scan = $this.sample.scannumber()
             $this.sample.writecsv(
-                $this.sample.sampledef_local_fullfile($this.sample.mpath),
+                $this.sample.sampledef_local_fullfile($this.sample.basepath),
                 $this.sample.sampledef_local_data
             )
         }
@@ -860,8 +860,9 @@
     [void]getslideidregex(){
         #
         if ($this.all){
-            $aslides = $this.sample.importslideids($this.sample.mpath)
-            $aslides = $aslides | where-object {$_.Project -match $this.sample.project}
+            $this.sample.importslideids($this.sample.mpath)
+            $aslides = $this.sample.slide_data |
+                where-object {$_.Project -contains $this.sample.project}
             $slides = $aslides.SlideID
         } else {
             $slides = $this.sample.batchslides.slideid

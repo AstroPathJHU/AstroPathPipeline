@@ -425,9 +425,21 @@ class sampledb : sampletracker {
     #
     [PSCustomObject]buildbaserow(){
         #
+        if ($this.Cohort -ne '0') {
+            $cohort = ($this.Cohort).trimstart('0')
+        } else { 
+            $cohort = $this.cohort
+        }
+        #
+        if ($this.project -ne '0') {
+            $project = ($this.project).trimstart('0')
+        } else { 
+            $project = $this.project
+        }
+        #
         $row = [PSCustomObject]@{
-            Project = ($this.project).trimstart('0')
-            Cohort = ($this.cohort).trimstart('0')
+            Project = $project
+            Cohort = $cohort
             BatchID = ($this.batchid).trimstart('0')
             SlideID = $this.slideid
         }
@@ -437,8 +449,20 @@ class sampledb : sampletracker {
     #
     [PSCustomObject]buildbaserow($row){
         #
-        $row.Project = ($this.project).trimstart('0')
-        $row.Cohort = ($this.cohort).trimstart('0')
+        if ($this.Cohort -ne '0') {
+            $cohort = ($this.Cohort).trimstart('0')
+        } else { 
+            $cohort = $this.cohort
+        }
+        #
+        if ($this.project -ne '0') {
+            $project = ($this.project).trimstart('0')
+        } else { 
+            $project = $this.project
+        }
+        #
+        $row.Project = $project
+        $row.Cohort = $cohort
         $row.BatchID = ($this.batchid).trimstart('0')
         $row.SlideID = $this.slideid
         #
@@ -753,7 +777,7 @@ class sampledb : sampletracker {
             }
         }
         #
-        foreach ($cproject in  $this.allprojects)){ 
+        foreach ($cproject in  $this.allprojects){ 
             switch -exact ($fullfile){
                 $this.vmq.localqueuefile.($cproject) {
                     $this.writeoutput(" local inform file updated for project: $cproject")
