@@ -408,6 +408,8 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
 
   @property
   def dxvec(self): return self.result.dxvec
+  @property
+  def dxpscale(self): return self.pscale
 
 class AlignmentResultBase(DataClassWithPscale):
   """
