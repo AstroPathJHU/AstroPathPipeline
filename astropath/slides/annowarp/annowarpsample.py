@@ -502,6 +502,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       self.logger.info("doing the global fit")
     else:
       self.logger.warningglobal("doing the global fit with constraints")
+      for mu, sigma in more_itertools.zip_equal(constraintmus, constraintsigmas):
+        self.logger.info(f"  {mu} {sigma}")
 
     #select the tiles to use, recursively using a looser selection if needed
     alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
@@ -525,8 +527,9 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     #get the A, b, c arrays
     #we are minimizing x^T A x + b^T x + c
     stitchresultcls = self.stitchresultcls(model=model, cvxpy=False)
-    A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas, floatedparams=floatedparams)
+    A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas, floatedparams=floatedparams, logger=self.logger)
 
+    self.logger.info(f"using {len(alignmentresults)} tiles for the fit")
     try:
       #solve the linear equation
       result = units.np.linalg.solve(2*A, -b)

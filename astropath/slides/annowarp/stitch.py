@@ -110,7 +110,7 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
     """
 
   @classmethod
-  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults):
+  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults, logger):
     """
     Returns an array of bools that determine which parameters get floated.
     takes in an array of bools, in which case it returns the input,
@@ -173,7 +173,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     return A, b, c
 
   @classmethod
-  def Abc(cls, alignmentresults, mus, sigmas, floatedparams="all"):
+  def Abc(cls, alignmentresults, mus, sigmas, logger, floatedparams="all"):
     """
     Gives the total A, b, and c from the alignment results and constraints.
 
@@ -190,7 +190,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     mus = np.array(mus)
     sigmas = np.array(sigmas)
 
-    floatedparams, mus, sigmas = cls.floatedparams(floatedparams, mus, sigmas, alignmentresults)
+    floatedparams, mus, sigmas = cls.floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
 
     #add the alignment result contributions
     A = b = c = 0
@@ -411,11 +411,11 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     return 10
 
   @classmethod
-  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults):
+  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults, logger):
     if isinstance(floatedparams, str):
       if floatedparams == "constants":
         floatedparams = [False]*8+[True]*2
-    floatedparams, mus, sigmas = super().floatedparams(floatedparams, mus, sigmas, alignmentresults)
+    floatedparams, mus, sigmas = super().floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
 
     bigtileindices = np.array([_.bigtileindex for _ in alignmentresults])
     bigtilexs, bigtileys = bigtileindices.T
