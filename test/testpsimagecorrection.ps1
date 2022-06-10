@@ -43,9 +43,9 @@ Class testpsimagecorrection : testtools {
         $this.runpytaskexpected($inp)
         $this.testrenamefw2dat($inp)
         $this.testinjectdat($inp)
-        $this.CleanupTest($inp)
+        #$this.CleanupTest($inp)
         #>
-        $inp.runimagecorrection()
+        #$inp.runimagecorrection()
         #
         $this.removedeps($inp)
         $this.testgitstatus($inp.sample)
@@ -88,7 +88,7 @@ Class testpsimagecorrection : testtools {
         Write-host '.'
         write-host 'preparing dependencies started'
         $inp.sample.setfile($inp.sample.batchflatfield(), 'flatfield')
-        $inp.sample.setfile($inp.sample.batchwarpingfile(), 'warping')
+        $inp.sample.setfile($inp.sample.batchwarpingfullfile(), 'warping')
         write-host 'preparing dependencies finished'
         #
     }
@@ -102,7 +102,7 @@ Class testpsimagecorrection : testtools {
         Write-host '.'
         write-host 'preparing dependencies started'
         $inp.sample.removefile($inp.sample.batchflatfield())
-        $inp.sample.setfile($inp.sample.batchwarpingfile(), 'warping')
+        $inp.sample.removedir($inp.sample.warpfolder())
         write-host 'preparing dependencies finished'
         #
     }
@@ -157,7 +157,7 @@ Class testpsimagecorrection : testtools {
         #
         $wd = ' --workingdir', 
             ($this.processloc, 'astropath_ws\imagecorrection',
-             $this.slideid -join '\')  -join ' '
+             $this.slideid, 'flatw', $this.slideid -join '\')  -join ' '
         #
         $userpythontask = (('applyflatwcohort',
             $dpath,
@@ -166,7 +166,7 @@ Class testpsimagecorrection : testtools {
             '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
                 $this.pybatchflatfieldtest + '.bin'), 
             '--warping-file', $this.pybatchwarpingfiletest, 
-            "--njobs '8' --no-log --layers -1 --allow-local-edits",
+            "--njobs '8' --no-log --layers -1 1 --allow-local-edits",
             '--use-apiddef --project', $this.project.PadLeft(2,'0')
             ) -join ' ') + $wd
         #
@@ -222,7 +222,7 @@ Class testpsimagecorrection : testtools {
         if ($this.dryrun){
             $inp.injectdat()
         } else{ 
-            $this.createtestflatw($inp)
+           # $this.createtestflatw($inp)
         }
         write-host 'test inject dat finished'
         #
@@ -251,7 +251,7 @@ Class testpsimagecorrection : testtools {
 # launch test and exit if no error found
 #
 try { 
-    [testpsimagecorrection]::new($dryrun) | Out-Null
+    [testpsimagecorrection]::new() | Out-Null
 } catch {
     Throw $_.Exception.Message
 }

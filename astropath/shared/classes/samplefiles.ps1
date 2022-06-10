@@ -137,6 +137,10 @@
         return $path
     }
     #
+    [string]batchwarpingfullfile(){
+        return ($this.warpfolder(), '\', $this.batchwarpingfile() -join '')
+    }
+    #
     [string]pybatchflatfield(){
         $this.ImportCorrectionModels($this.mpath)
         if ($this.slideid -notcontains $this.batchid){
