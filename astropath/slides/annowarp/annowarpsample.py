@@ -550,7 +550,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       raise
 
     #initialize the stitch result object
-    stitchresult = stitchresultcls(result, A=A, b=b, c=c, pscale=self.pscale, apscale=self.apscale)
+    stitchresult = stitchresultcls(result, A=A, b=b, c=c, constraintmus=constraintmus, constraintsigmas=constraintsigmas, pscale=self.pscale, apscale=self.apscale)
 
     #check if there are any outliers
     #if there are, log them, remove them, and recursively rerun
@@ -624,6 +624,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       problem=prob,
       pscale=self.pscale,
       apscale=self.apscale,
+      constraintmus=constraintmus,
+      constraintsigmas=constraintsigmas,
       **variables,
     )
 
