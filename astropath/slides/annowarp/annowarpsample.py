@@ -153,8 +153,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     self.qptifflayer = 1
     if tilepixels is None: tilepixels = self.defaulttilepixels
     self.__tilepixels = tilepixels
-    if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
-      raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
+    self.__tilesdividenicely = not (np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels))
 
     self.__images = None
 
@@ -317,6 +316,12 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       y = floattoint(float(tilesize * (iy-1) // self.oneimpixel)) * self.oneimpixel
       ymax = floattoint(float(tilesize * iy // self.oneimpixel)) * self.oneimpixel
       if y+onepixel-qshifty <= 0: continue
+
+      #make sure the tile doesn't span multiple qptiff tiles
+      topleft = QPTiffCoordinate(units.convertpscale([x, y], self.imscale, self.apscale), bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.apscale)
+      bottomright = QPTiffCoordinate(units.convertpscale([xmax, ymax], self.imscale, self.apscale) - .01*self.oneappixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.apscale)
+      if not np.all(topleft.bigtileindex == bottomright.bigtileindex):
+        continue
 
       #find the slice of the wsi and qptiff to use
       #note that initialdx and initialdy are not needed here
@@ -1028,7 +1033,7 @@ class QPTiffCoordinateBase(units.ThingWithApscale):
     """
     Index of the big tile this coordinate is in
     """
-    return (self.xvec - self.bigtileoffset) // self.bigtilesize
+    return (self.qptiffcoordinate - self.bigtileoffset) // self.bigtilesize
   @property
   def bigtilecorner(self):
     """
@@ -1042,7 +1047,23 @@ class QPTiffCoordinateBase(units.ThingWithApscale):
     """
     return self.qptiffcoordinate - self.bigtilecorner
 
-class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
+class QPTiffCoordinate(QPTiffCoordinateBase):
+  def __init__(self, coordinate, *, bigtilesize, bigtileoffset, apscale, **kwargs):
+    self.__qptiffcoordinate = coordinate
+    self.__bigtilesize = bigtilesize
+    self.__bigtileoffset = bigtileoffset
+    self.__apscale = apscale
+    super().__init__(**kwargs)
+  @property
+  def bigtilesize(self): return self.__bigtilesize
+  @property
+  def bigtileoffset(self): return self.__bigtileoffset
+  @property
+  def qptiffcoordinate(self): return self.__qptiffcoordinate
+  @property
+  def apscale(self): return self.__apscale
+
+class QPTiffCoordinateDataClass(MyDataClass, QPTiffCoordinateBase):
   """
   Base class for a dataclass that wants to use the big tile
   index of a qptiff coordinate.  bigtilesize and bigtileoffset
@@ -1057,7 +1078,7 @@ class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
   @property
   def bigtileoffset(self): return self.__bigtileoffset
 
-class QPTiffVertex(QPTiffCoordinate, Vertex):
+class QPTiffVertex(QPTiffCoordinateDataClass, Vertex):
   """
   A vertex that has qptiff info
   """
