@@ -153,8 +153,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     self.qptifflayer = 1
     if tilepixels is None: tilepixels = self.defaulttilepixels
     self.__tilepixels = tilepixels
-    if np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels):
-      raise ValueError("You should set the tilepixels {self.__tilepixels} so that it divides bigtilepixels {self.__bigtilepixels} and bigtileoffset {self.__bigtileoffsetpixels}")
+    self.__tilesdividenicely = not (np.any(self.__bigtilepixels % self.__tilepixels) or np.any(self.__bigtileoffsetpixels % self.__tilepixels))
 
     self.__images = None
 
@@ -317,6 +316,12 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       y = floattoint(float(tilesize * (iy-1) // self.oneimpixel)) * self.oneimpixel
       ymax = floattoint(float(tilesize * iy // self.oneimpixel)) * self.oneimpixel
       if y+onepixel-qshifty <= 0: continue
+
+      #make sure the tile doesn't span multiple qptiff tiles
+      topleft = QPTiffCoordinate(units.convertpscale([x, y], self.imscale, self.imscale) + 2*self.oneimpixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.imscale)
+      bottomright = QPTiffCoordinate(units.convertpscale([xmax, ymax], self.imscale, self.imscale) - 2*self.oneimpixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.imscale)
+      if not np.all(topleft.bigtileindex == bottomright.bigtileindex):
+        continue
 
       #find the slice of the wsi and qptiff to use
       #note that initialdx and initialdy are not needed here
@@ -502,6 +507,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       self.logger.info("doing the global fit")
     else:
       self.logger.warningglobal("doing the global fit with constraints")
+      for mu, sigma in more_itertools.zip_equal(constraintmus, constraintsigmas):
+        self.logger.info(f"  {mu} {sigma}")
 
     #select the tiles to use, recursively using a looser selection if needed
     alignmentresults = AnnoWarpAlignmentResults(_ for _ in self.__alignmentresults if _.n not in _removetiles)
@@ -525,8 +532,9 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     #get the A, b, c arrays
     #we are minimizing x^T A x + b^T x + c
     stitchresultcls = self.stitchresultcls(model=model, cvxpy=False)
-    A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas, floatedparams=floatedparams)
+    A, b, c = stitchresultcls.Abc(alignmentresults, constraintmus, constraintsigmas, floatedparams=floatedparams, logger=self.logger)
 
+    self.logger.info(f"using {len(alignmentresults)} tiles for the fit")
     try:
       #solve the linear equation
       result = units.np.linalg.solve(2*A, -b)
@@ -547,7 +555,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       raise
 
     #initialize the stitch result object
-    stitchresult = stitchresultcls(result, A=A, b=b, c=c, pscale=self.pscale, apscale=self.apscale)
+    stitchresult = stitchresultcls(result, A=A, b=b, c=c, constraintmus=constraintmus, constraintsigmas=constraintsigmas, pscale=self.pscale, apscale=self.apscale)
 
     #check if there are any outliers
     #if there are, log them, remove them, and recursively rerun
@@ -621,6 +629,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       problem=prob,
       pscale=self.pscale,
       apscale=self.apscale,
+      constraintmus=constraintmus,
+      constraintsigmas=constraintsigmas,
       **variables,
     )
 
@@ -1023,7 +1033,7 @@ class QPTiffCoordinateBase(units.ThingWithApscale):
     """
     Index of the big tile this coordinate is in
     """
-    return (self.xvec - self.bigtileoffset) // self.bigtilesize
+    return (self.qptiffcoordinate - self.bigtileoffset) // self.bigtilesize
   @property
   def bigtilecorner(self):
     """
@@ -1037,7 +1047,23 @@ class QPTiffCoordinateBase(units.ThingWithApscale):
     """
     return self.qptiffcoordinate - self.bigtilecorner
 
-class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
+class QPTiffCoordinate(QPTiffCoordinateBase):
+  def __init__(self, coordinate, *, bigtilesize, bigtileoffset, apscale, **kwargs):
+    self.__qptiffcoordinate = coordinate
+    self.__bigtilesize = bigtilesize
+    self.__bigtileoffset = bigtileoffset
+    self.__apscale = apscale
+    super().__init__(**kwargs)
+  @property
+  def bigtilesize(self): return self.__bigtilesize
+  @property
+  def bigtileoffset(self): return self.__bigtileoffset
+  @property
+  def qptiffcoordinate(self): return self.__qptiffcoordinate
+  @property
+  def apscale(self): return self.__apscale
+
+class QPTiffCoordinateDataClass(MyDataClass, QPTiffCoordinateBase):
   """
   Base class for a dataclass that wants to use the big tile
   index of a qptiff coordinate.  bigtilesize and bigtileoffset
@@ -1052,7 +1078,7 @@ class QPTiffCoordinate(MyDataClass, QPTiffCoordinateBase):
   @property
   def bigtileoffset(self): return self.__bigtileoffset
 
-class QPTiffVertex(QPTiffCoordinate, Vertex):
+class QPTiffVertex(QPTiffCoordinateDataClass, Vertex):
   """
   A vertex that has qptiff info
   """
@@ -1213,6 +1239,9 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
   @property
+  def dxpscale(self):
+    return self.imscale
+  @property
   def center(self):
     """
     the center of the tile
@@ -1232,13 +1261,14 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     the wsi and qptiff images before they are shifted
     """
     wsi, qptiff = self.imageshandle()
+    bigshift = abs(floattoint((np.rint(units.nominal_values(self.dxvec / self.tilesize))).astype(float)) + 2) * self.tilesize
     wsitile = wsi[
-      units.pixels(self.y, pscale=self.imscale):units.pixels(self.y+self.tilesize, pscale=self.imscale),
-      units.pixels(self.x, pscale=self.imscale):units.pixels(self.x+self.tilesize, pscale=self.imscale),
+      floattoint(float(units.pixels(self.y, pscale=self.imscale))):int(float(units.pixels(self.y+self.tilesize+bigshift[1], pscale=self.imscale))),
+      floattoint(float(units.pixels(self.x, pscale=self.imscale))):int(float(units.pixels(self.x+self.tilesize+bigshift[0], pscale=self.imscale))),
     ]
     qptifftile = qptiff[
-      units.pixels(self.y, pscale=self.imscale):units.pixels(self.y+self.tilesize, pscale=self.imscale),
-      units.pixels(self.x, pscale=self.imscale):units.pixels(self.x+self.tilesize, pscale=self.imscale),
+      floattoint(float(units.pixels(self.y, pscale=self.imscale))):int(float(units.pixels(self.y+self.tilesize+bigshift[1], pscale=self.imscale))),
+      floattoint(float(units.pixels(self.x, pscale=self.imscale))):int(float(units.pixels(self.x+self.tilesize+bigshift[0], pscale=self.imscale))),
     ]
     return wsitile, qptifftile
 

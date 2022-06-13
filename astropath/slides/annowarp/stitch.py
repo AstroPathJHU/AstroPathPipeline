@@ -14,9 +14,11 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
    1. the stitching model to use
    2. how to solve the equation (with cvxpy or standalone linear algebra)
   """
-  def __init__(self, *, pscale, apscale, **kwargs):
+  def __init__(self, *, pscale, apscale, constraintmus=None, constraintsigmas=None, **kwargs):
     self.__pscale = pscale
     self.__apscale = apscale
+    self.constraintmus = constraintmus
+    self.constraintsigmas = constraintsigmas
     super().__init__(**kwargs)
 
   @property
@@ -84,6 +86,30 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
       )
 
   @property
+  def stitchresultconstraintentries(self):
+    entries = self.stitchresultentries
+    nentries = len(entries)
+    mus = self.constraintmus
+    sigmas = self.constraintsigmas
+    if mus is sigmas is None: return
+    for n, ((value, description), mu, sigma) in enumerate(more_itertools.zip_equal(entries, mus, sigmas), start=nentries + nentries*(nentries+1)//2 + 1):
+      if mu is sigma is None: return
+      yield AnnoWarpStitchResultEntry(
+        n=n,
+        value=mu,
+        description=f"constraint mu({description})",
+        pscale=self.pscale,
+        apscale=self.apscale,
+      )
+      yield AnnoWarpStitchResultEntry(
+        n=n,
+        value=sigma,
+        description=f"constraint sigma({description})",
+        pscale=self.pscale,
+        apscale=self.apscale,
+      )
+
+  @property
   def allstitchresultentries(self):
     """
     AnnoWarpStitchResultEntries for both the nominal and covariance
@@ -93,7 +119,7 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
     for entry, power in more_itertools.zip_equal(nominal, self.variablepowers()):
       if entry.powerfordescription(entry) != power:
         raise ValueError(f"Wrong power for {entry.description!r}: expected {power}, got {entry.powerfordescription(entry)}")
-    return list(itertools.chain(nominal, self.stitchresultcovarianceentries))
+    return list(itertools.chain(nominal, self.stitchresultcovarianceentries, self.stitchresultconstraintentries))
 
   @classmethod
   @abc.abstractmethod
@@ -110,7 +136,7 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
     """
 
   @classmethod
-  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults):
+  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults, logger):
     """
     Returns an array of bools that determine which parameters get floated.
     takes in an array of bools, in which case it returns the input,
@@ -173,7 +199,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     return A, b, c
 
   @classmethod
-  def Abc(cls, alignmentresults, mus, sigmas, floatedparams="all"):
+  def Abc(cls, alignmentresults, mus, sigmas, logger, floatedparams="all"):
     """
     Gives the total A, b, and c from the alignment results and constraints.
 
@@ -190,7 +216,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     mus = np.array(mus)
     sigmas = np.array(sigmas)
 
-    floatedparams, mus, sigmas = cls.floatedparams(floatedparams, mus, sigmas, alignmentresults)
+    floatedparams, mus, sigmas = cls.floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
 
     #add the alignment result contributions
     A = b = c = 0
@@ -411,26 +437,26 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     return 10
 
   @classmethod
-  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults):
+  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults, logger):
     if isinstance(floatedparams, str):
       if floatedparams == "constants":
         floatedparams = [False]*8+[True]*2
-    floatedparams, mus, sigmas = super().floatedparams(floatedparams, mus, sigmas, alignmentresults)
+    floatedparams, mus, sigmas = super().floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
 
     bigtileindices = np.array([_.bigtileindex for _ in alignmentresults])
     bigtilexs, bigtileys = bigtileindices.T
     if len(set(bigtilexs)) == 1:
       floatedparams[4] = floatedparams[6] = False
       if mus[4] is None: mus[4] = 0
-      if sigmas[4] is None: sigmas[4] = .001*alignmentresults[0].onepixel
+      if sigmas[4] is None: sigmas[4] = .001*alignmentresults[0].oneimpixel
       if mus[6] is None: mus[6] = 0
-      if sigmas[6] is None: sigmas[6] = .001*alignmentresults[0].onepixel
+      if sigmas[6] is None: sigmas[6] = .001*alignmentresults[0].oneimpixel
     if len(set(bigtileys)) == 1:
       floatedparams[5] = floatedparams[7] = False
       if mus[5] is None: mus[5] = 0
-      if sigmas[5] is None: sigmas[5] = .001*alignmentresults[0].onepixel
+      if sigmas[5] is None: sigmas[5] = .001*alignmentresults[0].oneimpixel
       if mus[7] is None: mus[7] = 0
-      if sigmas[7] is None: sigmas[7] = .001*alignmentresults[0].onepixel
+      if sigmas[7] is None: sigmas[7] = .001*alignmentresults[0].oneimpixel
 
     return floatedparams, mus, sigmas
 
@@ -606,9 +632,12 @@ class AnnoWarpStitchResultEntry(DataClassWithImscale):
       "const dx": 1,
       "const dy": 1,
     }
-    covmatch = re.match(r"cov\((.*), (.*)\)", description)
+    covmatch = re.match(r"cov\((.*), (.*)\)$", description)
+    constraint_match = re.match(r"constraint (?:mu|sigma)\((.*)\)$", description)
     if covmatch:
       return dct[covmatch.group(1)] + dct[covmatch.group(2)]
+    elif constraint_match:
+      return dct[constraint_match.group(1)]
     else:
       return dct[description]
   n: int
