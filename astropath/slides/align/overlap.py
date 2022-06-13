@@ -408,6 +408,8 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
 
   @property
   def dxvec(self): return self.result.dxvec
+  @property
+  def dxpscale(self): return self.pscale
 
 class AlignmentResultBase(DataClassWithPscale):
   """
@@ -448,6 +450,9 @@ class AlignmentResultBase(DataClassWithPscale):
     The relative shift, including its error
     """
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
+  @property
+  def dxpscale(self):
+    return self.pscale
 
   @property
   def isedge(self):

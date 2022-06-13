@@ -318,8 +318,8 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       if y+onepixel-qshifty <= 0: continue
 
       #make sure the tile doesn't span multiple qptiff tiles
-      topleft = QPTiffCoordinate(units.convertpscale([x, y], self.imscale, self.apscale), bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.apscale)
-      bottomright = QPTiffCoordinate(units.convertpscale([xmax, ymax], self.imscale, self.apscale) - .01*self.oneappixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.apscale)
+      topleft = QPTiffCoordinate(units.convertpscale([x, y], self.imscale, self.imscale) + 2*self.oneimpixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.imscale)
+      bottomright = QPTiffCoordinate(units.convertpscale([xmax, ymax], self.imscale, self.imscale) - 2*self.oneimpixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.imscale)
       if not np.all(topleft.bigtileindex == bottomright.bigtileindex):
         continue
 
