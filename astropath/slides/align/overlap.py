@@ -450,6 +450,9 @@ class AlignmentResultBase(DataClassWithPscale):
     The relative shift, including its error
     """
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
+  @property
+  def dxpscale(self):
+    return self.pscale
 
   @property
   def isedge(self):
