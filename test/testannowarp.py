@@ -77,7 +77,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
     if dbloadroot is None:
       dbloadroot = logroot
-    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, uselogfiles=True)
+    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, uselogfiles=True, tilepixels=100)
     if reffolder is None: reffolder = thisfolder/"data"/"reference"/"annowarp"
 
     alignmentfilename = s.alignmentcsv
@@ -130,10 +130,10 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
     maskroot = root
     with units.setup_context("safe"):
-      s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, maskroot=maskroot, uselogfiles=True)
+      s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, maskroot=maskroot, uselogfiles=True, tilepixels=100)
 
       try:
-        AnnoWarpSampleAstroPathTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--im3root", os.fspath(s.im3root), "--allow-local-edits"])
+        AnnoWarpSampleAstroPathTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--im3root", os.fspath(s.im3root), "--allow-local-edits", "--tilepixels", "100"])
 
         if not s.runstatus():
           raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus()}")
@@ -149,7 +149,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
-    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root)
+    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, tilepixels=100)
     referencefilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
     testfilename = thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"testreadannowarpalignments.csv"
     testfilename.parent.mkdir(parents=True, exist_ok=True)
@@ -165,7 +165,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
-    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root)
+    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, tilepixels=100)
     referencefilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch(residualpullcutoff=None)
@@ -194,7 +194,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       renamekwargs = {}
     maskroot = root
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--im3root", os.fspath(im3root), "--ignore-dependencies", "--rerun-finished"] + moreargs
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--im3root", os.fspath(im3root), "--ignore-dependencies", "--rerun-finished", "--tilepixels", "100"] + moreargs
     try:
       AnnoWarpCohortAstroPathTissueMask.runfromargumentparser(args)
       self.compareoutput(SlideID, **compareoutputkwargs, **renamekwargs, dbloadroot=dbloadroot)
@@ -218,7 +218,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
-    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root)
+    s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, tilepixels=100)
     referencefilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)
     result1 = s.stitch(residualpullcutoff=None)
