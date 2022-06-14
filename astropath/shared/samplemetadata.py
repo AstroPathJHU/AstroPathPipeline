@@ -53,7 +53,7 @@ class SampleDef(MyDataClassFrozen):
       root = pathlib.Path(root)
       try:
         cohorttable = readtable(root/"sampledef.csv", SampleDef)
-      except IOError:
+      except (IOError, EOFError):
         pass
       else:
         for row in cohorttable:
