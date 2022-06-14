@@ -292,7 +292,7 @@ class aptabletools : fileutils {
         $this.importcohortsinfo($mpath)
         #
         $defpath = $this.slide_fullfile($mpath)
-        $this.slide_data = $this.OpencsvFileConfirm($defpath)
+        $this.slide_data = $this.OpencsvFile($defpath)
         $this.slide_data = $this.slide_data | & { process {
             if (
                 $_.project -match ($this.matcharray($this.allprojects))
@@ -325,7 +325,7 @@ class aptabletools : fileutils {
             return
         }
         #
-        $this.slide_data = $this.OpencsvFileConfirm(
+        $this.slide_data = $this.OpencsvFile(
             $this.slide_fullfile($mpath)
         )
         #
@@ -342,7 +342,7 @@ class aptabletools : fileutils {
         $this.importcohortsinfo($mpath)
         #
         $defpath = $this.sampledef_fullfile($mpath)
-        $this.sampledef_data = $this.OpencsvFileConfirm($defpath)
+        $this.sampledef_data = $this.OpencsvFile($defpath)
         $this.sampledef_data = $this.sampledef_data | & { process {
             if (
                 $_.project -match ($this.matcharray($this.allprojects))
@@ -374,7 +374,7 @@ class aptabletools : fileutils {
         $this.importcohortsinfo($mpath)
         #
         $defpath = $this.sampledef_local_fullfile($mpath)
-        $this.sampledef_local_data = $this.OpencsvFileConfirm($defpath)
+        $this.sampledef_local_data = $this.OpencsvFile($defpath)
         $this.sampledef_local_data = $this.sampledef_local_data | & { process {
             if (
                 $_.project -match ($this.matcharray($this.allprojects))
@@ -406,7 +406,7 @@ class aptabletools : fileutils {
         $this.importcohortsinfo($mpath)
         #
         $defpath = $this.slide_local_fullfile($mpath)
-        $this.slide_local_data = $this.OpencsvFileConfirm($defpath)
+        $this.slide_local_data = $this.OpencsvFile($defpath)
         $this.slide_local_data = $this.slide_local_data | & { process {
             if (
                 $_.project -match ($this.matcharray($this.allprojects))

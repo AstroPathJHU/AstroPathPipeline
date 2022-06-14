@@ -473,6 +473,11 @@
             $_.slideid -contains $this.sample.slideid
         }
         #
+        #
+        if(!$this.sample.slide_local_data) {
+            $this.sample.slide_local_data  = @()
+        }
+        #
         if (!$row){
             $this.sample.slide_local_data +=  $row
             $this.sample.writecsv(
@@ -495,7 +500,11 @@
         $this.sample.importsampledef_local()
         $row = $this.sample.sampledef_local_data | Where-Object {
             $_.slideid -contains $this.sample.slideid
-        } 
+        }
+        #
+        if(!$this.sample.sampledef_local_data) {
+            $this.sample.sampledef_local_data  = @()
+        }
         #
         if (!$row){
             $this.sample.sampledef_local_data += [PSCustomObject]@{

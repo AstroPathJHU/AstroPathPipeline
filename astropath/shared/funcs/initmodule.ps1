@@ -37,7 +37,12 @@ Function initmodule {
        return $inp
     }
     #
-    $inp.('run' + $module)()
+    try {
+        $inp.('run' + $module)()
+    } catch {
+        $inp.silentcleanup()
+        Throw $_.Exception
+    }
     <#
     if ($task.ContainsKey('tasklogfile')){
         updateprocessinglog -logfile $task.tasklogfile -jobname $task.jobname `

@@ -387,8 +387,13 @@ class fileutils : generalutils {
     [System.Threading.Mutex]GrabMxtx([string] $mxtxid){
          try {
             $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
+            $count = 0
             while (-not $mxtx.WaitOne(1000)) {
-                Start-Sleep -m 500;
+                Start-Sleep -m 1000;
+                $count ++
+                if ($count -eq $this.MAX) {
+                    throw "could not grab mutex: $mxtxid"
+                }
             }
             return $mxtx
         } catch [System.Threading.AbandonedMutexException] {
