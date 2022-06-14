@@ -95,6 +95,8 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
     else:
       fieldnames = [f for f in dataclassy.fields(rowclass) if rowclass.metadata(f).get("includeintable", True)]
     reader = csv.DictReader(f, fieldnames=fieldnames)
+    if reader.fieldnames is None:
+      raise EOFError(f"{filename} is empty")
     Row = rowclass
     if not issubclass(Row, (MyDataClass)):
       raise TypeError(f"{Row} should inherit from {MyDataClass}")
