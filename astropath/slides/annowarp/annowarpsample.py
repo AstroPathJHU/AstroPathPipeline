@@ -1268,12 +1268,6 @@ class AnnoWarpAlignmentResult(AlignmentComparison, QPTiffCoordinateBase, DataCla
     """
     return self.xvec + self.tilesize/2
   qptiffcoordinate = center
-  @property
-  def tileindex(self):
-    """
-    the index of the tile in [x, y]
-    """
-    return floattoint((self.xvec / self.tilesize).astype(float), atol=.1)
 
   @property
   def unshifted(self):
@@ -1328,7 +1322,8 @@ class AnnoWarpAlignmentResults(list, units.ThingWithImscale):
     (by edges, not corners)
     """
     g = nx.Graph()
-    dct = {tuple(tile.tileindex): tile for tile in self}
+    minxvec = np.min([tile.xvec for tile in self], axis=0)
+    dct = {tuple(floattoint(((tile.xvec - minxvec) / self.tilesize).astype(float), atol=.1)): tile for tile in self}
 
     for (ix, iy), tile in dct.items():
       g.add_node(tile.n, alignmentresult=tile, idx=(ix, iy))
