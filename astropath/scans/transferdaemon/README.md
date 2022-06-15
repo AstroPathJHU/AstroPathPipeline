@@ -19,17 +19,21 @@ For python download the repository and install the transferdeamon. Then launch u
 
 ```TransferDaemon.py <Mpath> <email_on_error> [<source_file_handling>] [<logical_compression>] [<quiet>] [<version>] [<debug>]```
 
-- ```<Mpath>```: should contain the ***AstropathCohortsProgress.csv***, ***AstropathPaths.csv***, and the ***AstropathCohorts.csv*** files
+- ```<Mpath>```: should contain the ***AstropathCohortsProgress.csv***, ***AstropathPaths.csv***, and the ***AstropathCohorts.csv*** files. Usage is "--mpath"
   - description of these files can be found [here](../docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory)
-- ```<email_on_error>```: a valid email address to send error information to
-- ```[<source_file_handling>]```: Optional argument; should be one of three options:
+- ```<email_on_error>```: a valid email address to send error information to. Usage is "--email"
+- ```[<source_file_handling>]```: Optional argument; usage is "--delete_type". Should be one of three options:
   - ```HYBRID```: Default; Follow CSV protocol but leave folders with DoNotDelete.txt file
   - ```AUTOMATIC```: DELETE ALL FILES under the CSV protocol
   - ```MANUAL```: Delete any folders without the DoNotDelete.txt file
 - ```[<logical_compression>]```: Optional argument; enter "-no_compress" if files are not to be compressed
+- ```[<single_sample_switch>]```: Optional argument; runs one sample at a time. Usage is "-o". Requires inputs for ```inproj``` and ```inslide```.
+  - ```inproj```: Project number. Usage is "--inproj"
+  - ```inslide```: ```SampleName``` (e.g. "CS22_1"). Usage is "--inslide"
+- ```[<start/stop>]```: Optional argument; enter "-s" to remove start/stop logs
 - ```[<quiet>]```: Optional argument; enter "-q" if no output is to be sent to command window
 - ```[<version>]```: Optional argument; enter "-v" to get the version number of the code
-- ```[<debug>]```: Optional argument; enter -d to run in debug mode. Here the code outputs more descriptive information and requires addition of "\\" when attempting to access server locations
+- ```[<debug>]```: Optional argument; enter "-d" to run in debug mode. Here the code outputs more descriptive information and requires addition of "\\" when attempting to access server locations
   
 ## 4.8.4. Workflow
 ### 4.8.4.1. Initial Transfer
@@ -58,6 +62,6 @@ If the source folder has less files than the destination folder, the Demon will 
 
 There is a ‘transfer.log’ file within a ‘logfiles’ folder in each of the destination folders on BKI04 that records which specimens have been processed from that Clinical Specimen folder. There is a more detailed transfer.log file for each specimen in ```<Dpath>\<Dname>\<SlideID>\<logfiles>```.
 
-The Code is meant to be run all the time and just waits for files to be ready. You can also choose to just run it whenever you need to. It will not slow the machine down if it is just waiting with nothing to do. You can hit ctrl + c to end the code or close out the console. 
+The code is meant to be run all the time and just waits for files to be ready. You can also choose to just run it whenever you need to. It will not slow the machine down if it is just waiting with nothing to do. You can hit ctrl + c to end the code or close out the console. 
 
 ** If you stop the code and it has not completed the case it was working on, you can delete the partially transferred file, the Checksums.txt file, and the compressed files and restart. However, the script should be able to account for any incongruities in the transfer process. **
