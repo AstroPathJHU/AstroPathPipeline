@@ -100,6 +100,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def makeargumentparser(cls, _forworkflow=False, **kwargs):
     p = super().makeargumentparser(_forworkflow=_forworkflow, **kwargs)
     p.add_argument("--tilepixels", type=int, default=cls.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {cls.defaulttilepixels})")
+    p.add_argument("--round-initial-shift-pixels", type=int, default=None, help="for the initial shift, shift by increments of this many pixels (default: same as tilepixels)")
     if not _forworkflow:
       p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
     return p
@@ -117,6 +118,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
     kwargs = {
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "readalignments": parsed_args_dict.pop("dont_align", False),
+      "roundinitialshiftpixels": parsed_args_dict.pop("round_initial_shift_pixels", None)
     }
     return kwargs
 
@@ -214,7 +216,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       if keep: self.__images = wsi, qptiff
       return wsi, qptiff
 
-  def align(self, *, debug=False, write_result=False):
+  def align(self, *, debug=False, write_result=False, roundinitialshiftpixels=None):
     """
     Break the wsi and qptiff into tiles and align them
     with respect to each other.  Returns a list of results.
@@ -228,6 +230,12 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     wholewsi, wholeqptiff = wsi, qptiff = self.getimages()
 
     self.logger.info("doing the initial rough alignment")
+
+    onepixel = self.oneimpixel
+    imscale = self.imscale
+    tilesize = self.tilesize
+    bigtilesize = self.bigtilesize
+    bigtileoffset = self.bigtileoffset
 
     #first align the two with respect to each other in case there are
     #big shifts. this makes sure that when we align a wsi tile and a
@@ -247,17 +255,24 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//zoomfactor))
     firstresult = computeshift((qptiffzoom, wsizoom), usemaxmovementcut=False)
 
-    initialdx = floattoint(float(np.rint(firstresult.dx.n * zoomfactor / (self.tilesize/self.oneimpixel)) * np.rint(self.tilesize/self.oneimpixel)), rtol=1e-4)
-    initialdy = floattoint(float(np.rint(firstresult.dy.n * zoomfactor / (self.tilesize/self.oneimpixel)) * np.rint(self.tilesize/self.oneimpixel)), rtol=1e-4)
+    if roundinitialshiftpixels is None:
+      roundtonearest = self.tilesize
+    else:
+      roundtonearest = roundinitialshiftpixels * onepixel
+    roundtonearest = roundtonearest // onepixel * onepixel
+    initialdx = floattoint(float(np.rint(firstresult.dx.n * zoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
+    initialdy = floattoint(float(np.rint(firstresult.dy.n * zoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
 
     if initialdx or initialdy:
       self.logger.warningglobal(f"found a relative shift of {firstresult.dx*zoomfactor, firstresult.dy*zoomfactor} pixels between the qptiff and wsi")
 
+    initialdxvec = np.array([initialdx, initialdy])
+
     #slice and shift the images so that they line up to within 100 pixels
     #we slice both so that they're the same size
     wsix1 = wsiy1 = qptiffx1 = qptiffy1 = 0
-    qptiffy2, qptiffx2 = qptiff.shape
-    wsiy2, wsix2 = wsi.shape
+    qptiffy2, qptiffx2 = np.array(qptiff.shape) * onepixel
+    wsiy2, wsix2 = np.asarray(wsi.shape) * onepixel
     if initialdx > 0:
       wsix1 += initialdx
       qptiffx2 -= initialdx
@@ -271,18 +286,23 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       qptiffy1 -= initialdy
       wsiy2 += initialdy
 
-    wsiinitialslice = slice(wsiy1, wsiy2), slice(wsix1, wsix2)
-    qptiffinitialslice = slice(qptiffy1, qptiffy2), slice(qptiffx1, qptiffx2)
+    wsiinitialslice = slice(
+      floattoint(float(wsiy1 / onepixel)),
+      floattoint(float(wsiy2 / onepixel)),
+    ), slice(
+      floattoint(float(wsix1 / onepixel)),
+      floattoint(float(wsix2 / onepixel)),
+    )
+    qptiffinitialslice = slice(
+      floattoint(float(qptiffy1 / onepixel)),
+      floattoint(float(qptiffy2 / onepixel)),
+    ), slice(
+      floattoint(float(qptiffx1 / onepixel)),
+      floattoint(float(qptiffx2 / onepixel)),
+    )
 
     wsi = wsi[wsiinitialslice]
     qptiff = qptiff[qptiffinitialslice]
-
-    onepixel = self.oneimpixel
-
-    imscale = self.imscale
-    tilesize = self.tilesize
-    bigtilesize = self.bigtilesize
-    bigtileoffset = self.bigtileoffset
 
     #find the bounding box of the area we need to align
     mx1 = units.convertpscale(min(field.mx1 for field in self.rectangles), self.pscale, imscale, 1)
@@ -311,15 +331,15 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     self.printcuts()
     for n, (ix, iy) in enumerate(itertools.product(np.arange(m1, m2+1), np.arange(n1, n2+1)), start=1):
       if n%100==0 or n==ntiles: self.logger.debug("aligning tile %d/%d", n, ntiles)
-      x = floattoint(float(tilesize * (ix-1) // self.oneimpixel)) * self.oneimpixel
-      xmax = floattoint(float(tilesize * ix // self.oneimpixel)) * self.oneimpixel
-      y = floattoint(float(tilesize * (iy-1) // self.oneimpixel)) * self.oneimpixel
-      ymax = floattoint(float(tilesize * iy // self.oneimpixel)) * self.oneimpixel
+      x = floattoint(float(tilesize * (ix-1) // onepixel)) * onepixel
+      xmax = floattoint(float(tilesize * ix // onepixel)) * onepixel
+      y = floattoint(float(tilesize * (iy-1) // onepixel)) * onepixel
+      ymax = floattoint(float(tilesize * iy // onepixel)) * onepixel
       if y+onepixel-qshifty <= 0: continue
 
       #make sure the tile doesn't span multiple qptiff tiles
-      topleft = QPTiffCoordinate(units.convertpscale([x, y], self.imscale, self.imscale) + 2*self.oneimpixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.imscale)
-      bottomright = QPTiffCoordinate(units.convertpscale([xmax, ymax], self.imscale, self.imscale) - 2*self.oneimpixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.imscale)
+      topleft = QPTiffCoordinate(np.array([x+qptiffx1, y+qptiffy1]) + 2*onepixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.imscale)
+      bottomright = QPTiffCoordinate(np.array([xmax+qptiffx1, ymax+qptiffy1]) - 2.01*onepixel, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset, apscale=self.imscale)
       if not np.all(topleft.bigtileindex == bottomright.bigtileindex):
         continue
 
@@ -328,11 +348,11 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       #because we already took care of that by slicing the
       #wsi and qptiff
       slc = slice(
-        floattoint(float(y / self.oneimpixel)),
-        floattoint(float(ymax / self.oneimpixel)),
+        floattoint(float(y / onepixel)),
+        floattoint(float(ymax / onepixel)),
       ), slice(
-        floattoint(float(x / self.oneimpixel)),
-        floattoint(float(xmax / self.oneimpixel)),
+        floattoint(float(x / onepixel)),
+        floattoint(float(xmax / onepixel)),
       )
       wsitile = wsi[slc]
       #if this ends up with no pixels inside the wsi, continue
@@ -379,13 +399,13 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
         results.append(
           AnnoWarpAlignmentResult(
             **alignmentresultkwargs,
+            #here we apply initialdx and initialdy so that the reported
+            #result is the global shift
             dxvec=units.correlated_distances(
-              #here we apply initialdx and initialdy so that the reported
-              #result is the global shift
-              pixels=(shiftresult.dx+initialdx, shiftresult.dy+initialdy),
+              pixels=(shiftresult.dx, shiftresult.dy),
               pscale=imscale,
               power=1,
-            ),
+            ) + initialdxvec,
             exit=shiftresult.exit,
           )
         )
@@ -857,7 +877,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     if filename is None: filename = self.regionscsv
     writetable(filename, self.warpedregions)
 
-  def runannowarp(self, *, readalignments=False, **kwargs):
+  def runannowarp(self, *, readalignments=False, roundinitialshiftpixels=None, **kwargs):
     """
     run the full chain
 
@@ -867,7 +887,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     """
     if any(a.isonqptiff for a in self.annotations if a.name != "empty"):
       if not readalignments:
-        self.align()
+        self.align(roundinitialshiftpixels=roundinitialshiftpixels)
         self.writealignments()
       else:
         self.readalignments()
