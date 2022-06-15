@@ -172,7 +172,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     """
     The tile size as a Distance
     """
-    return units.convertpscale(self.__tilepixels*self.oneappixel, self.apscale, self.imscale)
+    return units.convertpscale(self.__tilepixels*self.oneappixel, self.apscale, self.imscale)[()]
   @property
   def bigtilesize(self):
     """

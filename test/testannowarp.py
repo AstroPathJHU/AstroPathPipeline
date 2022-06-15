@@ -276,4 +276,4 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       self.testDetectBigShift(SlideID=SlideID)
 
   def testRenameAnnotation(self, **kwargs):
-    self.testCohort(units="fast", rename=True, **kwargs)
+    self.testCohort(units="fast_microns", rename=True, **kwargs)
