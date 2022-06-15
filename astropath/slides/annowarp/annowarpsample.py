@@ -100,7 +100,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def makeargumentparser(cls, _forworkflow=False, **kwargs):
     p = super().makeargumentparser(_forworkflow=_forworkflow, **kwargs)
     p.add_argument("--tilepixels", type=int, default=cls.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {cls.defaulttilepixels})")
-    p.add_argument("--round-initial-shift-pixels", type=int, default=None, help="for the initial shift, shift by increments of this many pixels (default: same as tilepixels)")
+    p.add_argument("--round-initial-shift-pixels", type=int, default=1, help="for the initial shift, shift by increments of this many pixels (default: 1)")
     if not _forworkflow:
       p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
     return p
@@ -118,7 +118,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
     kwargs = {
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "readalignments": parsed_args_dict.pop("dont_align", False),
-      "roundinitialshiftpixels": parsed_args_dict.pop("round_initial_shift_pixels", None)
+      "roundinitialshiftpixels": parsed_args_dict.pop("round_initial_shift_pixels", 1)
     }
     return kwargs
 
@@ -216,7 +216,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       if keep: self.__images = wsi, qptiff
       return wsi, qptiff
 
-  def align(self, *, debug=False, write_result=False, roundinitialshiftpixels=None):
+  def align(self, *, debug=False, write_result=False, roundinitialshiftpixels=1):
     """
     Break the wsi and qptiff into tiles and align them
     with respect to each other.  Returns a list of results.
@@ -877,7 +877,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     if filename is None: filename = self.regionscsv
     writetable(filename, self.warpedregions)
 
-  def runannowarp(self, *, readalignments=False, roundinitialshiftpixels=None, **kwargs):
+  def runannowarp(self, *, readalignments=False, roundinitialshiftpixels=1, **kwargs):
     """
     run the full chain
 
