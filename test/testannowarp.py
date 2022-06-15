@@ -133,7 +133,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, maskroot=maskroot, uselogfiles=True, tilepixels=100)
 
       try:
-        AnnoWarpSampleAstroPathTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--im3root", os.fspath(s.im3root), "--allow-local-edits", "--tilepixels", "100"])
+        AnnoWarpSampleAstroPathTissueMask.runfromargumentparser([os.fspath(s.root), SlideID, "--zoomroot", os.fspath(s.zoomroot), "--maskroot", os.fspath(s.maskroot), "--dbloadroot", os.fspath(s.dbloadroot), "--logroot", os.fspath(s.logroot), "--im3root", os.fspath(s.im3root), "--allow-local-edits", "--tilepixels", "100", "--round-initial-shift-pixels", "1"])
 
         if not s.runstatus():
           raise ValueError(f"Annowarp on {s.SlideID} {s.runstatus()}")
@@ -194,7 +194,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       renamekwargs = {}
     maskroot = root
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--im3root", os.fspath(im3root), "--ignore-dependencies", "--rerun-finished", "--tilepixels", "100"] + moreargs
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--im3root", os.fspath(im3root), "--ignore-dependencies", "--rerun-finished", "--tilepixels", "100", "--round-initial-shift-pixels", "1"] + moreargs
     try:
       AnnoWarpCohortAstroPathTissueMask.runfromargumentparser(args)
       self.compareoutput(SlideID, **compareoutputkwargs, **renamekwargs, dbloadroot=dbloadroot)
@@ -276,4 +276,4 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       self.testDetectBigShift(SlideID=SlideID)
 
   def testRenameAnnotation(self, **kwargs):
-    self.testCohort(units="fast", rename=True, **kwargs)
+    self.testCohort(units="fast_microns", rename=True, **kwargs)
