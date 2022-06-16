@@ -287,7 +287,6 @@ class FileHandlerWrapper:
   def level(self):
     return self.__level
 
-  @property
   @contextlib.contextmanager
   def lock(self):
     with contextlib.ExitStack() as stack:
