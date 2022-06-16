@@ -292,7 +292,7 @@ class FileHandlerWrapper:
     with contextlib.ExitStack() as stack:
       if self.__nlocks == 0:
         assert self.__lock is None
-        self.__lock = stack.enter_context(job_lock.JobLockAndWait(self.__lockfilename, 1, corruptfiletimeout=datetime.timedelta(minutes=10), task=f"logging to {self.__filename}"))
+        self.__lock = stack.enter_context(job_lock.JobLockAndWait(self.__lockfilename, 1, corruptfiletimeout=datetime.timedelta(minutes=10), task=f"logging to {self.__filename}", maxiterations=100))
 
       assert self.__lock is not None
 
