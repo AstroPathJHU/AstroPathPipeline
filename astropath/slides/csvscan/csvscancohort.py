@@ -239,6 +239,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         "skipstartfinish": True,
         "printthreshold": True,
         "segmentationalgorithms": True,
+        "sampledefroot": True,
       }[k]
     }
 

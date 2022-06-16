@@ -35,7 +35,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   """
   def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, **kwargs):
     self.__root = pathlib.Path(root)
-    self.samp = SampleDef(root=root, samp=samp, Project=Project, sampledefroot=sampledefroot)
+    if sampledefroot is None: sampledefroot = root
+    self.samp = SampleDef(root=sampledefroot, samp=samp, Project=Project)
     if not (self.root/self.SlideID).exists():
       raise FileNotFoundError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
