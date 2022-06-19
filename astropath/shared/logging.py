@@ -266,6 +266,8 @@ class FileHandlerWrapper:
     self.__formatter = self.__handler.formatter
     self.__filters = self.__handler.filters
     self.__level = self.__handler.level
+    self.__lock = None
+    self.__nlocks = 0
 
   def close(self):
     self.__counts[self.__filename] -= 1
@@ -285,12 +287,28 @@ class FileHandlerWrapper:
   def level(self):
     return self.__level
 
+  @contextlib.contextmanager
+  def lock(self):
+    with contextlib.ExitStack() as stack:
+      if self.__nlocks == 0:
+        assert self.__lock is None
+        self.__lock = stack.enter_context(job_lock.JobLockAndWait(self.__lockfilename, 1, corruptfiletimeout=datetime.timedelta(minutes=10), task=f"logging to {self.__filename}"))
+
+      assert self.__lock is not None
+
+      self.__nlocks += 1
+      yield self.__lock
+      self.__nlocks -= 1
+
+      if self.__nlocks == 0:
+        self.__lock = None
+
   def handle(self, record):
     if os.fspath(self.__filename) == os.fspath(os.devnull): return
     self.__handler.setFormatter(self.__formatter)
     self.__handler.setLevel(self.__level)
     self.__handler.filters = self.__filters
-    with job_lock.JobLockAndWait(self.__lockfilename, 1, corruptfiletimeout=datetime.timedelta(minutes=10), task=f"logging to {self.__filename}"):
+    with self.lock():
       self.__handler.handle(record)
 
   def __repr__(self):
@@ -344,10 +362,11 @@ __notgiven = object()
 def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, isglobal, mainlog, samplelog, imagelog, moremainlogroots, reraiseexceptions, skipstartfinish):
   return MyLogger(module, root, samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=moremainlogroots, reraiseexceptions=reraiseexceptions, skipstartfinish=skipstartfinish)
 
-def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.NOTSET-100, printthreshold=logging.NOTSET-100, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None):
+def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.NOTSET-100, printthreshold=logging.NOTSET-100, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None, sampledefroot=None):
   from .samplemetadata import SampleDef
   if samp is not None:
-    samp = SampleDef(root=root, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)
+    if sampledefroot is None: sampledefroot = root
+    samp = SampleDef(root=sampledefroot, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)
   return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=frozenset(moremainlogroots), reraiseexceptions=reraiseexceptions, skipstartfinish=skipstartfinish)
 
 dummylogger = logging.getLogger("dummy")

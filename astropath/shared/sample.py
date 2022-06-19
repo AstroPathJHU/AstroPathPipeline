@@ -33,9 +33,10 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, **kwargs):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, **kwargs):
     self.__root = pathlib.Path(root)
-    self.samp = SampleDef(root=root, samp=samp, Project=Project)
+    if sampledefroot is None: sampledefroot = root
+    self.samp = SampleDef(root=sampledefroot, samp=samp, Project=Project)
     if not (self.root/self.SlideID).exists():
       raise FileNotFoundError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
@@ -44,8 +45,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     self.__im3root = pathlib.Path(im3root)
     if informdataroot is None: informdataroot = root
     self.__informdataroot = pathlib.Path(informdataroot)
-    self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots, skipstartfinish=skipstartfinish, printthreshold=printthreshold)
-    self.__printlogger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=False, threshold=logthreshold, skipstartfinish=skipstartfinish, printthreshold=printthreshold)
+    self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots, skipstartfinish=skipstartfinish, printthreshold=printthreshold, sampledefroot=sampledefroot)
+    self.__printlogger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=False, threshold=logthreshold, skipstartfinish=skipstartfinish, printthreshold=printthreshold, sampledefroot=sampledefroot)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__nentered = 0
@@ -2108,7 +2109,25 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
             dct[segstatus] = segid
     if sorted(dct.keys()) != list(range(1, len(dct)+1)):
       raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
-    return tuple(dct[k] for k in range(1, len(dct)+1))
+
+    #Tumor, Immune, 3, 4 --> Tumor, Immune, 3, 4
+    #Tumor, 2, Immune, 4 --> Tumor, 3, Immune, 4
+    #Tumor, 2, 3, Immune --> Tumor, 3, 4, Immune
+    #1, Tumor, Immune, 4 --> 3, Tumor, Immune, 4
+    #1, Tumor, 3, Immune --> 3, Tumor, 4, Immune
+    #1, 2, Tumor, Immune --> 3, 4, Tumor, Immune
+
+    #1, 2, 3, 4, Tumor, 6, Immune --> 3, 4, 5, 6, Tumor, 7, Immune
+
+    def f(segid):
+      if isinstance(segid, str): return segid
+      toadd = 0
+      for k, v in dct.items():
+        if isinstance(v, str) and k > segid:
+          toadd += 1
+      return segid + toadd
+
+    return tuple(f(dct[k]) for k in range(1, len(dct)+1))
 
   @property
   def nsegmentations(self):
