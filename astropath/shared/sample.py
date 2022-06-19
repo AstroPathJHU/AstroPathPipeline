@@ -2109,7 +2109,25 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
             dct[segstatus] = segid
     if sorted(dct.keys()) != list(range(1, len(dct)+1)):
       raise ValueError(f"Non-sequential SegmentationStatuses {sorted(dct.keys())} ({self.mergeconfigcsv})")
-    return tuple(dct[k] for k in range(1, len(dct)+1))
+
+    #Tumor, Immune, 3, 4 --> Tumor, Immune, 3, 4
+    #Tumor, 2, Immune, 4 --> Tumor, 3, Immune, 4
+    #Tumor, 2, 3, Immune --> Tumor, 3, 4, Immune
+    #1, Tumor, Immune, 4 --> 3, Tumor, Immune, 4
+    #1, Tumor, 3, Immune --> 3, Tumor, 4, Immune
+    #1, 2, Tumor, Immune --> 3, 4, Tumor, Immune
+
+    #1, 2, 3, 4, Tumor, 6, Immune --> 3, 4, 5, 6, Tumor, 7, Immune
+
+    def f(segid):
+      if isinstance(segid, str): return segid
+      toadd = 0
+      for k, v in dct.items():
+        if isinstance(v, str) and k > segid:
+          toadd += 1
+      return segid + toadd
+
+    return tuple(f(dct[k]) for k in range(1, len(dct)+1))
 
   @property
   def nsegmentations(self):
