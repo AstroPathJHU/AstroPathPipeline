@@ -52,6 +52,7 @@ def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, s
   size = 2*len(rectangles) + 4 #2* because each rectangle has an x and a y, + 4 for the components of T
   nconstraints = 0
   ndof = size
+  found_x_overlap = found_y_overlap = False
   A = np.zeros(shape=(size, size), dtype=units.unitdtype)
   b = np.zeros(shape=(size,), dtype=units.unitdtype)
   c = 0
@@ -81,6 +82,8 @@ def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, s
 
   for o in overlaps:
     nconstraints += 2
+    if o.x1 != o.x2: found_x_overlap = True
+    if o.y1 != o.y2: found_y_overlap = True
 
     #get the indices of the coordinates of the two overlaps to index into A and b
     ix = 2*rd[o.p1]
@@ -180,23 +183,18 @@ def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, s
   fixedmus[Txx] = fixedmus[Tyy] = 1
   fixedmus[Txy] = fixedmus[Tyx] = 0
   fixedsigmas[Txx] = fixedsigmas[Txy] = fixedsigmas[Tyx] = fixedsigmas[Tyy] = .001
-  print(nconstraints, ndof, np.count_nonzero(fixedindices))
-  if len({r.x for r in rectangles}) == 1:
-    logger.warning("All HPFs are in the same row --> fixing x components of the affine matrix")
+  if not found_x_overlap:
+    logger.warning("All HPFs with successful overlaps are in the same row --> fixing x components of the affine matrix")
     fixedindices[Txx] = fixedindices[Tyx] = True
-  print(nconstraints, ndof, np.count_nonzero(fixedindices))
-  if len({r.y for r in rectangles}) == 1:
-    logger.warning("All HPFs are in the same column --> fixing x components of the affine matrix")
+  if not found_y_overlap:
+    logger.warning("All HPFs with successful overlaps are in the same column --> fixing y components of the affine matrix")
     fixedindices[Txy] = fixedindices[Tyy] = True
-  print(nconstraints, ndof, np.count_nonzero(fixedindices))
   if nconstraints < ndof - np.count_nonzero(fixedindices):
     logger.warning("Not enough constraints --> fixing the off diagonal elements of the affine matrix to 0")
     fixedindices[Txy] = fixedindices[Tyx] = True
-  print(nconstraints, ndof, np.count_nonzero(fixedindices))
   if nconstraints < ndof - np.count_nonzero(fixedindices):
     logger.warning("Still not enough constraints --> fixing the affine matrix to 1")
     fixedindices[Txx] = fixedindices[Tyy] = True
-  print(nconstraints, ndof, np.count_nonzero(fixedindices))
   if nconstraints < ndof - np.count_nonzero(fixedindices):
     assert False #this should not be able to happen because ndof is now 2*nrectangles and each rectangle is constrained to the affine grid
 
