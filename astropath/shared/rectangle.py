@@ -645,6 +645,17 @@ class RectangleCollection(units.ThingWithPscale):
     Indices of all rectangles in the collection.
     """
     return {r.n for r in self.rectangles}
+  @methodtools.lru_cache()
+  @property
+  def shape(self):
+    result = None
+    for r in self.rectangles:
+      if result is None:
+        result = r.shape
+      else:
+        if not np.all(result == r.shape):
+          raise ValueError(f"Inconsistent shapes: {result} {r.shape}")
+    return result
 
   @methodtools.lru_cache()
   @property
@@ -669,6 +680,7 @@ class RectangleCollection(units.ThingWithPscale):
         if mindiff is not None:
           c[mindiff] += 1
 
+      if not c: continue
       mostcommon = c.most_common()
       result[idx], mostndiffs = mostcommon[0]
       for diff, ndiffs in mostcommon:
@@ -677,6 +689,10 @@ class RectangleCollection(units.ThingWithPscale):
             result[idx] = diff
         else:
           break
+
+    assert np.count_nonzero(result)
+    if result[0] == 0: result[0] = result[1] * self.shape[0] / self.shape[1]
+    if result[1] == 0: result[1] = result[0] * self.shape[1] / self.shape[0]
 
     return result
 

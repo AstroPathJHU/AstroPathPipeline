@@ -164,6 +164,55 @@ def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, s
 
   logger.debug("assembled A b c")
 
+  #if any parameters are fixed, remove the dependence of A and b on those
+  #parameters.  The dependence is added to b and c in such a way that, when
+  #those parameters are set to the values they're fixed to, the total log
+  #likelihood is unchanged.
+  fixedindices = np.zeros_like(b, dtype=bool)
+  fixedmus = np.zeros_like(b, dtype=float)
+  fixedsigmas = np.zeros_like(fixedmus)
+  if len({r.x for r in rectangles}) == 1:
+    fixedindices[Txx] = fixedindices[Tyx] = True
+    fixedmus[Txx] = 1
+    fixedmus[Tyx] = 0
+    fixedsigmas[Txx] = .001
+    fixedsigmas[Tyx] = .001
+  if len({r.y for r in rectangles}) == 1:
+    fixedindices[Txy] = fixedindices[Tyy] = True
+    fixedmus[Txy] = 1
+    fixedmus[Tyy] = 0
+    fixedsigmas[Txy] = .001
+    fixedsigmas[Tyy] = .001
+  floatedindices = ~fixedindices
+
+  floatedindices = np.arange(len(b))[floatedindices]
+  fixedindices = np.arange(len(b))[fixedindices]
+  fixedmus = fixedmus[fixedindices]
+  fixedsigmas = fixedsigmas[fixedindices]
+
+  floatfix = np.ix_(floatedindices, fixedindices)
+  fixfloat = np.ix_(fixedindices, floatedindices)
+  fixfix = np.ix_(fixedindices, fixedindices)
+
+  #A entries that correspond to 2 fixed parameters: goes into c
+  c += fixedmus @ A[fixfix] @ fixedmus
+  A[fixfix] = 0
+
+  #A entries that correspond to a fixed parameter and a floated parameter
+  b[floatedindices] += A[floatfix] @ fixedmus + fixedmus @ A[fixfloat]
+  A[floatfix] = A[fixfloat] = 0
+
+  #b entries that correspond to a fixed parameter
+  c += b[fixedindices] @ fixedmus
+  b[fixedindices] = 0
+
+  #add the constraints into A, b, c
+  for idx, mu, sigma in more_itertools.zip_equal(fixedindices, fixedmus, fixedsigmas):
+    assert A[idx,idx] == b[idx] == 0
+    A[idx, idx] += 1/sigma**2
+    b[idx] -= 2*mu/sigma**2
+    c += (mu/sigma)**2
+
   result = units.np.linalg.solve(2*A, -b)
 
   logger.debug("solved quadratic equation")

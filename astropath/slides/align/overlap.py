@@ -307,6 +307,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
     """
     mean squared flux of the first image
     """
+    if not self.cutimages[0].size: return np.nan
     return mse(self.cutimages[0].astype(float))
 
   @methodtools.lru_cache()
@@ -315,6 +316,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
     """
     mean squared flux of the second image
     """
+    if not self.cutimages[1].size: return np.nan
     return mse(self.cutimages[1].astype(float))
 
   @methodtools.lru_cache()
