@@ -339,12 +339,13 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
       **self.rootkwargs,
     }
 
-  def run(self, *, cleanup=False, printnotrunning=True, **kwargs):
+  def run(self, *, cleanup=False, printnotrunning=True, moreinitkwargs=None, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     result = []
-    for sample, filters in self.samplesandsampledefswithfilters(printnotrunning=printnotrunning, **kwargs):
+    if moreinitkwargs is None: moreinitkwargs = {}
+    for sample, filters in self.samplesandsampledefswithfilters(printnotrunning=printnotrunning, moreinitkwargs=moreinitkwargs, **kwargs):
       result.append(self.processsample(sample, filters=filters, cleanup=cleanup, printnotrunning=printnotrunning, **kwargs))
     return result
 
