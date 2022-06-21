@@ -240,10 +240,11 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
     for samp, filters in self.filteredsampledefswithfilters(**kwargs):
       yield samp
 
-  def allsamples(self, **kwargs) :
+  def allsamples(self, *, moreinitkwargs={}, **kwargs) :
+    if moreinitkwargs is None: moreinitkwargs = {}
     for samp in self.sampledefs(**kwargs):
       try:
-        sample = self.initiatesample(samp)
+        sample = self.initiatesample(samp, **moreinitkwargs)
         if sample.logmodule() != self.logmodule():
           raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
         yield sample
@@ -253,11 +254,12 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
         with self.handlesampleiniterror(samp, **kwargs):
           raise
 
-  def samplesandsampledefswithfilters(self, **kwargs):
+  def samplesandsampledefswithfilters(self, *, moreinitkwargs=None, **kwargs):
+    if moreinitkwargs is None: moreinitkwargs = {}
     for samp, filters in self.sampledefswithfilters(**kwargs):
       if all(filters):
         try:
-          sample = self.initiatesample(samp)
+          sample = self.initiatesample(samp, **moreinitkwargs)
           if sample.logmodule() != self.logmodule():
             raise ValueError(f"Wrong logmodule: {self.logmodule()} != {sample.logmodule()}")
         except Exception:
@@ -313,9 +315,9 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
   def sampleclass(cls):
     "What type of samples to create"
 
-  def initiatesample(self, samp):
+  def initiatesample(self, samp, **morekwargs):
     "Create a Sample object (subclass of SampleBase) from SampleDef samp to run on"
-    return self.sampleclass(samp=samp, **self.initiatesamplekwargs)
+    return self.sampleclass(samp=samp, **self.initiatesamplekwargs, **morekwargs)
 
   @property
   def initiatesamplekwargs(self):
@@ -337,12 +339,13 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
       **self.rootkwargs,
     }
 
-  def run(self, *, cleanup=False, printnotrunning=True, **kwargs):
+  def run(self, *, cleanup=False, printnotrunning=True, moreinitkwargs=None, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     result = []
-    for sample, filters in self.samplesandsampledefswithfilters(printnotrunning=printnotrunning, **kwargs):
+    if moreinitkwargs is None: moreinitkwargs = {}
+    for sample, filters in self.samplesandsampledefswithfilters(printnotrunning=printnotrunning, moreinitkwargs=moreinitkwargs, **kwargs):
       result.append(self.processsample(sample, filters=filters, cleanup=cleanup, printnotrunning=printnotrunning, **kwargs))
     return result
 
@@ -827,10 +830,14 @@ class WorkflowCohort(Cohort):
 
           return result
 
-  def run(self, *, print_errors=False, printnotrunning=None, **kwargs):
-    if printnotrunning is None and print_errors:
-      kwargs["printnotrunning"] = False
-    return super().run(print_errors=print_errors, **kwargs)
+  def run(self, *, print_errors=False, printnotrunning=None, moreinitkwargs=None, **kwargs):
+    if moreinitkwargs is None: moreinitkwargs = {}
+    moreinitkwargs = dict(moreinitkwargs)
+    if print_errors:
+      if printnotrunning is None:
+        kwargs["printnotrunning"] = False
+      moreinitkwargs["suppressimageinfowarning"] = True
+    return super().run(print_errors=print_errors, moreinitkwargs=moreinitkwargs, **kwargs)
 
   @contextlib.contextmanager
   def handlesampledeffiltererror(self, samp, *, print_errors, **kwargs):

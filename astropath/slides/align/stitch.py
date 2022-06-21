@@ -1,14 +1,14 @@
 import abc, collections, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
 from ...shared.logging import dummylogger
 from ...shared.overlap import RectangleOverlapCollection
-from ...shared.rectangle import Rectangle, rectangledict, RectangleList
+from ...shared.rectangle import Rectangle, rectangledict
 from ...utilities import units
 from ...utilities.dataclasses import MetaDataAnnotation
 from ...utilities.miscmath import covariance_matrix, floattoint, weightedstd
 from ...utilities.optionalimports import cvxpy as cp
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
-from .field import Field, FieldOverlap
+from .field import Field, FieldList, FieldOverlap
 
 def stitch(*, usecvxpy=False, **kwargs):
   return (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
@@ -407,7 +407,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     """
     Create the field objects from the rectangles and stitch result
     """
-    result = RectangleList()
+    result = FieldList()
     gridislands = list(self.islands(useexitstatus=True, gridatol=self.gridatol))
     alignedislands = list(self.islands(useexitstatus=True, gridatol=None))
     onepixel = self.onepixel
@@ -586,25 +586,43 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
           ):
             self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} overlap, adjusting them")
 
-            threshold = self.hpfoffset / 10
+            threshold = 1 / 10
             if len(island1) <= 2 or len(island2) <= 2:
-              threshold = self.hpfoffset / 4
-            xs = ys = None
+              threshold = 1 / 4
+            possiblexs = possibleys = xs = ys = None
             ridax = ridbx = riday = ridby = None
-            if abs(xx21 - xx12) <= threshold[0]:
-              xs = xx12, xx21
+
+            if abs(xx21 - xx12) <= abs(xx11 - xx22):
+              possiblexs = xx12, xx21
               ridax, ridbx = rid2, rid1
-            elif abs(xx11 - xx22) <= threshold[0]:
-              xs = xx11, xx22
+            else:
+              possiblexs = xx11, xx22
               ridax, ridbx = rid1, rid2
-            if abs(yy21 - yy12) <= threshold[1]:
-              ys = yy12, yy21
+            if abs(yy21 - yy12) <= abs(yy11 - yy22):
+              possibleys = yy12, yy21
               riday, ridby = rid2, rid1
-            elif abs(yy11 - yy22) <= threshold[1]:
-              ys = yy11, yy22
+            else:
+              possibleys = yy11, yy22
               riday, ridby = rid1, rid2
+
+            fractionaloffset = [abs(possiblexs[0] - possiblexs[1]), abs(possibleys[0] - possibleys[1])] / self.hpfoffset
+
+            if fractionaloffset[0] <= threshold:
+              xs = possiblexs
+            if fractionaloffset[1] <= threshold:
+              ys = possibleys
+
             if xs is ys is None:
-              raise ValueError(f"Primary regions for fields {rid1} and {rid2} have too big of an overlap:\nfield {rid1}: mx = ({xx11}, {xx21}), my = ({yy11}, {yy21})\nfield {rid2}: mx = ({xx12}, {xx22}), my = ({yy12}, {yy22})")
+              self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} have a very large overlap, please check the output primary regions")
+              self.__logger.warning(f"field {rid1}: mx = ({xx11}, {xx21}), my = ({yy11}, {yy21})")
+              self.__logger.warning(f"field {rid2}: mx = ({xx12}, {xx22}), my = ({yy12}, {yy22})")
+              if fractionaloffset[0] > 1.5*fractionaloffset[1]:
+                ys = possibleys
+              elif fractionaloffset[1] > 1.5*fractionaloffset[0]:
+                xs = possiblexs
+              else:
+                xs = possiblexs
+                ys = possibleys
 
             if xs is not None and ys is not None:
               cornerstoadjust[xs, ys].append((ridax, ridbx, riday, ridby))

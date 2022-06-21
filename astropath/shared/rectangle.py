@@ -696,6 +696,40 @@ class RectangleCollection(units.ThingWithPscale):
 
     return result
 
+  def showrectanglelayout(self, *, showplot=None, saveas=None, showprimaryregion=False):
+    import matplotlib.patches as patches, matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    xmin = float("inf") * self.onepixel
+    xmax = -float("inf") * self.onepixel
+    ymin = float("inf") * self.onepixel
+    ymax = -float("inf") * self.onepixel
+    for r in self.rectangles:
+      x, y = xy = r.xvec
+      width, height = shape = r.shape
+      xmin = min(xmin, x)
+      xmax = max(xmax, x+width)
+      ymin = min(ymin, y)
+      ymax = max(ymax, y+height)
+      patch = patches.Rectangle(xy / r.onepixel, *shape / r.onepixel, color="red", alpha=0.25)
+      ax.add_patch(patch)
+    margin = .05
+    left = float((xmin - (xmax-xmin)*margin) / r.onepixel)
+    right = float((xmax + (xmax-xmin)*margin) / r.onepixel)
+    top = float((ymin - (ymax-ymin)*margin) / r.onepixel)
+    bottom = float((ymax + (ymax-ymin)*margin) / r.onepixel)
+    
+    ax.set_xlim(left=left, right=right)
+    ax.set_ylim(top=top, bottom=bottom)
+    ax.set_aspect('equal', adjustable='box')
+
+    if showplot is None: showplot = saveas is None
+    if showplot:
+      plt.show()
+    if saveas is not None:
+      fig.savefig(saveas)
+    if not showplot:
+      plt.close()
+
 class RectangleList(list, RectangleCollection):
   """
   A list of rectangles.  You can get rectangledict and rectangleindices from it.
