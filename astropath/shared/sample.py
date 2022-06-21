@@ -33,7 +33,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, **kwargs):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressimageinfowarning=False, **kwargs):
     self.__root = pathlib.Path(root)
     if sampledefroot is None: sampledefroot = root
     self.samp = SampleDef(root=sampledefroot, samp=samp, Project=Project)
@@ -50,6 +50,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__nentered = 0
+    self.__suppressimageinfowarning = suppressimageinfowarning
     super().__init__(**kwargs)
 
     if not self.scanfolder.exists():
@@ -360,7 +361,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       else:
         warnfunction = self.logger.warningglobalonenter
 
-    if warnfunction is not None:
+    if warnfunction is not None and not self.__suppressimageinfowarning:
       fmt = "{:30} {:30} {:30} {:30}"
       warninglines = [
         "Found inconsistent image infos from different sources:",
