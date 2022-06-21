@@ -1,4 +1,4 @@
-import abc, collections, dataclassy, datetime, jxmlease, matplotlib.patches as patches, matplotlib.pyplot as plt, methodtools, numpy as np, pathlib
+import abc, collections, dataclassy, datetime, jxmlease, methodtools, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.miscfileio import with_stem
@@ -696,7 +696,8 @@ class RectangleCollection(units.ThingWithPscale):
 
     return result
 
-  def showrectanglelayout(self, *, showplot=None, saveas=None):
+  def showrectanglelayout(self, *, showplot=None, saveas=None, showprimaryregion=False):
+    import matplotlib.patches as patches, matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     xmin = float("inf") * self.onepixel
     xmax = -float("inf") * self.onepixel
@@ -704,12 +705,12 @@ class RectangleCollection(units.ThingWithPscale):
     ymax = -float("inf") * self.onepixel
     for r in self.rectangles:
       x, y = xy = r.xvec
-      width, height = r.shape
+      width, height = shape = r.shape
       xmin = min(xmin, x)
       xmax = max(xmax, x+width)
       ymin = min(ymin, y)
       ymax = max(ymax, y+height)
-      patch = patches.Rectangle(r.xvec / r.onepixel, *r.shape / r.onepixel, color="red", alpha=0.25)
+      patch = patches.Rectangle(xy / r.onepixel, *shape / r.onepixel, color="red", alpha=0.25)
       ax.add_patch(patch)
     margin = .05
     left = float((xmin - (xmax-xmin)*margin) / r.onepixel)
