@@ -613,9 +613,9 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
               ys = possibleys
 
             if xs is ys is None:
-              logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} have a very large overlap, please check the output primary regions")
-              logger.warning(f"field {rid1}: mx = ({xx11}, {xx21}), my = ({yy11}, {yy21})")
-              logger.warning(f"field {rid2}: mx = ({xx12}, {xx22}), my = ({yy12}, {yy22})")
+              self.__logger.warningglobal(f"Primary regions for fields {rid1} and {rid2} have a very large overlap, please check the output primary regions")
+              self.__logger.warning(f"field {rid1}: mx = ({xx11}, {xx21}), my = ({yy11}, {yy21})")
+              self.__logger.warning(f"field {rid2}: mx = ({xx12}, {xx22}), my = ({yy12}, {yy22})")
               if fractionaloffset[0] > 1.5*fractionaloffset[1]:
                 ys = possibleys
               elif fractionaloffset[1] > 1.5*fractionaloffset[0]:
