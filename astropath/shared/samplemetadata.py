@@ -111,6 +111,9 @@ class APIDDef(MyDataClassFrozen):
     if self.isGood is None: raise ValueError("Have to provide isGood")
     return super().__post_init__(**kwargs)
 
+  def __bool__(self):
+    return bool(self.isGood)
+
 class MetadataSummary(MyDataClassFrozen):
   """
   helper dataclass for some common sample metadata information
