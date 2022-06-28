@@ -340,8 +340,17 @@ class astropathwftools : sampledb {
             $_.taskid -contains $currenttask[0]
         }
         #
-        $row.ProcessingLocation = 'Processing:' + $currentworker.location
-        $row.StartDate = $this.getformatdate()
+        if ($row -is [array]) {
+            foreach ($task in $row) {
+                $task.ProcessingLocation = 'Processing:' + $currentworker.location
+                $task.StartDate = $this.getformatdate()
+            }
+            $row = $row[0]
+        }
+        else {
+            $row.ProcessingLocation = 'Processing:' + $currentworker.location
+            $row.StartDate = $this.getformatdate()
+        }
         #
         $currenttask = @($row.taskid, $row.slideid, $row.antibody, $row.algorithm)
         #

@@ -42,7 +42,7 @@ Class merge : moduletools {
         $this.sample.info('printing algorithms used')
         $algs = $this.sample.getalgorithms()
         $algs | foreach-object {
-            $this.sample.setfile(
+            $this.sample.popfile(
                 $this.sample.mergealgorithmsfile(),
                 ($_ + '`r`n' )
             )

@@ -1,6 +1,6 @@
 <# -------------------------------------------
  modulequeue
- created by: Benjamin Green, Andrew Joqurea - JHU
+ created by: Benjamin Green, Andrew Jorquera - JHU
  Last Edit: 10.13.2020
  --------------------------------------------
  Description

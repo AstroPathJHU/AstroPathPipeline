@@ -44,8 +44,6 @@ pipeline {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testvminform.ps1'
-			      sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 	
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
           }
@@ -238,6 +236,13 @@ pipeline {
             stage('crossregistration') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
+              }
+            }
+			
+			stage('vminform') {
+              steps {
+				sh 'folder=$(basename $(pwd)); pwsh -File ./test/testvminform.ps1'
+			    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 
               }
             }
 			

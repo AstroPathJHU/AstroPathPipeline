@@ -502,10 +502,6 @@
             $_.slideid -contains $this.sample.slideid
         }
         #
-        if(!$this.sample.sampledef_local_data) {
-            $this.sample.sampledef_local_data  = @()
-        }
-        #
         if (!$row){
             $this.sample.sampledef_local_data += [PSCustomObject]@{
                 sampleid = 0

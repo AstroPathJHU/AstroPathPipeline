@@ -381,6 +381,16 @@ class aptabletools : fileutils {
             ){$_}
         }}
         #
+        if (!$this.sampledef_local_data) {
+            $this.sampledef_local_data = @()
+        }
+        #
+        if ($this.sampledef_local_data -isnot [array]) {
+            $newarray = @()
+            $newarray += $this.sampledef_local_data
+            $this.sampledef_local_data = $newarray
+        }
+        #
         if ($createwatcher){
             $this.FileWatcher($defpath)
         }
