@@ -156,19 +156,23 @@ Optional:
 
 ## 8.1.6. AstroPath Dependencies
  - Scan
+    - Actions:
+       - Scan Overview (QPTIFF)
+       - Scan im3 files
+       - Add slides to APIDdef file and get ScanID to APID translation
     - Output:
-       - Check for the dpath\slideid if it does exist the deps passed
-       - If the spath\slideid exists
+       - Check for the *dpath\slideid* if it does exist the deps passed
+       - If the *spath\slideid* exists
           - Xml file contains ‘Acquired’ items
           - im3 files in the directory match the number of ‘Acquired’ fields
              - all im3 files meet the minimum requirement sizes
  - ScanValidation
     - Dependencies:
-       - If the spath\slideid exists
+       - If the *spath\slideid* exists
           - Xml file contains ‘Acquired’ items
           - im3 files in the directory match the number of ‘Acquired’ fields
              - all im3 files meet the minimum requirement sizes
-       - If spath\slideid does not exist
+       - If *spath\slideid* does not exist
              - Check for the dpath\slideid
     - Actions:
        - Run a small utility to check the accurate positioning and focus of im3 files
@@ -177,7 +181,7 @@ Optional:
  - Transfer
     - Dependencies:
        - Scan module
-    - Actions: still need to be added 
+    - Actions:
        - Transfer a slide from spath to dpath
        - Compress slide from spath to cpath
        - Remove spath
@@ -193,19 +197,29 @@ Optional:
     - Dependencies:
        - transfer
     - Actions:
-       - Does the xml shredding for a directory
+       - Extracts exposure time xml information from all im3 files in an im3 directory to the [xml] directory
+       - Extracts the Full.xml, Parameters.xml
     - Output: 
-       - Xml directory
+       - Xml directory with:
+          - Full.xml
+          - Parameters.xml
+          - .xml for each im3
  - Meanimage
     - Dependencies:
        - shredxml
     - Actions:
-       - Performs the meanimage computation on a directory
+       - Gets the mean image and mask stack of an im3 directory
+       - Extracts the tissue masks for each im3 file
+       - All output in slideid/im3/meanimage directory
     - Output:
        -  A new meanimage folder containing:
           -  <Slide_ID>-sum_images_squared.bin
           -  <Slide_ID>-std_err_of_mean_image.bin
           -  <Slide_ID>-mean_image.bin
+          -  Optional:
+             - <Slide_ID>-mask_stack.bin
+             - Image_masking directory with [imageid]_tissue_mask.bin and _full_mask.bin for available images
+             - <Slide_ID>-background_thresholds.csv 
  - batchmicomp
     - Dependencies:
        - meanimage
@@ -219,14 +233,19 @@ Optional:
     - Dependencies:
        - batchmicomp
     - Actions:
-       - Combines meanimages into a single flatfield correction model
+       - Build flatfields and add to the *[mpath]\flatfield* directory
+       - Update AstroPathFlatfieldModules.csv with slides used to build a flatfield
+       - Update AstroPathCorrectionModels.csv for slides to run with a specified flatfield  
     - Output:
-       - Checks if the batch flatfield folder exists
+       - SlideID in the AstroPathCorrectionModels.csv
+       - Flatfield file exists in the flatfield directory
+       - Labeled flatfield_[\*].bin ([\*]: from ‘FlatfieldVersion’ column in models file)
  - warpoctets
     - Dependencies:
        - batchflatfield
     - Actions:
-       - *To be added*
+       - Measures the warping affecting raw data files in a cohort
+       - Only finds the octets for each sample and writes them out
     - Output: 
        - Check if the slide log base for warpoctets exists, if so:
           - check if the <Slide_ID>-mask_stack.bin file exists in the meanimage folder
@@ -235,55 +254,70 @@ Optional:
     - Dependencies:
        - warpoctets
     - Actions:
-       - *To be added*
+       - Creates *[basepath]\warping\Batch_XX\octets* folder
+       - Adds batch slides <Slide_ID>-all_overlap_octets.csv, initial, principle, final _pattern_octets_selected.csv files
+       - Create image_keys_needed.txt
     - Output: 
-       - *To be added*
+       - A batch warp keys folder containing:
+          - final_pattern_octets_selected.csv
+          - initial_pattern_octets_selected.csv
+          - image_keys_needed.txt
+          - principal_point_octets_selected.csv
  - batchwarpfits
     - Dependencies:
        - batchwarpkeys
     - Actions:
-       - *To be added*
+       - Does initial, principle, and final pattern fits for images
+       - Builds the final warp file ‘weighted_average_warp.csv’
+       - Copies final warp file to *[basepath]\warping*  and renames to ‘warping_BatchID_XX.csv’
     - Output: 
-       - *To be added*
+       - warping_BatchID_XX.csv
  - imagecorrection
     - Dependencies:
        - batchwarpfits
     - Actions:
-       - *To be added*
+       - Creates a directory of flat field and warping corrected .im3 images files for each slide
     - Output: 
-       - *To be added*
+       - Tests that there are the correct number of .fw, .fw01, and .flatwim3 for given batch
  - Vminform
     - Dependencies:
        - imagecorrection
     - Actions:
-       - *To be added*
+       - Runs the provided algorithm through inForm
+       - Add cell seg data, cell seg summary data for all images in the slide
+       - Adds binary seg and component seg data for slides to appropriate antibody algorithms
     - Output: 
-       - *To be added*
+       - Cell seg data for each image in the slide
  - merge
     - Dependencies:
        - vminform
     - Actions:
-       - *To be added*
+       - Merge’s the inForm cell seg data
+       - Creates the cleaned_phenotype_tables.csv
+       - Creates the image qa image views
     - Output: 
-       - *To be added*
+       - A cleaned phenotype table for all im3 images
+       - Image QA views 
  - imageqa
     - Dependencies:
        - merge
     - Actions:
-       - *To be added*
+       - Look over the image QA views for the slide
+       - Edit the algorithm as needed and rerun through inForm via adding new row to inForm queue
+       - Update Project level ImageQA.csv for each AB
     - Output: 
-       - *To be added*
+       - ‘X’ in each antibody column of the ImageQA.csv for a slide
  - segmaps
     - Dependencies:
        - imageqa
     - Actions:
-       - *To be added*
+       - Create the segmentation maps for each image from the inForm binary seg maps, component tiffs, and final cleaned_phenotype_table.csv files
     - Output: 
-       - *To be added*
+       - [imageid]_component_data_w_seg.tif for each image of the slide 
  - dbload
     - Dependencies:
        - segmaps
     - Actions:
-       - *To be added*
+       - Database load
     - Output: 
-       - *To be added*
+       - Publications

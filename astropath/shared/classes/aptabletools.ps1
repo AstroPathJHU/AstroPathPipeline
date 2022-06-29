@@ -28,6 +28,7 @@ class aptabletools : fileutils {
     [PSCustomObject]$worker_data
     [PSCustomObject]$mergeconfig_data
     [PSCustomObject]$imageqa_data
+    [PSCustomObject]$storage_data
     [array]$projects
     #
     [array]$antibodies
@@ -45,7 +46,8 @@ class aptabletools : fileutils {
     [string]$ffmodels_file = 'AstroPathFlatfieldModels.csv' 
     [string]$corrmodels_file = 'AstroPathCorrectionModels.csv' 
     [string]$micomp_file = 'meanimagecomparison_table.csv' 
-    [string]$worker_file = 'AstroPathHPFWLocs.csv' 
+    [string]$worker_file = 'AstroPathHPFWLocs.csv'
+    [string]$storage_file = 'AstroPathStorage.csv'
     [string]$imageqa_file = 'imageqa_upkeep.csv'
     [string]$imageqa_path = '\upkeep_and_progress'
     [string]$slide_local_path = 'upkeep_and_progress'
@@ -136,6 +138,10 @@ class aptabletools : fileutils {
     #
     [string]worker_fullfile($mpath){
         return $this.apfullname($mpath, $this.worker_file)
+    }
+    #
+    [string]storage_fullfile($mpath){
+        return $this.apfullname($mpath, $this.storage_file)
     }
     #
     importaptables(){
@@ -1065,7 +1071,6 @@ class aptabletools : fileutils {
         #
     }
     #
-    #
     [void]ImportImageQA(){
         #
         $this.ImportImageQA($this.basepath)
@@ -1162,9 +1167,9 @@ class aptabletools : fileutils {
             $this.defprojectlogpath($module, $project)
         )
         #
-     }
-     #
-     [PSCustomObject]Importlogfile([string] $fpath){
+    }
+    #
+    [PSCustomObject]Importlogfile([string] $fpath){
         #
         if (test-path $fpath){
             $logfile = $this.opencsvfile($fpath, `
@@ -1176,7 +1181,23 @@ class aptabletools : fileutils {
         #
         return $logfile
         #
-     }
+    }
+    #
+    [void]UpdateStorage($mpath){
+        #
+        $storage = Get-PSDrive | 
+            Where-Object {$_.Provider -match 'FileSystem'} | 
+            Select-Object -Property Name, Root, Free
+        Add-Member -InputObject $storage -MemberType NoteProperty -Name "Description" -Value ""
+        $storage | ForEach-Object{$_.Free /= 1TB}
+        $this.storage_data = $storage | 
+            Select-Object @{N='Server';E={$_.Root}}, 
+                          @{N='Drive';E={$_.Name}}, 
+                          @{N='Description';E={$_.Description}},
+                          @{N='Space TB';E={$_.Free}}
+        $this.storage_data | Export-Csv -Path $this.storage_fullfile($mpath) -NoTypeInformation
+        #
+    }
     #
     <# -----------------------------------------
      selectlogline
