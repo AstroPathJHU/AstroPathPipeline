@@ -5,7 +5,7 @@ node {
     GITHUB_TOKEN = "${SECRET}"
   }
 }
-
+//test
 pipeline {
   agent none
 
