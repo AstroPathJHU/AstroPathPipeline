@@ -19,7 +19,7 @@
         $this.testcondaenvir($tools)
         $this.testcheckgitrepo($tools)
         $this.testcreatedirs($tools)
-        #$this.testcopy($tools)
+        $this.testcopy($tools)
         $this.testcopylinux($tools)
         $this.testfilehasher($tools)
         $this.testgitstatus($tools)
