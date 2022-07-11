@@ -340,17 +340,8 @@ class astropathwftools : sampledb {
             $_.taskid -contains $currenttask[0]
         }
         #
-        if ($row -is [array]) {
-            foreach ($task in $row) {
-                $task.ProcessingLocation = 'Processing:' + $currentworker.location
-                $task.StartDate = $this.getformatdate()
-            }
-            $row = $row[0]
-        }
-        else {
-            $row.ProcessingLocation = 'Processing:' + $currentworker.location
-            $row.StartDate = $this.getformatdate()
-        }
+        $row.ProcessingLocation = 'Processing:' + $currentworker.location
+        $row.StartDate = $this.getformatdate()
         #
         $currenttask = @($row.taskid, $row.slideid, $row.antibody, $row.algorithm)
         #
@@ -521,7 +512,7 @@ class astropathwftools : sampledb {
     [void]CheckCompletedWorkers(){
         #
         $donejobs = Get-Job | 
-            Where-Object { $_.State -eq 'Completed'}
+            Where-Object { $_.State -eq 'Completed' -and $_.PSJobTypeName -eq 'BackgroundJob'}
         #
         if ($donejobs){
             $donejobs | ForEach-Object {

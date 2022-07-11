@@ -85,7 +85,7 @@ Class meanimage : moduletools {
         $this.getmodulename()
         $taskname = $this.pythonmodulename
         #
-        $dpath = $this.sample.basepath + ' '
+        $dpath = $this.sample.basepath
         $rpath = $this.processvars[1]
         $pythontask = $this.('getpythontask' + $this.pytype)($dpath, $rpath)
         #
