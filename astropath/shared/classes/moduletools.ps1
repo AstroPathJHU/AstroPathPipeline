@@ -168,6 +168,13 @@
             $sor = $this.sample.im3folder()
             try {
                 $this.sample.copy($sor, $des, 'im3', 10)
+                $im3files = @()
+                $im3files += $this.sample.listfiles($des, '*')
+                $misnamedfiles = $im3files -cmatch '.IM3'
+                foreach ($file in $misnamedfiles) {
+                    $newfilename = (Split-Path $file -Leaf) -replace 'IM3', 'im3'
+                    Rename-Item $file $newfilename
+                }
                 if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
                     Throw 'im3s did not download correctly'
                 }
@@ -502,15 +509,20 @@
             $_.slideid -contains $this.sample.slideid
         }
         #
+        if(!$this.sample.sampledef_local_data) {
+            $this.sample.sampledef_local_data  = @()
+        }
+        #
         if (!$row){
             $this.sample.sampledef_local_data += [PSCustomObject]@{
-                sampleid = 0
-                slideid = $this.sample.slideid
-                project = $this.sample.project
-                cohort = $this.sample.cohort
-                scan = $this.sample.scannumber()
-                batchid = $this.sample.batchid
+                SampleID = 0
+                SlideID = $this.sample.slideid
+                Project = $this.sample.project
+                Cohort = $this.sample.cohort
+                Scan = $this.sample.scannumber()
+                BatchID = $this.sample.batchid
                 isGood = 1
+
             }
             $this.sample.writecsv(
                 $this.sample.sampledef_local_fullfile($this.sample.basepath),
