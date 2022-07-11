@@ -171,13 +171,18 @@
         #
         Write-Host '    testing checksum no files in des'
         #
+        Write-Host '    test1'
         $sorfile = $PSScriptRoot + '\data\logfiles\logfile.log'
         $tools.popfile($sorfile, $content)
+        Write-Host '    test2'
         $sorfile = $PSScriptRoot + '\data\logfiles\logfile2.log'
         $tools.popfile($sorfile, $content)
+        Write-Host '    test3'
         $sorfile = $PSScriptRoot + '\data\logfiles\logfile3.log'
         $tools.popfile($sorfile, $content)
+        Write-Host '    verifychecksum'
         $tools.verifyChecksum($sor, $des, '*', 0)
+        Write-Host '    checkdesfiles'
         $this.checkdesfiles($des, $desfile, $tools, 3)
         #
         Write-Host '    testing robo copy all files'
