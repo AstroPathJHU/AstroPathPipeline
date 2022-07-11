@@ -897,6 +897,10 @@ class aptabletools : fileutils {
     #
     [void]findantibodies($basepath){
         #
+        if (!$this.isWindows()) {
+            return
+        }
+        #
         $this.mergeconfigtocsv()
         #
         $this.ImportMergeConfigCSV($basepath)
@@ -924,6 +928,10 @@ class aptabletools : fileutils {
     }
     #
     [void]getantibodies(){
+        #
+        if (!$this.isWindows()) {
+            return
+        }
         #
         $this.mergeconfigtocsv()
         $this.getantibodies($this.project)
