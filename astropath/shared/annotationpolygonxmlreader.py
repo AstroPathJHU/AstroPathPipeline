@@ -205,7 +205,12 @@ class AnnotationRegionXML(AnnotationRegionBase):
     if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
     return [AnnotationVertexXML(_, annoscale=self.annoscale) for _ in vertices]
   @property
-  def NegativeROA(self): return bool(int(self.__xmlnode.get_xml_attr("NegativeROA")))
+  def NegativeROA(self):
+    try:
+      attr = self.__xmlnode.get_xml_attr("NegativeROA")
+    except KeyError:
+      attr = self.__xmlnode.get_xml_attr("IsNegative")
+    return bool(int(attr))
   @property
   def Type(self): return self.__xmlnode.get_xml_attr("Type")
 
