@@ -122,7 +122,11 @@ class AnnotationNodeXML(AnnotationNodeBase):
     return color
   @property
   def visible(self):
-    return {"true": True, "false": False}[self.__xmlnode.get_xml_attr("Visible").lower().strip()]
+    try:
+      visibleattr = self.__xmlnode.get_xml_attr("Visible")
+    except KeyError:
+      visibleattr = "true"
+    return {"true": True, "false": False}[visibleattr.lower().strip()]
 
   @property
   def regions(self):
