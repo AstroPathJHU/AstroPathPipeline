@@ -27,9 +27,9 @@ For python download the repository and install the transferdeamon. Then launch u
   - ```AUTOMATIC```: DELETE ALL FILES under the CSV protocol
   - ```MANUAL```: Delete any folders without the DoNotDelete.txt file
 - ```[<logical_compression>]```: Optional argument; enter "-no_compress" if files are not to be compressed
-- ```[<single_sample_switch>]```: Optional argument; runs one sample at a time. Usage is "-o". Requires inputs for ```inproj``` and ```inslide```.
+- ```[<single_sample_switch>]```: Optional argument; runs one sample at a time. Usage is "-o". Requires inputs for ```inproj``` and ```insample```.
   - ```inproj```: Project number. Usage is "--inproj"
-  - ```inslide```: ```SampleName``` (e.g. "CS22_1"). Usage is "--inslide"
+  - ```insample```: ```SampleName``` (e.g. "CS22_1"). Usage is "--insample"
 - ```[<start/stop>]```: Optional argument; enter "-s" to remove start/stop logs
 - ```[<quiet>]```: Optional argument; enter "-q" if no output is to be sent to command window
 - ```[<version>]```: Optional argument; enter "-v" to get the version number of the code
