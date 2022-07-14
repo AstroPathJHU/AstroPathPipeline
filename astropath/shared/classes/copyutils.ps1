@@ -211,7 +211,7 @@ class copyutils{
         $files = $this.listfiles($sor1, $filespec)
         #
         $files | foreach-Object -Parallel { 
-            Copy-Item $_ -r $using:des1 
+            Copy-Item -LiteralPath $_ -r $using:des1 
         } -ThrottleLimit 20
         #
         $gitignore = $sor1 + '/.gitignore'
