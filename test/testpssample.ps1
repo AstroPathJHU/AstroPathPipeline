@@ -122,9 +122,11 @@ Class testpssample : testtools {
         }
         Write-Host '    Files in XML folder exist'
         #
-        $ids = $sample.ImportCorrectionModels($this.mpath)
+        if (!$sample.corrmodels_data){
+            throw 'correction models file is empty'
+        }
         Write-Host '    correction models file:'
-        Write-Host '    ' ($ids | Format-Table | Out-String)
+        Write-Host '    ' ($sample.corrmodels_data | Format-Table | Out-String)
         #
         Write-Host '    sample py batch flatfield:' $sample.pybatchflatfield() 
         Write-Host '    test py batch flatfield:  ' $this.pybatchflatfieldtest
@@ -202,7 +204,7 @@ Class testpssample : testtools {
 try {
     [testpssample]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0
 

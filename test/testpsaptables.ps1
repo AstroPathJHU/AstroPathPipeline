@@ -18,11 +18,14 @@
         $tools = sharedtools
         $this.testapidfiles() | Out-Null
         $this.testapidfiles($tools)
-        $this.testconfiginfo($tools)
         $this.testcorrectionfile($tools, $true)
         $this.testcorrectioninfo($tools)
-        $this.correctcohortsinfo($tools)
+       # $this.correctcohortsinfo($tools)
        # $this.testcohortsinfo($tools)
+        $tools.importaptables($this.mpath, $false)
+        $tools.getmodulestatus()
+        $tools.getmodulelogs()
+        write-host $tools.module_project_data.scan[0].tostring()
         $this.testgitstatus($tools)        
         Write-Host '.'
         #
@@ -77,12 +80,12 @@
         Write-Host 'Testing import slideids method. Output below:'
         #
         try {
-            $internal_apids = $tools.importslideids($this.mpath)
+            $tools.importslideids($this.mpath)
         } Catch {
             Throw ('Cannot open apid def file. ' + $_.Exception.Message)
         }
         #
-        write-host " " ($internal_apids | 
+        write-host " " ($tools.slide_data | 
         Format-Table  @{Name="SlideID";Expression = { $_.SlideID }; Alignment="center" },
                         @{Name="SampleName";Expression = { $_.SampleName }; Alignment="center" },
                         @{Name="Project";Expression = { $_.Project }; Alignment="center" },
@@ -94,33 +97,18 @@
         #
     }
     #
-    [void]testconfiginfo($tools){
-        #
-        Write-Host '.'
-        Write-Host 'Testing config info method. Output below:'
-        #
-        try {
-            $internal_apids = $tools.ImportConfigInfo($this.mpath)
-        } Catch {
-            Throw ('Cannot open config file. ' + $_.Exception.Message)
-        }
-        #
-        write-host " " $internal_apids | Format-Table
-        #
-    }
-    #
     [void]testcohortsinfo($tools){
         #
         Write-Host '.'
         Write-Host 'Testing Cohorts info method. Output below:'
         #
         try {
-            $internal_apids = $tools.ImportCohortsInfo($this.mpath)
+            $tools.ImportCohortsInfo($this.mpath)
         } Catch {
             Throw ('Cannot open config file. ' + $_.Exception.Message)
         }
         #
-        write-host " " ($internal_apids | Out-String)
+        write-host " " ($tools.full_project_dat | Format-Table  Out-String)
         #
     }
     #
@@ -129,15 +117,15 @@
         Write-Host '.'
         Write-Host 'Testing import correction models method. Output below:'
         #
-        $ids = $tools.ImportCorrectionModels($this.mpath)
+        $tools.ImportCorrectionModels($this.mpath)
         #
         Write-Host '    test models csv exists:' (test-path ($this.mpath + '\AstroPathCorrectionModels.csv'))
         #
-        if (!$ids){
+        if (!$tools.corrmodels_data){
             Throw 'correction models is empty!!'
         }
         Write-Host '    correction models file:'
-        Write-Host '    ' ($ids | Format-Table | Out-String)
+        Write-Host '    ' ($tools.corrmodels_data | Format-Table | Out-String)
     }
     #
     # the cohorts info file have to be relative to the 
@@ -166,9 +154,13 @@
         $paths_data[1].FWpath = ($p  + '\data\flatw') -replace '\\\\', ''
         $paths_data | Export-CSV $paths_csv_file
         #
-        $internal_apids = $tools.ImportCohortsInfo($this.mpath)
-        write-host " " ($internal_apids | Out-String)
+        $tools.ImportCohortsInfo($this.mpath, $false)
+        write-host " " ($tools.full_project_dat | fORMAT-TABLE | Out-String)
         #
+    }
+    #
+    [void]dothething(){
+
     }
     #
 }
@@ -178,7 +170,7 @@
 try {
     [testpsaptables]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0
 

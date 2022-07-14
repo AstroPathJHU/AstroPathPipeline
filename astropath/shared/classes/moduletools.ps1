@@ -1,7 +1,7 @@
 ﻿<# -------------------------------------------
  moduletools
- Benjamin Green - JHU
- Last Edit: 02.16.2022
+ Benjamin Green, Andrew Jorquera- JHU
+ Last Edit: 05.04.2022
  --------------------------------------------
  Description
  general functions which may be needed by
@@ -12,9 +12,10 @@
     FLATFIELD = 2
     BATCHID = 4
     XML = 8
+    FLATWIM3 = 16
  }
  #
- Class moduletools{
+ class moduletools{
     #
     [array]$externaltasks
     [launchmodule]$sample
@@ -32,8 +33,8 @@
     moduletools([hashtable]$task, [launchmodule]$sample){
         $this.sample = $sample
         $this.BuildProcessLocPaths($task)
-        $this.vers = $this.sample.GetVersion(
-            $this.sample.mpath, $this.sample.module, $task.project)
+        $this.vers = $this.sample.GetVersion($this.sample.mpath,
+             $this.sample.module, $this.sample.project)
         $this.sample.checksoftware()   
     }
     <# -----------------------------------------
@@ -101,6 +102,7 @@
             $this.DownloadIm3s()
             $this.DownloadBatchID()
             $this.DownloadXML()
+            $this.DownloadFlatwIm3s()
             $this.sample.info("Download Files finished")
         }
     }
@@ -164,10 +166,16 @@
             $des = $this.processvars[0] +'\'+
                 $this.sample.slideid+'\im3\'+$this.sample.Scan()+,'\MSI'
             $sor = $this.sample.im3folder()
-            $this.sample.copy($sor, $des, 'im3', 10)
-            if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
-                Throw 'im3s did not download correctly'
+            try {
+                $this.sample.copy($sor, $des, 'im3', 10)
+                if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
+                    Throw 'im3s did not download correctly'
+                }
+            } catch {
+                $this.silentcleanup()
+                Throw $_.Exception
             }
+            
         }
         #
     }
@@ -201,10 +209,49 @@
             [FileDownloads]::XML){
             $des = $this.processvars[1] +'\' + $this.sample.slideid + '\'
             $sor = $this.sample.xmlfolder()
-            $this.sample.copy($sor, $des, 'xml', 20)
-            if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
-                Throw 'xmls did not download correctly'
+            try {
+                $this.sample.copy($sor, $des, 'xml', 20)
+                if(!(((get-childitem ($sor+'\*') -Include '*xml').Count) -eq (get-childitem $des).count)){
+                    Throw 'xmls did not download correctly'
+                }
+            } catch {
+                $this.silentcleanup()
+                Throw $_.Exception
             }
+        }
+        #
+    }
+    <# -----------------------------------------
+     DownloadFlatwIm3s
+     download the flatw IM3 files to the processing
+     dir
+     ------------------------------------------
+     Usage: $this.DownloadFlatwIm3s()
+    ----------------------------------------- #>
+    [void]DownloadFlatwIm3s(){
+        #
+        if (($this.flevel -band [FileDownloads]::FLATWIM3) -eq 
+            [FileDownloads]::FLATWIM3){
+            $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\flatw'
+            $sor = $this.sample.flatwim3folder()
+            try {
+                $this.sample.copy($sor, $des, 'im3', 30)
+                $flatwfiles = @()
+                $flatwfiles += $this.sample.listfiles($des, '*')
+                $misnamedfiles = $flatwfiles -cmatch '.IM3'
+                foreach ($file in $misnamedfiles) {
+                    $newfilename = (Split-Path $file -Leaf) -replace 'IM3', 'im3'
+                    Rename-Item $file $newfilename
+                }
+                #if ($this.getcount('flatwim3', $true) -eq (get-childitem $des).count))
+                if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
+                    Throw 'flatw im3s did not download correctly'
+                }
+            } catch {
+                $this.silentcleanup()
+                Throw $_.Exception
+            }
+            
         }
         #
     }
@@ -256,16 +303,21 @@
     [void]ConvertPath($type){
         $this.sample.info(($type + " data started"))
         $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
-        if ($type -match 'inject'){
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -inject -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shreddat') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -shred -dat -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shredxml') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -shred -xml -verbose 4>&1 >> $externallog
-        } 
+        try {
+            if ($type -match 'inject'){
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -inject -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shreddat') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -shred -dat -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shredxml') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -shred -xml -verbose 4>&1 >> $externallog
+            } 
+        } catch {
+            $this.silentcleanup()
+            Throw $_.Exception
+        }
         #
         $this.parseconvertpathlog($externallog, $type)
         #
@@ -274,34 +326,44 @@
     [void]ConvertPath($type, [array]$images){
         $this.sample.info(($type + " data started"))
         $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
-        if ($type -match 'inject'){
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -images:$images -inject -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shreddat') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shredxml') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $this.sample.slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
-        } 
+        try {
+            if ($type -match 'inject'){
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -images:$images -inject -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shreddat') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shredxml') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $this.sample.slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
+            } 
+        } catch {
+            $this.silentcleanup()
+            Throw $_.Exception
+        }
         #
         $this.parseconvertpathlog($externallog, $type)
         #
     }
     #
     [void]ConvertPath($type, $slideid, [array]$images){
-        $this.sample.info(($type + " data started"))
-        $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
-        if ($type -match 'inject'){
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $slideid -images:$images -inject -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shreddat') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
-        } elseif($type -match 'shredxml') {
-            ConvertIM3Path $this.processvars[0] $this.processvars[1] `
-                $slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
-        } 
+        try {
+            $this.sample.info(($type + " data started"))
+            $externallog = $this.ProcessLog(('convertim3pathlog' + $type))
+            if ($type -match 'inject'){
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $slideid -images:$images -inject -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shreddat') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $slideid -images:$images -shred -dat -verbose 4>&1 >> $externallog
+            } elseif($type -match 'shredxml') {
+                ConvertIM3Path $this.processvars[0] $this.processvars[1] `
+                    $slideid -images:$images -shred -xml -verbose 4>&1 >> $externallog
+            } 
+        } catch {
+            $this.silentcleanup()
+            Throw $_.Exception
+        }
         #
         $this.parseconvertpathlog($externallog, $type)
         #
@@ -386,6 +448,81 @@
                 $this.checkfile($_.fullname, $newname)
                 #
             }
+        }
+        #
+    }
+    #
+    [void]checkapiddef(){
+        #
+        $this.sample.importslideids()
+        $row = $this.sample.slide_data | Where-Object {
+            $_.slideid -contains $this.sample.slideid
+        } 
+        #
+        if ($row.scan -ne $this.sample.scannumber()){
+            $row.scan = $this.sample.scannumber()
+            $this.sample.writecsv(
+                $this.sample.slide_fullfile($this.sample.mpath),
+                $this.sample.slide_data
+            )
+        }
+        #
+        $this.sample.slide_local_file += '_' + $this.sample.project + '.csv'
+        $this.sample.importslideids_local()
+        $row = $this.sample.slide_local_data | Where-Object {
+            $_.slideid -contains $this.sample.slideid
+        }
+        #
+        #
+        if(!$this.sample.slide_local_data) {
+            $this.sample.slide_local_data  = @()
+        }
+        #
+        if (!$row){
+            $this.sample.slide_local_data +=  $row
+            $this.sample.writecsv(
+                $this.sample.slide_local_fullfile($this.sample.basepath),
+                $this.sample.slide_local_data
+            )
+        #
+        } elseif ($row.scan -ne $this.sample.scannumber()){
+            $row.scan = $this.sample.scannumber()
+            $this.sample.writecsv(
+                $this.sample.slide_local_fullfile($this.sample.basepath),
+                $this.sample.slide_local_data
+            )
+        }
+        #
+    }
+    #
+    [void]checksampledef(){
+        #
+        $this.sample.importsampledef_local()
+        $row = $this.sample.sampledef_local_data | Where-Object {
+            $_.slideid -contains $this.sample.slideid
+        }
+        #
+        if (!$row){
+            $this.sample.sampledef_local_data += [PSCustomObject]@{
+                sampleid = 0
+                slideid = $this.sample.slideid
+                project = $this.sample.project
+                cohort = $this.sample.cohort
+                scan = $this.sample.scannumber()
+                batchid = $this.sample.batchid
+                isGood = 1
+            }
+            $this.sample.writecsv(
+                $this.sample.sampledef_local_fullfile($this.sample.basepath),
+                $this.sample.sampledef_local_data
+            )
+        #
+        } elseif ($row.scan -ne $this.sample.scannumber()){
+            $row.scan = $this.sample.scannumber()
+            $this.sample.writecsv(
+                $this.sample.sampledef_local_fullfile($this.sample.basepath),
+                $this.sample.sampledef_local_data
+            )
         }
         #
     }
@@ -575,7 +712,7 @@
     ----------------------------------------- #>
     [void]checkexternalerrors(){
         #
-        if ($this.vers -match '0.0.1'){
+        if ($this.vers -match '0.0.1' -or $this.sample.module -match 'merge'){
             $test = 'ERROR'
             if ($this.logoutput -match $test){
                 $this.silentcleanup()
@@ -589,7 +726,7 @@
         } else {
             if ($this.sample.module -match 'batchmicomp'){
                 $test = $this.pythonmodulename + ' : '
-            } else {
+            }else {
                 $test = ($this.sample.project, ';', $this.sample.cohort -join '')
             }
             if ($this.logoutput -and $this.logoutput[0] -notmatch $test) {
@@ -728,8 +865,9 @@
     [void]getslideidregex(){
         #
         if ($this.all){
-            $aslides = $this.sample.importslideids($this.sample.mpath)
-            $aslides = $aslides | where-object {$_.Project -match $this.sample.project}
+            $this.sample.importslideids($this.sample.mpath)
+            $aslides = $this.sample.slide_data |
+                where-object {$_.Project -contains $this.sample.project}
             $slides = $aslides.SlideID
         } else {
             $slides = $this.sample.batchslides.slideid

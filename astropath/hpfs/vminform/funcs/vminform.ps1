@@ -17,7 +17,11 @@ $vers[string]: The version number of inform to use
 #
 Function vminform {
      #
-     param($task, $log, [Parameter()][switch]$test)
+     param(
+        $task,
+        $log,
+        [Parameter()][switch]$test
+    )
      #
      # used for testing; when launched manually without launchmodule
      #
@@ -26,9 +30,9 @@ Function vminform {
         $e = 1
      } else {$e = 0}
      #
-     $inp = [informinput]::new($task, $log)
+     $inp = [vminform]::new($task, $log)
      if ($e -ne 1){
-         $inp.RunBatchInForm()
+         $inp.RunVMinForm()
      } else{
         return $inp
      }

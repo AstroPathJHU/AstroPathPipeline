@@ -22,11 +22,11 @@ Function segmaps {
      # used for testing; when launched manually without launchmodule
      #
      if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
-        $log = [launchmodule]::new($task[$task.Count-1], 'segmaps', $task) 
+        $log = [launchmodule]::new($task.mpath, 'segmaps', $task) 
         $e = 1
      } else {$e = 0}
      #
-     $inp = [segmaps]::new($task, $log)
+     $inp = New-Object 'segmaps' -ArgumentList ($task, $log)
      if ($e -ne 1){
          $inp.RunSegMaps()
      } else{

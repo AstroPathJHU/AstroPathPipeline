@@ -1,5 +1,4 @@
 ﻿class generalutils : copyutils {
-     #
     <# -----------------------------------------
      MergePSCustomObject
      Merge two PS Custom Objects based on a property
@@ -7,7 +6,8 @@
      ------------------------------------------
      Usage: MergePSCustomObject(d1, d2, property)
     ----------------------------------------- #>
-    [PSCustomObject]MergeCustomObject([PSCustomObject]$d1, [PSCustomObject]$d2, [string]$property = ''){
+    [PSCustomObject]MergeCustomObject([PSCustomObject]$d1,
+        [PSCustomObject]$d2, [string]$property = ''){
         #
         # get new columns
         #
@@ -16,24 +16,22 @@
         $comparison = Compare-Object -ReferenceObject $columns_d1 `
                                      -DifferenceObject $columns_d2 `
                                      -IncludeEqual
-        $columns_to_add = ($comparison | `
-                           Where-Object -FilterScript {$_.SideIndicator -eq '=>'} `
+        $columns_to_add = ($comparison | 
+                           Where-Object -FilterScript {$_.SideIndicator -eq '=>'}
                            ).InputObject
         #
         # validate that a merge is feasible
         #
         if (!($property -in $comparison.InputObject)){
-            Throw "Can merge on $property"
+            Throw "Can't merge on $property"
         }
-        if (
-            !((Compare-Object `
-                -ReferenceObject $d1.$property `
-                -DifferenceObject $d2.$property `
-                -IncludeEqual -ExcludeDifferent).Count `
-                -eq $d1.Count)
-        ){
-            Throw "Can merge on $property"
-        }
+        #
+        # get matching values of $property to merge on
+        #
+        $mergeitems = (Compare-Object `
+          -ReferenceObject $d1.$property `
+          -DifferenceObject $d2.$property `
+          -IncludeEqual -ExcludeDifferent).InputObject
         #
         # create a new custom object with columns of $d1 add in new $d2 columns
         #
@@ -41,20 +39,20 @@
         #
         # get the values of 
         #
-        $d1 | ForEach-Object {
-            $c = $_.$property
-            $d3 = $d2 | Where-Object -FilterScript {$_.$property -eq $c} | `
-                        Select-Object -Property $columns_to_add
+        foreach ($mergeitem in $mergeitems){
+            $d6 = $d1 | Where-Object -FilterScript {$_.$property-eq $mergeitem} 
+            $d3 = $d2 | 
+                Where-Object -FilterScript {$_.$property -eq $mergeitem} | 
+                Select-Object -Property $columns_to_add
             #
-            $hash = $this.ConvertObjectHash( $_, $columns_d1)
+            $hash = $this.ConvertObjectHash($d6, $columns_d1)
             $hash = $this.ConvertObjectHash($d3, $columns_to_add, $hash)
             #
-            $d4 += $hash
+            $d4 += new-object psobject -Property $hash
         }
         #
-        $d5 = [pscustomobject]$d4
         #
-        return $d5
+        return $d4
         #
     }
     <# -----------------------------------------
@@ -93,7 +91,8 @@
         #
     }
     #
-    [hashtable]ConvertObjectHash([PSCustomObject] $object,[Object] $columns,[Hashtable] $hash){
+    [hashtable]ConvertObjectHash([PSCustomObject] $object,
+        [Object] $columns,[Hashtable] $hash){
         #
         foreach($p in $columns){
             $hash.Add($p, $object.$p)
@@ -104,22 +103,18 @@
     }
     #
     [string]defRoot(){
-        ##
+        #
         $r = $PSScriptRoot -replace( '/', '\')
         if ($r[0] -ne '\'){
-            $root = ('\\' + $env:computername+'\'+$r) -replace ":", "$"
+            return( ('\\' + $env:computername+'\'+$r) -replace ":", "$")
         } else{
-            $root = $r -replace ":", "$"
+            return ( $r -replace ":", "$")
         }
-        #
-        return($root)
         #
     }
     #
-    [string]defDrive(){
-        $root = $this.defRoot()
-        $drive = ($root -split '\$')[0] + '$'
-        return($drive)
+    [string]defDrive(){ 
+        return (($this.defRoot() -split '\$')[0] + '$')
     }
     #
     [string]defServer(){
@@ -141,7 +136,7 @@
         $dir = $this.CrossPlatformPaths($dir)
         #
         if (!(test-path $dir)){
-            new-item $dir -itemtype "directory" -EA STOP | Out-NULL
+            new-item $dir -itemtype directory -EA STOP | Out-NULL
         }
     }
     #
@@ -152,7 +147,7 @@
         $this.removedir($dir)
         #
         if (!(test-path $dir)){
-            new-item $dir -itemtype "directory" -EA STOP | Out-NULL
+            new-item $dir -itemtype directory -EA STOP | Out-NULL
         }
         #
     }
@@ -207,10 +202,10 @@
         $filespec = '*' + $sor
         $files = Get-ChildItem ($folder+'\*') -Include  $filespec -Recurse 
         #
-        $files | Foreach-Object {
+        $files | & { process {
             $newname = $_.name -replace $sor, $des   
             Rename-Item $_.fullname $newname -ea stop 
-        }
+        }}
         #
     }
     <# ------------------------------------------
@@ -220,16 +215,68 @@
     ------------------------------------------ #>
     [DateTime]LastWrite([string]$p){
         #
-        $p = $this.CrossPlatformPaths($p)
-        #
-        if (test-path -literalpath $p){
-            return (Get-ChildItem $p).LastWriteTime
+        if (test-path -literalpath $this.CrossPlatformPaths($p)){
+            return (Get-ChildItem $this.CrossPlatformPaths($p)).LastWriteTime
         } else {
             return Get-Date
         }
         #
     }
     #
+    [PSCustomObject]getstoredtable($table){
+        #
+        return (
+            $table | 
+            Select-Object -Property ($this.gettablenames($table))
+        )
+        #
+    }
+    #
+    [array]gettablenames($table){
+        return (
+            $table |
+            Get-Member -MemberType NoteProperty |
+            Select-Object -ExpandProperty Name
+        )
+    }
+    #
+    [PSCustomObject]changedrows($old, $new){
+        if ($old){
+            return (compare-object $old $new `
+                -Property ($new | Get-Member -MemberType NoteProperty).Name)
+        } 
+        return ($new | Add-Member 'SideIndicator' '=>')
+    }
+    #
+    [array]changedprojects($old, $new){
+        return ($this.changedrows($old, $new)).project
+    }
+    #
+    [array]changedslide($old, $new){
+        return (($this.changedrows($old, $new) | 
+            where-object {$_.SideIndicator -match '=>'}).slideid)
+    }
+    #
+    [array]changedffmodels($old, $new){
+        return ($this.changedrows($old, $new) | 
+            where-object {$_.SideIndicator -match '=>'}).slideid 
+    }
+    #
+    [array]changedcorrmodels($old, $new){
+        return ($this.changedrows($old, $new) | 
+            where-object {$_.SideIndicator -match '=>'}).slideid 
+    }
+    #
+    [array]changedmicomp($old, $new){
+        return ($this.changedrows($old, $new) | 
+            where-object {$_.SideIndicator -match '=>'}).slideid 
+    }
+    #
+    [string]matcharray($ar){
+        return (
+            '^', ($ar -join '$|^'), '$' -join ''
+        )
+    }
     <# -----------------------------------------
      GetCreds
      puts credentials in a string format

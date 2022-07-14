@@ -153,7 +153,7 @@
 try {
     [testpsmoduletools]::new() | Out-Null
 } catch {
-    Throw $_.Exception.Message
+    Throw $_.Exception
 }
 exit 0
 

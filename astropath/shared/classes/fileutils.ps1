@@ -8,7 +8,7 @@
  error checking and using file locking mutexes
  -------------------------------------------#>
 class fileutils : generalutils {
-    [INT]$MAX = 5
+    [INT]$MAX = 500
 
     <# -----------------------------------------
      OpenCSVFile
@@ -168,6 +168,14 @@ class fileutils : generalutils {
         #
         $newheaders = ($headers -join ',') + "`r`n"
         $this.setfile($fpath, $newheaders)
+        #
+    }
+    #
+    [void]writecsv($fpath, $content){
+        #
+        $contentout = (($content |
+            ConvertTo-Csv -NoTypeInformation) -join "`r`n").Replace('"','') + "`r`n"
+        $this.setfile($fpath, $contentout)
         #
     }
     <# -----------------------------------------
@@ -379,8 +387,13 @@ class fileutils : generalutils {
     [System.Threading.Mutex]GrabMxtx([string] $mxtxid){
          try {
             $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
+            $count = 0
             while (-not $mxtx.WaitOne(1000)) {
-                Start-Sleep -m 500;
+                Start-Sleep -m 1000;
+                $count ++
+                if ($count -eq $this.MAX) {
+                    throw "could not grab mutex: $mxtxid"
+                }
             }
             return $mxtx
         } catch [System.Threading.AbandonedMutexException] {
@@ -401,13 +414,16 @@ class fileutils : generalutils {
     [void]ReleaseMxtx([System.Threading.Mutex]$mxtx, [string] $fpath){
         try{
             $mxtx.ReleaseMutex()
+            $mxtx.Dispose()
             #
             # if another process crashes the mutex is never given up,
             # but is passed to the next grabbing process.
             # this attempts to close it again for the off chance there
             # is a duplicate grab
             #
-            try { $mxtx.ReleaseMutex() } catch {} 
+            try { $mxtx.ReleaseMutex() 
+                    $mxtx.Dispose()} catch {} 
+            $Error.Clear()
         } catch {
             Throw "mutex not released: " + $fpath
         }
@@ -445,36 +461,88 @@ class fileutils : generalutils {
         $fpath = Split-Path $file
         $fname = Split-Path $file -Leaf
         #
-        $SI = $this.FileWatcher($fpath, $fname)
-        return $SI
+        return($this.FileWatcher($fpath, $fname))
         #
     }
     #
     [string]FileWatcher($fpath, $fname){
         #
-        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-        $newwatcher.Filter = $fname
-        $newwatcher.NotifyFilter = 'LastWrite'
-        #
-        Register-ObjectEvent $newwatcher `
-            -EventName Changed `
-            -SourceIdentifier ($fpath + '\' + $fname) | Out-Null
-        #
-        return ($fpath + '\' + $fname)
+        return (
+            $this.filewatcher($fpath, $fname, ($fpath, $fname -join '\'))
+        )
         #
     }
     #
     [string]FileWatcher($fpath, $fname, $SI){
         #
-        $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
-        $newwatcher.Filter = $fname
-        $newwatcher.NotifyFilter = 'LastWrite'
+        $this.createdirs($fpath)
         #
-        Register-ObjectEvent $newwatcher `
-            -EventName Changed `
-            -SourceIdentifier $SI | Out-Null
+        $testw = $false
+        $c = 0
+        #
+        while (!$testw){
+            $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
+            $newwatcher.Filter = $fname
+            $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite'
+            #
+            Register-ObjectEvent $newwatcher `
+                -EventName Changed `
+                -SourceIdentifier ($SI + ';changed') | Out-Null
+            #
+            Register-ObjectEvent $newwatcher `
+                -EventName Renamed `
+                -SourceIdentifier ($SI + ';renamed')| Out-Null
+            #
+            $testw = $this.testwatcher(($fpath, $fname -join '\'), $SI)
+            $c ++ 
+            if ($c -ge 5){
+                $this.writeoutput("WARNING: File watcher was not trigger on test for: $SI")
+                break
+            }
+        }
         #
         return $SI
+        #
+    }
+    #
+    [switch]testwatcher($file, $SI){
+        #
+        $this.popfile($file, 'test line')
+        $a = (Get-Content $file | Measure-Object)
+        if ($a.count -eq 1){
+            set-content $file ""
+        } else {
+            (Get-Content $file) |
+                Where-Object {($a.count) -notcontains $_.ReadCount} |
+                Set-Content ($file + '.tmp')
+            (Get-Content ($file + '.tmp')) | Set-Content $file
+        }
+        #
+        $this.removefile(($file + '.tmp'))
+        #
+        $mevents = get-event | 
+            Where-Object{$_.sourceidentifier -match [regex]::Escape($SI)}
+        #
+        if ($mevents){
+            $mevents |
+                foreach-object {
+                    remove-event -eventidentifier $_.eventidentifier
+                }
+            return $true
+        } else {
+            $this.UnregisterEvent($SI)
+        }
+        #
+        return $false
+        #
+    }
+    #
+    [void]clearevents($mevent){
+        #
+        $mevent = ($mevent -split ';')[0]
+        get-event | 
+            Where-Object {$_.SourceIdentifier -match [regex]::Escape($mevent)} |
+            remove-event
         #
     }
     <# -----------------------------------------
@@ -504,19 +572,7 @@ class fileutils : generalutils {
      Usage: $this.UnregisterEvent(SI)
     ----------------------------------------- #>
     [void]UnregisterEvent($SI){
-        Unregister-Event -SourceIdentifier $SI -Force -EA Stop
-    }
-    <# -----------------------------------------
-     UnregisterEvent
-     wait for an event to trigger optionally
-     remove the event subscriber and the event
-     ------------------------------------------
-     Input: 
-        -SI: the source identifier
-     ------------------------------------------
-     Usage: $this.UnregisterEvent(SI)
-    ----------------------------------------- #>
-    [void]File($SI){
-        Unregister-Event -SourceIdentifier $SI -Force 
+        Unregister-Event -SourceIdentifier ($SI+ ';changed') -Force -EA Stop
+        Unregister-Event -SourceIdentifier ($SI+ ';renamed') -Force -EA Stop
     }
 }

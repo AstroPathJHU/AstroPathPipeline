@@ -173,7 +173,7 @@ class copyutils{
         $sor1 = $sor -replace '\\', '/'
         $des1 = $des -replace '\\', '/'
         mkdir -p $des1
-        cp $sor1 $des1 -r
+        Copy-Item $sor1 $des1 -r
         #
     }
     <# -----------------------------------------
@@ -211,12 +211,12 @@ class copyutils{
         $files = $this.listfiles($sor1, $filespec)
         #
         $files | foreach-Object -Parallel { 
-            cp $_ -r $using:des1 
+            Copy-Item $_ -r $using:des1 
         } -ThrottleLimit 20
         #
         $gitignore = $sor1 + '/.gitignore'
         if (test-path -LiteralPath $gitignore){
-            cp $gitignore $des1
+            Copy-Item $gitignore $des1
         }
         #
     }
@@ -245,12 +245,22 @@ class copyutils{
      Usage: copy(sor, filespec)
     ----------------------------------------- #>
     [system.object]listfiles([string]$sor, [array]$filespec){
-        $sor = $sor + '\*'
+        #
+        if (!([System.IO.Directory]::Exists($sor))){
+            return @()
+        }
+        #
         if ($filespec -match '\*'){
-            $files = get-ChildItem $sor -Recurse -EA SilentlyContinue
+            $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
+                 & {process{[System.IO.FileInfo]$_}}
         } else {
-            $filespec = $filespec | foreach-object {'*' + $_}
-            $files = get-ChildItem $sor -Include  $filespec -Recurse -EA SilentlyContinue
+            $filespec = ($filespec | foreach-object {'.*' + $_ + '$'}) -join '|'
+            $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
+                 & {process{
+                     if ($_ -match $filespec){
+                        [System.IO.FileInfo]$_
+                     }
+                }}
         }
         if (!$files) {
             $files = @()
@@ -258,19 +268,52 @@ class copyutils{
         return $files
     }
     #
+    [system.object]fastlistfiles([string]$sor, [array]$filespec){
+        #
+        if (!([System.IO.Directory]::Exists($sor))){
+            return @()
+        }
+        #
+        $files = cmd /c "dir /a-d /b /s $sor"
+        $sor = $sor + '\*'
+        #
+        if (!($filespec -match '\*')){
+            $filespec = ($filespec | foreach-object {'.*' + $_ + '$'}) -join '|'
+            $files = $files | & { process { 
+                if ($_ -match $filespec){ $_ }
+            }}
+        }
+        #
+        if (!$files) {
+            $files = @()
+        }
+        return $files
+        #
+    }
+    #
     [int]countfiles([string]$sor, [array]$filespec){
-        $files = $this.listfiles($sor, $filespec)
-        return $files.count
+        #
+        $cnt = 0
+        if (!([System.IO.Directory]::Exists($sor))){
+            return $cnt
+        }
+        $filespec | foreach-object {
+          $cnt +=  @([System.IO.Directory]::EnumerateFiles(
+              $sor,  ('*' + $_ ))).Count 
+
+        }
+        return $cnt
+        #
     }
     #
     [array]getfullnames([string]$sor, [array]$filespec){
-        $files = $this.listfiles($sor, $filespec)
-        return $files.fullnames
+        return ($this.fastlistfiles($sor, $filespec))
     }
     #
     [array]getnames([string]$sor, [array]$filespec){
-        $files = $this.listfiles($sor, $filespec)
-        return $files.names
+        return (
+            split-path ($this.fastlistfiles($sor, $filespec)) -leaf
+        )
     }
     <#------------------------------------------
     handlebrackets
@@ -363,7 +406,9 @@ class copyutils{
             $sourcefiles = $this.listfiles($sor, $filespec)
             $desfiles = $this.listfiles($des, $filespec)
             $missingfiles = ($sourcefiles | 
-                Where-Object {$desfiles.name -notcontains $_.Name}
+                & { process {
+                    if ( $desfiles.name -notcontains $_.Name) { $_ }
+                }}
                 ).FullName
 
         } else {
@@ -525,7 +570,7 @@ class copyutils{
         try{
             $notmatch = Compare-Object -ReferenceObject $sourcehash.values `
                                     -DifferenceObject $destinationhash.values |
-                    Where-Object -FilterScript {$_.SideIndicator -eq '<='}
+                    & { process { if ($_.SideIndicator -eq '<=') {$_}}}
         } catch {
             if ($_.Exception.Message -match 'ReferenceObject'){
                 Throw ('source hash values not valid: ' +  $sourcehash.Values)
@@ -554,11 +599,11 @@ class copyutils{
             }
             #
             $notmatch = Compare-Object $shashstrings $dhashstrings |
-                Where-Object {$_.SideIndicator -eq '<='}
+                & {process { if ($_.SideIndicator -eq '<=') {$_}}}
             #
-            $notmatch = $notmatch.InputObject | ForEach-Object{
+            $notmatch = $notmatch.InputObject | &{ process {
                     return ($path + '\' + ($_ -split ';')[0])
-            }
+            }}
             #
         }
         #
@@ -616,5 +661,17 @@ class copyutils{
         $copycount ++
         $this.verifyChecksum($tempsor, $des, '*', $copycount)
         #
+    }
+    #
+    [void]writeoutput($mess){
+        Write-Host ("$mess - " + ($this.getformatdate())) -ForegroundColor Yellow
+    }
+    #
+    [string]getformatdate(){
+        return ([string](Get-Date -Format "yyyy-MM-dd HH:mm:ss"))
+    }
+    #
+    [string]getformatdate($d){
+        return ([string](Get-Date $d -Format "yyyy-MM-dd HH:mm:ss"))
     }
 }

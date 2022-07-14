@@ -45,6 +45,6 @@ try
 catch
 end
 %
-convert_batch('\\bki04\astropath_processing', wd);
+%convert_batch(main, wd);
 %
 end

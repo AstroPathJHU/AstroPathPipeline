@@ -16,6 +16,7 @@ Class testtools{
     [string]$class
     [string]$slideid = 'M21_1'
     [string]$project = '0'
+    [string]$cohort = '0'
     [string]$batchid = '8'
     [string]$apmodule = "$PSScriptRoot/../astropath"
     [string]$pytype = 'sample'
@@ -28,10 +29,10 @@ Class testtools{
     [string]$apfile_temp_constant = 'Template.csv'
     [string]$pybatchwarpingfiletest = 'warping_BatchID_08.csv'
     [string]$batchflatfieldgtest = 'BatchID_08'
-    [hashtable]$task 
+    [hashtable]$task
     [string]$informvers = '2.4.8'
-    [string]$informantibody = 'CD8'
-    [string]$informproject = 'blah.ifr'
+    [string]$informantibody = 'FoxP3'
+    [string]$informproject = 'FoxP3_Phenotyping_NE_v4_EC.ifr'
     #
     testtools(){
        $this.importmodule()
@@ -307,7 +308,7 @@ Class testtools{
         if (!([regex]::escape($userpythontask) -eq [regex]::escape($pythontask))){
             Throw ('user defined and ['+$this.class+'] defined tasks do not match')
         }
-        Write-Host ('python ['+$this.class+'] input matches -- finished')
+        Write-Host ('['+$this.class+'] input matches -- finished')
         #
     }
     #
@@ -598,7 +599,8 @@ Class testtools{
         #
         $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
         #
-        $micomp_data = $inp.sample.ImportCorrectionModels($this.mpath)
+        $inp.sample.ImportCorrectionModels($this.mpath, $false)
+        $micomp_data = $inp.sample.corrmodels_data
         $newobj = [PSCustomObject]@{
             SlideID = $inp.sample.slideid
             Project = $inp.sample.project
@@ -625,7 +627,12 @@ Class testtools{
         #
         $p2 = $this.mpath + '\AstroPathCorrectionModels.csv'
         #
-        $micomp_data = $tool.ImportCorrectionModels($this.mpath)
+        $tool.ImportCorrectionModels($this.mpath, $false)
+        $micomp_data = $tool.corrmodels_data
+        #
+        if (!$tool.slideid){
+            return
+        }
         #
         $newobj = [PSCustomObject]@{
             SlideID = $tool.slideid
@@ -646,6 +653,8 @@ Class testtools{
         if (!(test-path $p3)){
             $tool.SetFile($p3, 'blah de blah')
         }
+        #
+        $tool.ImportCorrectionModels($this.mpath, $false)
         #
     }
     #
@@ -855,5 +864,382 @@ Class testtools{
         $sample.removefile(
             $sample.vmq.localqueuefile.($this.project))
     }
+    #
+    [void]showtable($table){
+        #
+        write-host ($table | Format-Table | Out-String)
+        #
+    }
+    #
+    [void]savephenotypedata($sampletracker){
+        #
+        write-host '    saving inform results'
+        if ((test-path ($this.processloc + '\tables')) -and
+            !(test-path $sampletracker.mergefolder())){
+                return 
+            }
+        #
+        $sampletracker.removedir($this.processloc + '\tables')
+        $sampletracker.copy($sampletracker.mergefolder(),
+            ($this.processloc + '\tables'))
+            $sampletracker.removedir($this.processloc + '\Component_Tiffs')
+        $sampletracker.copy($sampletracker.componentfolder(),
+            ($this.processloc + '\Component_Tiffs'))
+        #
+    }
+    #
+    [void]returnphenotypedata($sampletracker){
+        #
+        write-host '    returning inform results'
+        if (test-path ($this.processloc + '\tables')){
+            $sampletracker.removedir($sampletracker.mergefolder())
+            $sampletracker.copy(($this.processloc + '\tables'),
+                $sampletracker.mergefolder())
+        }
+        #
+        if (test-path ($this.processloc + '\Component_Tiffs')){
+            $sampletracker.removedir($sampletracker.componentfolder())
+            $sampletracker.copy(($this.processloc + '\Component_Tiffs'),
+                $sampletracker.componentfolder())
+            $sampletracker.removedir($this.processloc)
+        }
+        #
+    }
+    #
+    [void]addalgorithms($sampletracker){
+        #
+        $sampletracker.findantibodies()
+        foreach ($abx in $sampletracker.antibodies) {
+            #
+            $sampletracker.vmq.checkfornewtask($this.project, $this.slideid, $abx)
+            $sampletracker.vmq.localqueue.($this.project) |    
+                Where-Object {
+                    $_.slideid -match $this.slideid -and 
+                    $_.Antibody -match $abx   
+                } |
+                Foreach-object {
+                    $_.algorithm = $this.informproject
+                }
+            $sampletracker.vmq.writelocalqueue($this.project)
+            #
+            $sampletracker.vmq.coalescevminformqueues($this.project)
+            #
+            $sampletracker.vmq.maincsv | 
+                Where-Object {
+                    $_.slideid -match $this.slideid -and 
+                    $_.Antibody -match $abx   
+                } | 
+                Foreach-object {
+                    $_.algorithm = $this.informproject
+                    $_.ProcessingLocation = ''
+                }
+                #
+        }
+        #
+    }
+    #
+    [void]setupbatchwarpkeys($sampledb){
+        #
+        Write-host '    setting up batcharpkeys dependencies for the environment'
+        #   
+        $sampledb.modules | ForEach-Object {
+            $this.addstartlog($sampledb, $_)
+            Start-Sleep 2
+            $this.addfinishlog($sampledb, $_)
+        }
+        #
+        $sampledb.preparesample($this.slideid)
+        $sampletracker = $sampledb
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
+        $this.addtestfiles($sampletracker,
+            $sampletracker.meanimagefolder(), '-mask_stack.bin')
+        #
+        $p2 = $sampletracker.micomp_fullfile($this.mpath)
+        #
+        $micomp_data = $sampletracker.importmicomp($sampletracker.mpath, $false)
+        $newobj = [PSCustomObject]@{
+            root_dir_1 = $sampletracker.basepath + '\'
+            slide_ID_1 = $sampletracker.slideid
+            root_dir_2 = $sampletracker.basepath + '\'
+            slide_ID_2 = 'blah'
+            layer_n = 1
+            delta_over_sigma_std_dev = .95
+        }
+        $micomp_data += $newobj
+        #
+        $micomp_data | Export-CSV $p2 -NoTypeInformation
+        #
+        $this.testcorrectionfile($sampletracker, $true)
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.warpoctetsfolder(), 
+            $sampletracker.warpoctetsreqfiles)
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.warpbatchoctetsfolder(),
+            $sampletracker.batchwarpkeysreqfiles)
+        <#
+        $sampledb.getmodulelogs($false)
+        write-host 'newtasks:'
+        write-host $sampledb.newtasks 
+        #
+        $sampledb.preparesample($this.slideid)
+        #>
+        $sampledb.getmodulelogs($false)
+        $sampledb.refreshsampledb('batchwarpkeys', '0')
+        #
+    }
+    #
+    [void]setupvminform($sampledb){
+        #
+        Write-host '    setting up inform dependencies for the environment'
+        #
+        $sampledb.preparesample($this.slideid)
+        $sampletracker = $sampledb
+        $sampletracker.teststatus = $true
+        #
+        $this.addtestfiles($sampletracker, 
+        $sampletracker.warpfolder(),
+        $sampletracker.batchwarpingfile())
+        #
+        $this.addalgorithms($sampledb)
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.flatwfolder(),
+            $sampletracker.imagecorrectionreqfiles[0], 
+            $sampletracker.im3constant
+        )
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.flatwfolder(),
+            $sampletracker.imagecorrectionreqfiles[1], 
+            $sampletracker.im3constant
+        )
+        #
+        $this.addtestfiles($sampletracker, 
+            $sampletracker.flatwim3folder(),
+            $sampletracker.imagecorrectionreqfiles[2], 
+            $sampletracker.im3constant
+        )
+        #
+        $sampledb.getmodulelogs($false)
+        $sampledb.preparesample($this.slideid)
+        #
+    }
+    #
+    [void]removesetupvminform($sampledb){
+        #
+        Write-host '    removing inform dependencies for the environment'
+        #
+        $sampledb.preparesample($this.slideid)
+        $sampletracker = $sampledb
+        $sampletracker.teststatus = $true
+        #
+        $sampletracker.removefile($this.mpath + '\across_project_queues\vminform-queue.csv')
+        $sampletracker.copy(($this.mpath + '\vminform-queue.csv'),
+         ($this.mpath + '\across_project_queues'))
+        $sampletracker.removefile(
+            $sampletracker.vmq.localqueuefile.($this.project))
+        $sampletracker.removedir($sampletracker.informfolder())
+        $sampletracker.removefile($sampletracker.slidelogbase('shredxml'))
+        $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
+        $sampletracker.removefile($sampletracker.slidelogbase('vminform'))
+        $sampletracker.removefile($sampletracker.mainlogbase('vminform'))
+        #
+        $this.removetestfiles($sampletracker,
+            $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
+        $this.removetestfiles($sampletracker,
+            $sampletracker.meanimagefolder(), '-mask_stack.bin')
+        #
+        $sampletracker.removefile($sampletracker.mainlogbase('batchmicomp'))
+        $sampletracker.removefile($sampletracker.mainlogbase('batchflatfield'))
+        $sampletracker.removefile($sampletracker.slidelogbase('warpoctets'))
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.warpoctetsfolder(), 
+            $sampletracker.warpoctetsreqfiles)
+        #
+        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpfits'))
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.warpfolder(),
+            $sampletracker.batchwarpingfile())
+        #
+        $sampletracker.removefile($sampletracker.mainlogbase('batchwarpkeys'))
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.warpbatchoctetsfolder(), 
+            $sampletracker.batchwarpkeysreqfiles)
+        #
+        $sampletracker.removedir($sampletracker.basepath +'\warping')
+        $sampletracker.removedir($sampletracker.warpoctetsfolder())
+        $sampletracker.removedir($sampletracker.flatwim3folder())
+        $sampletracker.removedir($sampletracker.flatwfolder())
+        $sampletracker.removefile($sampletracker.basepath + '\upkeep_and_progress\imageqa_upkeep.csv')
+        #
+        #
+        $p = $this.aptempfullname($sampletracker, 'corrmodels')
+        $p2 = $sampletracker.corrmodels_fullfile($this.mpath)
+        #
+        $sampletracker.removefile($p2)
+        $data = $sampletracker.opencsvfile($p)
+        $data | Export-CSV $p2  -NoTypeInformation
+        #
+        $p3 = $sampletracker.mpath + '\flatfield\flatfield_'+$this.pybatchflatfieldtest+'.bin'
+        $sampletracker.removefile($p3)
+        #
+        #
+    }
+    #
+    [void]addproccessedalgorithms($sampledb){
+        #
+        $sampledb.findantibodies()
+        foreach ($abx in $sampledb.antibodies) {
+            #
+            $sampledb.vmq.checkfornewtask($this.project, $this.slideid, $abx)
+            $sampledb.vmq.localqueue.($this.project) |    
+                Where-Object {
+                    $_.slideid -match $this.slideid -and 
+                    $_.Antibody -match $abx   
+                } |
+                Foreach-object {
+                    $_.algorithm = $this.informproject
+                }
+            $sampledb.vmq.writelocalqueue($this.project)
+            #
+            $sampledb.vmq.coalescevminformqueues($this.project)
+            #
+            $sampledb.vmq.maincsv | 
+                Where-Object {
+                    $_.slideid -match $this.slideid -and 
+                    $_.Antibody -match $abx   
+                } | 
+                Foreach-object {
+                    $_.algorithm = $this.informproject
+                    $_.ProcessingLocation = 'Processing: bki##'
+                }
+                #
+        }
+        #
+        $sampledb.vmq.writemainqueue($this.project)
+        #
+    }
+    #
+    [void]addinformbatchlogs($workflow){
+        #
+        foreach ($abx in $workflow.antibodies ) {
+            $workflow.cantibody = $abx
+            #
+            $workflow.copy(
+                ($workflow.basepath, 'reference\vminform\batcherror\batch.log' -join '\'),
+                ($workflow.phenotypefolder(), $abx -join '\')
+            )
+            #
+            $workflow.vmq.maincsv | 
+                Where-Object {
+                    $_.slideid -match $this.slideid -and 
+                    $_.Antibody -match $abx   
+                } | 
+                Foreach-object {
+                    $_.algorithm = $this.informproject
+                    $_.ProcessingLocation = 'Processing: bki##'
+                }
+            #
+        }
+        #
+        $workflow.vmq.writemainqueue($workflow.vmq.mainqueuelocation())
+        #
+    }
+    #
+    [void]addfinishlog($sampledb, $cmodule){
+        #
+        if ($cmodule -match 'vminform'){
+            return
+        }
+        #   
+        if ($cmodule -match 'batch') {
+            $mess = $this.project, $this.cohort,
+                $this.batchid.PadLeft(2,'0'), ('FINISH:' + $cmodule +
+                '-' + $sampledb.moduleinfo.($cmodule).version),
+                 $sampledb.getformatdate() -join ';'
+        } else {
+            $mess = $this.project, $this.cohort,
+                $this.slideid, ('FINISH:' + $cmodule +
+                    '-' + $sampledb.moduleinfo.($cmodule).version),
+                     $sampledb.getformatdate() -join ';'
+        }
+        $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
+        #
+        $mess += "`r`n"    
+        $sampledb.popfile($logfile, $mess)
+        #
+    }
+    #
+    [void]addstartlog($sampledb, $cmodule){
+        #
+        if ($cmodule -match 'vminform'){
+            return
+        }
+        #
+        if ($cmodule -match 'batch') {
+            $mess = $this.project, $this.cohort,
+                $this.batchid.PadLeft(2,'0'), 
+                ('START:' + $cmodule +
+                '-' + $sampledb.moduleinfo.($cmodule).version), 
+                $sampledb.getformatdate() -join ';'
+        } else {
+            $mess = $this.project, $this.cohort,
+                $this.slideid, ('START:' + $cmodule + 
+                '-' + $sampledb.moduleinfo.($cmodule).version),
+                $sampledb.getformatdate() -join ';'
+        }
+        $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
+        #
+        $mess += "`r`n"    
+        $sampledb.popfile($logfile, $mess)
+        #
+    }
+    #
+    [void]adderrorlog($sampledb, $cmodule, $antibody){
+        #
+        $mess = $this.project, $this.cohort,
+            $this.slideid, ('ERROR:' + $cmodule +
+                ' - Antibody: ' + $antibody +
+                ' - Algorithm:'), $sampledb.getformatdate() -join ';'
+        $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
+        #
+        $mess += "`r`n"    
+        $sampledb.popfile($logfile, $mess)
+        #
+    }
+    #
+    [void]addfinishlog($sampledb, $cmodule, $antibody){
+        #
+        $mess = $this.project, $this.cohort,
+            $this.slideid, ('FINISH:' + $cmodule + 
+            ' - Antibody: ' + $antibody + ' - Algorithm:'), 
+            $sampledb.getformatdate() -join ';'
+        $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
+        #
+        $mess += "`r`n"    
+        $sampledb.popfile($logfile, $mess)
+        #
+    }
+    #
+    [void]addstartlog($sampledb, $cmodule, $antibody){
+        #
+        $mess = $this.project, $this.cohort,
+            $this.slideid, ('START:' + $cmodule +
+             ' - Antibody: ' + $antibody + ' - Algorithm:'),
+              $sampledb.getformatdate() -join ';'
+        $logfile = $this.basepath + '\logfiles\' + $cmodule + '.log'
+        #
+        $mess += "`r`n"    
+        $sampledb.popfile($logfile, $mess)
+        #
+    }
+    #
 }
 #

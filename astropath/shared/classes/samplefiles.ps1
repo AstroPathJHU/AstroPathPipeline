@@ -50,7 +50,7 @@
     [string]$algorithmconstant = '.ifp'
     [string]$projectconstant = '.ifp'
     [string]$segmapconstant = '_component_data_w_seg.tif'
-    [string]$mergeconstant = '_cleaned_phenotype_data.csv'
+    [string]$mergeconstant = '_cleaned_phenotype_table.csv'
     [string]$cellsegconstant = '_cell_seg_data.txt'
     [string]$binsegconstant = '_binary_seg_maps.tif'
     [string]$cellsegsumconstant = '_cell_seg_data_summary.txt'
@@ -62,43 +62,54 @@
     samplefiles($mpath, $module) : base($mpath, $module){}
     samplefiles($mpath, $module, $slideid) : base($mpath, $module, $slideid){}
     samplefiles($mpath, $module, $batchid, $project) : base($mpath, $module, $batchid, $project){}
-       #
+    #
+    [string]spath(){
+        return ($this.project_data.spath, $this.slideid -join '\')
+    }
+    #
+    [PSCustomObject]spathscans(){
+        if (test-path $this.spath()){
+            return (get-childitem ($this.spath(), 'Scan*' -join '\'))
+        } else {
+            return @()
+        }
+    }
+    #
     [string]im3mainfolder(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3'
-        return $path
+        return ($this.basepath + '\' + $this.slideid + '\im3')
     }
     #
     [string]upkeepfolder(){
-        $path = $this.basepath + '\upkeep_and_progress'
-        return $path
+        return ($this.basepath + '\upkeep_and_progress')
     }
     #
     [string]Scan(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3\Scan*'
-        $paths = get-childitem $path
-        $scan = $paths | 
+        $paths = get-childitem ($this.im3mainfolder(), 'Scan*' -join '\')
+        return ($paths | 
             select-object *, @{n = "IntVal"; e = {[int]$_.Name.substring(4)}} |
             sort-object IntVal |
-            Select-Object -Last 1
-        return $scan.Name
+            Select-Object -Last 1).name
     }
     #
     [string]Scanfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\im3\'+$this.Scan()
-        return $path
-
+        return(
+            $this.basepath, $this.slideid, 'im3', $this.Scan() -join '\'
+        )
+    }
+    #
+    [string]ScanNumber(){
+        return (($this.Scan() -split 'Scan')[1])
     }
     #
     [string]batchfolder(){
-        $path = $this.basepath + '\Batch'
-        return $path
+        return ($this.basepath, 'Batch' -join '\')
     }
     #
     [string]qptifffile(){
-        $path = $this.Scanfolder() + '\' + $this.slideid + 
-            '_' + $this.Scan() + '.qptiff'
-        return $path
+        return ( 
+            $this.Scanfolder() + '\' + $this.slideid + 
+                '_' + $this.Scan() + '.qptiff'
+        )
     }
     #
     [string]annotationxml(){
@@ -108,13 +119,11 @@
     }
     #
     [string]batchIDfile(){
-        $path = $this.Scanfolder() + '\BatchID.txt'
-        return $path
+        return ($this.Scanfolder(), 'BatchID.txt' -join '\')
     }
     #
     [string]flatfieldfolder(){
-        $path = $this.basepath +'\flatfield'
-        return $path
+        return ($this.basepath, 'flatfield' -join '\')
     }
     #
     [string]batchflatfield(){
@@ -124,20 +133,27 @@
     }
     #
     [string]batchwarpingfile(){
-        $path = $this.basepath +'\warping\warping_BatchID_' + 
-            $this.BatchID + '.csv'
+        $path = 'warping_BatchID_' + $this.BatchID + '.csv'
         return $path
     }
     #
+    [string]batchwarpingfullfile(){
+        return ($this.warpfolder(), '\', $this.batchwarpingfile() -join '')
+    }
+    #
     [string]pybatchflatfield(){
-        $ids = $this.ImportCorrectionModels($this.mpath)
+        $this.ImportCorrectionModels($this.mpath)
         if ($this.slideid -notcontains $this.batchid){
-            $file = ($ids | Where-Object { $_.slideid `
-                    -contains $this.slideid}).FlatfieldVersion
+            $file = ($this.corrmodels_data | & { process {
+                if ( $_.slideid -contains $this.slideid) {$_}
+            }}).FlatfieldVersion
         } else  {
-            $file1 = ($ids |
-                Where-Object { $_.BatchID.padleft(2, '0') -contains $this.batchid.padleft(2, '0') `
-                -and $_.Project.padleft(3,'0') -contains $this.project.padleft(3,'0') }).FlatfieldVersion
+            $file1 = ($this.corrmodels_data | & { process { 
+                if (
+                    $_.BatchID.padleft(2, '0') -contains $this.batchid.padleft(2, '0') -and
+                    $_.Project.padleft(3,'0') -contains $this.project.padleft(3,'0') 
+                ) { $_ }
+            }}).FlatfieldVersion
            if ($file1.Count -gt 1){
                 $file = $file1[0]
            } elseif ($file1.Count -eq 1){
@@ -150,63 +166,81 @@
     }
     #
     [string]pybatchflatfieldfullpath(){
-          $flatfield = $this.mpath + '\flatfield\flatfield_' +
-           $this.pybatchflatfield() + '.bin'
-          return $flatfield
+          return (
+            $this.mpath + '\flatfield\flatfield_' +
+                $this.pybatchflatfield() + '.bin'
+          )
     }
     #
     [string]CheckSumsfile(){
-        $path = $this.Scanfolder() + '\CheckSums.txt'
-        return $path
+        return ($this.Scanfolder(), 'CheckSums.txt' -join '\')
     }
     #
     [string]im3folder(){
-        $path = $this.Scanfolder() + '\MSI'
-        return $path 
+        return ($this.Scanfolder(), 'MSI' -join '\')
     }
     #
     [string]informfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\inform_data'
-        return $path
+        return (
+            $this.basepath, $this.slideid, 'inform_data' -join '\'
+        )
 
     }
     #
     [string]componentfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\inform_data\Component_Tiffs'
-        return $path
+        return (
+            $this.basepath, $this.slideid, 
+                'inform_data\Component_Tiffs' -join '\'
+        )
     }
     #
     [string]segmapfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\inform_data\Component_Tiffs'
-        return $path
+        return (
+            $this.basepath, $this.slideid, 
+                'inform_data\Component_Tiffs' -join '\'
+        )
     }
     #
     [string]phenotypefolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\inform_data\Phenotyped'
-        return $path
+        return (
+            $this.basepath, $this.slideid, 
+                'inform_data\Phenotyped' -join '\'
+        )
 
     }
     #
+    [string]informantibodylogfile($antibody){
+        return (
+            $this.phenotypefolder(), $antibody, 'batch.log' -join '\'
+        )
+    }
+    #
     [string]cantibodyfolder(){
-        $path = $this.phenotypefolder() + '\'  + $this.cantibody
-        return $path
+        return (
+            $this.phenotypefolder(), $this.cantibody -join '\'
+        )
     }
     #
     [string]mergefolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\inform_data\Phenotyped\Results\Tables'
-        return $path
+        return (
+            $this.basepath, $this.slideid, 
+                'inform_data\Phenotyped\Results\Tables' -join '\'
+        )
+
+    }
+    #
+    [string]mergealgorithmsfile(){
+        return (
+            $this.basepath, $this.slideid, 
+                'inform_data\Phenotyped\Results\algorithms.txt' -join '\'
+        )
 
     }
     #
     [string]xmlfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\im3\xml'
-        return $path
+        return (
+            $this.basepath, $this.slideid, 'im3\xml' -join '\'
+        )
 
     }
     #
@@ -215,20 +249,20 @@
     }
     #
     [string]meanimagefile(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\im3\' + $this.slideid + '-mean.flt'
-        return $path
+        return (
+            $this.basepath, $this.slideid, 
+                'im3', ($this.slideid + '-mean.flt') -join '\'
+        )
     }
     #
     [string]meanimagefolder(){
-        $path = $this.im3mainfolder() + '\meanimage'
-        return $path
+        return ($this.im3mainfolder() + '\meanimage')
     }
     #
     [string]flatwim3folder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\im3\flatw'
-        return $path
+        return (
+            $this.basepath, $this.slideid, 'im3\flatw' -join '\'
+        )
     }
     #
     [string]flatwfolder(){
@@ -246,43 +280,69 @@
     }
     #
     [string]mergeconfigfile(){
-        $path = $this.basepath + '\Batch\MergeConfig_' + 
-            $this.BatchID
-        return $path
+        return (
+            $this.basepath + '\Batch\MergeConfig_' + 
+                $this.BatchID + '.xlsx'
+        )
     }
     #
     [string]warpoctetsfolder(){
-        $file2 = $this.basepath, '\', $this.slideid,
-            '\im3\warping\octets' -join ''
-        return $file2
+        return (
+            $this.basepath, $this.slideid,
+                'im3\warping\octets' -join '\'
+        )
     }
     #
     [string]warpoctetsfile(){
-        $file2 = $this.warpoctetsfolder(),
-            '\', $this.slideid, '-all_overlap_octets.csv' -join ''
-        return $file2
+        return (
+            $this.warpoctetsfolder(), '\', $this.slideid, 
+                '-all_overlap_octets.csv' -join ''
+        )
     }
     #
     [string]warpbatchfolder(){
-        $path = $this.basepath +'\warping\Batch_' + $this.BatchID
-        return $path
+        return ($this.basepath +'\warping\Batch_' + $this.BatchID)
+    }
+    #
+    [string]warpfolder(){
+        return ($this.basepath +'\warping')
     }
     #
     [string]warpprojectfolder(){
-        $path = $this.mpath +'\warping\Project_' + $this.project
-        return $path
+        return ($this.mpath +'\warping\Project_' + $this.project)
     }
     #
     [string]warpbatchoctetsfolder(){
-        $path = $this.basepath +'\warping\Batch_' +
-            $this.BatchID + '\octets'
-        return $path
+        return (
+            $this.basepath +'\warping\Batch_' +
+                $this.BatchID + '\octets'
+        )
     }
     #
     [string]warpprojectoctetsfolder(){
-        $path = $this.basepath +
-            '\warping\Project_' + $this.project + '\octets'
-        return $path
+        return (
+            $this.basepath + '\warping\Project_' +
+                $this.project + '\octets'
+        )
+    }
+    #
+    [array]getalgorithms(){
+        #
+        $this.findantibodies() 
+        return (
+            $this.antibodies | 
+            foreach-object {
+                $this.getalgorithms($_)
+            }
+        )
+        #
+    }
+    #
+    [string]getalgorithms($cantibody){
+        #
+        return ((get-content $this.informantibodylogfile($cantibody) | 
+            Where-Object {$_ -match 'algorithm'}) -split 'algorithm')[1].trim()
+        #
     }
     #
     [int]getcount($source, $forceupdate){
@@ -362,8 +422,9 @@
     [array]getnames($source, $type, $forceupdate){
         #
         if ($forceupdate){
-            $names = ($this.getfiles(
-                $source, $forceupdate)).($type)
+            $names = $this.('get' + $type)(
+                $this.($source + 'folder')(), $this.($source + 'constant')
+            )
         } else {
             $names = ($this.getfiles(
                 $source)).($type)
@@ -373,4 +434,42 @@
         #
     }
     #
+    [switch]checkforfiles($source, $filetype){
+        #
+        if (test-path ($source, '*' -join '\') -include ('*' + $filetype)){
+            return $true
+        } 
+        #
+        return $false
+        #
+    }
+    #
+    [switch]checkforfiles($filetype){
+        return $this.checkforfiles(
+            $this.($filetype + 'folder')(),
+            $this.($filetype + 'constant')
+        )
+    }
+    #
+    [switch]checkforcontents($source, $filetype, $contents){
+        if (
+            get-childitem ($source, '*' -join '\') `
+                -Include ('*' + $filetype) | 
+                get-content | 
+                select-string $contents
+        ){
+            return $true
+        }
+        return $false
+    }
+    #
+    [switch]checkforcontents($filetype){
+        return (
+            $this.checkforcontents(
+                $this.($filetype + 'folder')(),
+                $this.($filetype + 'constant'),
+                $this.($filetype + 'contents')
+            )
+        )
+    }
  }
