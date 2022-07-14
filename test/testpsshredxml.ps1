@@ -67,22 +67,27 @@ Class testpsshredxml : testtools {
         Write-Host '    destination:' $des
 
         Write-Host 'Files at Start:'
-        $inp.sample.listfiles($sor, '*')
+        $test = $inp.sample.listfiles($sor, '*')
+        Write-Host ($test | Format-List | Out-String)
         $inp.sample.copy($sor, $des, '*')
         Write-Host 'Files after copy to processing location:'
         $inp.sample.listfiles($sor, '*')      
+        $test = $inp.sample.listfiles($sor, '*')
+        Write-Host ($test | Format-List | Out-String)
         #
         Write-Host '    copy old results to processing directory'
         $userdefined = $this.processloc, 'astropath_ws',
             'shredxml', $this.slideid, $this.slideid -join '\'
         $inp.sample.copy($sor, $userdefined, '*')  
         Write-Host 'Files after copy to userdefined:'
-        $inp.sample.listfiles($sor, '*')
+        $test = $inp.sample.listfiles($sor, '*')
+        Write-Host ($test | Format-List | Out-String)
         #
         Write-Host '    run return data'
         $inp.returndata()
         Write-Host 'Files after return data:'
-        $inp.sample.listfiles($sor, '*')
+        $test = $inp.sample.listfiles($sor, '*')
+        Write-Host ($test | Format-List | Out-String)
         #
         $this.comparepaths($des, $sor, $inp)
         #
