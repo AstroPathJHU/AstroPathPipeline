@@ -66,28 +66,23 @@ Class testpsshredxml : testtools {
         Write-Host '    source:' $sor
         Write-Host '    destination:' $des
 
-        Write-Host '*Files at Start:'
-        $test = $inp.sample.listfiles($sor, '*')
-        $test | foreach-object {Write-Host $_.Name}
+        Write-Host '  ***Files at Start:***'
+        Write-Host (gci $sor)
         $inp.sample.copy($sor, $des, '*')
-        Write-Host '*Files after copy to processing location:'
-        $test = $inp.sample.listfiles($sor, '*')
-        $test | foreach-object {Write-Host $_.Name}
+        Write-Host '  ***Files after copy to processing location:***'
+        Write-Host (gci $sor)
         #
         Write-Host '    copy old results to processing directory'
         $userdefined = $this.processloc, 'astropath_ws',
             'shredxml', $this.slideid, $this.slideid -join '\'
         $inp.sample.copy($sor, $userdefined, '*')  
-        Write-Host '*Files after copy to userdefined:'
-        $test = $inp.sample.listfiles($sor, '*')
-        $test | foreach-object {Write-Host $_.Name}
+        Write-Host '  ***Files after copy to userdefined:***'
         Write-Host (gci $sor)
         #
         Write-Host '    run return data'
         $inp.returndata()
-        Write-Host '*Files after return data:'
-        $test = $inp.sample.listfiles($sor, '*')
-        $test | foreach-object {Write-Host $_.Name}
+        Write-Host '  ***Files after return data:**'
+        Write-Host (gci $sor)
         #
         $this.comparepaths($des, $sor, $inp)
         #
