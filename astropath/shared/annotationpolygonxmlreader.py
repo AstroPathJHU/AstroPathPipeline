@@ -140,7 +140,7 @@ class AnnotationNodeXML(AnnotationNodeBase):
 
   @property
   def areacutoff(self):
-    return None #when it's manually drawn, want to keep whatever there is
+    return 3*self.oneannopixel**2
 
 class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithAnnoscale):
   def __init__(self, name, polygons, *, color, areacutoff, visible=True, **kwargs):
@@ -569,8 +569,9 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           for subpolygon in valid:
             subsubpolygons = (p for p in [subpolygon.outerpolygon] + subpolygon.subtractpolygons if not (areacutoff is not None and polygon.area < areacutoff))
             for polygon, m in zip(subsubpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
-              if node.areacutoff is not None and polygon.area < areacutoff: continue
+              if areacutoff is not None and polygon.area < areacutoff: continue
               regionid = 1000*layer + m
+              if m >= 1000: raise RuntimeError(f"Too many regions for layer {layer}")
               polygon.regionid = regionid
               regionvertices = polygon.outerpolygon.vertices
 
