@@ -65,15 +65,24 @@ Class testpsshredxml : testtools {
         #
         Write-Host '    source:' $sor
         Write-Host '    destination:' $des
-        $inp.sample.copy($sor, $des, '*')       
+
+        Write-Host 'Files at Start:'
+        $inp.listfiles($sor, '*')
+        $inp.sample.copy($sor, $des, '*')
+        Write-Host 'Files after copy to processing location:'
+        $inp.listfiles($sor, '*')      
         #
         Write-Host '    copy old results to processing directory'
         $userdefined = $this.processloc, 'astropath_ws',
             'shredxml', $this.slideid, $this.slideid -join '\'
         $inp.sample.copy($sor, $userdefined, '*')  
+        Write-Host 'Files after copy to userdefined:'
+        $inp.listfiles($sor, '*')
         #
         Write-Host '    run return data'
         $inp.returndata()
+        Write-Host 'Files after return data:'
+        $inp.listfiles($sor, '*')
         #
         $this.comparepaths($des, $sor, $inp)
         #
