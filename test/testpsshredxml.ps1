@@ -24,7 +24,7 @@ Class testpsshredxml : testtools {
         #
         $this.testprocessroot($inp)
         $this.ReturnDataTest($inp)
-        #$this.CleanupTest($inp)
+        $this.CleanupTest($inp)
         $inp.sample.finish(($this.module+'test'))
         $this.testgitstatus($inp.sample)  
         Write-Host "."
@@ -65,26 +65,15 @@ Class testpsshredxml : testtools {
         #
         Write-Host '    source:' $sor
         Write-Host '    destination:' $des
-
-        Write-Host '  ***Files at Start:***'
-        Write-Host (gci $sor)
         $inp.sample.copy($sor, $des, '*')
-        Write-Host '  ***des:***' $des
-        Write-Host '  ***Files in des:***'
-        Write-Host (gci $des)
         #
         Write-Host '    copy old results to processing directory'
         $userdefined = $this.processloc, 'astropath_ws',
             'shredxml', $this.slideid, $this.slideid -join '\'
         $inp.sample.copy($sor, $userdefined, '*')
-        Write-Host '  ***userdefined:***' $userdefined
-        Write-Host '  ***Files in userdefined:***'
-        Write-Host (gci $userdefined)
         #
         Write-Host '    run return data'
         $inp.returndata()
-        Write-Host '  ***Files after return data:**'
-        Write-Host (gci $sor)
         #
         $this.comparepaths($des, $sor, $inp)
         #
