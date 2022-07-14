@@ -46,6 +46,8 @@ Class shredxml : moduletools {
         #
 		$sor = $this.processvars[1], $this.sample.slideid -join '\'
 		$des = $this.sample.xmlfolder()
+        Write-Host '***sor:***' $sor
+        Write-Host '***des:***' $des
         $this.sample.removedir($des)
 		$this.sample.copy($sor, $des, 'xml', 30)
         $this.sample.copy($sor, $des, 'log')
