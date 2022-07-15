@@ -388,13 +388,20 @@ class copyutils{
         #
         $missingfiles = $this.checknfiles($sor, $des, $filespec)
         Write-Host '***Verify Checksum Start'
-        $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
         Write-Host '***First loop copy'
+        Write-Host '***sor:' (gci $sor)
+        Write-Host '***des:' (gci $des)
+        $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
+        Write-Host '***First loop copy after'
+        Write-Host '***sor:' (gci $sor)
+        Write-Host '***des:' (gci $des)
         #
         [array]$hashes = $this.FileHashHandler($sor, $des, $filespec)
         $comparison = $this.comparehashes($hashes[0], $hashes[1])
         $this.retrycopyloop($comparison, $copycount, $sor, $des)
-        Write-Host '***Second loop copy'
+        Write-Host '***Second loop copy after'
+        Write-Host '***sor:' (gci $sor)
+        Write-Host '***des:' (gci $des)
         #
     }
     <#
@@ -655,12 +662,12 @@ class copyutils{
         #
         $this.createdirs($des)
         #
-        Write-Host '**Starting retrycopy'
+        Write-Host '***Starting retrycopy'
         if ($this.isWindows()){
-            Write-Host '**Running Window Copy xcopy'
+            Write-Host '***Running Window Copy xcopy'
             xcopy $tempsor $des /q /y /z /j /v | Out-Null
         } else {
-            Write-Host '**Running Linux Copy*'
+            Write-Host '***Running Linux Copy*'
             $this.lxcopy($sor, $des)
         }
         #
