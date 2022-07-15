@@ -181,10 +181,21 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
   sampleclass = CsvScanSample
   __doc__ = sampleclass.__doc__
 
+  def __init__(self, *args, doglobalcsv, **kwargs):
+    self.__doglobalcsv = doglobalcsv
+    super().__init__(*args, **kwargs)
+
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--do-global-csv", action="store_true", help="also make the global csv for the project")
+    return p
+
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     result = {
-      **super().initkwargsfromargumentparser(parsed_args_dict)
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "doglobalcsv": parsed_args_dict.pop("do_global_csv"),
     }
     def correctsegmentations(self, sample, **kwargs):
       segmentationalgorithms = frozenset(self.segmentationalgorithms)
@@ -205,9 +216,10 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
 
   def samplesandsampledefswithfilters(self, **kwargs):
     yield from super().samplesandsampledefswithfilters(**kwargs)
-    globalcsv = self.globalcsv()
-    filters = [filter(self, globalcsv, **kwargs) for filter in self.samplefilters]
-    yield self.globalcsv(), filters
+    if self.doglobalcsv:
+      globalcsv = self.globalcsv()
+      filters = [filter(self, globalcsv, **kwargs) for filter in self.samplefilters]
+      yield self.globalcsv(), filters
 
   @property
   def initiatesamplekwargs(self):
