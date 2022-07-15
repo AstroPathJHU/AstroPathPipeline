@@ -177,7 +177,9 @@
         $tools.popfile($sorfile, $content)
         $sorfile = $PSScriptRoot + '\data\logfiles\logfile3.log'
         $tools.popfile($sorfile, $content)
+        Write-Host '***Right before verify checksum'
         $tools.verifyChecksum($sor, $des, '*', 0)
+        Write-Host '***Right after verify checksum*'
         $this.checkdesfiles($des, $desfile, $tools, 3)
         #
         Write-Host '    testing robo copy all files'

@@ -308,7 +308,7 @@ class fileutils : generalutils {
         #
     }
     <# -----------------------------------------
-     HandleReadFile
+     HandleWriteFile
      Checks that the file exists and grabs the 
      mutex for a file. When it has the mutex,
      calls the write file method
@@ -318,7 +318,7 @@ class fileutils : generalutils {
         -fstring[string]: input array
         -opt[sting]: 'Set' or 'Pop'
      ------------------------------------------
-     Usage: $this.HandleReadFile(fpath, fstring, opt)
+     Usage: $this.HandleWriteFile(fpath, fstring, opt)
     ----------------------------------------- #>
     [void]HandleWriteFile([string] $fpath,[array] $fstring, [string] $opt){
         #

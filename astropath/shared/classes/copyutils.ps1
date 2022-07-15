@@ -387,11 +387,14 @@ class copyutils{
         $this.testpath($des, $true)
         #
         $missingfiles = $this.checknfiles($sor, $des, $filespec)
+        Write-Host '***Verify Checksum Start'
         $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
+        Write-Host '***First loop copy'
         #
         [array]$hashes = $this.FileHashHandler($sor, $des, $filespec)
         $comparison = $this.comparehashes($hashes[0], $hashes[1])
         $this.retrycopyloop($comparison, $copycount, $sor, $des)
+        Write-Host '***Second loop copy'
         #
     }
     <#
