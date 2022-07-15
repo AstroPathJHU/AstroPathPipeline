@@ -577,7 +577,7 @@ class MergeConfig(MyDataClass):
   TargetType: str
   CoexpressionStatus: str
   SegmentationStatus: int
-  SegmentationHierarchy: int
+  SegmentationHierarchy: int = optionalfield(readfunction=int)
   NumberofSegmentations: int
   ImageQA: str
 
