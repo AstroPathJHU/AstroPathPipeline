@@ -580,6 +580,7 @@ class MergeConfig(MyDataClass):
   SegmentationHierarchy: int = optionalfield(readfunction=int)
   NumberofSegmentations: int
   ImageQA: str
+  Colors: str = 0
 
 class GlobalBatch(MyDataClass):
   Project: int
