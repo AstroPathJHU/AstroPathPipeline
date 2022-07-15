@@ -38,14 +38,14 @@ pipeline {
         stage('ps module install') {
           steps {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
-            //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssample.ps1'         
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
-            //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
-            //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
           }
         }
 	
