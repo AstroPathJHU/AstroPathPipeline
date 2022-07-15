@@ -391,6 +391,7 @@ class copyutils{
         Write-Host '***First loop copy'
         Write-Host '***sor:' (gci $sor)
         Write-Host '***des:' (gci $des)
+        Write-Host '***missingfiles:' $missingfiles
         $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
         Write-Host '***First loop copy after'
         Write-Host '***sor:' (gci $sor)
