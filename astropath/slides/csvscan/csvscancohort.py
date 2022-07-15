@@ -185,6 +185,9 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
     self.__doglobalcsv = doglobalcsv
     super().__init__(*args, **kwargs)
 
+  @property
+  def doglobalcsv(self): return self.__doglobalcsv
+
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
