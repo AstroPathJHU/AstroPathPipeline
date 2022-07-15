@@ -652,9 +652,12 @@ class copyutils{
         #
         $this.createdirs($des)
         #
+        Write-Host '**Starting retrycopy'
         if ($this.isWindows()){
+            Write-Host '**Running Window Copy xcopy'
             xcopy $tempsor $des /q /y /z /j /v | Out-Null
         } else {
+            Write-Host '**Running Linux Copy*'
             $this.lxcopy($sor, $des)
         }
         #
