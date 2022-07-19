@@ -246,6 +246,13 @@ class copyutils{
     ----------------------------------------- #>
     [system.object]listfiles([string]$sor, [array]$filespec){
         #
+        Write-Host '***sor but in listfiles'
+        if (!$sor) {
+            Write-Host '***sor folder does not exist'
+        }
+        else {
+            Write-Host '***sor exists and is found'
+        }
         if (!([System.IO.Directory]::Exists($sor))){
             return @()
         }
