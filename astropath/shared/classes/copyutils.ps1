@@ -424,8 +424,12 @@ class copyutils{
         if ((Get-Item $sor) -is [System.IO.DirectoryInfo]){
             #
             Write-Host '***Starting check n files'
+            Write-Host '***filespec = '$filespec
+            Write-Host '***sor:' $sor
+            Write-Host '***sor files:' (gci $sor)
             $sourcefiles = $this.listfiles($sor, $filespec)
             Write-Host '***sourcefiles:' $sourcefiles
+            Write-Host '***sourcefiles length:' $sourcefiles.length
             $desfiles = $this.listfiles($des, $filespec)
             Write-Host '***desfiles:' $desfiles
             if ($desfiles.length -eq 0) {
