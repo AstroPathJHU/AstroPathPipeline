@@ -389,9 +389,12 @@ class copyutils{
         $missingfiles = $this.checknfiles($sor, $des, $filespec)
         Write-Host '***Verify Checksum Start'
         Write-Host '***First loop copy'
-        Write-Host '***sor:' (gci $sor)
-        Write-Host '***des:' (gci $des)
+        Write-Host '***sor:' $sor
+        Write-Host '***des:' $des
+        Write-Host '***sor files:' (gci $sor)
+        Write-Host '***des files:' (gci $des)
         Write-Host '***missingfiles:' $missingfiles
+        Write-Host '***missingfiles type:' $missingfiles.gettype()
         $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
         Write-Host '***First loop copy after'
         Write-Host '***sor:' (gci $sor)
@@ -414,8 +417,11 @@ class copyutils{
         #
         if ((Get-Item $sor) -is [System.IO.DirectoryInfo]){
             #
+            Write-Host '***Starting check n files'
             $sourcefiles = $this.listfiles($sor, $filespec)
+            Write-Host '***sourcefiles:' $sourcefiles
             $desfiles = $this.listfiles($des, $filespec)
+            Write-Host '***desfiles:' $desfiles
             $missingfiles = ($sourcefiles | 
                 & { process {
                     if ( $desfiles.name -notcontains $_.Name) { $_ }
