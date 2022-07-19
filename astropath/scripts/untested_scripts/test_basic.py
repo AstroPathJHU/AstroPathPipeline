@@ -36,13 +36,14 @@ def get_arguments() :
     return args
 
 def run_basic(samp,save_dirpath) :
-    return None, None
+    dims = (samp.fheight,samp.fwidth,samp.nlayersim3)
+    return np.ones(dims,dtype=np.floar64), np.ones(dims,dtype=np.floar64)
 
 def illumination_variation_plots(samp,sm_uncorr_mi,sm_mi_corr_mi,sm_basic_corr_mi,central=False,save_dirpath=None) :
     pass
 
 def get_overlap_comparisons(samp,basic_ff,basic_df,save_dirpath) :
-    return None
+    return []
 
 def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n) :
     pass
@@ -73,7 +74,7 @@ def main() :
     meanimage = get_raw_as_hwl(meanimage_fp,*dims,np.float64)
     correction_model_entries = readtable(CORRECTION_MODEL_FILE,CorrectionModelTableEntry)
     meanimage_ff_name = [te.FlatfieldVersion for te in correction_model_entries if te.SlideID==args.slideID]
-    meanimage_ff_fp = FLATFIELD_DIR/f'{meanimage_ff_name[0]}.bin'
+    meanimage_ff_fp = FLATFIELD_DIR/f'flatfield_{meanimage_ff_name[0]}.bin'
     meanimage_ff = get_raw_as_hwl(meanimage_ff_fp,*dims,np.float64)
     smoothed_meanimage = smooth_image_worker(meanimage,100,gpu=True)
     mi_corrected_meanimage = meanimage/meanimage_ff
