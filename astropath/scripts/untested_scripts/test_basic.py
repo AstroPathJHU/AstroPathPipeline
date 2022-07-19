@@ -1,10 +1,11 @@
 #imports
-import pathlib, datetime
+import pathlib, datetime, pybasic
 import numpy as np
 from argparse import ArgumentParser
+from threading import Thread, Queue
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable
-from astropath.utilities.img_file_io import get_raw_as_hwl, smooth_image_worker
+from astropath.utilities.img_file_io import get_raw_as_hwl, smooth_image_worker, write_image_to_file
 from astropath.hpfs.imagecorrection.utilities import CorrectionModelTableEntry
 from astropath.hpfs.flatfield.meanimagesample import MeanImageSample
 from astropath.hpfs.warping.warpingsample import WarpingSample
@@ -30,20 +31,63 @@ def get_arguments() :
     parser.add_argument('slideID',help='the Slide ID of the sample')
     parser.add_argument('workingdir',type=pathlib.Path,help='path to the directory that should hold the output')
     parser.add_argument('--n_threads',type=int,default=10,help='The number of parallel threads to use')
+    parser.add_argument('--no_darkfield',action='store_true',
+                        help='include this flag to skip computing a BaSiC darkfield')
     args = parser.parse_args()
     if not args.workingdir.is_dir() :
         args.workingdir.mkdir(parents=True)
     return args
 
-def run_basic(samp,save_dirpath) :
+def add_rect_image_to_queue(rect,queue,layer_i) :
+    pass
+
+def run_basic(samp,save_dirpath,n_threads,no_darkfield) :
     dims = (samp.fheight,samp.fwidth,samp.nlayersim3)
-    return np.ones(dims,dtype=np.float64), np.ones(dims,dtype=np.float64)
+    basic_ff_fp = save_dirpath/'basic_flatfield.bin'
+    basic_df_fp = save_dirpath/'basic_darkfield.bin'
+    if basic_ff_fp.is_file() and basic_df_fp.is_file() :
+        print(f'{timestamp()} flatfield/darkfield found in files from a previous run in {save_dirpath}')
+        basic_flatfield = get_raw_as_hwl(basic_ff_fp,*dims,np.float64)
+        basic_darkfield = basic_flatfield = get_raw_as_hwl(basic_df_fp,*dims,np.float64)
+        return basic_flatfield, basic_darkfield
+    basic_flatfield = np.ones(dims,dtype=np.float64)
+    basic_darkfield = np.zeros_like(basic_flatfield)
+    for li in range(samp.nlayersim3) :
+        image_queue = Queue()
+        threads = []
+        print(f'{timestamp()}   getting rectangle images for layer {li+1} of {samp.SlideID}')
+        for ir,r in enumerate(samp.rectangles) :
+            while len(threads)>=n_threads :
+                thread = threads.pop(0)
+                thread.join()
+            if ir%50==0 :
+                print(f'{timestamp()}       getting image for rectangle {ir}(/{len(samp.rectangles)})')
+            new_thread = Thread(target=add_rect_image_to_queue,args=(r,image_queue,li))
+            new_thread.start()
+            threads.append(new_thread)
+        for thread in threads :
+            thread.join()
+        image_queue.put(None)
+        raw_layer_images = []
+        image = image_queue.get()
+        while image is not None :
+            raw_layer_images.append(image)
+            image = image_queue.get()
+        print(f'{timestamp()}   running BaSiC for layer {li+1} of {samp.SlideID}')
+        ff_layer, df_layer = pybasic.basic(raw_layer_images, darkfield=(not no_darkfield),max_reweight_iterations=30)
+        basic_flatfield[:,:,li] = ff_layer
+        if not no_darkfield :
+            basic_darkfield[:,:,li] = df_layer
+    print(f'{timestamp()} writing out BaSiC flatfield and darkfield for {samp.SlideID}')
+    write_image_to_file(basic_flatfield,basic_ff_fp)
+    write_image_to_file(basic_darkfield,save_dirpath/'basic_darkfield.bin')
+    return basic_flatfield, basic_darkfield
 
 def illumination_variation_plots(samp,sm_uncorr_mi,sm_mi_corr_mi,sm_basic_corr_mi,central=False,save_dirpath=None) :
     pass
 
 def get_overlap_comparisons(samp,basic_ff,basic_df,save_dirpath) :
-    return []
+    return {}
 
 def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n) :
     pass
@@ -66,7 +110,7 @@ def main() :
     print(f'{timestamp()} done creating MeanImageSample for {args.slideID}')
     #create and save the basic flatfield
     print(f'{timestamp()} running BaSiC for {args.slideID}')
-    basic_flatfield, basic_darkfield = run_basic(meanimage_sample,args.workingdir)
+    basic_flatfield, basic_darkfield = run_basic(meanimage_sample,args.workingdir,args.n_threads,args.no_darkfield)
     print(f'{timestamp()} done running BaSiC for {args.slideID}')
     #create the illumination variation plots
     print(f'{timestamp()} getting meanimage flatfield and smoothing pre/post-correction meanimages for {args.slideID}')
