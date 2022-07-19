@@ -242,7 +242,7 @@ class copyutils{
         - sor: source folder path
         - filespec: an array of filespecs to transfer
      ------------------------------------------
-     Usage: copy(sor, filespec)
+     Usage: listfiles(sor, filespec)
     ----------------------------------------- #>
     [system.object]listfiles([string]$sor, [array]$filespec){
         #
@@ -250,20 +250,50 @@ class copyutils{
             return @()
         }
         #
-        if ($filespec -match '\*'){
-            $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
-                 & {process{[System.IO.FileInfo]$_}}
-        } else {
-            $filespec = ($filespec | foreach-object {'.*' + $_ + '$'}) -join '|'
-            $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
-                 & {process{
-                     if ($_ -match $filespec){
-                        [System.IO.FileInfo]$_
-                     }
-                }}
+        if ($this.isWindows()) {
+            if ($filespec -match '\*'){
+                $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
+                     & {process{[System.IO.FileInfo]$_}}
+            } else {
+                $filespec = ($filespec | foreach-object {'.*' + $_ + '$'}) -join '|'
+                $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
+                     & {process{
+                         if ($_ -match $filespec){
+                            [System.IO.FileInfo]$_
+                         }
+                    }}
+            }
         }
+        else {
+            $files = $this.lxlistfiles($sor, $filespec)
+        }
+        #
         if (!$files) {
             $files = @()
+        }
+        return $files
+    }
+    <# -----------------------------------------
+     lxlistfiles
+     list all files with a filespec or multiple
+     file specs in a folder in a linux os
+     ------------------------------------------
+     Input: 
+        - sor: source folder path
+        - filespec: an array of filespecs to transfer
+     ------------------------------------------
+     Usage: lxlistfiles(sor, filespec)
+    ----------------------------------------- #>
+    [system.object]lxlistfiles([string]$sor, [array]$filespec){
+        #
+        if (!$sor){
+            return @()
+        }
+        #
+        if ($filespec -match '\*'){
+            $files = Get-ChildItem $sor
+        } else {
+            $files = (Get-ChildItem $sor) -match $filespec
         }
         return $files
     }
@@ -424,7 +454,6 @@ class copyutils{
         if ((Get-Item $sor) -is [System.IO.DirectoryInfo]){
             #
             Write-Host '***Starting check n files'
-            Write-Host '***filespec = '$filespec
             Write-Host '***sor:' $sor
             Write-Host '***sor files:' (gci $sor)
             $sourcefiles = $this.listfiles($sor, $filespec)
