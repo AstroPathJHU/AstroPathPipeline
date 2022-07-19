@@ -1,11 +1,13 @@
 #imports
 import pathlib, datetime, pybasic
-import numpy as np
+import numpy as np, matplotlib.pyplot as plt
 from argparse import ArgumentParser
-from threading import Thread, Queue
+from threading import Thread
+from queue import Queue
 from astropath.utilities import units
+from astropath.utilities.miscplotting import save_figure_in_dir
 from astropath.utilities.tableio import readtable
-from astropath.utilities.img_file_io import get_raw_as_hwl, smooth_image_worker, write_image_to_file
+from astropath.utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, smooth_image_worker, write_image_to_file
 from astropath.hpfs.imagecorrection.utilities import CorrectionModelTableEntry
 from astropath.hpfs.flatfield.meanimagesample import MeanImageSample
 from astropath.hpfs.warping.warpingsample import WarpingSample
@@ -39,7 +41,9 @@ def get_arguments() :
     return args
 
 def add_rect_image_to_queue(rect,queue,layer_i) :
-    pass
+    with rect.using_corrected_im3() as im :
+        im_layer = im[:,:,layer_i]
+        queue.put(im_layer)
 
 def run_basic(samp,save_dirpath,n_threads,no_darkfield) :
     dims = (samp.fheight,samp.fwidth,samp.nlayersim3)
@@ -48,39 +52,70 @@ def run_basic(samp,save_dirpath,n_threads,no_darkfield) :
     if basic_ff_fp.is_file() and basic_df_fp.is_file() :
         print(f'{timestamp()} flatfield/darkfield found in files from a previous run in {save_dirpath}')
         basic_flatfield = get_raw_as_hwl(basic_ff_fp,*dims,np.float64)
-        basic_darkfield = basic_flatfield = get_raw_as_hwl(basic_df_fp,*dims,np.float64)
-        return basic_flatfield, basic_darkfield
-    basic_flatfield = np.ones(dims,dtype=np.float64)
-    basic_darkfield = np.zeros_like(basic_flatfield)
+        basic_darkfield = get_raw_as_hwl(basic_df_fp,*dims,np.float64)
+    else :
+        basic_flatfield = np.ones(dims,dtype=np.float64)
+        basic_darkfield = np.zeros_like(basic_flatfield)
+        for li in range(samp.nlayersim3) :
+            basic_ff_layer_fp = save_dirpath/f'basic_flatfield_layer_{li+1}.bin'
+            basic_df_layer_fp = save_dirpath/f'basic_darkfield_layer_{li+1}.bin'
+            if basic_ff_layer_fp.is_file() and basic_df_layer_fp.is_file() :
+                print(f'{timestamp()}   flat/darkfield layer {li+1} found in files from a previous run in {save_dirpath}')
+                ff_layer = get_raw_as_hw(basic_ff_layer_fp,*dims[:-1],np.float64)
+                df_layer = get_raw_as_hw(basic_df_layer_fp,*dims[:-1],np.float64)
+            else :
+                image_queue = Queue()
+                threads = []
+                print(f'{timestamp()}   getting rectangle images for layer {li+1} of {samp.SlideID}')
+                for ir,r in enumerate(samp.tissue_bulk_rects) :
+                    while len(threads)>=n_threads :
+                        thread = threads.pop(0)
+                        thread.join()
+                    if ir%50==0 :
+                        print(f'{timestamp()}       getting image for rectangle {ir}(/{len(samp.tissue_bulk_rects)})')
+                    new_thread = Thread(target=add_rect_image_to_queue,args=(r,image_queue,li))
+                    new_thread.start()
+                    threads.append(new_thread)
+                for thread in threads :
+                    thread.join()
+                image_queue.put(None)
+                raw_layer_images = []
+                image = image_queue.get()
+                while image is not None :
+                    raw_layer_images.append(image)
+                    image = image_queue.get()
+                print(f'{timestamp()}   running BaSiC for layer {li+1} of {samp.SlideID}')
+                ff_layer, df_layer = pybasic.basic(raw_layer_images, darkfield=(not no_darkfield),max_reweight_iterations=50)
+                write_image_to_file(ff_layer,basic_ff_layer_fp)
+                write_image_to_file(df_layer,basic_df_layer_fp)
+            basic_flatfield[:,:,li] = ff_layer
+            if not no_darkfield :
+                basic_darkfield[:,:,li] = df_layer
+        print(f'{timestamp()} writing out BaSiC flatfield and darkfield for {samp.SlideID}')
+        write_image_to_file(basic_flatfield,basic_ff_fp)
+        write_image_to_file(basic_darkfield,basic_df_fp)
+        if basic_ff_fp.is_file() and basic_df_fp.is_file() :
+            for fp in save_dirpath.glob('basic_flatfield_layer_*.bin') :
+                fp.unlink()
+            for fp in save_dirpath.glob('basic_darkfield_layer_*.bin') :
+                fp.unlink()
+    print(f'{timestamp()} plotting BaSiC flatfield and darkfield layers for {samp.SlideID}')
+    layer_dir = save_dirpath/'layer_plots'
+    if not layer_dir.is_dir() :
+        layer_dir.mkdir(parents=True)
     for li in range(samp.nlayersim3) :
-        image_queue = Queue()
-        threads = []
-        print(f'{timestamp()}   getting rectangle images for layer {li+1} of {samp.SlideID}')
-        for ir,r in enumerate(samp.rectangles) :
-            while len(threads)>=n_threads :
-                thread = threads.pop(0)
-                thread.join()
-            if ir%50==0 :
-                print(f'{timestamp()}       getting image for rectangle {ir}(/{len(samp.rectangles)})')
-            new_thread = Thread(target=add_rect_image_to_queue,args=(r,image_queue,li))
-            new_thread.start()
-            threads.append(new_thread)
-        for thread in threads :
-            thread.join()
-        image_queue.put(None)
-        raw_layer_images = []
-        image = image_queue.get()
-        while image is not None :
-            raw_layer_images.append(image)
-            image = image_queue.get()
-        print(f'{timestamp()}   running BaSiC for layer {li+1} of {samp.SlideID}')
-        ff_layer, df_layer = pybasic.basic(raw_layer_images, darkfield=(not no_darkfield),max_reweight_iterations=30)
-        basic_flatfield[:,:,li] = ff_layer
-        if not no_darkfield :
-            basic_darkfield[:,:,li] = df_layer
-    print(f'{timestamp()} writing out BaSiC flatfield and darkfield for {samp.SlideID}')
-    write_image_to_file(basic_flatfield,basic_ff_fp)
-    write_image_to_file(basic_darkfield,save_dirpath/'basic_darkfield.bin')
+        f,ax=plt.subplots(figsize=(7.,7.*dims[0]/dims[1]))
+        pos=ax.imshow(basic_flatfield[:,:,li])
+        ax.set_title(f'BaSiC flatfield, layer {li+1}')
+        f.colorbar(pos,ax=ax,fraction=0.046,pad=0.04)
+        save_figure_in_dir(plt,f'flatfield_layer_{li+1}.png',layer_dir)
+        plt.close()
+        f,ax=plt.subplots(figsize=(7.,7.*dims[0]/dims[1]))
+        pos=ax.imshow(basic_darkfield[:,:,li])
+        ax.set_title(f'BaSiC darkfield, layer {li+1}')
+        f.colorbar(pos,ax=ax,fraction=0.046,pad=0.04)
+        save_figure_in_dir(plt,f'darkfield_layer_{li+1}.png',layer_dir)
+        plt.close()
     return basic_flatfield, basic_darkfield
 
 def illumination_variation_plots(samp,sm_uncorr_mi,sm_mi_corr_mi,sm_basic_corr_mi,central=False,save_dirpath=None) :
