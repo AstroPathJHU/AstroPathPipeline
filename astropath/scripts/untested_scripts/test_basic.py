@@ -37,7 +37,7 @@ def get_arguments() :
 
 def run_basic(samp,save_dirpath) :
     dims = (samp.fheight,samp.fwidth,samp.nlayersim3)
-    return np.ones(dims,dtype=np.floar64), np.ones(dims,dtype=np.floar64)
+    return np.ones(dims,dtype=np.float64), np.ones(dims,dtype=np.float64)
 
 def illumination_variation_plots(samp,sm_uncorr_mi,sm_mi_corr_mi,sm_basic_corr_mi,central=False,save_dirpath=None) :
     pass
