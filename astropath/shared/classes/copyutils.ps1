@@ -265,9 +265,11 @@ class copyutils{
             }
         }
         else {
+            Write-Host '***Running linux list files'
             $files = $this.lxlistfiles($sor, $filespec)
         }
         #
+        Write-Host '***Files returned from running list files'
         if (!$files) {
             $files = @()
         }
@@ -291,10 +293,13 @@ class copyutils{
         }
         #
         if ($filespec -match '\*'){
+            Write-Host '***Running to show all files'
             $files = Get-ChildItem $sor
         } else {
+            Write-Host '***Running to show files with file type' $filespec
             $files = (Get-ChildItem $sor) -match $filespec
         }
+        Write-Host '***files from immediately after gci in linux' $files
         return $files
     }
     #
