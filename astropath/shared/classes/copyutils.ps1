@@ -251,6 +251,7 @@ class copyutils{
         }
         #
         if ($this.isWindows()) {
+            Write-Host '***Running windows list files'
             if ($filespec -match '\*'){
                 $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
                      & {process{[System.IO.FileInfo]$_}}
