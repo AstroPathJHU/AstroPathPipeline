@@ -394,7 +394,13 @@ class copyutils{
         Write-Host '***sor files:' (gci $sor)
         Write-Host '***des files:' (gci $des)
         Write-Host '***missingfiles:' $missingfiles
-        Write-Host '***missingfiles type:' $missingfiles.gettype()
+        if ($missingfiles) {
+            Write-Host '***missingfiles type:' $missingfiles.gettype()
+        }
+        else {
+            Write-Host '***there are no missing files'
+        }
+        
         $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
         Write-Host '***First loop copy after'
         Write-Host '***sor:' (gci $sor)
