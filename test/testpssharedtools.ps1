@@ -178,9 +178,6 @@
         $sorfile = $PSScriptRoot + '\data\logfiles\logfile3.log'
         $tools.popfile($sorfile, $content)
         $tools.verifyChecksum($sor, $des, '*', 0)
-        Write-Host '***After verify checksum'
-        Write-Host '***des:' $des
-        Write-Host '***desfile:' $desfile
         $this.checkdesfiles($des, $desfile, $tools, 3)
         #
         Write-Host '    testing robo copy all files'
@@ -352,7 +349,16 @@
         $des = $this.processloc
         $filespec = '*'
         $filelist = $tools.listfiles($slidepath, '*')
+        Write-Host '***processloc:' $this.processloc
         $tools.removedir($this.processloc)
+        Write-Host '***make sure removedir works'
+        if (!$this.processloc) {
+            Write-Host '***processloc does not exist'
+        }
+        else {
+            Write-Host '***processloc still exists'
+        }
+        Write-Host '***processloc files:' (gci $this.processloc)
         #
         write-host '    compare on a single file'
         #
@@ -372,8 +378,9 @@
         if ($missingfiles.length -ne $filelist.length){
             throw 'missing files not picking up all files'
         }
+        Write-Host '***check if we get here'
         #
-        Write-host '    test verfiy checksum on missing files'
+        Write-host '    test verify checksum on missing files'
         $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
         $this.comparepaths($slidepath, $this.processloc, $tools, $true)
         #

@@ -416,11 +416,6 @@ class copyutils{
         $this.testpath($des, $true)
         #
         $missingfiles = $this.checknfiles($sor, $des, $filespec)
-        #Write-Host '***sor:' $sor
-        #Write-Host '***des:' $des
-        #Write-Host '***sor files:' (gci $sor)
-        #Write-Host '***des files:' (gci $des)
-        
         $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
         #
         [array]$hashes = $this.FileHashHandler($sor, $des, $filespec)
