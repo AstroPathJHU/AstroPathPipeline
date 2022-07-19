@@ -264,11 +264,9 @@ class copyutils{
             }
         }
         else {
-            Write-Host '***Running linux list files'
             $files = $this.lxlistfiles($sor, $filespec)
         }
         #
-        Write-Host '***Files returned from running list files'
         if (!$files) {
             $files = @()
         }
@@ -292,13 +290,10 @@ class copyutils{
         }
         #
         if ($filespec -match '\*'){
-            Write-Host '***Running to show all files'
             $files = Get-ChildItem $sor
         } else {
-            Write-Host '***Running to show files with file type' $filespec
             $files = (Get-ChildItem $sor) -match $filespec
         }
-        Write-Host '***files from immediately after gci in linux' $files
         return $files
     }
     #
@@ -421,31 +416,16 @@ class copyutils{
         $this.testpath($des, $true)
         #
         $missingfiles = $this.checknfiles($sor, $des, $filespec)
-        Write-Host '***Verify Checksum Start'
-        Write-Host '***First loop copy'
-        Write-Host '***sor:' $sor
-        Write-Host '***des:' $des
-        Write-Host '***sor files:' (gci $sor)
-        Write-Host '***des files:' (gci $des)
-        Write-Host '***missingfiles:' $missingfiles
-        if ($missingfiles) {
-            Write-Host '***missingfiles type:' $missingfiles.gettype()
-        }
-        else {
-            Write-Host '***there are no missing files'
-        }
+        #Write-Host '***sor:' $sor
+        #Write-Host '***des:' $des
+        #Write-Host '***sor files:' (gci $sor)
+        #Write-Host '***des files:' (gci $des)
         
         $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
-        Write-Host '***First loop copy after'
-        Write-Host '***sor:' (gci $sor)
-        Write-Host '***des:' (gci $des)
         #
         [array]$hashes = $this.FileHashHandler($sor, $des, $filespec)
         $comparison = $this.comparehashes($hashes[0], $hashes[1])
         $this.retrycopyloop($comparison, $copycount, $sor, $des)
-        Write-Host '***Second loop copy after'
-        Write-Host '***sor:' (gci $sor)
-        Write-Host '***des:' (gci $des)
         #
     }
     <#
@@ -457,14 +437,8 @@ class copyutils{
         #
         if ((Get-Item $sor) -is [System.IO.DirectoryInfo]){
             #
-            Write-Host '***Starting check n files'
-            Write-Host '***sor:' $sor
-            Write-Host '***sor files:' (gci $sor)
             $sourcefiles = $this.listfiles($sor, $filespec)
-            Write-Host '***sourcefiles:' $sourcefiles
-            Write-Host '***sourcefiles length:' $sourcefiles.length
             $desfiles = $this.listfiles($des, $filespec)
-            Write-Host '***desfiles:' $desfiles
             if ($desfiles.length -eq 0) {
                 $missingfiles = $sourcefiles.FullName
             }
@@ -716,12 +690,9 @@ class copyutils{
         #
         $this.createdirs($des)
         #
-        Write-Host '***Starting retrycopy'
         if ($this.isWindows()){
-            Write-Host '***Running Window Copy xcopy'
             xcopy $tempsor $des /q /y /z /j /v | Out-Null
         } else {
-            Write-Host '***Running Linux Copy*'
             $this.lxcopy($sor, $des)
         }
         #
