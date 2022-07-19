@@ -428,12 +428,16 @@ class copyutils{
             Write-Host '***sourcefiles:' $sourcefiles
             $desfiles = $this.listfiles($des, $filespec)
             Write-Host '***desfiles:' $desfiles
-            $missingfiles = ($sourcefiles | 
-                & { process {
-                    if ( $desfiles.name -notcontains $_.Name) { $_ }
-                }}
-                ).FullName
-
+            if ($desfiles.length -eq 0) {
+                $missingfiles = $sourcefiles.FullName
+            }
+            else {
+                $missingfiles = ($sourcefiles | 
+                    & { process {
+                        if ( $desfiles.name -notcontains $_.Name) { $_ }
+                    }}
+                    ).FullName
+            }
         } else {
             $sourcefiles = $sor
             $desfiles = $des + '\' + (Split-Path $sor -Leaf)
