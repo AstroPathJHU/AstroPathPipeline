@@ -376,12 +376,16 @@
         $tools.removedir($this.processloc)
         $missingfiles = $tools.checknfiles($sor, $des, $filespec)
         if ($missingfiles.length -ne $filelist.length){
+            Write-Host '***Checking to see if this is triggered'
             throw 'missing files not picking up all files'
         }
         Write-Host '***check if we get here'
         #
         Write-host '    test verify checksum on missing files'
+        Write-Host '***slidepath:' $slidepath
+        Write-Host '***processloc:' $this.processloc
         $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
+        Write-Host '***see if we make it past verify checksum'
         $this.comparepaths($slidepath, $this.processloc, $tools, $true)
         #
         Write-Host '    test compare hashes method with no corruption'
