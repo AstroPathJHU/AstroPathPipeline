@@ -170,15 +170,16 @@ class copyutils{
     ----------------------------------------- #>
     [void]lxcopy($sor, $des){
         #
+        if (Test-Path $sor -PathType Container) {
+            $this.lxcopy($sor, $des, '*')
+            return
+        }
+        #
         $sor1 = $sor -replace '\\',  '/'
         $des1 = $des -replace '\\', '/'
         #
         if (!(Test-Path $des1)) {
             mkdir -p $des1
-        }
-        #
-        if (Test-Path $sor1 -PathType Container) {
-            $sor1 += '\*'
         }
         #
         Copy-Item -LiteralPath $sor1 $des1 -r
