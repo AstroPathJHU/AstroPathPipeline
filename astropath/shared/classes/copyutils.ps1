@@ -407,15 +407,19 @@ class copyutils{
             the number of times a file has 
             attempted to be copied.
      ------------------------------------------
-     Usage: copy(sor, des, filespec, copycount)
+     Usage: verifyChecksum(sor, des, filespec, copycount)
     ----------------------------------------- #>
     [void]verifyChecksum([string]$sor, [string]$des, 
         [array]$filespec, [int]$copycount){
         #
         $this.testpath($sor)
         $this.testpath($des, $true)
+        Write-Host '***sor:' $sor
+        Write-Host '***des:' $des
+        Write-Host '***does des exist?' (Test-Path $des)
         #
         $missingfiles = $this.checknfiles($sor, $des, $filespec)
+        Write-Host '***missing files:' $missingfiles
         $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
         #
         [array]$hashes = $this.FileHashHandler($sor, $des, $filespec)
@@ -688,6 +692,7 @@ class copyutils{
         if ($this.isWindows()){
             xcopy $tempsor $des /q /y /z /j /v | Out-Null
         } else {
+            Write-Host '***Running linux copy'
             $this.lxcopy($sor, $des)
         }
         #

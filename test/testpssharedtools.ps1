@@ -349,16 +349,7 @@
         $des = $this.processloc
         $filespec = '*'
         $filelist = $tools.listfiles($slidepath, '*')
-        Write-Host '***processloc:' $this.processloc
         $tools.removedir($this.processloc)
-        Write-Host '***make sure removedir works'
-        if (!$this.processloc) {
-            Write-Host '***processloc does not exist'
-        }
-        else {
-            Write-Host '***processloc still exists'
-        }
-        Write-Host '***processloc files:' (gci $this.processloc)
         #
         write-host '    compare on a single file'
         #
@@ -376,10 +367,8 @@
         $tools.removedir($this.processloc)
         $missingfiles = $tools.checknfiles($sor, $des, $filespec)
         if ($missingfiles.length -ne $filelist.length){
-            Write-Host '***Checking to see if this is triggered'
             throw 'missing files not picking up all files'
         }
-        Write-Host '***check if we get here'
         #
         Write-host '    test verify checksum on missing files'
         Write-Host '***slidepath:' $slidepath
@@ -400,7 +389,7 @@
         $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
         $this.comparepaths($slidepath, $this.processloc, $tools, $true)
         #
-        Write-Host '    edit one of the blank im3s and run verfiy check sum'
+        Write-Host '    edit one of the blank im3s and run verify check sum'
         $blankim3 = 'M21_1_[45628,12053].im3'
         $testfile = $des, $blankim3 -join '\'
         Write-Host '        editing:' $testfile
@@ -409,7 +398,7 @@
         $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
         $this.comparepaths($slidepath, $this.processloc, $tools, $true)
         #
-        Write-Host '    remove one of the blank im3s and run verfiy check sum'
+        Write-Host '    remove one of the blank im3s and run verify check sum'
         $blankim3 = 'M21_1_[45628,12053].im3'
         $testfile = $des, $blankim3 -join '\'
         Write-Host '        removing:' $testfile
