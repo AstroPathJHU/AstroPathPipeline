@@ -420,12 +420,12 @@ class copyutils{
         $this.testpath($des, $true)
         Write-Host '***sor:' $sor
         Write-Host '***des:' $des
-        Write-Host '***does des exist?' (Test-Path $des)
         #
         $missingfiles = $this.checknfiles($sor, $des, $filespec)
         Write-Host '***missing files:' $missingfiles
         $this.retrycopyloop($missingfiles, $copycount, $sor, $des)
         #
+        Write-Host '***Getting to second retry copy loop'
         [array]$hashes = $this.FileHashHandler($sor, $des, $filespec)
         $comparison = $this.comparehashes($hashes[0], $hashes[1])
         $this.retrycopyloop($comparison, $copycount, $sor, $des)
@@ -696,7 +696,6 @@ class copyutils{
         if ($this.isWindows()){
             xcopy $tempsor $des /q /y /z /j /v | Out-Null
         } else {
-            Write-Host '***Running linux copy'
             $this.lxcopy($sor, $des)
         }
         #
