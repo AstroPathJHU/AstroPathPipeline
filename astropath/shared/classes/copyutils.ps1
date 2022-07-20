@@ -170,10 +170,12 @@ class copyutils{
     ----------------------------------------- #>
     [void]lxcopy($sor, $des){
         #
-        $sor1 = $sor -replace '\\', '/'
+        $sor1 = $sor -replace '\\',  '/'
         $des1 = $des -replace '\\', '/'
-        mkdir -p $des1
-        Copy-Item $sor1 $des1 -r
+        if (!(Test-Path $des1)) {
+            mkdir -p $des1
+        }
+        Copy-Item -LiteralPath $sor1 $des1 -r
         #
     }
     <# -----------------------------------------
@@ -206,7 +208,9 @@ class copyutils{
         $des1 = $des -replace '\\', '/'
         $sor1 = $sor -replace '\\', '/'
         #
-        mkdir -p $des1
+        if (!(Test-Path $des1)) {
+            mkdir -p $des1
+        }
         #
         $files = $this.listfiles($sor1, $filespec)
         #
