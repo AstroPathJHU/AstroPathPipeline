@@ -104,22 +104,117 @@ def run_basic(samp,save_dirpath,n_threads,no_darkfield) :
     if not layer_dir.is_dir() :
         layer_dir.mkdir(parents=True)
     for li in range(samp.nlayersim3) :
-        f,ax=plt.subplots(figsize=(7.,7.*dims[0]/dims[1]))
-        pos=ax.imshow(basic_flatfield[:,:,li])
-        ax.set_title(f'BaSiC flatfield, layer {li+1}')
-        f.colorbar(pos,ax=ax,fraction=0.046,pad=0.04)
-        save_figure_in_dir(plt,f'flatfield_layer_{li+1}.png',layer_dir)
-        plt.close()
-        f,ax=plt.subplots(figsize=(7.,7.*dims[0]/dims[1]))
-        pos=ax.imshow(basic_darkfield[:,:,li])
-        ax.set_title(f'BaSiC darkfield, layer {li+1}')
-        f.colorbar(pos,ax=ax,fraction=0.046,pad=0.04)
-        save_figure_in_dir(plt,f'darkfield_layer_{li+1}.png',layer_dir)
-        plt.close()
+        ff_plot_fn = f'flatfield_layer_{li+1}.png'
+        if not (layer_dir/ff_plot_fn).is_file() :
+            f,ax=plt.subplots(figsize=(7.,7.*dims[0]/dims[1]))
+            pos=ax.imshow(basic_flatfield[:,:,li])
+            ax.set_title(f'BaSiC flatfield, layer {li+1}')
+            f.colorbar(pos,ax=ax,fraction=0.046,pad=0.04)
+            save_figure_in_dir(plt,ff_plot_fn,layer_dir)
+            plt.close()
+        df_plot_fn = f'darkfield_layer_{li+1}.png'
+        if not (layer_dir/df_plot_fn).is_file() :
+            f,ax=plt.subplots(figsize=(7.,7.*dims[0]/dims[1]))
+            pos=ax.imshow(basic_darkfield[:,:,li])
+            ax.set_title(f'BaSiC darkfield, layer {li+1}')
+            f.colorbar(pos,ax=ax,fraction=0.046,pad=0.04)
+            save_figure_in_dir(plt,df_plot_fn,layer_dir)
+            plt.close()
     return basic_flatfield, basic_darkfield
 
 def illumination_variation_plots(samp,sm_uncorr_mi,sm_mi_corr_mi,sm_basic_corr_mi,central=False,save_dirpath=None) :
-    pass
+    #clip the outer edges off if the plots are for the central region only
+    if central :
+        yclip = int(sm_uncorr_mi.shape[0]*0.1)
+        xclip = int(sm_uncorr_mi.shape[1]*0.1)
+        sm_uncorr_mi = sm_uncorr_mi[yclip:-yclip,xclip:-xclip,:]
+        sm_mi_corr_mi = sm_mi_corr_mi[yclip:-yclip,xclip:-xclip,:]
+    #figure out the number of layers and filter breaks
+    nlayers=sm_uncorr_mi.shape[-1]
+    last_filter_layers = [lg[1] for lg in list(samp.layer_groups.values())[:-1]] 
+    #keep track of the uncorrected and corrected images' minimum and maximum (and 5/95%ile) pixel intensities 
+    u_low_pixel_intensities=[]; u_high_pixel_intensities=[]
+    mi_c_low_pixel_intensities=[]; mi_c_high_pixel_intensities=[]
+    basic_c_low_pixel_intensities=[]; basic_c_high_pixel_intensities=[]
+    u_std_devs=[]; mi_c_std_devs=[]; basic_c_std_devs=[]
+    plt.figure(figsize=(16.8,(27./64.)*16.8))
+    xaxis_vals = list(range(1,nlayers+1))
+    #iterate over the layers
+    for layer_i in range(nlayers) :
+        #find the min, max, and 5/95%ile pixel intensities for this uncorrected and corrected image layer
+        sorted_u_layer = np.sort((sm_uncorr_mi[:,:,layer_i]).flatten())/np.mean(sm_uncorr_mi[:,:,layer_i])
+        u_low_pixel_intensities.append(sorted_u_layer[int(0.05*len(sorted_u_layer))])
+        u_stddev = np.std(sorted_u_layer); u_std_devs.append(u_stddev)
+        u_high_pixel_intensities.append(sorted_u_layer[int(0.95*len(sorted_u_layer))])
+        sorted_mi_c_layer = np.sort((sm_mi_corr_mi[:,:,layer_i]).flatten())
+        sorted_mi_c_layer/=np.mean(sm_mi_corr_mi[:,:,layer_i])
+        mi_c_low_pixel_intensities.append(sorted_mi_c_layer[int(0.05*len(sorted_mi_c_layer))])
+        mi_c_stddev = np.std(sorted_mi_c_layer); mi_c_std_devs.append(mi_c_stddev)
+        mi_c_high_pixel_intensities.append(sorted_mi_c_layer[int(0.95*len(sorted_mi_c_layer))])
+        sorted_basic_c_layer = np.sort((sm_basic_corr_mi[:,:,layer_i]).flatten())
+        sorted_basic_c_layer/=np.mean(sm_basic_corr_mi[:,:,layer_i])
+        basic_c_low_pixel_intensities.append(sorted_basic_c_layer[int(0.05*len(sorted_basic_c_layer))])
+        basic_c_stddev = np.std(sorted_basic_c_layer); basic_c_std_devs.append(basic_c_stddev)
+        basic_c_high_pixel_intensities.append(sorted_basic_c_layer[int(0.95*len(sorted_basic_c_layer))])
+        if layer_i==0 :
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],
+                     'mediumseagreen',alpha=0.5,label='uncorrected std. dev.')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-mi_c_stddev,1.+mi_c_stddev,1.+mi_c_stddev,1.-mi_c_stddev],
+                     'goldenrod',alpha=0.5,label='meanimage corrected std. dev.')
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-basic_c_stddev,1.+basic_c_stddev,1.+basic_c_stddev,1.-basic_c_stddev],
+                     'darkorchid',alpha=0.5,label='BaSiC corrected std. dev.')
+        else :
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-u_stddev,1.+u_stddev,1.+u_stddev,1.-u_stddev],'mediumseagreen',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-mi_c_stddev,1.+mi_c_stddev,1.+mi_c_stddev,1.-mi_c_stddev],'goldenrod',alpha=0.5)
+            plt.fill([layer_i+0.5,layer_i+0.5,layer_i+1.5,layer_i+1.5],
+                     [1.-basic_c_stddev,1.+basic_c_stddev,1.+basic_c_stddev,1.-basic_c_stddev],'darkorchid',alpha=0.5)
+    #plot the relative intensity plots together, with the broadband filter breaks
+    plt.plot([xaxis_vals[0],xaxis_vals[-1]],[1.0,1.0],color='darkgreen',linestyle='dashed',label='mean')
+    totalmin=min(min(u_low_pixel_intensities),min(mi_c_low_pixel_intensities),min(basic_c_low_pixel_intensities))
+    totalmax=max(max(u_high_pixel_intensities),max(mi_c_high_pixel_intensities),max(basic_c_high_pixel_intensities))
+    for i in range(len(last_filter_layers)+1) :
+        f_i = 0 if i==0 else last_filter_layers[i-1]
+        l_i = xaxis_vals[-1] if i==len(last_filter_layers) else last_filter_layers[i]
+        if i==0 :
+            plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],
+                     color='darkred',marker='v',label=r'uncorrected 5th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],u_high_pixel_intensities[f_i:l_i],
+                     color='darkred',marker='^',label=r'uncorrected 95th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],mi_c_low_pixel_intensities[f_i:l_i],
+                     color='darkblue',marker='v',label=r'meanimage corrected 5th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],mi_c_high_pixel_intensities[f_i:l_i],
+                     color='darkblue',marker='^',label=r'meanimage corrected 95th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],basic_c_low_pixel_intensities[f_i:l_i],
+                     color='darkorange',marker='v',label=r'BaSiC corrected 5th %ile')
+            plt.plot(xaxis_vals[f_i:l_i],basic_c_high_pixel_intensities[f_i:l_i],
+                     color='darkorange',marker='^',label=r'BaSiC corrected 95th %ile')
+            plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],
+                     color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+        else :
+            plt.plot(xaxis_vals[f_i:l_i],u_low_pixel_intensities[f_i:l_i],color='darkred',marker='v')
+            plt.plot(xaxis_vals[f_i:l_i],u_high_pixel_intensities[f_i:l_i],color='darkred',marker='^')
+            plt.plot(xaxis_vals[f_i:l_i],mi_c_low_pixel_intensities[f_i:l_i],color='darkblue',marker='v')
+            plt.plot(xaxis_vals[f_i:l_i],mi_c_high_pixel_intensities[f_i:l_i],color='darkblue',marker='^')
+            plt.plot(xaxis_vals[f_i:l_i],basic_c_low_pixel_intensities[f_i:l_i],color='darkorange',marker='v')
+            plt.plot(xaxis_vals[f_i:l_i],basic_c_high_pixel_intensities[f_i:l_i],color='darkorange',marker='^')
+            if i!=len(last_filter_layers) :
+                plt.plot([l_i+0.5,l_i+0.5],[totalmin-0.01,totalmax+0.01],color='black',linewidth=2,linestyle='dotted')
+    plt.title('uncorrected/corrected smoothed mean image relative pixel intensities',fontsize=14)
+    plt.xlabel('layer number',fontsize=14)
+    #fix the range on the x-axis to accommodate the legend
+    plt.xlim(0,nlayers+(10 if nlayers==35 else 12))
+    plt.ylabel('pixel intensity relative to layer mean',fontsize=14)
+    plt.legend(loc='lower right')
+    fn = 'smoothed_mean_image_pixel_intensities'
+    if central :
+        fn+='_central'
+    fn+='.png'
+    save_figure_in_dir(plt,fn,save_dirpath)
 
 def get_overlap_comparisons(samp,basic_ff,basic_df,save_dirpath) :
     return {}
