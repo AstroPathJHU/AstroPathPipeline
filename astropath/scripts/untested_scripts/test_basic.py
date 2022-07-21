@@ -67,9 +67,15 @@ def add_rect_image_to_queue(rect,queue,layer_i) :
         im_layer = im[:,:,layer_i]
         queue.put(im_layer)
 
-def add_rect_image_and_index_to_queue(rect,queue,layer_i=None) :
+def add_rect_image_and_index_to_queue(rect,queue,layer_i) :
     with rect.using_corrected_im3() as im :
-        im_layer = im[:,:,layer_i] if layer_i is not None else im
+        im_layer = im[:,:,layer_i]
+        queue.put((rect.n,im_layer))
+
+def add_mi_corr_rect_image_and_index_to_queue(rect,meanimage_ff,queue,layer_i) :
+    with rect.using_corrected_im3() as im :
+        im_layer = im[:,:,layer_i]
+        im_layer = im_layer/meanimage_ff[:,:,layer_i]
         queue.put((rect.n,im_layer))
 
 def add_basic_corr_rect_image_and_index_to_queue(rect,basic_ff,basic_df,queue,layer_i) :
@@ -298,11 +304,11 @@ def illumination_variation_plots(samp,uncorr_mi,mi_corr_mi,basic_corr_mi,central
     plt.legend(loc='lower right')
     save_figure_in_dir(plt,fn,save_dirpath)
 
-def get_pre_and_post_correction_rect_layer_images_by_index(mi_samp,warp_samp,basic_ff,basic_df,li,needed_ns,n_threads) :
+def get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,mi_corr_samp,mi_ff,basic_ff,basic_df,li,needed_ns,n_threads) :
     layer_images_by_rect_n = {}
     threads = []
     uncorr_queue = Queue(); mi_c_queue = Queue(); basic_c_queue = Queue()
-    for ir,(mi_r,w_r) in enumerate(zip(mi_samp.rectangles,warp_samp.rectangles)) :
+    for ir,(uc_r,mi_r) in enumerate(zip(uncorr_samp.rectangles,mi_corr_samp.rectangles)) :
         if mi_r.n not in needed_ns :
             continue
         if ir%50==0 :
@@ -310,14 +316,14 @@ def get_pre_and_post_correction_rect_layer_images_by_index(mi_samp,warp_samp,bas
         while len(threads)>=(n_threads-3) :
             thread = threads.pop(0)
             thread.join()
-        uncorr_thread = Thread(target=add_rect_image_and_index_to_queue,args=(mi_r,uncorr_queue,li))
+        uncorr_thread = Thread(target=add_rect_image_and_index_to_queue,args=(uc_r,uncorr_queue,li))
         uncorr_thread.start()
         threads.append(uncorr_thread)
-        mi_c_thread = Thread(target=add_rect_image_and_index_to_queue,args=(w_r,mi_c_queue))
+        mi_c_thread = Thread(target=add_mi_corr_rect_image_and_index_to_queue,args=(mi_r,mi_ff,mi_c_queue,li))
         mi_c_thread.start()
         threads.append(mi_c_thread)
         basic_c_thread = Thread(target=add_basic_corr_rect_image_and_index_to_queue,
-                                args=(mi_r,basic_ff,basic_df,basic_c_queue,li))
+                                args=(uc_r,basic_ff,basic_df,basic_c_queue,li))
         basic_c_thread.start()
         threads.append(basic_c_thread)
     for thread in threads :
@@ -339,18 +345,18 @@ def get_pre_and_post_correction_rect_layer_images_by_index(mi_samp,warp_samp,bas
         rn, basic_c_im_layer = basic_c_queue.get()
     return layer_images_by_rect_n
 
-def get_overlap_comparisons(mi_samp,warp_samp,basic_ff,basic_df,save_dirpath,n_threads) :
+def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,basic_df,save_dirpath,n_threads) :
     overlap_comparison_fp = save_dirpath/'overlap_comparisons.csv'
     if overlap_comparison_fp.is_file() :
         overlap_comparisons_found = readtable(overlap_comparison_fp,AlignmentOverlapComparison)
         msg = f'{timestamp()}   Found {len(overlap_comparisons_found)} existing overlap comparisons for '
-        msg+= f'{mi_samp.SlideID} in {overlap_comparison_fp}'
+        msg+= f'{uncorr_samp.SlideID} in {overlap_comparison_fp}'
         print(msg)
     else :
         overlap_comparisons_found = []
     overlap_comparisons = {}
     #do one layer at a time
-    for li in range(mi_samp.nlayersim3) :
+    for li in range(uncorr_samp.nlayersim3) :
         overlap_comparisons[li+1] = [oc for oc in overlap_comparisons_found if oc.layer_n==li+1]
         comp_ns_found = [oc.n for oc in overlap_comparisons[li+1]]
         p1_p2_pairs_done = set([(oc.p1,oc.p2) for oc in overlap_comparisons[li+1]])
@@ -363,15 +369,17 @@ def get_overlap_comparisons(mi_samp,warp_samp,basic_ff,basic_df,save_dirpath,n_t
                 needed_rect_ns.add(overlap.p2)
         if len(needed_rect_ns)>0 :
             msg=f'{timestamp()}   Getting {len(needed_rect_ns)} uncorrected/corrected rectangle images for layer '
-            msg+=f'{li+1} of {mi_samp.SlideID}'
+            msg+=f'{li+1} of {uncorr_samp.SlideID}'
             print(msg)
-            layer_images_by_rect_n = get_pre_and_post_correction_rect_layer_images_by_index(mi_samp,warp_samp,
+            layer_images_by_rect_n = get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,mi_corr_samp,
+                                                                                            mi_ff,
                                                                                             basic_ff,basic_df,
                                                                                             li,needed_rect_ns,n_threads)
-            print(f'{timestamp()}   Getting overlap comparisons for layer {li+1} of {mi_samp.SlideID}')
+            print(f'{timestamp()}   Getting overlap comparisons for layer {li+1} of {uncorr_samp.SlideID}')
             threads = []
             overlap_comp_queue = Queue()
             last_writeout=datetime.datetime.now()
+            new_comps = []
             for io,overlap in enumerate(warp_samp.overlaps) :
                 if ( (overlap.n in comp_ns_found) or 
                      ((overlap.p1,overlap.p2) in p1_p2_pairs_done) or 
@@ -382,13 +390,13 @@ def get_overlap_comparisons(mi_samp,warp_samp,basic_ff,basic_df,save_dirpath,n_t
                 while len(threads)>=n_threads :
                     thread = threads.pop(0)
                     thread.join()
-                new_comps = []
                 while not overlap_comp_queue.empty() :
                     new_comp = overlap_comp_queue.get()
                     new_comps.append(new_comp)
                     overlap_comparisons[li+1].append(new_comp)
                 if len(new_comps)>0 and (datetime.datetime.now()-last_writeout).total_seconds()>=10 :
                     writetable(overlap_comparison_fp,new_comps,append=True)
+                    new_comps = []
                     last_writeout = datetime.datetime.now()
                 new_thread = Thread(target=add_overlap_comparison_to_queue,
                                     args=(overlap,warp_samp.rectangles,layer_images_by_rect_n,li,overlap_comp_queue))
@@ -398,7 +406,6 @@ def get_overlap_comparisons(mi_samp,warp_samp,basic_ff,basic_df,save_dirpath,n_t
                 thread.join()
             overlap_comp_queue.put(None)
             olap_comp = overlap_comp_queue.get()
-            new_comps = []
             while olap_comp is not None :
                 new_comps.append(olap_comp)
                 overlap_comparisons[li+1].append(olap_comp)
@@ -413,9 +420,9 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
         layer_dir.mkdir(parents=True)
     for layer_n in overlap_comparisons_by_layer_n.keys() :
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
-        overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.01 and abs(oc.basic_dy-oc.meanimage_dy)<0.01]
-        overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.03 and oc.basic_mse_diff/oc.basic_mse1<0.03 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.03]
-        pct_trimmed = 100.*(1.-((1.*len(overlap_comparisons))/1.*len(overlap_comparisons_by_layer_n[layer_n])))
+        overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.10 and abs(oc.basic_dy-oc.meanimage_dy)<0.10]
+        overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.10 and oc.basic_mse_diff/oc.basic_mse1<0.10 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.10]
+        pct_trimmed = 100.*(1.-((1.*len(overlap_comparisons))/(1.*len(overlap_comparisons_by_layer_n[layer_n]))))
         msg=f'{timestamp()} Trimmed {pct_trimmed:.4f}% of overlaps in layer {layer_n} that were poorly aligned or '
         msg+= 'had large differences in alignment shifts'
         print(msg)
@@ -483,8 +490,8 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
         rel_mse_redux_diff_means.append([])
         rel_mse_redux_diff_stds.append([])
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
-        overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.01 and abs(oc.basic_dy-oc.meanimage_dy)<0.01]
-        overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.03 and oc.basic_mse_diff/oc.basic_mse1<0.03 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.03]
+        overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.10 and abs(oc.basic_dy-oc.meanimage_dy)<0.10]
+        overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.10 and oc.basic_mse_diff/oc.basic_mse1<0.10 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.10]
         for tag in (1,2,3,4) :
             tag_comparisons = [oc for oc in overlap_comparisons if oc.tag==tag]
             weights = [oc.npix for oc in tag_comparisons]
@@ -547,33 +554,42 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
 def main() :
     #create the argument parser
     args = get_arguments()
+    #figure out where the meanimage-based flatfield for this sample is
+    correction_model_entries = readtable(CORRECTION_MODEL_FILE,CorrectionModelTableEntry)
+    meanimage_ff_name = [te.FlatfieldVersion for te in correction_model_entries if te.SlideID==args.slideID]
+    meanimage_ff_fp = FLATFIELD_DIR/f'flatfield_{meanimage_ff_name[0]}.bin'
     #create the mean image sample
-    print(f'{timestamp()} creating MeanImageSample for {args.slideID}')
-    meanimage_sample = MeanImageSample(args.root,samp=args.slideID,shardedim3root=args.rawfile_root,
+    print(f'{timestamp()} creating MeanImageSamples for {args.slideID}')
+    uncorrected_sample = MeanImageSample(args.root,samp=args.slideID,shardedim3root=args.rawfile_root,
                                        et_offset_file=None,
                                        #don't apply ANY corrections before running BaSiC
                                        skip_et_corrections=True, 
                                        flatfield_file=None,warping_file=None,correction_model_file=None,
                                        filetype='raw',
                                        )
-    dims = (meanimage_sample.fheight,meanimage_sample.fwidth,meanimage_sample.nlayersim3)
-    print(f'{timestamp()} done creating MeanImageSample for {args.slideID}')
+    meanimage_corrected_sample = MeanImageSample(args.root,samp=args.slideID,shardedim3root=args.rawfile_root,
+                                                 et_offset_file=None,
+                                                 skip_et_corrections=False, 
+                                                 #we'll apply the flatfield corrections manually to save time
+                                                 flatfield_file=None,
+                                                 warping_file=None,correction_model_file=None,
+                                                 filetype='raw',
+                                                 )
+    dims = (uncorrected_sample.fheight,uncorrected_sample.fwidth,uncorrected_sample.nlayersim3)
+    print(f'{timestamp()} done creating MeanImageSamples for {args.slideID}')
     #create and save the basic flatfield
     print(f'{timestamp()} running BaSiC for {args.slideID}')
-    basic_flatfield, basic_darkfield = run_basic(meanimage_sample,args.workingdir,args.n_threads,args.no_darkfield)
+    basic_flatfield, basic_darkfield = run_basic(uncorrected_sample,args.workingdir,args.n_threads,args.no_darkfield)
     print(f'{timestamp()} done running BaSiC for {args.slideID}')
     #create the illumination variation plots
     print(f'{timestamp()} getting meanimage flatfield and pre/post-correction meanimages for {args.slideID}')
     meanimage_fp = args.root/args.slideID/'im3'/'meanimage'/f'{args.slideID}-mean_image.bin'
     meanimage = get_raw_as_hwl(meanimage_fp,*dims,np.float64)
-    correction_model_entries = readtable(CORRECTION_MODEL_FILE,CorrectionModelTableEntry)
-    meanimage_ff_name = [te.FlatfieldVersion for te in correction_model_entries if te.SlideID==args.slideID]
-    meanimage_ff_fp = FLATFIELD_DIR/f'flatfield_{meanimage_ff_name[0]}.bin'
     meanimage_ff = get_raw_as_hwl(meanimage_ff_fp,*dims,np.float64)
     mi_corrected_meanimage = meanimage/meanimage_ff
     basic_corrected_meanimage = meanimage/basic_flatfield
     print(f'{timestamp()} making meanimage illumination variation plots for {args.slideID}')
-    illumination_variation_plots(meanimage_sample,
+    illumination_variation_plots(uncorrected_sample,
                                  meanimage,
                                  mi_corrected_meanimage,
                                  basic_corrected_meanimage,
@@ -588,8 +604,10 @@ def main() :
                                    filetype='raw',
                                   )
     print(f'{timestamp()} getting overlap comparisons for {args.slideID}')
-    overlap_comparisons = get_overlap_comparisons(meanimage_sample,
+    overlap_comparisons = get_overlap_comparisons(uncorrected_sample,
+                                                  meanimage_corrected_sample,
                                                   warping_sample,
+                                                  meanimage_ff,
                                                   basic_flatfield,
                                                   basic_darkfield,
                                                   args.workingdir,
@@ -599,7 +617,7 @@ def main() :
     overlap_mse_reduction_plots(overlap_comparisons,args.workingdir)
     #create the single comparison plot over all layers
     print(f'{timestamp()} creating final summary plot for {args.slideID}')
-    overlap_mse_reduction_comparison_plot(meanimage_sample,overlap_comparisons,args.workingdir)
+    overlap_mse_reduction_comparison_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
     print(f'{timestamp()} Done')
 
 if __name__=='__main__' :
