@@ -36,6 +36,7 @@ class AlignmentOverlapComparison(MyDataClass) :
     meanimage_dy : float
     meanimage_mse1 : float
     meanimage_mse_diff : float 
+    error_code : int
 
 #constants
 APPROC = pathlib.Path('//bki04/astropath_processing')
@@ -98,6 +99,12 @@ def add_overlap_comparison_to_queue(overlap,rects,rect_images_by_n,li,queue) :
     overlap.myupdaterectangles([p1_rect,p2_rect])
     orig_result = copy.deepcopy(overlap.align(alreadyalignedstrategy='overwrite'))
     if orig_result.exit!=0 :
+        queue.put(
+        AlignmentOverlapComparison(overlap.n,li+1,overlap.p1,overlap.p2,overlap.tag,overlap.overlap_npix,
+                                    -900.,-900.,-900.,-900.,
+                                    -900.,-900.,-900.,-900.,
+                                    -900.,-900.,-900.,-900.,1)
+        )
         return
     #overlap.showimages(normalize=1000.)
     orig_dx = orig_result.dxvec[0].nominal_value
@@ -107,6 +114,12 @@ def add_overlap_comparison_to_queue(overlap,rects,rect_images_by_n,li,queue) :
     overlap.myupdaterectangles([p1_rect,p2_rect])
     basic_result = copy.deepcopy(overlap.align(alreadyalignedstrategy='overwrite'))
     if basic_result.exit!=0 :
+        queue.put(
+        AlignmentOverlapComparison(overlap.n,li+1,overlap.p1,overlap.p2,overlap.tag,overlap.overlap_npix,
+                                    orig_dx,orig_dy,orig_result.mse[0],orig_result.mse[2],
+                                    -900.,-900.,-900.,-900.,
+                                    -900.,-900.,-900.,-900.,2)
+        )
         return
     #overlap.showimages(normalize=1000.)
     basic_dx = basic_result.dxvec[0].nominal_value
@@ -116,6 +129,12 @@ def add_overlap_comparison_to_queue(overlap,rects,rect_images_by_n,li,queue) :
     overlap.myupdaterectangles([p1_rect,p2_rect])
     meanimage_result = copy.deepcopy(overlap.align(alreadyalignedstrategy='overwrite'))
     if meanimage_result.exit!=0 :
+        queue.put(
+        AlignmentOverlapComparison(overlap.n,li+1,overlap.p1,overlap.p2,overlap.tag,overlap.overlap_npix,
+                                    orig_dx,orig_dy,orig_result.mse[0],orig_result.mse[2],
+                                    basic_dx,basic_dy,basic_result.mse[0],basic_result.mse[2],
+                                    -900.,-900.,-900.,-900.,3)
+        )
         return
     #overlap.showimages(normalize=1000.)
     meanimage_dx = meanimage_result.dxvec[0].nominal_value
@@ -124,7 +143,7 @@ def add_overlap_comparison_to_queue(overlap,rects,rect_images_by_n,li,queue) :
         AlignmentOverlapComparison(overlap.n,li+1,overlap.p1,overlap.p2,overlap.tag,overlap.overlap_npix,
                                     orig_dx,orig_dy,orig_result.mse[0],orig_result.mse[2],
                                     basic_dx,basic_dy,basic_result.mse[0],basic_result.mse[2],
-                                    meanimage_dx,meanimage_dy,meanimage_result.mse[0],meanimage_result.mse[2])
+                                    meanimage_dx,meanimage_dy,meanimage_result.mse[0],meanimage_result.mse[2],0)
         )
 
 def run_basic(samp,save_dirpath,n_threads,no_darkfield) :
@@ -315,7 +334,9 @@ def get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,mi_corr_s
             print(f'{timestamp()}       getting images for rectangle {ir}(/{len(needed_ns)})')
         while len(threads)>=(n_threads-3) :
             thread = threads.pop(0)
-            thread.join()
+            thread.join(1)
+            if thread.is_alive() :
+                threads.append(thread)
         uncorr_thread = Thread(target=add_rect_image_and_index_to_queue,args=(uc_r,uncorr_queue,li))
         uncorr_thread.start()
         threads.append(uncorr_thread)
@@ -389,7 +410,9 @@ def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,ba
                     print(f'{timestamp()}       getting comparisons for overlap {io}(/{len(warp_samp.overlaps)})')
                 while len(threads)>=n_threads :
                     thread = threads.pop(0)
-                    thread.join()
+                    thread.join(1)
+                    if thread.is_alive() :
+                        threads.append(thread)
                 while not overlap_comp_queue.empty() :
                     new_comp = overlap_comp_queue.get()
                     new_comps.append(new_comp)
@@ -420,6 +443,7 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
         layer_dir.mkdir(parents=True)
     for layer_n in overlap_comparisons_by_layer_n.keys() :
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        overlap_comparisons = [oc for oc in overlap_comparisons if oc.error_code==0]
         overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.10 and abs(oc.basic_dy-oc.meanimage_dy)<0.10]
         overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.10 and oc.basic_mse_diff/oc.basic_mse1<0.10 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.10]
         pct_trimmed = 100.*(1.-((1.*len(overlap_comparisons))/(1.*len(overlap_comparisons_by_layer_n[layer_n]))))
@@ -490,6 +514,7 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
         rel_mse_redux_diff_means.append([])
         rel_mse_redux_diff_stds.append([])
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        overlap_comparisons = [oc for oc in overlap_comparisons if oc.error_code==0]
         overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.10 and abs(oc.basic_dy-oc.meanimage_dy)<0.10]
         overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.10 and oc.basic_mse_diff/oc.basic_mse1<0.10 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.10]
         for tag in (1,2,3,4) :
