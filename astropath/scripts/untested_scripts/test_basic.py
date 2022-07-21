@@ -4,6 +4,7 @@ import numpy as np, matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from threading import Thread
 from queue import Queue
+from dataclasses import dataclass
 from astropath.utilities import units
 from astropath.utilities.miscplotting import save_figure_in_dir
 from astropath.utilities.tableio import readtable
@@ -14,6 +15,25 @@ from astropath.hpfs.warping.warpingsample import WarpingSample
 
 #fast units setup
 units.setup('fast')
+
+#alignment overlap comparison dataclass
+@dataclass
+class AlignmentOverlapComparison :
+    n : int
+    tag : int
+    npix : int
+    orig_dx : float
+    orig_dy : float
+    orig_mse1 : float
+    orig_mse_diff : float
+    basic_dx : float
+    basic_dy : float
+    basic_mse1 : float
+    basic_mse_diff : float
+    meanimage_dx : float
+    meanimage_dy : float
+    meanimage_mse1 : float
+    meanimage_mse_diff : float 
 
 #constants
 APPROC = pathlib.Path('//bki04/astropath_processing')
