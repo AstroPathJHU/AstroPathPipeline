@@ -4,8 +4,8 @@ import numpy as np, matplotlib.pyplot as plt, matplotlib as mpl
 from argparse import ArgumentParser
 from threading import Thread
 from queue import Queue
-from dataclasses import dataclass
 from astropath.utilities import units
+from astropath.utilities.dataclasses import MyDataClass
 from astropath.utilities.miscplotting import save_figure_in_dir
 from astropath.utilities.tableio import readtable, writetable
 from astropath.utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, smooth_image_worker, write_image_to_file
@@ -17,8 +17,7 @@ from astropath.hpfs.warping.warpingsample import WarpingSample
 units.setup('fast')
 
 #alignment overlap comparison dataclass
-@dataclass
-class AlignmentOverlapComparison :
+class AlignmentOverlapComparison(MyDataClass) :
     n : int
     layer_n : int
     p1 : int
@@ -68,24 +67,26 @@ def add_rect_image_to_queue(rect,queue,layer_i) :
         im_layer = im[:,:,layer_i]
         queue.put(im_layer)
 
-def add_rect_image_and_index_to_queue(rect,queue,layer_i) :
+def add_rect_image_and_index_to_queue(rect,queue,layer_i=None) :
     with rect.using_corrected_im3() as im :
-        im_layer = im[:,:,layer_i]
+        im_layer = im[:,:,layer_i] if layer_i is not None else im
         queue.put((rect.n,im_layer))
 
 def add_basic_corr_rect_image_and_index_to_queue(rect,basic_ff,basic_df,queue,layer_i) :
     with rect.using_corrected_im3() as im :
         im_layer = im[:,:,layer_i]
-    corr_im_layer = pybasic.correct_illumination([im_layer],basic_ff,basic_df)
+    corr_im_layer = pybasic.correct_illumination([im_layer],basic_ff[:,:,layer_i],basic_df[:,:,layer_i])
+    corr_im_layer = corr_im_layer[0]
     queue.put((rect.n,corr_im_layer))
 
 def add_overlap_comparison_to_queue(overlap,rects,rect_images_by_n,li,queue) :
+    overlap = copy.deepcopy(overlap)
     p1_rect = [r for r in rects if r.n==overlap.p1]
     assert len(p1_rect)==1
-    p1_rect = p1_rect[0]
+    p1_rect = copy.deepcopy(p1_rect[0])
     p2_rect = [r for r in rects if r.n==overlap.p2]
     assert len(p2_rect)==1
-    p2_rect = p2_rect[0]
+    p2_rect = copy.deepcopy(p2_rect[0])
     p1_rect.image = rect_images_by_n[p1_rect.n]['uncorr']
     p2_rect.image = rect_images_by_n[p2_rect.n]['uncorr']
     overlap.myupdaterectangles([p1_rect,p2_rect])
@@ -197,7 +198,17 @@ def run_basic(samp,save_dirpath,n_threads,no_darkfield) :
             plt.close()
     return basic_flatfield, basic_darkfield
 
-def illumination_variation_plots(samp,sm_uncorr_mi,sm_mi_corr_mi,sm_basic_corr_mi,central=False,save_dirpath=None) :
+def illumination_variation_plots(samp,uncorr_mi,mi_corr_mi,basic_corr_mi,central=False,save_dirpath=None) :
+    fn = 'smoothed_mean_image_pixel_intensities'
+    if central :
+        fn+='_central'
+    fn+='.png'
+    if (save_dirpath/fn).is_file() :
+        print(f'{timestamp()} illumination variation plot already exists at {save_dirpath/fn}')
+        return
+    sm_uncorr_mi = smooth_image_worker(uncorr_mi,100,gpu=True)
+    sm_mi_corr_mi = smooth_image_worker(mi_corr_mi,100,gpu=True)
+    sm_basic_corr_mi = smooth_image_worker(basic_corr_mi,100,gpu=True)
     #clip the outer edges off if the plots are for the central region only
     if central :
         yclip = int(sm_uncorr_mi.shape[0]*0.1)
@@ -285,10 +296,6 @@ def illumination_variation_plots(samp,sm_uncorr_mi,sm_mi_corr_mi,sm_basic_corr_m
     plt.xlim(0,nlayers+(10 if nlayers==35 else 12))
     plt.ylabel('pixel intensity relative to layer mean',fontsize=14)
     plt.legend(loc='lower right')
-    fn = 'smoothed_mean_image_pixel_intensities'
-    if central :
-        fn+='_central'
-    fn+='.png'
     save_figure_in_dir(plt,fn,save_dirpath)
 
 def get_pre_and_post_correction_rect_layer_images_by_index(mi_samp,warp_samp,basic_ff,basic_df,li,needed_ns,n_threads) :
@@ -299,14 +306,14 @@ def get_pre_and_post_correction_rect_layer_images_by_index(mi_samp,warp_samp,bas
         if mi_r.n not in needed_ns :
             continue
         if ir%50==0 :
-            print(f'{timestamp()}       getting images for rectangle {ir}(/{len(mi_samp.rectangles)})')
+            print(f'{timestamp()}       getting images for rectangle {ir}(/{len(needed_ns)})')
         while len(threads)>=(n_threads-3) :
             thread = threads.pop(0)
             thread.join()
         uncorr_thread = Thread(target=add_rect_image_and_index_to_queue,args=(mi_r,uncorr_queue,li))
         uncorr_thread.start()
         threads.append(uncorr_thread)
-        mi_c_thread = Thread(target=add_rect_image_and_index_to_queue,args=(w_r,mi_c_queue,li))
+        mi_c_thread = Thread(target=add_rect_image_and_index_to_queue,args=(w_r,mi_c_queue))
         mi_c_thread.start()
         threads.append(mi_c_thread)
         basic_c_thread = Thread(target=add_basic_corr_rect_image_and_index_to_queue,
@@ -364,6 +371,7 @@ def get_overlap_comparisons(mi_samp,warp_samp,basic_ff,basic_df,save_dirpath,n_t
             print(f'{timestamp()}   Getting overlap comparisons for layer {li+1} of {mi_samp.SlideID}')
             threads = []
             overlap_comp_queue = Queue()
+            last_writeout=datetime.datetime.now()
             for io,overlap in enumerate(warp_samp.overlaps) :
                 if ( (overlap.n in comp_ns_found) or 
                      ((overlap.p1,overlap.p2) in p1_p2_pairs_done) or 
@@ -374,21 +382,29 @@ def get_overlap_comparisons(mi_samp,warp_samp,basic_ff,basic_df,save_dirpath,n_t
                 while len(threads)>=n_threads :
                     thread = threads.pop(0)
                     thread.join()
+                new_comps = []
                 while not overlap_comp_queue.empty() :
                     new_comp = overlap_comp_queue.get()
-                    writetable(overlap_comparison_fp,[new_comp],append=True)
+                    new_comps.append(new_comp)
                     overlap_comparisons[li+1].append(new_comp)
+                if len(new_comps)>0 and (datetime.datetime.now()-last_writeout).total_seconds()>=10 :
+                    writetable(overlap_comparison_fp,new_comps,append=True)
+                    last_writeout = datetime.datetime.now()
                 new_thread = Thread(target=add_overlap_comparison_to_queue,
-                                    args=(overlap,warp_samp.rectangles,layer_images_by_rect_n,overlap_comp_queue))
+                                    args=(overlap,warp_samp.rectangles,layer_images_by_rect_n,li,overlap_comp_queue))
                 new_thread.start()
                 threads.append(new_thread)
             for thread in threads :
                 thread.join()
-            overlap_comp_queue.append(None)
+            overlap_comp_queue.put(None)
             olap_comp = overlap_comp_queue.get()
+            new_comps = []
             while olap_comp is not None :
+                new_comps.append(olap_comp)
                 overlap_comparisons[li+1].append(olap_comp)
                 olap_comp = overlap_comp_queue.get()
+            if len(new_comps)>0 :
+                writetable(overlap_comparison_fp,new_comps,append=True)
     return overlap_comparisons
 
 def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
@@ -547,23 +563,20 @@ def main() :
     basic_flatfield, basic_darkfield = run_basic(meanimage_sample,args.workingdir,args.n_threads,args.no_darkfield)
     print(f'{timestamp()} done running BaSiC for {args.slideID}')
     #create the illumination variation plots
-    print(f'{timestamp()} getting meanimage flatfield and smoothing pre/post-correction meanimages for {args.slideID}')
+    print(f'{timestamp()} getting meanimage flatfield and pre/post-correction meanimages for {args.slideID}')
     meanimage_fp = args.root/args.slideID/'im3'/'meanimage'/f'{args.slideID}-mean_image.bin'
     meanimage = get_raw_as_hwl(meanimage_fp,*dims,np.float64)
     correction_model_entries = readtable(CORRECTION_MODEL_FILE,CorrectionModelTableEntry)
     meanimage_ff_name = [te.FlatfieldVersion for te in correction_model_entries if te.SlideID==args.slideID]
     meanimage_ff_fp = FLATFIELD_DIR/f'flatfield_{meanimage_ff_name[0]}.bin'
     meanimage_ff = get_raw_as_hwl(meanimage_ff_fp,*dims,np.float64)
-    smoothed_meanimage = smooth_image_worker(meanimage,100,gpu=True)
     mi_corrected_meanimage = meanimage/meanimage_ff
-    smoothed_mi_corrected_meanimage = smooth_image_worker(mi_corrected_meanimage,100,gpu=True)
     basic_corrected_meanimage = meanimage/basic_flatfield
-    smoothed_basic_corrected_meanimage = smooth_image_worker(basic_corrected_meanimage,100,gpu=True)
     print(f'{timestamp()} making meanimage illumination variation plots for {args.slideID}')
     illumination_variation_plots(meanimage_sample,
-                                 smoothed_meanimage,
-                                 smoothed_mi_corrected_meanimage,
-                                 smoothed_basic_corrected_meanimage,
+                                 meanimage,
+                                 mi_corrected_meanimage,
+                                 basic_corrected_meanimage,
                                  central=False,
                                  save_dirpath=args.workingdir)
     #create the warping sample
