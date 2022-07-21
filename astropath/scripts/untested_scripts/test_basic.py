@@ -1,6 +1,6 @@
 #imports
 import pathlib, datetime, pybasic, copy
-import numpy as np, matplotlib.pyplot as plt
+import numpy as np, matplotlib.pyplot as plt, matplotlib as mpl
 from argparse import ArgumentParser
 from threading import Thread
 from queue import Queue
