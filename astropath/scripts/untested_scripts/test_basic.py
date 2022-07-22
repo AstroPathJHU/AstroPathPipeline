@@ -58,6 +58,12 @@ def get_arguments() :
     parser.add_argument('--n_threads',type=int,default=10,help='The number of parallel threads to use')
     parser.add_argument('--no_darkfield',action='store_true',
                         help='include this flag to skip computing a BaSiC darkfield')
+    parser.add_argument('--max_shift_diff',type=float,default=0.10,
+                        help='''Overlaps with >= this amount of difference (pixels) in x/y alignment between meanimage 
+                                and BaSiC corrections will be trimmed before plotting or calculating statistics''')
+    parser.add_argument('--max_mse_diff',type=float,default=0.10,
+                        help='''Overlaps with >= this amount of relative MSE difference pre or post-correction with 
+                                either method will be trimmed before plotting or calculating statistics''')
     args = parser.parse_args()
     if not args.workingdir.is_dir() :
         args.workingdir.mkdir(parents=True)
@@ -366,7 +372,7 @@ def get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,mi_corr_s
         rn, basic_c_im_layer = basic_c_queue.get()
     return layer_images_by_rect_n
 
-def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,basic_df,save_dirpath,n_threads) :
+def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,basic_df,max_shift_diff,max_mse_diff,save_dirpath,n_threads) :
     overlap_comparison_fp = save_dirpath/'overlap_comparisons.csv'
     if overlap_comparison_fp.is_file() :
         overlap_comparisons_found = readtable(overlap_comparison_fp,AlignmentOverlapComparison)
@@ -436,6 +442,14 @@ def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,ba
             if len(new_comps)>0 :
                 writetable(overlap_comparison_fp,new_comps,append=True)
         overlap_comparisons[li+1] = [oc for oc in overlap_comparisons[li+1] if oc.error_code==0]
+        comps = overlap_comparisons[li+1]
+        comps = [oc for oc in comps if abs(oc.basic_dx-oc.meanimage_dx)<max_shift_diff and abs(oc.basic_dy-oc.meanimage_dy)<max_shift_diff]
+        comps = [oc for oc in comps if oc.orig_mse_diff/oc.orig_mse1<max_mse_diff and oc.basic_mse_diff/oc.basic_mse1<max_mse_diff and oc.meanimage_mse_diff/oc.meanimage_mse1<max_mse_diff]
+        pct_trimmed = 100.*(1.-((1.*len(comps))/(1.*len(overlap_comparisons[li+1]))))
+        msg=f'{timestamp()} Trimmed {pct_trimmed:.4f}% of overlaps in layer {li+1} that were poorly aligned or '
+        msg+= 'had large differences in alignment shifts'
+        print(msg)
+        overlap_comparisons[li+1] = comps
     return overlap_comparisons
 
 def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
@@ -444,12 +458,6 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
         layer_dir.mkdir(parents=True)
     for layer_n in overlap_comparisons_by_layer_n.keys() :
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
-        overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.10 and abs(oc.basic_dy-oc.meanimage_dy)<0.10]
-        overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.10 and oc.basic_mse_diff/oc.basic_mse1<0.10 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.10]
-        pct_trimmed = 100.*(1.-((1.*len(overlap_comparisons))/(1.*len(overlap_comparisons_by_layer_n[layer_n]))))
-        msg=f'{timestamp()} Trimmed {pct_trimmed:.4f}% of overlaps in layer {layer_n} that were poorly aligned or '
-        msg+= 'had large differences in alignment shifts'
-        print(msg)
         f,ax = plt.subplots(4,4,figsize=(4*6.4,4*4.6))
         sum_weights = np.sum(np.array([oc.npix for oc in overlap_comparisons]))
         orig_rel_residuals = [oc.orig_mse_diff/oc.orig_mse1 for oc in overlap_comparisons]
@@ -514,8 +522,6 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
         rel_mse_redux_diff_means.append([])
         rel_mse_redux_diff_stds.append([])
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
-        overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.10 and abs(oc.basic_dy-oc.meanimage_dy)<0.10]
-        overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.10 and oc.basic_mse_diff/oc.basic_mse1<0.10 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.10]
         for tag in (1,2,3,4) :
             tag_comparisons = [oc for oc in overlap_comparisons if oc.tag==tag]
             weights = [oc.npix for oc in tag_comparisons]
@@ -634,6 +640,7 @@ def main() :
                                                   meanimage_ff,
                                                   basic_flatfield,
                                                   basic_darkfield,
+                                                  args.max_shift_diff,args.max_mse_diff,
                                                   args.workingdir,
                                                   args.n_threads)
     #create the overlap MSE reduction comparison plots
