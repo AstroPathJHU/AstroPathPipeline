@@ -431,6 +431,7 @@ def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,ba
                                     args=(overlap,warp_samp.rectangles,layer_images_by_rect_n,li,overlap_comp_queue))
                 new_thread.start()
                 threads.append(new_thread)
+                p1_p2_pairs_done.add((overlap.p1,overlap.p2))
             for thread in threads :
                 thread.join()
             overlap_comp_queue.put(None)
