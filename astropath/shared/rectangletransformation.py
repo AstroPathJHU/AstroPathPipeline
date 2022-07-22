@@ -1,6 +1,7 @@
 #imports
 import abc, cv2
 import numpy as np
+from numba import njit
 
 class RectangleTransformationBase(abc.ABC):
   @abc.abstractmethod
@@ -45,15 +46,21 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
     exp_times = self._exp_times[np.newaxis,np.newaxis,:]
     med_ets = self._med_ets[np.newaxis,np.newaxis,:]
     offsets = self._offsets[np.newaxis,np.newaxis,:]
-    corr_img = np.where((originalimage-offsets)>0,
-                        offsets+(1.*med_ets/exp_times)*(originalimage-offsets),
-                        originalimage) #converted to a float here
+    corr_img = self.__get_corrected_image(originalimage,exp_times,med_ets,offsets) #converted to a float here
     if np.issubdtype(raw_img_dtype,np.integer) :
       #round, clip to range, and convert back to original datatype
       max_value = np.iinfo(raw_img_dtype).max
       return (np.clip(np.rint(corr_img),0,max_value)).astype(raw_img_dtype) 
     else :
       return (corr_img).astype(raw_img_dtype,casting='same_kind') #otherwise just convert back to original datatype
+
+  @staticmethod
+  @njit
+  def __get_corrected_image(originalimage,exp_times,med_ets,offsets) :
+    corr_img = np.where((originalimage-offsets)>0,
+                        offsets+(1.*med_ets/exp_times)*(originalimage-offsets),
+                        originalimage) 
+    return corr_img
 
 class RectangleExposureTimeTransformationSingleLayer(RectangleTransformationBase):
   """
