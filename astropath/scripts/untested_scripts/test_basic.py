@@ -596,7 +596,7 @@ def main() :
     meanimage_ff_name = [te.FlatfieldVersion for te in correction_model_entries if te.SlideID==args.slideID]
     meanimage_ff_fp = FLATFIELD_DIR/f'flatfield_{meanimage_ff_name[0]}.bin'
     #create the mean image sample
-    print(f'{timestamp()} creating MeanImageSamples for {args.slideID}')
+    print(f'{timestamp()} creating MeanImageSample for {args.slideID}')
     uncorrected_sample = MeanImageSample(args.root,samp=args.slideID,shardedim3root=args.rawfile_root,
                                        et_offset_file=None,
                                        #don't apply ANY corrections before running BaSiC
@@ -605,7 +605,7 @@ def main() :
                                        filetype='raw',
                                        )
     dims = (uncorrected_sample.fheight,uncorrected_sample.fwidth,uncorrected_sample.nlayersim3)
-    print(f'{timestamp()} done creating MeanImageSamples for {args.slideID}')
+    print(f'{timestamp()} done creating MeanImageSample for {args.slideID}')
     #create and save the basic flatfield
     print(f'{timestamp()} running BaSiC for {args.slideID}')
     basic_flatfield, basic_darkfield = run_basic(uncorrected_sample,args.workingdir,args.n_threads,args.no_darkfield)
