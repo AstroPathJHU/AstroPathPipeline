@@ -74,9 +74,9 @@ def add_rect_image_to_queue(rect,queue,layer_i) :
         im_layer = im[:,:,layer_i]
         queue.put(im_layer)
 
-def add_rect_image_and_index_to_queue(rect,queue,layer_i) :
+def add_rect_image_and_index_to_queue(rect,queue,layer_i=None) :
     with rect.using_corrected_im3() as im :
-        im_layer = im[:,:,layer_i]
+        im_layer = im[:,:,layer_i] if layer_i is not None else im
         queue.put((rect.n,im_layer))
 
 def add_mi_corr_rect_image_and_index_to_queue(rect,meanimage_ff,queue,layer_i) :
@@ -329,12 +329,12 @@ def illumination_variation_plots(samp,uncorr_mi,mi_corr_mi,basic_corr_mi,central
     plt.legend(loc='lower right')
     save_figure_in_dir(plt,fn,save_dirpath)
 
-def get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,mi_corr_samp,mi_ff,basic_ff,basic_df,li,needed_ns,n_threads) :
+def get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,warp_samp,basic_ff,basic_df,li,needed_ns,n_threads) :
     layer_images_by_rect_n = {}
     threads = []
     uncorr_queue = Queue(); mi_c_queue = Queue(); basic_c_queue = Queue()
-    for ir,(uc_r,mi_r) in enumerate(zip(uncorr_samp.rectangles,mi_corr_samp.rectangles)) :
-        if mi_r.n not in needed_ns :
+    for ir,(uc_r,w_r) in enumerate(zip(uncorr_samp.rectangles,warp_samp.rectangles)) :
+        if uc_r.n not in needed_ns :
             continue
         if ir%50==0 :
             print(f'{timestamp()}       getting images for rectangle {ir}(/{len(needed_ns)})')
@@ -346,7 +346,7 @@ def get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,mi_corr_s
         uncorr_thread = Thread(target=add_rect_image_and_index_to_queue,args=(uc_r,uncorr_queue,li))
         uncorr_thread.start()
         threads.append(uncorr_thread)
-        mi_c_thread = Thread(target=add_mi_corr_rect_image_and_index_to_queue,args=(mi_r,mi_ff,mi_c_queue,li))
+        mi_c_thread = Thread(target=add_rect_image_and_index_to_queue,args=(w_r,mi_c_queue))
         mi_c_thread.start()
         threads.append(mi_c_thread)
         basic_c_thread = Thread(target=add_basic_corr_rect_image_and_index_to_queue,
@@ -372,7 +372,7 @@ def get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,mi_corr_s
         rn, basic_c_im_layer = basic_c_queue.get()
     return layer_images_by_rect_n
 
-def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,basic_df,max_shift_diff,max_mse_diff,save_dirpath,n_threads) :
+def get_overlap_comparisons(uncorr_samp,args,mi_ff_fp,basic_ff,basic_df,max_shift_diff,max_mse_diff,save_dirpath,n_threads) :
     overlap_comparison_fp = save_dirpath/'overlap_comparisons.csv'
     if overlap_comparison_fp.is_file() :
         overlap_comparisons_found = readtable(overlap_comparison_fp,AlignmentOverlapComparison)
@@ -384,6 +384,12 @@ def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,ba
     overlap_comparisons = {}
     #do one layer at a time
     for li in range(uncorr_samp.nlayersim3) :
+        warp_samp = WarpingSample(args.root,samp=args.slideID,shardedim3root=args.rawfile_root,
+                                   et_offset_file=None,
+                                   skip_et_corrections=False,
+                                   flatfield_file=mi_ff_fp,warping_file=None,correction_model_file=None,
+                                   filetype='raw',layer=li+1,
+                                  )
         overlap_comparisons[li+1] = [oc for oc in overlap_comparisons_found if oc.layer_n==li+1]
         comp_ns_found = [oc.n for oc in overlap_comparisons[li+1]]
         p1_p2_pairs_done = set([(oc.p1,oc.p2) for oc in overlap_comparisons[li+1]])
@@ -398,8 +404,7 @@ def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,ba
             msg=f'{timestamp()}   Getting {len(needed_rect_ns)} uncorrected/corrected rectangle images for layer '
             msg+=f'{li+1} of {uncorr_samp.SlideID}'
             print(msg)
-            layer_images_by_rect_n = get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,mi_corr_samp,
-                                                                                            mi_ff,
+            layer_images_by_rect_n = get_pre_and_post_correction_rect_layer_images_by_index(uncorr_samp,warp_samp,
                                                                                             basic_ff,basic_df,
                                                                                             li,needed_rect_ns,n_threads)
             print(f'{timestamp()}   Getting overlap comparisons for layer {li+1} of {uncorr_samp.SlideID}')
@@ -446,9 +451,10 @@ def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,ba
         comps = overlap_comparisons[li+1]
         comps = [oc for oc in comps if abs(oc.basic_dx-oc.meanimage_dx)<max_shift_diff and abs(oc.basic_dy-oc.meanimage_dy)<max_shift_diff]
         comps = [oc for oc in comps if oc.orig_mse_diff/oc.orig_mse1<max_mse_diff and oc.basic_mse_diff/oc.basic_mse1<max_mse_diff and oc.meanimage_mse_diff/oc.meanimage_mse1<max_mse_diff]
+        n_trimmed = len(overlap_comparisons[li+1]) - len(comps)
         pct_trimmed = 100.*(1.-((1.*len(comps))/(1.*len(overlap_comparisons[li+1]))))
-        msg=f'{timestamp()} Trimmed {pct_trimmed:.4f}% of overlaps in layer {li+1} that were poorly aligned or '
-        msg+= 'had large differences in alignment shifts'
+        msg=f'{timestamp()} Trimmed {n_trimmed} overlaps ({pct_trimmed:.4f}%) in layer {li+1} that were poorly '
+        msg+= 'aligned or had large differences in alignment shifts'
         print(msg)
         overlap_comparisons[li+1] = comps
     return overlap_comparisons
@@ -598,14 +604,6 @@ def main() :
                                        flatfield_file=None,warping_file=None,correction_model_file=None,
                                        filetype='raw',
                                        )
-    meanimage_corrected_sample = MeanImageSample(args.root,samp=args.slideID,shardedim3root=args.rawfile_root,
-                                                 et_offset_file=None,
-                                                 skip_et_corrections=False, 
-                                                 #we'll apply the flatfield corrections manually to save time
-                                                 flatfield_file=None,
-                                                 warping_file=None,correction_model_file=None,
-                                                 filetype='raw',
-                                                 )
     dims = (uncorrected_sample.fheight,uncorrected_sample.fwidth,uncorrected_sample.nlayersim3)
     print(f'{timestamp()} done creating MeanImageSamples for {args.slideID}')
     #create and save the basic flatfield
@@ -627,18 +625,10 @@ def main() :
                                  central=False,
                                  save_dirpath=args.workingdir)
     #create the warping sample
-    print(f'{timestamp()} creating warping sample for {args.slideID}')
-    warping_sample = WarpingSample(args.root,samp=args.slideID,shardedim3root=args.rawfile_root,
-                                   et_offset_file=None,
-                                   skip_et_corrections=False,
-                                   flatfield_file=meanimage_ff_fp,warping_file=None,correction_model_file=None,
-                                   filetype='raw',
-                                  )
     print(f'{timestamp()} getting overlap comparisons for {args.slideID}')
     overlap_comparisons = get_overlap_comparisons(uncorrected_sample,
-                                                  meanimage_corrected_sample,
-                                                  warping_sample,
-                                                  meanimage_ff,
+                                                  args,
+                                                  meanimage_ff_fp,
                                                   basic_flatfield,
                                                   basic_darkfield,
                                                   args.max_shift_diff,args.max_mse_diff,
