@@ -522,8 +522,8 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
         rel_mse_redux_diff_means.append([])
         rel_mse_redux_diff_stds.append([])
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
-        for tag in (1,2,3,4) :
-            tag_comparisons = [oc for oc in overlap_comparisons if oc.tag==tag]
+        for tag_pair in [(1,9),(2,8),(3,7),(4,6)] :
+            tag_comparisons = [oc for oc in overlap_comparisons if oc.tag in tag_pair]
             weights = [oc.npix for oc in tag_comparisons]
             sum_weights = np.sum(np.array(weights))
             meanimage_rel_mse_reduxes = [1.-(oc.meanimage_mse_diff/oc.meanimage_mse1)/(oc.orig_mse_diff/oc.orig_mse1) for oc in tag_comparisons]
@@ -545,16 +545,16 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
         if i==0 :
             ax.errorbar(xaxis_vals[f_i:l_i],rel_mse_redux_diff_means[0,f_i:l_i],
                         yerr=rel_mse_redux_diff_stds[0,f_i:l_i],
-                        color='darkblue',marker='^',alpha=0.85,label='tag 1')
+                        color='darkblue',marker='^',alpha=0.85,label='tag 1/9')
             ax.errorbar(xaxis_vals[f_i:l_i]+0.1,rel_mse_redux_diff_means[1,f_i:l_i],
                         yerr=rel_mse_redux_diff_stds[1,f_i:l_i],
-                        color='darkorange',marker='v',alpha=0.85,label='tag 2')
+                        color='darkorange',marker='v',alpha=0.85,label='tag 2/8')
             ax.errorbar(xaxis_vals[f_i:l_i]+0.2,rel_mse_redux_diff_means[2,f_i:l_i],
                         yerr=rel_mse_redux_diff_stds[2,f_i:l_i],
-                        color='darkgreen',marker='<',alpha=0.85,label='tag 3')
+                        color='darkgreen',marker='<',alpha=0.85,label='tag 3/7')
             ax.errorbar(xaxis_vals[f_i:l_i]+0.3,rel_mse_redux_diff_means[3,f_i:l_i],
                         yerr=rel_mse_redux_diff_stds[3,f_i:l_i],
-                        color='darkmagenta',marker='>',alpha=0.85,label='tag 4')
+                        color='darkmagenta',marker='>',alpha=0.85,label='tag 4/6')
             ax.axvline(l_i+0.5,color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
         else :
             ax.errorbar(xaxis_vals[f_i:l_i],rel_mse_redux_diff_means[0,f_i:l_i],
