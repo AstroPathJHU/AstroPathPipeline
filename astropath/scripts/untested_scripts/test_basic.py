@@ -435,6 +435,7 @@ def get_overlap_comparisons(uncorr_samp,mi_corr_samp,warp_samp,mi_ff,basic_ff,ba
                 olap_comp = overlap_comp_queue.get()
             if len(new_comps)>0 :
                 writetable(overlap_comparison_fp,new_comps,append=True)
+        overlap_comparisons[li+1] = [oc for oc in overlap_comparisons[li+1] if oc.error_code==0]
     return overlap_comparisons
 
 def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
@@ -443,7 +444,6 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
         layer_dir.mkdir(parents=True)
     for layer_n in overlap_comparisons_by_layer_n.keys() :
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
-        overlap_comparisons = [oc for oc in overlap_comparisons if oc.error_code==0]
         overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.10 and abs(oc.basic_dy-oc.meanimage_dy)<0.10]
         overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.10 and oc.basic_mse_diff/oc.basic_mse1<0.10 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.10]
         pct_trimmed = 100.*(1.-((1.*len(overlap_comparisons))/(1.*len(overlap_comparisons_by_layer_n[layer_n]))))
@@ -514,7 +514,6 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
         rel_mse_redux_diff_means.append([])
         rel_mse_redux_diff_stds.append([])
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
-        overlap_comparisons = [oc for oc in overlap_comparisons if oc.error_code==0]
         overlap_comparisons = [oc for oc in overlap_comparisons if abs(oc.basic_dx-oc.meanimage_dx)<0.10 and abs(oc.basic_dy-oc.meanimage_dy)<0.10]
         overlap_comparisons = [oc for oc in overlap_comparisons if oc.orig_mse_diff/oc.orig_mse1<0.10 and oc.basic_mse_diff/oc.basic_mse1<0.10 and oc.meanimage_mse_diff/oc.meanimage_mse1<0.10]
         for tag in (1,2,3,4) :
@@ -530,7 +529,7 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
             rel_mse_redux_diff_stds[-1].append(stddev_rel_mse_redux_diffs)
     rel_mse_redux_diff_means = (np.array(rel_mse_redux_diff_means)).T
     rel_mse_redux_diff_stds = (np.array(rel_mse_redux_diff_stds)).T
-    xaxis_vals = list(range(1,len(overlap_comparisons_by_layer_n.keys())))
+    xaxis_vals = np.array(list(range(1,len(overlap_comparisons_by_layer_n.keys()))))
     f,ax = plt.subplots(figsize=(10.,4.6))
     ax.axhline(0.0,color='gray',linestyle='dotted')
     last_filter_layers = [lg[1] for lg in list(samp.layer_groups.values())[:-1]] 
