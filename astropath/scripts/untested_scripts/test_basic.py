@@ -485,8 +485,8 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
         ax[0][2].legend()
         ax[0][3].hist2d(alignment_x_diffs,alignment_y_diffs,bins=60,norm=mpl.colors.LogNorm())
         ax[0][3].set_title('alignment x/y differences')
-        for ti,tag in enumerate([1,2,3,4]) :
-            tag_comparisons = [oc for oc in overlap_comparisons if oc.tag==tag]
+        for ti,tag_pair in enumerate([(1,9),(2,8),(3,7),(4,6)]) :
+            tag_comparisons = [oc for oc in overlap_comparisons if oc.tag in tag_pair]
             weights = [oc.npix for oc in tag_comparisons]
             sum_weights = np.sum(np.array(weights))
             rel_residual_diffs = [(oc.basic_mse_diff/oc.basic_mse1)-(oc.meanimage_mse_diff/oc.meanimage_mse1) for oc in tag_comparisons]
@@ -498,17 +498,17 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
             stddev_rel_residual_redux_diffs = np.std(np.array(rel_residual_redux_diffs))
             w_mean_rel_residual_redux_diffs = np.sum(np.array([weight*rel_resid_redux_diff for weight,rel_resid_redux_diff in zip(weights,rel_residual_redux_diffs)]))/sum_weights
             ax[1][ti].hist(rel_residual_diffs,bins=80)
-            ax[1][ti].set_title(f'BaSiC-meanimage rel. residuals, tag={tag}')
+            ax[1][ti].set_title(f'BaSiC-meanimage rel. residuals, tag={tag_pair}')
             ax[1][ti].axvline(w_mean_rel_residual_diffs,label=f'w. mean = {w_mean_rel_residual_diffs:.4f}+/-{stddev_rel_residual_diffs:.4f}',color='r',linewidth=2)
             ax[1][ti].legend()
             ax[2][ti].hist2d(meanimage_rel_residual_reduxes,basic_rel_residual_reduxes,bins=60,norm=mpl.colors.LogNorm())
-            ax[2][ti].set_title(f'BaSiC vs. meanimage rel. residual reductions, tag={tag}')
+            ax[2][ti].set_title(f'BaSiC vs. meanimage rel. residual reductions, tag={tag_pair}')
             ax[2][ti].set_xlabel('meanimage rel. residual reductions')
             ax[2][ti].set_ylabel('BaSiC rel. residual reductions')
             ax[2][ti].axvline(0.,color='k',linewidth=2)
             ax[2][ti].axhline(0.,color='k',linewidth=2)
             ax[3][ti].hist(rel_residual_redux_diffs,bins=80)
-            ax[3][ti].set_title(f'BaSiC-meanimage rel. residual reductions, tag={tag}')
+            ax[3][ti].set_title(f'BaSiC-meanimage rel. residual reductions, tag={tag_pair}')
             ax[3][ti].axvline(w_mean_rel_residual_redux_diffs,label=f'w. mean = {w_mean_rel_residual_redux_diffs:.4f}+/-{stddev_rel_residual_redux_diffs:.4f}',color='r',linewidth=2)
             ax[3][ti].legend()
         plt.tight_layout()
