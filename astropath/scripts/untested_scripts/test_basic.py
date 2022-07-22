@@ -536,7 +536,7 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
             rel_mse_redux_diff_stds[-1].append(stddev_rel_mse_redux_diffs)
     rel_mse_redux_diff_means = (np.array(rel_mse_redux_diff_means)).T
     rel_mse_redux_diff_stds = (np.array(rel_mse_redux_diff_stds)).T
-    xaxis_vals = np.array(list(range(1,len(overlap_comparisons_by_layer_n.keys()))))
+    xaxis_vals = np.array(list(range(1,len(overlap_comparisons_by_layer_n.keys())+1)))
     f,ax = plt.subplots(figsize=(10.,4.6))
     ax.axhline(0.0,color='gray',linestyle='dotted')
     last_filter_layers = [lg[1] for lg in list(samp.layer_groups.values())[:-1]] 
