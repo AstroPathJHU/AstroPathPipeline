@@ -72,25 +72,25 @@ def get_arguments() :
 def add_rect_image_to_queue(rect,queue,layer_i) :
     with rect.using_corrected_im3() as im :
         im_layer = im[:,:,layer_i]
-        queue.put(im_layer)
+    queue.put(im_layer.copy())
 
 def add_rect_image_and_index_to_queue(rect,queue,layer_i=None) :
     with rect.using_corrected_im3() as im :
         im_layer = im[:,:,layer_i] if layer_i is not None else im
-        queue.put((rect.n,im_layer))
+    queue.put((rect.n,im_layer.copy()))
 
 def add_mi_corr_rect_image_and_index_to_queue(rect,meanimage_ff,queue,layer_i) :
     with rect.using_corrected_im3() as im :
         im_layer = im[:,:,layer_i]
         im_layer = im_layer/meanimage_ff[:,:,layer_i]
-        queue.put((rect.n,im_layer))
+    queue.put((rect.n,im_layer.copy()))
 
 def add_basic_corr_rect_image_and_index_to_queue(rect,basic_ff,basic_df,queue,layer_i) :
     with rect.using_corrected_im3() as im :
         im_layer = im[:,:,layer_i]
     corr_im_layer = pybasic.correct_illumination([im_layer],basic_ff[:,:,layer_i],basic_df[:,:,layer_i])
     corr_im_layer = corr_im_layer[0]
-    queue.put((rect.n,corr_im_layer))
+    queue.put((rect.n,corr_im_layer.copy()))
 
 def add_overlap_comparison_to_queue(overlap,rects,rect_images_by_n,li,queue) :
     overlap = copy.deepcopy(overlap)
