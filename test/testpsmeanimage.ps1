@@ -264,15 +264,9 @@ Class testpsmeanimage : testtools {
         #
         Write-Host '    putting sampledef file back'
         $sor = ($sampledes + $samplefile)
-        Write-Host '***sor:' $sor
-        Write-Host '***samplesor:' $samplesor
         $inp.sample.copy($sor, $samplesor)
-        Write-Host '***made it past first copy'
         $sor = ($sampledes1 + $samplefile1)
-        Write-Host '***sor:' $sor
-        Write-Host '***samplesor1:' $samplesor1
         $inp.sample.copy($sor, $samplesor1)
-        Write-Host '***made it past second copy'
         #
         Write-Host 'test python [meanimage] in workflow without apid finished'
         #
@@ -320,6 +314,10 @@ Class testpsmeanimage : testtools {
         #
         Write-Host '    putting sampledef file back'
         $sorxml = $inp.sample.Scanfolder()
+        Write-Host '***sorxml:' $sorxml
+        Write-Host '***sorxml gci:' (gci $sorxml)
+        Write-Host '***desxml:' $desxml
+        Write-Host '***desxml gci:' (gci $desxml)
         $inp.sample.copy($desxml, $sorxml, 'annotations.xml')
         #
         Write-Host 'test python [meanimage] in workflow without apid finished'
