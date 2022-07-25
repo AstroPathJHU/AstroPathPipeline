@@ -303,7 +303,7 @@ class copyutils{
         if ($filespec -match '\*'){
             $files = Get-ChildItem $sor
         } else {
-            $files = (Get-ChildItem $sor) -match $filespec
+            $files = ([array](Get-ChildItem $sor)) -match $filespec
         }
         return $files
     }

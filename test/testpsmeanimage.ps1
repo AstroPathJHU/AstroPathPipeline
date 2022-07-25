@@ -314,10 +314,6 @@ Class testpsmeanimage : testtools {
         #
         Write-Host '    putting sampledef file back'
         $sorxml = $inp.sample.Scanfolder()
-        Write-Host '***sorxml:' $sorxml
-        Write-Host '***sorxml gci:' (gci $sorxml)
-        Write-Host '***desxml:' $desxml
-        Write-Host '***desxml gci:' (gci $desxml)
         $inp.sample.copy($desxml, $sorxml, 'annotations.xml')
         #
         Write-Host 'test python [meanimage] in workflow without apid finished'
