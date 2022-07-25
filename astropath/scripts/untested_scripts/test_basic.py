@@ -464,6 +464,9 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
     if not layer_dir.is_dir() :
         layer_dir.mkdir(parents=True)
     for layer_n in overlap_comparisons_by_layer_n.keys() :
+        fn = f'overlap_mse_reduction_comparisons_layer_{layer_n}.png'
+        if (layer_dir/fn).is_file() :
+            continue
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
         f,ax = plt.subplots(4,4,figsize=(4*6.4,4*4.6))
         sum_weights = np.sum(np.array([oc.npix for oc in overlap_comparisons]))
@@ -519,7 +522,7 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
             ax[3][ti].axvline(w_mean_rel_residual_redux_diffs,label=f'w. mean = {w_mean_rel_residual_redux_diffs:.4f}+/-{stddev_rel_residual_redux_diffs:.4f}',color='r',linewidth=2)
             ax[3][ti].legend()
         plt.tight_layout()
-        save_figure_in_dir(plt,f'overlap_mse_reduction_comparisons_layer_{layer_n}.png',layer_dir)
+        save_figure_in_dir(plt,fn,layer_dir)
         plt.close()
 
 def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,save_dirpath) :
@@ -595,11 +598,11 @@ def overlap_mse_reduction_comparison_box_plot(samp,overlap_comparisons_by_layer_
         rel_mse_redux_diffs = [brrr-mirrr for brrr,mirrr in zip(basic_rel_mse_reduxes,meanimage_rel_mse_reduxes)]
         data_vals.append(rel_mse_redux_diffs)
     xaxis_vals = np.array(list(range(1,len(overlap_comparisons_by_layer_n.keys())+1)))
-    f,ax = plt.subplots(figsize=(10.,4.6))
-    ax.axhline(0.0,color='gray',linestyle='dotted')
+    f,ax = plt.subplots(figsize=(14.,6.4))
+    ax.axhline(0.0,color='darkblue',linestyle='dashed')
     ax.boxplot(data_vals,
                notch=True,
-               whis=(10,90),
+               whis=(5,95),
                bootstrap=3000,
                labels=xaxis_vals,
                sym='',
@@ -607,15 +610,17 @@ def overlap_mse_reduction_comparison_box_plot(samp,overlap_comparisons_by_layer_
     last_filter_layers = [lg[1] for lg in list(samp.layer_groups.values())[:-1]] 
     for i in range(len(last_filter_layers)+1) :
         l_i = xaxis_vals[-1] if i==len(last_filter_layers) else last_filter_layers[i]
-        if i==0 :
-            ax.axvline(l_i+0.5,color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
-        elif i!=len(last_filter_layers) :
+        if i!=len(last_filter_layers) :
             ax.axvline(l_i+0.5,color='black',linewidth=2,linestyle='dotted')
     ax.set_xticks(xaxis_vals)
-    ax.set_xticklabels(xaxis_vals)
+    ax.set_xticklabels(xaxis_vals,rotation=45)
     ax.set_xlabel('image layer')
     ax.set_ylabel('BaSiC-meanimage relative overlap MSE reductions')
-    ax.legend(loc='best')
+    ax.set_yscale('symlog')
+    #ax.set_ylim(ax.get_ylim()[0],5e-2)
+    ax.set_yticks([-10,-1,-0.1,0.0,0.1])
+    ax.get_yaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
+    ax.get_yaxis().set_minor_locator(mpl.ticker.FixedLocator([-20,-8,-6,-4,-2,-0.8,-0.6,-0.4,-0.2,-0.08,-0.06,-0.04,-0.02,0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18,0.22,0.24,0.26,0.28]))
     save_figure_in_dir(plt,'mse_reduction_differences_box_plot.png',save_dirpath)
     plt.close()
 
@@ -672,7 +677,7 @@ def main() :
     overlap_mse_reduction_plots(overlap_comparisons,args.workingdir)
     #create the single comparison plot over all layers
     print(f'{timestamp()} creating final summary plot for {args.slideID}')
-    #overlap_mse_reduction_comparison_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
+    overlap_mse_reduction_comparison_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
     overlap_mse_reduction_comparison_box_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
     print(f'{timestamp()} Done')
 
