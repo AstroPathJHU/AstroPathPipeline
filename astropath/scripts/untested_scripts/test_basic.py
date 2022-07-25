@@ -594,7 +594,6 @@ def overlap_mse_reduction_comparison_box_plot(samp,overlap_comparisons_by_layer_
         basic_rel_mse_reduxes = [1.-(oc.basic_mse_diff/oc.basic_mse1)/(oc.orig_mse_diff/oc.orig_mse1) for oc in overlap_comparisons]
         rel_mse_redux_diffs = [brrr-mirrr for brrr,mirrr in zip(basic_rel_mse_reduxes,meanimage_rel_mse_reduxes)]
         data_vals.append(rel_mse_redux_diffs)
-    data_vals = np.array(data_vals)
     xaxis_vals = np.array(list(range(1,len(overlap_comparisons_by_layer_n.keys())+1)))
     f,ax = plt.subplots(figsize=(10.,4.6))
     ax.axhline(0.0,color='gray',linestyle='dotted')
@@ -602,7 +601,9 @@ def overlap_mse_reduction_comparison_box_plot(samp,overlap_comparisons_by_layer_
                notch=True,
                whis=(10,90),
                bootstrap=3000,
-               labels=xaxis_vals)
+               labels=xaxis_vals,
+               sym='',
+               )
     last_filter_layers = [lg[1] for lg in list(samp.layer_groups.values())[:-1]] 
     for i in range(len(last_filter_layers)+1) :
         l_i = xaxis_vals[-1] if i==len(last_filter_layers) else last_filter_layers[i]
