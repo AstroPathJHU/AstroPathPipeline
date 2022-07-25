@@ -1,10 +1,13 @@
 # 4.4.3. SampleNames (Patient # or CS Numbers)
 When slides are cut, they may be labeled with a patients medical record number (MRN) or other unique patient number. In order for the slide to be processed through the pipeline, it must be given a de-identified number. These are the so called ```SampleName``` (in past versions ‘M’ numbers or ```Patient #```s). Because slide naming conventions maybe different across groups or institutions, consistence in these ```SampleName```s  can be difficult to keep up. To avoid any issues in processing the ```SampleName```s are converted to the ```SlideID```s as part of the intial steps in the AstroPathPipeline.
 
-Previously for these ```SampleName```'s, each cohort received its own alphabetical key at JHU. Currently we are using:
--	*M* for melanoma
+Previously for these ```SampleName```'s, each cohort received its own alphabetical key at JHU. We are used:
+-	*M* for Melanoma
 -	*L* for Lung
--	*MA* for melanoma stain 2
+-	*MA* for Melanoma stain 2
+-	P for Pancreatic cancer
+-	Y for Merkel Cell Carcinoma
+-	T for Trachea
 
 Currently for these ```SampleName```'s, each cohort receives its own Clinical Specimen Project Number. Currently we are using:
 -	To determine the next Clinical Specimen Number go to \\\BKI04\astropath_processing
