@@ -15,6 +15,7 @@ from .utilities import timestamp, AlignmentOverlapComparison, add_rect_image_to_
 from .utilities import get_pre_and_post_correction_rect_layer_images_by_index, add_overlap_comparison_to_queue
 from .plotting import illumination_variation_plots, overlap_mse_reduction_plots
 from .plotting import overlap_mse_reduction_comparison_plot, overlap_mse_reduction_comparison_box_plot
+from .plotting import overlap_correction_score_difference_box_plot
 
 #fast units setup
 units.setup('fast')
@@ -263,9 +264,10 @@ def main() :
     print(f'{timestamp()} creating overlap mse reduction plots for {args.slideID}')
     overlap_mse_reduction_plots(overlap_comparisons,args.workingdir)
     #create the single comparison plot over all layers
-    print(f'{timestamp()} creating final summary plot for {args.slideID}')
+    print(f'{timestamp()} creating final summary plots for {args.slideID}')
     overlap_mse_reduction_comparison_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
     overlap_mse_reduction_comparison_box_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
+    overlap_correction_score_difference_box_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
     print(f'{timestamp()} Done')
 
 if __name__=='__main__' :

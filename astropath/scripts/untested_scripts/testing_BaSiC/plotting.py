@@ -268,3 +268,38 @@ def overlap_mse_reduction_comparison_box_plot(samp,overlap_comparisons_by_layer_
     ax.get_yaxis().set_minor_locator(mpl.ticker.FixedLocator([-20,-8,-6,-4,-2,-0.8,-0.6,-0.4,-0.2,-0.08,-0.06,-0.04,-0.02,0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18,0.22,0.24,0.26,0.28]))
     save_figure_in_dir(plt,'mse_reduction_differences_box_plot.png',save_dirpath)
     plt.close()
+
+def overlap_correction_score_difference_box_plot(samp,overlap_comparisons_by_layer_n,save_dirpath) :
+    data_vals = []
+    for layer_n in overlap_comparisons_by_layer_n.keys() :
+        overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        meanimage_corr_scores = np.sqrt(np.array([oc.meanimage_mse_diff/oc.orig_mse_diff for oc in overlap_comparisons]))
+        basic_corr_scores = np.sqrt(np.array([oc.basic_mse_diff/oc.orig_mse_diff for oc in overlap_comparisons]))
+        corr_score_diffs = [bcs-mics for bcs,mics in zip(basic_corr_scores,meanimage_corr_scores)]
+        data_vals.append(corr_score_diffs)
+    xaxis_vals = np.array(list(range(1,len(overlap_comparisons_by_layer_n.keys())+1)))
+    f,ax = plt.subplots(figsize=(14.,6.4))
+    ax.axhline(0.0,color='darkblue',linestyle='dashed')
+    ax.boxplot(data_vals,
+               notch=True,
+               whis=(5,95),
+               bootstrap=3000,
+               labels=xaxis_vals,
+               sym='',
+               )
+    last_filter_layers = [lg[1] for lg in list(samp.layer_groups.values())[:-1]] 
+    for i in range(len(last_filter_layers)+1) :
+        l_i = xaxis_vals[-1] if i==len(last_filter_layers) else last_filter_layers[i]
+        if i!=len(last_filter_layers) :
+            ax.axvline(l_i+0.5,color='black',linewidth=2,linestyle='dotted')
+    ax.set_xticks(xaxis_vals)
+    ax.set_xticklabels(xaxis_vals,rotation=45)
+    ax.set_xlabel('image layer')
+    ax.set_ylabel('BaSiC-meanimage relative overlap MSE reductions')
+    #ax.set_yscale('symlog')
+    #ax.set_ylim(ax.get_ylim()[0],5e-2)
+    #ax.set_yticks([-10,-1,-0.1,0.0,0.1])
+    #ax.get_yaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
+    #ax.get_yaxis().set_minor_locator(mpl.ticker.FixedLocator([-20,-8,-6,-4,-2,-0.8,-0.6,-0.4,-0.2,-0.08,-0.06,-0.04,-0.02,0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18,0.22,0.24,0.26,0.28]))
+    save_figure_in_dir(plt,'correction_score_differences_box_plot.png',save_dirpath)
+    plt.close()
