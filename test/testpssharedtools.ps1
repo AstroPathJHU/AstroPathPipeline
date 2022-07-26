@@ -22,7 +22,7 @@
         $this.testcopy($tools)
         $this.testcopylinux($tools)
         $this.testfilehasher($tools)
-        $this.testgitstatus($tools)        
+        $this.testgitstatus($tools)
         Write-Host '.'
         #
     }
@@ -370,7 +370,7 @@
             throw 'missing files not picking up all files'
         }
         #
-        Write-host '    test verfiy checksum on missing files'
+        Write-host '    test verify checksum on missing files'
         $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
         $this.comparepaths($slidepath, $this.processloc, $tools, $true)
         #
@@ -386,7 +386,7 @@
         $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
         $this.comparepaths($slidepath, $this.processloc, $tools, $true)
         #
-        Write-Host '    edit one of the blank im3s and run verfiy check sum'
+        Write-Host '    edit one of the blank im3s and run verify check sum'
         $blankim3 = 'M21_1_[45628,12053].im3'
         $testfile = $des, $blankim3 -join '\'
         Write-Host '        editing:' $testfile
@@ -395,7 +395,7 @@
         $tools.verifyChecksum($slidepath, $this.processloc, '*', 1)
         $this.comparepaths($slidepath, $this.processloc, $tools, $true)
         #
-        Write-Host '    remove one of the blank im3s and run verfiy check sum'
+        Write-Host '    remove one of the blank im3s and run verify check sum'
         $blankim3 = 'M21_1_[45628,12053].im3'
         $testfile = $des, $blankim3 -join '\'
         Write-Host '        removing:' $testfile

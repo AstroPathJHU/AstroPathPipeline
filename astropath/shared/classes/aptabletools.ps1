@@ -387,16 +387,6 @@ class aptabletools : fileutils {
             ){$_}
         }}
         #
-        if (!$this.sampledef_local_data) {
-            $this.sampledef_local_data = @()
-        }
-        #
-        if ($this.sampledef_local_data -isnot [array]) {
-            $newarray = @()
-            $newarray += $this.sampledef_local_data
-            $this.sampledef_local_data = $newarray
-        }
-        #
         if ($createwatcher){
             $this.FileWatcher($defpath)
         }
@@ -894,6 +884,10 @@ class aptabletools : fileutils {
     #
     [array]findantibodies($basepath, $createwatcher){
         #
+        if (!$this.isWindows()) {
+            return @()
+        }
+        #
         $this.ImportMergeConfig($basepath, $createwatcher)
         if (!$this.mergeconfig_data){
             throw ('no merge config file for: ' + $basepath)
@@ -906,6 +900,10 @@ class aptabletools : fileutils {
     }
     #
     [void]findantibodies($basepath){
+        #
+        if (!$this.isWindows()) {
+            return
+        }
         #
         $this.mergeconfigtocsv()
         #
@@ -934,6 +932,10 @@ class aptabletools : fileutils {
     }
     #
     [void]getantibodies(){
+        #
+        if (!$this.isWindows()) {
+            return
+        }
         #
         $this.mergeconfigtocsv()
         $this.getantibodies($this.project)

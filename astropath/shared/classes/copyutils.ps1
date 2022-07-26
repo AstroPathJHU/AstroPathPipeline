@@ -170,10 +170,19 @@ class copyutils{
     ----------------------------------------- #>
     [void]lxcopy($sor, $des){
         #
-        $sor1 = $sor -replace '\\', '/'
+        if (Test-Path $sor -PathType Container) {
+            $this.lxcopy($sor, $des, '*')
+            return
+        }
+        #
+        $sor1 = $sor -replace '\\',  '/'
         $des1 = $des -replace '\\', '/'
-        mkdir -p $des1
-        Copy-Item $sor1 $des1 -r
+        #
+        if (!(Test-Path $des1)) {
+            mkdir -p $des1
+        }
+        #
+        Copy-Item -LiteralPath $sor1 $des1 -r
         #
     }
     <# -----------------------------------------
@@ -206,12 +215,14 @@ class copyutils{
         $des1 = $des -replace '\\', '/'
         $sor1 = $sor -replace '\\', '/'
         #
-        mkdir -p $des1
+        if (!(Test-Path $des1)) {
+            mkdir -p $des1
+        }
         #
         $files = $this.listfiles($sor1, $filespec)
         #
         $files | foreach-Object -Parallel { 
-            Copy-Item $_ -r $using:des1 
+            Copy-Item -LiteralPath $_ -r $using:des1 
         } -ThrottleLimit 20
         #
         $gitignore = $sor1 + '/.gitignore'
@@ -242,28 +253,57 @@ class copyutils{
         - sor: source folder path
         - filespec: an array of filespecs to transfer
      ------------------------------------------
-     Usage: copy(sor, filespec)
+     Usage: listfiles(sor, filespec)
     ----------------------------------------- #>
     [system.object]listfiles([string]$sor, [array]$filespec){
         #
-        if (!([System.IO.Directory]::Exists($sor))){
+        if ($this.isWindows()) {
+            if (!([System.IO.Directory]::Exists($sor))){
+                return @()
+            }
+            if ($filespec -match '\*'){
+                $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
+                     & {process{[System.IO.FileInfo]$_}}
+            } else {
+                $filespec = ($filespec | foreach-object {'.*' + $_ + '$'}) -join '|'
+                $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
+                     & {process{
+                         if ($_ -match $filespec){
+                            [System.IO.FileInfo]$_
+                         }
+                    }}
+            }
+        }
+        else {
+            $files = $this.lxlistfiles($sor, $filespec)
+        }
+        #
+        if (!$files) {
+            $files = @()
+        }
+        return $files
+    }
+    <# -----------------------------------------
+     lxlistfiles
+     list all files with a filespec or multiple
+     file specs in a folder in a linux os
+     ------------------------------------------
+     Input: 
+        - sor: source folder path
+        - filespec: an array of filespecs to transfer
+     ------------------------------------------
+     Usage: lxlistfiles(sor, filespec)
+    ----------------------------------------- #>
+    [system.object]lxlistfiles([string]$sor, [array]$filespec){
+        #
+        if (!$sor){
             return @()
         }
         #
         if ($filespec -match '\*'){
-            $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
-                 & {process{[System.IO.FileInfo]$_}}
+            $files = Get-ChildItem $sor
         } else {
-            $filespec = ($filespec | foreach-object {'.*' + $_ + '$'}) -join '|'
-            $files = [system.io.directory]::enumeratefiles($sor, '*.*', 'AllDirectories')  |
-                 & {process{
-                     if ($_ -match $filespec){
-                        [System.IO.FileInfo]$_
-                     }
-                }}
-        }
-        if (!$files) {
-            $files = @()
+            $files = ([array](Get-ChildItem $sor)) -match $filespec
         }
         return $files
     }
@@ -378,7 +418,7 @@ class copyutils{
             the number of times a file has 
             attempted to be copied.
      ------------------------------------------
-     Usage: copy(sor, des, filespec, copycount)
+     Usage: verifyChecksum(sor, des, filespec, copycount)
     ----------------------------------------- #>
     [void]verifyChecksum([string]$sor, [string]$des, 
         [array]$filespec, [int]$copycount){
@@ -405,12 +445,16 @@ class copyutils{
             #
             $sourcefiles = $this.listfiles($sor, $filespec)
             $desfiles = $this.listfiles($des, $filespec)
-            $missingfiles = ($sourcefiles | 
-                & { process {
-                    if ( $desfiles.name -notcontains $_.Name) { $_ }
-                }}
-                ).FullName
-
+            if ($desfiles.length -eq 0) {
+                $missingfiles = $sourcefiles.FullName
+            }
+            else {
+                $missingfiles = ($sourcefiles | 
+                    & { process {
+                        if ( $desfiles.name -notcontains $_.Name) { $_ }
+                    }}
+                    ).FullName
+            }
         } else {
             $sourcefiles = $sor
             $desfiles = $des + '\' + (Split-Path $sor -Leaf)
