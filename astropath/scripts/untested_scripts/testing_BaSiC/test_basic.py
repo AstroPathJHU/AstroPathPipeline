@@ -11,11 +11,11 @@ from astropath.utilities.img_file_io import get_raw_as_hwl, get_raw_as_hw, write
 from astropath.hpfs.imagecorrection.utilities import CorrectionModelTableEntry
 from astropath.hpfs.flatfield.meanimagesample import MeanImageSample
 from astropath.hpfs.warping.warpingsample import WarpingSample
-from .utilities import timestamp, AlignmentOverlapComparison, add_rect_image_to_queue
-from .utilities import get_pre_and_post_correction_rect_layer_images_by_index, add_overlap_comparison_to_queue
-from .plotting import illumination_variation_plots, overlap_mse_reduction_plots
-from .plotting import overlap_mse_reduction_comparison_plot, overlap_mse_reduction_comparison_box_plot
-from .plotting import overlap_correction_score_difference_box_plot
+from utilities import timestamp, AlignmentOverlapComparison, add_rect_image_to_queue
+from utilities import get_pre_and_post_correction_rect_layer_images_by_index, add_overlap_comparison_to_queue
+from plotting import illumination_variation_plots, overlap_mse_reduction_plots
+from plotting import overlap_mse_reduction_comparison_plot, overlap_mse_reduction_comparison_box_plot
+from plotting import overlap_correction_score_difference_box_plot, overlap_correction_score_plots, ks_test_plot
 
 #fast units setup
 units.setup('fast')
@@ -37,12 +37,15 @@ def get_arguments() :
     parser.add_argument('--n_threads',type=int,default=10,help='The number of parallel threads to use')
     parser.add_argument('--no_darkfield',action='store_true',
                         help='include this flag to skip computing a BaSiC darkfield')
-    parser.add_argument('--max_shift_diff',type=float,default=0.10,
+    parser.add_argument('--max_shift_diff',type=float,default=-900,
                         help='''Overlaps with >= this amount of difference (pixels) in x/y alignment between meanimage 
                                 and BaSiC corrections will be trimmed before plotting or calculating statistics''')
-    parser.add_argument('--max_mse_diff',type=float,default=0.10,
+    parser.add_argument('--max_mse_diff',type=float,default=-900,
                         help='''Overlaps with >= this amount of relative MSE difference pre or post-correction with 
                                 either method will be trimmed before plotting or calculating statistics''')
+    parser.add_argument('--skip_rerun_check',action='store_true',
+                        help='''Add this flag to skip creating a bunch of WarpSamples to make sure all overlap 
+                                comparisons have been run''')
     args = parser.parse_args()
     if not args.workingdir.is_dir() :
         args.workingdir.mkdir(parents=True)
@@ -125,7 +128,7 @@ def run_basic(samp,save_dirpath,n_threads,no_darkfield) :
             plt.close()
     return basic_flatfield, basic_darkfield
 
-def get_overlap_comparisons(uncorr_samp,args,mi_ff_fp,basic_ff,basic_df,max_shift_diff,max_mse_diff,save_dirpath,n_threads) :
+def get_overlap_comparisons(uncorr_samp,args,mi_ff_fp,basic_ff,basic_df,max_shift_diff,max_mse_diff,save_dirpath,n_threads,skip_rerun_check) :
     overlap_comparison_fp = save_dirpath/'overlap_comparisons.csv'
     if overlap_comparison_fp.is_file() :
         overlap_comparisons_found = readtable(overlap_comparison_fp,AlignmentOverlapComparison)
@@ -137,22 +140,24 @@ def get_overlap_comparisons(uncorr_samp,args,mi_ff_fp,basic_ff,basic_df,max_shif
     overlap_comparisons = {}
     #do one layer at a time
     for li in range(uncorr_samp.nlayersim3) :
-        warp_samp = WarpingSample(args.root,samp=args.slideID,shardedim3root=args.rawfile_root,
-                                   et_offset_file=None,
-                                   skip_et_corrections=False,
-                                   flatfield_file=mi_ff_fp,warping_file=None,correction_model_file=None,
-                                   filetype='raw',layer=li+1,
-                                  )
+        if not skip_rerun_check :
+            warp_samp = WarpingSample(args.root,samp=args.slideID,shardedim3root=args.rawfile_root,
+                                      et_offset_file=None,
+                                      skip_et_corrections=False,
+                                      flatfield_file=mi_ff_fp,warping_file=None,correction_model_file=None,
+                                      filetype='raw',layer=li+1,
+                                      )
         overlap_comparisons[li+1] = [oc for oc in overlap_comparisons_found if oc.layer_n==li+1]
         comp_ns_found = [oc.n for oc in overlap_comparisons[li+1]]
         p1_p2_pairs_done = set([(oc.p1,oc.p2) for oc in overlap_comparisons[li+1]])
         needed_rect_ns = set()
-        for overlap in warp_samp.overlaps :
-            if ( (overlap.n not in comp_ns_found) and 
-                 ((overlap.p1,overlap.p2) not in p1_p2_pairs_done) and 
-                 ((overlap.p2,overlap.p1) not in p1_p2_pairs_done) ):
-                needed_rect_ns.add(overlap.p1)
-                needed_rect_ns.add(overlap.p2)
+        if not skip_rerun_check :
+            for overlap in warp_samp.overlaps :
+                if ( (overlap.n not in comp_ns_found) and 
+                     ((overlap.p1,overlap.p2) not in p1_p2_pairs_done) and 
+                     ((overlap.p2,overlap.p1) not in p1_p2_pairs_done) ):
+                    needed_rect_ns.add(overlap.p1)
+                    needed_rect_ns.add(overlap.p2)
         if len(needed_rect_ns)>0 :
             msg=f'{timestamp()}   Getting {len(needed_rect_ns)} uncorrected/corrected rectangle images for layer '
             msg+=f'{li+1} of {uncorr_samp.SlideID}'
@@ -202,13 +207,16 @@ def get_overlap_comparisons(uncorr_samp,args,mi_ff_fp,basic_ff,basic_df,max_shif
                 writetable(overlap_comparison_fp,new_comps,append=True)
         overlap_comparisons[li+1] = [oc for oc in overlap_comparisons[li+1] if oc.error_code==0]
         comps = overlap_comparisons[li+1]
-        comps = [oc for oc in comps if abs(oc.basic_dx-oc.meanimage_dx)<max_shift_diff and abs(oc.basic_dy-oc.meanimage_dy)<max_shift_diff]
-        comps = [oc for oc in comps if oc.orig_mse_diff/oc.orig_mse1<max_mse_diff and oc.basic_mse_diff/oc.basic_mse1<max_mse_diff and oc.meanimage_mse_diff/oc.meanimage_mse1<max_mse_diff]
-        n_trimmed = len(overlap_comparisons[li+1]) - len(comps)
-        pct_trimmed = 100.*(1.-((1.*len(comps))/(1.*len(overlap_comparisons[li+1]))))
-        msg=f'{timestamp()} Trimmed {n_trimmed} overlaps ({pct_trimmed:.4f}%) in layer {li+1} that were poorly '
-        msg+= 'aligned or had large differences in alignment shifts'
-        print(msg)
+        if max_shift_diff!=-900. :
+            comps = [oc for oc in comps if abs(oc.basic_dx-oc.meanimage_dx)<max_shift_diff and abs(oc.basic_dy-oc.meanimage_dy)<max_shift_diff]
+        if max_mse_diff!=-900. :
+            comps = [oc for oc in comps if oc.orig_mse_diff/oc.orig_mse1<max_mse_diff and oc.basic_mse_diff/oc.basic_mse1<max_mse_diff and oc.meanimage_mse_diff/oc.meanimage_mse1<max_mse_diff]
+        if max_shift_diff!=-900. or max_mse_diff!=-900. :
+            n_trimmed = len(overlap_comparisons[li+1]) - len(comps)
+            pct_trimmed = 100.*(1.-((1.*len(comps))/(1.*len(overlap_comparisons[li+1]))))
+            msg=f'{timestamp()} Trimmed {n_trimmed} overlaps ({pct_trimmed:.4f}%) in layer {li+1} that were poorly '
+            msg+= 'aligned or had large differences in alignment shifts'
+            print(msg)
         overlap_comparisons[li+1] = comps
     return overlap_comparisons
 
@@ -259,15 +267,18 @@ def main() :
                                                   basic_darkfield,
                                                   args.max_shift_diff,args.max_mse_diff,
                                                   args.workingdir,
-                                                  args.n_threads)
+                                                  args.n_threads,
+                                                  args.skip_rerun_check)
     #create the overlap MSE reduction comparison plots
-    print(f'{timestamp()} creating overlap mse reduction plots for {args.slideID}')
+    print(f'{timestamp()} creating correction score and overlap mse reduction plots for {args.slideID}')
     overlap_mse_reduction_plots(overlap_comparisons,args.workingdir)
-    #create the single comparison plot over all layers
+    overlap_correction_score_plots(overlap_comparisons,args.workingdir)
+    #create the comparison plots over all layers
     print(f'{timestamp()} creating final summary plots for {args.slideID}')
     overlap_mse_reduction_comparison_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
     overlap_mse_reduction_comparison_box_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
     overlap_correction_score_difference_box_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
+    #ks_test_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
     print(f'{timestamp()} Done')
 
 if __name__=='__main__' :

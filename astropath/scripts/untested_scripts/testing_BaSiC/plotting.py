@@ -1,8 +1,9 @@
 #imports
 import numpy as np, matplotlib as mpl, matplotlib.pyplot as plt
+from scipy.stats import ks_2samp
 from astropath.utilities.miscplotting import save_figure_in_dir
 from astropath.utilities.img_file_io import smooth_image_worker
-from .utilities import timestamp
+from utilities import timestamp
 
 def illumination_variation_plots(samp,uncorr_mi,mi_corr_mi,basic_corr_mi,central=False,save_dirpath=None) :
     fn = 'smoothed_mean_image_pixel_intensities'
@@ -170,6 +171,65 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
         save_figure_in_dir(plt,fn,layer_dir)
         plt.close()
 
+def overlap_correction_score_plots(overlap_comparisons_by_layer_n,save_dirpath) :
+    layer_dir = save_dirpath/'correction_score_layer_plots'
+    if not layer_dir.is_dir() :
+        layer_dir.mkdir(parents=True)
+    for layer_n in overlap_comparisons_by_layer_n.keys() :
+        fn = f'correction_scores_layer_{layer_n}.png'
+        if (layer_dir/fn).is_file() :
+            continue
+        overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        f,ax = plt.subplots(3,4,figsize=(4*6.4,3*4.6))
+        sum_weights = np.sum(np.array([oc.npix for oc in overlap_comparisons]))
+        orig_rel_residuals = [oc.orig_mse_diff/oc.orig_mse1 for oc in overlap_comparisons]
+        stddev_orig_rel_residuals = np.std(np.array(orig_rel_residuals))
+        w_mean_orig_rel_residuals = np.sum(np.array([oc.npix*(oc.orig_mse_diff/oc.orig_mse1) for oc in overlap_comparisons]))/sum_weights
+        meanimage_corr_scores = [np.sqrt(oc.meanimage_mse_diff)/np.sqrt(oc.orig_mse_diff) for oc in overlap_comparisons]
+        stddev_meanimage_corr_scores = np.std(np.array(meanimage_corr_scores))
+        w_mean_meanimage_corr_scores = np.sum(np.array([oc.npix*np.sqrt(oc.meanimage_mse_diff)/np.sqrt(oc.orig_mse_diff) for oc in overlap_comparisons]))/sum_weights
+        basic_corr_scores = [np.sqrt(oc.basic_mse_diff)/np.sqrt(oc.orig_mse_diff) for oc in overlap_comparisons]
+        stddev_basic_corr_scores = np.std(np.array(basic_corr_scores))
+        w_mean_basic_corr_scores = np.sum(np.array([oc.npix*np.sqrt(oc.basic_mse_diff)/np.sqrt(oc.orig_mse_diff) for oc in overlap_comparisons]))/sum_weights
+        alignment_x_diffs = [oc.basic_dx-oc.meanimage_dx for oc in overlap_comparisons]
+        alignment_y_diffs = [oc.basic_dy-oc.meanimage_dy for oc in overlap_comparisons]
+        ax[0][0].hist(orig_rel_residuals,bins=80)
+        ax[0][0].set_title('uncorrected relative residuals')
+        ax[0][0].axvline(w_mean_orig_rel_residuals,label=f'w. mean = {w_mean_orig_rel_residuals:.4f}+/-{stddev_orig_rel_residuals:.4f}',color='r',linewidth=2)
+        ax[0][0].legend()
+        ax[0][1].hist(meanimage_corr_scores,bins=80)
+        ax[0][1].set_title('meanimage correction scores')
+        ax[0][1].axvline(w_mean_meanimage_corr_scores,label=f'w. mean = {w_mean_meanimage_corr_scores:.4f}+/-{stddev_meanimage_corr_scores:.4f}',color='r',linewidth=2)
+        ax[0][1].legend()
+        ax[0][2].hist(basic_corr_scores,bins=80)
+        ax[0][2].set_title('BaSiC correction scores')
+        ax[0][2].axvline(w_mean_basic_corr_scores,label=f'w. mean = {w_mean_basic_corr_scores:.4f}+/-{stddev_basic_corr_scores:.4f}',color='r',linewidth=2)
+        ax[0][2].legend()
+        ax[0][3].hist2d(alignment_x_diffs,alignment_y_diffs,bins=60,norm=mpl.colors.LogNorm())
+        ax[0][3].set_title('alignment x/y differences')
+        for ti,tag_pair in enumerate([(1,9),(2,8),(3,7),(4,6)]) :
+            tag_comparisons = [oc for oc in overlap_comparisons if oc.tag in tag_pair]
+            weights = [oc.npix for oc in tag_comparisons]
+            sum_weights = np.sum(np.array(weights))
+            corr_score_diffs = [(np.sqrt(oc.basic_mse_diff)-np.sqrt(oc.meanimage_mse_diff))/np.sqrt(oc.orig_mse_diff) for oc in tag_comparisons]
+            stddev_corr_score_diffs = np.std(np.array(corr_score_diffs))
+            w_mean_corr_score_diffs = np.sum(np.array([weight*rel_resid_diff for weight,rel_resid_diff in zip(weights,corr_score_diffs)]))/sum_weights
+            meanimage_corr_scores = [np.sqrt(oc.meanimage_mse_diff)/np.sqrt(oc.orig_mse_diff) for oc in tag_comparisons]
+            basic_corr_scores = [np.sqrt(oc.basic_mse_diff)/np.sqrt(oc.orig_mse_diff) for oc in tag_comparisons]
+            ax[1][ti].hist(corr_score_diffs,bins=80)
+            ax[1][ti].set_title(f'BaSiC-meanimage correction scores, tag={tag_pair}')
+            ax[1][ti].axvline(w_mean_corr_score_diffs,label=f'w. mean = {w_mean_corr_score_diffs:.4f}+/-{stddev_corr_score_diffs:.4f}',color='r',linewidth=2)
+            ax[1][ti].legend()
+            ax[2][ti].hist2d(meanimage_corr_scores,basic_corr_scores,bins=60,norm=mpl.colors.LogNorm())
+            ax[2][ti].set_title(f'BaSiC vs. meanimage correction scores, tag={tag_pair}')
+            ax[2][ti].set_xlabel('meanimage correction scores')
+            ax[2][ti].set_ylabel('BaSiC correction scores')
+            ax[2][ti].axvline(1.,color='k',linewidth=2)
+            ax[2][ti].axhline(1.,color='k',linewidth=2)
+        plt.tight_layout()
+        save_figure_in_dir(plt,fn,layer_dir)
+        plt.close()
+
 def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,save_dirpath) :
     rel_mse_redux_diff_means = []
     rel_mse_redux_diff_stds = []
@@ -295,11 +355,63 @@ def overlap_correction_score_difference_box_plot(samp,overlap_comparisons_by_lay
     ax.set_xticks(xaxis_vals)
     ax.set_xticklabels(xaxis_vals,rotation=45)
     ax.set_xlabel('image layer')
-    ax.set_ylabel('BaSiC-meanimage relative overlap MSE reductions')
-    #ax.set_yscale('symlog')
-    #ax.set_ylim(ax.get_ylim()[0],5e-2)
-    #ax.set_yticks([-10,-1,-0.1,0.0,0.1])
-    #ax.get_yaxis().set_major_formatter(mpl.ticker.ScalarFormatter())
-    #ax.get_yaxis().set_minor_locator(mpl.ticker.FixedLocator([-20,-8,-6,-4,-2,-0.8,-0.6,-0.4,-0.2,-0.08,-0.06,-0.04,-0.02,0.02,0.04,0.06,0.08,0.12,0.14,0.16,0.18,0.22,0.24,0.26,0.28]))
+    ax.set_ylabel('BaSiC-meanimage correction scores')
     save_figure_in_dir(plt,'correction_score_differences_box_plot.png',save_dirpath)
+    plt.close()
+
+def ks_test_plot(samp,overlap_comparisons_by_layer_n,save_dirpath) :
+    correction_scores_two_sided = []
+    rel_residuals_two_sided = []
+    correction_scores_basic_less = []
+    rel_residuals_basic_less = []
+    for layer_n in overlap_comparisons_by_layer_n.keys() :
+        overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        overlap_comparisons = overlap_comparisons[:100]
+        meanimage_corr_scores = np.sqrt(np.array([oc.meanimage_mse_diff/oc.orig_mse_diff for oc in overlap_comparisons]))
+        basic_corr_scores = np.sqrt(np.array([oc.basic_mse_diff/oc.orig_mse_diff for oc in overlap_comparisons]))
+        meanimage_rel_residuals = [oc.meanimage_mse_diff/oc.meanimage_mse1 for oc in overlap_comparisons]
+        basic_rel_residuals = [oc.basic_mse_diff/oc.basic_mse1 for oc in overlap_comparisons]
+        res = ks_2samp(basic_corr_scores,meanimage_corr_scores,alternative='two-sided',mode='auto')
+        correction_scores_two_sided.append(1.*res.pvalue)
+        res = ks_2samp(basic_rel_residuals,meanimage_rel_residuals,alternative='two-sided',mode='auto')
+        rel_residuals_two_sided.append(1.*res.pvalue)
+        res = ks_2samp(basic_corr_scores,meanimage_corr_scores,alternative='less',mode='auto')
+        correction_scores_basic_less.append(1.*res.pvalue)
+        res = ks_2samp(basic_rel_residuals,meanimage_rel_residuals,alternative='less',mode='auto')
+        rel_residuals_basic_less.append(1.*res.pvalue)
+    xaxis_vals = np.array(list(range(1,len(overlap_comparisons_by_layer_n.keys())+1)))
+    f,ax = plt.subplots(figsize=(14.,6.4))
+    ax.axhline(0.01,color='gray',linestyle='dashed')
+    last_filter_layers = [lg[1] for lg in list(samp.layer_groups.values())[:-1]] 
+    for i in range(len(last_filter_layers)+1) :
+        f_i = 0 if i==0 else last_filter_layers[i-1]
+        l_i = xaxis_vals[-1] if i==len(last_filter_layers) else last_filter_layers[i]
+        if i==0 :
+            ax.plot(xaxis_vals[f_i:l_i],correction_scores_two_sided[f_i:l_i],
+                        color='darkblue',marker='^',alpha=0.85,label='correction scores, 2-sided')
+            ax.plot(xaxis_vals[f_i:l_i],rel_residuals_two_sided[f_i:l_i],
+                        color='darkorange',marker='v',alpha=0.85,label='relative MSE residuals, 2-sided')
+            ax.plot(xaxis_vals[f_i:l_i],correction_scores_basic_less[f_i:l_i],
+                        color='darkgreen',marker='<',alpha=0.85,label='correction scores, BaSiC < meanimage')
+            ax.plot(xaxis_vals[f_i:l_i],rel_residuals_basic_less[f_i:l_i],
+                        color='darkmagenta',marker='>',alpha=0.85,label='relative MSE residuals, BaSiC < meanimage')
+            ax.axvline(l_i+0.5,color='black',linewidth=2,linestyle='dotted',label='broadband filter changeover')
+        else :
+            ax.plot(xaxis_vals[f_i:l_i],correction_scores_two_sided[f_i:l_i],
+                        color='darkblue',marker='^',alpha=0.85)
+            ax.plot(xaxis_vals[f_i:l_i],rel_residuals_two_sided[f_i:l_i],
+                        color='darkorange',marker='v',alpha=0.85)
+            ax.plot(xaxis_vals[f_i:l_i],correction_scores_basic_less[f_i:l_i],
+                        color='darkgreen',marker='<',alpha=0.85)
+            ax.plot(xaxis_vals[f_i:l_i],rel_residuals_basic_less[f_i:l_i],
+                        color='darkmagenta',marker='>',alpha=0.85)
+            if i!=len(last_filter_layers) :
+                ax.axvline(l_i+0.5,color='black',linewidth=2,linestyle='dotted')
+    ax.legend(loc='best')
+    ax.set_xticks(xaxis_vals)
+    ax.set_xticklabels(xaxis_vals,rotation=45)
+    ax.set_xlabel('image layer')
+    ax.set_ylabel('KS p-value')
+    ax.set_yscale('log')
+    save_figure_in_dir(plt,'ks_test_plot.png',save_dirpath)
     plt.close()
