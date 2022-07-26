@@ -1,6 +1,6 @@
 import contextlib, datetime, job_lock, os, re
 from ...utilities.config import CONST as UNIV_CONST
-from ...shared.cohort import GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort
+from ...shared.cohort import FilterResult, GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SampleFilter, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
 from ...shared.samplemetadata import SampleDef
 from ...shared.workflowdependency import WorkflowDependency
@@ -28,7 +28,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   def inputfiles(self, **kwargs):
     return []  #will be checked in run()
 
-  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[]):
+  def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[], segmentationalgorithms=None):
     toload = []
     batchcsvs = {
       self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
@@ -181,11 +181,37 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
   sampleclass = CsvScanSample
   __doc__ = sampleclass.__doc__
 
-  def sampleswithfilters(self, **kwargs):
-    yield from super().sampleswithfilters(**kwargs)
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    result = {
+      **super().initkwargsfromargumentparser(parsed_args_dict)
+    }
+    def correctsegmentations(self, sample, **kwargs):
+      segmentationalgorithms = frozenset(self.segmentationalgorithms)
+      folder = self.geomroot/sample.SlideID/"geom"
+      geomalgorithms = frozenset(subfolder.name for subfolder in folder.glob("*/") if any(subfolder.iterdir()))
+      messages = []
+      missing = segmentationalgorithms - geomalgorithms
+      extras = geomalgorithms - segmentationalgorithms
+      if missing: messages.append(f"Sample has missing algorithms in geom: {', '.join(missing)}.")
+      if extras: messages.append(f"Sample has extra algorithms in geom: {', '.join(extras)}.")
+      if missing or extras:
+        return FilterResult(False, " ".join(messages))
+      else:
+        return FilterResult(True, "Sample has the right segmentation algorithms in geom.")
+    if not parsed_args_dict["print_errors"]:
+      result["slideidfilters"].append(SampleFilter(correctsegmentations, None, None))
+    return result
+
+  def samplesandsampledefswithfilters(self, **kwargs):
+    yield from super().samplesandsampledefswithfilters(**kwargs)
     globalcsv = self.globalcsv()
     filters = [filter(self, globalcsv, **kwargs) for filter in self.samplefilters]
     yield self.globalcsv(), filters
+
+  @property
+  def initiatesamplekwargs(self):
+    return {**super().initiatesamplekwargs, "segmentationalgorithms": self.segmentationalgorithms}
 
   def runsample(self, sample, **kwargs):
     return sample.runcsvscan(**kwargs)
@@ -212,6 +238,8 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         "moremainlogroots": True,
         "skipstartfinish": True,
         "printthreshold": True,
+        "segmentationalgorithms": True,
+        "sampledefroot": True,
       }[k]
     }
 

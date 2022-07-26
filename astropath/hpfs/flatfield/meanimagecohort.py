@@ -3,7 +3,7 @@ from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentP
 from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort
 from .meanimagesample import MeanImageSample
 
-class MeanImageCohort(CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, 
+class MeanImageCohort(CorrectedImageCohort, ParallelCohort, MaskCohort, SelectRectanglesCohort, 
                       WorkflowCohort, WorkingDirArgumentParser, FileTypeArgumentParser) :
     sampleclass = MeanImageSample
     __doc__ = sampleclass.__doc__
@@ -15,8 +15,8 @@ class MeanImageCohort(CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, 
         self.skip_masking = skip_masking
 
     @classmethod
-    def makeargumentparser(cls) :
-        p = super().makeargumentparser()
+    def makeargumentparser(cls, **kwargs) :
+        p = super().makeargumentparser(**kwargs)
         p.add_argument('--skip-masking', action='store_true',
                        help='''Add this flag to entirely skip masking out the background regions of the images 
                                as they get added [use this argument to completely skip the background thresholding 

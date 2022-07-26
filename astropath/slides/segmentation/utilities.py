@@ -1,8 +1,7 @@
 #imports
-import shutil
+import re, shutil
 import numpy as np, SimpleITK as sitk
 from hashlib import sha512
-from skimage.segmentation import find_boundaries
 from .config import SEG_CONST
 
 def split_model_files(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR,
@@ -135,24 +134,20 @@ def convert_nnunet_output(segmented_nifti_path,segmented_file_path) :
     np.savez_compressed(segmented_file_path,output_img)
     assert segmented_file_path.is_file()
 
-def run_deepcell_nuclear_segmentation(im,app,pscale,segmented_file_path) :
+def run_deepcell_nuclear_segmentation(batch_ims,app,pscale,batch_segmented_file_paths) :
     """
-    Run DeepCell nuclear segmentation for a given image with a given application and write out the output
+    Run DeepCell nuclear segmentation for a given batch of images with a given application and write out the output
     """
-    img = np.expand_dims(im,axis=-1)
-    img = np.expand_dims(img,axis=0)
-    labeled_img = app.predict(img,image_mpp=1./pscale)
-    labeled_img = labeled_img[0,:,:,0]
-    boundaries = find_boundaries(labeled_img)
-    output_img = np.zeros(labeled_img.shape,dtype=np.uint8)
-    output_img[labeled_img!=0] = 2
-    output_img[boundaries] = 1
-    np.savez_compressed(segmented_file_path,output_img)
-    assert segmented_file_path.is_file()
+    labeled_batch_ims = app.predict(batch_ims,image_mpp=1./pscale)
+    for bi in range(batch_ims.shape[0]) :
+        labeled_img = labeled_batch_ims[bi,:,:,0]
+        np.savez_compressed(batch_segmented_file_paths[bi],labeled_img)
+    for bi in range(batch_ims.shape[0]) :
+        assert batch_segmented_file_paths[bi].is_file()
 
 def run_mesmer_segmentation(batch_ims,app,pscale,batch_segmented_file_paths) :
     """
-    Run Mesmer whole-cell and nuclear segmentationss for a given batch of images 
+    Run Mesmer whole-cell and nuclear segmentations for a given batch of images 
     with a given application and write out the output
     """
     labeled_batch_ims = app.predict(batch_ims,image_mpp=1./pscale,compartment='both')
@@ -161,4 +156,26 @@ def run_mesmer_segmentation(batch_ims,app,pscale,batch_segmented_file_paths) :
         np.savez_compressed(batch_segmented_file_paths[bi],labeled_img)
     for bi in range(batch_ims.shape[0]) :
         assert batch_segmented_file_paths[bi].is_file()
-    pass
+
+def initialize_app(appcls, *args, ntries=5, logger=None, **kwargs):
+    try:
+        return appcls(*args, **kwargs)
+    except Exception as e:
+        if ntries <= 1: raise
+        errno = None
+        try:
+            errno = e.errno
+        except AttributeError:
+            match = re.search(r"\[Errno ([0-9-]+)\]", str(e))
+            if match:
+                errno = int(match.group(1))
+        retry = False
+        if errno == -3:  #Temporary failure in name resolution in aws download
+            retry = True
+        if retry:
+            if logger is not None:
+                logger.debug(f"initializing {appcls.__name__} failed")
+                logger.debug(str(e))
+                logger.debug("trying again")
+            return initialize_app(appcls, *args, ntries=ntries-1, **kwargs)
+        raise

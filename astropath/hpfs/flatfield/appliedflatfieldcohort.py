@@ -143,7 +143,12 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
                                 self.__field_logs_cmi)
             #write the output from the corrected mean image
             logger.info('Creating plots and writing output for corrected mean image....')
-            self.__corrected_meanimage.write_output(self.__workingdir)
+            samp = None
+            for sample in self.samples() :
+                if samp is None :
+                    samp = sample
+                    break
+            self.__corrected_meanimage.write_output(samp,self.__workingdir)
 
     def runsample(self,sample,**kwargs) :
         """
@@ -162,14 +167,15 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
         #add half the rectangles to the flatfield model
         msg = f'{sample.SlideID} will add {len(sample.flatfield_rectangles)} images to the flatfield model'
         sample.logger.info(msg)
-        new_field_logs = self.__flatfield.stack_rectangle_images(sample.flatfield_rectangles,sample.med_ets,
+        new_field_logs = self.__flatfield.stack_rectangle_images(sample,sample.flatfield_rectangles,sample.med_ets,
                                                                  sample.image_masking_dirpath)
         self.__field_logs_ff+=new_field_logs
         self.__metadata_summaries_ff.append(sample.flatfield_metadata_summary)
         #add the other half of the rectangles to the corrected mean image
         msg = f'{sample.SlideID} will add {len(sample.meanimage_rectangles)} images to the corrected mean image'
         sample.logger.info(msg)
-        new_field_logs = self.__corrected_meanimage.stack_rectangle_images(sample.meanimage_rectangles,sample.med_ets,
+        new_field_logs = self.__corrected_meanimage.stack_rectangle_images(sample,sample.meanimage_rectangles,
+                                                                           sample.med_ets,
                                                                            sample.image_masking_dirpath)
         self.__field_logs_cmi+=new_field_logs
         self.__metadata_summaries_cmi.append(sample.corrected_meanimage_metadata_summary)
@@ -194,8 +200,8 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
     #################### CLASS METHODS ####################
 
     @classmethod
-    def makeargumentparser(cls):
-        p = super().makeargumentparser()
+    def makeargumentparser(cls, **kwargs):
+        p = super().makeargumentparser(**kwargs)
         p.add_argument('workingdir', type=pathlib.Path, help='Path to the directory that should hold the results')
         p.add_argument('--skip-masking', action='store_true',
                        help='''Add this flag to entirely skip masking out the background regions 

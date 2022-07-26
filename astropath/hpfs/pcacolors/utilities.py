@@ -34,6 +34,7 @@ def get_median_im_compiled(im,n_regions,regions_im,pixels_to_use_ri) :
     pixels_to_use_ri = an image where the pixels that should be used to compute the median 
                        for each region have the same label as their corresponding region to 
                        replace in regions_im
+    this is some new text : )
     """
     im_c = np.copy(im)
     nlayers = im.shape[-1]

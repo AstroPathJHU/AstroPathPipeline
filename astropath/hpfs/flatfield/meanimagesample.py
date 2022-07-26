@@ -80,28 +80,19 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
     @property
     def image_masking_dirpath(self) :
         return self.__image_masking_dirpath
-    @property
-    def mask_layer_groups(self) :
-        if self.nlayersim3==35 :
-            return UNIV_CONST.LAYER_GROUPS_35
-        elif self.nlayersim3==43 :
-            return UNIV_CONST.LAYER_GROUPS_43
-        else :
-            errmsg = f'ERROR: no defined list of broadband filter breaks for images with {self.nlayersim3} layers!'
-            raise ValueError(errmsg)
     @methodtools.lru_cache()
     @property
     def exposure_time_histograms_and_bins_by_layer_group(self) :
-        all_exp_times = []
-        for lgi in range(len(self.mask_layer_groups)) :
-            all_exp_times.append([])
+        all_exp_times = {}
+        for lgn in self.layer_groups.keys() :
+            all_exp_times[lgn] = []
         for r in self.rectangles :
-            for lgi,lgb in enumerate(self.mask_layer_groups) :
-                all_exp_times[lgi].append(r.allexposuretimes[lgb[0]-1])    
-        exp_time_hists_and_bins = []
-        for lgi in range(len(self.mask_layer_groups)) :
-            newhist,newbins = np.histogram(all_exp_times[lgi],bins=60)
-            exp_time_hists_and_bins.append((newhist,newbins))
+            for lgn,lgb in self.layer_groups.items() :
+                all_exp_times[lgn].append(r.allexposuretimes[lgb[0]-1])    
+        exp_time_hists_and_bins = {}
+        for lgn in self.layer_groups.keys() :
+            newhist,newbins = np.histogram(all_exp_times[lgn],bins=60)
+            exp_time_hists_and_bins[lgn] = (newhist,newbins)
         return exp_time_hists_and_bins
 
     @property
@@ -114,8 +105,8 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
     #################### CLASS METHODS ####################
 
     @classmethod
-    def makeargumentparser(cls):
-        p = super().makeargumentparser()
+    def makeargumentparser(cls, **kwargs):
+        p = super().makeargumentparser(**kwargs)
         p.add_argument('--skip-masking', action='store_true',
                    help='''Add this flag to entirely skip masking out the background regions of the images 
                            as they get added [use this argument to completely skip the background thresholding 
@@ -179,9 +170,10 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                         r_key = (r.n,r.file)
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         proc_results[r_key] = pool.apply_async(return_new_mask_labelled_regions,
-                                                               (im,r.file.rstrip(UNIV_CONST.IM3_EXT),
-                                                                background_thresholds,
-                                                                ets,self.__image_masking_dirpath))
+                                                               (im,self.layer_groups,self.brightest_layers,
+                                                                r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                                background_thresholds,ets,
+                                                                self.__image_masking_dirpath))
                 for (rn,rfile),res in proc_results.items() :
                     try :
                         new_lmrs = res.get()
@@ -199,9 +191,10 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                 try :
                     with r.using_corrected_im3() as im :
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
-                        new_lmrs=return_new_mask_labelled_regions(im,r.file.rstrip(UNIV_CONST.IM3_EXT),
-                                                                  background_thresholds,
-                                                                  ets,self.__image_masking_dirpath)
+                        new_lmrs=return_new_mask_labelled_regions(im,self.layer_groups,self.brightest_layers,
+                                                                  r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                                  background_thresholds,ets,
+                                                                  self.__image_masking_dirpath)
                         labelled_mask_regions+=new_lmrs
                 except Exception as e :
                     warnmsg = f'WARNING: getting image mask for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)})'
@@ -442,7 +435,8 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                         r_key = (r.n,r.file)
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         proc_results[r_key] = pool.apply_async(save_plots_for_image,
-                                                               (im,r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                               (im,self.layer_groups,self.brightest_layers,
+                                                                r.file.rstrip(UNIV_CONST.IM3_EXT),
                                                                 background_thresholds,ets,r.allexposuretimes,
                                                                 self.exposure_time_histograms_and_bins_by_layer_group,
                                                                 self.__image_masking_dirpath))
@@ -461,10 +455,10 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                 self.logger.debug(msg)
                 try :
                     with r.using_corrected_im3() as im :
-                        save_plots_for_image(im,r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
+                        save_plots_for_image(im,self.layer_groups,self.brightest_layers,
+                                             r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
                                              self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
-                                             r.allexposuretimes,
-                                             self.exposure_time_histograms_and_bins_by_layer_group,
+                                             r.allexposuretimes,self.exposure_time_histograms_and_bins_by_layer_group,
                                              self.__image_masking_dirpath)
                 except Exception as e :
                     warnmsg = f'WARNING: saving masking plots for rectangle {r.n} '
@@ -497,7 +491,7 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         if not self.skip_masking :
             self.create_or_find_image_masks()
         #make the mean image from all of the tissue bulk rectangles
-        new_field_logs = self.__meanimage.stack_rectangle_images(self.tissue_bulk_rects,self.med_ets,
+        new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,self.med_ets,
                                                                  self.image_masking_dirpath)
         for fl in new_field_logs :
             fl.slide = self.SlideID

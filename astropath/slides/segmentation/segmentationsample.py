@@ -4,21 +4,20 @@ import numpy as np
 from batchgenerators.utilities.file_and_folder_operations import join
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.optionalimports import deepcell, nnunet
-from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.sample import ParallelSample, ReadRectanglesComponentAndIHCTiffFromXML
-from ...shared.sample import SampleWithSegmentations, WorkflowSample
+from ...shared.sample import SampleWithSegmentationFolder, WorkflowSample
 from .config import SEG_CONST
 from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im
-from .utilities import convert_nnunet_output, run_deepcell_nuclear_segmentation, run_mesmer_segmentation
+from .utilities import convert_nnunet_output, initialize_app, run_deepcell_nuclear_segmentation, run_mesmer_segmentation
 
 #some constants
 NNUNET_SEGMENT_FILE_APPEND = 'nnunet_nuclear_segmentation.npz'
 DEEPCELL_SEGMENT_FILE_APPEND = 'deepcell_nuclear_segmentation.npz'
 MESMER_SEGMENT_FILE_APPEND = 'mesmer_segmentation.npz'
-MESMER_GROUP_SIZE = 12
+GROUP_SIZE = 48
 
-class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWithSegmentations,
-                             WorkflowSample,ParallelSample,WorkingDirArgumentParser) :
+class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWithSegmentationFolder,
+                             WorkflowSample,ParallelSample) :
     """
     Write out nuclear segmentation maps based on the DAPI layers of component tiffs for a single sample
     Algorithms available include pre-trained nnU-Net and DeepCell/mesmer models 
@@ -26,12 +25,11 @@ class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWith
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,layercomponenttiff=1,workingdir=None,**kwargs) :
+    def __init__(self,*args,layercomponenttiff=1,**kwargs) :
         # only need to load the DAPI layers of the rectangles, so send that to the __init__
         if layercomponenttiff != 1 :
             raise RuntimeError(f'ERROR: sample layer was set to {kwargs.get("layer")}')
         super().__init__(*args,layercomponenttiff=layercomponenttiff,**kwargs)
-        self.__workingdirarg = workingdir
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
@@ -39,44 +37,18 @@ class SegmentationSampleBase(ReadRectanglesComponentAndIHCTiffFromXML,SampleWith
                ]
 
     def run(self,**kwargs) :
-        if not self.workingdir.is_dir() :
-            self.workingdir.mkdir(parents=True)
+        if not self.segmentationfolder.is_dir() :
+            self.segmentationfolder.mkdir(parents=True)
         self.runsegmentation(**kwargs)
 
     @methodtools.lru_cache()
     def runsegmentation(self, **kwargs): pass
 
-    #################### PROPERTIES ####################
-
-    @property
-    def workflowkwargs(self) :
-        return {
-            **super().workflowkwargs,
-            'workingdir':self.__workingdirarg,
-        }
-
-    @property
-    def workingdir(self):
-        #set the working directory path based on the algorithm being run (if it wasn't set by a command line arg)
-        return self.output_dir(self.__workingdirarg,self.im3root,self.SlideID)
-
     #################### CLASS METHODS ####################
 
     @classmethod
-    def output_dir(cls,workingdir,im3root,SlideID) :
-        #default output is im3folder/segmentation/algorithm
-        outputdir = workingdir
-        if outputdir is None :
-            outputdir = im3root/SlideID/'im3'/SEG_CONST.SEGMENTATION_DIR_NAME/cls.segmentationalgorithm()
-        else :
-            if outputdir.name!=SlideID :
-                #put non-default output in a subdirectory named for the slide
-                outputdir = outputdir/SlideID
-        return outputdir
-
-    @classmethod
-    def getoutputfiles(cls,SlideID,im3root,informdataroot,workingdir,**otherworkflowkwargs) :
-        outputdir=cls.output_dir(workingdir,im3root,SlideID)
+    def getoutputfiles(cls,SlideID,segmentationroot,informdataroot,segmentationfolderarg,**otherworkflowkwargs) :
+        outputdir=cls.segmentation_folder(segmentationfolderarg,segmentationroot,SlideID)
         append = None
         if cls.segmentationalgorithm()=='nnunet' :
             append = NNUNET_SEGMENT_FILE_APPEND
@@ -118,7 +90,7 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
         #make sure that the necessary model files exist
         rebuild_model_files_if_necessary()
         #create the temporary directory that will hold the NIfTI files
-        self.temp_dir = self.workingdir/'nnunet_nifti_input'
+        self.temp_dir = self.segmentationfolder/'nnunet_nifti_input'
         if not self.temp_dir.is_dir() :
             self.temp_dir.mkdir(parents=True)
         #write a NIfTI file for every rectangle's DAPI layer for input to the algorithm
@@ -169,7 +141,7 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
         model_folder_name = join(my_network_training_output_dir, '2d', task_name, default_trainer + "__" +
                                  default_plans_identifier)
         try :
-            predict_from_folder(model_folder_name, str(self.temp_dir.resolve()), str(self.workingdir.resolve()), 
+            predict_from_folder(model_folder_name, str(self.temp_dir.resolve()), str(self.segmentationfolder.resolve()), 
                                 None, False, self.njobs, self.njobs, None, 0, 1, True, overwrite_existing=False, 
                                 mode='normal', overwrite_all_in_gpu=None, mixed_precision=True,
                                 step_size=0.5, checkpoint_name='model_final_checkpoint')
@@ -220,13 +192,13 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
                         self.__get_rect_segmented_nifti_fp(rect).unlink()
             if completed_files==len(self.rectangles) :
                 shutil.rmtree(self.temp_dir)
-                plans_file = self.workingdir/'plans.pkl'
+                plans_file = self.segmentationfolder/'plans.pkl'
                 if plans_file.is_file() :
                     plans_file.unlink()
-                postproc_file = self.workingdir/'postprocessing.json'
+                postproc_file = self.segmentationfolder/'postprocessing.json'
                 if postproc_file.is_file() :
                     postproc_file.unlink()
-                self.logger.info(f'All files segmented using nnU-Net with output in {self.workingdir}')
+                self.logger.info(f'All files segmented using nnU-Net with output in {self.segmentationfolder}')
             else :
                 msg = f'{completed_files} of {len(self.rectangles)} files segmented using nnU-Net. '
                 msg+= 'Rerun the same command to retry.'
@@ -236,11 +208,11 @@ class SegmentationSampleNNUNet(SegmentationSampleBase) :
         return self.temp_dir/f'{rect.componenttifffile.name[:-4]}_0000.nii.gz'
 
     def __get_rect_segmented_nifti_fp(self,rect) :
-        return self.workingdir/f'{rect.componenttifffile.name[:-4]}.nii.gz'
+        return self.segmentationfolder/f'{rect.componenttifffile.name[:-4]}.nii.gz'
 
     def __get_rect_nnunet_segmented_fp(self,rect) :
         seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{NNUNET_SEGMENT_FILE_APPEND}'
-        return self.workingdir/seg_fn
+        return self.segmentationfolder/seg_fn
 
 class SegmentationSampleDeepCell(SegmentationSampleBase) :
     
@@ -263,7 +235,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
         self.logger.debug('Running nuclear segmentation with DeepCell....')
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but DeepCell segmentation cannot be run in parallel.')
-        app = NuclearSegmentation()
+        app = initialize_app(NuclearSegmentation, logger=self.logger)
         rects_to_run = []
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
@@ -275,12 +247,28 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
             rects_to_run.append((ir,rect,self.__get_rect_segmented_fp(rect)))
         completed_files = 0
         try :
-            for ir,rect,segmented_file_path in rects_to_run :
+            deepcell_batch_images = []
+            deepcell_batch_segmented_filepaths = []
+            for realir,(ir,rect,segmented_file_path) in enumerate(rects_to_run,start=1) :
+                #add to the batch
+                msg = f'Adding {rect.componenttifffile.name} ({ir} of {len(self.rectangles)}) '
+                msg+= 'to the next group of images....'
+                self.logger.debug(msg)
                 with rect.using_component_tiff() as im :
-                    msg = f'Running DeepCell segmentation for {rect.componenttifffile.name} '
-                    msg+= f'({ir} of {len(self.rectangles)})'
+                    dapi_layer = im
+                im_for_deepcell = np.expand_dims(dapi_layer,axis=-1)
+                deepcell_batch_images.append(im_for_deepcell)
+                deepcell_batch_segmented_filepaths.append(segmented_file_path)
+                #run segmentations for a whole batch
+                if (len(deepcell_batch_images)>=GROUP_SIZE) or (realir==len(rects_to_run)) :
+                    msg = f'Running DeepCell segmentation for the current group of {len(deepcell_batch_images)} images'
                     self.logger.debug(msg)
-                    run_deepcell_nuclear_segmentation(im,app,self.pscale,segmented_file_path)
+                    run_deepcell_nuclear_segmentation(np.array(deepcell_batch_images),
+                                                      app,
+                                                      self.pscale,
+                                                      deepcell_batch_segmented_filepaths)
+                    deepcell_batch_images = []
+                    deepcell_batch_segmented_filepaths = []
             for rect in self.rectangles :
                 if self.__get_rect_segmented_fp(rect).is_file() :
                     completed_files+=1
@@ -288,7 +276,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
             raise e
         finally :
             if completed_files==len(self.rectangles) :
-                self.logger.info(f'All files segmented using DeepCell with output in {self.workingdir}')
+                self.logger.info(f'All files segmented using DeepCell with output in {self.segmentationfolder}')
             else :
                 msg = f'{completed_files} of {len(self.rectangles)} files segmented using DeepCell. '
                 msg+= 'Rerun the same command to retry.'
@@ -296,7 +284,7 @@ class SegmentationSampleDeepCell(SegmentationSampleBase) :
 
     def __get_rect_segmented_fp(self,rect) :
         seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{DEEPCELL_SEGMENT_FILE_APPEND}'
-        return self.workingdir/seg_fn
+        return self.segmentationfolder/seg_fn
 
 class SegmentationSampleMesmer(SegmentationSampleBase) :
     
@@ -313,14 +301,14 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
 
     def runsegmentation(self) :
         """
-        Run nuclear segmentation using DeepCell's nuclear segmentation algorithm
+        Run whole-cell segmentation using the Mesmer segmentation algorithm
         """
         Mesmer = deepcell.applications.Mesmer
         pca_vec_to_dot = np.expand_dims(SEG_CONST.IHC_PCA_BLACK_COMPONENT,0).T
         self.logger.debug('Running whole-cell and nuclear segmentation with Mesmer....')
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but Mesmer segmentation cannot be run in parallel.')
-        app = Mesmer()
+        app = initialize_app(Mesmer, logger=self.logger)
         rects_to_run = []
         for ir,rect in enumerate(self.rectangles,start=1) :
             #skip any rectangles that already have segmentation output
@@ -347,7 +335,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
                 mesmer_batch_images.append(im_for_mesmer)
                 mesmer_batch_segmented_filepaths.append(segmented_file_path)
                 #run segmentations for a whole batch
-                if (len(mesmer_batch_images)>=MESMER_GROUP_SIZE) or (realir==len(rects_to_run)) :
+                if (len(mesmer_batch_images)>=GROUP_SIZE) or (realir==len(rects_to_run)) :
                     msg = f'Running Mesmer segmentation for the current group of {len(mesmer_batch_images)} images'
                     self.logger.debug(msg)
                     run_mesmer_segmentation(np.array(mesmer_batch_images),
@@ -363,7 +351,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
             raise e
         finally :
             if completed_files==len(self.rectangles) :
-                self.logger.info(f'All files segmented using Mesmer with output in {self.workingdir}')
+                self.logger.info(f'All files segmented using Mesmer with output in {self.segmentationfolder}')
             else :
                 msg = f'{completed_files} of {len(self.rectangles)} files segmented using Mesmer. '
                 msg+= 'Rerun the same command to retry.'
@@ -374,7 +362,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
 
     def __get_rect_segmented_fp(self,rect) :
         seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{MESMER_SEGMENT_FILE_APPEND}'
-        return self.workingdir/seg_fn
+        return self.segmentationfolder/seg_fn
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

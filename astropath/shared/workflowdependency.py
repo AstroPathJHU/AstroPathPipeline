@@ -2,9 +2,34 @@ import abc, contextlib, csv, datetime, more_itertools, re
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.miscfileio import field_size_limit_context, rm_missing_ok
 from ..utilities.version.git import GitCommit, thisrepo
-from .logging import MyLogger, ThingWithLogger
+from .logging import MyLogger, printlogger, ThingWithLogger
 
-class ThingWithRoots(abc.ABC):
+class MRODebuggingMetaClass(abc.ABCMeta):
+  def __new__(cls, name, bases, dct, **kwargs):
+    try:
+      return super().__new__(cls, name, bases, dct, **kwargs)
+    except TypeError as e:
+      if "Cannot create a consistent" in str(e):
+        logger = printlogger("mro")
+        logger.critical("========================")
+        logger.critical(f"MROs of bases of {name}:")
+        for base in bases:
+          logger.critical("------------------------")
+          for c in base.__mro__:
+            logger.critical(c.__name__)
+        logger.critical("************************")
+        logger.critical("filtered for the bad ones:")
+        for base in bases:
+          bad = [c for c in base.__mro__ if re.search(rf"\b{c.__name__}\b", str(e))]
+          if len(bad) < 2: continue
+          logger.critical("------------------------")
+          logger.critical(base.__name__)
+          for c in bad:
+            logger.critical(c.__name__)
+        logger.critical("========================")
+      raise
+
+class ThingWithRoots(abc.ABC, metaclass=MRODebuggingMetaClass):
   @property
   def rootnames(self):
     return set()
@@ -12,7 +37,13 @@ class ThingWithRoots(abc.ABC):
   def rootkwargs(self):
     return {name: getattr(self, name) for name in self.rootnames}
 
-class WorkflowDependency(ThingWithRoots, ThingWithLogger):
+class ThingWithWorkflowKwargs(abc.ABC, metaclass=MRODebuggingMetaClass):
+  @property
+  @abc.abstractmethod
+  def workflowkwargs(self):
+    return {}
+
+class WorkflowDependency(ThingWithRoots, ThingWithLogger, ThingWithWorkflowKwargs):
   @property
   def workflowkwargs(self):
     return self.rootkwargs
@@ -64,13 +95,17 @@ class WorkflowDependency(ThingWithRoots, ThingWithLogger):
 
   def cleanup(self):
     printed = False
+    canprint = False
     for filename in self.workinprogressfiles:
+      canprint = True
       if not printed and filename.exists():
         self.logger.info("Cleaning up files from previous runs")
         printed = True
       rm_missing_ok(filename)
     if printed:
       self.logger.info("Finished cleaning up")
+    elif canprint:
+      self.logger.info("Clean start")
 
   @classmethod
   @abc.abstractmethod
@@ -295,6 +330,8 @@ class SampleRunStatus(MyDataClass):
               lastattemptedcleanup = None
             elif "Finished cleaning up" in row["message"]:
               lastcleanstart = None #gets assigned to self in __post_init__
+            elif "Clean start" in row["message"]:
+              lastattemptedcleanup = lastcleanstart = None
             elif endmatch:
               ended = datetime.datetime.strptime(row["time"], MyLogger.dateformat)
               result = cls(started=started, ended=ended, error=error, previousrun=previousrun, missingfiles=missingfiles, module=module, gitcommit=gitcommit, localedits=localedits, lastattemptedcleanup=lastattemptedcleanup, lastcleanstart=lastcleanstart, SlideID=SlideID)
@@ -319,6 +356,7 @@ class SampleRunStatus(MyDataClass):
     if isinstance(other, GitCommit):
       return self.gitcommit < other
     elif isinstance(other, SampleRunStatus):
+      if other.gitcommit is None: return False
       return self.ended < other.started and self <= other.gitcommit
     else:
       return NotImplemented

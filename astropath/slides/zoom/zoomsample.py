@@ -6,9 +6,8 @@ from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing
 from ...utilities.miscimage import vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
 from ...utilities.optionalimports import pyvips
-from ..align.alignsample import AlignSample
 from ..align.field import FieldReadComponentTiffMultiLayer
-from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample
+from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, StitchAstroPathTissueMaskSample
 from .zoomsamplebase import ZoomSampleBase
 
 class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
@@ -59,13 +58,13 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
           memmapcontext(
             tempfile,
             shape=bigimageshape,
-            dtype=np.uint8,
+            dtype=np.float32,
             mode="w+",
           )
         )
         bigimage[:] = 0
       else:
-        bigimage = np.zeros(shape=bigimageshape, dtype=np.uint8)
+        bigimage = np.zeros(shape=bigimageshape, dtype=np.float32)
 
       #loop over HPFs and fill them into the big image
       nrectangles = len(self.rectangles)
@@ -75,7 +74,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         #load the image file
         with field.using_component_tiff() as image:
           #scale the intensity
-          image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
+          image = np.clip(image/fmax, a_min=None, a_max=1)
 
           #find where it should sit in the wsi
           globalx1 = field.mx1 // onepixel * onepixel
@@ -140,7 +139,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       #rescale the image intensity
       with self.using_tissuemask() as mask:
         meanintensity = np.mean(bigimage[:,:,0][mask])
-        bigimage = (bigimage * (tissuemeanintensity / meanintensity)).clip(0, 255).astype(np.uint8)
+        bigimage = skimage.img_as_ubyte((bigimage * (tissuemeanintensity / 255 / meanintensity)).clip(0, 1))
 
       #save the wsi
       self.wsifolder.mkdir(parents=True, exist_ok=True)
@@ -339,10 +338,10 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               if othertile.overlapsrectangle(globalx1=globalx1, globalx2=globalx2, globaly1=globaly1, globaly2=globaly2):
                 othertile.enter_context(field.using_component_tiff())
 
-            if tileimage is None: tileimage = np.zeros(shape=tuple((self.zoomtilesize + 2*floattoint((buffer/onepixel).astype(float)))[::-1]) + (len(self.layerscomponenttiff),), dtype=np.uint8)
+            if tileimage is None: tileimage = np.zeros(shape=tuple((self.zoomtilesize + 2*floattoint((buffer/onepixel).astype(float)))[::-1]) + (len(self.layerscomponenttiff),), dtype=np.float32)
 
             with field.using_component_tiff() as image:
-              image = skimage.img_as_ubyte(np.clip(image/fmax, a_min=None, a_max=1))
+              image = np.clip(image/fmax, a_min=None, a_max=1)
 
               #find where it should sit in the tile
               tilex1 = globalx1 - xmin
@@ -432,7 +431,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               continue
             self.logger.info(f"  saving {filename.name}")
             image = PIL.Image.fromarray(slc[:, :, layer-1])
-            image.save(filename, "PNG")
+            image.save(filename, "TIFF")
 
     return tissuemeanintensity / (meanintensitynumerator / meanintensitydenominator)
 
@@ -458,7 +457,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
         bigfilename = self.bigfilename(layer, tilex, tiley)
         if bigfilename.exists():
-          images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)).linear(scaleby, 0))
+          images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)).linear(scaleby, 0).cast(vips_format_dtype(np.uint8)))
           removefilenames.append(bigfilename)
         else:
           if blank is None:
@@ -510,11 +509,9 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   @classmethod
   def getworkinprogressfiles(cls, SlideID, *, zoomroot, **otherworkflowkwargs):
     bigfolder = zoomroot/SlideID/"big"
-    wsifolder = zoomroot/SlideID/"wsi"
     return itertools.chain(
-      bigfolder.glob("*.png"),
-      wsifolder.glob("*.png"),
-      wsifolder.glob("*.tiff"),
+      bigfolder.glob("*.tiff"),
+      cls.getoutputfiles(SlideID=SlideID, zoomroot=zoomroot, **otherworkflowkwargs),
     )
 
   @classmethod
@@ -540,7 +537,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [AlignSample] + super().workflowdependencyclasses(**kwargs)
+    return [StitchAstroPathTissueMaskSample] + super().workflowdependencyclasses(**kwargs)
 
 def main(args=None):
   ZoomSample.runfromargumentparser(args)

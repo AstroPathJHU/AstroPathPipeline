@@ -19,9 +19,10 @@ class BatchFlatfieldSample(WorkflowSample) :
 
     multilayer = True
 
-    def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
+    def __init__(self,*args,version,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
         super().__init__(*args,**kwargs)
         self.__meanimage_dirname = meanimage_dirname
+        self.__version = version
 
     @property
     def meanimagefolder(self) :
@@ -44,9 +45,9 @@ class BatchFlatfieldSample(WorkflowSample) :
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
                 self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
-    def run(self,version,flatfield,samplesprocessed,totalsamples) :
+    def run(self,flatfield,samplesprocessed,totalsamples) :
         msg = f'Adding mean image and mask stack from {self.SlideID} meanimage directory "{self.meanimagefolder}" '
-        msg+= f'to flatfield model version {version} ({len(samplesprocessed)+1} of {totalsamples})....'
+        msg+= f'to flatfield model version {self.__version} ({len(samplesprocessed)+1} of {totalsamples})....'
         self.logger.info(msg)
         flatfield.add_batchflatfieldsample(self)
         samplesprocessed.append(self)
@@ -71,14 +72,17 @@ class BatchFlatfieldCohort(WorkflowCohort) :
 
     sampleclass = BatchFlatfieldSample
 
-    def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
+    def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,version,outdir,**kwargs) :
         super().__init__(*args,**kwargs) 
         self.__meanimage_dirname = meanimage_dirname
+        self.__version = version
+        self.__outdir = outdir
 
     @property
     def initiatesamplekwargs(self) :
         return {**super().initiatesamplekwargs,
                 'meanimage_dirname':self.__meanimage_dirname,
+                'version':self.__version,
             }
 
     @property
@@ -92,14 +96,14 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
     """
 
     def __init__(self,*args,version,outdir,**kwargs) :
-        super().__init__(*args,**kwargs)
-        self.__version = version
+        super().__init__(*args,version=version,outdir=outdir,**kwargs)
         self.__outdir = outdir
+        self.__version = version
 
     def run(self, **kwargs):
         totalsamples = 0
         image_dimensions = None
-        with self.globallogger() as logger:
+        with self.globallogger(SlideID=self.__version) as logger:
             #start up the flatfield after figuring out its dimensions
             for cohort in self.cohorts :
                 for sample in cohort.filteredsamples() :
@@ -118,7 +122,6 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             #Run all the samples individually like for a regular MultiCohort
             super().run(flatfield=flatfield, 
                         samplesprocessed=samplesprocessed, 
-                        version=self.__version, 
                         totalsamples=totalsamples, **kwargs)
             totalsamples = len(samplesprocessed)
             #actually create the flatfield after all the samples have been added
@@ -126,7 +129,13 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             flatfield.create_flatfield_model()
             #write out the flatfield model
             logger.debug(f'Writing out flatfield model, plots, and summary pdf for version {self.__version}....')
-            flatfield.write_output(self.__version,self.workingdir)
+            samp = None
+            for cohort in self.cohorts :
+                for sample in cohort.samples() :
+                    if samp is None :
+                        samp = sample
+                        break
+            flatfield.write_output(samp,self.__version,self.workingdir)
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
@@ -139,8 +148,8 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
     #################### CLASS METHODS ####################
 
     @classmethod
-    def makeargumentparser(cls):
-        p = super().makeargumentparser()
+    def makeargumentparser(cls, **kwargs):
+        p = super().makeargumentparser(**kwargs)
         p.add_argument('--version',
                        help="version of the flatfield model that should be created from the given slides' meanimages")
         p.add_argument('--flatfield-model-file',type=pathlib.Path,

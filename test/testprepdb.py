@@ -221,6 +221,6 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
     self.assertNotEqual(newcontents, contents)
     moreargs = ["--sampledefroot", os.fspath(testroot)]
     with temporarilyreplace(sampledef, newcontents):
-      with self.assertRaises(TypeError):
+      with self.assertRaises(EOFError):
         self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=moreargs, removeoutput=False)
       self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=moreargs + ["--include-bad-samples"])

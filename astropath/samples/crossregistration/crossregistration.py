@@ -470,6 +470,8 @@ class CrossRegAlignmentResult(AlignmentComparison, DataClassWithZoomedScale):
   @property
   def dxvec(self): return units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariancematrix)
   @property
+  def dxpscale(self): return self.zoomedscale
+  @property
   def xvec(self): return np.array([self.x, self.y])
   @property
   def unshifted(self): raise NotImplementedError

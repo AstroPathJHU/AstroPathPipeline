@@ -65,14 +65,12 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
               }
             }
-            
             stage('workflow') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsworkflow.ps1' 	 	
               }
             }
-
             stage('prepdb') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'

@@ -2,27 +2,41 @@ import abc, os, pathlib, re
 
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...utilities.config import CONST as UNIV_CONST
-from ...shared.argumentparser import RunFromArgumentParser
+from ...shared.argumentparser import ArgumentParserWithVersionRequirement, InitAndRunFromArgumentParserBase, RunFromArgumentParserBase
 from ...shared.csvclasses import Annotation, AnnotationInfo, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
 from ...shared.overlap import Overlap
 from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
+from ...shared.workflowdependency import ThingWithRoots, ThingWithWorkflowKwargs
 from ...utilities.dataclasses import MyDataClass
-from ...utilities.tableio import pathfield
+from ...utilities.tableio import pathfield, TableReader
 from ..align.field import Field, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
 from ..align.stitch import AffineEntry
+from ..annotationinfo.annotationinfo import CopyAnnotationInfoSampleBase
 from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
 from ..geom.geomsample import Boundary, GeomSample
-from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSample
-from ...utilities.tableio import TableReader
+from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSampleDeepCell, GeomCellSampleInform, GeomCellSampleMesmer
 
 class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
   pass
 
-class CsvScanBase(TableReader):
+class CsvScanBase(TableReader, ThingWithWorkflowKwargs):
+  def __init__(self, *args, segmentationalgorithms=None, **kwargs):
+    if not segmentationalgorithms: segmentationalgorithms = ["inform"]
+    if "inform" not in segmentationalgorithms:
+      raise ValueError("Have to include inform segmentation")
+      #this is so that the hasanycells() function below works
+      #can modify it to open up the segmented component tiff if there's
+      #no inform and then this restriction wouldn't be necessary
+    self.__segmentationalgorithms = segmentationalgorithms
+    super().__init__(*args, **kwargs)
+
+  @property
+  def segmentationalgorithms(self): return self.__segmentationalgorithms
+
   @property
   @abc.abstractmethod
   def logger(self): return super().logger
@@ -49,13 +63,31 @@ class CsvScanBase(TableReader):
   @classmethod
   def logmodule(cls): return "csvscan"
 
-class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
+  @property
+  def workflowkwargs(self) :
+    return {
+      **super().workflowkwargs,
+      "segmentationalgorithms": self.segmentationalgorithms,
+    }
+
+class RunCsvScanBase(CsvScanBase, ArgumentParserWithVersionRequirement, InitAndRunFromArgumentParserBase, RunFromArgumentParserBase, ThingWithRoots, ThingWithWorkflowKwargs):
+  possiblesegmentationalgorithms = "inform", "deepcell", "mesmer"
+
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
     p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex", default=[])
+    p.add_argument("--segmentation-algorithm", action="append", choices=cls.possiblesegmentationalgorithms, help="load cell geometry csvs from these segmentation algorithms", metavar="algorithm", dest="segmentation_algorithms")
     return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "segmentationalgorithms": parsed_args_dict.pop("segmentation_algorithms"),
+    }
+    return kwargs
 
   @classmethod
   def runkwargsfromargumentparser(cls, parsed_args_dict):
@@ -66,7 +98,7 @@ class RunCsvScanBase(CsvScanBase, RunFromArgumentParser):
     }
     return kwargs
 
-class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase):
+class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase, RunCsvScanBase):
   rectangletype = CsvScanRectangle
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
@@ -111,12 +143,12 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       )
     }
     expectcsvs |= {
-      r.geomloadcsv for r in self.rectangles
+      r.geomloadcsv(algo) for r in self.rectangles for algo in self.segmentationalgorithms
     }
 
-    def hasanycells(rectangle):
+    def hasanycells(rectangle, algorithm):
       try:
-        with open(rectangle.geomloadcsv) as f:
+        with open(rectangle.geomloadcsv(algorithm)) as f:
           next(f)
           next(f)
       except (FileNotFoundError, StopIteration):
@@ -124,7 +156,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
       else:
         return True
     expectcsvs |= {
-      r.phenotypecsv for r in self.rectangles if hasanycells(r)
+      r.phenotypecsv for r in self.rectangles if hasanycells(r, "inform")
     }
 
     meanimagecsvs = {
@@ -142,7 +174,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
         "globals",
       )
     } | {
-      r.phenotypeQAQCcsv for r in self.rectangles if hasanycells(r)
+      r.phenotypeQAQCcsv for r in self.rectangles if any(hasanycells(r, algo) for algo in self.segmentationalgorithms)
     } | annotationinfocsvs | meanimagecsvs
     goodcsvs = set()
     unknowncsvs = set()
@@ -204,7 +236,7 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
           "regions": 500000,
           "tumorGeometry": 500000,
         }.get(match.group(1), None)
-      elif csv.parent == self.geomfolder:
+      elif csv.parent.parent == self.geomfolder:
         csvclass = CellGeomLoad
         tablename = "CellGeom"
         extrakwargs = {}
@@ -247,7 +279,18 @@ class CsvScanSample(RunCsvScanBase, WorkflowSample, ReadRectanglesDbload, GeomSa
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [AnnoWarpSampleInformTissueMask, GeomCellSample, GeomSample] + super().workflowdependencyclasses(**kwargs)
+    segmentationalgorithms = kwargs["segmentationalgorithms"]
+    return [
+      AnnoWarpSampleInformTissueMask,
+      GeomSample,
+      CopyAnnotationInfoSampleBase,
+    ] + [
+      {
+        "inform": GeomCellSampleInform,
+        "deepcell": GeomCellSampleDeepCell,
+        "mesmer": GeomCellSampleMesmer,
+      }[algo] for algo in segmentationalgorithms
+    ] + super().workflowdependencyclasses(**kwargs)
 
   def run(self, *args, **kwargs): return self.runcsvscan(*args, **kwargs)
 

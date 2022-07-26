@@ -1,28 +1,11 @@
 #imports
-from ...shared.argumentparser import WorkingDirArgumentParser
-from ...shared.cohort import ParallelCohort, WorkflowCohort
+from ...shared.cohort import ParallelCohort, SegmentationFolderCohort, SelectRectanglesCohort, WorkflowCohort
 from .segmentationsample import SegmentationSampleBase, SegmentationSampleNNUNet
 from .segmentationsample import SegmentationSampleDeepCell, SegmentationSampleMesmer
 
-class SegmentationCohortBase(ParallelCohort,WorkflowCohort,WorkingDirArgumentParser) :
+class SegmentationCohortBase(ParallelCohort,SelectRectanglesCohort,WorkflowCohort,SegmentationFolderCohort) :
     sampleclass = SegmentationSampleBase
     __doc__ = sampleclass.__doc__
-
-    def __init__(self,*args,workingdir=None,**kwargs) :
-        super().__init__(*args,**kwargs)
-        self.workingdir = workingdir
-
-    @property
-    def initiatesamplekwargs(self) :
-        return {**super().initiatesamplekwargs,
-            'workingdir':self.workingdir,
-            }
-
-    @property
-    def workflowkwargs(self) :
-        return {**super().workflowkwargs,
-            'workingdir':self.workingdir,
-        }
 
 class SegmentationCohortNNUNet(SegmentationCohortBase) :
     sampleclass = SegmentationSampleNNUNet

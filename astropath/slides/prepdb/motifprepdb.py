@@ -57,6 +57,7 @@ class MotifPrepDb(ArgumentParserWithVersionRequirement, ThingWithLogger, units.T
         for page in tiff.pages:
           height, width = units.distances(pixels=page.shape, pscale=self.pscale)
           return width, height
+    raise ValueError(f"No tiff files in {self.tifffolder}")
   @property
   def fwidth(self): return self.HPFsize[0]
   @property

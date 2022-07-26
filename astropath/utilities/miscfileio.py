@@ -28,6 +28,12 @@ def rmtree_missing_ok(path, **kwargs):
   except FileNotFoundError:
     pass
 
+def iterdir_missing_ok(path, **kwargs):
+  try:
+    yield from path.iterdir(**kwargs)
+  except FileNotFoundError:
+    return
+
 def is_relative_to(path1, path2):
   """
   Like pathlib.PurePath.is_relative_to but backported to older python versions
@@ -73,7 +79,11 @@ def pathtomountedpath(filename):
     #please note that the AstroPath framework is NOT tested on cygwin
     return pathlib.PureWindowsPath(subprocess.check_output(["cygpath", "-w", filename]).strip().decode("utf-8"))
 
-  if not filename.is_absolute(): return filename
+  if not filename.is_absolute():
+    try:
+      return pathlib.WindowsPath(filename)
+    except NotImplementedError:
+      return pathlib.PureWindowsPath(filename)
 
   bestmount = bestmountpoint = None
   for mount in psutil.disk_partitions(all=True):
