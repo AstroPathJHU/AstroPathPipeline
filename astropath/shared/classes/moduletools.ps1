@@ -251,6 +251,10 @@
                     Rename-Item $file $newfilename
                 }
                 #if ($this.getcount('flatwim3', $true) -eq (get-childitem $des).count))
+                Write-Host '***Sor im3s #:' ((gci ($sor+'\*') -include '*im3').Count)
+                Write-Host '***Sor im3s:' ((gci ($sor+'\*') -include '*im3'))
+                Write-Host '***Des im3s #:' ((gci $des).Count)
+                Write-Host '***Des im3s:' ((gci $des))
                 if(!(((get-childitem ($sor+'\*') -Include '*im3').Count) -eq (get-childitem $des).count)){
                     Throw 'flatw im3s did not download correctly'
                 }
