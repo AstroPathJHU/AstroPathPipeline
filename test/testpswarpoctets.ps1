@@ -85,18 +85,11 @@ Class testpswarpoctets : testtools {
         $md_processloc = ($this.processloc, 'astropath_ws', $this.module,
             $this.slideid,'warpoctets') -join '\'
         #
-        Write-Host '***md_processloc:' $md_processloc
         $batchbinfile = $this.mpath + '\flatfield\flatfield_melanoma_batches_3_5_6_7_8_9_v2.bin'
-        Write-Host '***batchbinfile:' $batchbinfile
         #
         $rpath = $PSScriptRoot + '\data\raw'
-        Write-Host '***rpath:' $rpath
         $dpath = $this.basepath
-        Write-Host '***dpath:' $dpath
         $taskname = ('warping', $this.pytype) -join ''
-        Write-Host '***taskname:' $taskname
-        Write-Host '***testing $inp.gpuopt():' $inp.gpuopt()
-        Write-Host '***gpu opy is fine'
         #
         [string]$userpythontask = ($taskname,
             $dpath,

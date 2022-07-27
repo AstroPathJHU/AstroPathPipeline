@@ -614,6 +614,9 @@
     }
     #
     [string]gpuopt(){
+        if (!$this.isWindows()) {
+            return '--noGPU'
+        }
         $gpu = Get-WmiObject win32_VideoController
         if (($gpu.Name.count) -gt 1 -or 
             ($gpu.name -match 'NVIDIA') -or 
