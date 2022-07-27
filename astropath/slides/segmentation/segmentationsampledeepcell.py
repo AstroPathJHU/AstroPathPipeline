@@ -4,9 +4,9 @@ from ...utilities.optionalimports import deepcell
 from ...utilities.config import CONST as UNIV_CONST
 from .config import SEG_CONST
 from .utilities import initialize_app, run_deepcell_nuclear_segmentation
-from .segmentationsample import SegmentationSampleBase
+from .segmentationsample import SegmentationSampleDAPIComponentTiff
 
-class SegmentationSampleDeepCell(SegmentationSampleBase) :
+class SegmentationSampleDeepCell(SegmentationSampleDAPIComponentTiff) :
     
     def __init__(self,*args,**kwargs) :
         super().__init__(*args,**kwargs)

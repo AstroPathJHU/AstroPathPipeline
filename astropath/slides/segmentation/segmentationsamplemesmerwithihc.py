@@ -4,9 +4,9 @@ from ...utilities.optionalimports import deepcell
 from ...utilities.config import CONST as UNIV_CONST
 from .config import SEG_CONST
 from .utilities import initialize_app, run_mesmer_segmentation
-from .segmentationsample import SegmentationSampleBase
+from .segmentationsample import SegmentationSampleDAPIComponentMembraneIHCTiff
 
-class SegmentationSampleMesmer(SegmentationSampleBase) :
+class SegmentationSampleMesmerWithIHC(SegmentationSampleDAPIComponentMembraneIHCTiff) :
     
     def __init__(self,*args,**kwargs) :
         super().__init__(*args,**kwargs)
@@ -24,7 +24,6 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
         Run whole-cell segmentation using the Mesmer segmentation algorithm
         """
         Mesmer = deepcell.applications.Mesmer
-        pca_vec_to_dot = np.expand_dims(SEG_CONST.IHC_PCA_BLACK_COMPONENT,0).T
         self.logger.debug('Running whole-cell and nuclear segmentation with Mesmer....')
         if self.njobs is not None and self.njobs>1 :
             self.logger.warning(f'WARNING: njobs is {self.njobs} but Mesmer segmentation cannot be run in parallel.')
@@ -49,8 +48,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
                 with rect.using_component_tiff() as im :
                     dapi_layer = im
                 with rect.using_ihc_tiff() as im :
-                    im_membrane = -1.0*(np.dot(im,pca_vec_to_dot))[:,:,0]
-                    membrane_layer = (im_membrane-np.min(im_membrane))/SEG_CONST.IHC_MEMBRANE_LAYER_NORM
+                    membrane_layer = self.get_membrane_layer_from_ihc_image(im)
                 im_for_mesmer = np.array([dapi_layer,membrane_layer]).transpose(1,2,0)
                 mesmer_batch_images.append(im_for_mesmer)
                 mesmer_batch_segmented_filepaths.append(segmented_file_path)
@@ -83,7 +81,7 @@ class SegmentationSampleMesmer(SegmentationSampleBase) :
         return self.segmentationfolder/seg_fn
 
 def main(args=None) :
-    SegmentationSampleMesmer.runfromargumentparser(args)
+    SegmentationSampleMesmerWithIHC.runfromargumentparser(args)
 
 if __name__=='__main__' :
     main()

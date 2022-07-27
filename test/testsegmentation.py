@@ -3,7 +3,7 @@ import os, pathlib, unittest
 import numpy as np
 from astropath.slides.segmentation.segmentationsamplennunet import SegmentationSampleNNUNet
 from astropath.slides.segmentation.segmentationsampledeepcell import SegmentationSampleDeepCell
-from astropath.slides.segmentation.segmentationsamplemesmer import SegmentationSampleMesmer
+from astropath.slides.segmentation.segmentationsamplemesmerwithihc import SegmentationSampleMesmerWithIHC
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
@@ -133,9 +133,10 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
         finally :
             self.removeoutput()
 
-class TestSegmentationMesmer(TestSegmentationBase) :
+class TestSegmentationMesmerWithIHC(TestSegmentationBase) :
     """
-    Class to use for testing the Mesmer segmentation algorithm
+    Class to use for testing the Mesmer segmentation algorithm that uses one component tiff layer 
+    and one deconvolved IHC layer
     """
 
     @property
@@ -149,7 +150,7 @@ class TestSegmentationMesmer(TestSegmentationBase) :
             all_fps.append(outputdir/f'{fns}_mesmer_segmentation.npz')
         return all_fps
 
-    def test_segmentation_deepcell(self) :
+    def test_segmentation_mesmer_with_ihc(self) :
         #run the segmentation sample with the Mesmer algorithm
         args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
                 slide_ID,
@@ -158,7 +159,7 @@ class TestSegmentationMesmer(TestSegmentationBase) :
                 ]
         for rn in rectangle_ns_with_comp_tiff_files_mesmer :
             args.append(str(rn))
-        SegmentationSampleMesmer.runfromargumentparser(args=args)
+        SegmentationSampleMesmerWithIHC.runfromargumentparser(args=args)
         #compare the results to the reference files
         outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
         try :

@@ -30,5 +30,10 @@ class SegmentationConst :
     def MESMER_SEGMENT_FILE_APPEND(self) :
         #append for mesmer whole-cell + nuclear segmentation files
         return 'mesmer_segmentation.npz'
+    @property
+    def MEMBRANE_LAYER_TARGETS(self) :
+        #list of names of targets in MergeConfig files corresponding to pan-membrane stains
+        target_strings = ['ATPase/CD44/CD45']
+        return [ts.replace('/','').lower() for ts in target_strings]
 
 SEG_CONST = SegmentationConst()
