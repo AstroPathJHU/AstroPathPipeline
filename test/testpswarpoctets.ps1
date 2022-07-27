@@ -90,8 +90,11 @@ Class testpswarpoctets : testtools {
         Write-Host '***batchbinfile:' $batchbinfile
         #
         $rpath = $PSScriptRoot + '\data\raw'
+        Write-Host '***rpath:' $rpath
         $dpath = $this.basepath
+        Write-Host '***dpath:' $dpath
         $taskname = ('warping', $this.pytype) -join ''
+        Write-Host '***taskname:' $taskname
         Write-Host '***testing $inp.gpuopt():' $inp.gpuopt()
         Write-Host '***gpu opy is fine'
         #
