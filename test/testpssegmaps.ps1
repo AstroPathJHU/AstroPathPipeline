@@ -20,8 +20,10 @@ Class testpssegmaps : testtools {
         #
         # Run Tests
         #
+        Write-Host '***Component Folder at Start' (gci $inp.sample.componentfolder())
         $this.CleanupTest($inp)
         $this.SegMapsTest($inp)
+        Write-Host '***Component Folder at End' (gci $inp.sample.componentfolder())
         $this.testgitstatus($inp.sample)
         #
     }
