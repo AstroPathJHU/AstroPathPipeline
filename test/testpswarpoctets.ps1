@@ -101,7 +101,6 @@ Class testpswarpoctets : testtools {
             '--allow-local-edits',
             '--skip-start-finish')
         #
-        Write-Host '***Running get module name'
         $inp.getmodulename()
         $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath)
         #

@@ -614,7 +614,7 @@
     }
     #
     [string]gpuopt(){
-        if (!$this.isWindows()) {
+        if (!$this.sample.isWindows()) {
             return '--noGPU'
         }
         $gpu = Get-WmiObject win32_VideoController
