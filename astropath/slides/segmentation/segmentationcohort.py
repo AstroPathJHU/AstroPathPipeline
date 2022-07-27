@@ -1,7 +1,9 @@
 #imports
 from ...shared.cohort import ParallelCohort, SegmentationFolderCohort, SelectRectanglesCohort, WorkflowCohort
-from .segmentationsample import SegmentationSampleBase, SegmentationSampleNNUNet
-from .segmentationsample import SegmentationSampleDeepCell, SegmentationSampleMesmer
+from .segmentationsample import SegmentationSampleBase
+from .segmentationsamplennunet import SegmentationSampleNNUNet
+from .segmentationsampledeepcell import SegmentationSampleDeepCell
+from .segmentationsamplemesmer import SegmentationSampleMesmer
 
 class SegmentationCohortBase(ParallelCohort,SelectRectanglesCohort,WorkflowCohort,SegmentationFolderCohort) :
     sampleclass = SegmentationSampleBase

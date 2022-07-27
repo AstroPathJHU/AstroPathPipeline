@@ -1,9 +1,9 @@
 #imports
 import os, pathlib, unittest
 import numpy as np
-from astropath.slides.segmentation.segmentationsample import SegmentationSampleNNUNet
-from astropath.slides.segmentation.segmentationsample import SegmentationSampleDeepCell
-from astropath.slides.segmentation.segmentationsample import SegmentationSampleMesmer
+from astropath.slides.segmentation.segmentationsamplennunet import SegmentationSampleNNUNet
+from astropath.slides.segmentation.segmentationsampledeepcell import SegmentationSampleDeepCell
+from astropath.slides.segmentation.segmentationsamplemesmer import SegmentationSampleMesmer
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
