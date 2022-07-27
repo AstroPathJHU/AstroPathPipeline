@@ -3,7 +3,7 @@ from ...shared.cohort import ParallelCohort, SegmentationFolderCohort, SelectRec
 from .segmentationsample import SegmentationSampleBase
 from .segmentationsamplennunet import SegmentationSampleNNUNet
 from .segmentationsampledeepcell import SegmentationSampleDeepCell
-from .segmentationsamplemesmerwithihc import SegmentationSampleMesmerWithIHC
+from .segmentationsamplemesmer import SegmentationSampleMesmerWithIHC
 
 class SegmentationCohortBase(ParallelCohort,SelectRectanglesCohort,WorkflowCohort,SegmentationFolderCohort) :
     sampleclass = SegmentationSampleBase
