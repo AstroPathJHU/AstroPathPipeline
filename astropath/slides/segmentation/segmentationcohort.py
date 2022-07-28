@@ -3,7 +3,7 @@ from ...shared.cohort import ParallelCohort, SegmentationFolderCohort, SelectRec
 from .segmentationsample import SegmentationSampleBase
 from .segmentationsamplennunet import SegmentationSampleNNUNet
 from .segmentationsampledeepcell import SegmentationSampleDeepCell
-from .segmentationsamplemesmer import SegmentationSampleMesmerWithIHC
+from .segmentationsamplemesmer import SegmentationSampleMesmerWithIHC, SegmentationSampleMesmerComponentTiff
 
 class SegmentationCohortBase(ParallelCohort,SelectRectanglesCohort,WorkflowCohort,SegmentationFolderCohort) :
     sampleclass = SegmentationSampleBase
@@ -18,6 +18,9 @@ class SegmentationCohortDeepCell(SegmentationCohortBase) :
 class SegmentationCohortMesmerWithIHC(SegmentationCohortBase) :
     sampleclass = SegmentationSampleMesmerWithIHC
 
+class SegmentationCohortMesmerComponentTiff(SegmentationCohortBase) :
+    sampleclass = SegmentationSampleMesmerComponentTiff
+
 def segmentationcohortnnunet(args=None) :
     SegmentationCohortNNUNet.runfromargumentparser(args)
 
@@ -26,3 +29,6 @@ def segmentationcohortdeepcell(args=None) :
 
 def segmentationcohortmesmerwithihc(args=None) :
     SegmentationCohortMesmerWithIHC.runfromargumentparser(args)
+
+def segmentationcohortmesmercomponenttiff(args=None) :
+    SegmentationCohortMesmerComponentTiff.runfromargumentparser(args)

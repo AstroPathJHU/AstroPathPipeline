@@ -1,22 +1,13 @@
 #imports
 import numpy as np
+from abc import abstractmethod
 from ...utilities.optionalimports import deepcell
 from ...utilities.config import CONST as UNIV_CONST
 from .config import SEG_CONST
 from .utilities import initialize_app, run_mesmer_segmentation
-from .segmentationsample import SegmentationSampleUsingComponentTiff, SegmentationSampleDAPIComponentMembraneIHCTiff
+from .segmentationsample import SegmentationSampleDAPIMembraneComponentTiff, SegmentationSampleUsingComponentTiff, SegmentationSampleDAPIComponentMembraneIHCTiff
 
 class SegmentationSampleMesmer(SegmentationSampleUsingComponentTiff) :
-
-    @classmethod
-    def segmentationalgorithm(cls):
-      return "mesmer"
-
-    @classmethod
-    def logmodule(cls) : 
-        return "segmentationmesmer"
-
-class SegmentationSampleMesmerWithIHC(SegmentationSampleDAPIComponentMembraneIHCTiff,SegmentationSampleMesmer) :
 
     def runsegmentation(self) :
         """
@@ -44,12 +35,7 @@ class SegmentationSampleMesmerWithIHC(SegmentationSampleDAPIComponentMembraneIHC
                 #add to the batch
                 msg = f'Adding {rect.ihctifffile.name} ({ir} of {len(self.rectangles)}) to the next group of images....'
                 self.logger.debug(msg)
-                with rect.using_component_tiff() as im :
-                    dapi_layer = im
-                with rect.using_ihc_tiff() as im :
-                    membrane_layer = self.get_membrane_layer_from_ihc_image(im)
-                im_for_mesmer = np.array([dapi_layer,membrane_layer]).transpose(1,2,0)
-                mesmer_batch_images.append(im_for_mesmer)
+                mesmer_batch_images.append(self.get_rect_im_for_mesmer(rect))
                 mesmer_batch_segmented_filepaths.append(segmented_file_path)
                 #run segmentations for a whole batch
                 if (len(mesmer_batch_images)>=SEG_CONST.GROUP_SIZE) or (realir==len(rects_to_run)) :
@@ -75,9 +61,45 @@ class SegmentationSampleMesmerWithIHC(SegmentationSampleDAPIComponentMembraneIHC
                 self.logger.info(msg)
         pass
 
+    @abstractmethod
+    def get_rect_im_for_mesmer(self,rect) :
+        """
+        Return the two-layer (DAPI/membrane) image that should be sent to Mesmer given a rectangle
+        Not implemented in this class
+        """
+        pass
+    
+    @classmethod
+    def segmentationalgorithm(cls):
+      return "mesmer"
+
+    @classmethod
+    def logmodule(cls) : 
+        return "segmentationmesmer"
+
     def __get_rect_segmented_fp(self,rect) :
         seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{SEG_CONST.MESMER_SEGMENT_FILE_APPEND}'
         return self.segmentationfolder/seg_fn
 
+class SegmentationSampleMesmerWithIHC(SegmentationSampleDAPIComponentMembraneIHCTiff,SegmentationSampleMesmer) :
+
+    def get_rect_im_for_mesmer(self, rect):
+        with rect.using_component_tiff() as im :
+            dapi_layer = im
+        with rect.using_ihc_tiff() as im :
+            membrane_layer = self.get_membrane_layer_from_ihc_image(im)
+        return np.array([dapi_layer,membrane_layer]).transpose(1,2,0)
+
+class SegmentationSampleMesmerComponentTiff(SegmentationSampleDAPIMembraneComponentTiff,SegmentationSampleMesmer) :
+
+    def get_rect_im_for_mesmer(self, rect):
+        with rect.using_component_tiff() as im :
+            dapi_layer = im[:,:,0]
+            membrane_layer = im[:,:,1]
+        return np.array([dapi_layer,membrane_layer]).transpose(1,2,0)
+
 def segmentationsamplemesmerwithihc(args=None) :
     SegmentationSampleMesmerWithIHC.runfromargumentparser(args)
+
+def segmentationsamplemesmercomponenttiff(args=None) :
+    SegmentationSampleMesmerComponentTiff.runfromargumentparser(args)
