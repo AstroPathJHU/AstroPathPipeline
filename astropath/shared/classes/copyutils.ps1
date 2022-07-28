@@ -219,7 +219,10 @@ class copyutils{
             mkdir -p $des1
         }
         #
+        Write-Host '***Running linux copy with filespec'
+        Write-Host '***filespec:' $filespec
         $files = $this.listfiles($sor1, $filespec)
+        Write-Host '***Files to copy over' $files
         #
         $files | foreach-Object -Parallel { 
             Copy-Item -LiteralPath $_ -r $using:des1 

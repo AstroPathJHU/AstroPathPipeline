@@ -244,6 +244,7 @@
             try {
                 Write-Host '***sor:' $sor
                 Write-Host '***des:' $des
+                Write-Host '***GCI sor:' ((gci $sor))
                 Write-Host '***Sor im3s #:' ((gci ($sor+'\*') -include '*im3').Count)
                 Write-Host '***Sor im3s:' ((gci ($sor+'\*') -include '*im3'))
                 Write-Host '***Des im3s #:' ((gci $des).Count)
@@ -258,6 +259,7 @@
                 }
                 #if ($this.getcount('flatwim3', $true) -eq (get-childitem $des).count))
                 Write-Host '***results after copy'
+                Write-Host '***GCI sor:' ((gci $sor))
                 Write-Host '***Sor im3s #:' ((gci ($sor+'\*') -include '*im3').Count)
                 Write-Host '***Sor im3s:' ((gci ($sor+'\*') -include '*im3'))
                 Write-Host '***Des im3s #:' ((gci $des).Count)
