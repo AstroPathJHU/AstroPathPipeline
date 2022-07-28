@@ -9,7 +9,7 @@ Previously for these ```SampleName```'s, each cohort received its own alphabetic
 -	Y for Merkel Cell Carcinoma
 -	T for Trachea
 
-Currently for these ```SampleName```'s, each cohort receives its own Clinical Specimen Project Number. Currently we are using:
+Currently for these ```SampleName```'s, each cohort receives its own Clinical Specimen Project Number.
 -	To determine the next Clinical Specimen Number go to \\\BKI04\astropath_processing
 -	Open **AstropathConfig.csv**
 -	Looking in the **Project** column, add one to the highest number to get the new Clinical Specimen number
