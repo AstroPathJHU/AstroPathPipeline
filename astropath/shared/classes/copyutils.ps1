@@ -198,20 +198,7 @@ class copyutils{
      Usage: lxcopy(sor, des, filespec)
     ----------------------------------------- #>
     [void]lxcopy($sor, $des, $filespec){
-        <#
-        $sor1 = ($sor -replace '\\', '/') + '/'
-        $des1 = $des -replace '\\', '/'
-        mkdir -p $des1
         #
-        if (!($filespec -match '\*')){
-            $filespec = $filespec | foreach-object {'*' + $_}
-        }
-        #
-        $filespec | ForEach-Object{
-            $find = ('"'+$_+'"')
-            find $sor1 -name $find | xargs cp -r -t ($des1 + '/')
-        }
-        #>
         $des1 = $des -replace '\\', '/'
         $sor1 = $sor -replace '\\', '/'
         #
@@ -219,10 +206,7 @@ class copyutils{
             mkdir -p $des1
         }
         #
-        Write-Host '***Running linux copy with filespec'
-        Write-Host '***filespec:' $filespec
         $files = $this.listfiles($sor1, $filespec)
-        Write-Host '***Files to copy over' $files
         #
         $files | foreach-Object -Parallel { 
             Copy-Item -LiteralPath $_ -r $using:des1 
@@ -306,7 +290,7 @@ class copyutils{
         if ($filespec -match '\*'){
             $files = Get-ChildItem $sor
         } else {
-            $files = ([array](Get-ChildItem $sor)) -match $filespec
+            $files = ([array](Get-ChildItem $sor)) | Where-Object {$_.name -match $filespec}
         }
         return $files
     }
