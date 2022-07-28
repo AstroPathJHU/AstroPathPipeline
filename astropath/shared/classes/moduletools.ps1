@@ -242,6 +242,12 @@
             $des = $this.processvars[0] +'\'+$this.sample.slideid+'\im3\flatw'
             $sor = $this.sample.flatwim3folder()
             try {
+                Write-Host '***sor:' $sor
+                Write-Host '***des:' $des
+                Write-Host '***Sor im3s #:' ((gci ($sor+'\*') -include '*im3').Count)
+                Write-Host '***Sor im3s:' ((gci ($sor+'\*') -include '*im3'))
+                Write-Host '***Des im3s #:' ((gci $des).Count)
+                Write-Host '***Des im3s:' ((gci $des))
                 $this.sample.copy($sor, $des, 'im3', 30)
                 $flatwfiles = @()
                 $flatwfiles += $this.sample.listfiles($des, '*')
@@ -251,6 +257,7 @@
                     Rename-Item $file $newfilename
                 }
                 #if ($this.getcount('flatwim3', $true) -eq (get-childitem $des).count))
+                Write-Host '***results after copy'
                 Write-Host '***Sor im3s #:' ((gci ($sor+'\*') -include '*im3').Count)
                 Write-Host '***Sor im3s:' ((gci ($sor+'\*') -include '*im3'))
                 Write-Host '***Des im3s #:' ((gci $des).Count)
