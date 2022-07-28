@@ -27,7 +27,6 @@ Class testvminform : testtools {
         #
         $this.jenkins = $true
         $this.launchtests()
-        throw 'Tests Complete'
         #
     }
     testvminform($ver, $proj) : base(){
