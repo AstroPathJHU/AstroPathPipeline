@@ -5,4 +5,5 @@ When scanning the slides should be named *Control_TMA_XXXX_ZZ_MM.DD.YYYY*
 - **XXXX** is the TMA ID
 -	**ZZ** is the TMA cut number
 -	**MM.DD.YYYY** is the month, day, and year of staining
+
 *NOTE*: The ‘Control’ designation is provided so that we can appropriately select and handle the control tissues automatically
