@@ -103,8 +103,10 @@ Class testvminform : testtools {
     run on jenkins
     --------------------------------------------#>
     [void]setupjenkinspaths($inp){
+        
         if ($this.jenkins) {
             $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
+            $this.protocolcopy = $this.basepath + '\..\test_for_jenkins'
             $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
             $inp.informoutpath = $this.outpath + '\' + $this.informantibody + '_0'
             $inp.image_list_file = $this.outpath + '\image_list.tmp'
@@ -208,7 +210,7 @@ Class testvminform : testtools {
         Write-Host 'test check export options started'
         #
         Write-Host '    saving initial protocol'
-        $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\'
+        Write-Host ('    copying from ' + $inp.algpath + ' to ' + $this.protocolcopy)
         $inp.sample.copy($inp.algpath, $this.protocolcopy)
         #
         $inp.GetMergeConfigData()
@@ -790,6 +792,7 @@ Class testvminform : testtools {
     [void]cleanprotocol($inp) {
         #
         Write-Host '    returning initial protocol'
+        Write-Host ('    copying from ' + $this.protocolcopy + ' to ' + $inp.algpath)
         $inp.sample.copy($this.protocolcopy, $inp.algpath)
         #
     }
