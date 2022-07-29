@@ -14,6 +14,7 @@ Class testvminform : testtools {
     [string]$module = 'vminform'
     [string]$outpath = "C:\Users\Public\BatchProcessing"
     [string]$referenceim3
+    [string]$protocolcopy
     [switch]$jenkins = $false
     [switch]$versioncheck = $false
     [string]$class = 'vminform'
@@ -60,6 +61,7 @@ Class testvminform : testtools {
         $this.testfindfixableandmerge($inp)
         $this.testcheckexportoptions($inp)
         $this.runversioncheck($inp)
+        $this.cleanprotocol($inp)
         Write-Host '.'
         #
     }
@@ -204,6 +206,11 @@ Class testvminform : testtools {
         #
         Write-Host '.'
         Write-Host 'test check export options started'
+        #
+        Write-Host '    saving initial protocol'
+        $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\'
+        $inp.sample.copy($inp.algpath, $this.protocolcopy)
+        #
         $inp.GetMergeConfigData()
         #
         Write-Host '    checking default export option'
@@ -774,6 +781,16 @@ Class testvminform : testtools {
         $inp.sample.CreateNewDirs($this.outpath)
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         Write-Host 'test inform logs checking versions finished'
+        #
+    }
+    <# --------------------------------------------
+    cleanprotocol
+    cleanprotocol for future tests
+    --------------------------------------------#>
+    [void]cleanprotocol($inp) {
+        #
+        Write-Host '    returning initial protocol'
+        $inp.sample.copy($this.protocolcopy, $inp.algpath)
         #
     }
     #
