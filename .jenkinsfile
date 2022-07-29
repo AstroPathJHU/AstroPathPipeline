@@ -238,11 +238,11 @@ pipeline {
               }
             }
 			
-			stage('vminform') {
-              steps { 
+			//stage('vminform') {
+             // steps { 
 				//sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 
-              }
-            }
+            //  }
+            //}
 			
             stage('code checks') {
               steps {
