@@ -230,3 +230,10 @@ class PathGlobExists:
       if self.regex is None or re.match(self.regex, _.name):
         return True
     return False
+  def __str__(self):
+    result = str(self.folder/self.glob)
+    if self.regex is not None:
+      result += " matching " + self.regex
+    return result
+  def __repr__(self):
+    return "{type(self).__name__}({self.folder!r}, {self.glob!r}, regex={self.regex!r})"
