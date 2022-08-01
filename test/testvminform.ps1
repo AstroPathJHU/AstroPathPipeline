@@ -146,6 +146,10 @@ Class testvminform : testtools {
         Write-Host '.'
         Write-Host 'test create output directory started'
         #
+        Write-Host '    saving initial protocol'
+        Write-Host ('    copying from ' + $inp.algpath + ' to ' + $this.protocolcopy)
+        $inp.sample.copy($inp.algpath, $this.protocolcopy)
+        #
         $md_processloc = (
             $this.outpath,
             ($this.informantibody + '_0')
@@ -208,10 +212,6 @@ Class testvminform : testtools {
         #
         Write-Host '.'
         Write-Host 'test check export options started'
-        #
-        Write-Host '    saving initial protocol'
-        Write-Host ('    copying from ' + $inp.algpath + ' to ' + $this.protocolcopy)
-        $inp.sample.copy($inp.algpath, $this.protocolcopy)
         #
         $inp.GetMergeConfigData()
         #
