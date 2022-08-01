@@ -65,12 +65,14 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
               }
             }
+			
             stage('workflow') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsworkflow.ps1' 	 	
               }
             }
+			
             stage('prepdb') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
@@ -92,12 +94,23 @@ pipeline {
                   }
                 }
               }
-            }	
-            stage('zoom') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
-              }
             }
+			
+            stage('zoom') {
+              stages {
+			    stage('test zoom') {
+				  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
+                  }
+				}
+				stage('test segmaps') {
+			      steps {
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
+                  }
+				}
+			  }
+            }
+			
             stage('annowarp') {
               stages {
                 stage('test writeannotationinfo') {
@@ -123,12 +136,6 @@ pipeline {
             stage('deepzoom') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
-              }
-            }
-
-            stage('segmaps') {
-              steps {
-              sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
               }
             }
 
