@@ -683,7 +683,7 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
       AnnotationInfo(
         sampleid=self.SampleID,
         originalname=getname(node),
-        dbname=getname(node),
+        dbname=getname(node) if node["Regions"] else "empty",
         annotationsource=self.annotationsource if node["Regions"] else "dummy",
         position=self.annotationposition,
         pscale=self.pscale,

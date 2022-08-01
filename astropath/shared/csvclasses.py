@@ -210,7 +210,7 @@ class AnnotationInfo(DataClassWithPscale, DataClassWithApscale, DataClassWithAnn
     if self.annotationsource not in choices:
       raise ValueError(f"Invalid annotationsource {self.annotationsource}: choices are {choices}")
 
-    if self.isdummy and (self.dbname != "empty" or self.originalname != "empty"):
+    if self.isdummy and self.dbname != "empty":
       raise ValueError(f"Dummy annotations should be named empty, not {self.dbname}")
     if not self.isdummy and (self.dbname == "empty" or self.originalname == "empty"):
       raise ValueError("Empty annotations should be marked as dummy")
