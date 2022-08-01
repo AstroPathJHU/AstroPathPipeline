@@ -207,8 +207,11 @@ Class testpswarpoctets : testtools {
         #
         Write-Host '    cleanup method complete'
         Write-Host '    delete the testing_warpoctets folder'
-        #
         $inp.sample.removedir($this.processloc)
+        #
+        Write-Host '    delete the slide log folder'
+        $logpath = $inp.sample.basepath + '\' + $inp.sample.slideid + '\logfiles'
+        $inp.sample.removedir($logpath)
         #
         Write-Host 'test cleanup method finished'
     }
