@@ -106,7 +106,7 @@ Class testvminform : testtools {
         
         if ($this.jenkins) {
             $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
-            $this.protocolcopy = $this.basepath + '\..\test_for_jenkins'
+            $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\vminform'
             $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
             $inp.informoutpath = $this.outpath + '\' + $this.informantibody + '_0'
             $inp.image_list_file = $this.outpath + '\image_list.tmp'
@@ -792,8 +792,9 @@ Class testvminform : testtools {
     [void]cleanprotocol($inp) {
         #
         Write-Host '    returning initial protocol'
-        Write-Host ('    copying from ' + $this.protocolcopy + ' to ' + $inp.algpath)
-        $inp.sample.copy($this.protocolcopy, $inp.algpath)
+        $savedalg = $this.protocolcopy + '\' + $inp.alg
+        Write-Host ('    copying from ' + $savedalg + ' to ' + $inp.algpath + '\..')
+        $inp.sample.copy($savedalg, ($inp.algpath + '\..'))
         #
     }
     #
