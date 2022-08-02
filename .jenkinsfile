@@ -68,7 +68,7 @@ pipeline {
 			
             stage('workflow') {
               steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
+                //sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsworkflow.ps1' 	 	
               }
             }
