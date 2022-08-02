@@ -151,7 +151,7 @@ class FieldReadIm3MultiLayer(Field, RectangleReadIm3MultiLayer):
   """
 
 class FieldCollection(RectangleCollection):
-  def showalignedrectanglelayout(self, *, showplot=None, saveas=None):
+  def showalignedrectanglelayout(self, *, showplot=None, saveas=None, rid=True):
     import matplotlib.patches as patches, matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     xmin = float("inf") * self.onepixel
@@ -167,6 +167,7 @@ class FieldCollection(RectangleCollection):
       ymax = max(ymax, y+height)
       patch = patches.Rectangle(xy / r.onepixel, *shape / r.onepixel, color=color, alpha=0.5)
       ax.add_patch(patch)
+      if rid: ax.text(*(xy+shape/2) / r.onepixel, str(r.n), ha="center", va="center")
 
     for r in self.rectangles:
       x, y = xy = np.array([r.mx1, r.my1])

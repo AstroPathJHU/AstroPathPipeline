@@ -122,7 +122,11 @@ class AnnotationNodeXML(AnnotationNodeBase):
     return color
   @property
   def visible(self):
-    return {"true": True, "false": False}[self.__xmlnode.get_xml_attr("Visible").lower().strip()]
+    try:
+      visibleattr = self.__xmlnode.get_xml_attr("Visible")
+    except KeyError:
+      visibleattr = "true"
+    return {"true": True, "false": False}[visibleattr.lower().strip()]
 
   @property
   def regions(self):
@@ -136,7 +140,7 @@ class AnnotationNodeXML(AnnotationNodeBase):
 
   @property
   def areacutoff(self):
-    return None #when it's manually drawn, want to keep whatever there is
+    return 3*self.oneannopixel**2
 
 class AnnotationNodeFromPolygons(AnnotationNodeBase, units.ThingWithAnnoscale):
   def __init__(self, name, polygons, *, color, areacutoff, visible=True, **kwargs):
@@ -201,7 +205,12 @@ class AnnotationRegionXML(AnnotationRegionBase):
     if isinstance(vertices, jxmlease.XMLDictNode): vertices = vertices,
     return [AnnotationVertexXML(_, annoscale=self.annoscale) for _ in vertices]
   @property
-  def NegativeROA(self): return bool(int(self.__xmlnode.get_xml_attr("NegativeROA")))
+  def NegativeROA(self):
+    try:
+      attr = self.__xmlnode.get_xml_attr("NegativeROA")
+    except KeyError:
+      attr = self.__xmlnode.get_xml_attr("IsNegative")
+    return bool(int(attr))
   @property
   def Type(self): return self.__xmlnode.get_xml_attr("Type")
 
@@ -560,8 +569,9 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           for subpolygon in valid:
             subsubpolygons = (p for p in [subpolygon.outerpolygon] + subpolygon.subtractpolygons if not (areacutoff is not None and polygon.area < areacutoff))
             for polygon, m in zip(subsubpolygons, regioncounter): #regioncounter has to be last! https://www.robjwells.com/2019/06/help-zip-is-eating-my-iterators-items/
-              if node.areacutoff is not None and polygon.area < areacutoff: continue
+              if areacutoff is not None and polygon.area < areacutoff: continue
               regionid = 1000*layer + m
+              if m >= 1000: raise RuntimeError(f"Too many regions for layer {layer}")
               polygon.regionid = regionid
               regionvertices = polygon.outerpolygon.vertices
 
@@ -673,7 +683,7 @@ class XMLPolygonAnnotationFileInfoWriter(XMLPolygonAnnotationFileBase, ThingWith
       AnnotationInfo(
         sampleid=self.SampleID,
         originalname=getname(node),
-        dbname=getname(node),
+        dbname=getname(node) if node["Regions"] else "empty",
         annotationsource=self.annotationsource if node["Regions"] else "dummy",
         position=self.annotationposition,
         pscale=self.pscale,

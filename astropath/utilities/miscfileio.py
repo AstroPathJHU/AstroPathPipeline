@@ -209,3 +209,21 @@ def field_size_limit_context(limit):
     yield
   finally:
     csv.field_size_limit(oldlimit)
+
+class PathGlobExists:
+  def __init__(self, folder, glob, *, regex=None):
+    self.folder = pathlib.Path(folder)
+    self.glob = glob
+    self.regex = regex
+  def exists(self):
+    for _ in self.folder.glob(self.glob):
+      if self.regex is None or re.match(self.regex, _.name):
+        return True
+    return False
+  def __str__(self):
+    result = str(self.folder/self.glob)
+    if self.regex is not None:
+      result += " matching " + self.regex
+    return result
+  def __repr__(self):
+    return "{type(self).__name__}({self.folder!r}, {self.glob!r}, regex={self.regex!r})"
