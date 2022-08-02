@@ -106,7 +106,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
   def testCsvScan(self, SlideID="M206", units="safe", selectrectangles=[1], skipcheck=False, nolog=False):
     root = thisfolder/"test_for_jenkins"/"csvscan"/"Clinical_Specimen_0"
     geomroot = thisfolder/"data"/"reference"/"geomcell"
-    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits"]
+    args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--do-global-csv"]
     if selectrectangles is not None:
       args.append("--selectrectangles")
       for rid in selectrectangles: args.append(str(rid))

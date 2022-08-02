@@ -1564,6 +1564,9 @@ class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, XMLPolygonFileAr
     super().__init__(*args, **kwargs)
 
   @property
+  def annotationsxmlregex(self): return self.__annotationsxmlregex
+
+  @property
   def workflowkwargs(self):
     return {
       **super().workflowkwargs,

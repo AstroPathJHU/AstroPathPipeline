@@ -6,6 +6,7 @@ from ...shared.csvclasses import AnnotationInfo
 from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationFileSample
 from ...utilities import units
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict
+from ...utilities.miscfileio import PathGlobExists
 from ..align.alignsample import AlignSample, ReadAffineShiftSample
 
 class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
@@ -104,6 +105,7 @@ class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationFileS
   def inputfiles(self, **kwargs):
     result = [
       *super().inputfiles(**kwargs),
+      PathGlobExists(self.scanfolder, f"*{self.SlideID}*annotations.polygons*.xml", regex=self.annotationsxmlregex),
     ]
     if self.annotationpositionfromaffineshift:
       result += [
