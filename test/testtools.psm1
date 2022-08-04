@@ -1038,8 +1038,8 @@ Class testtools{
         $sampletracker.teststatus = $true
         #
         $sampletracker.removefile($this.mpath + '\across_project_queues\vminform-queue.csv')
-        $sampletracker.copy(($this.mpath + '\vminform-queue.csv'),
-         ($this.mpath + '\across_project_queues'))
+        #$sampletracker.copy(($this.mpath + '\vminform-queue.csv'),
+        # ($this.mpath + '\across_project_queues'))
         $sampletracker.removefile(
             $sampletracker.vmq.localqueuefile.($this.project))
         $sampletracker.removedir($sampletracker.informfolder())
