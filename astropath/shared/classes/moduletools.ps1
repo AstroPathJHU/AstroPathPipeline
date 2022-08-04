@@ -879,22 +879,14 @@
     #
     [void]getslideidregex(){
         #
-        Write-Host '***testing getslideidregex'
-        
         if ($this.all){
-            Write-Host '*** $this.all = TRUE'
             $this.sample.importslideids($this.sample.mpath)
-            Write-Host '*** sample slide data:' $this.sample.slide_data
-            Write-Host '*** project:' $this.sample.project
             $aslides = $this.sample.slide_data |
                 where-object {$_.Project -contains $this.sample.project}
-            Write-Host '*** aslides:' $aslides
             $slides = $aslides.SlideID
         } else {
-            Write-Host '*** $this.all = FALSE'
             $slides = $this.sample.batchslides.slideid
         }
-        Write-Host '*** $slides:' $slides
         #
         $this.batchslides = $slides
         #
@@ -908,18 +900,25 @@
         $sid = $this.sample.slideid
         #
         $this.getslideidregex()
+        Write-Host '*** batchslides:' $this.batchslides
         #
+        Write-Host '*** cmodule:' $cmodule
         if (@('batchwarpkeys', 'batchwarpfits') -match $cmodule){
             foreach ($slide in $this.batchslides){
+                Write-Host 'slide:' $slide
                 $this.sample.slideid = $slide
+                Write-Host 'warpoctets folder:' $this.warpoctetsfolder()
                 if ($this.sample.testwarpoctetsfiles()){
+                    Write-Host 'Passed test warpoctets files'
                     $nbatchslides += $slide
                 }
             }
         } else {
             $nbatchslides = $this.batchslides
         }
+        Write-Host 'nbatchslides' $nbatchslides
         #
+        Write-Host 'sid' $sid
         $this.sample.slideid = $sid
         $this.sample.info(([string]$nbatchslides.length +
                 ' sample(s) selected for sample regex'))
