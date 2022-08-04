@@ -118,6 +118,7 @@ using module .\testtools.psm1
         }
         #
         Write-Host '    collecting [warpkeys] defined task'
+        Write-Host '    *** slidelist:' $slides
         #
         $inp.getslideidregex($this.class)
         #
