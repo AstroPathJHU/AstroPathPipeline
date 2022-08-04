@@ -20,7 +20,7 @@ If everything checks out scan the specimens as follows for the Vectra3
       - Check that the annotation.xml modified data are the same
 8. Check that the data scanned properly
    - Open the overview scans in *Phenochart(C)* and check that at least 95% of the fields correctly scanned
-      - Never retake single HPFs, if more than 5% of fields failed restart the entire HPF set. 
+      - **Never retake single HPFs, if more than 5% of fields failed restart the entire HPF set.**
       - By making the image files 'extra large icons' a quick visual inspection can be performed of the slides. Here check for two things:
         - sometimes the microscope gets mixed up and scans the wrong part of the tissue, usually this creates a number of empty fields but can be hard to catch 
           - the AstroPath Pipeline code has been modfied to handle such cases so this is not a breaking issue but does cause a loss of data.
