@@ -3,4 +3,5 @@
 2.	Open Phenochart and select ROI
 3.	Circle the entire tissue, click OK on dialog box that appears
 4.	Delete empty fields around and inside tissue boundaries
+
 **Note: If you accidentally delete an HPF, you must delete the whole region and start again. Do not add individual stamps.**
