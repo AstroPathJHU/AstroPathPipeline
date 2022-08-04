@@ -879,14 +879,22 @@
     #
     [void]getslideidregex(){
         #
+        Write-Host '***testing getslideidregex'
+        
         if ($this.all){
+            Write-Host '*** $this.all = TRUE'
             $this.sample.importslideids($this.sample.mpath)
+            Write-Host '*** sample slide data:' $this.sample.slide_data
+            Write-Host '*** project:' $this.sample.project
             $aslides = $this.sample.slide_data |
                 where-object {$_.Project -contains $this.sample.project}
+            Write-Host '*** aslides:' $aslides
             $slides = $aslides.SlideID
         } else {
+            Write-Host '*** $this.all = FALSE'
             $slides = $this.sample.batchslides.slideid
         }
+        Write-Host '*** $slides:' $slides
         #
         $this.batchslides = $slides
         #
