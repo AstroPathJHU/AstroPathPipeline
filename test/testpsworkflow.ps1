@@ -30,7 +30,9 @@ Class testpsworkflow : testtools {
         #>
         $inp.removedir($PSScriptRoot + '\data\workflowlogs')
         #
+        Write-Host '***running prepare sample'
         $inp.preparesample($this.slideid)
+        Write-Host '***finished prepare sample'
         $this.savephenotypedata($inp)
         $this.removesetupvminform($inp)
         $this.testastropathupdate2('shredxml', $cred)
