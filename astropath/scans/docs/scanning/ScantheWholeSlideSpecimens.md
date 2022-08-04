@@ -1,7 +1,7 @@
 # 4.4.5.4. Scan the Whole Slide Specimens
 If everything checks out scan the specimens as follows for the Vectra3
 1. Take exposures (create a single protocol) for all of the specimen multiplex slides 
-    - The name of the protocol should be *Multiplex_MMDDYYYY* 
+    - The name of the protocol should be *BatchX_MMDDYYYY* 
     - and should be saved to the corresponding ```<spath>``` folder
 2.	Create a task list (.csv format) for the scanning
     - It should be named Multiplex_MMDDYYYY.csv
