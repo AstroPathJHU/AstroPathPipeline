@@ -28,5 +28,5 @@ When the phenotype project is completed, we must apply the proper settings for e
 1.	Under ‘Images to export’ select the checkbox next to ‘Component Images (multi-image TIFF)’ <br>
    ![Figure 8 Image](www/Fig8.png) 
 
-**IV. Save the algorithm and project with a unique name that does not use special characters (underscores being the only exception).**
+**IV. Save the project with a unique name that does not use special characters (underscores being the only exception).**
 
