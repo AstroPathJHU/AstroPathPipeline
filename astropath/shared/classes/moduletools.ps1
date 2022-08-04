@@ -907,7 +907,7 @@
             foreach ($slide in $this.batchslides){
                 Write-Host 'slide:' $slide
                 $this.sample.slideid = $slide
-                Write-Host 'warpoctets folder:' $this.warpoctetsfolder()
+                Write-Host 'warpoctets folder:' $this.sample.warpoctetsfolder()
                 if ($this.sample.testwarpoctetsfiles()){
                     Write-Host 'Passed test warpoctets files'
                     $nbatchslides += $slide
