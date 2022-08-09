@@ -770,6 +770,14 @@ class WorkflowCohort(Cohort):
       )
     kwargs["samplefilters"].append(SampleFilter(samplefilter, None, None))
 
+    def inputfilesfilter(self, sample, **kwargs):
+      missinginputs = [file for file in sample.inputfiles(**kwargs) if not file.exists()]
+      if missinginputs:
+        return FilterResult(False, "missing input files: " + ", ".join(str(_) for _ in missinginputs))
+      return FilterResult(True, "all input files exist", cleanup=False)
+
+    kwargs["samplefilters"].append(SampleFilter(inputfilesfilter, None, None))
+
     return kwargs
 
   @classmethod
@@ -811,6 +819,7 @@ class WorkflowCohort(Cohort):
           try:
             missinginputs = [file for file in sample.inputfiles(**kwargs) if not file.exists()]
             if missinginputs:
+              assert False #should not be able to get here anymore
               raise IOError("Not all required input files exist.  Missing files: " + ", ".join(str(_) for _ in missinginputs))
           except Exception: #don't log KeyboardInterrupt here
             with sample:
