@@ -145,10 +145,19 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       self.wsifolder.mkdir(parents=True, exist_ok=True)
       for i, layer in enumerate(self.layerscomponenttiff):
         filename = self.wsifilename(layer)
-        self.logger.info(f"saving {filename.name}")
         slc = bigimage[:, :, i]
-        image = PIL.Image.fromarray(slc)
-        image.save(filename, "PNG")
+        if filename.exists():
+          self.logger.info(f"{filename.name} already exists")
+        else:
+          self.logger.info(f"saving {filename.name}")
+          image = PIL.Image.fromarray(slc)
+          with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
+            assert lock
+            try:
+              image.save(filename, "PNG")
+            except:
+              rm_missing_ok(filename)
+              raise
 
         if layer in self.needtifflayers:
           contiguousslc = np.ascontiguousarray(slc)
@@ -209,14 +218,26 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       r, g, b = img
       img = r.join(g, "vertical").join(b, "vertical")
       self.logger.info("  saving")
-      img.tiffsave(os.fspath(filename), page_height=layers[0].height)
+      with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
+        assert lock
+        try:
+          img.tiffsave(os.fspath(filename), page_height=layers[0].height)
+        except:
+          rm_missing_ok(filename)
+          raise
     else:
       assert len(layers) == len(self.tifflayers)
       tiffoutput = layers[0]
       for layer in layers[1:]:
         tiffoutput = tiffoutput.join(layer, "vertical")
       self.logger.info("  saving")
-      tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
+      with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
+        assert lock
+        try:
+          tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
+        except:
+          rm_missing_ok(filename)
+          raise
 
   def zoom_memory(self, *, fmax=50, tissuemeanintensity=100.):
     """
@@ -431,7 +452,13 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               continue
             self.logger.info(f"  saving {filename.name}")
             image = PIL.Image.fromarray(slc[:, :, layer-1])
-            image.save(filename, "TIFF")
+            with job_lock.JobLock(filename.with_suffix(".tiff.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
+              assert lock
+              try:
+                image.save(filename, "TIFF")
+              except:
+                rm_missing_ok(filename)
+                raise
 
     return tissuemeanintensity / (meanintensitynumerator / meanintensitydenominator)
 
@@ -466,7 +493,13 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
       self.logger.info(f"saving {wsifilename.name}")
       output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
-      output.pngsave(os.fspath(wsifilename))
+      with job_lock.JobLock(wsifilename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[wsifilename]) as lock:
+        assert lock
+        try:
+          output.pngsave(os.fspath(wsifilename))
+        except:
+          rm_missing_ok(wsifilename)
+          raise
       if layer in self.needtifflayers:
         fortiff.append(output)
 
