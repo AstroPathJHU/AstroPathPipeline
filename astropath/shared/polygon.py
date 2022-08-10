@@ -15,7 +15,7 @@ class InvalidPolygonError(Exception):
     message += ": "+str(polygon)
     try:
       self.madevalid = polygon.MakeValid()
-    except RuntimeError as e:
+    except (RuntimeError, RecursionError) as e:
       self.madevalid = None
       message += f"\n\nMakeValid failed: {e}"
     else:
