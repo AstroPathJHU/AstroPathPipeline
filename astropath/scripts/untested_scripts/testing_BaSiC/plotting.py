@@ -105,7 +105,7 @@ def illumination_variation_plots(samp,uncorr_mi,mi_corr_mi,basic_corr_mi,central
     plt.legend(loc='lower right')
     save_figure_in_dir(plt,fn,save_dirpath)
 
-def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
+def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath,no_diff_ets=False) :
     layer_dir = save_dirpath/'mse_reduction_layer_plots'
     if not layer_dir.is_dir() :
         layer_dir.mkdir(parents=True)
@@ -114,6 +114,8 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
         if (layer_dir/fn).is_file() :
             continue
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        if no_diff_ets :
+            overlap_comparisons = [oc for oc in overlap_comparisons if oc.exp_time_1==oc.exp_time_2]
         f,ax = plt.subplots(4,4,figsize=(4*6.4,4*4.6))
         sum_weights = np.sum(np.array([oc.npix for oc in overlap_comparisons]))
         orig_rel_residuals = [oc.orig_mse_diff/oc.orig_mse1 for oc in overlap_comparisons]
@@ -171,7 +173,7 @@ def overlap_mse_reduction_plots(overlap_comparisons_by_layer_n,save_dirpath) :
         save_figure_in_dir(plt,fn,layer_dir)
         plt.close()
 
-def overlap_correction_score_plots(overlap_comparisons_by_layer_n,save_dirpath) :
+def overlap_correction_score_plots(overlap_comparisons_by_layer_n,save_dirpath,no_diff_ets=False) :
     layer_dir = save_dirpath/'correction_score_layer_plots'
     if not layer_dir.is_dir() :
         layer_dir.mkdir(parents=True)
@@ -180,6 +182,8 @@ def overlap_correction_score_plots(overlap_comparisons_by_layer_n,save_dirpath) 
         if (layer_dir/fn).is_file() :
             continue
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        if no_diff_ets :
+            overlap_comparisons = [oc for oc in overlap_comparisons if oc.exp_time_1==oc.exp_time_2]
         f,ax = plt.subplots(3,4,figsize=(4*6.4,3*4.6))
         sum_weights = np.sum(np.array([oc.npix for oc in overlap_comparisons]))
         orig_rel_residuals = [oc.orig_mse_diff/oc.orig_mse1 for oc in overlap_comparisons]
@@ -230,13 +234,15 @@ def overlap_correction_score_plots(overlap_comparisons_by_layer_n,save_dirpath) 
         save_figure_in_dir(plt,fn,layer_dir)
         plt.close()
 
-def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,save_dirpath) :
+def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,save_dirpath,no_diff_ets=False) :
     rel_mse_redux_diff_means = []
     rel_mse_redux_diff_stds = []
     for layer_n in overlap_comparisons_by_layer_n.keys() :
         rel_mse_redux_diff_means.append([])
         rel_mse_redux_diff_stds.append([])
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        if no_diff_ets :
+            overlap_comparisons = [oc for oc in overlap_comparisons if oc.exp_time_1==oc.exp_time_2]
         for tag_pair in [(1,9),(2,8),(3,7),(4,6)] :
             tag_comparisons = [oc for oc in overlap_comparisons if oc.tag in tag_pair]
             weights = [oc.npix for oc in tag_comparisons]
@@ -294,10 +300,12 @@ def overlap_mse_reduction_comparison_plot(samp,overlap_comparisons_by_layer_n,sa
     save_figure_in_dir(plt,'mse_reduction_differences.png',save_dirpath)
     plt.close()
 
-def overlap_mse_reduction_comparison_box_plot(samp,overlap_comparisons_by_layer_n,save_dirpath) :
+def overlap_mse_reduction_comparison_box_plot(samp,overlap_comparisons_by_layer_n,save_dirpath,no_diff_ets=False) :
     data_vals = []
     for layer_n in overlap_comparisons_by_layer_n.keys() :
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        if no_diff_ets :
+            overlap_comparisons = [oc for oc in overlap_comparisons if oc.exp_time_1==oc.exp_time_2]
         meanimage_rel_mse_reduxes = [1.-(oc.meanimage_mse_diff/oc.meanimage_mse1)/(oc.orig_mse_diff/oc.orig_mse1) for oc in overlap_comparisons]
         basic_rel_mse_reduxes = [1.-(oc.basic_mse_diff/oc.basic_mse1)/(oc.orig_mse_diff/oc.orig_mse1) for oc in overlap_comparisons]
         rel_mse_redux_diffs = [brrr-mirrr for brrr,mirrr in zip(basic_rel_mse_reduxes,meanimage_rel_mse_reduxes)]
@@ -329,10 +337,12 @@ def overlap_mse_reduction_comparison_box_plot(samp,overlap_comparisons_by_layer_
     save_figure_in_dir(plt,'mse_reduction_differences_box_plot.png',save_dirpath)
     plt.close()
 
-def overlap_correction_score_difference_box_plot(samp,overlap_comparisons_by_layer_n,save_dirpath) :
+def overlap_correction_score_difference_box_plot(samp,overlap_comparisons_by_layer_n,save_dirpath,no_diff_ets=False) :
     data_vals = []
     for layer_n in overlap_comparisons_by_layer_n.keys() :
         overlap_comparisons = overlap_comparisons_by_layer_n[layer_n]
+        if no_diff_ets :
+            overlap_comparisons = [oc for oc in overlap_comparisons if oc.exp_time_1==oc.exp_time_2]
         meanimage_corr_scores = np.sqrt(np.array([oc.meanimage_mse_diff/oc.orig_mse_diff for oc in overlap_comparisons]))
         basic_corr_scores = np.sqrt(np.array([oc.basic_mse_diff/oc.orig_mse_diff for oc in overlap_comparisons]))
         corr_score_diffs = [bcs-mics for bcs,mics in zip(basic_corr_scores,meanimage_corr_scores)]

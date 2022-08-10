@@ -10,6 +10,8 @@ class AlignmentOverlapComparison(MyDataClass) :
     layer_n : int
     p1 : int
     p2 : int
+    exp_time_1 : float
+    exp_time_2 : float
     tag : int
     npix : int
     orig_dx : float

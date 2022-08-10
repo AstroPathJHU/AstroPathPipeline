@@ -37,6 +37,8 @@ def get_arguments() :
     parser.add_argument('--n_threads',type=int,default=10,help='The number of parallel threads to use')
     parser.add_argument('--no_darkfield',action='store_true',
                         help='include this flag to skip computing a BaSiC darkfield')
+    parser.add_argument('--no_different_exposure_times',action='store_true',
+                        help='include this flag to only plot overlaps where both rectangles had the same exposure time')
     parser.add_argument('--max_shift_diff',type=float,default=-900,
                         help='''Overlaps with >= this amount of difference (pixels) in x/y alignment between meanimage 
                                 and BaSiC corrections will be trimmed before plotting or calculating statistics''')
@@ -269,15 +271,15 @@ def main() :
                                                   args.workingdir,
                                                   args.n_threads,
                                                   args.skip_rerun_check)
-    #create the overlap MSE reduction comparison plots
+    #create the overlap MSE reduction/correction score comparison plots
     print(f'{timestamp()} creating correction score and overlap mse reduction plots for {args.slideID}')
-    overlap_mse_reduction_plots(overlap_comparisons,args.workingdir)
-    overlap_correction_score_plots(overlap_comparisons,args.workingdir)
+    overlap_mse_reduction_plots(overlap_comparisons,args.workingdir,args.no_different_exposure_times)
+    overlap_correction_score_plots(overlap_comparisons,args.workingdir,args.no_different_exposure_times)
     #create the comparison plots over all layers
     print(f'{timestamp()} creating final summary plots for {args.slideID}')
-    overlap_mse_reduction_comparison_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
-    overlap_mse_reduction_comparison_box_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
-    overlap_correction_score_difference_box_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
+    overlap_mse_reduction_comparison_plot(uncorrected_sample,overlap_comparisons,args.workingdir,args.no_different_exposure_times)
+    overlap_mse_reduction_comparison_box_plot(uncorrected_sample,overlap_comparisons,args.workingdir,args.no_different_exposure_times)
+    overlap_correction_score_difference_box_plot(uncorrected_sample,overlap_comparisons,args.workingdir,args.no_different_exposure_times)
     #ks_test_plot(uncorrected_sample,overlap_comparisons,args.workingdir)
     print(f'{timestamp()} Done')
 
