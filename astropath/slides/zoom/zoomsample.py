@@ -145,16 +145,19 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       self.wsifolder.mkdir(parents=True, exist_ok=True)
       for i, layer in enumerate(self.layerscomponenttiff):
         filename = self.wsifilename(layer)
-        self.logger.info(f"saving {filename.name}")
         slc = bigimage[:, :, i]
-        image = PIL.Image.fromarray(slc)
-        with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
-          assert lock
-          try:
-            image.save(filename, "PNG")
-          except:
-            rm_missing_ok(filename)
-            raise
+        if filename.exists():
+          self.logger.info(f"{filename.name} already exists")
+        else:
+          self.logger.info(f"saving {filename.name}")
+          image = PIL.Image.fromarray(slc)
+          with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
+            assert lock
+            try:
+              image.save(filename, "PNG")
+            except:
+              rm_missing_ok(filename)
+              raise
 
         if layer in self.needtifflayers:
           contiguousslc = np.ascontiguousarray(slc)
