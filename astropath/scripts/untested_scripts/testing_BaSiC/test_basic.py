@@ -15,7 +15,7 @@ from utilities import timestamp, AlignmentOverlapComparison, add_rect_image_to_q
 from utilities import get_pre_and_post_correction_rect_layer_images_by_index, add_overlap_comparison_to_queue
 from plotting import illumination_variation_plots, overlap_mse_reduction_plots
 from plotting import overlap_mse_reduction_comparison_plot, overlap_mse_reduction_comparison_box_plot
-from plotting import overlap_correction_score_difference_box_plot, overlap_correction_score_plots, ks_test_plot
+from plotting import overlap_correction_score_difference_box_plot, overlap_correction_score_plots#, ks_test_plot
 
 #fast units setup
 units.setup('fast')
