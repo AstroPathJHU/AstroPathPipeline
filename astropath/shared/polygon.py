@@ -82,7 +82,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
     if bad:
       raise InvalidPolygonError(poly)
 
-  def makevalid(self, *, round=False, imagescale=None):
+  def makevalid(self, *, round=False, imagescale=None, logger):
     if len(self.outerpolygon.vertices) < 3:
       return []
     self = Polygon(outerpolygon=self.outerpolygon, subtractpolygons=[p for p in self.subtractpolygons if len(p.vertices) >= 3])
@@ -112,9 +112,9 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
       polygons = []
       for p in oldpolygons:
         try:
-          polygons += p.makevalid(round=round, imagescale=imagescale)
+          polygons += p.makevalid(round=round, imagescale=imagescale, logger=logger)
         except RecursionError:
-          pass
+          logger.warningglobal(f"Can't make polygon valid because of infinite loop --> skipping it {p}")
       polygons.sort(key=lambda x: x.area, reverse=True)
       return polygons
     else:
