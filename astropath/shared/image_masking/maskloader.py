@@ -65,7 +65,7 @@ class ThingWithTissueMaskPolygons(ThingWithTissueMask, ThingWithLogger, contextl
 
       self.logger.debug("converting to gdal")
       mask = mask.astype(np.uint8)
-      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, imagescale=imagescale, forgdal=True)
+      polygons = findcontoursaspolygons(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, imagescale=imagescale, forgdal=True, logger=self.logger)
       areacutoff = units.convertpscale(areacutoff * units.onepixel(imagescale)**2, imagescale, self.pscale, power=2)
 
       self.logger.debug("smoothing")

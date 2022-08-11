@@ -511,7 +511,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           isNeg = region.NegativeROA
 
           polygon = SimplePolygon(vertices=regionvertices)
-          valid = polygon.makevalid(round=True, imagescale=annotation.annoscale)
+          valid = polygon.makevalid(round=True, imagescale=annotation.annoscale, logger=self.logger)
 
           perimeter = 0
           maxlength = 0
