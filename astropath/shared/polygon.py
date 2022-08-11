@@ -107,7 +107,14 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
           raise ValueError(f"Unknown component from MakeValid: {component}")
       polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, annotation=self.annotation) for p in polygons]
       if round: polygons = [p.round(imagescale=imagescale) for p in polygons]
-      polygons = sum((p.makevalid(round=round, imagescale=imagescale) for p in polygons), [])
+
+      oldpolygons = polygons
+      polygons = []
+      for p in oldpolygons:
+        try:
+          polygons += p.makevalid(round=round, imagescale=imagescale)
+        except RecursionError:
+          pass
       polygons.sort(key=lambda x: x.area, reverse=True)
       return polygons
     else:
