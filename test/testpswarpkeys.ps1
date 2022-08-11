@@ -28,9 +28,13 @@ using module .\testtools.psm1
     launchtests(){
         $this.testpsbatchwarpkeysconstruction($this.task)
         $inp = batchwarpkeys $this.task  
+        Write-Host '*** Slideid upon creation:' $inp.sample.slideid
+        Write-Host '*** batchid upon creation:' $inp.sample.slideid
         $this.removewarpoctetsdep($inp)
         $this.testprocessroot($inp)
         $this.testwarpkeysinputbatch($inp)
+        Write-Host '*** Slideid before expected:' $inp.sample.slideid
+        Write-Host '*** batchid before expected:' $inp.sample.slideid
         $this.runpywarpkeysexpected($inp)
         $this.testlogsexpected($inp)
         $this.testcleanup($inp)
