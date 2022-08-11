@@ -105,7 +105,10 @@ using module .\testtools.psm1
         Write-Host 'test for [batchwarpkeys] expected input started' 
         #
         $flatwpath = '\\' + $inp.sample.project_data.fwpath
+        Write-Host '*** warpoctetsfolder:' $inp.sample.warpoctetsfolder()
+        Write-Host '*** warpoctetsfolder contents before:' (gci $inp.sample.warpoctetsfolder())
         $this.addwarpoctetsdep($inp)
+        Write-Host '*** warpoctetsfolder contents after:' (gci $inp.sample.warpoctetsfolder())
         #
         if ($inp.all){
             $slides = $this.slidelist

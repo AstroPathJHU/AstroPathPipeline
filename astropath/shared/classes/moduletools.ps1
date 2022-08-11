@@ -905,20 +905,21 @@
         Write-Host '*** cmodule:' $cmodule
         if (@('batchwarpkeys', 'batchwarpfits') -match $cmodule){
             foreach ($slide in $this.batchslides){
-                Write-Host 'slide:' $slide
+                Write-Host '*** slide:' $slide
                 $this.sample.slideid = $slide
-                Write-Host 'warpoctets folder:' $this.sample.warpoctetsfolder()
+                Write-Host '*** warpoctets folder:' $this.sample.warpoctetsfolder()
+                Write-Host '*** folder contents:' (gci $this.sample.warpoctetsfolder())
                 if ($this.sample.testwarpoctetsfiles()){
-                    Write-Host 'Passed test warpoctets files'
+                    Write-Host '*** Passed test warpoctets files'
                     $nbatchslides += $slide
                 }
             }
         } else {
             $nbatchslides = $this.batchslides
         }
-        Write-Host 'nbatchslides' $nbatchslides
+        Write-Host '*** nbatchslides:' $nbatchslides
         #
-        Write-Host 'sid' $sid
+        Write-Host '*** sid:' $sid
         $this.sample.slideid = $sid
         $this.sample.info(([string]$nbatchslides.length +
                 ' sample(s) selected for sample regex'))
