@@ -422,13 +422,13 @@ class MeanImageComparison :
             projects.sort(); cohorts.sort(); batches.sort()
             for p in projects :
                 if len(ordered_tuples)>0 and ordered_tuples[-1][0] not in lines_after :
-                    lines_after.append(ordered_tuples[-1][0])
+                    lines_after.append(ordered_tuples[-1][0].SlideID)
                 for c in cohorts :
                     if len(ordered_tuples)>0 and ordered_tuples[-1][0] not in lines_after :
-                        lines_after.append(ordered_tuples[-1][0])
+                        lines_after.append(ordered_tuples[-1][0].SlideID)
                     for b in batches :
                         if len(ordered_tuples)>0 and ordered_tuples[-1][0] not in lines_after :
-                            lines_after.append(ordered_tuples[-1][0])
+                            lines_after.append(ordered_tuples[-1][0].SlideID)
                         for s in samples :
                             if s.Project==p and s.Cohort==c and s.BatchID==b :
                                 mid = s.root/s.SlideID/UNIV_CONST.IM3_DIR_NAME/self.meanimage_subdir_name
