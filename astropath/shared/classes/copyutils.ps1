@@ -170,7 +170,6 @@ class copyutils{
     ----------------------------------------- #>
     [void]lxcopy($sor, $des){
         #
-        Write-Host '*** Starting linux copy'
         if (Test-Path $sor -PathType Container) {
             $this.lxcopy($sor, $des, '*')
             return
@@ -182,8 +181,6 @@ class copyutils{
         if (!(Test-Path $des1)) {
             mkdir -p $des1
         }
-        Write-Host '*** sor1:' $sor1
-        Write-Host '*** des1:' $des1
         #
         Copy-Item -LiteralPath $sor1 $des1 -r
         #
@@ -202,7 +199,6 @@ class copyutils{
     ----------------------------------------- #>
     [void]lxcopy($sor, $des, $filespec){
         #
-        Write-Host '*** Starting linux copy with filespec'
         $des1 = $des -replace '\\', '/'
         $sor1 = $sor -replace '\\', '/'
         #

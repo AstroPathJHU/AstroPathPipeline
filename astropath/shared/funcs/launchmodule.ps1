@@ -1,5 +1,5 @@
 ﻿function LaunchModule{
-    [CmdletBinding(DefaultParameterSetName = 'slide')]
+    #[CmdletBinding(DefaultParameterSetName = 'slide')]
     param(
         [Parameter(ParameterSetName = 'slide')]
         [Parameter(ParameterSetName = 'batch')]
