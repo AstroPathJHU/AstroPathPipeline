@@ -25,6 +25,12 @@ class TestSegmentationBase(TestBaseCopyInput, TestBaseSaveOutput) :
             if fp.is_dir() :
                 continue
             yield fp, newroot
+        oldbatch = folder/'data'/'Batch'
+        newbatch = folder/'test_for_jenkins'/'segmentation'/'root'/'Batch'
+        if not newbatch.is_dir() :
+            newbatch.mkdir(parents=True)
+        for fp in oldbatch.glob('*') :
+            yield fp,newbatch
         oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
         newcomptiffs = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'inform_data'/'Component_Tiffs'
         if not newcomptiffs.is_dir() :
