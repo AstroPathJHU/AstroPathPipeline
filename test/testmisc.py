@@ -107,6 +107,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       self.testPolygonAreas()
 
   def testPolygonNumpyArray(self):
+    logger = printlogger("polygonnumpy")
     fraction = ".9999" if skimage.__version__ >= "0.18" else ".0001"
     polystring = f"POLYGON((1.0001 1.0001, 1.0001 8{fraction}, 8{fraction} 8{fraction}, 8{fraction} 1.0001, 1.0001 1.0001), (4.0001 5{fraction}, 7{fraction} 5{fraction}, 7{fraction} 4.0001, 4.0001 4.0001))"
     poly = PolygonFromGdal(pixels=polystring, pscale=1, annoscale=3)
@@ -114,7 +115,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     #doesn't work for arbitrary polygons unless you increase the tolerance, but works for a polygon with right angles
     assertAlmostEqual(poly.area / poly.onepixel**2, np.sum(nparray), rtol=1e-3)
 
-    poly2, = findcontoursaspolygons(nparray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=poly.pscale, annoscale=poly.annoscale)
+    poly2, = findcontoursaspolygons(nparray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=poly.pscale, annoscale=poly.annoscale, logger=logger)
     #does not equal poly1, some gets eaten away
 
   def testComplicatedPolygon(self):
