@@ -226,6 +226,10 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
           found = True
           info.dbannotationtype = newname
           self.logger.warning(f"renaming {info.originalannotationtype} to {info.dbannotationtype}")
+        elif info.originalname == oldname:
+          found = True
+          info.dbname = newname
+          self.logger.warning(f"renaming {info.originalname} to {info.dbname}")
       if require_existence and not found:
         raise ValueError(f"Trying to rename annotation {oldname}, which doesn't exist")
 
