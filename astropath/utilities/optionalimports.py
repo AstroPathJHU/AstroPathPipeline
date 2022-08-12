@@ -34,9 +34,17 @@ class OgrImport(OptionalImport):
     super().initmodule()
     self.UseExceptions()
 
+class NNUNetImport(OptionalImport) :
+  def __init__(self):
+    super().__init__("nnunet")
+  def initmodule(self):
+    super().initmodule()
+    import nnunet.inference.predict
+    import nnunet.paths
+
 cvxpy = OptionalImport("cvxpy")
 deepcell = OptionalImport("deepcell")
-nnunet = OptionalImport("nnunet")
+nnunet = NNUNetImport()
 ogr = OgrImport()
 pyopencl = OptionalImport("pyopencl")
 pyvips = OptionalImport("pyvips")
