@@ -165,14 +165,15 @@ class TestSegmentationMesmerWithIHC(TestSegmentationBase) :
                 ]
         for rn in rectangle_ns_with_comp_tiff_files_mesmer :
             args.append(str(rn))
-        SegmentationSampleMesmerWithIHC.runfromargumentparser(args=args)
-        #compare the results to the reference files
-        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
         try :
+            SegmentationSampleMesmerWithIHC.runfromargumentparser(args=args)
+            #compare the results to the reference files
+            outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
             for fp in (folder/'data'/'reference'/'segmentation'/slide_ID/'im3'/'segmentation'/'mesmer').glob('*') :
                 refa = (np.load(fp))['arr_0']
                 testa = (np.load(outputdir/fp.name))['arr_0']
                 np.testing.assert_allclose(testa,refa)
+            print('TEST 3')
         except :
             self.saveoutput()
             raise
