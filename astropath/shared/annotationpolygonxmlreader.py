@@ -45,12 +45,17 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
     return self.__annoscale
   @property
   def usesubindex(self): return self.__usesubindex
+
+  class __DiscardSubIndexType(object):
+    def __bool__(self): return False
+  discardsubindex = __DiscardSubIndexType()
+
   @usesubindex.setter
   def usesubindex(self, value):
-    if value is None or value is True or value is False:
+    if value is None or value is True or value is False or value is self.discardsubindex:
       self.__usesubindex = value
     else:
-      raise ValueError("usesubindex can only be None, True, or False")
+      raise ValueError(f"usesubindex can only be None, True, False, or {type(self).__name__}.discardsubindex")
   @property
   @abc.abstractmethod
   def rawname(self): pass
@@ -72,6 +77,8 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
       if subindex == 1:
         return re.sub(regex, "", result)
       raise ValueError(f"Can't force not having a subindex when the subindex is > 1: {result}")
+    elif self.usesubindex is self.discardsubindex:
+      return re.sub(regex, "", result)
 
   @property
   def annotationtype(self):
@@ -421,10 +428,12 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
 
     nodesbytype = collections.defaultdict(lambda: [])
     for node in nodes:
-      nodesbytype[node.annotationtype].append(node)
+      nodesbytype[node.annotation.name].append(node)
     for node in nodes:
-      if len(nodesbytype[node.annotationtype]) > 1:
+      if len(nodesbytype[node.annotation.name]) > 1:
         node.usesubindex = True
+      elif node.annotation.name != node.annotationtype: #renamed
+        node.usesubindex = AnnotationNodeBase.discardsubindex
       else:
         node.usesubindex = False
 
