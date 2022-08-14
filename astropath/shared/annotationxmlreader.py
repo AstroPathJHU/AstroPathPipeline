@@ -8,9 +8,10 @@ class AnnotationXMLReader(units.ThingWithPscale):
   """
   Class to read the annotations from an xml file
   """
-  def __init__(self, filename, *, pscale, includehpfsflaggedforacquisition=True, xmlfolder=None):
+  def __init__(self, filename, *, pscale, logger, includehpfsflaggedforacquisition=True, xmlfolder=None):
     self.__filename = filename
     self.__pscale = pscale
+    self.__logger = logger
     self.__xmlfolder = xmlfolder
     self.__includehpfsflaggedforacquisition = includehpfsflaggedforacquisition
 
@@ -46,11 +47,15 @@ class AnnotationXMLReader(units.ThingWithPscale):
           if field.nestdepth > 2:
             raise ValueError("Found an ROIAnnotation within another ROIAnnotation, did not expect this")
           #don't use RectangleAnnotations if there are also ROIAnnotations
-          #(inherited from matlab code, not sure where this logic comes in)
-          if field.nestdepth < maxdepth: continue
-          if field.nestdepth > maxdepth:
-            del rectangles[:]
-            maxdepth = field.nestdepth
+          if field.nestdepth != maxdepth:
+            logger.warningglobal("There are manually added HPFs")
+            if field.nestdepth < maxdepth:
+              continue
+            elif field.nestdepth > maxdepth:
+              del rectangles[:]
+              maxdepth = field.nestdepth
+            else:
+              assert False
 
           if not (
             field.isacquired
