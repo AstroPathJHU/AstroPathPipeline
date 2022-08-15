@@ -6,13 +6,13 @@ from astropath.utilities.img_file_io import read_image_from_layer_files, write_i
 from astropath.shared.samplemetadata import MetadataSummary
 from astropath.shared.sample import ReadRectanglesIm3FromXML
 from astropath.hpfs.warping.utilities import FieldLog
-from astropath.hpfs.warping.warpingcohort import WarpingCohort
+from astropath.hpfs.warping.warpingmulticohort import WarpingMultiCohort
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
 root = folder/'data'
-output_dir = folder/'test_for_jenkins'/'warping_cohort'
+output_dir = folder/'test_for_jenkins'/'warping_multi_cohort'
 shardedim3root = output_dir/'raw'
 slideID = 'M21_1'
 et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
@@ -31,9 +31,9 @@ class DummySample(ReadRectanglesIm3FromXML) :
     def logmodule(cls) : 
         return "dummy_sample"
 
-class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
+class TestWarpingMultiCohort(TestBaseCopyInput,TestBaseSaveOutput) :
     """
-    Class to test WarpingCohort functions
+    Class to test WarpingMultiCohort functions
     """
 
     @classmethod
@@ -51,8 +51,8 @@ class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         #put together a flatfield file from the individual example layer files
         ff_img = read_image_from_layer_files(ff_file,*(dims),dtype=np.float64)
         (root/UNIV_CONST.FLATFIELD_DIRNAME).mkdir(exist_ok=True,parents=True)
-        if not (folder/'test_for_jenkins'/'warping_cohort').is_dir() :
-            (folder/'test_for_jenkins'/'warping_cohort').mkdir(parents=True)
+        if not output_dir.is_dir() :
+            output_dir.mkdir(parents=True)
         write_image_to_file(ff_img,output_dir/ff_file.name)
         #move the example background thresholds file to the expected location
         existing_path = folder/'data'/'reference'/'meanimage'/f'{slideID}-background_thresholds.csv'
@@ -82,7 +82,7 @@ class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         all_fps.append(output_dir/'weighted_average_warp.csv')
         return all_fps
 
-    def test_warping_cohort_octets_only(self) :
+    def test_warping_multi_cohort_octets_only(self) :
         #run the cohort
         args = [os.fspath(root),
                 '--shardedim3root',os.fspath(shardedim3root),
@@ -99,7 +99,7 @@ class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
-        WarpingCohort.runfromargumentparser(args=args)
+        WarpingMultiCohort.runfromargumentparser(args=args)
         #just make sure that the empty octet output file exists
         try :
             self.assertTrue((output_dir/'octets'/f'{slideID}-all_overlap_octets.csv').is_file())
@@ -110,7 +110,7 @@ class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         else :
             self.removeoutput()
 
-    def test_warping_cohort(self) :
+    def test_warping_multi_cohort(self) :
         #first we need to copy the contrived octet and octet split files to the output directory
         existing_paths = []
         existing_paths.append(folder/'data'/'reference'/'warpingcohort'/f'{slideID}-all_overlap_octets.csv')
@@ -137,7 +137,7 @@ class TestWarpingCohort(TestBaseCopyInput,TestBaseSaveOutput) :
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
-        WarpingCohort.runfromargumentparser(args=args)
+        WarpingMultiCohort.runfromargumentparser(args=args)
         #after running we can remove the octet and octet split files
         for existing_path in existing_paths :
             (output_dir/'octets'/existing_path.name).unlink()
