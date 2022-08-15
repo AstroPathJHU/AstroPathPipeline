@@ -1,4 +1,4 @@
-import abc, collections, itertools, methodtools, more_itertools, numpy as np, uncertainties as unc
+import abc, collections, itertools, methodtools, more_itertools, numpy as np, pathlib, uncertainties as unc
 from ...shared.logging import dummylogger
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.rectangle import Rectangle, rectangledict
@@ -13,7 +13,7 @@ from .field import Field, FieldList, FieldOverlap
 def stitch(*, usecvxpy=False, **kwargs):
   return (__stitch_cvxpy if usecvxpy else __stitch)(**kwargs)
 
-def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, scaleedges=1, scalecorners=1, fixpoint="origin", origin=np.array([0, 0]), margin, logger=dummylogger):
+def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, scaleedges=1, scalecorners=1, fixpoint="origin", origin=np.array([0, 0]), margin, logger=dummylogger, griderroraction="error"):
   """
   stitch the alignment results together
 
@@ -243,9 +243,9 @@ def __stitch(*, rectangles, overlaps, scalejittererror=1, scaleoverlaperror=1, s
 
   logger.debug("done")
 
-  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix, origin=origin, margin=margin, logger=logger)
+  return StitchResult(x=x, T=T, A=A, b=b, c=c, rectangles=rectangles, overlaps=alloverlaps, covariancematrix=covariancematrix, origin=origin, margin=margin, logger=logger, griderroraction=griderroraction)
 
-def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([0, 0]), margin, logger=dummylogger):
+def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([0, 0]), margin, logger=dummylogger, griderroraction="error"):
   """
   Run the stitching using cvxpy as a cross check.
   Arguments are the same as __stitch, with some limitations.
@@ -330,7 +330,7 @@ def __stitch_cvxpy(*, overlaps, rectangles, fixpoint="origin", origin=np.array([
   prob = cp.Problem(minimize)
   prob.solve()
 
-  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale, origin=origin, margin=margin, logger=logger)
+  return StitchResultCvxpy(x=x, T=T, problem=prob, rectangles=rectangles, overlaps=alloverlaps, pscale=pscale, origin=origin, margin=margin, logger=logger, griderroraction=griderroraction)
 
 class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   """
@@ -340,13 +340,22 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   overlaps: the overlaps
   origin: the origin for defining the pxvec coordinate system
   logger: the AlignSample's logger
+  griderror: what to do if the HPFs don't align to the grid
+    "error": raise an error
+    "show": display an image of how the HPFs look (meant for jupyter)
+    pathlib.Path object: save an image of how the HPFs look to a file
   """
-  def __init__(self, *, rectangles, overlaps, origin, margin, logger=dummylogger):
+  def __init__(self, *, rectangles, overlaps, origin, margin, logger=dummylogger, griderroraction="error"):
     self.__rectangles = rectangles
     self.__overlaps = overlaps
     self.__origin = origin
     self.__margin = margin
     self.__logger = logger
+
+    self.__griderroraction = griderroraction
+    self.__griderror = None
+    if not isinstance(griderroraction, pathlib.Path) and griderroraction != "error" and griderroraction != "show":
+      raise ValueError("griderroraction should be 'error', 'show', or a pathlib.Path")
 
   @methodtools.lru_cache()
   @property
@@ -518,30 +527,51 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         if not neighbors.keys() & {7, 8, 9}: my2[rid] = pxvec[1]+r.h
 
         if mx1[rid] < pxvec[0]:
+          msg = f"{rid}: px = {pxvec[0]}, mx1 = {mx1[rid]}"
           if gx == 1:
-            self.__logger.warning(f"{rid}: px = {pxvec[0]}, mx1 = {mx1[rid]}, adjusting mx1")
+            self.__logger.warning(f"{msg}, adjusting mx1")
             mx1[rid] = pxvec[0]
           else:
-            raise ValueError(f"{rid}: px = {pxvec[0]}, mx1 = {mx1[rid]}")
+            if self.__griderroraction == "error":
+              raise ValueError(msg)
+            else:
+              self.__logger.warning(msg)
+            self.__griderror = msg
         if mx2[rid] > pxvec[0]+r.w:
+          msg = f"{rid}: px+w = {pxvec[0]+r.w}, mx2 = {mx2[rid]}"
           if gx == max(gxdict[i].values()):
-            self.__logger.warning(f"{rid}: px+w = {pxvec[0]+r.w}, mx2 = {mx2[rid]}, adjusting mx2")
+            self.__logger.warning(f"{msg}, adjusting mx2")
             mx2[rid] = pxvec[0]+r.w
           else:
-            raise ValueError(f"{rid}: px+w = {pxvec[0]+r.w}, mx2 = {mx2[rid]}")
+            if self.__griderroraction == "error":
+              raise ValueError(msg)
+            else:
+              self.__logger.warning(msg)
+            self.__griderror = msg
 
         if my1[rid] < pxvec[1]:
+          msg = f"{rid}: py = {pxvec[1]}, my1 = {my1[rid]}"
           if gy == 1:
-            self.__logger.warning(f"{rid}: py = {pxvec[1]}, my1 = {my1[rid]}, adjusting my1")
+            self.__logger.warning(f"{msg}, adjusting my1")
             my1[rid] = pxvec[1]
           else:
-            raise ValueError(f"{rid}: py = {pxvec[1]}, my1 = {my1[rid]}")
+            if self.__griderroraction == "error":
+              raise ValueError(msg)
+            else:
+              self.__logger.warning(msg)
+            self.__griderror = msg
+
         if my2[rid] > pxvec[1]+r.h:
+          msg = f"{rid}: py+h = {pxvec[1]+r.h}, my2 = {my2[rid]}"
           if gy == max(gydict[i].values()):
-            self.__logger.warning(f"{rid}: py+h = {pxvec[1]+r.h}, my2 = {my2[rid]}, adjusting my2")
+            self.__logger.warning(f"{msg}, adjusting my2")
             my2[rid] = pxvec[1]+r.h
           else:
-            raise ValueError(f"{rid}: py+h = {pxvec[1]+r.h}, my2 = {my2[rid]}")
+            if self.__griderroraction == "error":
+              raise ValueError(msg)
+            else:
+              self.__logger.warning(msg)
+            self.__griderror = msg
 
     #see if the primary regions of any HPFs in different islands overlap
     for (i1, island1), (i2, island2) in itertools.combinations(enumerate(gridislands, start=1), r=2):
@@ -658,12 +688,24 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         for (oldmx1, oldmx2), rids in xoverlapstoadjust.items():
           for rid1, rid2 in rids:
             newmx = (oldmx1 + oldmx2)/2
-            assert (mx1[rid1] == oldmx1 or mx1[rid1] == newmx) and (mx2[rid2] == oldmx2 or mx2[rid2] == newmx), (mx1[rid1], oldmx1, mx2[rid2], oldmx2, newmx)
+            if not ((mx1[rid1] == oldmx1 or mx1[rid1] == newmx) and (mx2[rid2] == oldmx2 or mx2[rid2] == newmx)):
+              msg = f"????? {mx1[rid1]} {oldmx1} {mx2[rid2]} {oldmx2} {newmx}"
+              if self.__griderroraction == "error":
+                raise ValueError(msg)
+              else:
+                self.__logger.warning(msg)
+              self.__griderror = msg
             mx1[rid1] = mx2[rid2] = newmx
         for (oldmy1, oldmy2), rids in yoverlapstoadjust.items():
           for rid1, rid2 in rids:
             newmy = (oldmy1 + oldmy2)/2
-            assert (my1[rid1] == oldmy1 or my1[rid1] == newmy) and (my2[rid2] == oldmy2 or my2[rid2] == newmy), (my1[rid1], oldmy1, my2[rid2], oldmy2, newmy)
+            if not ((my1[rid1] == oldmy1 or my1[rid1] == newmy) and (my2[rid2] == oldmy2 or my2[rid2] == newmy)):
+              msg = f"????? {my1[rid1]} {oldmy1} {my2[rid2]} {oldmy2} {newmy}"
+              if self.__griderroraction == "error":
+                raise ValueError(msg)
+              else:
+                self.__logger.warning(msg)
+              self.__griderror = msg
             my1[rid1] = my2[rid2] = newmy
 
         for rid1, rid2 in itertools.product(island1, island2):
@@ -681,7 +723,12 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
             max(xx21, xx22) - min(xx11, xx12) + 1e-5*x11 < (xx21 - xx11) + (xx22 - xx12)
             and max(yy21, yy22) - min(yy11, yy12) + 1e-5*x11 < (yy21 - yy11) + (yy22 - yy12)
           ):
-            raise ValueError(f"Primary regions for fields {rid1} and {rid2} still overlap")
+            msg = f"Primary regions for fields {rid1} and {rid2} still overlap"
+            if self.__griderroraction == "error":
+              raise ValueError(msg)
+            else:
+              self.__logger.warning(msg)
+            self.__griderror = msg
 
     minpxvec = [np.inf * onepixel, np.inf * onepixel]
 
@@ -721,6 +768,13 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
         f.primaryregionx -= minx
         f.primaryregiony -= miny
     shift = -minx, -miny
+
+    if self.__griderror is not None:
+      if self.__griderroraction == "show":
+        result.showalignedrectanglelayout()
+      else:
+        result.showalignedrectanglelayout(saveas=self.__griderroraction)
+      raise ValueError("Error in aligning HPFs to a grid, see plot and warnings above")
 
     return result, shift
 

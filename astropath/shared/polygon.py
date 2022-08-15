@@ -15,7 +15,7 @@ class InvalidPolygonError(Exception):
     message += ": "+str(polygon)
     try:
       self.madevalid = polygon.MakeValid()
-    except RuntimeError as e:
+    except (RuntimeError, RecursionError) as e:
       self.madevalid = None
       message += f"\n\nMakeValid failed: {e}"
     else:
@@ -82,7 +82,7 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
     if bad:
       raise InvalidPolygonError(poly)
 
-  def makevalid(self, *, round=False, imagescale=None):
+  def makevalid(self, *, round=False, imagescale=None, logger):
     if len(self.outerpolygon.vertices) < 3:
       return []
     self = Polygon(outerpolygon=self.outerpolygon, subtractpolygons=[p for p in self.subtractpolygons if len(p.vertices) >= 3])
@@ -107,7 +107,14 @@ class Polygon(units.ThingWithPscale, units.ThingWithAnnoscale):
           raise ValueError(f"Unknown component from MakeValid: {component}")
       polygons = [PolygonFromGdal(pixels=p, pscale=self.pscale, annoscale=self.annoscale, regionid=self.regionid, annotation=self.annotation) for p in polygons]
       if round: polygons = [p.round(imagescale=imagescale) for p in polygons]
-      polygons = sum((p.makevalid(round=round, imagescale=imagescale) for p in polygons), [])
+
+      oldpolygons = polygons
+      polygons = []
+      for p in oldpolygons:
+        try:
+          polygons += p.makevalid(round=round, imagescale=imagescale, logger=logger)
+        except RecursionError:
+          logger.warningglobal(f"Can't make polygon valid because of infinite loop --> skipping it {p}")
       polygons.sort(key=lambda x: x.area, reverse=True)
       return polygons
     else:

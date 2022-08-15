@@ -2,7 +2,7 @@ import cv2, more_itertools
 from .polygon import SimplePolygon
 from ..utilities import units
 
-def findcontoursaspolygons(*args, pscale, annoscale, imagescale=None, shiftby=0, fill=False, forgdal=False, **kwargs):
+def findcontoursaspolygons(*args, pscale, annoscale, imagescale=None, shiftby=0, fill=False, forgdal=False, logger, **kwargs):
   """
   Find the contours in a binary image, like cv2.findContours,
   but returns a list of Polygon objects.
@@ -55,6 +55,6 @@ def findcontoursaspolygons(*args, pscale, annoscale, imagescale=None, shiftby=0,
         innerpolygons[parent].insert(0, polygon)
 
   if forgdal:
-    toplevelpolygons = [p3 for p in toplevelpolygons for p2 in p.polygonsforgdal for p3 in p2.makevalid()]
+    toplevelpolygons = [p3 for p in toplevelpolygons for p2 in p.polygonsforgdal for p3 in p2.makevalid(logger=logger)]
 
   return toplevelpolygons
