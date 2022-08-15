@@ -561,32 +561,43 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @methodtools.lru_cache()
   @property
-  def opals_targets(self) :
+  def layers_opals_targets(self) :
     """
-    A list of tuples of (opal_string,target_string) from the MergeConfig_*.xlsx file 
+    A list of tuples of (layer_number,opal_string,target_string) from the MergeConfig_*.xlsx file 
     (should exist as early as meanimage)
     """
-    opals_targets = []
-    if self.batchxlsx.is_file() :
-      fp = self.batchxlsx
-    else :
+    layers_opals_targets = []
+    rownames = ['Opal','Target']
+    if self.mergeconfigxlsx.is_file() :
+      rownames = ['layer',*rownames]
       fp = self.mergeconfigxlsx
+    else :
+      fp = self.batchxlsx
     if not fp.is_file() :
       raise FileNotFoundError(f'ERROR: Neither a Batch nor MergeConfig Excel file were found in {fp.parent}!')
+    if fp==self.batchxlsx :
+      warnmsg = 'WARNING: layers/opals/targets will be found from a BatchID file instead of a MergeConfig file. '
+      warnmsg+= 'Will assume that layers are sorted in order.'
+      self.logger.warningonenter(warnmsg)
     data = pd.DataFrame(pd.read_excel(fp))
-    for _,row in data.loc[:,['Opal','Target']].iterrows() :
+    for ri,row in data.loc[:,rownames].iterrows() :
+        #get the layer from the entry in the table if possible, or from the index in the frame if not
+        if 'layer' in rownames :
+          layer = int(row['layer'])
+        else :
+          layer = ri+1
         #convert the opal to an integer if possible
         opal = row['Opal']
         try :
           opal = int(opal)
         except ValueError :
           opal = opal.lower()
-        #make the target into a nice string
+        #make the target into a nice string if possible
         target = row['Target']
-        #skip any "NA" entries
-        if type(target)==str and target!='na' :
-          opals_targets.append((opal,target.replace('/','').lower()))
-    return opals_targets
+        if type(target)==str :
+          target = target.replace('/','').lower()
+        layers_opals_targets.append((layer,opal,target.replace('/','').lower()))
+    return layers_opals_targets
 
   @methodtools.lru_cache()
   @property
@@ -1977,7 +1988,7 @@ class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRe
   and loads the rectangle images from component tiff files.
   """
 
-class ReadRectanglesComponentAndIHCTiffFromXML(ReadRectanglesComponentAndIHCTiffBase, ReadRectanglesFromXML) :
+class ReadRectanglesComponentAndIHCTiffFromXML(ReadRectanglesComponentAndIHCTiffBase, ReadRectanglesComponentTiffFromXML) :
   """
   Base class for any sample that reads rectangles from the XML metadata 
   and loads the rectangle images from IHC .tif files
