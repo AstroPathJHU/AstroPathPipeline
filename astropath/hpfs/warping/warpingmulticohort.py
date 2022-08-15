@@ -1,13 +1,11 @@
 #imports
-from collections import UserString
-import sys, traceback
+import sys, traceback, pathlib
 import numpy as np
 from random import sample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
 from ...utilities.tableio import writetable, readtable
-from ...shared.argumentparser import WarpFitArgumentParser, ImageCorrectionArgumentParser, SelectLayersArgumentParser
-from ...shared.argumentparser import WorkingDirArgumentParser, GPUArgumentParser
+from ...shared.argumentparser import WarpFitArgumentParser, GPUArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectLayersCohort, WorkflowCohort
 from ...shared.multicohort import MultiCohortBase
 from ..imagecorrection.config import IMAGECORRECTION_CONST
@@ -21,22 +19,21 @@ from .warpfit import WarpFit
 
 APPROC_OUTPUT_LOCATION = UNIV_CONST.ASTROPATH_PROCESSING_DIR / UNIV_CONST.WARPING_DIRNAME
 
-class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort) :
+class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpFitArgumentParser,GPUArgumentParser) :
     """
     Class to perform a set of warping fits for a cohort
     """
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,layer=1,workingdir=None,useGPU=True,**kwargs) :
+    def __init__(self,*args,workingdir=None,useGPU=True,**kwargs) :
         super().__init__(*args,**kwargs)
-        self.__layer = layer
         self.__workingdir = workingdir
         #if running with the GPU, create a GPU thread and start a dictionary of GPU FFTs to give to each sample
         self.gputhread = get_GPU_thread(sys.platform=='darwin',self.logger) if useGPU else None
         self.gpufftdict = None if self.gputhread is None else {}
         self.__useGPU = useGPU if self.gputhread is not None else False
-
+    
     #################### CLASS VARIABLES + PROPERTIES ####################
 
     sampleclass = WarpingSample
@@ -45,7 +42,6 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort) :
     def initiatesamplekwargs(self) :
         to_return = {**super().initiatesamplekwargs,
                 'filetype':'raw',
-                'layer': self.__layer,
                 'useGPU':self.__useGPU,
                 'gputhread':self.gputhread,
                 'gpufftdict':self.gpufftdict,
@@ -60,25 +56,27 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort) :
     
     @property
     def workflowkwargs(self) :
-        return{**super().workflowkwargs,'skip_masking':False,'workingdir':self.__workingdir}
+        return{
+            **super().workflowkwargs,
+            'skip_masking':False,
+            'workingdir':self.__workingdir if self.__workingdir.parent!=APPROC_OUTPUT_LOCATION else None,
+            }
 
-class WarpingMultiCohort(MultiCohortBase,WarpFitArgumentParser,ImageCorrectionArgumentParser,SelectLayersArgumentParser,
-                         WorkingDirArgumentParser,GPUArgumentParser) :
+class WarpingMultiCohort(MultiCohortBase) :
     """
     Class to run warping octet finding and pattern fits for a set of samples, possibly from multiple cohorts
     """
 
     singlecohortclass = WarpingCohort
 
-    def __init__(self,*args,layer,fit_1_octets,fit_2_octets,fit_3_octets,fit_1_iters,fit_2_iters,fit_3_iters,fixed,
+    def __init__(self,*args,fit_1_octets,fit_2_octets,fit_3_octets,fit_1_iters,fit_2_iters,fit_3_iters,fixed,
                  init_pars,bounds,max_rad_warp,max_tan_warp,workingdir=None,useGPU=True,octets_only=False,**kwargs) :
         #set the working directory to the default location if it's not given
         self.__workingdir = workingdir if workingdir is not None else self.auto_workingdir
         if not self.__workingdir.is_dir() :
             self.__workingdir.mkdir(parents=True)
-        super().__init__(*args,layer=layer,workingdir=self.__workingdir,useGPU=useGPU,**kwargs)
+        super().__init__(*args,workingdir=self.__workingdir,useGPU=useGPU,**kwargs)
         #set variables for how the fits should run
-        self.__layer = layer
         self.__n_fit_1_octets = fit_1_octets
         self.__n_fit_2_octets = fit_2_octets
         self.__n_fit_3_octets = fit_3_octets
@@ -109,12 +107,12 @@ class WarpingMultiCohort(MultiCohortBase,WarpFitArgumentParser,ImageCorrectionAr
         if ( self.__fit_1_octets==[] and self.__fit_2_octets==[] and 
              self.__fit_3_octets==[] ) :
             # Run all of the individual samples first (runs octet finding, which is independent for every sample)
-            super().run(**kwargs)
+            octets_by_cohort_and_sample = super().run(**kwargs)
             #make a list of all octets
             self.__octets = []
-            for cohort in self.cohorts :
-                for sample in cohort.samples() :
-                    self.__octets += sample.octets
+            for cohort_octet_list in octets_by_cohort_and_sample :
+                for sample_octet_list in cohort_octet_list :
+                    self.__octets+=sample_octet_list
             # Randomly separate the octets into the three fit groups of the requested size
             self.__split_octets()
             #If we're only getting the octets for all the samples then we're done here
@@ -130,8 +128,8 @@ class WarpingMultiCohort(MultiCohortBase,WarpFitArgumentParser,ImageCorrectionAr
     @classmethod
     def makeargumentparser(cls, **kwargs):
         p = super().makeargumentparser(**kwargs)
-        p.add_argument('--layer', type=int, default=1,
-                       help='The layer number (starting from one) of the images that should be used (default=1)')
+        p.add_argument('--workingdir',type=pathlib.Path,
+                       help='Path to the working directory where output should be stored.')
         p.add_argument('--initial-pattern-octets', type=int, default=100,
                        help='Number of octets to use in the initial pattern fits (default=50)')
         p.add_argument('--principal-point-octets', type=int, default=50,
@@ -153,7 +151,7 @@ class WarpingMultiCohort(MultiCohortBase,WarpFitArgumentParser,ImageCorrectionAr
         parsed_args_dict['skip_finished']=False #rerun every sample. If their output exists they'll just pick it up.
         return {
             **super().initkwargsfromargumentparser(parsed_args_dict),
-            'layer': parsed_args_dict.pop('layer'),
+            'workingdir' : parsed_args_dict.pop('workingdir'),
             'fit_1_octets': parsed_args_dict.pop('initial_pattern_octets'),
             'fit_2_octets': parsed_args_dict.pop('principal_point_octets'),
             'fit_3_octets': parsed_args_dict.pop('final_pattern_octets'),
@@ -437,6 +435,15 @@ class WarpingMultiCohort(MultiCohortBase,WarpFitArgumentParser,ImageCorrectionAr
     def workingdir(self) :
         return self.__workingdir
     @property
+    def layer(self) :
+        layer = None
+        for cohort in self.cohorts :
+            for sample in cohort.samples() :
+                if layer is None :
+                    layer = sample._layer
+                    break
+        return layer
+    @property
     def auto_workingdir(self) :
         auto_dirname = 'multi_cohort_'
         for cohort in self.cohorts :
@@ -450,19 +457,19 @@ class WarpingMultiCohort(MultiCohortBase,WarpFitArgumentParser,ImageCorrectionAr
         return self.__workingdir / CONST.OCTET_SUBDIR_NAME / 'initial_pattern_octets_selected.csv'
     @property
     def fit_1_results_fp(self) :
-        return self.__workingdir / f'initial_pattern_fit_results_{self.__n_fit_1_octets}_layer_{self.__layer}.csv'
+        return self.__workingdir / f'initial_pattern_fit_results_{self.__n_fit_1_octets}_layer_{self.layer}.csv'
     @property
     def fit_2_octet_fp(self) :
         return self.__workingdir / CONST.OCTET_SUBDIR_NAME / 'principal_point_octets_selected.csv'
     @property
     def fit_2_results_fp(self) :
-        return self.__workingdir / f'principal_point_fit_results_{self.__n_fit_2_octets}_layer_{self.__layer}.csv'
+        return self.__workingdir / f'principal_point_fit_results_{self.__n_fit_2_octets}_layer_{self.layer}.csv'
     @property
     def fit_3_octet_fp(self) :
         return self.__workingdir / CONST.OCTET_SUBDIR_NAME / 'final_pattern_octets_selected.csv'
     @property
     def fit_3_results_fp(self) :
-        return self.__workingdir / f'final_pattern_fit_results_{self.__n_fit_3_octets}_layer_{self.__layer}.csv'
+        return self.__workingdir / f'final_pattern_fit_results_{self.__n_fit_3_octets}_layer_{self.layer}.csv'
 
 #################### FILE-SCOPE FUNCTIONS ####################
 
