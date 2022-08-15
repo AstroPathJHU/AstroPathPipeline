@@ -41,6 +41,8 @@ class NNUNetImport(OptionalImport) :
     super().initmodule()
     import nnunet.inference.predict
     import nnunet.paths
+    self.inference.predict = nnunet.inference.predict
+    self.paths = nnunet.paths
 
 cvxpy = OptionalImport("cvxpy")
 deepcell = OptionalImport("deepcell")
