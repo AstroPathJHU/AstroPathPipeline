@@ -1,5 +1,5 @@
 #imports
-import sys, traceback, pathlib
+import sys, traceback, pathlib, random
 import numpy as np
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
@@ -196,7 +196,7 @@ class WarpingMultiCohort(MultiCohortBase) :
             raise RuntimeError(errmsg)
         #randomly choose the three subsets of octets
         if n_total_octets_needed>0 :
-            selected_octets = sample(self.__octets,n_total_octets_needed)
+            selected_octets = random.sample(self.__octets,n_total_octets_needed)
             self.__fit_1_octets = selected_octets[:self.__n_fit_1_octets]
             self.__fit_2_octets = selected_octets[self.__n_fit_1_octets:(self.__n_fit_1_octets+self.__n_fit_2_octets)]
             self.__fit_3_octets = selected_octets[-self.__n_fit_3_octets:]
@@ -443,10 +443,10 @@ class WarpingMultiCohort(MultiCohortBase) :
     @property
     def layer(self) :
         layer = None
-        for cohort in self.cohorts :
-            for sample in cohort.samples() :
+        for c in self.cohorts :
+            for s in c.samples() :
                 if layer is None :
-                    layer = sample.layersim3[0]
+                    layer = s.layersim3[0]
                     break
         return layer
     @property
