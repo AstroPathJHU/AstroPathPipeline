@@ -1683,6 +1683,8 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
         self.logger.warningonenter(warnmsg)
         self.__warping_file = None
       else :
+        if not warping_filename.endswith('.csv') :
+          warping_filename+='.csv'
         self.__warping_file = pathlib.Path(warping_filename)
       #reset the flatfield file
       ff_version = this_slide_tes[0].FlatfieldVersion

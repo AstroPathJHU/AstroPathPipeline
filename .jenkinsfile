@@ -149,9 +149,9 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarping'
                   }
                 }
-                stage('test warpingcohort') {
+                stage('test warpingmulticohort') {
                   steps {
-                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingmulticohort'
                   }
                 }
               }
