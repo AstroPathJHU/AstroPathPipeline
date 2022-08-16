@@ -113,7 +113,8 @@ class WarpingMultiCohort(MultiCohortBase) :
             self.__octets = []
             for cohort_octet_list in octets_by_cohort_and_sample :
                 for sample_octet_list in cohort_octet_list :
-                    self.__octets+=sample_octet_list
+                    if sample_octet_list is not None :
+                        self.__octets+=sample_octet_list
             # Randomly separate the octets into the three fit groups of the requested size
             self.__split_octets()
             #If we're only getting the octets for all the samples then we're done here
