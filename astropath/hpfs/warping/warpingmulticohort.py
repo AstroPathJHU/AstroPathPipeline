@@ -1,7 +1,6 @@
 #imports
 import sys, traceback, pathlib
 import numpy as np
-from random import sample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
 from ...utilities.tableio import writetable, readtable
