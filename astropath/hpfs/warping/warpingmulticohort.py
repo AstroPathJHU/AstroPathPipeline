@@ -59,7 +59,8 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
         return{
             **super().workflowkwargs,
             'skip_masking':False,
-            'workingdir':self.__workingdir if self.__workingdir.parent!=APPROC_OUTPUT_LOCATION else None,
+            # output should be in the default location for running under normal workflow conditions
+            #'workingdir':self.__workingdir if self.__workingdir.parent!=APPROC_OUTPUT_LOCATION else None,
             }
 
 class WarpingMultiCohort(MultiCohortBase) :
@@ -204,6 +205,8 @@ class WarpingMultiCohort(MultiCohortBase) :
                 logger.warning(f'WARNING: requested {n_total_octets_needed} total octets to use in fitting')
             selected_octets = []
         #write out files listing the octets
+        if not self.fit_1_octet_fp.parent.exists() :
+            self.fit_1_octet_fp.parent.mkdir(parents=True)
         if len(self.__fit_1_octets)>0 :
             writetable(self.fit_1_octet_fp,self.__fit_1_octets)
         if len(self.__fit_2_octets)>0 :
@@ -212,19 +215,20 @@ class WarpingMultiCohort(MultiCohortBase) :
             writetable(self.fit_3_octet_fp,self.__fit_3_octets)
         #write out the file listing the image keys needed
         all_image_keys = set()
-        for samp in self.samples() :
-            keys_by_rect_n = {}
-            for rect in samp.rectangles :
-                keys_by_rect_n[rect.n] = rect.file[:-len(UNIV_CONST.IM3_EXT)]
-            for octet in selected_octets :
-                if octet.slide_ID!=samp.SlideID :
-                    continue
-                all_image_keys.add(keys_by_rect_n[octet.p1_rect_n])
-                olap_ns = (octet.olap_1_n,octet.olap_2_n,octet.olap_3_n,octet.olap_4_n,
-                           octet.olap_6_n,octet.olap_7_n,octet.olap_8_n,octet.olap_9_n,)
-                olap_rect_ns = [olap.p2 for olap in samp.overlaps if olap.n in olap_ns]
-                for orn in olap_rect_ns :
-                    all_image_keys.add(keys_by_rect_n[orn])
+        for cohort in self.cohorts :
+            for samp in cohort.samples() :
+                keys_by_rect_n = {}
+                for rect in samp.rectangles :
+                    keys_by_rect_n[rect.n] = rect.file[:-len(UNIV_CONST.IM3_EXT)]
+                for octet in selected_octets :
+                    if octet.slide_ID!=samp.SlideID :
+                        continue
+                    all_image_keys.add(keys_by_rect_n[octet.p1_rect_n])
+                    olap_ns = (octet.olap_1_n,octet.olap_2_n,octet.olap_3_n,octet.olap_4_n,
+                            octet.olap_6_n,octet.olap_7_n,octet.olap_8_n,octet.olap_9_n,)
+                    olap_rect_ns = [olap.p2 for olap in samp.overlaps if olap.n in olap_ns]
+                    for orn in olap_rect_ns :
+                        all_image_keys.add(keys_by_rect_n[orn])
         with open(self.image_key_fp,'w') as fp :
             for ik in sorted(list(all_image_keys)) :
                 fp.write(f'{ik}\n')
@@ -268,19 +272,20 @@ class WarpingMultiCohort(MultiCohortBase) :
             raise ValueError(f'ERROR: fit_group_number {fit_group_number} is not recognized! (should be 1, 2, or 3)')
         #first check to see if the output file exists; if it does then just read the results from it
         if results_fp.is_file() :
-            self.logger.info(f'Reading results for the {fitID.replace("_"," ")} fit group from {results_fp}')
+            logger.info(f'Reading results for the {fitID.replace("_"," ")} fit group from {results_fp}')
             return readtable(results_fp,WarpFitResult)
         #if it doesn't exist yet though we need to run each of the fits and then write it out
         results = []; field_logs = []; metadata_summaries = []
         for oi,o in enumerate(octets) :
             msg = f'Running {fitID.replace("_"," ")} fit for octet around {o.slide_ID} rectangle {o.p1_rect_n} '
             msg+= f'({oi+1} of {len(octets)})....'
-            self.logger.debug(msg)
+            logger.debug(msg)
             this_sample = None
-            for s in self.samples() :
-                if s.SlideID==o.slide_ID :
-                    this_sample = s
-                    break
+            for cohort in self.cohorts :
+                for s in cohort.samples() :
+                    if s.SlideID==o.slide_ID :
+                        this_sample = s
+                        break
             if this_sample is None :
                 errmsg = f'ERROR: unable to find the appropriate initialized sample for slide {o.slide_ID}'
                 raise RuntimeError(errmsg)
@@ -297,12 +302,12 @@ class WarpingMultiCohort(MultiCohortBase) :
                 warnmsg = f'WARNING: {fitID.replace("_"," ")} fit for octet around {o.slide_ID} rectangle '
                 warnmsg+= f'{o.p1_rect_n} failed with the error "{e}" and this result will be ignored. '
                 warnmsg+= 'More info on the error below.'
-                self.logger.warning(warnmsg)
+                logger.warning(warnmsg)
                 try :
                     raise e
                 except Exception :
                     for l in traceback.format_exc().split('\n') :
-                        self.logger.info(l)  
+                        logger.info(l)  
         if len(results)>0 :
             writetable(results_fp,results)
         if len(field_logs)>0 :
@@ -328,20 +333,20 @@ class WarpingMultiCohort(MultiCohortBase) :
             fit_iteration_plot(results,save_stem=plot_name_stem,save_dir=savedir)
             warp_field_variation_plots(results,save_stem=plot_name_stem,save_dir=savedir)
         except Exception as e :
-            self.logger.warning(f'WARNING: failed to create plots for group of results. Exception: {e}')
+            logger.warning(f'WARNING: failed to create plots for group of results. Exception: {e}')
             try :
                 raise e
             except Exception :
                 for l in traceback.format_exc().split('\n') :
-                    self.logger.info(l)  
-        self.logger.info('Making the summary pdf....')
+                    logger.info(l)  
+        logger.info('Making the summary pdf....')
         latex_summary = FitGroupLatexSummary(savedir,plot_name_stem,summary_title)
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :
             warnmsg = 'WARNING: failed while compiling fit group summary LaTeX file into a PDF. '
             warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
-            self.logger.warning(warnmsg)
+            logger.warning(warnmsg)
         return results
 
     def __run_fits(self,logger) :
@@ -420,9 +425,10 @@ class WarpingMultiCohort(MultiCohortBase) :
             final_pars[fpn] = weighted_sum/sum_weights
         all_slide_ids = list(set([r.slide_ID for r in fit_1_results+fit_2_results+fit_3_results]))
         ex_samp = None
-        for s in self.samples() :
-            ex_samp = s 
-            break
+        for c in self.cohorts :
+            for s in c.samples() :
+                ex_samp = s 
+                break
         warping_summary = [WarpingSummary(str(all_slide_ids),ex_samp.Project,ex_samp.Cohort,
                                           ex_samp.microscopename,1,ex_samp.nlayersim3,
                                           fit_1_results[0].n,fit_1_results[0].m,
@@ -440,7 +446,7 @@ class WarpingMultiCohort(MultiCohortBase) :
         for cohort in self.cohorts :
             for sample in cohort.samples() :
                 if layer is None :
-                    layer = sample._layer
+                    layer = sample.layersim3[0]
                     break
         return layer
     @property
