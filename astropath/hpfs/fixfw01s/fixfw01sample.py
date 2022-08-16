@@ -1,11 +1,7 @@
-import argparse, methodtools, numpy as np, PIL, skimage
-from ...shared.argumentparser import DbloadArgumentParser
-from ...shared.csvclasses import Constant, Batch, ExposureTime, QPTiffCsv
-from ...shared.overlap import RectangleOverlapCollection
-from ...shared.qptiff import QPTiff
-from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
-from ...utilities import units
-from ...utilities.config import CONST as UNIV_CONST
+import contextlib, dataclassy, job_lock, numpy as np
+from ...shared.sample import ReadRectanglesDbloadIm3, ReadRectanglesIm3Base, ReadRectanglesIm3FromXML, WorkflowSample
+from ...slides.prepdb.prepdbsample import PrepDbSample
+from ...utilities.miscfileio import memmapcontext, rm_missing_ok
 
 class FixFW01SampleBase(ReadRectanglesIm3Base, WorkflowSample):
   def __init__(self, *args, **kwargs):
@@ -14,133 +10,88 @@ class FixFW01SampleBase(ReadRectanglesIm3Base, WorkflowSample):
   @classmethod
   def logmodule(self): return "fixfw01"
 
-  def fixfw01(self, check=True):
+  def fixfw01(self, check=True, removecorrupt=True, removedisagreement=False):
     n = len(self.rectangles)
     for i, r in enumerate(self.rectangles):
       self.logger.debug(f"rectangle {i}/{n}")
-      kwargs = {field: getattr(samp, field) for field in set(dataclassy.fields(type(r)))}
+      kwargs = {field: getattr(r, field) for field in set(dataclassy.fields(type(r)))}
       assert kwargs["readlayerfile"]
       kwargs["readlayerfile"] = False
       newr = type(r)(**kwargs)
-      assert newr.im3file != r.im3file
-
+      oldfile = r.im3file
       newfile = newr.im3file
-      with contextlib.ExitStack() as stack:
-        oldim3 = stack.enter_context(r.using_im3())
-        newim3 = stack.enter_context(newr.using_im3())
-        
-      if newfile.exists() and newfile.stat().st_size == 0:
-        self.logger.warning(f"{newfile.name} is corrupt, removing it")
-        newfile.unlink()
-      if newfile.exists(): continue
+      assert oldfile != newfile
 
-      with r.using_im3() as im:
-        
+      with r.using_im3() as oldim3:
+        with contextlib.ExitStack() as stack:
+          try:
+            newim3 = stack.enter_context(newr.using_im3())
+          except ValueError as e:
+            if str(e) == "mmap length is greater than file size":
+              msg = f"{newfile.name} is corrupt"
+              if removecorrupt:
+                self.logger.warning(f"{msg}, removing it")
+                newfile.unlink()
+              else:
+                raise ValueError(msg)
+            else:
+              raise
+          except FileNotFoundError:
+            pass
+          else:
+            if check:
+              if not np.all(oldim3 == newim3):
+                msg = f"{newfile.name} does not agree with {oldfile.name}"
+                if removedisagreement:
+                  self.logger.warning(f"{msg}, removing it")
+                  newfile.unlink()
+                else:
+                  raise ValueError(msg)
+
+        lockfile = newfile.with_suffix(".lock")
+        with job_lock.JobLock(lockfile, outputfilenames=[newfile]) as lock:
+          assert lock
+          try:
+            with open(newfile, "xb") as newf, memmapcontext(newf, dtype=np.uint16, shape=tuple(newr.imageshapeininput), order="F", mode="r") as newmemmap:
+              assert newr.imagetransposefrominput == (0, 1)
+              newmemmap[:] = oldim3
+          except:
+            rm_missing_ok(newfile)
 
   def run(self, **kwargs):
     self.fixfw01(**kwargs)
 
-class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
-  def writebatch(self):
-    self.logger.info("write batch")
-    self.writecsv("batch", self.getbatch())
-
-  def writerectangles(self):
-    self.logger.info("write rectangles")
-    self.writecsv("rect", self.rectangles)
-
-  def writeglobals(self):
-    if not self.globals: return
-    self.logger.info("write globals")
-    self.writecsv("globals", self.globals)
-
-  def writeexposures(self):
-    self.logger.info("write exposure times")
-    self.writecsv("exposures", self.exposuretimes, rowclass=ExposureTime)
-
-  def writeqptiffcsv(self):
-    self.logger.info("write qptiff csv")
-    self.writecsv("qptiff", self.getqptiffcsv())
-
-  def writeqptiffjpg(self):
-    self.logger.info("write qptiff jpg")
-    img = self.getqptiffimage()
-    img.save(self.jpgfilename)
-
-  def writeoverlaps(self):
-    self.logger.info("write overlaps")
-    self.writecsv("overlap", self.overlaps)
-
-  def writeconstants(self):
-    self.logger.info("write constants")
-    self.writecsv("constants", self.getconstants())
-
-  def writemetadata(self, *, _skipqptiff=False):
-    self.dbload.mkdir(parents=True, exist_ok=True)
-    self.writerectangles()
-    self.writeexposures()
-    self.writeoverlaps()
-    self.writebatch()
-    self.writeglobals()
-    if _skipqptiff:
-      self.logger.warningglobal("as requested, not writing the qptiff info.  subsequent steps that rely on constants.csv may not work.")
-    else:
-      self.writeconstants()
-      self.writeqptiffcsv()
-      self.writeqptiffjpg()
-
-  def run(self, *args, **kwargs): return self.writemetadata(*args, **kwargs)
-
-  def inputfiles(self, *, _skipqptiff=False, **kwargs):
-    result = super().inputfiles(**kwargs) + [
-      self.annotationsxmlfile,
-      self.fullxmlfile,
-      self.parametersxmlfile,
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
+      *(r.im3file for r in self.rectangles),
     ]
-    imagefolder = self.scanfolder/"MSI"
-    if not imagefolder.exists():
-      imagefolder = self.scanfolder/"flatw"
-    result += [
-      imagefolder,
-    ]
-    if not _skipqptiff:
-      result += [
-        self.qptifffilename,
-      ]
-    return result
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, dbloadroot, _skipqptiff=False, **otherkwargs):
-    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
+  def getoutputfiles(cls, SlideID, *, shardedim3root, layerim3, **otherkwargs):
     return [
-      dbload/f"{SlideID}_batch.csv",
-      dbload/f"{SlideID}_exposures.csv",
-      dbload/f"{SlideID}_overlap.csv",
-      dbload/f"{SlideID}_rect.csv",
-    ] + ([
-      dbload/f"{SlideID}_constants.csv",
-      dbload/f"{SlideID}_qptiff.csv",
-      dbload/f"{SlideID}{UNIV_CONST.QPTIFF_SUFFIX}",
-    ] if not _skipqptiff else [])
+      filename.with_suffix(".fw{layerim3:02d}")
+      for filename in (shardedim3root/SlideID).glob(f"{SlideID}_[*].fw")
+    ]
 
+class FixFW01SampleXML(FixFW01SampleBase, ReadRectanglesIm3FromXML):
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
     return super().workflowdependencyclasses(**kwargs)
 
+class FixFW01SampleDbload(FixFW01SampleBase, ReadRectanglesDbloadIm3):
   @classmethod
-  def logstartregex(cls):
-    new = super().logstartregex()
-    old = "prepSample started"
-    return rf"(?:{old}|{new})"
+  def workflowdependencyclasses(cls, **kwargs):
+    return super().workflowdependencyclasses(**kwargs) + [PrepDbSample]
 
-  @classmethod
-  def logendregex(cls):
-    new = super().logendregex()
-    old = "prepSample end"
-    return rf"(?:{old}|{new})"
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
+      self.csv("rect")
+    ]
 
-def main(args=None):
-  PrepDbSample.runfromargumentparser(args)
+def main_xml(args=None):
+  FixFW01SampleXML.runfromargumentparser(args)
+def main_dbload(args=None):
+  FixFW01SampleDbload.runfromargumentparser(args)
 
 if __name__ == "__main__":
-  main()
+  main_xml()
