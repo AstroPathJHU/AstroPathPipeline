@@ -1,22 +1,32 @@
 import contextlib, dataclassy, job_lock, numpy as np
-from ...shared.sample import ReadRectanglesDbloadIm3, ReadRectanglesIm3Base, ReadRectanglesIm3FromXML, WorkflowSample
+from ...shared.argumentparser import Im3ArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser
+from ...shared.sample import ReadRectanglesDbloadIm3, ReadRectanglesIm3Base, ReadRectanglesIm3FromXML, SelectLayersIm3WorkflowSample
 from ...slides.prepdb.prepdbsample import PrepDbSample
-from ...utilities.miscfileio import memmapcontext, rm_missing_ok
+from ...utilities.miscfileio import CorruptMemmapError, memmapcontext, rm_missing_ok
 
-class FixFW01SampleBase(ReadRectanglesIm3Base, WorkflowSample):
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, readlayerfile=False, **kwargs)
+class FixFW01ArgumentParser(SelectLayersArgumentParser, SelectRectanglesArgumentParser, Im3ArgumentParser):
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    return p
+
+class FixFW01SampleBase(ReadRectanglesIm3Base, SelectLayersIm3WorkflowSample, FixFW01ArgumentParser):
+  def __init__(self, *args, layer=None, layers=None, **kwargs):
+    if layers is not None and layer is None:
+      layer, = layers
+      layers = None
+    super().__init__(*args, layerim3=layer, layersim3=layers, readlayerfile=False, filetype="flatWarp", **kwargs)
 
   @classmethod
   def logmodule(self): return "fixfw01"
 
   def fixfw01(self, check=True, removecorrupt=True, removedisagreement=False):
     n = len(self.rectangles)
-    for i, r in enumerate(self.rectangles):
+    for i, r in enumerate(self.rectangles, start=1):
       self.logger.debug(f"rectangle {i}/{n}")
       kwargs = {field: getattr(r, field) for field in set(dataclassy.fields(type(r)))}
-      assert kwargs["readlayerfile"]
-      kwargs["readlayerfile"] = False
+      assert not kwargs["readlayerfile"]
+      kwargs["readlayerfile"] = True
       newr = type(r)(**kwargs)
       oldfile = r.im3file
       newfile = newr.im3file
@@ -26,16 +36,13 @@ class FixFW01SampleBase(ReadRectanglesIm3Base, WorkflowSample):
         with contextlib.ExitStack() as stack:
           try:
             newim3 = stack.enter_context(newr.using_im3())
-          except ValueError as e:
-            if str(e) == "mmap length is greater than file size":
-              msg = f"{newfile.name} is corrupt"
-              if removecorrupt:
-                self.logger.warning(f"{msg}, removing it")
-                newfile.unlink()
-              else:
-                raise ValueError(msg)
+          except CorruptMemmapError:
+            msg = f"{newfile.name} is corrupt"
+            if removecorrupt:
+              self.logger.warning(f"{msg}, removing it")
+              newfile.unlink()
             else:
-              raise
+              raise ValueError(msg)
           except FileNotFoundError:
             pass
           else:
@@ -49,14 +56,15 @@ class FixFW01SampleBase(ReadRectanglesIm3Base, WorkflowSample):
                   raise ValueError(msg)
 
         lockfile = newfile.with_suffix(".lock")
-        with job_lock.JobLock(lockfile, outputfilenames=[newfile]) as lock:
-          assert lock
+        with job_lock.JobLock(lockfile, outputfiles=[newfile]) as lock:
+          if not lock: continue
           try:
-            with open(newfile, "xb") as newf, memmapcontext(newf, dtype=np.uint16, shape=tuple(newr.imageshapeininput), order="F", mode="r") as newmemmap:
-              assert newr.imagetransposefrominput == (0, 1)
+            with memmapcontext(newfile, dtype=np.uint16, shape=tuple(newr.im3loader.imageshapeininput), order="F", mode="w+") as newmemmap:
+              assert newr.im3loader.imagetransposefrominput == (0, 1)
               newmemmap[:] = oldim3
           except:
             rm_missing_ok(newfile)
+            raise
 
   def run(self, **kwargs):
     self.fixfw01(**kwargs)
@@ -69,8 +77,8 @@ class FixFW01SampleBase(ReadRectanglesIm3Base, WorkflowSample):
   @classmethod
   def getoutputfiles(cls, SlideID, *, shardedim3root, layerim3, **otherkwargs):
     return [
-      filename.with_suffix(".fw{layerim3:02d}")
-      for filename in (shardedim3root/SlideID).glob(f"{SlideID}_[*].fw")
+      filename.with_suffix(f".fw{layerim3:02d}")
+      for filename in (shardedim3root/SlideID).glob(f"{SlideID}_*.fw")
     ]
 
 class FixFW01SampleXML(FixFW01SampleBase, ReadRectanglesIm3FromXML):
