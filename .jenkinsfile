@@ -50,9 +50,28 @@ pipeline {
               }
             }
 
-            stage('miscellaneous framework tests') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
+            stage('some short tests') {
+              stages {
+                stage('code checks') {
+                  steps {
+                    sh 'python -m pyflakes .'
+                  }
+                }
+                stage('miscellaneous framework tests') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
+                  }
+                }
+                stage('fix fw01') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testfixfw01'
+                  }
+                }
+                stage('stitch mask') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.teststitchmask'
+                  }
+                }
               }
             }
 
@@ -130,12 +149,6 @@ pipeline {
               }
             }
 
-            stage('stitch mask') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.teststitchmask'
-              }
-            }
-
             stage('csvscan') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcsvscan'
@@ -209,12 +222,6 @@ pipeline {
             stage('crossregistration') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
-              }
-            }
-
-            stage('code checks') {
-              steps {
-                sh 'python -m pyflakes .'
               }
             }
           }
