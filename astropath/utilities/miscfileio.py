@@ -198,7 +198,7 @@ def memmapcontext(filename, *args, **kwargs):
   except OSError as e:
     if getattr(e, "winerror", None) == 8:
       if hasattr(filename, "name"): filename = filename.name
-      raise CorruptMemmapError(f"Failed to create memmap from corrupted file {filename}")
+      raise CorruptMemmapError(filename)
     else:
       raise
   try:

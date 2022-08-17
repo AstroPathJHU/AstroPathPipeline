@@ -8,7 +8,32 @@ class FixFW01ArgumentParser(SelectLayersArgumentParser, SelectRectanglesArgument
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--error-on-corrupt", action="store_true", help="give an error if an fw01 file already exists but is corrupt")
+    g.add_argument("--remove-corrupt", action="store_true", help="remove corrupt fw01 files, but give an error if the file size is correct and the contents are wrong (default)")
+    g.add_argument("--remove-disagreement", action="store_true", help="remove fw01 files whose contents disagree with the fw")
     return p
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    error_on_corrupt = parsed_args_dict.pop("error_on_corrupt")
+    remove_corrupt = parsed_args_dict.pop("remove_corrupt")
+    remove_disagreement = parsed_args_dict.pop("remove_disagreement")
+
+    assert error_on_corrupt + remove_corrupt + remove_disagreement <= 1
+    if error_on_corrupt:
+      remove_corrupt = remove_disagreement = False
+    elif remove_disagreement:
+      remove_corrupt = remove_disagreement = True
+    else:
+      remove_corrupt = True
+      remove_disagreement = False
+
+    return {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "removecorrupt": remove_corrupt,
+      "removedisagreement": remove_disagreement,
+    }
 
 class FixFW01SampleBase(ReadRectanglesIm3Base, SelectLayersIm3WorkflowSample, FixFW01ArgumentParser):
   def __init__(self, *args, layer=None, layers=None, **kwargs):
@@ -22,6 +47,7 @@ class FixFW01SampleBase(ReadRectanglesIm3Base, SelectLayersIm3WorkflowSample, Fi
 
   def fixfw01(self, check=True, removecorrupt=True, removedisagreement=False):
     n = len(self.rectangles)
+    removecorrupt = removecorrupt or removedisagreement
     for i, r in enumerate(self.rectangles, start=1):
       self.logger.debug(f"rectangle {i}/{n}")
       kwargs = {field: getattr(r, field) for field in set(dataclassy.fields(type(r)))}
@@ -42,7 +68,7 @@ class FixFW01SampleBase(ReadRectanglesIm3Base, SelectLayersIm3WorkflowSample, Fi
               self.logger.warning(f"{msg}, removing it")
               newfile.unlink()
             else:
-              raise ValueError(msg)
+              raise IOError(msg)
           except FileNotFoundError:
             pass
           else:

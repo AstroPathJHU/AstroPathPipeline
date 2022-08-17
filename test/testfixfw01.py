@@ -32,7 +32,7 @@ class TestFixFW01(TestBaseCopyInput, TestBaseSaveOutput):
         yield oldflatw/SlideID/f"{hpf}.fw", newflatw/SlideID
       yield oldroot/SlideID/"dbload"/f"{SlideID}_rect.csv", newroot/SlideID/"dbload"
 
-  def testFixFW01(self, dbload=False, SlideID="M21_1"):
+  def testFixFW01(self, dbload=False, SlideID="M21_1", corruptaction="--error-on-corrupt", removeoutput=True):
     root = thisfolder/"data"
     logroot = dbloadroot = thisfolder/"test_for_jenkins"/"fixfw01"
     shardedim3root = thisfolder/"test_for_jenkins"/"fixfw01"/"flatw"
@@ -45,6 +45,7 @@ class TestFixFW01(TestBaseCopyInput, TestBaseSaveOutput):
       "--logroot", os.fspath(logroot),
       "--sampleregex", f"^{SlideID}$",
       "--selectrectangles", *(str(_) for _ in selectrectangles),
+      corruptaction,
       "--allow-local-edits",
       "--debug",
       "--ignore-dependencies",
@@ -73,10 +74,10 @@ class TestFixFW01(TestBaseCopyInput, TestBaseSaveOutput):
           np.testing.assert_array_equal(data, ref)
 
     except:
-      self.saveoutput()
+      if removeoutput: self.saveoutput()
       raise
     finally:
-      self.removeoutput()
+      if removeoutput: self.removeoutput()
 
   def testFixFW01Dbload(self, **kwargs):
     self.testFixFW01(dbload=True, **kwargs)
@@ -91,4 +92,20 @@ class TestFixFW01(TestBaseCopyInput, TestBaseSaveOutput):
     for src, dest in self.filestocopy():
       if src.suffix == ".fw":
         (dest/src.with_suffix(".fw01").name).touch()
-    self.testFixFW01(**kwargs)
+    with self.assertRaises(IOError):
+      self.testFixFW01(corruptaction="--error-on-corrupt", removeoutput=False, **kwargs)
+    self.testFixFW01(corruptaction="--remove-corrupt", removeoutput=False, **kwargs)
+    self.testFixFW01(corruptaction="--remove-disagreement", **kwargs)
+
+  def testWrong(self, **kwargs):
+    for src, dest in self.filestocopy():
+      if src.suffix == ".fw":
+        filename = shutil.copy(src.with_suffix(".fw01"), dest)
+        with memmapcontext(filename, dtype=np.uint16, shape=1, order="F", mode="r+") as data:
+          data[0] += 1
+
+    with self.assertRaises(ValueError):
+      self.testFixFW01(corruptaction="--error-on-corrupt", removeoutput=False, **kwargs)
+    with self.assertRaises(ValueError):
+      self.testFixFW01(corruptaction="--remove-corrupt", removeoutput=False, **kwargs)
+    self.testFixFW01(corruptaction="--remove-disagreement", **kwargs)
