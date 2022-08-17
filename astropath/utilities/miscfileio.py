@@ -185,6 +185,7 @@ def checkwindowsnewlines(filename):
 
 class CorruptMemmapError(IOError):
   def __init__(self, filename, *args, **kwargs):
+    if hasattr(filename, "name"): filename = filename.name
     super().__init__(f"Failed to create memmap from corrupted file {filename}", *args, **kwargs)
 
 @contextlib.contextmanager
@@ -197,7 +198,11 @@ def memmapcontext(filename, *args, **kwargs):
     memmap = np.memmap(filename, *args, **kwargs)
   except OSError as e:
     if getattr(e, "winerror", None) == 8:
-      if hasattr(filename, "name"): filename = filename.name
+      raise CorruptMemmapError(filename)
+    else:
+      raise
+  except ValueError as e:
+    if str(e) == "mmap length is greater than file size":
       raise CorruptMemmapError(filename)
     else:
       raise
