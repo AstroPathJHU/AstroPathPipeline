@@ -1091,6 +1091,17 @@ class SelectLayersIm3(SampleBase):
 
   multilayerim3 = False #can override in subclasses
 
+class SelectLayersIm3WorkflowSample(SelectLayersIm3, WorkflowSample):
+  @property
+  def workflowkwargs(self):
+    result = {
+      **super().workflowkwargs,
+      "layersim3": self.layersim3,
+    }
+    if not self.multilayerim3:
+      result["layerim3"] = self.layerim3
+    return result
+
 class SelectLayersComponentTiff(SampleBase):
   """
   Base class for any sample that needs a layer selection for the component tiff.

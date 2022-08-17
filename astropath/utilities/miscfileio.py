@@ -183,6 +183,11 @@ def checkwindowsnewlines(filename):
     if re.search(r"\r\r", contents):
       raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
 
+class CorruptMemmapError(IOError):
+  def __init__(self, filename, *args, **kwargs):
+    if hasattr(filename, "name"): filename = filename.name
+    super().__init__(f"Failed to create memmap from corrupted file {filename}", *args, **kwargs)
+
 @contextlib.contextmanager
 def memmapcontext(filename, *args, **kwargs):
   """
@@ -192,9 +197,15 @@ def memmapcontext(filename, *args, **kwargs):
   try:
     memmap = np.memmap(filename, *args, **kwargs)
   except OSError as e:
-    if hasattr(filename, "name"): filename = filename.name
     if getattr(e, "winerror", None) == 8:
-      raise IOError(f"Failed to create memmap from corrupted file {filename}")
+      raise CorruptMemmapError(filename)
+    else:
+      raise
+  except ValueError as e:
+    if str(e) == "mmap length is greater than file size":
+      raise CorruptMemmapError(filename)
+    else:
+      raise
   try:
     yield memmap
   finally:
