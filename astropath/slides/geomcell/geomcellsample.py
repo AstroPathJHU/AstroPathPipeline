@@ -14,7 +14,8 @@ from ...utilities.units import ThingWithPscale
 from ...utilities.units.dataclasses import distancefield
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadSegmentedComponentTiffMultiLayer
-from ..segmentation.segmentationsample import SegmentationSampleDeepCell, SegmentationSampleMesmer
+from ..segmentation.segmentationsampledeepcell import SegmentationSampleDeepCell
+from ..segmentation.segmentationsamplemesmer import SegmentationSampleMesmer
 
 class GeomLoadField(Field, GeomLoadRectangle):
   pass

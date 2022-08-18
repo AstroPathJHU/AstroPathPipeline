@@ -155,6 +155,10 @@ class RectangleWithImageSize(Rectangle):
   def height(self, height): self.__height = height
   height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels", use_default=False)
 
+  @property
+  def imageshape(self):
+    return np.array([self.width, self.height])
+
 class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize):
   """
   Rectangle class that reads the image from a sharded im3

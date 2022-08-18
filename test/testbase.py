@@ -1,6 +1,7 @@
 import abc, contextlib, dataclassy, more_itertools, numbers, numpy as np, pathlib, PIL.Image, shutil, tempfile, unittest
 
 from astropath.utilities import units
+from astropath.utilities.miscfileio import rm_missing_ok
 from astropath.utilities.tableio import readtable
 
 def assertAlmostEqual(a, b, **kwargs):
@@ -96,10 +97,7 @@ class TestBaseSaveOutput(TestBase):
 
   def removeoutput(self):
     for filename in self.outputfilenames:
-      try:
-        filename.unlink()
-      except FileNotFoundError:
-        pass
+      rm_missing_ok(filename)
 
   def setUp(self):
     super().setUp()

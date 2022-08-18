@@ -577,6 +577,18 @@ class SelectLayersCohort(Cohort, SelectLayersArgumentParser):
   def initiatesamplekwargs(self):
     return {**super().initiatesamplekwargs, "layers": self.layers}
 
+class SelectLayersIm3Cohort(SelectLayersCohort):
+  @property
+  def workflowkwargs(self):
+    result = {
+      **super().workflowkwargs,
+      "layersim3": self.layers,
+    }
+    if len(self.layers) == 1 and self.layers is not None:
+      layer, = self.layers
+      result["layerim3"] = layer
+    return result
+
 class SegmentationFolderCohort(Cohort, SegmentationFolderArgumentParser):
   def __init__(self, *args, segmentationfolder=None, segmentationroot=None, **kwargs):
     super().__init__(*args, **kwargs)

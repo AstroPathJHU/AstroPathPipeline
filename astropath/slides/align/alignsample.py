@@ -2,7 +2,8 @@
 
 import contextlib, methodtools, numpy as np
 
-from ...shared.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
+from ...shared.argumentparser import DbloadArgumentParser, SelectRectanglesArgumentParser
+from ...shared.sample import DbloadSample, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, WorkflowSample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
 from ...utilities.tableio import writetable
@@ -12,7 +13,7 @@ from .overlap import AlignmentResult, AlignmentOverlap
 from .rectangle import AlignmentRectangleBase, AlignmentRectangleComponentTiffSingleLayer, AlignmentRectangleIm3SingleLayer
 from .stitch import AffineEntry, ReadStitchResult, stitch
 
-class AlignSampleBase(SampleBase):
+class AlignSampleBase(ReadRectanglesOverlapsBase):
   """
   Main class for aligning the HPFs in a slide
   """
@@ -202,7 +203,7 @@ class AlignSampleBase(SampleBase):
     if dostitching:
       self.stitch()
 
-class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
+class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample, DbloadArgumentParser, SelectRectanglesArgumentParser):
   """
   An alignment set that runs from the dbload folder and can write results
   to the dbload folder
