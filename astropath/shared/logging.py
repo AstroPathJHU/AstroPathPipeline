@@ -151,8 +151,8 @@ class MyLogger:
           imagehandler.setLevel(logging.INFO-1)
           self.logger.addHandler(imagehandler)
 
-        if not self.skipstartfinish:
-          self.logger.critical(f"START: {self.module} {self.astropathversion}")
+      if not self.skipstartfinish:
+        self.logger.critical(f"START: {self.module} {self.astropathversion}")
 
     self.nentered += 1
     self.processlogonenterqueue()
