@@ -163,7 +163,7 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
     g.add_argument("--no-log", action="store_true", help="do not write to log files.")
     p.add_argument("--skip-start-finish", action="store_true", help="do not write the START: and FINISH: lines to the log (this should only be used if external code writes those lines).")
     p.add_argument("--print-threshold", choices=("all", "info", "warning", "error", "critical", "none"), default="all", help="minimum level of log messages that should be printed to stderr (default: all)")
-    p.add_argument("--squeue-output-file", type=lambda x: job_lock.setsqueueoutput(filename=x), help="file containing the output of squeue, if running on a machine that doesn't have squeue available", dest=argparse.SUPPRESS)
+    job_lock.add_job_lock_arguments(p)
     return p
 
   @classmethod
