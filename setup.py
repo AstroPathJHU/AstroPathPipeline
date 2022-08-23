@@ -138,7 +138,7 @@ setupkwargs = dict(
     "scipy>=0.12",
     "setuptools-scm",
     "SimpleITK>=2.1.1",
-    "slurm-python-utils>=1.4.15",
+    "slurm-python-utils>=1.6.0",
     "uncertainties",
   ],
   extras_require = {
