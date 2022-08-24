@@ -1,4 +1,5 @@
-import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, pandas as pd, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
+import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, pandas as pd, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET, psutil
+from multiprocessing.pool import ThreadPool
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
 from ..hpfs.warping.utilities import WarpingSummary
@@ -2066,10 +2067,23 @@ class ParallelSample(SampleBase, ParallelArgumentParser):
   @property
   def njobs(self):
     return self.__njobs
-  def pool(self):
-    nworkers = mp.cpu_count()
-    if self.njobs is not None: nworkers = min(nworkers, self.njobs)
-    return mp.get_context().Pool(nworkers)
+  def pool(self,nworkers=None):
+    n_workers = psutil.cpu_count()
+    if nworkers is not None :
+      if nworkers>n_workers:
+        self.logger.warning(f'WARNING: requested a pool of {nworkers} processes but only found {n_workers} usable CPUs.')
+      n_workers = nworkers
+    elif self.njobs is not None: 
+      n_workers = min(n_workers, self.njobs)
+    return mp.get_context().Pool(n_workers)
+  def threadpool(self,nthreads=None):
+    if nthreads is not None :
+      n_threads = nthreads
+    elif self.njobs is not None: 
+      n_threads = self.njobs
+    else :
+      n_threads = psutil.cpu_count()
+    return ThreadPool(n_threads)
 
 class SampleWithSegmentations(ReadRectanglesBase):
   @classmethod
