@@ -43,21 +43,23 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
       errmsg = f'ERROR: image with shape {originalimage.shape} cannot be corrected for exposure time '
       errmsg+= f'using a setup for images with {self._nlayers} layers!'
       raise ValueError(errmsg)
-    return self.__get_corrected_image(originalimage,self._exp_times,self._med_ets,self._offsets) 
+    raw_img_dtype = originalimage.dtype
+    return self.__get_corrected_image(originalimage,
+                                      self._exp_times,self._med_ets,self._offsets,
+                                      raw_img_dtype,np.issubdtype(raw_img_dtype,np.integer)) 
 
   @staticmethod
   @njit
-  def __get_corrected_image(originalimage,exp_times,med_ets,offsets) :
-    raw_img_dtype = originalimage.dtype
+  def __get_corrected_image(originalimage,exp_times,med_ets,offsets,original_dtype,original_is_int) :
     corr_img = np.where((originalimage-offsets)>0,
                         offsets+(1.*med_ets/exp_times)*(originalimage-offsets),
                         originalimage) #converted to a float here
-    if np.issubdtype(raw_img_dtype,np.integer) :
+    if original_is_int :
       #round, clip to range, and convert back to original datatype
-      max_value = np.iinfo(raw_img_dtype).max
-      return (np.clip(np.rint(corr_img),0,max_value)).astype(raw_img_dtype) 
-    elif corr_img.dtype!=raw_img_dtype :
-      return (corr_img).astype(raw_img_dtype,casting='same_kind') #otherwise just convert back to original datatype
+      max_value = np.iinfo(original_dtype).max
+      return (np.clip(np.rint(corr_img),0,max_value)).astype(original_dtype) 
+    else :
+      return corr_img.astype(original_dtype) #otherwise just convert back to original datatype
 
 class RectangleExposureTimeTransformationSingleLayer(RectangleTransformationBase):
   """
