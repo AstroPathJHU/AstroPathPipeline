@@ -23,16 +23,17 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
   """
 
   def __init__(self, ets, offsets) :
-    self._exp_times = np.array(ets)
+    self._exp_times = (np.array(ets))[np.newaxis,np.newaxis,:]
+    self._offsets = (np.array(offsets))[np.newaxis,np.newaxis,:]
     self._med_ets = None
-    self._offsets = np.array(offsets)
-    self._nlayers = len(self._exp_times)
+    self._nlayers = self._exp_times.shape[-1]
 
   def set_med_ets(self, med_ets):
-    self._med_ets = med_ets
-    if not (len(self._exp_times)==len(self._med_ets)==len(self._offsets)) :
-      errmsg = f'ERROR: exposure times (length {len(self._exp_times)}), median exposure times (length {len(self._med_ets)}),'
-      errmsg+= f' and dark current offsets (length {len(self._offsets)}) must all be the same length!'
+    self._med_ets = (med_ets)[np.newaxis,np.newaxis,:]
+    if not (self._exp_times.shape[-1]==self._med_ets.shape[-1]==self._offsets.shape[-1]) :
+      errmsg = f'ERROR: exposure times (length {self._exp_times.shape[-1]}), median exposure times '
+      errmsg+= f'(length {self._med_ets.shape[-1]}), and dark current offsets (length {self._offsets.shape[-1]}) '
+      errmsg+= 'must all be the same length!'
       raise ValueError(errmsg)
   
   def transform(self, originalimage) :
@@ -42,25 +43,21 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
       errmsg = f'ERROR: image with shape {originalimage.shape} cannot be corrected for exposure time '
       errmsg+= f'using a setup for images with {self._nlayers} layers!'
       raise ValueError(errmsg)
-    raw_img_dtype = originalimage.dtype
-    exp_times = self._exp_times[np.newaxis,np.newaxis,:]
-    med_ets = self._med_ets[np.newaxis,np.newaxis,:]
-    offsets = self._offsets[np.newaxis,np.newaxis,:]
-    corr_img = self.__get_corrected_image(originalimage,exp_times,med_ets,offsets) #converted to a float here
-    if np.issubdtype(raw_img_dtype,np.integer) :
-      #round, clip to range, and convert back to original datatype
-      max_value = np.iinfo(raw_img_dtype).max
-      return (np.clip(np.rint(corr_img),0,max_value)).astype(raw_img_dtype) 
-    else :
-      return (corr_img).astype(raw_img_dtype,casting='same_kind') #otherwise just convert back to original datatype
+    return self.__get_corrected_image(originalimage,self._exp_times,self._med_ets,self._offsets) 
 
   @staticmethod
   @njit
   def __get_corrected_image(originalimage,exp_times,med_ets,offsets) :
+    raw_img_dtype = originalimage.dtype
     corr_img = np.where((originalimage-offsets)>0,
                         offsets+(1.*med_ets/exp_times)*(originalimage-offsets),
-                        originalimage) 
-    return corr_img
+                        originalimage) #converted to a float here
+    if np.issubdtype(raw_img_dtype,np.integer) :
+      #round, clip to range, and convert back to original datatype
+      max_value = np.iinfo(raw_img_dtype).max
+      return (np.clip(np.rint(corr_img),0,max_value)).astype(raw_img_dtype) 
+    elif corr_img.dtype!=raw_img_dtype :
+      return (corr_img).astype(raw_img_dtype,casting='same_kind') #otherwise just convert back to original datatype
 
 class RectangleExposureTimeTransformationSingleLayer(RectangleTransformationBase):
   """
