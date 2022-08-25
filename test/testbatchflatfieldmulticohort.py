@@ -14,9 +14,9 @@ dims = (1004,1344,35)
 version = 'TEST'
 slide_IDs = ['M21_1','M148','M206']
 
-class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
+class TestBatchFlatfieldMultiCohort(TestBaseSaveOutput) :
     """
-    Class to test BatchFlatfieldCohort functions
+    Class to test BatchFlatfieldMultiCohort functions
     """
 
     @property
@@ -72,8 +72,8 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
             shutil.copy(ref_metadata_summary,slide_meanimage_folder/f'{sid}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
             self.__files_to_remove.append(slide_meanimage_folder/f'{sid}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
 
-    def test_batch_flatfield_cohort(self) :
-        #run the BatchFlatfieldCohort selecting the three contrived samples
+    def test_batch_flatfield_multi_cohort(self) :
+        #run the BatchFlatfieldMultiCohort selecting the three contrived samples
         root = folder/'data'
         args = [os.fspath(root),
                 '--version',version,
