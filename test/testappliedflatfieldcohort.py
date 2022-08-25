@@ -14,7 +14,6 @@ folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
 root = folder/'data'
 shardedim3root = folder/'test_for_jenkins'/'applied_flatfield_cohort'/'raw'
-et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
 slideID = 'M21_1'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
 
@@ -79,7 +78,6 @@ class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         #run the cohort
         args = [os.fspath(root),os.fspath(folder/'test_for_jenkins'/'applied_flatfield_cohort'),
                 '--shardedim3root',os.fspath(shardedim3root),
-                '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--sampleregex',slideID,
                 '--image-set-split','sequential',
                 '--skip-masking',
