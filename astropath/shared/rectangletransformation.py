@@ -89,15 +89,22 @@ class RectangleExposureTimeTransformationSingleLayer(RectangleTransformationBase
       errmsg+= 'using a setup for single layer images!'
       raise ValueError(errmsg)
     raw_img_dtype = originalimage.dtype
-    corr_img = np.where((originalimage-self._offset)>0,
-                        self._offset+(1.*self._med_et/self._exp_time)*(originalimage-self._offset),
+    return self.__get_corrected_image_layer(originalimage,
+                                            self._exp_time,self._med_et,self._offset,
+                                            raw_img_dtype,np.issubdtype(raw_img_dtype,np.integer))
+
+  @staticmethod
+  @njit
+  def __get_corrected_image_layer(originalimage,exp_time,med_et,offset,original_dtype,original_is_int) :
+    corr_img = np.where((originalimage-offset)>0,
+                        offset+(1.*med_et/exp_time)*(originalimage-offset),
                         originalimage) #converted to a float here
-    if np.issubdtype(raw_img_dtype,np.integer) :
+    if original_is_int :
       #round, clip to range, and convert back to original datatype
-      max_value = np.iinfo(raw_img_dtype).max
-      return (np.clip(np.rint(corr_img),0,max_value)).astype(raw_img_dtype) 
+      max_value = np.iinfo(original_dtype).max
+      return (np.clip(np.rint(corr_img),0,max_value)).astype(original_dtype) 
     else :
-      return (corr_img).astype(raw_img_dtype,casting='same_kind') #otherwise just convert back to original datatype
+      return (corr_img).astype(original_dtype) #otherwise just convert back to original datatype
 
 class RectangleFlatfieldTransformationMultilayer(RectangleTransformationBase):
   """
@@ -119,10 +126,15 @@ class RectangleFlatfieldTransformationMultilayer(RectangleTransformationBase):
       errmsg+= f'= {originalimage.shape}) in RectangleFlatfieldTransformationMultilayer.transform!'
       raise ValueError(errmsg)
     raw_dtype = originalimage.dtype
-    if np.issubdtype(raw_dtype,np.integer) :
-      return (np.clip(np.rint(originalimage/self._flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
+    return self.__get_corrected_image(originalimage,self._flatfield,raw_dtype,np.issubdtype(raw_dtype,np.integer))
+
+  @staticmethod
+  @njit
+  def __get_corrected_image(originalimage,flatfield,original_dtype,original_is_int) :
+    if original_is_int :
+      return (np.clip(np.rint(originalimage/flatfield),0,np.iinfo(original_dtype).max)).astype(original_dtype)
     else :
-      return (originalimage/self._flatfield).astype(raw_dtype,casting='same_kind')
+      return (originalimage/flatfield).astype(original_dtype)
 
 class RectangleFlatfieldTransformationSinglelayer(RectangleTransformationBase):
   """
@@ -145,16 +157,19 @@ class RectangleFlatfieldTransformationSinglelayer(RectangleTransformationBase):
       errmsg+= f'= {originalimage.shape}) in RectangleFlatfieldTransformationSinglelayer.transform!'
       raise ValueError(errmsg)
     raw_dtype = originalimage.dtype
-    if np.issubdtype(raw_dtype,np.integer) :
-      if len(originalimage.shape)==3 :
-        return (np.clip(np.rint(originalimage/self._flatfield[:,:,np.newaxis]),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
-      else :
-        return (np.clip(np.rint(originalimage/self._flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
+    if len(originalimage.shape)==3 :
+      flatfield = self._flatfield[:,:,np.newaxis]
     else :
-      if len(originalimage.shape)==3 :
-        return (originalimage/self._flatfield[:,:,np.newaxis]).astype(raw_dtype,casting='same_kind')
-      else :
-        return (originalimage/self._flatfield).astype(raw_dtype,casting='same_kind')
+      flatfield = self._flatfield
+    return self.__get_corrected_image_layer(originalimage,flatfield,raw_dtype,np.issubdtype(raw_dtype,np.integer))
+
+  @staticmethod
+  @njit
+  def __get_corrected_image_layer(originalimage,flatfield,original_dtype,original_is_int) :
+    if original_is_int :
+      return (np.clip(np.rint(originalimage/flatfield),0,np.iinfo(original_dtype).max)).astype(original_dtype)
+    else :
+      return (originalimage/flatfield).astype(original_dtype)
 
 class RectangleWarpingTransformationMultilayer(RectangleTransformationBase) :
   """
