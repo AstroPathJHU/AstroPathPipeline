@@ -49,16 +49,6 @@ def get_enumerated_mask(layer_mask,start_i) :
     #return the mask
     return return_mask
 
-@njit
-def filter_mask_compiled(orig_mask,min_size,enum_comp_mask,n_comps,sizes,dtype,invert=False) :
-    new_mask = np.zeros_like(orig_mask)
-    for i in range(0, n_comps):
-        if sizes[i] >= min_size :
-            new_mask[enum_comp_mask == i + 1] = 1
-    if invert :
-        new_mask = (np.where(new_mask==1,0,1)).astype(dtype)
-    return new_mask
-
 #return a binary mask with all of the areas smaller than min_size removed
 def get_size_filtered_mask(mask,min_size,both=True,invert=False) :
     """
@@ -70,7 +60,12 @@ def get_size_filtered_mask(mask,min_size,both=True,invert=False) :
         mask = (np.where(mask==1,0,1)).astype(mask.dtype)
     nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
     sizes = stats[1:, -1]; nb_components = nb_components - 1
-    new_mask = filter_mask_compiled(mask,min_size,output,nb_components,sizes,mask.dtype,invert=invert)
+    new_mask = np.zeros_like(mask)
+    for i in range(0, nb_components):
+        if sizes[i] >= min_size :
+            new_mask[output == i + 1] = 1
+    if invert :
+        new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
     if both :
         return get_size_filtered_mask(new_mask,min_size,both=False,invert=(not invert))
     return new_mask
