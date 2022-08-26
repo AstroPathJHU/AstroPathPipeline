@@ -1,6 +1,7 @@
 #imports
 import cv2
 import numpy as np
+from numba import njit
 from ...utilities.dataclasses import MyDataClass
 from .config import CONST
 
@@ -11,6 +12,30 @@ class LabelledMaskRegion(MyDataClass) :
     layers             : str
     n_pixels           : int
     reason_flagged     : str
+
+@njit
+def get_thresholded_image_compiled(image,thresholds,invert=False) :
+    if invert :
+        return (np.where(image>thresholds,0,1)).astype(np.uint8)
+    else :
+        return (np.where(image>thresholds,1,0)).astype(np.uint8)
+
+@njit
+def get_double_thresholded_image_compiled(image1,thresholds1,image2,thresholds2,invert=False,and_not_or=False) :
+    if and_not_or :
+        if invert :
+            return (np.where((image1>thresholds1) & (image2>thresholds2),0,1)).astype(np.uint8)
+        else :
+            return (np.where((image1>thresholds1) & (image2>thresholds2),1,0)).astype(np.uint8)
+    else :
+        if invert :
+            return (np.where((image1>thresholds1) | (image2>thresholds2),0,1)).astype(np.uint8)
+        else :
+            return (np.where((image1>thresholds1) | (image2>thresholds2),1,0)).astype(np.uint8)
+
+@njit
+def normalize_compiled(arr,norm) :
+    return arr/norm
 
 #change a mask from zeroes and ones to region indices and zeroes
 def get_enumerated_mask(layer_mask,start_i) :
@@ -24,6 +49,16 @@ def get_enumerated_mask(layer_mask,start_i) :
     #return the mask
     return return_mask
 
+@njit
+def filter_mask_compiled(orig_mask,min_size,enum_comp_mask,n_comps,sizes,dtype,invert=False) :
+    new_mask = np.zeros_like(orig_mask)
+    for i in range(0, n_comps):
+        if sizes[i] >= min_size :
+            new_mask[enum_comp_mask == i + 1] = 1
+    if invert :
+        new_mask = (np.where(new_mask==1,0,1)).astype(dtype)
+    return new_mask
+
 #return a binary mask with all of the areas smaller than min_size removed
 def get_size_filtered_mask(mask,min_size,both=True,invert=False) :
     """
@@ -35,12 +70,7 @@ def get_size_filtered_mask(mask,min_size,both=True,invert=False) :
         mask = (np.where(mask==1,0,1)).astype(mask.dtype)
     nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
     sizes = stats[1:, -1]; nb_components = nb_components - 1
-    new_mask = np.zeros_like(mask)
-    for i in range(0, nb_components):
-        if sizes[i] >= min_size :
-            new_mask[output == i + 1] = 1
-    if invert :
-        new_mask = (np.where(new_mask==1,0,1)).astype(mask.dtype)
+    new_mask = filter_mask_compiled(mask,min_size,output,nb_components,sizes,mask.dtype,invert=invert)
     if both :
         return get_size_filtered_mask(new_mask,min_size,both=False,invert=(not invert))
     return new_mask
@@ -88,6 +118,14 @@ def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size) :
         return filtered_mask
     return mask
 
+@njit
+def get_local_norm_lap_var_compiled(window_element,norm_lap_loc_mean,norm_lap_2_loc_mean) :
+    npix = np.sum(window_element)
+    norm_lap_loc_mean = normalize_compiled(norm_lap_loc_mean,npix)
+    norm_lap_2_loc_mean = normalize_compiled(norm_lap_2_loc_mean,npix)
+    local_norm_lap_var = np.abs(norm_lap_2_loc_mean-np.power(norm_lap_loc_mean,2))
+    return local_norm_lap_var
+
 #compute and return the variance of the normalized laplacian for a given image layer
 def get_image_layer_local_variance_of_normalized_laplacian(img_layer) :
     #build the laplacian image and normalize it to get the curvature
@@ -103,11 +141,7 @@ def get_image_layer_local_variance_of_normalized_laplacian(img_layer) :
     cv2.filter2D(img_norm_lap,cv2.CV_32F,CONST.WINDOW_EL,norm_lap_loc_mean,borderType=cv2.BORDER_REFLECT)
     norm_lap_2_loc_mean = cv2.UMat(np.empty_like(img_norm_lap))
     cv2.filter2D(np.power(img_norm_lap,2),cv2.CV_32F,CONST.WINDOW_EL,norm_lap_2_loc_mean,borderType=cv2.BORDER_REFLECT)
-    npix = np.sum(CONST.WINDOW_EL)
     norm_lap_loc_mean = norm_lap_loc_mean.get()
     norm_lap_2_loc_mean = norm_lap_2_loc_mean.get()
-    norm_lap_loc_mean /= npix
-    norm_lap_2_loc_mean /= npix
-    local_norm_lap_var = np.abs(norm_lap_2_loc_mean-np.power(norm_lap_loc_mean,2))
     #return the local variance of the normalized laplacian
-    return local_norm_lap_var
+    return get_local_norm_lap_var_compiled(CONST.WINDOW_EL,norm_lap_loc_mean,norm_lap_2_loc_mean)
