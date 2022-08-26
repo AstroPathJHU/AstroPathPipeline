@@ -174,9 +174,10 @@ class ImageMask() :
 
     #get a one-hot, fully-layered mask from a given blur/saturation mask filepath
     @staticmethod
-    def onehot_mask_from_full_mask_file(samp,filepath,dimensions) :
+    def onehot_mask_from_full_mask_file(samp,filepath) :
         if not pathlib.Path(filepath).is_file() :
             raise FileNotFoundError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
+        dimensions = (samp.fheight,samp.fwidth,samp.nlayersim3)
         read_mask = get_raw_as_hwl(filepath,*(dimensions[:-1]),len(samp.layer_groups)+1,dtype=np.uint8)
         return_mask = np.zeros(dimensions,dtype=np.uint8)
         for lgi,lgb in enumerate(samp.layer_groups.values()) :
@@ -185,9 +186,10 @@ class ImageMask() :
 
     #get a one-hot, fully-layered mask from a given blur/saturation mask filepath, ignoring regions flagged for blur
     @staticmethod
-    def onehot_mask_from_full_mask_file_no_blur(samp,filepath,dimensions) :
+    def onehot_mask_from_full_mask_file_no_blur(samp,filepath) :
         if not pathlib.Path(filepath).is_file() :
             raise FileNotFoundError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
+        dimensions = (samp.fheight,samp.fwidth,samp.nlayersim3)
         read_mask = get_raw_as_hwl(filepath,*(dimensions[:-1]),len(samp.layer_groups)+1,dtype=np.uint8)
         max_blur_index = np.max(read_mask[:,:,0])
         return_mask = np.zeros(dimensions,dtype=np.uint8)
