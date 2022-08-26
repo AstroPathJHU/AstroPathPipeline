@@ -3,6 +3,7 @@ import os, pathlib, shutil
 import numpy as np
 from astropath.utilities.config import CONST as UNIV_CONST
 from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
+from astropath.utilities.tableio import readtable
 from astropath.shared.samplemetadata import MetadataSummary
 from astropath.shared.sample import ReadRectanglesIm3FromXML
 from astropath.hpfs.flatfield.config import CONST
@@ -89,8 +90,6 @@ class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         #compare the output to the reference files
         reffolder = folder/'data'/'reference'/'appliedflatfieldcohort'
         try :
-            compare_two_csv_files(self.output_dir,reffolder,f"{CONST.FIELDS_USED_CSV_FILENAME.rstrip('.csv')}_flatfield.csv",FieldLog)
-            compare_two_csv_files(self.output_dir,reffolder,f"{CONST.FIELDS_USED_CSV_FILENAME.rstrip('.csv')}_corrected_mean_image.csv",FieldLog)
             compare_two_csv_files(self.output_dir,reffolder,'metadata_summary_flatfield_stacked_images.csv',MetadataSummary)
             compare_two_csv_files(self.output_dir,reffolder,'metadata_summary_corrected_mean_image_stacked_images.csv',MetadataSummary)
             ffa = get_raw_as_hwl(self.output_dir/'flatfield.bin',*dims,np.float64)
