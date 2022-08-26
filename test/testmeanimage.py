@@ -79,7 +79,7 @@ class TestMeanImage(TestBaseSaveOutput) :
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'meanimage'
         try :
-            compare_two_csv_files(self.meanimage_dir,reffolder,CONST.FIELDS_USED_CSV_FILENAME,FieldLog)
+            #compare_two_csv_files(self.meanimage_dir,reffolder,CONST.FIELDS_USED_CSV_FILENAME,FieldLog)
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',ThresholdTableEntry)
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',MetadataSummary)
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}',MetadataSummary)
