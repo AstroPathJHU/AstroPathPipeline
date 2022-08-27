@@ -59,7 +59,7 @@ class ImageMask() :
         bg_thresholds     = a list of the background intensity thresholds in counts in each image layer
         norm_ets          = a list of the exposure times to which the image layers have been normalized 
 
-        The last three arguments are only needed (and the last two are required) if plots for this image will be saved
+        The last three arguments are only needed (and the last two are required) to save plots for this image
         """
         #set the layer groups for the image
         self.__layer_groups=layer_groups
