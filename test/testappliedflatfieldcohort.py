@@ -6,7 +6,6 @@ from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_laye
 from astropath.shared.samplemetadata import MetadataSummary
 from astropath.shared.sample import ReadRectanglesIm3FromXML
 from astropath.hpfs.flatfield.config import CONST
-from astropath.hpfs.flatfield.utilities import FieldLog
 from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohort
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
 
@@ -14,7 +13,6 @@ folder = pathlib.Path(__file__).parent
 dims = (1004,1344,35)
 root = folder/'data'
 shardedim3root = folder/'test_for_jenkins'/'applied_flatfield_cohort'/'raw'
-et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
 slideID = 'M21_1'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
 
@@ -79,7 +77,6 @@ class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         #run the cohort
         args = [os.fspath(root),os.fspath(folder/'test_for_jenkins'/'applied_flatfield_cohort'),
                 '--shardedim3root',os.fspath(shardedim3root),
-                '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--sampleregex',slideID,
                 '--image-set-split','sequential',
                 '--skip-masking',
@@ -91,8 +88,6 @@ class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         #compare the output to the reference files
         reffolder = folder/'data'/'reference'/'appliedflatfieldcohort'
         try :
-            compare_two_csv_files(self.output_dir,reffolder,f"{CONST.FIELDS_USED_CSV_FILENAME.rstrip('.csv')}_flatfield.csv",FieldLog)
-            compare_two_csv_files(self.output_dir,reffolder,f"{CONST.FIELDS_USED_CSV_FILENAME.rstrip('.csv')}_corrected_mean_image.csv",FieldLog)
             compare_two_csv_files(self.output_dir,reffolder,'metadata_summary_flatfield_stacked_images.csv',MetadataSummary)
             compare_two_csv_files(self.output_dir,reffolder,'metadata_summary_corrected_mean_image_stacked_images.csv',MetadataSummary)
             ffa = get_raw_as_hwl(self.output_dir/'flatfield.bin',*dims,np.float64)
