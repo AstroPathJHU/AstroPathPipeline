@@ -9,6 +9,10 @@ node {
 pipeline {
   agent none
 
+  options {
+    skipDefaultCheckout true
+  }
+
   environment {
     GITHUB_TOKEN = credentials('astropath-github')
     HOME = "/home/astropath"
@@ -19,6 +23,25 @@ pipeline {
   }
 
   stages {
+    stage('checkout') {
+      agent {
+        dockerfile {
+          dir '.docker'
+          additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'"'
+        }
+      }
+      steps {
+        checkout([
+          $class: 'GitSCM',
+          branches: scm.branches,
+          doGenerateSubmoduleConfigurations: scm.doGenerateSubmoduleConfigurations,
+          extensions: scm.extensions,
+          submoduleCfg: [],
+          userRemoteConfigs: scm.userRemoteConfigs
+        ])
+      }
+    }
+
     stage('run tests') {
       agent {
         dockerfile {
