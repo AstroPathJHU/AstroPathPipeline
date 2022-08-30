@@ -33,6 +33,7 @@ pipeline {
         sh 'mkdir -p "$JENKINS_HOME/workspace/$JOB_NAME/"'
         sh '''echo 'echo here; docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > "$JENKINS_HOME/workspace/$JOB_NAME/git"'''
         sh 'chmod a+x "$JENKINS_HOME/workspace/$JOB_NAME/git"'
+        sh 'git --version'
         checkout([
           $class: 'GitSCM',
           branches: scm.branches,
