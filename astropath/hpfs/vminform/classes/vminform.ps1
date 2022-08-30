@@ -130,7 +130,7 @@ Class vminform : moduletools {
             $this.StartInForm()
             $this.WatchBatchInForm()
             $this.CheckErrors()
-            if (($this.err -le 5) -and ($this.err -gt 0)){
+            if (($this.err -le  5) -and ($this.err -gt 0)){
                 $this.sample.warning("Task will restart. Attempt "+ $this.err)
             } elseif ($this.err -gt 5){
                 Throw "Could not complete task after 5 attempts"
@@ -693,6 +693,7 @@ Class vminform : moduletools {
         #
         $this.sample.info("Launch data transfer")
         $this.KillinFormProcess()
+        Start-Sleep 20
         #
         $sor = $this.informoutpath
         #

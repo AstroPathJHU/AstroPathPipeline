@@ -6,7 +6,7 @@
  --------------------------------------------
  Description
  test if the methods of warpoctets are 
- functioning as intended
+ functioning as intended 
  -------------------------------------------#>
 #
 Class testpswarpoctets : testtools {
@@ -57,7 +57,7 @@ Class testpswarpoctets : testtools {
         $log = logger $this.mpath $this.module $this.slideid 
         #
         try {
-            warpoctets  $task | Out-Null
+            warpoctets $task | Out-Null
         } catch {
             Throw ('[warpoctets] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
