@@ -25,18 +25,7 @@ pipeline {
   stages {
     stage('checkout') {
       agent any
-      environment {
-        PATH = "$JENKINS_HOME/workspace/$JOB_NAME/:${env.PATH}"
-      }
       steps {
-        sh 'rm -f "$JENKINS_HOME/workspace/$JOB_NAME/git"'
-        sh 'which git'
-        sh 'echo $PATH'
-        sh 'mkdir -p "$JENKINS_HOME/workspace/$JOB_NAME/"'
-        sh '''echo 'echo here; docker run --rm -v "$JENKINS_HOME/workspace/$JOB_NAME:/root" -v $(pwd):/git alpine/git "$@"' > "$JENKINS_HOME/workspace/$JOB_NAME/git"'''
-        sh 'chmod a+x "$JENKINS_HOME/workspace/$JOB_NAME/git"'
-        sh 'git --version'
-        sh 'which git'
         checkout([
           $class: 'GitSCM',
           branches: scm.branches,
@@ -44,8 +33,7 @@ pipeline {
           extensions: scm.extensions,
           submoduleCfg: [],
           userRemoteConfigs: scm.userRemoteConfigs,
-          //gitTool: "$JENKINS_HOME/workspace/$JOB_NAME/git",
-          gitTool: '/bin/git',
+          gitTool: 'alpinegit',
         ])
       }
     }
