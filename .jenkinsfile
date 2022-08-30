@@ -25,6 +25,7 @@ pipeline {
   stages {
     stage('checkout') {
       agent any
+      sh 'echo $WORKSPACE'
       steps {
         checkout([
           $class: 'GitSCM',
