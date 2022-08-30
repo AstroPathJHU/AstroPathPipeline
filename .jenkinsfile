@@ -44,7 +44,7 @@ pipeline {
           submoduleCfg: [],
           userRemoteConfigs: scm.userRemoteConfigs,
           //gitTool: "$JENKINS_HOME/workspace/$JOB_NAME/git",
-          gitTool: /bin/git
+          gitTool: '/bin/git',
         ])
       }
     }
