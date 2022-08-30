@@ -27,6 +27,7 @@ pipeline {
       agent {
         docker {
           image 'alpine/git:2.36.2'
+          args '-i --entrypoint='
         }
       }
       steps {
