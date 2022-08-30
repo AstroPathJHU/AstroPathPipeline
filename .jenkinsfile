@@ -25,9 +25,9 @@ pipeline {
   stages {
     stage('checkout') {
       agent {
-        dockerfile {
-          dir '.docker'
-          additionalBuildArgs '--build-arg GITHUB_TOKEN="'+GITHUB_TOKEN+'"'
+        docker {
+          image 'alpine:git'
+          label '2.36.2'
         }
       }
       steps {
