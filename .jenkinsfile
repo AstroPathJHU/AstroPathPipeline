@@ -31,7 +31,7 @@ pipeline {
       steps {
         sh 'echo $PATH'
         sh 'mkdir -p "$JENKINS_HOME/workspace/$JOB_NAME/"'
-        sh '''echo 'echo here; docker run --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > "$JENKINS_HOME/workspace/$JOB_NAME/git"'''
+        sh '''echo 'echo here; docker run --rm -v "$JENKINS_HOME/workspace/$JOB_NAME:/root" -v $(pwd):/git alpine/git "$@"' > "$JENKINS_HOME/workspace/$JOB_NAME/git"'''
         sh 'chmod a+x "$JENKINS_HOME/workspace/$JOB_NAME/git"'
         sh 'git --version'
         checkout([
