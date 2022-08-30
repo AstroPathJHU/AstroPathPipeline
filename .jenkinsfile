@@ -26,8 +26,7 @@ pipeline {
     stage('checkout') {
       agent {
         docker {
-          image 'alpine:git'
-          label '2.36.2'
+          image 'alpine/git:2.36.2'
         }
       }
       steps {
