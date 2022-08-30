@@ -32,6 +32,7 @@ pipeline {
       }
       steps {
         sh 'git --version'
+        sh 'which git'
         checkout([
           $class: 'GitSCM',
           branches: scm.branches,
