@@ -39,7 +39,8 @@ pipeline {
           doGenerateSubmoduleConfigurations: scm.doGenerateSubmoduleConfigurations,
           extensions: scm.extensions,
           submoduleCfg: [],
-          userRemoteConfigs: scm.userRemoteConfigs
+          userRemoteConfigs: scm.userRemoteConfigs,
+          gitTool: '/usr/bin/git',
         ])
       }
     }
