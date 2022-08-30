@@ -26,10 +26,8 @@ pipeline {
     stage('checkout') {
       agent any
       steps {
-        sh 'find / -writable'
-        sh 'mkdir -p $HOME'
-        sh '''echo 'docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > $HOME/mygit'''
-        sh 'chmod a+x $HOME/mygit'
+        sh '''echo 'docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > $JENKINS_HOME/workspace/$JOB_NAME/mygit'''
+        sh 'chmod a+x $JENKINS_HOME/workspace/$JOB_NAME/mygit'
         checkout([
           $class: 'GitSCM',
           branches: scm.branches,
@@ -37,7 +35,7 @@ pipeline {
           extensions: scm.extensions,
           submoduleCfg: [],
           userRemoteConfigs: scm.userRemoteConfigs,
-          gitTool: "$HOME/mygit",
+          gitTool: "$JENKINS_HOME/workspace/$JOB_NAME/mygit",
         ])
       }
     }
