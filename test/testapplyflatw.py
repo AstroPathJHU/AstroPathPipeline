@@ -78,7 +78,7 @@ class TestApplyFlatWCohort(TestBaseCopyInput, TestBaseSaveOutput) :
         except :
             self.saveoutput()
             raise
-        finally :
+        else :
             self.removeoutput()
             shutil.rmtree(folder/'test_for_jenkins'/'applyflatw')
 

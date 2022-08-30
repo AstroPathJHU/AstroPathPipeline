@@ -1,5 +1,5 @@
-import dataclassy, numpy as np
-from ...shared.rectangle import Rectangle, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer
+import dataclassy, itertools, numpy as np
+from ...shared.rectangle import Rectangle, RectangleCollection, RectangleList, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer
 from ...shared.overlap import Overlap
 from ...utilities import units
 from ...utilities.units.dataclasses import distancefield
@@ -149,3 +149,48 @@ class FieldReadIm3MultiLayer(Field, RectangleReadIm3MultiLayer):
   """
   A Field that can read multiple layers of the im3
   """
+
+class FieldCollection(RectangleCollection):
+  def showalignedrectanglelayout(self, *, showplot=None, saveas=None, rid=True):
+    import matplotlib.patches as patches, matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    xmin = float("inf") * self.onepixel
+    xmax = -float("inf") * self.onepixel
+    ymin = float("inf") * self.onepixel
+    ymax = -float("inf") * self.onepixel
+    for r, color in zip(self.rectangles, itertools.cycle(["red", "blue", "green", "yellow", "magenta", "violet", "cyan"])):
+      x, y = xy = units.nominal_values(r.pxvec)
+      width, height = shape = r.shape
+      xmin = min(xmin, x)
+      xmax = max(xmax, x+width)
+      ymin = min(ymin, y)
+      ymax = max(ymax, y+height)
+      patch = patches.Rectangle(xy / r.onepixel, *shape / r.onepixel, color=color, alpha=0.5)
+      ax.add_patch(patch)
+      if rid: ax.text(*(xy+shape/2) / r.onepixel, str(r.n), ha="center", va="center")
+
+    for r in self.rectangles:
+      x, y = xy = np.array([r.mx1, r.my1])
+      width, height = shape = np.array([r.mx2 - r.mx1, r.my2 - r.my1])
+      patch = patches.Rectangle(xy / r.onepixel, *shape / r.onepixel, edgecolor="white", fill=False)
+      ax.add_patch(patch)
+
+    margin = .05
+    left = float((xmin - (xmax-xmin)*margin) / r.onepixel)
+    right = float((xmax + (xmax-xmin)*margin) / r.onepixel)
+    top = float((ymin - (ymax-ymin)*margin) / r.onepixel)
+    bottom = float((ymax + (ymax-ymin)*margin) / r.onepixel)
+
+    ax.set_xlim(left=left, right=right)
+    ax.set_ylim(top=top, bottom=bottom)
+    ax.set_aspect('equal', adjustable='box')
+
+    if showplot is None: showplot = saveas is None
+    if showplot:
+      plt.show()
+    if saveas is not None:
+      fig.savefig(saveas)
+    if not showplot:
+      plt.close()
+
+class FieldList(RectangleList, FieldCollection): pass

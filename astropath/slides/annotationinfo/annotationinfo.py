@@ -6,6 +6,7 @@ from ...shared.csvclasses import AnnotationInfo
 from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationFileSample
 from ...utilities import units
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict
+from ...utilities.miscfileio import PathGlobExists
 from ..align.alignsample import AlignSample, ReadAffineShiftSample
 
 class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
@@ -104,6 +105,7 @@ class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationFileS
   def inputfiles(self, **kwargs):
     result = [
       *super().inputfiles(**kwargs),
+      PathGlobExists(self.scanfolder, f"*{self.SlideID}*annotations.polygons*.xml", regex=self.annotationsxmlregex),
     ]
     if self.annotationpositionfromaffineshift:
       result += [
@@ -221,7 +223,7 @@ class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationI
           info.dbannotationtype = newname
       if not found:
         raise ValueError(f"Trying to rename annotation {oldname}, which doesn't exist")
-    ctr = collections.Counter(info.dbname for info in infos)
+    ctr = collections.Counter(info.dbname for info in infos if info.annotationsource != "dummy")
     if max(ctr.values()) > 1:
       raise ValueError(f"Multiple annotations with the same name after renaming: {ctr}")
 

@@ -27,11 +27,6 @@ class OptionalImport:
     self.doimport()
     return getattr(self.__module, attr)
 
-  @property
-  def module(self):
-    if self.module is None: return self
-    return self.__module
-
 class OgrImport(OptionalImport):
   def __init__(self):
     super().__init__("osgeo.ogr", "gdal")
@@ -39,9 +34,19 @@ class OgrImport(OptionalImport):
     super().initmodule()
     self.UseExceptions()
 
+class NNUNetImport(OptionalImport) :
+  def __init__(self):
+    super().__init__("nnunet")
+  def initmodule(self):
+    super().initmodule()
+    import nnunet.inference.predict
+    import nnunet.paths
+    self.inference.predict = nnunet.inference.predict
+    self.paths = nnunet.paths
+
 cvxpy = OptionalImport("cvxpy")
 deepcell = OptionalImport("deepcell")
-nnunet = OptionalImport("nnunet")
+nnunet = NNUNetImport()
 ogr = OgrImport()
 pyopencl = OptionalImport("pyopencl")
 pyvips = OptionalImport("pyvips")

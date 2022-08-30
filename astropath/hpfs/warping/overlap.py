@@ -1,4 +1,6 @@
 #imports
+import numpy as np
+from ...slides.align.computeshift import mse
 from ...slides.align.overlap import AlignmentOverlap
 
 class AlignmentOverlapForWarping(AlignmentOverlap) :
@@ -37,6 +39,30 @@ class AlignmentOverlapForWarping(AlignmentOverlap) :
         if self.__overlap_npix is None :
             self.__calculate_image_variables()
         return self.__overlap_npix
+    @property
+    def mse1(self):
+        """
+        mean squared flux of the first image (not cached like in the parent class)
+        """
+        if not self.cutimages[0].size: return np.nan
+        return mse(self.cutimages[0].astype(float))
+    @property
+    def mse2(self):
+        """
+        mean squared flux of the second image (not cached like in the parent class)
+        """
+        if not self.cutimages[1].size: return np.nan
+        return mse(self.cutimages[1].astype(float))
+    @property
+    def sc(self):
+        """
+        ratio to scale the second image by in order to get the mean squared fluxes to match
+        (not cached like in the parent class)
+        """
+        mse1 = self.mse1
+        mse2 = self.mse2
+        if mse2 == 0: return 1
+        return (mse1 / mse2) ** .5
 
     def __calculate_image_variables(self) :
         """

@@ -22,6 +22,18 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
   @classmethod
   def logmodule(self): return "geom"
 
+  @classmethod
+  def logstartregex(cls):
+    new = super().logstartregex()
+    old = "geomSample started"
+    return rf"(?:{old}|{new})"
+
+  @classmethod
+  def logendregex(cls):
+    new = super().logendregex()
+    old = "geomSample finished"
+    return rf"(?:{old}|{new})"
+
   @property
   def rectanglecsv(self): return "fields"
   rectangletype = FieldReadSegmentedComponentTiffSingleLayer
@@ -59,7 +71,7 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
       with field.using_component_tiff() as im:
         zeros = im == 0
         if not np.any(zeros): continue
-        polygons = findcontoursaspolygons(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, shiftby=units.nominal_values(field.pxvec), forgdal=True)
+        polygons = findcontoursaspolygons(zeros.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, shiftby=units.nominal_values(field.pxvec), forgdal=True, logger=self.logger)
         for k, polygon in enumerate(polygons, start=1):
           boundaries.append(Boundary(n=n, k=k, poly=polygon, pscale=self.pscale))
     return boundaries
@@ -75,8 +87,8 @@ class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
     """
     if fieldfilename is None: fieldfilename = self.fieldfilename
     if tumorfilename is None: tumorfilename = self.tumorfilename
-    writetable(fieldfilename, self.getfieldboundaries())
-    writetable(tumorfilename, self.gettumorboundaries())
+    writetable(fieldfilename, self.getfieldboundaries(), rowclass=Boundary)
+    writetable(tumorfilename, self.gettumorboundaries(), rowclass=Boundary)
 
   def run(self, *args, **kwargs): return self.writeboundaries(*args, **kwargs)
 

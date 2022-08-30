@@ -28,6 +28,12 @@ def rmtree_missing_ok(path, **kwargs):
   except FileNotFoundError:
     pass
 
+def iterdir_missing_ok(path, **kwargs):
+  try:
+    yield from path.iterdir(**kwargs)
+  except FileNotFoundError:
+    return
+
 def is_relative_to(path1, path2):
   """
   Like pathlib.PurePath.is_relative_to but backported to older python versions
@@ -73,7 +79,11 @@ def pathtomountedpath(filename):
     #please note that the AstroPath framework is NOT tested on cygwin
     return pathlib.PureWindowsPath(subprocess.check_output(["cygpath", "-w", filename]).strip().decode("utf-8"))
 
-  if not filename.is_absolute(): return filename
+  if not filename.is_absolute():
+    try:
+      return pathlib.WindowsPath(filename)
+    except NotImplementedError:
+      return pathlib.PureWindowsPath(filename)
 
   bestmount = bestmountpoint = None
   for mount in psutil.disk_partitions(all=True):
@@ -173,6 +183,11 @@ def checkwindowsnewlines(filename):
     if re.search(r"\r\r", contents):
       raise ValueError(rf"{filename} has messed up newlines (contains double carriage return")
 
+class CorruptMemmapError(IOError):
+  def __init__(self, filename, *args, **kwargs):
+    if hasattr(filename, "name"): filename = filename.name
+    super().__init__(f"Failed to create memmap from corrupted file {filename}", *args, **kwargs)
+
 @contextlib.contextmanager
 def memmapcontext(filename, *args, **kwargs):
   """
@@ -182,9 +197,15 @@ def memmapcontext(filename, *args, **kwargs):
   try:
     memmap = np.memmap(filename, *args, **kwargs)
   except OSError as e:
-    if hasattr(filename, "name"): filename = filename.name
     if getattr(e, "winerror", None) == 8:
-      raise IOError(f"Failed to create memmap from corrupted file {filename}")
+      raise CorruptMemmapError(filename)
+    else:
+      raise
+  except ValueError as e:
+    if str(e) == "mmap length is greater than file size":
+      raise CorruptMemmapError(filename)
+    else:
+      raise
   try:
     yield memmap
   finally:
@@ -199,3 +220,21 @@ def field_size_limit_context(limit):
     yield
   finally:
     csv.field_size_limit(oldlimit)
+
+class PathGlobExists:
+  def __init__(self, folder, glob, *, regex=None):
+    self.folder = pathlib.Path(folder)
+    self.glob = glob
+    self.regex = regex
+  def exists(self):
+    for _ in self.folder.glob(self.glob):
+      if self.regex is None or re.match(self.regex, _.name):
+        return True
+    return False
+  def __str__(self):
+    result = str(self.folder/self.glob)
+    if self.regex is not None:
+      result += " matching " + self.regex
+    return result
+  def __repr__(self):
+    return "{type(self).__name__}({self.folder!r}, {self.glob!r}, regex={self.regex!r})"

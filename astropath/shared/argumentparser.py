@@ -1,34 +1,8 @@
-import abc, argparse, contextlib, logging, pathlib, re
+import abc, argparse, contextlib, job_lock, logging, pathlib, re
 from ..utilities.tableio import TableReader
 from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
-from .logging import printlogger
-from .workflowdependency import ThingWithRoots
-
-class MRODebuggingMetaClass(abc.ABCMeta):
-  def __new__(cls, name, bases, dct, **kwargs):
-    try:
-      return super().__new__(cls, name, bases, dct, **kwargs)
-    except TypeError as e:
-      if "Cannot create a consistent" in str(e):
-        logger = printlogger("mro")
-        logger.critical("========================")
-        logger.critical(f"MROs of bases of {name}:")
-        for base in bases:
-          logger.critical("------------------------")
-          for c in base.__mro__:
-            logger.critical(c.__name__)
-        logger.critical("************************")
-        logger.critical("filtered for the bad ones:")
-        for base in bases:
-          bad = [c for c in base.__mro__ if re.search(rf"\b{c.__name__}\b", str(e))]
-          if len(bad) < 2: continue
-          logger.critical("------------------------")
-          logger.critical(base.__name__)
-          for c in bad:
-            logger.critical(c.__name__)
-        logger.critical("========================")
-      raise
+from .workflowdependency import MRODebuggingMetaClass, ThingWithRoots
 
 class RunFromArgumentParserBase(ThingWithRoots, TableReader, contextlib.ExitStack, metaclass=MRODebuggingMetaClass):
   @classmethod
@@ -41,6 +15,7 @@ class RunFromArgumentParserBase(ThingWithRoots, TableReader, contextlib.ExitStac
     Create an argument parser to run on the command line
     """
     p = argparse.ArgumentParser(description=cls.argumentparserhelpmessage())
+    job_lock.add_job_lock_arguments(p)
     return p
 
   @classmethod
@@ -51,6 +26,7 @@ class RunFromArgumentParserBase(ThingWithRoots, TableReader, contextlib.ExitStac
     """
     p = cls.makeargumentparser()
     parsed_args = p.parse_args(args=args)
+    job_lock.process_job_lock_arguments(parsed_args)
     return cls.runfromparsedargs(parsed_args, **kwargs)
 
   @classmethod
@@ -83,6 +59,7 @@ class InitAndRunFromArgumentParserBase(RunFromArgumentParserBase):
     initkwargs = cls.initkwargsfromargumentparser(parsed_args_dict)
     misckwargs = cls.misckwargsfromargumentparser(parsed_args_dict)
     runkwargs = cls.runkwargsfromargumentparser(parsed_args_dict)
+    parsed_args_dict.pop(argparse.SUPPRESS, None)
 
     if parsed_args_dict:
       raise TypeError(f"Unused command line options:\n{parsed_args_dict}")
@@ -262,10 +239,11 @@ class Im3ArgumentParser(RunFromArgumentParser):
 
 class WorkingDirArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument('--workingdir',type=pathlib.Path,help='Path to the working directory where output should be stored.')
     return p
+  
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     #only add the workingdir to the initkwargs if it was given, otherwise leave it out 
@@ -279,10 +257,26 @@ class WorkingDirArgumentParser(RunFromArgumentParser) :
         'workingdir': wd,
       }
 
+class SegmentationFolderArgumentParser(RunFromArgumentParser) :
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    g = p.add_mutually_exclusive_group()
+    g.add_argument('--segmentationroot',type=pathlib.Path,help='Alternate root to use for the segmentation output.')
+    g.add_argument('--segmentationfolder',type=pathlib.Path,help='Path to the segmentation outputs.')
+    return p
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      'segmentationroot': parsed_args_dict.pop('segmentationroot'),
+      'segmentationfolder': parsed_args_dict.pop('segmentationfolder'),
+    }
+
 class FileTypeArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument('--filetype',choices=['raw','flatWarp'],default='raw',
                    help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatWarp" files (extension {UNIV_CONST.FLATW_EXT}).')
     return p
@@ -295,8 +289,8 @@ class FileTypeArgumentParser(RunFromArgumentParser) :
 
 class GPUArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     p.add_argument('--noGPU', action='store_true',
                    help='Add this flag to disable any major GPU computations.')
     return p
@@ -309,8 +303,8 @@ class GPUArgumentParser(RunFromArgumentParser) :
 
 class ImageCorrectionArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls):
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
     g = p.add_mutually_exclusive_group()
     g.add_argument('--exposure-time-offset-file', type=pathlib.Path,
                     help='''Path to a .csv file specifying layer-dependent exposure time correction offsets for the 
@@ -344,8 +338,8 @@ class ImageCorrectionArgumentParser(RunFromArgumentParser) :
 
 class WarpFitArgumentParser(RunFromArgumentParser) :
   @classmethod
-  def makeargumentparser(cls) :
-    p = super().makeargumentparser()
+  def makeargumentparser(cls, **kwargs) :
+    p = super().makeargumentparser(**kwargs)
     p.add_argument('--fixed', default=['fx','fy','p1','p2'], nargs='*',
                    help='Names of parameters to keep fixed during fitting (default = fx, fy, p1, p2).')
     p.add_argument('--init-pars', type=dict_of_init_par_values_callback, nargs='*',

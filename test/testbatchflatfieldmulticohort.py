@@ -14,9 +14,9 @@ dims = (1004,1344,35)
 version = 'TEST'
 slide_IDs = ['M21_1','M148','M206']
 
-class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
+class TestBatchFlatfieldMultiCohort(TestBaseSaveOutput) :
     """
-    Class to test BatchFlatfieldCohort functions
+    Class to test BatchFlatfieldMultiCohort functions
     """
 
     @property
@@ -72,8 +72,8 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
             shutil.copy(ref_metadata_summary,slide_meanimage_folder/f'{sid}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
             self.__files_to_remove.append(slide_meanimage_folder/f'{sid}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
 
-    def test_batch_flatfield_cohort(self) :
-        #run the BatchFlatfieldCohort selecting the three contrived samples
+    def test_batch_flatfield_multi_cohort(self) :
+        #run the BatchFlatfieldMultiCohort selecting the three contrived samples
         root = folder/'data'
         args = [os.fspath(root),
                 '--version',version,
@@ -81,6 +81,7 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
                 '--allow-local-edits',
                 '--ignore-dependencies',
                 '--outdir',os.fspath(root),
+                '--debug',
                ]
         BatchFlatfieldMultiCohort.runfromargumentparser(args=args)
         #compare the output files with the references
@@ -94,6 +95,7 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
             ffua = get_raw_as_hwl(self.batchflatfield_dir/f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}_uncertainty.bin',*dims,np.float64)
             ref_ffua = read_image_from_layer_files(reffolder/f'{UNIV_CONST.FLATFIELD_DIRNAME}_{version}_uncertainty.bin',*dims,np.float64)
             np.testing.assert_allclose(ffua,ref_ffua,rtol=1e-09)
+            del ffa, ffua
         except :
             self.saveoutput()
             raise
@@ -105,4 +107,3 @@ class TestBatchFlatfieldCohort(TestBaseSaveOutput) :
         for fp_to_remove in self.__files_to_remove :
             fp_to_remove.unlink()
         super().tearDown()
-

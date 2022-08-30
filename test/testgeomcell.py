@@ -1,7 +1,8 @@
 import csv, itertools, logging, more_itertools, os, pathlib, re
 
-from astropath.slides.geomcell.geomcellcohort import GeomCellCohort
-from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSample
+from astropath.shared.sample import SampleWithSegmentationFolder
+from astropath.slides.geomcell.geomcellcohort import GeomCellCohortDeepCell, GeomCellCohortInform, GeomCellCohortMesmer
+from astropath.slides.geomcell.geomcellsample import CellGeomLoad, GeomCellSampleDeepCell, GeomCellSampleInform, GeomCellSampleMesmer
 from astropath.utilities.version.git import thisrepo
 
 from .testbase import assertAlmostEqual, TestBaseSaveOutput
@@ -15,25 +16,55 @@ class TestGeomCell(TestBaseSaveOutput):
   def outputfilenames(self):
     return [
       *(
-        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/filename.name
-        for SlideID in ("M206",)
-        for filename in (thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom").iterdir()
+        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"geom"/algo/filename.name
+        for SlideID in ("M206", "M21_1")
+        for algo in {
+          "M206": ("inform",),
+          "M21_1": ("deepcell", "mesmer"),
+        }[SlideID]
+        for filename in (thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom"/algo).iterdir()
       ),
-      thisfolder/"test_for_jenkins"/"geomcell"/"logfiles"/"geomcell.log",
       *(
-        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"logfiles"/f"{SlideID}-geomcell.log"
-        for SlideID in ("M206",)
+        thisfolder/"test_for_jenkins"/"geomcell"/"logfiles"/f"geomcell{algo}.log"
+        for algo in ("", "deepcell", "mesmer")
+      ),
+      *(
+        thisfolder/"test_for_jenkins"/"geomcell"/SlideID/"logfiles"/f"{SlideID}-geomcell{algo}.log"
+        for SlideID in ("M206", "M21_1")
+        for algo in ("", "deepcell", "mesmer")
       ),
     ]
 
-  def testGeomCell(self, SlideID="M206", units="safe"):
+  def testGeomCell(self, SlideID="M206", units="safe", algorithm="inform"):
+    samplecls, cohortcls = {
+      "inform": (GeomCellSampleInform, GeomCellCohortInform),
+      "deepcell": (GeomCellSampleDeepCell, GeomCellCohortDeepCell),
+      "mesmer": (GeomCellSampleMesmer, GeomCellCohortMesmer),
+    }[algorithm]
+
     root = thisfolder/"data"
     geomroot = thisfolder/"test_for_jenkins"/"geomcell"
+    segmentationroot = thisfolder/"data"/"reference"/"segmentation"
     args = [os.fspath(root), "--geomroot", os.fspath(geomroot), "--logroot", os.fspath(geomroot), "--selectrectangles", "1", "--units", units, "--sampleregex", SlideID, "--debug", "--allow-local-edits", "--ignore-dependencies", "--njobs", "2"]
-    s = GeomCellSample(root=root, samp=SlideID, geomroot=geomroot, logroot=geomroot, selectrectangles=[1], printthreshold=logging.CRITICAL+1, reraiseexceptions=False, uselogfiles=True)
+
+    samplekwargs = {
+      "root": root,
+      "samp": SlideID,
+      "geomroot": geomroot,
+      "logroot": geomroot,
+      "selectrectangles": [1],
+      "printthreshold": logging.CRITICAL+1,
+      "reraiseexceptions": False,
+      "uselogfiles": True,
+    }
+    if issubclass(samplecls, SampleWithSegmentationFolder):
+      samplekwargs["segmentationroot"] = segmentationroot
+      args += ["--segmentationroot", os.fspath(segmentationroot)]
+    s = samplecls(**samplekwargs)
     with s.logger:
       raise ValueError
-    geomloadcsv = s.rectangles[0].geomloadcsv
+
+    geomloadcsv = s.rectangles[0].geomloadcsv(algorithm)
     geomloadcsv.parent.mkdir(exist_ok=True, parents=True)
     geomloadcsv.touch()
     with s.logger:
@@ -64,10 +95,10 @@ class TestGeomCell(TestBaseSaveOutput):
 
     geomloadcsv.touch()
     #should not run anything because the csv already exists
-    GeomCellCohort.runfromargumentparser(args=args)
+    cohortcls.runfromargumentparser(args=args)
     #this shouldn't run anything either because the last cleanup was with the current commit
-    GeomCellCohort.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
-    with open(s.rectangles[0].geomloadcsv) as f:
+    cohortcls.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
+    with open(geomloadcsv) as f:
       assert not f.read().strip()
 
     contents = contents.replace("Finished cleaning up", "")
@@ -75,12 +106,12 @@ class TestGeomCell(TestBaseSaveOutput):
       f.write(contents)
     #now there's no log message indicating a successful cleanup, so the last cleanup
     #was the first run of the log, which is testrequirecommit.parents[0]
-    GeomCellCohort.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
+    cohortcls.runfromargumentparser(args=args + ["--require-commit", self.testrequirecommit.shorthash(8)])
 
     try:
       for filename, reffilename in more_itertools.zip_equal(
-        sorted(s.geomfolder.iterdir()),
-        sorted((thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom").iterdir()),
+        sorted(s.geomsubfolder.iterdir()),
+        sorted((thisfolder/"data"/"reference"/"geomcell"/SlideID/"geom"/algorithm).iterdir()),
       ):
         self.assertEqual(filename.name, reffilename.name)
   
@@ -100,8 +131,11 @@ class TestGeomCell(TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  def testGeomCellFastUnitsPixels(self, SlideID="M206", **kwargs):
-    self.testGeomCell(SlideID=SlideID, units="fast_pixels", **kwargs)
+  def testGeomCellFastUnitsPixels(self, **kwargs):
+    self.testGeomCell(units="fast_pixels", **kwargs)
 
-  def testGeomCellFastUnitsMicrons(self, SlideID="M206", **kwargs):
-    self.testGeomCell(SlideID=SlideID, units="fast_microns", **kwargs)
+  def testGeomCellDeepCell(self, **kwargs):
+    self.testGeomCell(algorithm="deepcell", SlideID="M21_1", **kwargs)
+
+  def testGeomCellMesmerFastUnitsMicrons(self, **kwargs):
+    self.testGeomCell(algorithm="mesmer", SlideID="M21_1", units="fast_microns", **kwargs)

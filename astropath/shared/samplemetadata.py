@@ -53,7 +53,7 @@ class SampleDef(MyDataClassFrozen):
       root = pathlib.Path(root)
       try:
         cohorttable = readtable(root/"sampledef.csv", SampleDef)
-      except IOError:
+      except (IOError, EOFError):
         pass
       else:
         for row in cohorttable:
@@ -110,6 +110,9 @@ class APIDDef(MyDataClassFrozen):
     if self.BatchID is None: raise ValueError("Have to provide BatchID")
     if self.isGood is None: raise ValueError("Have to provide isGood")
     return super().__post_init__(**kwargs)
+
+  def __bool__(self):
+    return bool(self.isGood)
 
 class MetadataSummary(MyDataClassFrozen):
   """

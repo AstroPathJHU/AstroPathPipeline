@@ -1,6 +1,7 @@
 #imports
 import abc, cv2
 import numpy as np
+from numba import njit
 
 class RectangleTransformationBase(abc.ABC):
   @abc.abstractmethod
@@ -22,16 +23,17 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
   """
 
   def __init__(self, ets, offsets) :
-    self._exp_times = np.array(ets)
+    self._exp_times = (np.array(ets))[np.newaxis,np.newaxis,:]
+    self._offsets = (np.array(offsets))[np.newaxis,np.newaxis,:]
     self._med_ets = None
-    self._offsets = np.array(offsets)
-    self._nlayers = len(self._exp_times)
+    self._nlayers = self._exp_times.shape[-1]
 
   def set_med_ets(self, med_ets):
-    self._med_ets = med_ets
-    if not (len(self._exp_times)==len(self._med_ets)==len(self._offsets)) :
-      errmsg = f'ERROR: exposure times (length {len(self._exp_times)}), median exposure times (length {len(self._med_ets)}),'
-      errmsg+= f' and dark current offsets (length {len(self._offsets)}) must all be the same length!'
+    self._med_ets = (med_ets)[np.newaxis,np.newaxis,:]
+    if not (self._exp_times.shape[-1]==self._med_ets.shape[-1]==self._offsets.shape[-1]) :
+      errmsg = f'ERROR: exposure times (length {self._exp_times.shape[-1]}), median exposure times '
+      errmsg+= f'(length {self._med_ets.shape[-1]}), and dark current offsets (length {self._offsets.shape[-1]}) '
+      errmsg+= 'must all be the same length!'
       raise ValueError(errmsg)
   
   def transform(self, originalimage) :
@@ -42,18 +44,22 @@ class RectangleExposureTimeTransformationMultiLayer(RectangleTransformationBase)
       errmsg+= f'using a setup for images with {self._nlayers} layers!'
       raise ValueError(errmsg)
     raw_img_dtype = originalimage.dtype
-    exp_times = self._exp_times[np.newaxis,np.newaxis,:]
-    med_ets = self._med_ets[np.newaxis,np.newaxis,:]
-    offsets = self._offsets[np.newaxis,np.newaxis,:]
+    return self.__get_corrected_image(originalimage,
+                                      self._exp_times,self._med_ets,self._offsets,
+                                      raw_img_dtype,np.issubdtype(raw_img_dtype,np.integer)) 
+
+  @staticmethod
+  @njit
+  def __get_corrected_image(originalimage,exp_times,med_ets,offsets,original_dtype,original_is_int) :
     corr_img = np.where((originalimage-offsets)>0,
                         offsets+(1.*med_ets/exp_times)*(originalimage-offsets),
                         originalimage) #converted to a float here
-    if np.issubdtype(raw_img_dtype,np.integer) :
+    if original_is_int :
       #round, clip to range, and convert back to original datatype
-      max_value = np.iinfo(raw_img_dtype).max
-      return (np.clip(np.rint(corr_img),0,max_value)).astype(raw_img_dtype) 
+      max_value = np.iinfo(original_dtype).max
+      return (np.clip(np.rint(corr_img),0,max_value)).astype(original_dtype) 
     else :
-      return (corr_img).astype(raw_img_dtype,casting='same_kind') #otherwise just convert back to original datatype
+      return corr_img.astype(original_dtype) #otherwise just convert back to original datatype
 
 class RectangleExposureTimeTransformationSingleLayer(RectangleTransformationBase):
   """
@@ -83,15 +89,22 @@ class RectangleExposureTimeTransformationSingleLayer(RectangleTransformationBase
       errmsg+= 'using a setup for single layer images!'
       raise ValueError(errmsg)
     raw_img_dtype = originalimage.dtype
-    corr_img = np.where((originalimage-self._offset)>0,
-                        self._offset+(1.*self._med_et/self._exp_time)*(originalimage-self._offset),
+    return self.__get_corrected_image_layer(originalimage,
+                                            self._exp_time,self._med_et,self._offset,
+                                            raw_img_dtype,np.issubdtype(raw_img_dtype,np.integer))
+
+  @staticmethod
+  @njit
+  def __get_corrected_image_layer(originalimage,exp_time,med_et,offset,original_dtype,original_is_int) :
+    corr_img = np.where((originalimage-offset)>0,
+                        offset+(1.*med_et/exp_time)*(originalimage-offset),
                         originalimage) #converted to a float here
-    if np.issubdtype(raw_img_dtype,np.integer) :
+    if original_is_int :
       #round, clip to range, and convert back to original datatype
-      max_value = np.iinfo(raw_img_dtype).max
-      return (np.clip(np.rint(corr_img),0,max_value)).astype(raw_img_dtype) 
+      max_value = np.iinfo(original_dtype).max
+      return (np.clip(np.rint(corr_img),0,max_value)).astype(original_dtype) 
     else :
-      return (corr_img).astype(raw_img_dtype,casting='same_kind') #otherwise just convert back to original datatype
+      return (corr_img).astype(original_dtype) #otherwise just convert back to original datatype
 
 class RectangleFlatfieldTransformationMultilayer(RectangleTransformationBase):
   """
@@ -113,10 +126,15 @@ class RectangleFlatfieldTransformationMultilayer(RectangleTransformationBase):
       errmsg+= f'= {originalimage.shape}) in RectangleFlatfieldTransformationMultilayer.transform!'
       raise ValueError(errmsg)
     raw_dtype = originalimage.dtype
-    if np.issubdtype(raw_dtype,np.integer) :
-      return (np.clip(np.rint(originalimage/self._flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
+    return self.__get_corrected_image(originalimage,self._flatfield,raw_dtype,np.issubdtype(raw_dtype,np.integer))
+
+  @staticmethod
+  @njit
+  def __get_corrected_image(originalimage,flatfield,original_dtype,original_is_int) :
+    if original_is_int :
+      return (np.clip(np.rint(originalimage/flatfield),0,np.iinfo(original_dtype).max)).astype(original_dtype)
     else :
-      return (originalimage/self._flatfield).astype(raw_dtype,casting='same_kind')
+      return (originalimage/flatfield).astype(original_dtype)
 
 class RectangleFlatfieldTransformationSinglelayer(RectangleTransformationBase):
   """
@@ -139,16 +157,19 @@ class RectangleFlatfieldTransformationSinglelayer(RectangleTransformationBase):
       errmsg+= f'= {originalimage.shape}) in RectangleFlatfieldTransformationSinglelayer.transform!'
       raise ValueError(errmsg)
     raw_dtype = originalimage.dtype
-    if np.issubdtype(raw_dtype,np.integer) :
-      if len(originalimage.shape)==3 :
-        return (np.clip(np.rint(originalimage/self._flatfield[:,:,np.newaxis]),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
-      else :
-        return (np.clip(np.rint(originalimage/self._flatfield),0,np.iinfo(raw_dtype).max)).astype(raw_dtype)
+    if len(originalimage.shape)==3 :
+      flatfield = self._flatfield[:,:,np.newaxis]
     else :
-      if len(originalimage.shape)==3 :
-        return (originalimage/self._flatfield[:,:,np.newaxis]).astype(raw_dtype,casting='same_kind')
-      else :
-        return (originalimage/self._flatfield).astype(raw_dtype,casting='same_kind')
+      flatfield = self._flatfield
+    return self.__get_corrected_image_layer(originalimage,flatfield,raw_dtype,np.issubdtype(raw_dtype,np.integer))
+
+  @staticmethod
+  @njit
+  def __get_corrected_image_layer(originalimage,flatfield,original_dtype,original_is_int) :
+    if original_is_int :
+      return (np.clip(np.rint(originalimage/flatfield),0,np.iinfo(original_dtype).max)).astype(original_dtype)
+    else :
+      return (originalimage/flatfield).astype(original_dtype)
 
 class RectangleWarpingTransformationMultilayer(RectangleTransformationBase) :
   """

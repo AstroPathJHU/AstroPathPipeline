@@ -6,7 +6,7 @@ from ..utilities.miscmath import floattoint
 from ..utilities.tableio import MetaDataAnnotation, pathfield, timestampfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .image_masking.maskloader import ThingWithMask, ThingWithTissueMask
-from .imageloader import ImageLoaderBin, ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
+from .imageloader import ImageLoaderBin, ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderNpz, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
 from .rectangletransformation import AsTypeTransformation, RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
 
 class Rectangle(DataClassWithPscale):
@@ -154,6 +154,10 @@ class RectangleWithImageSize(Rectangle):
   @height.setter
   def height(self, height): self.__height = height
   height: units.Distance = distancefield(height, includeintable=False, pixelsormicrons="pixels", use_default=False)
+
+  @property
+  def imageshape(self):
+    return np.array([self.width, self.height])
 
 class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize):
   """
@@ -645,6 +649,17 @@ class RectangleCollection(units.ThingWithPscale):
     Indices of all rectangles in the collection.
     """
     return {r.n for r in self.rectangles}
+  @methodtools.lru_cache()
+  @property
+  def shape(self):
+    result = None
+    for r in self.rectangles:
+      if result is None:
+        result = r.shape
+      else:
+        if not np.all(result == r.shape):
+          raise ValueError(f"Inconsistent shapes: {result} {r.shape}")
+    return result
 
   @methodtools.lru_cache()
   @property
@@ -669,6 +684,7 @@ class RectangleCollection(units.ThingWithPscale):
         if mindiff is not None:
           c[mindiff] += 1
 
+      if not c: continue
       mostcommon = c.most_common()
       result[idx], mostndiffs = mostcommon[0]
       for diff, ndiffs in mostcommon:
@@ -678,7 +694,45 @@ class RectangleCollection(units.ThingWithPscale):
         else:
           break
 
+    assert np.count_nonzero(result)
+    if result[0] == 0: result[0] = result[1] * self.shape[0] / self.shape[1]
+    if result[1] == 0: result[1] = result[0] * self.shape[1] / self.shape[0]
+
     return result
+
+  def showrectanglelayout(self, *, showplot=None, saveas=None, showprimaryregion=False):
+    import matplotlib.patches as patches, matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    xmin = float("inf") * self.onepixel
+    xmax = -float("inf") * self.onepixel
+    ymin = float("inf") * self.onepixel
+    ymax = -float("inf") * self.onepixel
+    for r in self.rectangles:
+      x, y = xy = r.xvec
+      width, height = shape = r.shape
+      xmin = min(xmin, x)
+      xmax = max(xmax, x+width)
+      ymin = min(ymin, y)
+      ymax = max(ymax, y+height)
+      patch = patches.Rectangle(xy / r.onepixel, *shape / r.onepixel, color="red", alpha=0.25)
+      ax.add_patch(patch)
+    margin = .05
+    left = float((xmin - (xmax-xmin)*margin) / r.onepixel)
+    right = float((xmax + (xmax-xmin)*margin) / r.onepixel)
+    top = float((ymin - (ymax-ymin)*margin) / r.onepixel)
+    bottom = float((ymax + (ymax-ymin)*margin) / r.onepixel)
+    
+    ax.set_xlim(left=left, right=right)
+    ax.set_ylim(top=top, bottom=bottom)
+    ax.set_aspect('equal', adjustable='box')
+
+    if showplot is None: showplot = saveas is None
+    if showplot:
+      plt.show()
+    if saveas is not None:
+      fig.savefig(saveas)
+    if not showplot:
+      plt.close()
 
 class RectangleList(list, RectangleCollection):
   """
@@ -734,9 +788,41 @@ class GeomLoadRectangle(Rectangle):
   def __post_init__(self, *args, geomfolder, **kwargs):
     self.__geomfolder = pathlib.Path(geomfolder)
     super().__post_init__(*args, **kwargs)
+  def geomloadcsv(self, segmentationalgorithm):
+    return self.__geomfolder/segmentationalgorithm/self.file.replace(UNIV_CONST.IM3_EXT, "_cellGeomLoad.csv")
+
+class SegmentationRectangle(Rectangle):
+  """
+  Rectangle that has segmentation npz files
+  You have to provide the segmentation folder
+  """
+  def __post_init__(self, *args, segmentationfolder, **kwargs):
+    self.__segmentationfolder = pathlib.Path(segmentationfolder)
+    super().__post_init__(*args, **kwargs)
   @property
-  def geomloadcsv(self):
-    return self.__geomfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_cellGeomLoad.csv")
+  def segmentationnpzfile(self):
+    return self.__segmentationfolder/self.file.replace(UNIV_CONST.IM3_EXT, self.segmentationnpzsuffix)
+  @property
+  @abc.abstractmethod
+  def segmentationnpzsuffix(self): pass
+
+  @methodtools.lru_cache()
+  @property
+  def segmentationarrayloader(self):
+    return ImageLoaderNpz(filename=self.segmentationnpzfile, key="arr_0")
+
+  def using_segmentation_array(self):
+    return self.segmentationarrayloader.using_image()
+
+class SegmentationRectangleDeepCell(SegmentationRectangle):
+  @property
+  def segmentationnpzsuffix(self):
+    return "_deepcell_nuclear_segmentation.npz"
+
+class SegmentationRectangleMesmer(SegmentationRectangle):
+  @property
+  def segmentationnpzsuffix(self):
+    return "_mesmer_segmentation.npz"
 
 class MaskRectangleBase(Rectangle, ThingWithMask):
   pass

@@ -231,7 +231,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
           x = int(match.group(1))
           y = int(match.group(2))
 
-          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, name=filename))
+          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, name=filename.relative_to(self.deepzoomroot)))
 
     lst.sort()
     writetable(self.deepzoomfolder/"zoomlist.csv", lst)
@@ -282,11 +282,12 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     ]
 
   @classmethod
-  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, **workflowkwargs):
+  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, layers, **workflowkwargs):
     deepzoomfolder = deepzoomroot/SlideID
     return itertools.chain(
       deepzoomfolder.glob("L*_files/Z*/*.png"),
       deepzoomfolder.glob("L*.dzi"),
+      [deepzoomfolder/"zoomlist.csv"],
     )
 
   @property

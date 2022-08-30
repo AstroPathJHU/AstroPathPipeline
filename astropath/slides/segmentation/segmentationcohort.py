@@ -1,28 +1,14 @@
 #imports
-from ...shared.argumentparser import WorkingDirArgumentParser
-from ...shared.cohort import ParallelCohort, WorkflowCohort
-from .segmentationsample import SegmentationSampleBase, SegmentationSampleNNUNet
-from .segmentationsample import SegmentationSampleDeepCell, SegmentationSampleMesmer
+from ...shared.cohort import ParallelCohort, SegmentationFolderCohort, SelectRectanglesCohort, WorkflowCohort
+from .segmentationsample import SegmentationSampleBase
+from .segmentationsamplennunet import SegmentationSampleNNUNet
+from .segmentationsampledeepcell import SegmentationSampleDeepCell
+from .segmentationsamplemesmer import SegmentationSampleMesmer
+from .segmentationsamplemesmer import SegmentationSampleMesmerWithIHC, SegmentationSampleMesmerComponentTiff
 
-class SegmentationCohortBase(ParallelCohort,WorkflowCohort,WorkingDirArgumentParser) :
+class SegmentationCohortBase(ParallelCohort,SelectRectanglesCohort,WorkflowCohort,SegmentationFolderCohort) :
     sampleclass = SegmentationSampleBase
     __doc__ = sampleclass.__doc__
-
-    def __init__(self,*args,workingdir=None,**kwargs) :
-        super().__init__(*args,**kwargs)
-        self.workingdir = workingdir
-
-    @property
-    def initiatesamplekwargs(self) :
-        return {**super().initiatesamplekwargs,
-            'workingdir':self.workingdir,
-            }
-
-    @property
-    def workflowkwargs(self) :
-        return {**super().workflowkwargs,
-            'workingdir':self.workingdir,
-        }
 
 class SegmentationCohortNNUNet(SegmentationCohortBase) :
     sampleclass = SegmentationSampleNNUNet
@@ -33,11 +19,20 @@ class SegmentationCohortDeepCell(SegmentationCohortBase) :
 class SegmentationCohortMesmer(SegmentationCohortBase) :
     sampleclass = SegmentationSampleMesmer
 
+class SegmentationCohortMesmerWithIHC(SegmentationCohortBase) :
+    sampleclass = SegmentationSampleMesmerWithIHC
+
+class SegmentationCohortMesmerComponentTiff(SegmentationCohortBase) :
+    sampleclass = SegmentationSampleMesmerComponentTiff
+
 def segmentationcohortnnunet(args=None) :
     SegmentationCohortNNUNet.runfromargumentparser(args)
 
 def segmentationcohortdeepcell(args=None) :
     SegmentationCohortDeepCell.runfromargumentparser(args)
 
-def segmentationcohortmesmer(args=None) :
-    SegmentationCohortMesmer.runfromargumentparser(args)
+def segmentationcohortmesmerwithihc(args=None) :
+    SegmentationCohortMesmerWithIHC.runfromargumentparser(args)
+
+def segmentationcohortmesmercomponenttiff(args=None) :
+    SegmentationCohortMesmerComponentTiff.runfromargumentparser(args)

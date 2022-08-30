@@ -62,7 +62,28 @@ class MiniField(units.ThingWithPscale):
   def mxbox(self):
     return np.array([self.py, self.px, self.py+self.height, self.px+self.width])
 
-class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser, ThingWithLogger, units.ThingWithPscale):
+class MotifSampleWithFields(units.ThingWithPscale):
+  @methodtools.lru_cache()
+  @property
+  def fields(self):
+    return [MiniField(hpfid, tifffile, pscale=self.pscale, shift=self.shiftqptiff) for hpfid, tifffile in enumerate(sorted(self.tifffolder.glob("*_binary_seg_maps.tif")), start=1)]
+
+  @methodtools.lru_cache()
+  @property
+  def constantsdict(self):
+    return constantsdict(self.dbloadfolder/"constants.csv")
+
+  @property
+  def shiftqptiff(self):
+    constants = self.constantsdict
+    return np.array([constants["xshift"], constants["yshift"]])
+
+  @methodtools.lru_cache()
+  @property
+  def pscale(self):
+    return float(self.constantsdict["pscale"])
+
+class MotifGeomCell(MotifSampleWithFields, ArgumentParserWithVersionRequirement, ParallelArgumentParser, ThingWithLogger):
   def __init__(self, *, tifffolder, logfolder, outputfolder, dbloadfolder, njobs=None, **kwargs):
     super().__init__(**kwargs)
     self.tifffolder = pathlib.Path(tifffolder)
@@ -127,26 +148,6 @@ class MotifGeomCell(ArgumentParserWithVersionRequirement, ParallelArgumentParser
               )
 
         writetable(outputfile, geomload)
-
-  @methodtools.lru_cache()
-  @property
-  def fields(self):
-    return [MiniField(hpfid, tifffile, pscale=self.pscale, shift=self.shiftqptiff) for hpfid, tifffile in enumerate(sorted(self.tifffolder.glob("*_binary_seg_maps.tif")), start=1)]
-
-  @methodtools.lru_cache()
-  @property
-  def constantsdict(self):
-    return constantsdict(self.dbloadfolder/"constants.csv")
-
-  @property
-  def shiftqptiff(self):
-    constants = self.constantsdict
-    return np.array([constants["xshift"], constants["yshift"]])
-
-  @methodtools.lru_cache()
-  @property
-  def pscale(self):
-    return float(self.constantsdict["pscale"])
 
   def run(self, minarea=None, **kwargs):
     if minarea is None:
