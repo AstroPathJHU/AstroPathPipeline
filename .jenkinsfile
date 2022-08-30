@@ -27,6 +27,7 @@ pipeline {
       agent any
       steps {
         sh 'git config -f $WORKSPACE/.gitconfig --add safe.directory /git'
+        sh '/home/jroskes/alpinegit status'
         checkout([
           $class: 'GitSCM',
           branches: scm.branches,
