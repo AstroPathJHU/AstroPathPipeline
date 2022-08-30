@@ -26,8 +26,9 @@ pipeline {
     stage('checkout') {
       agent any
       steps {
-        sh '''echo 'docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > $JENKINS_HOME/workspace/$JOB_NAME/mygit'''
-        sh 'chmod a+x $JENKINS_HOME/workspace/$JOB_NAME/mygit'
+        sh 'mkdir -p "$JENKINS_HOME/workspace/$JOB_NAME/"'
+        sh '''echo 'docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > "$JENKINS_HOME/workspace/$JOB_NAME/mygit"'''
+        sh 'chmod a+x "$JENKINS_HOME/workspace/$JOB_NAME/mygit"'
         checkout([
           $class: 'GitSCM',
           branches: scm.branches,
