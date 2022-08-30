@@ -29,6 +29,7 @@ pipeline {
         PATH = "$JENKINS_HOME/workspace/$JOB_NAME/:${env.PATH}"
       }
       steps {
+        sh 'rm -f "$JENKINS_HOME/workspace/$JOB_NAME/git"'
         sh 'which git'
         sh 'echo $PATH'
         sh 'mkdir -p "$JENKINS_HOME/workspace/$JOB_NAME/"'
