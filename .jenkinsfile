@@ -20,15 +20,17 @@ pipeline {
     JENKINS_NO_NNUNET = "1"
     JENKINS_PARALLEL = "1"
     RUNNING_ON_JENKINS = "1"
+    PATH+GIT = "$JENKINS_HOME/workspace/$JOB_NAME/"
   }
 
   stages {
     stage('checkout') {
       agent any
       steps {
+        sh 'echo $PATH'
         sh 'mkdir -p "$JENKINS_HOME/workspace/$JOB_NAME/"'
-        sh '''echo 'docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > "$JENKINS_HOME/workspace/$JOB_NAME/mygit"'''
-        sh 'chmod a+x "$JENKINS_HOME/workspace/$JOB_NAME/mygit"'
+        sh '''echo 'echo here; docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > "$JENKINS_HOME/workspace/$JOB_NAME/git"'''
+        sh 'chmod a+x "$JENKINS_HOME/workspace/$JOB_NAME/git"'
         checkout([
           $class: 'GitSCM',
           branches: scm.branches,
@@ -36,7 +38,7 @@ pipeline {
           extensions: scm.extensions,
           submoduleCfg: [],
           userRemoteConfigs: scm.userRemoteConfigs,
-          gitTool: "$JENKINS_HOME/workspace/$JOB_NAME/mygit",
+          gitTool: "$JENKINS_HOME/workspace/$JOB_NAME/git",
         ])
       }
     }
