@@ -24,15 +24,10 @@ pipeline {
 
   stages {
     stage('checkout') {
-      agent {
-        docker {
-          image 'alpine/git:2.36.2'
-          args '-i --entrypoint='
-        }
-      }
+      agent any
       steps {
-        sh 'git --version'
-        sh 'which git'
+        sh '''echo 'docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > $HOME/mygit'''
+        sh 'chmod a+x $HOME/mygit'
         checkout([
           $class: 'GitSCM',
           branches: scm.branches,
@@ -40,7 +35,7 @@ pipeline {
           extensions: scm.extensions,
           submoduleCfg: [],
           userRemoteConfigs: scm.userRemoteConfigs,
-          gitTool: '/usr/bin/git',
+          gitTool: "$HOME/mygit",
         ])
       }
     }
