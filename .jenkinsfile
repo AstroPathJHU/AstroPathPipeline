@@ -26,7 +26,7 @@ pipeline {
     stage('checkout') {
       agent any
       steps {
-        sh 'find /'
+        sh 'find / -writable'
         sh 'mkdir -p $HOME'
         sh '''echo 'docker run -ti --rm -v ${HOME}:/root -v $(pwd):/git alpine/git "$@"' > $HOME/mygit'''
         sh 'chmod a+x $HOME/mygit'
