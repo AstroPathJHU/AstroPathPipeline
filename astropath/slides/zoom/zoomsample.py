@@ -468,9 +468,9 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
     self.wsifolder.mkdir(parents=True, exist_ok=True)
     for layer in self.layerscomponenttiff:
+      wsifilename = self.wsifilename(layer)
       with job_lock.JobLock(wsifilename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[wsifilename]) as lock:
         assert lock
-        wsifilename = self.wsifilename(layer)
         if wsifilename.exists():
           self.logger.info(f"{wsifilename.name} already exists")
           if layer in self.needtifflayers:
