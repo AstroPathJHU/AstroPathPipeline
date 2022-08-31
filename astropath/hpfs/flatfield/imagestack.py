@@ -1,5 +1,7 @@
 #imports
 import numpy as np
+from threading import Thread
+from queue import Queue
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.miscfileio import cd
 from ...utilities.tableio import readtable, writetable
@@ -29,7 +31,7 @@ class ImageStack(ThingWithLogger) :
         self.__mask_stack = None
         self.n_images_read = 0
 
-    def stack_rectangle_images(self,samp,rectangles,med_ets=None,maskingdirpath=None) :
+    def stack_rectangle_images(self,samp,rectangles,med_ets=None,maskingdirpath=None,nthreads=4) :
         """
         Loop over a set of given images and add them to the stack
         If masking is being applied, also read each image's masking file before adding it to the stack
@@ -42,6 +44,7 @@ class ImageStack(ThingWithLogger) :
                          then the individual image exposure times will be used instead
         maskingdirpath = the path to the directory holding all of the slide's image masking files 
                          (if None then masking will be skipped)
+        nthreads       = the number of threads to use in reading image files and their masks to stack them
         """
         self.__logger.info(f'Stacking {len(rectangles)} images')
         img_dims = rectangles[0].im3shape
@@ -55,10 +58,10 @@ class ImageStack(ThingWithLogger) :
         #if the images aren't going to be masked, this whole step is pretty trivial. Otherwise it's a bit more complex
         if maskingdirpath is None :
             self.__logger.info('Images will NOT be masked before stacking')
-            return self.__stack_images_no_masking(rectangles,med_ets)
+            return self.__stack_images_no_masking(rectangles,med_ets,nthreads)
         else :
             self.__logger.info('Images WILL be masked before stacking')
-            return self.__stack_images_with_masking(samp,rectangles,med_ets,maskingdirpath)
+            return self.__stack_images_with_masking(samp,rectangles,med_ets,maskingdirpath,nthreads)
 
     def add_sample_meanimage_from_files(self,sample) :
         """
@@ -119,27 +122,87 @@ class ImageStack(ThingWithLogger) :
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
-    def __stack_images_no_masking(self,rectangles,med_ets) :
+    @staticmethod
+    def __add_rect_to_stacking_queue_no_masking(rect,norm_ets,queue) :
+        with rect.using_corrected_im3() as im :
+            normalized_image = im/norm_ets
+            new_field_log = FieldLog(None,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+                                     'bulk','stacking',str(list(range(1,normalized_image.shape[-1]+1))))
+            queue.put((normalized_image,np.power(normalized_image,2),new_field_log))
+
+    @staticmethod
+    def __add_rect_to_stacking_queue_with_masking(rect,samp,masking_dir_path,keys_with_full_masks,norm_ets,queue) :
+        imkey = rect.file.rstrip(UNIV_CONST.IM3_EXT)
+        with rect.using_corrected_im3() as im :
+            normalized_im = im/norm_ets
+            if imkey in keys_with_full_masks :
+                mask_path = masking_dir_path/f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
+                mask = ImageMask.onehot_mask_from_full_mask_file_no_blur(samp,mask_path)
+                layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
+            else :
+                mask_path = masking_dir_path/f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
+                mask = (ImageMask.unpack_tissue_mask(mask_path,im.shape[:-1]))[:,:,np.newaxis]
+                layers_to_add = np.ones(im.shape[-1],dtype=np.uint64) if np.sum(mask[:,:,0])/(im.shape[0]*im.shape[1])>=CONST.MIN_PIXEL_FRAC else np.zeros(im.shape[-1],dtype=np.uint64)
+            normalized_masked_im = normalized_im*mask*layers_to_add[np.newaxis,np.newaxis,:]
+            stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
+            new_field_log = FieldLog(None,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+                                     'bulk','stacking',str(stacked_in_layers))
+            queue.put((normalized_masked_im,
+                       np.power(normalized_masked_im,2),
+                       mask*layers_to_add[np.newaxis,np.newaxis,:],
+                       layers_to_add,
+                       new_field_log))
+
+    def __accumulate_from_stacking_queue(self,image_queue,return_queue) :
+        n_images_read = 0
+        n_images_stacked_by_layer = None
+        field_logs = []
+        image_queue_item = image_queue.get()
+        while image_queue_item is not None :
+            if n_images_stacked_by_layer is None :
+                n_images_stacked_by_layer = np.zeros((image_queue_item[0].shape[-1]),dtype=np.uint64)
+            self.__image_stack+=image_queue_item[0]
+            self.__image_squared_stack+=image_queue_item[1]
+            n_images_read+=1
+            if len(image_queue_item)==3 :
+                field_logs.append(image_queue_item[2])
+                n_images_stacked_by_layer+=1
+            elif len(image_queue_item)==5 :
+                self.__mask_stack+=image_queue_item[2]
+                n_images_stacked_by_layer+=image_queue_item[3]
+                field_logs.append(image_queue_item[4])
+            image_queue_item = image_queue.get()
+        return_queue.put((n_images_read,n_images_stacked_by_layer,field_logs))
+
+    def __stack_images_no_masking(self,rectangles,med_ets,n_threads) :
         """
         Simply add all the images to the image_stack and image_squared_stack without masking them
         """
-        n_images_read = 0
-        n_images_stacked_by_layer = np.zeros((rectangles[0].im3shape[-1]),dtype=np.uint64)
-        field_logs = []
+        image_queue = Queue()
+        return_queue = Queue()
+        nq_threads = []
+        acc_thread = Thread(target=self.__accumulate_from_stacking_queue,args=(image_queue,return_queue))
+        acc_thread.start()
         for ri,r in enumerate(rectangles) :
+            while len(nq_threads)>=(n_threads-1) :
+                thread = nq_threads.pop(0)
+                thread.join()
             msg = f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....'
             self.__logger.debug(msg)
-            with r.using_corrected_im3() as im :
-                normalized_image = im/med_ets if med_ets is not None else im/r.allexposuretimes[np.newaxis,np.newaxis,:]
-                self.__image_stack+=normalized_image
-                self.__image_squared_stack+=np.power(normalized_image,2)
-                n_images_read+=1
-                n_images_stacked_by_layer+=1
-                field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
-                                           'bulk','stacking',str(list(range(1,self.__image_stack.shape[-1]+1)))))
+            new_thread = Thread(target=self.__add_rect_to_stacking_queue_no_masking,
+                                args=[r,
+                                      med_ets if med_ets is not None else r.allexposuretimes[np.newaxis,np.newaxis,:],
+                                      image_queue])
+            new_thread.start()
+            nq_threads.append(new_thread)
+        for thread in nq_threads :
+            thread.join()
+        image_queue.put(None)
+        acc_thread.join()
+        (n_images_read, n_images_stacked_by_layer, field_logs) = return_queue.get()
         return n_images_read, n_images_stacked_by_layer, field_logs
 
-    def __stack_images_with_masking(self,samp,rectangles,med_ets,maskingdirpath) :
+    def __stack_images_with_masking(self,samp,rectangles,med_ets,maskingdirpath,n_threads) :
         """
         Read all of the image masks and add the masked images and their masks to the stacks 
         """
@@ -169,33 +232,32 @@ class ImageStack(ThingWithLogger) :
                     rectangles_to_stack.remove(r)
         #for every image that will be stacked, read its masking file, normalize and mask its image, 
         #and add the masked image/mask to the respective stacks
-        n_images_read = 0
-        n_images_stacked_by_layer = np.zeros((rectangles[0].im3shape[-1]),dtype=np.uint64)
-        field_logs = []
+        image_queue = Queue()
+        return_queue = Queue()
+        nq_threads = []
+        acc_thread = Thread(target=self.__accumulate_from_stacking_queue,args=(image_queue,return_queue))
+        acc_thread.start()
         for ri,r in enumerate(rectangles_to_stack) :
+            while len(nq_threads)>=(n_threads-1) :
+                thread = nq_threads.pop(0)
+                thread.join()
             msg = f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack '
             msg+= f'({ri+1} of {len(rectangles_to_stack)})....'
             self.__logger.debug(msg)
-            imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
-            with r.using_corrected_im3() as im :
-                normalized_im = im/med_ets if med_ets is not None else im/r.allexposuretimes[np.newaxis,np.newaxis,:]
-                if imkey in keys_with_full_masks :
-                    mask_path = maskingdirpath/f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
-                    mask = ImageMask.onehot_mask_from_full_mask_file_no_blur(samp,mask_path,self.__image_stack.shape)
-                    layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
-                else :
-                    mask_path = maskingdirpath/f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
-                    mask = (ImageMask.unpack_tissue_mask(mask_path,self.__image_stack.shape[:-1]))[:,:,np.newaxis]
-                    layers_to_add = np.ones(im.shape[-1],dtype=np.uint64) if np.sum(mask[:,:,0])/(im.shape[0]*im.shape[1])>=CONST.MIN_PIXEL_FRAC else np.zeros(im.shape[-1],dtype=np.uint64)
-                normalized_masked_im = normalized_im*mask*layers_to_add[np.newaxis,np.newaxis,:]
-                self.__image_stack+=normalized_masked_im
-                self.__image_squared_stack+=np.power(normalized_masked_im,2)
-                self.__mask_stack+=mask*layers_to_add[np.newaxis,np.newaxis,:]
-                n_images_read+=1
-                n_images_stacked_by_layer+=layers_to_add
-                stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
-                field_logs.append(FieldLog(None,r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
-                                           'bulk','stacking',str(stacked_in_layers)))
+            new_thread = Thread(target=self.__add_rect_to_stacking_queue_with_masking,
+                                args=[r,
+                                      samp,
+                                      maskingdirpath,
+                                      keys_with_full_masks,
+                                      med_ets if med_ets is not None else r.allexposuretimes[np.newaxis,np.newaxis,:],
+                                      image_queue])
+            new_thread.start()
+            nq_threads.append(new_thread)
+        for thread in nq_threads :
+            thread.join()
+        image_queue.put(None)
+        acc_thread.join()
+        (n_images_read, n_images_stacked_by_layer, field_logs) = return_queue.get()
         return n_images_read, n_images_stacked_by_layer, field_logs
 
 class MeanImage(ImageStack) :

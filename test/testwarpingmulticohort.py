@@ -15,7 +15,6 @@ root = folder/'data'
 output_dir = folder/'test_for_jenkins'/'warping_multi_cohort'
 shardedim3root = output_dir/'raw'
 slideID = 'M21_1'
-et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
 ff_file = folder/'data'/'reference'/'batchflatfieldcohort'/'flatfield_TEST.bin'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
 
@@ -86,7 +85,6 @@ class TestWarpingMultiCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         #run the cohort
         args = [os.fspath(root),
                 '--shardedim3root',os.fspath(shardedim3root),
-                '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--flatfield-file',os.fspath(output_dir/ff_file.name),
                 '--sampleregex',slideID,
                 '--workingdir',os.fspath(output_dir),
@@ -125,7 +123,6 @@ class TestWarpingMultiCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         #run the cohort
         args = [os.fspath(root),
                 '--shardedim3root',os.fspath(shardedim3root),
-                '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--flatfield-file',os.fspath(output_dir/ff_file.name),
                 '--sampleregex',slideID,
                 '--workingdir',os.fspath(output_dir),

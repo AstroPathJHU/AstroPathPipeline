@@ -5,9 +5,9 @@ from ...utilities.miscfileio import cd
 from ...utilities.img_file_io import smooth_image_worker, im3writeraw, write_image_to_file, get_raw_as_hwl
 from .config import CONST
 from .plotting import do_masking_plots_for_image
-from .utilities import LabelledMaskRegion, get_enumerated_mask, get_size_filtered_mask
-from .utilities import get_morphed_and_filtered_mask, get_exclusive_mask
-from .utilities import get_image_layer_local_variance_of_normalized_laplacian
+from .utilities import LabelledMaskRegion, get_enumerated_mask, get_size_filtered_mask, get_thresholded_image_compiled
+from .utilities import normalize_compiled, get_morphed_and_filtered_mask, get_exclusive_mask
+from .utilities import get_image_layer_local_variance_of_normalized_laplacian, get_double_thresholded_image_compiled
 
 class ImageMask() :
     """
@@ -59,7 +59,7 @@ class ImageMask() :
         bg_thresholds     = a list of the background intensity thresholds in counts in each image layer
         norm_ets          = a list of the exposure times to which the image layers have been normalized 
 
-        The last three arguments are only needed (and the last two are required) if plots for this image will be saved
+        The last three arguments are only needed (and the last two are required) to save plots for this image
         """
         #set the layer groups for the image
         self.__layer_groups=layer_groups
@@ -174,9 +174,10 @@ class ImageMask() :
 
     #get a one-hot, fully-layered mask from a given blur/saturation mask filepath
     @staticmethod
-    def onehot_mask_from_full_mask_file(samp,filepath,dimensions) :
+    def onehot_mask_from_full_mask_file(samp,filepath) :
         if not pathlib.Path(filepath).is_file() :
             raise FileNotFoundError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
+        dimensions = (samp.fheight,samp.fwidth,samp.nlayersim3)
         read_mask = get_raw_as_hwl(filepath,*(dimensions[:-1]),len(samp.layer_groups)+1,dtype=np.uint8)
         return_mask = np.zeros(dimensions,dtype=np.uint8)
         for lgi,lgb in enumerate(samp.layer_groups.values()) :
@@ -185,9 +186,10 @@ class ImageMask() :
 
     #get a one-hot, fully-layered mask from a given blur/saturation mask filepath, ignoring regions flagged for blur
     @staticmethod
-    def onehot_mask_from_full_mask_file_no_blur(samp,filepath,dimensions) :
+    def onehot_mask_from_full_mask_file_no_blur(samp,filepath) :
         if not pathlib.Path(filepath).is_file() :
             raise FileNotFoundError(f'ERROR: blur/saturation mask file {filepath} does not exist!')
+        dimensions = (samp.fheight,samp.fwidth,samp.nlayersim3)
         read_mask = get_raw_as_hwl(filepath,*(dimensions[:-1]),len(samp.layer_groups)+1,dtype=np.uint8)
         max_blur_index = np.max(read_mask[:,:,0])
         return_mask = np.zeros(dimensions,dtype=np.uint8)
@@ -205,9 +207,10 @@ class ImageMask() :
         return the fully-determined overall tissue mask as a 2d array of ones and zeroes for a given multilayer image
         """
         #smooth the image
-        sm_img_array = smooth_image_worker(self.__im_array,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
+        sm_img_array = smooth_image_worker(self.__im_array,CONST.TISSUE_MASK_SMOOTHING_SIGMA,gpu=True)
         #threshold all the image layers
-        thresholded_image = (np.where(sm_img_array>self.__bg_thresholds[np.newaxis,np.newaxis,:],1,0)).astype(np.uint8)
+        thresholded_image = get_thresholded_image_compiled(sm_img_array,
+                                                           self.__bg_thresholds[np.newaxis,np.newaxis,:])
         #make masks for each individual layer
         layer_masks = []
         for li in range(self.__im_array.shape[-1]) :
@@ -232,14 +235,15 @@ class ImageMask() :
             #well-defined background is anything called background in at least half the layers
             overall_background_mask[stacked_masks<(lgb[1]-lgb[0]+1)/2.]+=10 if lgn.endswith('dapi') else 1
         #threshold tissue/background masks to include only those from the DAPI and at least one other layer group
-        overall_tissue_mask = (np.where(overall_tissue_mask>10,1,0)).astype(np.uint8)
-        overall_background_mask = (np.where(overall_background_mask>10,1,0)).astype(np.uint8)
+        overall_tissue_mask = get_thresholded_image_compiled(overall_tissue_mask,10)
+        overall_background_mask = get_thresholded_image_compiled(overall_background_mask,10)
         #final mask has tissue=1, background=0
         final_mask = np.zeros_like(layer_masks[0])+2
         final_mask[overall_tissue_mask==1] = 1
         final_mask[overall_background_mask==1] = 0
         #anything left over is signal if it's stacked in at least 60% of the total number of layers
-        thresholded_stacked_masks = np.where(total_stacked_masks>(0.6*self.__im_array.shape[-1]),1,0)
+        thresholded_stacked_masks = get_thresholded_image_compiled(total_stacked_masks,
+                                                                   0.6*self.__im_array.shape[-1])
         final_mask[final_mask==2] = thresholded_stacked_masks[final_mask==2]
         if np.min(final_mask) != np.max(final_mask) :
             #filter the tissue and background portions to get rid of the small islands
@@ -268,7 +272,7 @@ class ImageMask() :
             cv2.filter2D(self.__im_nlv[:,:,li],cv2.CV_32F,CONST.SMALLER_WINDOW_EL,layer_nlv_loc_mean,
                          borderType=cv2.BORDER_REFLECT)
             layer_nlv_loc_mean=layer_nlv_loc_mean.get()
-            layer_nlv_loc_mean/=np.sum(CONST.SMALLER_WINDOW_EL)
+            layer_nlv_loc_mean=normalize_compiled(layer_nlv_loc_mean,np.sum(CONST.SMALLER_WINDOW_EL))
             self.__im_nlv_loc_mean[:,:,li] = layer_nlv_loc_mean
         #find the tissue fold mask, beginning with each layer group separately
         fold_masks_by_layer_group = {}
@@ -285,7 +289,7 @@ class ImageMask() :
             stacked_fold_masks[layer_group_fold_mask==0]+=to_add
         #flag anything flagged in at least one of the DAPI and FITC layer groups plus at least 3 other layer groups, 
         # or both the DAPI and FITC layer groups
-        overall_fold_mask = (np.where(stacked_fold_masks>12,0,1)).astype(np.uint8)
+        overall_fold_mask = get_thresholded_image_compiled(stacked_fold_masks,12,invert=True)
         #morph and filter the mask using the common operations
         tissue_fold_mask = get_morphed_and_filtered_mask(overall_fold_mask,self.__tissue_mask,
                                                          CONST.FOLD_MIN_PIXELS,CONST.FOLD_MIN_SIZE)
@@ -335,7 +339,7 @@ class ImageMask() :
             #get the mean of those local normalized laplacian variance values in the window size
             layer_nlv_loc_mean = self.__im_nlv_loc_mean[:,:,ln-1]
             #threshold on the local variance of the normalized laplacian and its local mean to make a binary mask
-            layer_mask = (np.where((layer_nlv>nlv_cut) | (layer_nlv_loc_mean>max_mean),1,0)).astype(np.uint8)
+            layer_mask = get_double_thresholded_image_compiled(layer_nlv,nlv_cut,layer_nlv_loc_mean,max_mean)
             if np.min(layer_mask) != np.max(layer_mask) :
                 #convert to UMat
                 layer_mask = cv2.UMat(layer_mask)
@@ -351,7 +355,7 @@ class ImageMask() :
             #add it to the stack 
             stacked_masks+=layer_mask
         #determine the final mask for this group by thresholding on how many individual layers contribute
-        group_blur_mask = (np.where(stacked_masks>n_layers_flag_cut,1,0)).astype(np.uint8)
+        group_blur_mask = get_thresholded_image_compiled(stacked_masks,n_layers_flag_cut)
         #return the blur mask and the stack of masks for the layer group
         return group_blur_mask, stacked_masks
 
@@ -360,9 +364,9 @@ class ImageMask() :
         Return the dict of saturation masks by layer group for a given image
         """
         #normalize the image by its exposure time
-        normalized_image_arr = self.__im_array / self.__norm_ets[np.newaxis,np.newaxis,:]
+        normalized_image_arr = normalize_compiled(self.__im_array,self.__norm_ets[np.newaxis,np.newaxis,:])
         #smooth the normalized image image
-        sm_n_image_arr = smooth_image_worker(normalized_image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA)
+        sm_n_image_arr = smooth_image_worker(normalized_image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA,gpu=True)
         #make masks for each layer group
         layer_group_saturation_masks = {}
         for lgn,lgb in self.__layer_groups.items() :
@@ -370,7 +374,7 @@ class ImageMask() :
             cut_at = CONST.SATURATION_INTENSITY_CUTS[lgn]
             stacked_masks = np.sum((np.where(sm_n_image_arr[:,:,lgb[0]-1:lgb[1]]>cut_at,0,1)).astype(np.uint8),axis=2)
             #the final mask is anything flagged in ANY layer
-            group_mask = (np.where(stacked_masks>lgb[1]-lgb[0],1,0)).astype(np.uint8) 
+            group_mask = get_thresholded_image_compiled(stacked_masks,lgb[1]-lgb[0]) 
             if np.min(group_mask)!=np.max(group_mask) :
                 #convert to UMat
                 group_mask = cv2.UMat(group_mask)

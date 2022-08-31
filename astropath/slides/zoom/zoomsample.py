@@ -146,13 +146,13 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       for i, layer in enumerate(self.layerscomponenttiff):
         filename = self.wsifilename(layer)
         slc = bigimage[:, :, i]
-        if filename.exists():
-          self.logger.info(f"{filename.name} already exists")
-        else:
-          self.logger.info(f"saving {filename.name}")
-          image = PIL.Image.fromarray(slc)
-          with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
-            assert lock
+        with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
+          assert lock
+          if filename.exists():
+            self.logger.info(f"{filename.name} already exists")
+          else:
+            self.logger.info(f"saving {filename.name}")
+            image = PIL.Image.fromarray(slc)
             try:
               image.save(filename, "PNG")
             except:
@@ -187,52 +187,50 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     if not self.tifflayers:
       return
     filename = self.wsitifffilename(self.tifflayers)
-    if filename.exists():
-      self.logger.info(f"{filename.name} already exists")
-      return
+    with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
+      assert lock
+      if filename.exists():
+        self.logger.info(f"{filename.name} already exists")
+        return
 
-    self.logger.info(f"saving {filename.name}")
-    scale = 2**(self.ztiff-self.zmax)
-    if scale == 1:
-      pass
-    else:
-      self.logger.info(f"  rescaling by {scale}")
-      layers = [layer.resize(scale, vscale=scale) for layer in layers]
+      self.logger.info(f"saving {filename.name}")
+      scale = 2**(self.ztiff-self.zmax)
+      if scale == 1:
+        pass
+      else:
+        self.logger.info(f"  rescaling by {scale}")
+        layers = [layer.resize(scale, vscale=scale) for layer in layers]
 
-    if self.tifflayers == "color":
-      self.logger.info("  normalizing")
+      if self.tifflayers == "color":
+        self.logger.info("  normalizing")
 
-      pyvips.cache_set_max(0)
-      scalefactors = [1.5 / layer.max() for layer in layers]
-      layers = [180 * vips_sinh(layer * scalefactor) for layer, scalefactor in more_itertools.zip_equal(layers, scalefactors)]
-      #https://github.com/libvips/pyvips/issues/287
-      #layers = np.asarray(layers, dtype=object)
-      layerarray = np.zeros(len(layers), dtype=object)
-      for i, layer in enumerate(layers):
-        layerarray[i] = layer
-      layers = layerarray
+        pyvips.cache_set_max(0)
+        scalefactors = [1.5 / layer.max() for layer in layers]
+        layers = [180 * vips_sinh(layer * scalefactor) for layer, scalefactor in more_itertools.zip_equal(layers, scalefactors)]
+        #https://github.com/libvips/pyvips/issues/287
+        #layers = np.asarray(layers, dtype=object)
+        layerarray = np.zeros(len(layers), dtype=object)
+        for i, layer in enumerate(layers):
+          layerarray[i] = layer
+        layers = layerarray
 
-      self.logger.info("  multiplying by color matrix")
-      img = np.tensordot(layers, self.colormatrix, [[0], [0]])
-      img = [layer.cast(vips_format_dtype(np.uint8)) for layer in img] #clips at 255
-      r, g, b = img
-      img = r.join(g, "vertical").join(b, "vertical")
-      self.logger.info("  saving")
-      with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
-        assert lock
+        self.logger.info("  multiplying by color matrix")
+        img = np.tensordot(layers, self.colormatrix, [[0], [0]])
+        img = [layer.cast(vips_format_dtype(np.uint8)) for layer in img] #clips at 255
+        r, g, b = img
+        img = r.join(g, "vertical").join(b, "vertical")
+        self.logger.info("  saving")
         try:
           img.tiffsave(os.fspath(filename), page_height=layers[0].height)
         except:
           rm_missing_ok(filename)
           raise
-    else:
-      assert len(layers) == len(self.tifflayers)
-      tiffoutput = layers[0]
-      for layer in layers[1:]:
-        tiffoutput = tiffoutput.join(layer, "vertical")
-      self.logger.info("  saving")
-      with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
-        assert lock
+      else:
+        assert len(layers) == len(self.tifflayers)
+        tiffoutput = layers[0]
+        for layer in layers[1:]:
+          tiffoutput = tiffoutput.join(layer, "vertical")
+        self.logger.info("  saving")
         try:
           tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
         except:
@@ -452,7 +450,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               continue
             self.logger.info(f"  saving {filename.name}")
             image = PIL.Image.fromarray(slc[:, :, layer-1])
-            with job_lock.JobLock(filename.with_suffix(".tiff.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
+            with job_lock.JobLock(filename.with_suffix(".tiff.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
               assert lock
               try:
                 image.save(filename, "TIFF")
@@ -471,30 +469,30 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     self.wsifolder.mkdir(parents=True, exist_ok=True)
     for layer in self.layerscomponenttiff:
       wsifilename = self.wsifilename(layer)
-      if wsifilename.exists():
-        self.logger.info(f"{wsifilename.name} already exists")
-        if layer in self.needtifflayers:
-          output = pyvips.Image.new_from_file(os.fspath(wsifilename))
-          fortiff.append(output)
-        continue
-
-      images = []
-      removefilenames = []
-      blank = None
-      for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
-        bigfilename = self.bigfilename(layer, tilex, tiley)
-        if bigfilename.exists():
-          images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)).linear(scaleby, 0).cast(vips_format_dtype(np.uint8)))
-          removefilenames.append(bigfilename)
-        else:
-          if blank is None:
-            blank = pyvips.Image.new_from_memory(np.zeros(shape=(self.zoomtilesize*self.zoomtilesize,), dtype=np.uint8), width=self.zoomtilesize, height=self.zoomtilesize, bands=1, format="uchar")
-          images.append(blank)
-
-      self.logger.info(f"saving {wsifilename.name}")
-      output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
-      with job_lock.JobLock(wsifilename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[wsifilename]) as lock:
+      with job_lock.JobLock(wsifilename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[wsifilename], checkoutputfiles=False) as lock:
         assert lock
+        if wsifilename.exists():
+          self.logger.info(f"{wsifilename.name} already exists")
+          if layer in self.needtifflayers:
+            output = pyvips.Image.new_from_file(os.fspath(wsifilename))
+            fortiff.append(output)
+          continue
+
+        images = []
+        removefilenames = []
+        blank = None
+        for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
+          bigfilename = self.bigfilename(layer, tilex, tiley)
+          if bigfilename.exists():
+            images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)).linear(scaleby, 0).cast(vips_format_dtype(np.uint8)))
+            removefilenames.append(bigfilename)
+          else:
+            if blank is None:
+              blank = pyvips.Image.new_from_memory(np.zeros(shape=(self.zoomtilesize*self.zoomtilesize,), dtype=np.uint8), width=self.zoomtilesize, height=self.zoomtilesize, bands=1, format="uchar")
+            images.append(blank)
+
+        self.logger.info(f"saving {wsifilename.name}")
+        output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
         try:
           output.pngsave(os.fspath(wsifilename))
         except:
