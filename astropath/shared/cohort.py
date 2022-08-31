@@ -62,7 +62,7 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
     samp = SampleDef(Project=self.Project, Cohort=self.Cohort, SlideID=SlideID)
     return self.getlogger(samp, isglobal=True, **kwargs)
 
-  def printlogger(self, *args, **kwargs): return self.getlogger(*args, uselogfiles=False, **kwargs)
+  def printlogger(self, *args, **kwargs): return self.getlogger(*args, uselogfiles=False, skipstartfinish=True, **kwargs)
 
   @property
   def logger(self): return self.globallogger()
@@ -75,11 +75,11 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
     lockfiles = [logfile.with_suffix(".lock") for logfile in self.globallogger().mainlogs]
     return job_lock.MultiJobLock(*lockfiles, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
-  def getlogger(self, samp, *, isglobal=False, uselogfiles=True, **kwargs):
+  def getlogger(self, samp, *, isglobal=False, uselogfiles=True, skipstartfinish=False, **kwargs):
     if isinstance(samp, WorkflowDependency):
       isglobal = isglobal or samp.usegloballogger()
       samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=uselogfiles and self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=self.skipstartfinish, printthreshold=self.printthreshold, sampledefroot=self.sampledefroot, **kwargs)
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=uselogfiles and self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=skipstartfinish or self.skipstartfinish, printthreshold=self.printthreshold, sampledefroot=self.sampledefroot, **kwargs)
 
   @classmethod
   @abc.abstractmethod
