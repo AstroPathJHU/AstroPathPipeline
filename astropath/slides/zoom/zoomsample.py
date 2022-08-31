@@ -146,7 +146,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       for i, layer in enumerate(self.layerscomponenttiff):
         filename = self.wsifilename(layer)
         slc = bigimage[:, :, i]
-        with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
+        with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
           assert lock
           if filename.exists():
             self.logger.info(f"{filename.name} already exists")
@@ -187,7 +187,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     if not self.tifflayers:
       return
     filename = self.wsitifffilename(self.tifflayers)
-    with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
+    with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
       assert lock
       if filename.exists():
         self.logger.info(f"{filename.name} already exists")
@@ -450,7 +450,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               continue
             self.logger.info(f"  saving {filename.name}")
             image = PIL.Image.fromarray(slc[:, :, layer-1])
-            with job_lock.JobLock(filename.with_suffix(".tiff.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename]) as lock:
+            with job_lock.JobLock(filename.with_suffix(".tiff.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
               assert lock
               try:
                 image.save(filename, "TIFF")
@@ -469,7 +469,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     self.wsifolder.mkdir(parents=True, exist_ok=True)
     for layer in self.layerscomponenttiff:
       wsifilename = self.wsifilename(layer)
-      with job_lock.JobLock(wsifilename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[wsifilename]) as lock:
+      with job_lock.JobLock(wsifilename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[wsifilename], checkoutputfiles=False) as lock:
         assert lock
         if wsifilename.exists():
           self.logger.info(f"{wsifilename.name} already exists")
