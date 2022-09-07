@@ -732,7 +732,10 @@ class WorkflowCohort(Cohort):
     g.add_argument("--rerun-finished", action="store_false", dest="skip_finished", help="rerun samples that have already run successfully")
     p.add_argument("--ignore-dependencies", action="store_false", dest="dependencies", help="try (and probably fail) to run samples whose dependencies have not yet finished")
     p.add_argument("--require-commit", type=thisrepo.getcommit, help="rerun samples that already finished with an AstroPath pipeline version earlier than this commit")
-    p.add_argument("--print-errors", action="store_true", help="instead of running samples, print the status of the ones that haven't run, including error messages")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--print-errors", action="store_const", help="instead of running samples, print the status of the ones that haven't run, including error messages", dest="print_mode", const="errors")
+    g.add_argument("--print-all", action="store_const", help="instead of running samples, print the status of all the samples, including error messages", dest="print_mode", const="all")
+    g.add_argument("--print-timing", action="store_const", help="instead of running samples, print the status of the samples that finished already", dest="print_mode", const="timing")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
     return p
 
@@ -741,7 +744,7 @@ class WorkflowCohort(Cohort):
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
     }
-    if parsed_args_dict["print_errors"]:
+    if parsed_args_dict["print_mode"]:
       kwargs["uselogfiles"] = False
       parsed_args_dict["skip_finished"] = parsed_args_dict["dependencies"] = False
 
@@ -788,7 +791,8 @@ class WorkflowCohort(Cohort):
         return FilterResult(False, "missing input files: " + ", ".join(str(_) for _ in missinginputs))
       return FilterResult(True, "all input files exist", cleanup=False)
 
-    kwargs["samplefilters"].append(SampleFilter(inputfilesfilter, None, None))
+    if not parsed_args_dict["print_mode"]:
+      kwargs["samplefilters"].append(SampleFilter(inputfilesfilter, None, None))
 
     return kwargs
 
@@ -796,15 +800,15 @@ class WorkflowCohort(Cohort):
   def runkwargsfromargumentparser(cls, parsed_args_dict):
     kwargs = {
       **super().runkwargsfromargumentparser(parsed_args_dict),
-      "print_errors": parsed_args_dict.pop("print_errors"),
+      "print_mode": parsed_args_dict.pop("print_mode"),
       "ignore_errors": parsed_args_dict.pop("ignore_errors"),
     }
     return kwargs
 
-  def processsample(self, sample, *, filters, print_errors, ignore_errors, **kwargs):
+  def processsample(self, sample, *, filters, print_mode, ignore_errors, **kwargs):
     passedfilters = all(filters) and isinstance(sample, WorkflowDependency)
 
-    if print_errors:
+    if print_mode:
       if ignore_errors is None: ignore_errors = []
 
       logger = self.printlogger(sample)
@@ -812,16 +816,23 @@ class WorkflowCohort(Cohort):
       message = None
       for filter in filters:
         if not filter:
-          if filter.message == "sample already ran": return
+          if filter.message.startswith("sample already ran"):
+            if print_mode == "errors": return
+            elif print_mode == "all": pass
+            elif print_mode == "timing": pass
+            else: assert False, print_mode
           if filter.message == "Sample is not good": return
           message = f"{sample.SlideID} {filter.message}"
           break
       if message is not None:
+        if print_mode == "timing" and not "sample already ran" in message:
+          return
         logger.info(message)
         return
 
+      if print_mode == "timing": return
       status = sample.runstatus(**kwargs)
-      if status: return
+      if status and print_mode == "errors": return
       if status.error and any(ignore.search(status.error) for ignore in ignore_errors): return
       logger.info(f"{sample.SlideID} " + str(status).replace("\n", " "))
     else:
@@ -851,18 +862,18 @@ class WorkflowCohort(Cohort):
 
           return result
 
-  def run(self, *, print_errors=False, printnotrunning=None, moreinitkwargs=None, **kwargs):
+  def run(self, *, print_mode=None, printnotrunning=None, moreinitkwargs=None, **kwargs):
     if moreinitkwargs is None: moreinitkwargs = {}
     moreinitkwargs = dict(moreinitkwargs)
-    if print_errors:
+    if print_mode:
       if printnotrunning is None:
         kwargs["printnotrunning"] = False
-      moreinitkwargs["suppressimageinfowarning"] = True
-    return super().run(print_errors=print_errors, moreinitkwargs=moreinitkwargs, **kwargs)
+      moreinitkwargs["suppressinitwarnings"] = True
+    return super().run(print_mode=print_mode, moreinitkwargs=moreinitkwargs, **kwargs)
 
   @contextlib.contextmanager
-  def handlesampledeffiltererror(self, samp, *, print_errors, **kwargs):
-    if print_errors:
+  def handlesampledeffiltererror(self, samp, *, print_mode, **kwargs):
+    if print_mode:
       try:
         yield
       except Exception as e:
@@ -872,8 +883,8 @@ class WorkflowCohort(Cohort):
         yield
 
   @contextlib.contextmanager
-  def handlesampleiniterror(self, samp, *, print_errors=False, **kwargs):
-    if print_errors:
+  def handlesampleiniterror(self, samp, *, print_mode=None, **kwargs):
+    if print_mode:
       try:
         yield
       except Exception as e:
@@ -883,8 +894,8 @@ class WorkflowCohort(Cohort):
         yield
 
   @contextlib.contextmanager
-  def handlesamplefiltererror(self, samp, *, print_errors, **kwargs):
-    if print_errors:
+  def handlesamplefiltererror(self, samp, *, print_mode, **kwargs):
+    if print_mode:
       try:
         yield
       except Exception as e:
@@ -925,7 +936,7 @@ def runstatusfilter(*, runstatus, dependencyrunstatuses, skip_finished, dependen
     if not runstatus:
       return FilterResult(True, "sample did not already run", cleanup=cleanup)
     else:
-      return FilterResult(False, "sample already ran")
+      return FilterResult(False, "sample already ran in {runstatus.ended - runstatus.started}")
 
   elif dependencies and not skip_finished:
     for dependencyrunstatus in dependencyrunstatuses:
@@ -943,7 +954,7 @@ def runstatusfilter(*, runstatus, dependencyrunstatuses, skip_finished, dependen
     if not runstatus:
       return FilterResult(True, "all dependencies already ran, sample has not run since then", cleanup=cleanup)
     else:
-      return FilterResult(False, "sample already ran")
+      return FilterResult(False, f"sample already ran in {runstatus.ended - runstatus.started}")
   else:
     assert False
 
