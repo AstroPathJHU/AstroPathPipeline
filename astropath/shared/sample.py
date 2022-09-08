@@ -14,7 +14,7 @@ from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SegmentationFolderArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
-from .logging import getlogger, ThingWithLogger
+from .logging import dummylogger, getlogger, ThingWithLogger
 from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
@@ -34,7 +34,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressimageinfowarning=False, **kwargs):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressinitwarnings=False, **kwargs):
     self.__root = pathlib.Path(root)
     if sampledefroot is None: sampledefroot = root
     self.samp = SampleDef(root=sampledefroot, samp=samp, Project=Project)
@@ -51,7 +51,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__nentered = 0
-    self.__suppressimageinfowarning = suppressimageinfowarning
+    self.__suppressinitwarnings = suppressinitwarnings
     super().__init__(**kwargs)
 
     if not self.scanfolder.exists():
@@ -100,6 +100,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   @property
   def isGood(self): return self.samp.isGood
   def __bool__(self): return bool(self.samp)
+
+  @property
+  def suppressinitwarnings(self): return self.__suppressinitwarnings
 
   @property
   def mainfolder(self):
@@ -362,7 +365,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       else:
         warnfunction = self.logger.warningglobalonenter
 
-    if warnfunction is not None and not self.__suppressimageinfowarning:
+    if warnfunction is not None and not self.suppressinitwarnings:
       fmt = "{:30} {:30} {:30} {:30}"
       warninglines = [
         "Found inconsistent image infos from different sources:",
@@ -448,7 +451,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       xmlfolder = self.xmlfolder
     except FileNotFoundError:
       xmlfolder = None
-    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=self.logger)
+    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
   @property
@@ -1910,7 +1913,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     if self.skip_et_corrections or self.et_offset_file is None :
       return None
 
-    self.logger.infoonenter(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
+    if not self.suppressinitwarnings: self.logger.infoonenter(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
     #read the offset from the Full.xml file
     if self.et_offset_file==self.fullxmlfile :
       tree = ET.parse(self.et_offset_file)

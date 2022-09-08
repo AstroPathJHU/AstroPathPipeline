@@ -343,7 +343,7 @@ class SampleRunStatus(MyDataClass):
     return result
 
   def __str__(self):
-    if self: return "ran successfully"
+    if self: return f"ran successfully in {self.ended - self.started}"
     if not self.started:
       return "did not run"
     elif self.error is not None:
