@@ -41,7 +41,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       newscanfolder = destroot/SlideID/"im3"/"Scan1"
       yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolder
       yield oldscanfolder/f"{SlideID}_Scan1.qptiff", newscanfolder
-      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", (newscanfolder, f"{SlideID}_Scan1.annotations.polygons_2.xml")
+      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolder, f"{SlideID}_Scan1.annotations.polygons_2.xml"
 
   @classmethod
   def setUpClass(cls):

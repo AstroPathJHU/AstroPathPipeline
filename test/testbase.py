@@ -112,6 +112,33 @@ class TestBaseSaveOutput(TestBase):
     super().tearDownClass()
 
 class TestBaseCopyInput(TestBase):
+  class FileToCopy:
+    def __init__(self, copyfrom, copytofolder, copyto=None, refind=None, rereplace=None, *, removecopiedinput):
+      if copyto is None:
+        copyto = copytofolder/copyfrom.name
+      else:
+        copyto = copytofolder/copyto
+
+      self.copyfrom = copyfrom
+      self.copytofolder = copytofolder
+      self.copyto = copyto
+      self.refind = refind
+      self.rereplace = rereplace
+      if (refind is not None) != (rereplace is not None):
+        raise ValueError("Have to provide both refind and rereplace or neither")
+      self.removecopiedinput = removecopiedinput
+
+    def __enter__(self):
+      self.copytofolder.mkdir(exist_ok=True, parents=True)
+      if self.refind is self.rereplace is None:
+        shutil.copy(self.copyfrom, self.copyto)
+      else:
+        with open(self.copyfrom) as f, open(self.copyto, "w") as newf:
+          newf.write(re.sub(self.refind, self.rereplace, f.read()))
+    def __exit__(self, *exc):
+      if self.removecopiedinput:
+        rm_missing_ok(self.copyto)
+
   @classmethod
   def removecopiedinput(cls): return True
 
@@ -121,27 +148,15 @@ class TestBaseCopyInput(TestBase):
 
   @classmethod
   def setUpClass(cls):
+    cls.__input = contextlib.ExitStack()
+    cls.__input.__enter__()
     super().setUpClass()
-    for copyfrom, copytofolder in cls.filestocopy():
-      if isinstance(copytofolder, tuple):
-        copytofolder, copyto = copytofolder
-        copyto = copytofolder/copyto
-      else:
-        copyto = copytofolder
-      copytofolder.mkdir(exist_ok=True, parents=True)
-      shutil.copy(copyfrom, copyto)
+    for filetocopyargs in cls.filestocopy():
+      cls.__input.enter_context(cls.FileToCopy(*filetocopyargs, removecopiedinput=cls.removecopiedinput()))
 
   @classmethod
   def tearDownClass(cls):
-    super().tearDownClass()
-    if cls.removecopiedinput():
-      for copyfrom, copytofolder in cls.filestocopy():
-        if isinstance(copytofolder, tuple):
-          folder, name = copytofolder
-          copyto = folder/name
-        else:
-          copyto = copytofolder/copyfrom.name
-        try:
-          copyto.unlink()
-        except FileNotFoundError:
-          pass
+    try:
+      cls.__input.close()
+    finally:
+      super().tearDownClass()

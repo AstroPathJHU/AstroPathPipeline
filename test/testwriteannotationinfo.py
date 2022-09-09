@@ -27,7 +27,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     yield sourceroot/"upkeep_and_progress"/"AstropathAPIDdef_0.csv", destroot/"upkeep_and_progress"
     for SlideID in "M206",:
       yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1"
-      yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", (destroot/SlideID/"im3"/"Scan1", f"{SlideID}_Scan1.annotations.polygons_2.xml")
+      yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1", f"{SlideID}_Scan1.annotations.polygons_2.xml"
       for csv in "constants", "affine":
         yield sourceroot/SlideID/"dbload"/f"{SlideID}_{csv}.csv", destroot/SlideID/"dbload"
 
