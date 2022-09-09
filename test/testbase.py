@@ -1,4 +1,4 @@
-import abc, contextlib, dataclassy, more_itertools, numbers, numpy as np, pathlib, PIL.Image, shutil, tempfile, unittest
+import abc, contextlib, dataclassy, more_itertools, numbers, numpy as np, pathlib, PIL.Image, re, shutil, tempfile, unittest
 
 from astropath.utilities import units
 from astropath.utilities.miscfileio import rm_missing_ok
