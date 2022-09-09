@@ -80,12 +80,12 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/f"{SlideID}-annowarp.log",
     ] for SlideID in ("M206",)), [])
 
-  def compareoutput(self, SlideID, reffolder=None, dbloadroot=None, alignment=True):
+  def compareoutput(self, SlideID, reffolder=None, dbloadroot=None, im3root=None, alignment=True):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
-    logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
-    if dbloadroot is None:
-      dbloadroot = logroot
+    logroot = thisfolder/"test_for_jenkins"/"annowarp"
+    if dbloadroot is None: dbloadroot = logroot
+    if im3root is None: im3root = logroot
     s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, uselogfiles=True, tilepixels=100)
     if reffolder is None: reffolder = thisfolder/"data"/"reference"/"annowarp"
 
@@ -217,7 +217,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--im3root", os.fspath(im3root), "--ignore-dependencies", "--rerun-finished", "--tilepixels", "100", "--round-initial-shift-pixels", "1"] + moreargs
     try:
       AnnoWarpCohortAstroPathTissueMask.runfromargumentparser(args)
-      self.compareoutput(SlideID, **compareoutputkwargs, **variantkwargs, dbloadroot=dbloadroot)
+      self.compareoutput(SlideID, **compareoutputkwargs, **variantkwargs, dbloadroot=dbloadroot, im3root=im3root)
     except:
       self.saveoutput()
       raise
