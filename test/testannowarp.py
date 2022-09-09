@@ -17,10 +17,12 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     sourceroot = thisfolder/"data"
     destroot = thisfolder/"test_for_jenkins"/"annowarp"
     destrootrename = thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"
+    destrootempty = thisfolder/"test_for_jenkins"/"annowarp"/"emptyannotation"
     for SlideID in "M206",:
       olddbload = sourceroot/SlideID/"dbload"
       newdbload = destroot/SlideID/"dbload"
       newdbloadrename = destrootrename/SlideID/"dbload"
+      newdbloadempty = destrootempty/SlideID/"dbload"
       for csv in (
         "affine",
         "constants",
@@ -28,20 +30,27 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
         yield olddbload/f"{SlideID}_{csv}.csv", newdbloadrename
+        yield olddbload/f"{SlideID}_{csv}.csv", newdbloadempty
 
       olddbload = sourceroot/"reference"/"writeannotationinfo"/SlideID/"dbload"
       olddbloadrename = sourceroot/"reference"/"writeannotationinfo"/"renameannotation"/SlideID/"dbload"
+      olddbloadempty = sourceroot/"reference"/"writeannotationinfo"/"emptyannotation"/SlideID/"dbload"
       for csv in (
         "annotationinfo",
       ):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
         yield olddbloadrename/f"{SlideID}_{csv}.csv", newdbloadrename
+        yield olddbloadempty/f"{SlideID}_{csv}.csv", newdbloadempty
 
       oldscanfolder = sourceroot/SlideID/"im3"/"Scan1"
       newscanfolder = destroot/SlideID/"im3"/"Scan1"
+      newscanfolderempty = destrootempty/SlideID/"im3"/"Scan1"
       yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolder
       yield oldscanfolder/f"{SlideID}_Scan1.qptiff", newscanfolder
-      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", (newscanfolder, f"{SlideID}_Scan1.annotations.polygons_2.xml")
+      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolder, f"{SlideID}_Scan1.annotations.polygons_2.xml"
+
+      yield oldscanfolder/f"{SlideID}_Scan1.qptiff", newscanfolderempty
+      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolderempty, None, r"(Tumor.*<Regions>).*(</Regions>)", r"\1\2"
 
   @classmethod
   def setUpClass(cls):
@@ -182,22 +191,33 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       rtol=0.01,
     )
 
-  def testCohort(self, SlideID="M206", units="safe", moreargs=[], rename=False, **compareoutputkwargs):
+  def testCohort(self, SlideID="M206", units="safe", moreargs=[], variant=None, **compareoutputkwargs):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
-    if rename:
-      dbloadroot = dbloadroot/"renameannotation"
-      renamekwargs = {
+    if variant == "rename":
+      dbloadroot /= "renameannotation"
+      logroot /= "renameannotation"
+      variantkwargs = {
         "reffolder": thisfolder/"data"/"reference"/"annowarp"/"renameannotation",
       }
+    elif variant == "empty":
+      im3root /= "emptyannotation"
+      dbloadroot /= "emptyannotation"
+      logroot /= "emptyannotation"
+      variantkwargs = {
+        "reffolder": thisfolder/"data"/"reference"/"annowarp"/"emptyannotation",
+      }
+    elif variant is None:
+      variantkwargs = {}
     else:
-      renamekwargs = {}
+      raise ValueError(variant)
+
     maskroot = root
     args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(logroot), "--maskroot", os.fspath(maskroot), "--sampleregex", SlideID, "--debug", "--units", units, "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--im3root", os.fspath(im3root), "--ignore-dependencies", "--rerun-finished", "--tilepixels", "100", "--round-initial-shift-pixels", "1"] + moreargs
     try:
       AnnoWarpCohortAstroPathTissueMask.runfromargumentparser(args)
-      self.compareoutput(SlideID, **compareoutputkwargs, **renamekwargs, dbloadroot=dbloadroot)
+      self.compareoutput(SlideID, **compareoutputkwargs, **variantkwargs, dbloadroot=dbloadroot)
     except:
       self.saveoutput()
       raise
@@ -276,4 +296,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       self.testDetectBigShift(SlideID=SlideID)
 
   def testRenameAnnotation(self, **kwargs):
-    self.testCohort(units="fast_microns", rename=True, **kwargs)
+    self.testCohort(units="fast_microns", variant="rename", **kwargs)
+
+  def testEmptyAnnotation(self, **kwargs):
+    self.testCohort(units="fast_microns", variant="empty", **kwargs)
