@@ -1,4 +1,5 @@
 #imports
+import copy
 import numpy as np
 from threading import Thread
 from queue import Queue
@@ -165,12 +166,12 @@ class ImageStack(ThingWithLogger) :
             self.__image_squared_stack+=image_queue_item[1]
             n_images_read+=1
             if len(image_queue_item)==3 :
-                field_logs.append(image_queue_item[2])
+                field_logs.append(copy.copy(image_queue_item[2]))
                 n_images_stacked_by_layer+=1
             elif len(image_queue_item)==5 :
                 self.__mask_stack+=image_queue_item[2]
                 n_images_stacked_by_layer+=image_queue_item[3]
-                field_logs.append(image_queue_item[4])
+                field_logs.append(copy.copy(image_queue_item[4]))
             image_queue_item = image_queue.get()
         return_queue.put((n_images_read,n_images_stacked_by_layer,field_logs))
 

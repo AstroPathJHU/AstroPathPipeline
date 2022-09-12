@@ -491,7 +491,7 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         if not self.skip_masking :
             self.create_or_find_image_masks()
         #make the mean image from all of the tissue bulk rectangles
-        n_threads = 2*self.njobs if self.njobs is not None else 4
+        n_threads = self.njobs if self.njobs is not None else 2
         new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,self.med_ets,
                                                                  self.image_masking_dirpath,n_threads)
         for fl in new_field_logs :
