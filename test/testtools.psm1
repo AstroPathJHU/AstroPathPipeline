@@ -322,7 +322,7 @@ Class testtools{
         'M21_1-all_overlap_octets.csv' -join '\'
         #
         $inp.getslideidregex()
-        Write-Host '*** Slides in addwapoctetsdep:' $inp.batchslides
+        Write-Host '*** Slides in addwarpoctetsdep:' $inp.batchslides
         #
         $inp.batchslides | ForEach-Object{
             $des = $this.basepath, $_, 'im3', 'warping', 'octets' -join '\'
