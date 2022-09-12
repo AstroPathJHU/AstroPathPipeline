@@ -408,16 +408,18 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
         nodes.remove(node)
 
     annotationinfodict = {}
-    for node in nodes:
+    for node in nodes[:]:
       try:
         annotationinfo, = (info for info in annotationinfos if info.originalname == node.annotationname)
+      except ValueError as e:
+        errors.append(str(e))
+        nodes.remove(node)
+      else:
         annotationinfodict[node] = annotationinfo
         annotationinfos.remove(annotationinfo)
         node.annotationtype = annotationinfo.dbannotationtype
         node.annotation = self.allowedannotation(node.annotationtype)
         node.annotationtype = node.annotation.name
-      except ValueError as e:
-        node.annotationerror = e
 
     def annotationorder(node):
       try:
@@ -438,11 +440,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
         node.usesubindex = False
 
     for layeridx, (annotationtype, annotationnodes) in zip(count, nodesbytype.items()):
-      try:
-        targetannotation, = {node.annotation for node in annotationnodes}
-      except AttributeError:
-        errors += [str(node.annotationerror) for node in annotationnodes if hasattr(node, "annotationerror")]
-        continue
+      targetannotation, = {node.annotation for node in annotationnodes}
       subindices = [node.annotationsubindex for node in annotationnodes]
       if subindices != list(range(1, len(subindices)+1)):
         errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in subindices)}")
