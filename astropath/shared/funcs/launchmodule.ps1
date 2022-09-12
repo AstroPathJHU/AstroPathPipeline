@@ -1,5 +1,5 @@
 ﻿function LaunchModule{
-    #[CmdletBinding(DefaultParameterSetName = 'slide')]
+    [CmdletBinding(DefaultParameterSetName = 'slide')]
     param(
         [Parameter(ParameterSetName = 'slide')]
         [Parameter(ParameterSetName = 'batch')]
@@ -12,7 +12,7 @@
         [string]$module = '',
 
         [Parameter(ParameterSetName = 'slide')]
-        [Parameter(ParameterSetName = 'batch')]
+        [Parameter(Mandatory=$true, ParameterSetName = 'batch')]
         [Parameter(ParameterSetName = 'inform')]
         [string]$project='',
 
@@ -20,9 +20,7 @@
         [Parameter(Mandatory=$true, ParameterSetName = 'inform')]
         [string]$slideid='',
 
-        [Parameter(ParameterSetName = 'slide')]
         [Parameter(Mandatory=$true, ParameterSetName = 'batch')]
-        [Parameter(ParameterSetName = 'inform')]
         [string]$batchid='',
 
         [Parameter(ParameterSetName = 'slide')]
