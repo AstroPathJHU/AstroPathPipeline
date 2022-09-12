@@ -473,13 +473,9 @@ Class vminform : moduletools {
         #
         while($value){
             #
-            if ((Get-ChildItem $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-10)){
+            if ((Get-ChildItem $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-20)){
                 $this.sample.warning('Timeout reached for batch run')
-                if (get-process -name inform -EA SilentlyContinue){
-                    Throw 'Could not close failed inForm'
-                } else {
-                    $value = $false
-                }
+                $value = $false
             } else {
                 get-process -name inform -EA SilentlyContinue |
                     Wait-Process -Timeout 300 -EA SilentlyContinue -ErrorVariable value
