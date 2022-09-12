@@ -178,7 +178,7 @@ class ImageStack(ThingWithLogger) :
         """
         Simply add all the images to the image_stack and image_squared_stack without masking them
         """
-        image_queue = Queue()
+        image_queue = Queue(n_threads)
         return_queue = Queue()
         nq_threads = []
         acc_thread = Thread(target=self.__accumulate_from_stacking_queue,args=(image_queue,return_queue))
@@ -232,7 +232,7 @@ class ImageStack(ThingWithLogger) :
                     rectangles_to_stack.remove(r)
         #for every image that will be stacked, read its masking file, normalize and mask its image, 
         #and add the masked image/mask to the respective stacks
-        image_queue = Queue()
+        image_queue = Queue(n_threads)
         return_queue = Queue()
         nq_threads = []
         acc_thread = Thread(target=self.__accumulate_from_stacking_queue,args=(image_queue,return_queue))
