@@ -61,12 +61,31 @@ pipeline {
               }
             }
 
-            stage('miscellaneous framework tests') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
+            stage('some short tests') {
+              stages {
+                stage('code checks') {
+                  steps {
+                    sh 'python -m pyflakes .'
+                  }
+                }
+                stage('miscellaneous framework tests') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
+                  }
+                }
+                stage('fix fw01') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testfixfw01'
+                  }
+                }
+                stage('stitch mask') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.teststitchmask'
+                  }
+                }
               }
             }
-			
+/*
             stage('workflow') {
               steps {
                 //sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
@@ -152,12 +171,6 @@ pipeline {
               }
             }
 
-            stage('stitch mask') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.teststitchmask'
-              }
-            }
-
             stage('csvscan') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcsvscan'
@@ -171,9 +184,9 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarping'
                   }
                 }
-                stage('test warpingcohort') {
+                stage('test warpingmulticohort') {
                   steps {
-                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingcohort'
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingmulticohort'
                   }
                 }
                 stage('test ps warping workflow'){

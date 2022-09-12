@@ -14,7 +14,8 @@ from ...utilities.units import ThingWithPscale
 from ...utilities.units.dataclasses import distancefield
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadSegmentedComponentTiffMultiLayer
-from ..segmentation.segmentationsample import SegmentationSampleDeepCell, SegmentationSampleMesmer
+from ..segmentation.segmentationsampledeepcell import SegmentationSampleDeepCell
+from ..segmentation.segmentationsamplemesmer import SegmentationSampleMesmer
 
 class GeomLoadField(Field, GeomLoadRectangle):
   pass
@@ -354,7 +355,7 @@ class PolygonFinder(ThingWithPscale):
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
       try:
-        polygons = polygon.makevalid(round=True)
+        polygons = polygon.makevalid(round=True, logger=self.logger)
       except InvalidPolygonError as e:
         if self.isprimary:
           estring = str(e).replace("\n", " ")
@@ -381,7 +382,7 @@ class PolygonFinder(ThingWithPscale):
     if not np.any(cellmask): return []
     top, left, bottom, right = self.adjustedbbox
     shiftby = self.pxvec + np.array([left, top]) * self.onepixel
-    polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, shiftby=shiftby, fill=True)
+    polygons = findcontoursaspolygons(cellmask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE, pscale=self.pscale, annoscale=self.pscale, shiftby=shiftby, fill=True, logger=self.logger)
     if len(polygons) > 1:
       polygons.sort(key=lambda x: x.area, reverse=True)
     return polygons

@@ -140,7 +140,7 @@ class batchwarpfits : moduletools {
             $this.sample.copy($file, $this.sample.warpfolder())
             $this.sample.renamefile($this.sample.warpfolder(),
                 'weighted_average_warp.csv',
-                $this.batchwarpingfile())
+                $this.sample.batchwarpingfile())
         }
     }
     <# -----------------------------------------

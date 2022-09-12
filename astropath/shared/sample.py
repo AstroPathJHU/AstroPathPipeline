@@ -1,4 +1,5 @@
-import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, pandas as pd, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET
+import abc, contextlib, cv2, datetime, fractions, itertools, job_lock, jxmlease, logging, methodtools, multiprocessing as mp, numpy as np, pandas as pd, os, pathlib, re, tempfile, tifffile, xml.etree.ElementTree as ET, psutil
+from multiprocessing.pool import ThreadPool
 from ..hpfs.flatfield.config import CONST as FF_CONST
 from ..hpfs.warping.warp import CameraWarp
 from ..hpfs.warping.utilities import WarpingSummary
@@ -13,7 +14,7 @@ from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SegmentationFolderArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
-from .logging import getlogger, ThingWithLogger
+from .logging import dummylogger, getlogger, ThingWithLogger
 from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
@@ -33,7 +34,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressimageinfowarning=False, **kwargs):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressinitwarnings=False, **kwargs):
     self.__root = pathlib.Path(root)
     if sampledefroot is None: sampledefroot = root
     self.samp = SampleDef(root=sampledefroot, samp=samp, Project=Project)
@@ -46,11 +47,11 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if informdataroot is None: informdataroot = root
     self.__informdataroot = pathlib.Path(informdataroot)
     self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots, skipstartfinish=skipstartfinish, printthreshold=printthreshold, sampledefroot=sampledefroot)
-    self.__printlogger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=False, threshold=logthreshold, skipstartfinish=skipstartfinish, printthreshold=printthreshold, sampledefroot=sampledefroot)
+    self.__printlogger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=False, threshold=logthreshold, skipstartfinish=True, printthreshold=printthreshold, sampledefroot=sampledefroot)
     if xmlfolders is None: xmlfolders = []
     self.__xmlfolders = xmlfolders
     self.__nentered = 0
-    self.__suppressimageinfowarning = suppressimageinfowarning
+    self.__suppressinitwarnings = suppressinitwarnings
     super().__init__(**kwargs)
 
     if not self.scanfolder.exists():
@@ -99,6 +100,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   @property
   def isGood(self): return self.samp.isGood
   def __bool__(self): return bool(self.samp)
+
+  @property
+  def suppressinitwarnings(self): return self.__suppressinitwarnings
 
   @property
   def mainfolder(self):
@@ -361,7 +365,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       else:
         warnfunction = self.logger.warningglobalonenter
 
-    if warnfunction is not None and not self.__suppressimageinfowarning:
+    if warnfunction is not None and not self.suppressinitwarnings:
       fmt = "{:30} {:30} {:30} {:30}"
       warninglines = [
         "Found inconsistent image infos from different sources:",
@@ -447,7 +451,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       xmlfolder = self.xmlfolder
     except FileNotFoundError:
       xmlfolder = None
-    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition)
+    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
   @property
@@ -561,32 +565,43 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @methodtools.lru_cache()
   @property
-  def opals_targets(self) :
+  def layers_opals_targets(self) :
     """
-    A list of tuples of (opal_string,target_string) from the MergeConfig_*.xlsx file 
+    A list of tuples of (layer_number,opal_string,target_string) from the MergeConfig_*.xlsx file 
     (should exist as early as meanimage)
     """
-    opals_targets = []
-    if self.batchxlsx.is_file() :
-      fp = self.batchxlsx
-    else :
+    layers_opals_targets = []
+    rownames = ['Opal','Target']
+    if self.mergeconfigxlsx.is_file() :
+      rownames = ['layer',*rownames]
       fp = self.mergeconfigxlsx
+    else :
+      fp = self.batchxlsx
     if not fp.is_file() :
       raise FileNotFoundError(f'ERROR: Neither a Batch nor MergeConfig Excel file were found in {fp.parent}!')
+    if fp==self.batchxlsx :
+      warnmsg = 'WARNING: layers/opals/targets will be found from a BatchID file instead of a MergeConfig file. '
+      warnmsg+= 'Will assume that layers are sorted in order.'
+      self.logger.warningonenter(warnmsg)
     data = pd.DataFrame(pd.read_excel(fp))
-    for _,row in data.loc[:,['Opal','Target']].iterrows() :
+    for ri,row in data.loc[:,rownames].iterrows() :
+        #get the layer from the entry in the table if possible, or from the index in the frame if not
+        if 'layer' in rownames :
+          layer = int(row['layer'])
+        else :
+          layer = ri+1
         #convert the opal to an integer if possible
         opal = row['Opal']
         try :
           opal = int(opal)
         except ValueError :
           opal = opal.lower()
-        #make the target into a nice string
+        #make the target into a nice string if possible
         target = row['Target']
-        #skip any "NA" entries
-        if type(target)==str and target!='na' :
-          opals_targets.append((opal,target.replace('/','').lower()))
-    return opals_targets
+        if type(target)==str :
+          target = target.replace('/','').lower()
+        layers_opals_targets.append((layer,opal,target.replace('/','').lower()))
+    return layers_opals_targets
 
   @methodtools.lru_cache()
   @property
@@ -1079,6 +1094,17 @@ class SelectLayersIm3(SampleBase):
     return self.__layerim3
 
   multilayerim3 = False #can override in subclasses
+
+class SelectLayersIm3WorkflowSample(SelectLayersIm3, WorkflowSample):
+  @property
+  def workflowkwargs(self):
+    result = {
+      **super().workflowkwargs,
+      "layersim3": self.layersim3,
+    }
+    if not self.multilayerim3:
+      result["layerim3"] = self.layerim3
+    return result
 
 class SelectLayersComponentTiff(SampleBase):
   """
@@ -1672,6 +1698,8 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
         self.logger.warningonenter(warnmsg)
         self.__warping_file = None
       else :
+        if not warping_filename.endswith('.csv') :
+          warping_filename+='.csv'
         self.__warping_file = pathlib.Path(warping_filename)
       #reset the flatfield file
       ff_version = this_slide_tes[0].FlatfieldVersion
@@ -1885,7 +1913,7 @@ class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRec
     if self.skip_et_corrections or self.et_offset_file is None :
       return None
 
-    self.logger.infoonenter(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
+    if not self.suppressinitwarnings: self.logger.infoonenter(f'Copying exposure time offsets for {self.SlideID} from file {self.et_offset_file}')
     #read the offset from the Full.xml file
     if self.et_offset_file==self.fullxmlfile :
       tree = ET.parse(self.et_offset_file)
@@ -1977,7 +2005,7 @@ class ReadRectanglesComponentTiffFromXML(ReadRectanglesComponentTiffBase, ReadRe
   and loads the rectangle images from component tiff files.
   """
 
-class ReadRectanglesComponentAndIHCTiffFromXML(ReadRectanglesComponentAndIHCTiffBase, ReadRectanglesFromXML) :
+class ReadRectanglesComponentAndIHCTiffFromXML(ReadRectanglesComponentAndIHCTiffBase, ReadRectanglesComponentTiffFromXML) :
   """
   Base class for any sample that reads rectangles from the XML metadata 
   and loads the rectangle images from IHC .tif files
@@ -2042,10 +2070,23 @@ class ParallelSample(SampleBase, ParallelArgumentParser):
   @property
   def njobs(self):
     return self.__njobs
-  def pool(self):
-    nworkers = mp.cpu_count()
-    if self.njobs is not None: nworkers = min(nworkers, self.njobs)
-    return mp.get_context().Pool(nworkers)
+  def pool(self,nworkers=None):
+    n_workers = psutil.cpu_count()
+    if nworkers is not None :
+      if nworkers>n_workers:
+        self.logger.warning(f'WARNING: requested a pool of {nworkers} processes but only found {n_workers} usable CPUs.')
+      n_workers = nworkers
+    elif self.njobs is not None: 
+      n_workers = min(n_workers, self.njobs)
+    return mp.get_context().Pool(n_workers)
+  def threadpool(self,nthreads=None):
+    if nthreads is not None :
+      n_threads = nthreads
+    elif self.njobs is not None: 
+      n_threads = self.njobs
+    else :
+      n_threads = psutil.cpu_count()
+    return ThreadPool(n_threads)
 
 class SampleWithSegmentations(ReadRectanglesBase):
   @classmethod

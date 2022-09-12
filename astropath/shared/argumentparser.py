@@ -15,6 +15,7 @@ class RunFromArgumentParserBase(ThingWithRoots, TableReader, contextlib.ExitStac
     Create an argument parser to run on the command line
     """
     p = argparse.ArgumentParser(description=cls.argumentparserhelpmessage())
+    job_lock.add_job_lock_arguments(p)
     return p
 
   @classmethod
@@ -25,6 +26,7 @@ class RunFromArgumentParserBase(ThingWithRoots, TableReader, contextlib.ExitStac
     """
     p = cls.makeargumentparser()
     parsed_args = p.parse_args(args=args)
+    job_lock.process_job_lock_arguments(parsed_args)
     return cls.runfromparsedargs(parsed_args, **kwargs)
 
   @classmethod
@@ -163,7 +165,6 @@ class RunFromArgumentParser(ArgumentParserWithVersionRequirement, ThingWithRoots
     g.add_argument("--no-log", action="store_true", help="do not write to log files.")
     p.add_argument("--skip-start-finish", action="store_true", help="do not write the START: and FINISH: lines to the log (this should only be used if external code writes those lines).")
     p.add_argument("--print-threshold", choices=("all", "info", "warning", "error", "critical", "none"), default="all", help="minimum level of log messages that should be printed to stderr (default: all)")
-    p.add_argument("--squeue-output-file", type=lambda x: job_lock.setsqueueoutput(filename=x), help="file containing the output of squeue, if running on a machine that doesn't have squeue available", dest=argparse.SUPPRESS)
     return p
 
   @classmethod
@@ -242,6 +243,7 @@ class WorkingDirArgumentParser(RunFromArgumentParser) :
     p = super().makeargumentparser(**kwargs)
     p.add_argument('--workingdir',type=pathlib.Path,help='Path to the working directory where output should be stored.')
     return p
+  
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     #only add the workingdir to the initkwargs if it was given, otherwise leave it out 

@@ -1,6 +1,7 @@
 #imports
 import math
 import numpy as np
+from numba import njit
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.img_file_io import smooth_image_worker
 from ...shared.image_masking.config import CONST as MASKING_CONST
@@ -88,10 +89,13 @@ def normalize_mean_image(mi,semi) :
 
 #################### THRESHOLDING HELPER FUNCTIONS ####################
 
-#helper function to determine the Otsu threshold given a histogram of pixel values 
-#algorithm from python code at https://docs.opencv.org/3.4/d7/d4d/tutorial_py_thresholding.html
-#reimplemented here for speed and to increase resolution to 16bit
+@njit
 def get_otsu_threshold(pixel_hist) :
+    """
+    helper function to determine the Otsu threshold given a histogram of pixel values 
+    algorithm from python code at https://docs.opencv.org/3.4/d7/d4d/tutorial_py_thresholding.html
+    reimplemented here compiled with numba/njit for speed and to increase resolution to 16bit
+    """
     # normalize histogram
     hist_norm = pixel_hist/pixel_hist.sum()
     # get cumulative distribution function
@@ -101,12 +105,12 @@ def get_otsu_threshold(pixel_hist) :
     # set up the loop to determine the threshold
     bins = np.arange(max_val); fn_min = np.inf; thresh = -1
     # loop over all possible values to find where the function is minimized
-    for i in range(1,max_val):
-        p1,p2 = np.hsplit(hist_norm,[i]) # probabilities
+    for i in range(1,max_val) :
+        p1 = hist_norm[:i]; p2 = hist_norm[i:] # probabilities
         q1,q2 = Q[i],Q[max_val-1]-Q[i] # cum sum of classes
         if q1 < 1.e-6 or q2 < 1.e-6:
             continue
-        b1,b2 = np.hsplit(bins,[i]) # weights
+        b1 = bins[:i]; b2 = bins[i:] # weights
         # finding means and variances
         m1,m2 = np.sum(p1*b1)/q1, np.sum(p2*b2)/q2
         v1,v2 = np.sum(((b1-m1)**2)*p1)/q1,np.sum(((b2-m2)**2)*p2)/q2

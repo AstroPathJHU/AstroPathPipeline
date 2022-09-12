@@ -6,7 +6,7 @@ from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_laye
 from astropath.shared.samplemetadata import MetadataSummary
 from astropath.shared.image_masking.utilities import LabelledMaskRegion
 from astropath.hpfs.flatfield.config import CONST
-from astropath.hpfs.flatfield.utilities import FieldLog, RectangleThresholdTableEntry, ThresholdTableEntry
+from astropath.hpfs.flatfield.utilities import RectangleThresholdTableEntry, ThresholdTableEntry
 from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
 from .testbase import compare_two_csv_files, TestBaseSaveOutput
 
@@ -66,12 +66,9 @@ class TestMeanImage(TestBaseSaveOutput) :
         #run the MeanImageCohort selecting just the single sample with raw files
         root = folder/'data'
         shardedim3root = folder/'data'/'raw'
-        et_offset_file = folder/'data'/'corrections'/'best_exposure_time_offsets_Vectra_9_8_2020.csv'
         (folder/'test_for_jenkins'/'mean_image'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME).mkdir(parents=True,exist_ok=True)
         args = [os.fspath(root),
                 '--shardedim3root',os.fspath(shardedim3root),
-                '--logroot',os.fspath(self.logging_root),
-                '--exposure-time-offset-file',os.fspath(et_offset_file),
                 '--njobs',str(n_threads),
                 '--sampleregex',SlideID,
                 '--maskroot',os.fspath(folder/'test_for_jenkins'/'mean_image'),
@@ -88,7 +85,7 @@ class TestMeanImage(TestBaseSaveOutput) :
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'meanimage'
         try :
-            compare_two_csv_files(self.meanimage_dir,reffolder,CONST.FIELDS_USED_CSV_FILENAME,FieldLog)
+            #compare_two_csv_files(self.meanimage_dir,reffolder,CONST.FIELDS_USED_CSV_FILENAME,FieldLog)
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',ThresholdTableEntry)
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',MetadataSummary)
             compare_two_csv_files(self.meanimage_dir,reffolder,f'{SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}',MetadataSummary)

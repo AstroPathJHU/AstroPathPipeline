@@ -130,7 +130,7 @@ Class vminform : moduletools {
             $this.StartInForm()
             $this.WatchBatchInForm()
             $this.CheckErrors()
-            if (($this.err -le 5) -and ($this.err -gt 0)){
+            if (($this.err -le  5) -and ($this.err -gt 0)){
                 $this.sample.warning("Task will restart. Attempt "+ $this.err)
             } elseif ($this.err -gt 5){
                 Throw "Could not complete task after 5 attempts"
@@ -473,13 +473,9 @@ Class vminform : moduletools {
         #
         while($value){
             #
-            if ((Get-ChildItem $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-10)){
+            if ((Get-ChildItem $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-20)){
                 $this.sample.warning('Timeout reached for batch run')
-                if (get-process -name inform -EA SilentlyContinue){
-                    Throw 'Could not close failed inForm'
-                } else {
-                    $value = $false
-                }
+                $value = $false
             } else {
                 get-process -name inform -EA SilentlyContinue |
                     Wait-Process -Timeout 300 -EA SilentlyContinue -ErrorVariable value
@@ -693,6 +689,7 @@ Class vminform : moduletools {
         #
         $this.sample.info("Launch data transfer")
         $this.KillinFormProcess()
+        Start-Sleep 20
         #
         $sor = $this.informoutpath
         #

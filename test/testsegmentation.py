@@ -1,9 +1,9 @@
 #imports
 import os, pathlib, unittest
 import numpy as np
-from astropath.slides.segmentation.segmentationsample import SegmentationSampleNNUNet
-from astropath.slides.segmentation.segmentationsample import SegmentationSampleDeepCell
-from astropath.slides.segmentation.segmentationsample import SegmentationSampleMesmer
+from astropath.slides.segmentation.segmentationsamplennunet import SegmentationSampleNNUNet
+from astropath.slides.segmentation.segmentationsampledeepcell import SegmentationSampleDeepCell
+from astropath.slides.segmentation.segmentationsamplemesmer import SegmentationSampleMesmerWithIHC
 from .testbase import TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
@@ -25,6 +25,12 @@ class TestSegmentationBase(TestBaseCopyInput, TestBaseSaveOutput) :
             if fp.is_dir() :
                 continue
             yield fp, newroot
+        oldbatch = folder/'data'/'Batch'
+        newbatch = folder/'test_for_jenkins'/'segmentation'/'root'/'Batch'
+        if not newbatch.is_dir() :
+            newbatch.mkdir(parents=True)
+        for fp in oldbatch.glob('*') :
+            yield fp,newbatch
         oldcomptiffs = folder/'data'/slide_ID/'inform_data'/'Component_Tiffs'
         newcomptiffs = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'inform_data'/'Component_Tiffs'
         if not newcomptiffs.is_dir() :
@@ -133,9 +139,10 @@ class TestSegmentationDeepCell(TestSegmentationBase) :
         finally :
             self.removeoutput()
 
-class TestSegmentationMesmer(TestSegmentationBase) :
+class TestSegmentationMesmerWithIHC(TestSegmentationBase) :
     """
-    Class to use for testing the Mesmer segmentation algorithm
+    Class to use for testing the Mesmer segmentation algorithm that uses one component tiff layer 
+    and one deconvolved IHC layer
     """
 
     @property
@@ -149,7 +156,7 @@ class TestSegmentationMesmer(TestSegmentationBase) :
             all_fps.append(outputdir/f'{fns}_mesmer_segmentation.npz')
         return all_fps
 
-    def test_segmentation_deepcell(self) :
+    def test_segmentation_mesmer_with_ihc(self) :
         #run the segmentation sample with the Mesmer algorithm
         args = [os.fspath(folder/'test_for_jenkins'/'segmentation'/'root'),
                 slide_ID,
@@ -158,14 +165,15 @@ class TestSegmentationMesmer(TestSegmentationBase) :
                 ]
         for rn in rectangle_ns_with_comp_tiff_files_mesmer :
             args.append(str(rn))
-        SegmentationSampleMesmer.runfromargumentparser(args=args)
-        #compare the results to the reference files
-        outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
         try :
+            SegmentationSampleMesmerWithIHC.runfromargumentparser(args=args)
+            #compare the results to the reference files
+            outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
             for fp in (folder/'data'/'reference'/'segmentation'/slide_ID/'im3'/'segmentation'/'mesmer').glob('*') :
                 refa = (np.load(fp))['arr_0']
                 testa = (np.load(outputdir/fp.name))['arr_0']
                 np.testing.assert_allclose(testa,refa)
+            print('TEST 3')
         except :
             self.saveoutput()
             raise

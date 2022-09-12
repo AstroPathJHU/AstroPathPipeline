@@ -59,6 +59,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         For my purposes here all it does is set the variable holding the octets to use
         """
         self.get_octets()
+        return self.__octets
 
     def get_octets(self) :
         """
@@ -76,7 +77,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
                     self.__octets = readtable(octet_filepath,OverlapOctet)
                     self.logger.info(f'Will use {len(self.__octets)} octets in {octet_filepath} for {self.SlideID}')
                     return
-                except TypeError :
+                except (TypeError,EOFError) :
                     msg = f'Found an empty octet file for {self.SlideID} at {octet_filepath} and so it will be assumed '
                     msg+= 'this sample has no octets to use in fitting for warping'
                     self.logger.info(msg)

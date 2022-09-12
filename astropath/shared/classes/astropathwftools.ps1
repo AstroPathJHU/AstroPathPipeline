@@ -512,7 +512,7 @@ class astropathwftools : sampledb {
     [void]CheckCompletedWorkers(){
         #
         $donejobs = Get-Job | 
-            Where-Object { $_.State -eq 'Completed' -and $_.PSJobTypeName -eq 'BackgroundJob'}
+            Where-Object { $_.State -eq 'Completed'}
         #
         if ($donejobs){
             $donejobs | ForEach-Object {

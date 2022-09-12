@@ -151,8 +151,8 @@ class MyLogger:
           imagehandler.setLevel(logging.INFO-1)
           self.logger.addHandler(imagehandler)
 
-        if not self.skipstartfinish:
-          self.logger.critical(f"START: {self.module} {self.astropathversion}")
+      if not self.skipstartfinish:
+        self.logger.critical(f"START: {self.module} {self.astropathversion}")
 
     self.nentered += 1
     self.processlogonenterqueue()
@@ -180,10 +180,11 @@ class MyLogger:
       logging.ERROR: "ERROR",
       logging.CRITICAL: None,
     }[record.levelno]
-    if levelname is not None and not record.msg.startswith(levelname+": "):
-      record.msg = f"{levelname}: {record.msg}"
-    if ";" in record.msg or "\n" in record.msg:
-      raise ValueError("log messages aren't supposed to have semicolons or newlines:\n\n"+record.msg)
+    msg = str(record.msg)
+    if levelname is not None and not msg.startswith(levelname+": "):
+      record.msg = msg = f"{levelname}: {msg}"
+    if ";" in msg or "\n" in msg:
+      raise ValueError("log messages aren't supposed to have semicolons or newlines:\n\n"+msg)
     return True
 
   def __exit__(self, exc_type, exc_value, exc_traceback):

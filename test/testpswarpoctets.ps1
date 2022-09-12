@@ -6,7 +6,7 @@
  --------------------------------------------
  Description
  test if the methods of warpoctets are 
- functioning as intended
+ functioning as intended 
  -------------------------------------------#>
 #
 Class testpswarpoctets : testtools {

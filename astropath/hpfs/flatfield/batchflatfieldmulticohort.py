@@ -162,6 +162,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
                        help='''directory where the output will be placed (a "flatfield" directory will be created 
                                 inside outdir if one does not already exist)''')
         return p
+    
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         #use the sample regex to choose samples listed in the model file (if no sampleregex was given)
