@@ -62,7 +62,7 @@ class ImageStack(ThingWithLogger) :
             return self.__stack_images_no_masking(rectangles,med_ets,nthreads)
         else :
             self.__logger.info('Images WILL be masked before stacking')
-            return self.__stack_images_with_masking(samp,rectangles,med_ets,maskingdirpath,nthreads)
+            return self.__stack_images_with_masking(samp,rectangles,med_ets,maskingdirpath,max(nthreads,4))
 
     def add_sample_meanimage_from_files(self,sample) :
         """
