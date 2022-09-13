@@ -1,3 +1,4 @@
 [submodule "test/data"]
 	path = test/data
 	url = https://github.com/AstropathJHU/alignmentjenkinsdata.git
+	shallow = true
