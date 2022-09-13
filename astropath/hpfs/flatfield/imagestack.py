@@ -46,6 +46,7 @@ class ImageStack(ThingWithLogger) :
         maskingdirpath = the path to the directory holding all of the slide's image masking files 
                          (if None then masking will be skipped)
         nthreads       = the number of threads to use in reading image files and their masks to stack them
+                         (minimum 4 will be used)
         """
         self.__logger.info(f'Stacking {len(rectangles)} images')
         img_dims = rectangles[0].im3shape
