@@ -48,7 +48,7 @@ class AnnotationXMLReader(units.ThingWithPscale):
             raise ValueError("Found an ROIAnnotation within another ROIAnnotation, did not expect this")
           #don't use RectangleAnnotations if there are also ROIAnnotations
           if field.nestdepth != maxdepth:
-            self.__logger.warningglobal("There are manually added HPFs")
+            self.__logger.warningglobalonenter("There are manually added HPFs")
             if field.nestdepth < maxdepth:
               continue
             elif field.nestdepth > maxdepth:
