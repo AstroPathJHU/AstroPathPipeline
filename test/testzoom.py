@@ -112,6 +112,7 @@ class TestZoom(TestBaseSaveOutput):
     testfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"
     bigfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"
     testfolder.mkdir(exist_ok=True, parents=True)
+    bigfolder.mkdir(exist_ok=True, parents=True)
     for filename, corrupt in (
       ("L1_1-Z9-L1-wsi.png", False),
       ("L1_1-Z9-L2-wsi.png", True),
@@ -122,15 +123,15 @@ class TestZoom(TestBaseSaveOutput):
           newf.seek(-1, os.SEEK_END)
           newf.truncate()
 
-    X0Y0file = bigfolder/"{SlideID}-Z9-L1-X0-Y0-big.tiff"
-    X0Y1file = bigfolder/"{SlideID}-Z9-L1-X0-Y1-big.tiff"
+    X0Y0file = bigfolder/f"{SlideID}-Z9-L2-X0-Y0-big.tiff"
+    X0Y1file = bigfolder/f"{SlideID}-Z9-L2-X0-Y1-big.tiff"
     im = pyvips.Image.new_from_file(os.fspath(reffolder/f"{SlideID}-Z9-L2-wsi.png"))
     X0Y0 = im.crop(0, 0, 16384, 16384)
     X0Y0.tiffsave(os.fspath(X0Y0file))
     X0Y1 = im.crop(0, 16384, 16384, 16384)
     X0Y1.tiffsave(os.fspath(X0Y1file))
-    with open(X0Y1file, "r+") as f:
-      f.seek(-1)
+    with open(X0Y1file, "r+b") as f:
+      f.seek(-1, os.SEEK_END)
       f.truncate()
 
     logfile = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"logfiles"/f"{SlideID}-zoom.log"
