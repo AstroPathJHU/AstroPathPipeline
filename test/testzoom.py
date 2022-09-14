@@ -107,12 +107,10 @@ class TestZoom(TestBaseSaveOutput):
   def testzoomM206(self, **kwargs):
     self.testZoomWsi("M206", mode="memmap", tifflayers=[1], **kwargs)
 
-  def testExistingWSI(self, SlideID="L1_1", **kwargs):
+  def testExistingWSI(self, SlideID="L1_1", mode="vips", **kwargs):
     reffolder = thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"
     testfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"
-    bigfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"
     testfolder.mkdir(exist_ok=True, parents=True)
-    bigfolder.mkdir(exist_ok=True, parents=True)
     for filename, corrupt in (
       ("L1_1-Z9-L1-wsi.png", False),
       ("L1_1-Z9-L2-wsi.png", True),
@@ -123,16 +121,26 @@ class TestZoom(TestBaseSaveOutput):
           newf.seek(-1, os.SEEK_END)
           newf.truncate()
 
-    X0Y0file = bigfolder/f"{SlideID}-Z9-L2-X0-Y0-big.tiff"
-    X0Y1file = bigfolder/f"{SlideID}-Z9-L2-X0-Y1-big.tiff"
-    im = pyvips.Image.new_from_file(os.fspath(reffolder/f"{SlideID}-Z9-L2-wsi.png"))
-    X0Y0 = im.crop(0, 0, 16384, 16384)
-    X0Y0.tiffsave(os.fspath(X0Y0file))
-    X0Y1 = im.crop(0, 16384, 16384, 16384)
-    X0Y1.tiffsave(os.fspath(X0Y1file))
-    with open(X0Y1file, "r+b") as f:
-      f.seek(-1, os.SEEK_END)
-      f.truncate()
+    if mode == "vips":
+      bigreffolder = thisfolder/"data"/"reference"/"zoom"/SlideID/"big"
+      bigfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"
+      bigfolder.mkdir(exist_ok=True, parents=True)
+      X0Y0file = bigfolder/f"{SlideID}-Z9-L2-X0-Y0-big.tiff"
+      X0Y1file = bigfolder/f"{SlideID}-Z9-L2-X0-Y1-big.tiff"
+      bigreffile = bigreffolder/X0Y0file.name
+      for filename, corrupt in (
+        (X0Y0file, False),
+        (X0Y1file, True),
+      ):
+        with open(bigreffile, "rb") as f, open(filename, "wb") as newf:
+          shutil.copyfileobj(f, newf)
+          if corrupt:
+            newf.seek(-1, os.SEEK_END)
+            newf.truncate()
+    elif mode in ("fast", "memmap"):
+      pass
+    else:
+      assert False, mode
 
     logfile = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"logfiles"/f"{SlideID}-zoom.log"
     logfile.parent.mkdir(exist_ok=True, parents=True)
@@ -140,7 +148,7 @@ class TestZoom(TestBaseSaveOutput):
       now = datetime.datetime.now().strftime(MyLogger.dateformat)
       f.write(f"0;0;L1_1;START: zoom {astropathversion};{now}\n")
       f.write(f"0;0;L1_1;FINISH: zoom {astropathversion};{now}\n")
-    self.testZoomWsi(SlideID=SlideID, **kwargs)
+    self.testZoomWsi(SlideID=SlideID, mode=mode, **kwargs)
 
   def testExistingWSIFast(self, SlideID="L1_1", **kwargs):
     self.testExistingWSI(SlideID, mode="fast", **kwargs)
