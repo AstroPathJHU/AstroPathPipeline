@@ -106,12 +106,17 @@ class TestZoom(TestBaseSaveOutput):
   def testzoomM206(self, **kwargs):
     self.testZoomWsi("M206", mode="memmap", tifflayers=[1], **kwargs)
 
-  def testExistingWSI(self, SlideID="L1_1", **kwargs):
+  def testExistingWSI(self, SlideID="L1_1", corrupt=False, **kwargs):
     reffolder = thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"
     testfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"
     testfolder.mkdir(exist_ok=True, parents=True)
     for filename in "L1_1-Z9-L1-wsi.png",:
-      shutil.copy(reffolder/filename, testfolder)
+      with open(reffolder/filename, "rb") as f, open(testfolder/filename, "wb") as newf:
+        shutil.copyfileobj(f, newf)
+        if corrupt:
+          newf.seek(-1, os.SEEK_END)
+          newf.truncate()
+
     logfile = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"logfiles"/f"{SlideID}-zoom.log"
     logfile.parent.mkdir(exist_ok=True, parents=True)
     with open(logfile, "w", newline="\r\n") as f:
@@ -122,6 +127,12 @@ class TestZoom(TestBaseSaveOutput):
 
   def testExistingWSIFast(self, SlideID="L1_1", **kwargs):
     self.testExistingWSI(SlideID, mode="fast", **kwargs)
+
+  def testExistingWSICorrupt(self, **kwargs):
+    self.testExistingWSI(**kwargs, corrupt=True)
+
+  def testExistingWSICorruptFast(self, **kwargs):
+    self.testExistingWSIFast(**kwargs, corrupt=True)
 
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID

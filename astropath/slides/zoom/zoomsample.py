@@ -31,6 +31,11 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     self.__tifflayers = tifflayers
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
 
+  def __enter__(self):
+    result = super().__enter__()
+    self.enter_context(self.PILmaximagepixels())
+    return result
+
   @property
   def tifflayers(self): return self.__tifflayers
 
@@ -327,7 +332,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
           else:
             self.logger.info(f"  {self.bigfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
             filename = self.bigfilename(1, tile.tilex, tile.tiley)
-            with self.PILmaximagepixels(), PIL.Image.open(filename) as img:
+            with PIL.Image.open(filename) as img:
               img = np.asarray(img)
               meanintensitynumerator += np.sum(img[tilemask])
               meanintensitydenominator += np.count_nonzero(tilemask)

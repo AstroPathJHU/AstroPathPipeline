@@ -142,4 +142,10 @@ def check_image_integrity(filename, *, remove, error, logger=None):
 class TIFFIntegrityVerifier(integv._IntegrityVerifierBase):
   MIME = "image/tiff"
   def verify(self, file):
-    return True
+    try:
+      with PIL.Image.open(file) as im:
+        np.asarray(im)
+    except (IOError, OSError):
+      return False
+    else:
+      return True
