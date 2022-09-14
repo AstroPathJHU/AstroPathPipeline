@@ -120,6 +120,7 @@ setupkwargs = dict(
     "contextlib2>=0.6.0; python_version < '3.7'",
     "dataclassy>=0.10.0",
     "imagecodecs",
+    "integv",
     "jxmlease>=1.0.2dev1",
     "matplotlib>=3.3.2",
     "methodtools",
