@@ -1,5 +1,6 @@
 import datetime, gzip, job_lock, more_itertools, numpy as np, os, pathlib, PIL.Image, shutil, tifffile
 from astropath.shared.logging import MyLogger
+from astropath.utilities.optionalimports import pyvips
 from astropath.utilities.version import astropathversion
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
@@ -106,16 +107,31 @@ class TestZoom(TestBaseSaveOutput):
   def testzoomM206(self, **kwargs):
     self.testZoomWsi("M206", mode="memmap", tifflayers=[1], **kwargs)
 
-  def testExistingWSI(self, SlideID="L1_1", corrupt=False, **kwargs):
+  def testExistingWSI(self, SlideID="L1_1", **kwargs):
     reffolder = thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"
     testfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"
+    bigfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"
     testfolder.mkdir(exist_ok=True, parents=True)
-    for filename in "L1_1-Z9-L1-wsi.png",:
+    for filename, corrupt in (
+      ("L1_1-Z9-L1-wsi.png", False),
+      ("L1_1-Z9-L2-wsi.png", True),
+    ):
       with open(reffolder/filename, "rb") as f, open(testfolder/filename, "wb") as newf:
         shutil.copyfileobj(f, newf)
         if corrupt:
           newf.seek(-1, os.SEEK_END)
           newf.truncate()
+
+    X0Y0file = bigfolder/"{SlideID}-Z9-L1-X0-Y0-big.tiff"
+    X0Y1file = bigfolder/"{SlideID}-Z9-L1-X0-Y1-big.tiff"
+    im = pyvips.Image.new_from_file(os.fspath(reffolder/f"{SlideID}-Z9-L2-wsi.png"))
+    X0Y0 = im.crop(0, 0, 16384, 16384)
+    X0Y0.tiffsave(os.fspath(X0Y0file))
+    X0Y1 = im.crop(0, 16384, 16384, 16384)
+    X0Y1.tiffsave(os.fspath(X0Y1file))
+    with open(X0Y1file, "r+") as f:
+      f.seek(-1)
+      f.truncate()
 
     logfile = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"logfiles"/f"{SlideID}-zoom.log"
     logfile.parent.mkdir(exist_ok=True, parents=True)
@@ -127,12 +143,6 @@ class TestZoom(TestBaseSaveOutput):
 
   def testExistingWSIFast(self, SlideID="L1_1", **kwargs):
     self.testExistingWSI(SlideID, mode="fast", **kwargs)
-
-  def testExistingWSICorrupt(self, **kwargs):
-    self.testExistingWSI(**kwargs, corrupt=True)
-
-  def testExistingWSICorruptFast(self, **kwargs):
-    self.testExistingWSIFast(**kwargs, corrupt=True)
 
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID

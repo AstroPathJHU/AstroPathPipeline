@@ -21,7 +21,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   There are three modes:
     1. fast assembles the image in memory
     2. memmap assembles the image in a memmap in a temp directory
-    3. vips assembles each 16384x16384 tile in memory and uses
+    3. vips assembles each 16384x16384 tile in a file and uses
        libvips to merge them together into the wsi
   """
   rectangletype = FieldReadComponentTiffMultiLayer
