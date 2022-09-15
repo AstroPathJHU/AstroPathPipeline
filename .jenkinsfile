@@ -54,7 +54,7 @@ pipeline {
 	
         stage('run tests') {
           parallel {
-			stage('console scripts and documents') {
+			      stage('console scripts and documents') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmarkdownlinks'
@@ -259,12 +259,7 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
               }
             }
-			
-			//stage('vminform') {
-             // steps { 
-				//sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 
-            //  }
-            //}
+            */
 			
             stage('code checks') {
               steps {
