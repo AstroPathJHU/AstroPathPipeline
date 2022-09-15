@@ -1,4 +1,5 @@
 #imports
+import copy
 import numpy as np
 from threading import Thread
 from queue import Queue
@@ -45,6 +46,7 @@ class ImageStack(ThingWithLogger) :
         maskingdirpath = the path to the directory holding all of the slide's image masking files 
                          (if None then masking will be skipped)
         nthreads       = the number of threads to use in reading image files and their masks to stack them
+                         (minimum 4 will be used)
         """
         self.__logger.info(f'Stacking {len(rectangles)} images')
         img_dims = rectangles[0].im3shape
@@ -61,7 +63,7 @@ class ImageStack(ThingWithLogger) :
             return self.__stack_images_no_masking(rectangles,med_ets,nthreads)
         else :
             self.__logger.info('Images WILL be masked before stacking')
-            return self.__stack_images_with_masking(samp,rectangles,med_ets,maskingdirpath,nthreads)
+            return self.__stack_images_with_masking(samp,rectangles,med_ets,maskingdirpath,max(nthreads,4))
 
     def add_sample_meanimage_from_files(self,sample) :
         """
@@ -165,12 +167,12 @@ class ImageStack(ThingWithLogger) :
             self.__image_squared_stack+=image_queue_item[1]
             n_images_read+=1
             if len(image_queue_item)==3 :
-                field_logs.append(image_queue_item[2])
+                field_logs.append(copy.copy(image_queue_item[2]))
                 n_images_stacked_by_layer+=1
             elif len(image_queue_item)==5 :
                 self.__mask_stack+=image_queue_item[2]
                 n_images_stacked_by_layer+=image_queue_item[3]
-                field_logs.append(image_queue_item[4])
+                field_logs.append(copy.copy(image_queue_item[4]))
             image_queue_item = image_queue.get()
         return_queue.put((n_images_read,n_images_stacked_by_layer,field_logs))
 
@@ -178,7 +180,7 @@ class ImageStack(ThingWithLogger) :
         """
         Simply add all the images to the image_stack and image_squared_stack without masking them
         """
-        image_queue = Queue()
+        image_queue = Queue(n_threads)
         return_queue = Queue()
         nq_threads = []
         acc_thread = Thread(target=self.__accumulate_from_stacking_queue,args=(image_queue,return_queue))
@@ -232,7 +234,7 @@ class ImageStack(ThingWithLogger) :
                     rectangles_to_stack.remove(r)
         #for every image that will be stacked, read its masking file, normalize and mask its image, 
         #and add the masked image/mask to the respective stacks
-        image_queue = Queue()
+        image_queue = Queue(n_threads)
         return_queue = Queue()
         nq_threads = []
         acc_thread = Thread(target=self.__accumulate_from_stacking_queue,args=(image_queue,return_queue))

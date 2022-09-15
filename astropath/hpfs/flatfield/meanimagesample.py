@@ -477,7 +477,7 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
         #start up the meanimage
-        self.__meanimage = MeanImage(self.rectangles[0].im3shape,self.logger)
+        self.__meanimage = MeanImage((self.fheight,self.fwidth,self.nlayersim3),self.logger)
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
@@ -491,7 +491,7 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         if not self.skip_masking :
             self.create_or_find_image_masks()
         #make the mean image from all of the tissue bulk rectangles
-        n_threads = 2*self.njobs if self.njobs is not None else 4
+        n_threads = self.njobs if self.njobs is not None else 4
         new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,self.med_ets,
                                                                  self.image_masking_dirpath,n_threads)
         for fl in new_field_logs :
