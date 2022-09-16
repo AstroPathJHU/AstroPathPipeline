@@ -127,7 +127,7 @@ setupkwargs = dict(
     "more_itertools>=8.3.0",
     "networkx",
     "numba",
-    "numpy>=1.17.0",
+    "numpy>=1.23.0",
     "opencv-python",
     "openpyxl",
     "pathos>=0.2.8",
