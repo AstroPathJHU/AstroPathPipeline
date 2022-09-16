@@ -134,7 +134,7 @@ setupkwargs = dict(
     "psutil;sys_platform!='cygwin'", #please note astropath is NOT been tested on cygwin
     "rdp",
     "seaborn",
-    "scikit-image>=0.17",
+    "scikit-image>=0.18",
     "scikit-learn>=0.17",
     "scipy>=0.12",
     "setuptools-scm",
@@ -143,7 +143,7 @@ setupkwargs = dict(
     "uncertainties",
   ],
   extras_require = {
-    "deepcell": ["deepcell>=0.11.0"],
+    "deepcell": ["deepcell>=0.12.0"],
     "gdal": ["gdal>=3.3.0"],
     "gpu": ["pyopencl", "reikna"],
     "nnunet": ["nnunet>=1.6.0"],
@@ -159,8 +159,7 @@ setupkwargs = dict(
       "texoutparse",
       #packages that are standard dependencies, but
       #a specific version is needed for reference comparison
-      "deepcell==0.11.0",
-      "scikit-image>=0.17,<0.18", #see test/testmisc.py - we want polygon.numpyarray to return reproducible results, and skimage.draw.polygon's behavior changes between 0.17 and 0.18.
+      "deepcell==0.12.3",
     ],
     "vips": ["pyvips"],
   },

@@ -1,4 +1,4 @@
-import collections, cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib, skimage
+import collections, cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib
 from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, checkannotations, writeannotationcsvs, writeannotationinfo
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
@@ -108,8 +108,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testPolygonNumpyArray(self):
     logger = printlogger("polygonnumpy")
-    fraction = ".9999" if skimage.__version__ >= "0.18" else ".0001"
-    polystring = f"POLYGON((1.0001 1.0001, 1.0001 8{fraction}, 8{fraction} 8{fraction}, 8{fraction} 1.0001, 1.0001 1.0001), (4.0001 5{fraction}, 7{fraction} 5{fraction}, 7{fraction} 4.0001, 4.0001 4.0001))"
+    polystring = f"POLYGON((1.0001 1.0001, 1.0001 8.9999, 8.9999 8.9999, 8.9999 1.0001, 1.0001 1.0001), (4.0001 5.9999, 7.9999 5.9999, 7.9999 4.0001, 4.0001 4.0001))"
     poly = PolygonFromGdal(pixels=polystring, pscale=1, annoscale=3)
     nparray = poly.numpyarray(shape=(10, 10), dtype=np.uint8)
     #doesn't work for arbitrary polygons unless you increase the tolerance, but works for a polygon with right angles
