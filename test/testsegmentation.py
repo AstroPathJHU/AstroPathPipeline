@@ -10,7 +10,7 @@ folder = pathlib.Path(__file__).parent
 slide_ID = 'M21_1'
 rectangle_ns_with_comp_tiff_files_nnunet = [18,23,40]
 rectangle_ns_with_comp_tiff_files_deepcell = [1,17,18,23,40]
-rectangle_ns_with_comp_tiff_files_mesmer = [1,17,18,23,40]
+rectangle_ns_with_comp_tiff_files_mesmer = [1,17,18,40]
 
 class TestSegmentationBase(TestBaseCopyInput, TestBaseSaveOutput) :
     """
@@ -170,10 +170,12 @@ class TestSegmentationMesmerWithIHC(TestSegmentationBase) :
             #compare the results to the reference files
             outputdir = folder/'test_for_jenkins'/'segmentation'/'root'/slide_ID/'im3'/'segmentation'/'mesmer'
             for fp in (folder/'data'/'reference'/'segmentation'/slide_ID/'im3'/'segmentation'/'mesmer').glob('*') :
-                refa = (np.load(fp))['arr_0']
-                testa = (np.load(outputdir/fp.name))['arr_0']
-                np.testing.assert_allclose(testa,refa)
-            print('TEST 3')
+                try:
+                    refa = (np.load(fp))['arr_0']
+                    testa = (np.load(outputdir/fp.name))['arr_0']
+                    np.testing.assert_allclose(testa,refa)
+                except:
+                    raise AssertionError(f'Error in {fp.name}')
         except :
             self.saveoutput()
             raise
