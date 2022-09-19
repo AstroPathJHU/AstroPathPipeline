@@ -258,7 +258,6 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
               }
             }
-            */
 			
             stage('code checks') {
               steps {
