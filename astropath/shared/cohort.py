@@ -936,7 +936,7 @@ def runstatusfilter(*, runstatus, dependencyrunstatuses, skip_finished, dependen
     if not runstatus:
       return FilterResult(True, "sample did not already run", cleanup=cleanup)
     else:
-      return FilterResult(False, "sample already ran in {runstatus.ended - runstatus.started}")
+      return FilterResult(False, f"sample already ran in {runstatus.ended - runstatus.started}")
 
   elif dependencies and not skip_finished:
     for dependencyrunstatus in dependencyrunstatuses:

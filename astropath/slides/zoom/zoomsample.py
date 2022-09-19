@@ -3,7 +3,7 @@ import contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertoo
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing_ok
-from ...utilities.miscimage import vips_format_dtype, vips_sinh
+from ...utilities.miscimage import check_image_integrity, vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
 from ...utilities.optionalimports import pyvips
 from ..align.field import FieldReadComponentTiffMultiLayer
@@ -21,7 +21,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   There are three modes:
     1. fast assembles the image in memory
     2. memmap assembles the image in a memmap in a temp directory
-    3. vips assembles each 16384x16384 tile in memory and uses
+    3. vips assembles each 16384x16384 tile in a file and uses
        libvips to merge them together into the wsi
   """
   rectangletype = FieldReadComponentTiffMultiLayer
@@ -30,6 +30,11 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   def __init__(self, *args, layers=None, tifflayers="color", **kwargs):
     self.__tifflayers = tifflayers
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
+
+  def __enter__(self):
+    result = super().__enter__()
+    self.enter_context(self.PILmaximagepixels())
+    return result
 
   @property
   def tifflayers(self): return self.__tifflayers
@@ -148,13 +153,14 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         slc = bigimage[:, :, i]
         with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
           assert lock
-          if filename.exists():
+          if check_image_integrity(filename, remove=True, error=False, logger=self.logger):
             self.logger.info(f"{filename.name} already exists")
           else:
             self.logger.info(f"saving {filename.name}")
             image = PIL.Image.fromarray(slc)
             try:
               image.save(filename, "PNG")
+              check_image_integrity(filename, remove=True, error=True, logger=self.logger)
             except:
               rm_missing_ok(filename)
               raise
@@ -189,7 +195,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     filename = self.wsitifffilename(self.tifflayers)
     with job_lock.JobLock(filename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
       assert lock
-      if filename.exists():
+      if check_image_integrity(filename, remove=True, error=False, logger=self.logger):
         self.logger.info(f"{filename.name} already exists")
         return
 
@@ -222,6 +228,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         self.logger.info("  saving")
         try:
           img.tiffsave(os.fspath(filename), page_height=layers[0].height)
+          check_image_integrity(filename, remove=True, error=True, logger=self.logger)
         except:
           rm_missing_ok(filename)
           raise
@@ -233,6 +240,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         self.logger.info("  saving")
         try:
           tiffoutput.tiffsave(os.fspath(filename), page_height=layers[0].height)
+          check_image_integrity(filename, remove=True, error=True, logger=self.logger)
         except:
           rm_missing_ok(filename)
           raise
@@ -242,7 +250,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     Run zoom by saving one big tile at a time
     (afterwards you can call wsi_vips to save the wsi)
     """
-    if all(self.wsifilename(l).exists() for l in self.layerscomponenttiff): return None
+    if all(check_image_integrity(self.wsifilename(l), remove=True, error=False, logger=self.logger) for l in self.layerscomponenttiff): return None
     onepixel = self.onepixel
     buffer = -(-self.rectangles[0].shape // onepixel).astype(int) * onepixel
     nrectangles = len(self.rectangles)
@@ -315,16 +323,16 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
           ]
 
           for layer in self.layerscomponenttiff:
-            if self.wsifilename(layer).exists() and layer != 1: continue
+            if check_image_integrity(self.wsifilename(layer), remove=True, error=False, logger=self.logger) and layer != 1: continue
             filename = self.bigfilename(layer, tile.tilex, tile.tiley)
             with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
               assert lock
-              if not filename.exists():
+              if not check_image_integrity(filename, remove=True, error=False, logger=self.logger):
                 break
           else:
             self.logger.info(f"  {self.bigfilename('*', tile.tilex, tile.tiley)} have already been zoomed")
             filename = self.bigfilename(1, tile.tilex, tile.tiley)
-            with self.PILmaximagepixels(), PIL.Image.open(filename) as img:
+            with PIL.Image.open(filename) as img:
               img = np.asarray(img)
               meanintensitynumerator += np.sum(img[tilemask])
               meanintensitydenominator += np.count_nonzero(tilemask)
@@ -442,10 +450,10 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
           filename = self.bigfilename(layer, tile.tilex, tile.tiley)
           with job_lock.JobLock(filename.with_suffix(".lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[filename], checkoutputfiles=False) as lock:
             assert lock
-            if wsifilename.exists():
+            if check_image_integrity(wsifilename, remove=True, error=False, logger=self.logger):
               self.logger.info(f"  {wsifilename.name} was already created")
               continue
-            if filename.exists():
+            if check_image_integrity(filename, remove=True, error=False, logger=self.logger):
               self.logger.info(f"  {filename.name} was already created")
               continue
             self.logger.info(f"  saving {filename.name}")
@@ -454,6 +462,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
               assert lock
               try:
                 image.save(filename, "TIFF")
+                check_image_integrity(filename, remove=True, error=True, logger=self.logger)
               except:
                 rm_missing_ok(filename)
                 raise
@@ -471,7 +480,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
       wsifilename = self.wsifilename(layer)
       with job_lock.JobLock(wsifilename.with_suffix(".png.lock"), corruptfiletimeout=datetime.timedelta(minutes=10), outputfiles=[wsifilename], checkoutputfiles=False) as lock:
         assert lock
-        if wsifilename.exists():
+        if check_image_integrity(wsifilename, remove=True, error=False, logger=self.logger):
           self.logger.info(f"{wsifilename.name} already exists")
           if layer in self.needtifflayers:
             output = pyvips.Image.new_from_file(os.fspath(wsifilename))
@@ -483,7 +492,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         blank = None
         for tiley, tilex in itertools.product(range(self.ntiles[1]), range(self.ntiles[0])):
           bigfilename = self.bigfilename(layer, tilex, tiley)
-          if bigfilename.exists():
+          if check_image_integrity(bigfilename, remove=True, error=False, logger=self.logger):
             images.append(pyvips.Image.new_from_file(os.fspath(bigfilename)).linear(scaleby, 0).cast(vips_format_dtype(np.uint8)))
             removefilenames.append(bigfilename)
           else:
@@ -495,6 +504,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
         output = pyvips.Image.arrayjoin(images, across=self.ntiles[0])
         try:
           output.pngsave(os.fspath(wsifilename))
+          check_image_integrity(wsifilename, remove=True, error=True, logger=self.logger)
         except:
           rm_missing_ok(wsifilename)
           raise

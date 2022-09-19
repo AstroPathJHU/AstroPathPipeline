@@ -1,4 +1,4 @@
-import collections, contextlib, numpy as np, PIL.Image
+import collections, contextlib, integv, numpy as np, PIL.Image
 from .optionalimports import pyvips
 
 class PILmaximagepixels(contextlib.AbstractContextManager):
@@ -106,3 +106,46 @@ def vips_sinh(image, *, allowfallback=True):
   exp = image.exp()
   minusexp = 1/exp
   return (exp - minusexp) / 2
+
+def check_image_integrity(filename, *, remove, error, logger=None):
+  """
+  Checks whether the image file is valid and returns True if it is
+  or False if it's not.
+
+    error: raises an error if the file is not valid instead of returning False
+    remove: also removes the image file if not valid
+    logger: logger to print a warning message if remove=True and error=False
+  """
+
+  if not filename.exists(): return False
+
+  if remove and not error and logger is None:
+    raise TypeError("For check_image_integrity(remove=True, error=False), have to provide a logger")
+
+  if integv.verify(filename, file_type=filename.suffix):
+    return True
+  else:
+    message = f"{filename} is corrupt"
+    if remove:
+      message += ", removing it"
+
+    if error:
+      raise IOError(message)
+    elif logger is not None:
+      logger.warning(message)
+
+    if remove:
+      filename.unlink()
+
+    return False
+
+class TIFFIntegrityVerifier(integv._IntegrityVerifierBase):
+  MIME = "image/tiff"
+  def verify(self, file):
+    try:
+      with PIL.Image.open(file) as im:
+        np.asarray(im)
+    except (IOError, OSError):
+      return False
+    else:
+      return True

@@ -106,19 +106,48 @@ class TestZoom(TestBaseSaveOutput):
   def testzoomM206(self, **kwargs):
     self.testZoomWsi("M206", mode="memmap", tifflayers=[1], **kwargs)
 
-  def testExistingWSI(self, SlideID="L1_1", **kwargs):
+  def testExistingWSI(self, SlideID="L1_1", mode="vips", **kwargs):
     reffolder = thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"
     testfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"
     testfolder.mkdir(exist_ok=True, parents=True)
-    for filename in "L1_1-Z9-L1-wsi.png",:
-      shutil.copy(reffolder/filename, testfolder)
+    for filename, corrupt in (
+      ("L1_1-Z9-L1-wsi.png", False),
+      ("L1_1-Z9-L2-wsi.png", True),
+    ):
+      with open(reffolder/filename, "rb") as f, open(testfolder/filename, "wb") as newf:
+        shutil.copyfileobj(f, newf)
+        if corrupt:
+          newf.seek(-1, os.SEEK_END)
+          newf.truncate()
+
+    if mode == "vips":
+      bigreffolder = thisfolder/"data"/"reference"/"zoom"/SlideID/"big"
+      bigfolder = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"big"
+      bigfolder.mkdir(exist_ok=True, parents=True)
+      X0Y0file = bigfolder/f"{SlideID}-Z9-L2-X0-Y0-big.tiff"
+      X0Y1file = bigfolder/f"{SlideID}-Z9-L2-X0-Y1-big.tiff"
+      bigreffile = bigreffolder/X0Y0file.name
+      for filename, corrupt in (
+        (X0Y0file, False),
+        (X0Y1file, True),
+      ):
+        with open(bigreffile, "rb") as f, open(filename, "wb") as newf:
+          shutil.copyfileobj(f, newf)
+          if corrupt:
+            newf.seek(-1, os.SEEK_END)
+            newf.truncate()
+    elif mode in ("fast", "memmap"):
+      pass
+    else:
+      assert False, mode
+
     logfile = thisfolder/"test_for_jenkins"/"zoom"/SlideID/"logfiles"/f"{SlideID}-zoom.log"
     logfile.parent.mkdir(exist_ok=True, parents=True)
     with open(logfile, "w", newline="\r\n") as f:
       now = datetime.datetime.now().strftime(MyLogger.dateformat)
       f.write(f"0;0;L1_1;START: zoom {astropathversion};{now}\n")
       f.write(f"0;0;L1_1;FINISH: zoom {astropathversion};{now}\n")
-    self.testZoomWsi(SlideID=SlideID, **kwargs)
+    self.testZoomWsi(SlideID=SlideID, mode=mode, **kwargs)
 
   def testExistingWSIFast(self, SlideID="L1_1", **kwargs):
     self.testExistingWSI(SlideID, mode="fast", **kwargs)
