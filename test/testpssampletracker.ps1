@@ -35,19 +35,20 @@ using module .\testtools.psm1
         Write-Host 'preparing sampletracker & dir started'
         Write-Host '    sample def slide'
         $sampletracker.sampledefslide($this.slideid)
-        <#
+        #
         Write-Host '    cleanup'
         $sampletracker.teststatus = $true
+        $this.resetvminform($sampletracker)
         $this.savephenotypedata($sampletracker)
         $this.cleanup($sampletracker)
-        #>
+        #
         $sampletracker.getmodulelogs()
         #
         Write-Host '    module status'
         $sampletracker.defmodulestatus()
-        $this.showtable($sampletracker.moduleinfo.transfer)
+        #$this.showtable($sampletracker.moduleinfo.scan)
         Write-Host 'preparing sampletracker & dir finished'
-        <#
+        #
         $this.teststatus($sampletracker)
         $this.testupdate($sampletracker, 'transfer', 'shredxml')
         $this.testupdate($sampletracker, 'shredxml', 'meanimage')
@@ -59,20 +60,20 @@ using module .\testtools.psm1
         $this.testupdate($sampletracker, 'batchwarpkeys', 'batchwarpfits')
         $this.testupdate($sampletracker, 'batchwarpfits', 'imagecorrection')
         $this.testupdate($sampletracker, 'imagecorrection', 'vminform')
-        #>
+        #
         $this.testupdate($sampletracker, 'vminform', 'merge')
         $this.testupdate($sampletracker, 'merge', 'imageqa')
         $this.testupdate($sampletracker, 'imageqa', 'segmaps')
         $this.testupdate($sampletracker, 'segmaps', 'dbload')
-        <#
+        #
         $this.cleanup($sampletracker)
         $this.testcorrectionfile($sampletracker, $true)
         $this.returnphenotypedata($sampletracker)
         #
         $this.testgitstatus($sampletracker)  
-        #>
-        Write-Host '.'
         #
+        Write-Host '.'
+        #>
     }
     #
     [void]testsampletrackerconstructors(){
@@ -412,13 +413,8 @@ using module .\testtools.psm1
         #
         Write-Host '.'
         Write-Host 'clearing logs started'
-        $sampletracker.removefile($this.mpath + '\across_project_queues\vminform-queue.csv')
-        $sampletracker.copy(($this.mpath + '\vminform-queue.csv'),
-         ($this.mpath + '\across_project_queues'))
-        $sampletracker.removefile(
-            $sampletracker.vmq.localqueuefile.($this.project))
-        
-            $sampletracker.removefile($sampletracker.mainlogbase('transfer'))
+        $this.resetvminform($sampletracker)
+        $sampletracker.removefile($sampletracker.mainlogbase('transfer'))
         $log = logger -mpath $this.mpath -module 'transfer' -slideid $sampletracker.slideid
         #
         $this.setstart($sampletracker, $log, 'transfer')

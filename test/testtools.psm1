@@ -1,12 +1,3 @@
-<# -------------------------------------------
-testtools
-Benjamin Green
-Last Edit: 01.18.2022
---------------------------------------------
-Description
-test tools
--------------------------------------------#>
-#
 Class testtools{
     #
     [string]$mpath = "$PSScriptRoot\data\astropath_processing"
@@ -862,10 +853,12 @@ Class testtools{
     }
     [void]resetvminform($sample){
         $sample.removefile($this.mpath + '\across_project_queues\vminform-queue.csv')
-        $sample.copy(($this.mpath + '\vminform-queue.csv'),
+        $sample.copy(($this.mpath + '\vminform-queue-Tplate.csv'),
          ($this.mpath + '\across_project_queues'))
         $sample.removefile(
             $sample.vmq.localqueuefile.($this.project))
+        $sample.renamefile(($this.mpath + $sample.vmq.mainqueue_path),
+         'vminform-queue-Tplate.csv', 'vminform-queue.csv' )
     }
     #
     [void]showtable($table){
@@ -1245,4 +1238,15 @@ Class testtools{
     }
     #
 }
-#
+
+<# 
+.SYNOPSIS
+
+class for method tools used in various tests for the 
+powershell AstroPath workflow.
+
+.DESCRIPTION
+Benjamin Green
+Last Edit: 01.18.2022
+
+#>

@@ -38,8 +38,10 @@ using module .\testtools.psm1
         write-host '.'
         write-host 'get sample stages for test pipeline started'
         $sampledb.buildsampledb()
+        #
         $this.checkrowstatus($sampledb, 'transfer', 'FINISHED')
         $sampledb.preparesample($this.slideid)
+        #
         $this.savephenotypedata($sampledb)
         $this.removesetupvminform($sampledb)
         #

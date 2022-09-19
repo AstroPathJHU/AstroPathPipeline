@@ -48,7 +48,6 @@ pipeline {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpkeys.ps1'
           }
         }
 	
@@ -86,10 +85,10 @@ pipeline {
                 }
               }
             }
-/*
+
             stage('workflow') {
               steps {
-                //sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsworkflow.ps1' 	 	
               }
             }
@@ -119,17 +118,17 @@ pipeline {
 			
             stage('zoom') {
               stages {
-			    stage('test zoom') {
-				  steps {
+                stage('test zoom') {
+                  steps {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
                   }
-				}
-				stage('test segmaps') {
-			      steps {
+                }
+              stage('test segmaps') {
+                  steps {
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
                   }
-				}
-			  }
+                }
+              }
             }
 			
             stage('annowarp') {

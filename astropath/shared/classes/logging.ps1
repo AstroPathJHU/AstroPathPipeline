@@ -38,6 +38,7 @@ class mylogger : samplereqs {
     [string]$messageappend = ''
     [string]$vers
     [hashtable]$val
+    [string]$currentlogID
     #
     # constructors
     #
@@ -47,11 +48,13 @@ class mylogger : samplereqs {
     #
     mylogger($mpath, $module, $slideid) : base($mpath, $module, $slideid){
         $this.getlogger()
+        $this.currentlogID = $this.slideid
     }
     #
     mylogger($mpath, $module, $batchid, $project) : base($mpath, $module, $batchid, $project){
         $this.level = 4
         $this.getlogger()
+        $this.currentlogID = $this.batchid
     }
     #
     getlogger(){
@@ -76,7 +79,7 @@ class mylogger : samplereqs {
     ){
         $mydate = $this.getformatdate()
         $this.message = $this.message -replace ';', '-'
-        $msg = @($this.Project, $this.Cohort, $this.slideid, `
+        $msg = @($this.Project, $this.Cohort, $this.currentlogID, `
             ($this.message+$this.messageappend), $mydate) -join ';'
         return  $msg
     }     
