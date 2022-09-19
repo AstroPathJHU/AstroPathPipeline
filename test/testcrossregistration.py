@@ -69,7 +69,7 @@ class TestCrossRegistration(TestBaseCopyInput, TestBaseSaveOutput):
             rows = s.readtable(filename, rowclass, checkorder=True, checknewlines=True)
             targetrows = s.readtable(reffilename, rowclass, checkorder=True, checknewlines=True)
             for row, target in more_itertools.zip_equal(rows, targetrows):
-              assertAlmostEqual(row, target, rtol=1e-5)
+              assertAlmostEqual(row, target, rtol=1e-4)
           except:
             raise ValueError(f"Error in {csv}")
     except:
