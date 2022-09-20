@@ -63,6 +63,7 @@
     [switch]testscanfiles(){
         #
         if ([System.IO.Directory]::Exists($this.basepath)){
+            Write-Host 'TRUE 1'
             return $true
         }
         #
@@ -73,11 +74,13 @@
                 if (
                     $this.checkforcontents($scan.fullname, 'annotations.xml', 'Acquired')
                 ){
+                    Write-Host 'TRUE 2'
                     return $true
                 }
             }
         }
         #
+        Write-Host 'FALSE 1'
         return $false 
         #
     }
