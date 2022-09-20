@@ -32,12 +32,12 @@ pipeline {
 		    stage('pip install') {
           steps {
             sh 'pip install .[all]'
-            sh 'git fetch --tags'
           }
         }
 		        
         stage('ps module install') {
           steps {
+            sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   

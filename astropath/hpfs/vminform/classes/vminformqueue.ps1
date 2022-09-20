@@ -93,7 +93,9 @@ class vminformqueue : modulequeue {
         } else {
             $this.getlocalqueue($cproject, $false)
         }
-        $localtmp =  $this.getstoredtable($this.localqueue.($cproject))
+        if ($this.localqueue.($cproject)){
+            $localtmp =  $this.getstoredtable($this.localqueue.($cproject))
+        }
         $this.pairqueues($cproject)
         #
         if ($localtmp){
