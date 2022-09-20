@@ -32,6 +32,7 @@ pipeline {
 		    stage('pip install') {
           steps {
             sh 'pip install .[all]'
+            sh 'git fetch --tags'
           }
         }
 		        
