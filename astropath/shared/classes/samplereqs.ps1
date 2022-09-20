@@ -62,7 +62,7 @@
     #
     [switch]testscanfiles(){
         #
-        if (test-path $this.basepath){
+        if ([System.IO.Directory]::Exists($this.basepath)){
             write-host $this.basepath
         } else {
             write-host 'nope'
