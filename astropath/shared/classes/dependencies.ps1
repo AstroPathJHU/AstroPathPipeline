@@ -489,6 +489,8 @@
         #
         if ($previousstep -match 'vminform'){
             #
+            if (!$this.antibodies){return $true}
+            #
             foreach ($abx in $this.antibodies){
                 #
                 if ($this.moduleinfo.vminform.($abx).status -ne $this.status.finish){
