@@ -12,16 +12,16 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"writeannotationinfo",
       thisfolder/"test_for_jenkins"/"writeannotationinfo"/"emptyannotation",
     ):
-      yield root/"M206"/"dbload"/"M206_annotationinfo.csv",
+      yield root/"M206"/"dbload"/"M206_annotationinfo.csv"
 
-      yield root/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.annotationinfo.csv",
-      yield root/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons_2.annotationinfo.csv",
+      yield root/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.annotationinfo.csv"
+      yield root/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons_2.annotationinfo.csv"
 
-      yield root/"logfiles"/"copyannotationinfo.log",
-      yield root/"logfiles"/"writeannotationinfo.log",
+      yield root/"logfiles"/"copyannotationinfo.log"
+      yield root/"logfiles"/"writeannotationinfo.log"
 
-      yield root/"M206"/"logfiles"/"M206-copyannotationinfo.log",
-      yield root/"M206"/"logfiles"/"M206-writeannotationinfo.log",
+      yield root/"M206"/"logfiles"/"M206-copyannotationinfo.log"
+      yield root/"M206"/"logfiles"/"M206-writeannotationinfo.log"
   @classmethod
   def filestocopy(cls):
     sourceroot = thisfolder/"data"
