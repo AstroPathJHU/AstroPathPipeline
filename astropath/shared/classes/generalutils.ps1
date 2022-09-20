@@ -225,10 +225,14 @@
     #
     [PSCustomObject]getstoredtable($table){
         #
-        return (
-            $table | 
-            Select-Object -Property ($this.gettablenames($table))
-        )
+        if ($table){
+            return (
+                $table | 
+                Select-Object -Property ($this.gettablenames($table))
+            )
+        else {
+            return @()
+        }
         #
     }
     #
