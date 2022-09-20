@@ -266,7 +266,7 @@ class copyutils{
     [system.object]listfiles([string]$sor, [array]$filespec){
         #
         if ($this.isWindows()) {
-            if (!([System.IO.Directory]::Exists($sor))){
+            if (!($this.testpathi($sor))){
                 return @()
             }
             if ($filespec -match '\*'){
@@ -318,7 +318,7 @@ class copyutils{
     #
     [system.object]fastlistfiles([string]$sor, [array]$filespec){
         #
-        if (!([System.IO.Directory]::Exists($sor))){
+        if (!($this.testpathi($sor))){
             return @()
         }
         #
@@ -342,7 +342,7 @@ class copyutils{
     [int]countfiles([string]$sor, [array]$filespec){
         #
         $cnt = 0
-        if (!([System.IO.Directory]::Exists($sor))){
+        if (!($this.testpathi($sor))){
             return $cnt
         }
         $filespec | foreach-object {
@@ -411,6 +411,18 @@ class copyutils{
         #
         $this.createdirs($path)
         #
+    }
+    <# -----------------------------------------
+    testpathi 
+    test a path and return a logical. platform 
+    depedent.
+    ----------------------------------------- #> 
+    [switch]testpathi($path){
+        if (!$this.isWindows()){
+            return (test-path $path)
+        } else {
+            return ([System.IO.Directory]::Exists($path))
+        }
     }
     <# -----------------------------------------
      verifyChecksum

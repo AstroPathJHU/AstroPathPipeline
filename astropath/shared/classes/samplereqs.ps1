@@ -52,7 +52,7 @@
         #
         $scans = $this.spathscans()
         #
-        if ($scans -or ([System.IO.Directory]::Exists($this.basepath))){
+        if ($scans -or ($this.testpathi($this.basepath))){
             return $true
         }
         #
@@ -62,13 +62,7 @@
     #
     [switch]testscanfiles(){
         #
-        if ([System.IO.Directory]::Exists($this.uncpaths($this.basepath))){
-            write-host $this.basepath
-        } else {
-            write-host 'nope'
-        }
-        #
-        if ([System.IO.Directory]::Exists($this.basepath)){
+        if ($this.testpathi($this.basepath)){
             Write-Host 'TRUE 1'
             return $true
         }
@@ -93,7 +87,7 @@
     #
     [switch]testscanvalidationfiles(){
         #
-        if ([System.IO.Directory]::Exists($this.basepath)){
+        if ($this.testpathi($this.basepath)){
             return $true
         }
         #
@@ -133,7 +127,7 @@
     }
     #
     [void]testim3mainfolder(){
-        if (!([System.IO.Directory]::Exists($this.im3mainfolder()))){
+        if (!($this.testpathi($this.im3mainfolder()))){
             Throw "im3 folder not found for:" + $this.im3mainfolder()
         }
     }
@@ -394,7 +388,7 @@
     -------------------------------------------- #>
     [switch]testfiles($path, [array]$testfiles){
         #
-        if (!([System.IO.Directory]::Exists($path))){
+        if (!($this.testpathi($path))){
             return $false
         }
         #
@@ -411,7 +405,7 @@
     #
     [switch]testfiles($path, $source, [array]$testfiles){
         #
-        if (!([System.IO.Directory]::Exists($path))){
+        if (!($this.testpathi($path))){
             return $false
         }
         #
