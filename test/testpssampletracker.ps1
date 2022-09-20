@@ -46,9 +46,7 @@ using module .\testtools.psm1
         #
         Write-Host '    module status'
         $sampletracker.defmodulestatus()
-        $this.showtable($sampletracker.moduleinfo.scan)
         Write-Host 'preparing sampletracker & dir finished'
-        throw 'stop'
         #
         $this.teststatus($sampletracker)
         $this.testupdate($sampletracker, 'transfer', 'shredxml')
