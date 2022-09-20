@@ -50,7 +50,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolder, f"{SlideID}_Scan1.annotations.polygons_2.xml"
 
       yield oldscanfolder/f"{SlideID}_Scan1.qptiff", newscanfolderempty
-      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolderempty, None, r"(Tumor.*<Regions>).*(</Regions>)", r"\1\2"
+      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolderempty, None, r"Tumor(.*<Regions>).*(</Regions>)", r"Tumour\1\2"
 
   @classmethod
   def setUpClass(cls):
@@ -64,21 +64,19 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
   @property
   def outputfilenames(self):
-    return [
-      thisfolder/"test_for_jenkins"/"annowarp"/"logfiles"/"annowarp.log",
-    ] + sum(([
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annotations.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_regions.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"dbload"/f"{SlideID}_vertices.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_annotations.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_annowarp.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_regions.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"/SlideID/"dbload"/f"{SlideID}_vertices.csv",
-      thisfolder/"test_for_jenkins"/"annowarp"/SlideID/"logfiles"/f"{SlideID}-annowarp.log",
-    ] for SlideID in ("M206",)), [])
+    for root in (
+      thisfolder/"test_for_jenkins"/"annowarp",
+      thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation",
+      thisfolder/"test_for_jenkins"/"annowarp"/"emptyannotation",
+    ):
+      yield root/"logfiles"/"annowarp.log"
+      for SlideID in "M206",:
+        yield root/SlideID/"dbload"/f"{SlideID}_annotations.csv"
+        yield root/SlideID/"dbload"/f"{SlideID}_annowarp.csv"
+        yield root/SlideID/"dbload"/f"{SlideID}_annowarp-stitch.csv"
+        yield root/SlideID/"dbload"/f"{SlideID}_regions.csv"
+        yield root/SlideID/"dbload"/f"{SlideID}_vertices.csv"
+        yield root/SlideID/"logfiles"/f"{SlideID}-annowarp.log"
 
   def compareoutput(self, SlideID, reffolder=None, dbloadroot=None, im3root=None, alignment=True):
     root = thisfolder/"data"

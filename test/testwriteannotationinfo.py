@@ -8,18 +8,20 @@ thisfolder = pathlib.Path(__file__).parent
 class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
-    return [
-      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"dbload"/"M206_annotationinfo.csv",
+    for root in (
+      thisfolder/"test_for_jenkins"/"writeannotationinfo",
+      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"emptyannotation",
+    ):
+      yield root/"M206"/"dbload"/"M206_annotationinfo.csv",
 
-      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.annotationinfo.csv",
-      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons_2.annotationinfo.csv",
+      yield root/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons.annotationinfo.csv",
+      yield root/"M206"/"im3"/"Scan1"/"M206_Scan1.annotations.polygons_2.annotationinfo.csv",
 
-      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"logfiles"/"copyannotationinfo.log",
-      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"logfiles"/"writeannotationinfo.log",
+      yield root/"logfiles"/"copyannotationinfo.log",
+      yield root/"logfiles"/"writeannotationinfo.log",
 
-      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"logfiles"/"M206-copyannotationinfo.log",
-      thisfolder/"test_for_jenkins"/"writeannotationinfo"/"M206"/"logfiles"/"M206-writeannotationinfo.log",
-    ]
+      yield root/"M206"/"logfiles"/"M206-copyannotationinfo.log",
+      yield root/"M206"/"logfiles"/"M206-writeannotationinfo.log",
   @classmethod
   def filestocopy(cls):
     sourceroot = thisfolder/"data"
@@ -29,7 +31,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     for SlideID in "M206",:
       yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1"
       yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1", f"{SlideID}_Scan1.annotations.polygons_2.xml"
-      yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destrootempty/SlideID/"im3"/"Scan1", None, r"(Tumor.*<Regions>).*(</Regions>)", r"\1\2"
+      yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destrootempty/SlideID/"im3"/"Scan1", None, r"Tumor(.*<Regions>).*(</Regions>)", r"Tumour\1\2"
       for csv in "constants", "affine":
         yield sourceroot/SlideID/"dbload"/f"{SlideID}_{csv}.csv", destroot/SlideID/"dbload"
         yield sourceroot/SlideID/"dbload"/f"{SlideID}_{csv}.csv", destrootempty/SlideID/"dbload"
