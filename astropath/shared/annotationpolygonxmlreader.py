@@ -338,8 +338,22 @@ class MergedAnnotationFiles(ThingWithAnnotationInfos):
       if info.isfromxml:
         if info.xmlpath not in xmldict:
           with open(info.xmlpath, "rb") as f:
-            xmldict[info.xmlpath] = {node.get_xml_attr("Name").strip().lower(): AnnotationNodeXML(node, annoscale=info.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")}
+            dct = xmldict[info.xmlpath] = {}
+            for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation"):
+              name = node.get_xml_attr("Name").strip().lower()
+              node = AnnotationNodeXML(node, annoscale=info.annoscale)
+
+              if name in dct:
+                if dct[name].regions and node.regions:
+                  raise ValueError(f"Multiple non-empty annotations named {name} in {info.xmlpath}")
+                else:
+                  self.logger.warningglobal(f"Extra empty annotation with name {name}")
+                if not node.regions: continue
+
+              dct[name] = node
+
     return xmldict
+
   def getannotationnode(self, info):
     if info.isfromxml or info.isdummy:
       return self.__xmldict[info.xmlpath][info.originalname.lower()]
@@ -398,19 +412,28 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
     nodes = self.annotationnodes
 
     count = more_itertools.peekable(itertools.count(1))
+    seen = []
     for node in nodes[:]:
-      if not node.regions:
-        if node.annotationtype != "empty":
+      if not node.regions or node in seen:
+        if node.annotationtype != "empty" and node not in seen:
           self.logger.warningglobal(f"Annotation {node.annotationname} is empty, skipping it")
-        for info in annotationinfos[:]:
-          if info.originalname == node.annotationname:
-            annotationinfos.remove(info)
         nodes.remove(node)
+      seen.append(node)
+
+    seen = []
+    for info in annotationinfos[:]:
+      if info.isdummy or info in seen:
+        annotationinfos.remove(info)
+      else:
+        seen.append(info)
 
     annotationinfodict = {}
     for node in nodes[:]:
+      relevantinfos = [info for info in annotationinfos if info.originalname == node.annotationname]
+      if len(relevantinfos) > 1 and any(not info.isdummy for info in relevantinfos):
+        relevantinfos = [info for info in relevantinfos if not info.isdummy]
       try:
-        annotationinfo, = (info for info in annotationinfos if info.originalname == node.annotationname)
+        annotationinfo, = relevantinfos
       except ValueError as e:
         errors.append(str(e))
         nodes.remove(node)

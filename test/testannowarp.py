@@ -8,6 +8,7 @@ from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.utilities import units
 
 from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
+from .testwriteannotationinfo import emptyannotationregexfind, emptyannotationregexreplace
 
 thisfolder = pathlib.Path(__file__).parent
 
@@ -50,7 +51,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolder, f"{SlideID}_Scan1.annotations.polygons_2.xml"
 
       yield oldscanfolder/f"{SlideID}_Scan1.qptiff", newscanfolderempty
-      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolderempty, None, r"Tumor(.*<Regions>).*(</Regions>)", r"Tumour\1\2"
+      yield oldscanfolder/f"{SlideID}_Scan1.annotations.polygons.xml", newscanfolderempty, None, emptyannotationregexfind, emptyannotationregexreplace
 
   @classmethod
   def setUpClass(cls):

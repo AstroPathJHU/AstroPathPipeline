@@ -5,6 +5,9 @@ from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutp
 
 thisfolder = pathlib.Path(__file__).parent
 
+emptyannotationregexfind = r'(<Annotation[^<]*Name=")Tumor(".*<Regions>).*(</Regions></Annotation>)'
+emptyannotationregexreplace = r"\1Tumour\2\3\1Good tissue\2\3"
+
 class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
@@ -31,7 +34,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     for SlideID in "M206",:
       yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1"
       yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1", f"{SlideID}_Scan1.annotations.polygons_2.xml"
-      yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destrootempty/SlideID/"im3"/"Scan1", None, r"Tumor(.*<Regions>).*(</Regions>)", r"Tumour\1\2"
+      yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destrootempty/SlideID/"im3"/"Scan1", None, emptyannotationregexfind, emptyannotationregexreplace
       for csv in "constants", "affine":
         yield sourceroot/SlideID/"dbload"/f"{SlideID}_{csv}.csv", destroot/SlideID/"dbload"
         yield sourceroot/SlideID/"dbload"/f"{SlideID}_{csv}.csv", destrootempty/SlideID/"dbload"
