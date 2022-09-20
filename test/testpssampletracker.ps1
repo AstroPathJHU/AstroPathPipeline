@@ -47,7 +47,6 @@ using module .\testtools.psm1
         Write-Host '    module status'
         $sampletracker.defmodulestatus()
         $this.showtable($sampletracker.moduleinfo.scan)
-        $this.showtable($sampletracker.moduleinfo.merge)
         Write-Host 'preparing sampletracker & dir finished'
         throw 'stop'
         #
