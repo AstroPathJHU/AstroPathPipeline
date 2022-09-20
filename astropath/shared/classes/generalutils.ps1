@@ -230,7 +230,7 @@
                 $table | 
                 Select-Object -Property ($this.gettablenames($table))
             )
-        else {
+        } else {
             return @()
         }
         #
