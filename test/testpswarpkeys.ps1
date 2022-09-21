@@ -130,7 +130,7 @@ using module .\testtools.psm1
         $pythontask = $inp.getpythontask($dpath, $rpath)
         #
         Write-Host '    collecting [user] defined task'
-        $userpythontask = (('warpingcohort',
+        $userpythontask = (('warpingmulticohort',
             $this.basepath, 
             '--shardedim3root', $flatwpath,
             '--sampleregex', $slides,

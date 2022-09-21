@@ -768,10 +768,10 @@
         #
     }
     <# -----------------------------------------
-     parsepycohortlog
-        parsepycohortlog
+     parsepysamplelog
+        parsepysamplelog
      ------------------------------------------
-     Usage: $this.parsepycohortlog()
+     Usage: $this.parsepysamplelog()
     ----------------------------------------- #>
     [void]parsepysamplelog(){
         $sampleoutput = $this.logoutput -match (';'+ $this.sample.slideid+';')
