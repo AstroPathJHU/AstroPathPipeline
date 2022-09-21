@@ -387,10 +387,10 @@ COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
 #add python packages
-RUN sudo pip3 install --upgrade pip
+RUN sudo pip3 install --upgrade pip setuptools packaging
 
 ARG GITHUB_TOKEN
-ARG ASTROPATH_DEPENDENCY_COMMIT=2c497d1f4b4bd0a012399732b78fbcabe5af2654
+ARG ASTROPATH_DEPENDENCY_COMMIT=d853ee43557bc1e0140f46d4a1a2d819c7bd6e3f
 
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \

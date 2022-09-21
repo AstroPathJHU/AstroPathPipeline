@@ -32,12 +32,11 @@ installing packages (whether through conda or pip) or before running code.
 
 At least the following dependencies should be installed through Anaconda.
 ```pwsh
-conda install -c conda-forge pyopencl gdal cvxpy numba 'numpy>=1.16.6,<1.20.0' 'ecos!=2.0.8' git jupyter
+conda install -c conda-forge pyopencl gdal cvxpy numba 'ecos!=2.0.8' git jupyter
 ```
 (`pyopencl`, `gdal`, and `cvxpy` have C++ dependencies.
 `numba` requires a specific numpy version, and installing it here
 avoids unpleasant interactions between conda and pip.
-The explicit `numpy` version is for compatibility with deepcell.
 `ecos!=2.0.8` is a workaround for a [bug](https://github.com/embotech/ecos/issues/201)
 in the ecos distribution on conda.
 `git` may or may not be needed, depending if you

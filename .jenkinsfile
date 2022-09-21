@@ -117,18 +117,14 @@ pipeline {
               }
             }
 			
+            stage('test segmaps') {
+              steps {
+                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
+            }
+
             stage('zoom') {
-              stages {
-                stage('test zoom') {
-                  steps {
-                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
-                  }
-                }
-              stage('test segmaps') {
-                  steps {
-                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
-                  }
-                }
+              steps {
+                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
               }
             }
 			

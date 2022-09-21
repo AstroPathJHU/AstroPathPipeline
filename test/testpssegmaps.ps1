@@ -20,9 +20,9 @@ Class testpssegmaps : testtools {
         #
         # Run Tests
         #
-        $this.CleanupTest($inp)
-        $this.SegMapsTest($inp)
-        $this.testgitstatus($inp.sample)
+        #$this.CleanupTest($inp)
+        #$this.SegMapsTest($inp)
+        #$this.testgitstatus($inp.sample)
         #
     }
     #
