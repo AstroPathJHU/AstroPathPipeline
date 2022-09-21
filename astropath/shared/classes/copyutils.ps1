@@ -425,6 +425,18 @@ class copyutils{
         }
     }
     <# -----------------------------------------
+    testpathi 
+    test a path and return a logical. platform 
+    depedent.
+    ----------------------------------------- #> 
+    [switch]testfilei($path){
+        if (!$this.isWindows()){
+            return (test-path $path)
+        } else {
+            return ([System.IO.File]::Exists($path))
+        }
+    }
+    <# -----------------------------------------
      verifyChecksum
      create checksums on files to make sure they
      transferred properly if they do not, try 

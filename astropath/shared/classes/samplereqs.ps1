@@ -173,7 +173,7 @@
     #
     [switch]testbatchflatfield(){
         #
-        if (!([System.IO.File]::Exists($this.batchflatfield()))){
+        if (!($this.testfilei($this.batchflatfield()))){
             return $false
         }
         #
@@ -192,7 +192,7 @@
             return $false
         }
         #
-        if (!([System.IO.File]::Exists($this.pybatchflatfieldfullpath()))){
+        if (!($this.testfilei($this.pybatchflatfieldfullpath()))){
             return $false
         }
         #
@@ -201,7 +201,7 @@
     #
     [switch]testwarpoctets(){
         #
-        if ([System.IO.File]::Exists($this.slidelogbase('warpoctets'))){
+        if ($this.testfilei($this.slidelogbase('warpoctets'))){
             $log = $this.importlogfile($this.slidelogbase('warpoctets'))
             if ($log.Message -match "Sample is not good"){
                 return $true
@@ -211,7 +211,7 @@
         $p = ($this.meanimagefolder() + '\' +
             $this.slideid + '-mask_stack.bin')
         #
-        if (!([System.IO.File]::Exists($p))){
+        if (!($this.testfilei($p))){
             return $true
         }
         #
@@ -445,7 +445,7 @@
         }
         #
         $fullpath = $path + '\' + $file
-        if (!([System.IO.File]::Exists($fullpath))){
+        if (!($this.testfilei($fullpath))){
             return $false
         }
         #

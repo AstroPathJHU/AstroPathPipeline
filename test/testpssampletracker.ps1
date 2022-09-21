@@ -72,7 +72,6 @@ using module .\testtools.psm1
         $this.testgitstatus($sampletracker)  
         #
         Write-Host '.'
-        throw 'stop'
         #>
     }
     #
