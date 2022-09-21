@@ -120,6 +120,7 @@ pipeline {
             stage('test segmaps') {
               steps {
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
+              }
             }
 
             stage('zoom') {
