@@ -35,20 +35,18 @@ using module .\testtools.psm1
         Write-Host 'preparing sampletracker & dir started'
         Write-Host '    sample def slide'
         $sampletracker.sampledefslide($this.slideid)
-        <#
+        #
         Write-Host '    cleanup'
         $sampletracker.teststatus = $true
         $this.resetvminform($sampletracker)
         $this.savephenotypedata($sampletracker)
         $this.cleanup($sampletracker)
-        #>
+        #
         $sampletracker.getmodulelogs()
         #
         Write-Host '    module status'
         $sampletracker.defmodulestatus()
-        $this.showtable($sampletracker.moduleinfo.meanimage)
         Write-Host 'preparing sampletracker & dir finished'
-        throw 'stop'
         #
         $this.teststatus($sampletracker)
         $this.testupdate($sampletracker, 'transfer', 'shredxml')
@@ -74,6 +72,7 @@ using module .\testtools.psm1
         $this.testgitstatus($sampletracker)  
         #
         Write-Host '.'
+        throw 'stop'
         #>
     }
     #
