@@ -84,10 +84,12 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
         assertAlmostEqual(
           p.area,
           p.gdalpolygon().Area() * p.onepixel**2,
+          atol=1e-14,
         )
         assertAlmostEqual(
           p.perimeter,
           p.gdalpolygon().Boundary().Length() * p.onepixel,
+          atol=1e-14,
         )
         self.maxDiff = None
         self.assertEqual(
