@@ -222,6 +222,7 @@
         }
         #
         [array]$mainqueue = $this.OpenCSVFile($mainqueuefile)
+        #
         if ($mainqueue){
             $mainqueue = $mainqueue | & { process {
                 if (

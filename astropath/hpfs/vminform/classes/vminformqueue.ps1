@@ -331,7 +331,7 @@ class vminformqueue : modulequeue {
         $this.localslide = $this.localqueue.($cproject) |
             & { process {   
             if (
-                $_.slideid -contains $slideid
+                $_.slideid.trim() -contains $slideid
             ) { $_ }}}
         #
     }
@@ -394,7 +394,7 @@ class vminformqueue : modulequeue {
         $this.mainslide = $this.maincsv |
             & { process {   
             if (
-                $_.slideid -contains $slideid
+                $_.slideid.trim() -contains $slideid
             ) { $_ }}}
         #
     }
