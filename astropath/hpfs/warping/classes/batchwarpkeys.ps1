@@ -94,7 +94,7 @@ class batchwarpkeys : moduletools {
     }
     #
     [void]getmodulename(){
-        $this.pythonmodulename = 'warpingcohort'
+        $this.pythonmodulename = 'warpingmulticohort'
     }
     <# -----------------------------------------
      cleanup

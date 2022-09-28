@@ -1,12 +1,3 @@
-<# -------------------------------------------
-testtools
-Benjamin Green
-Last Edit: 01.18.2022
---------------------------------------------
-Description
-test tools
--------------------------------------------#>
-#
 Class testtools{
     #
     [string]$mpath = "$PSScriptRoot\data\astropath_processing"
@@ -322,12 +313,15 @@ Class testtools{
         'M21_1-all_overlap_octets.csv' -join '\'
         #
         $inp.getslideidregex()
-        Write-Host '    Slides:' $inp.batchslides
+        Write-Host '*** Slides in addwarpoctetsdep:' $inp.batchslides
         #
         $inp.batchslides | ForEach-Object{
             $des = $this.basepath, $_, 'im3', 'warping', 'octets' -join '\'
             Write-Host '   '$des 
             Write-Host '   '$_
+            Write-Host '*** sor:' $sor
+            Write-Host '*** sor contents:' (gci $sor)
+            Write-Host '*** des:' $des
             $inp.sample.copy($sor, $des)
             if ($_ -notmatch 'M21_1'){
                 rename-item ($des + '\M21_1-all_overlap_octets.csv') `
@@ -859,10 +853,12 @@ Class testtools{
     }
     [void]resetvminform($sample){
         $sample.removefile($this.mpath + '\across_project_queues\vminform-queue.csv')
-        $sample.copy(($this.mpath + '\vminform-queue.csv'),
+        $sample.copy(($this.mpath + '\vminform-queue-Tplate.csv'),
          ($this.mpath + '\across_project_queues'))
         $sample.removefile(
             $sample.vmq.localqueuefile.($this.project))
+        $sample.renamefile(($this.mpath + $sample.vmq.mainqueue_path),
+         'vminform-queue-Tplate.csv', 'vminform-queue.csv' )
     }
     #
     [void]showtable($table){
@@ -1038,8 +1034,8 @@ Class testtools{
         $sampletracker.teststatus = $true
         #
         $sampletracker.removefile($this.mpath + '\across_project_queues\vminform-queue.csv')
-        $sampletracker.copy(($this.mpath + '\vminform-queue.csv'),
-         ($this.mpath + '\across_project_queues'))
+        #$sampletracker.copy(($this.mpath + '\vminform-queue.csv'),
+        # ($this.mpath + '\across_project_queues'))
         $sampletracker.removefile(
             $sampletracker.vmq.localqueuefile.($this.project))
         $sampletracker.removedir($sampletracker.informfolder())
@@ -1242,4 +1238,15 @@ Class testtools{
     }
     #
 }
-#
+
+<# 
+.SYNOPSIS
+
+class for method tools used in various tests for the 
+powershell AstroPath workflow.
+
+.DESCRIPTION
+Benjamin Green
+Last Edit: 01.18.2022
+
+#>

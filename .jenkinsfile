@@ -34,17 +34,19 @@ pipeline {
             sh 'pip install .[all]'
           }
         }
-		        
+		    
         stage('ps module install') {
           steps {
+            sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'   
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssample.ps1'         
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
-			sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testvminform.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1'
             //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
             //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
           }
@@ -52,7 +54,7 @@ pipeline {
 	
         stage('run tests') {
           parallel {
-			stage('console scripts and documents') {
+			      stage('console scripts and documents') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmarkdownlinks'
@@ -84,12 +86,13 @@ pipeline {
                 }
               }
             }
+            /*
             stage('workflow') {
               steps {
-                //sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testworkflow'
                 sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsworkflow.ps1' 	 	
               }
             }
+            */
             stage('prepdb') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
@@ -111,12 +114,20 @@ pipeline {
                   }
                 }
               }
-            }	
+            }
+			
+            stage('test segmaps') {
+              steps {
+                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
+              }
+            }
+
             stage('zoom') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
               }
             }
+			
             stage('annowarp') {
               stages {
                 stage('test writeannotationinfo') {
@@ -142,12 +153,6 @@ pipeline {
             stage('deepzoom') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
-              }
-            }
-
-            stage('segmaps') {
-              steps {
-              sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
               }
             }
 
@@ -248,12 +253,6 @@ pipeline {
             stage('crossregistration') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
-              }
-            }
-			stage('vminform') {
-              steps {
-				sh 'folder=$(basename $(pwd)); pwsh -File ./test/testvminform.ps1'
-			    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1' 
               }
             }
           }

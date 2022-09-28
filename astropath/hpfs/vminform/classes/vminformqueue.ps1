@@ -1,6 +1,6 @@
 ﻿<# -------------------------------------------
  vminformqueue
- created by: Benjamin Green, Andrew Joqurea - JHU
+ created by: Benjamin Green, Andrew Jorquera - JHU
  Last Edit: 10.13.2020
  --------------------------------------------
  Description
@@ -93,6 +93,7 @@ class vminformqueue : modulequeue {
         } else {
             $this.getlocalqueue($cproject, $false)
         }
+        #
         $localtmp =  $this.getstoredtable($this.localqueue.($cproject))
         $this.pairqueues($cproject)
         #

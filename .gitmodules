@@ -5,3 +5,4 @@
 [submodule "astropath/hpfs/merge/funcs/MaSS"]
 	path = astropath/hpfs/merge/funcs/MaSS
 	url = https://github.com/AstroPathJHU/MaSS.git
+	shallow = true

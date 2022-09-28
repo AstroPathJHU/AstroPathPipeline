@@ -52,7 +52,7 @@
         #
         $scans = $this.spathscans()
         #
-        if ($scans -or ([System.IO.Directory]::Exists($this.basepath))){
+        if ($scans -or ($this.testpathi($this.basepath))){
             return $true
         }
         #
@@ -62,7 +62,7 @@
     #
     [switch]testscanfiles(){
         #
-        if ([System.IO.Directory]::Exists($this.basepath)){
+        if ($this.testpathi($this.basepath)){
             return $true
         }
         #
@@ -84,7 +84,7 @@
     #
     [switch]testscanvalidationfiles(){
         #
-        if ([System.IO.Directory]::Exists($this.basepath)){
+        if ($this.testpathi($this.basepath)){
             return $true
         }
         #
@@ -124,7 +124,7 @@
     }
     #
     [void]testim3mainfolder(){
-        if (!([System.IO.Directory]::Exists($this.im3mainfolder()))){
+        if (!($this.testpathi($this.im3mainfolder()))){
             Throw "im3 folder not found for:" + $this.im3mainfolder()
         }
     }
@@ -173,7 +173,7 @@
     #
     [switch]testbatchflatfield(){
         #
-        if (!([System.IO.File]::Exists($this.batchflatfield()))){
+        if (!($this.testfilei($this.batchflatfield()))){
             return $false
         }
         #
@@ -192,7 +192,7 @@
             return $false
         }
         #
-        if (!([System.IO.File]::Exists($this.pybatchflatfieldfullpath()))){
+        if (!($this.testfilei($this.pybatchflatfieldfullpath()))){
             return $false
         }
         #
@@ -201,7 +201,7 @@
     #
     [switch]testwarpoctets(){
         #
-        if ([System.IO.File]::Exists($this.slidelogbase('warpoctets'))){
+        if ($this.testfilei($this.slidelogbase('warpoctets'))){
             $log = $this.importlogfile($this.slidelogbase('warpoctets'))
             if ($log.Message -match "Sample is not good"){
                 return $true
@@ -211,7 +211,7 @@
         $p = ($this.meanimagefolder() + '\' +
             $this.slideid + '-mask_stack.bin')
         #
-        if (!([System.IO.File]::Exists($p))){
+        if (!($this.testfilei($p))){
             return $true
         }
         #
@@ -385,7 +385,7 @@
     -------------------------------------------- #>
     [switch]testfiles($path, [array]$testfiles){
         #
-        if (!([System.IO.Directory]::Exists($path))){
+        if (!($this.testpathi($path))){
             return $false
         }
         #
@@ -402,7 +402,7 @@
     #
     [switch]testfiles($path, $source, [array]$testfiles){
         #
-        if (!([System.IO.Directory]::Exists($path))){
+        if (!($this.testpathi($path))){
             return $false
         }
         #
@@ -445,7 +445,7 @@
         }
         #
         $fullpath = $path + '\' + $file
-        if (!([System.IO.File]::Exists($fullpath))){
+        if (!($this.testfilei($fullpath))){
             return $false
         }
         #

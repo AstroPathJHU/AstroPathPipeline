@@ -27,7 +27,7 @@ using module .\testtools.psm1
     #
     launchtests(){
         $this.testpsbatchwarpkeysconstruction($this.task)
-        $inp = batchwarpkeys $this.task  
+        $inp = batchwarpkeys $this.task
         $this.removewarpoctetsdep($inp)
         $this.testprocessroot($inp)
         $this.testwarpkeysinputbatch($inp)
@@ -118,6 +118,7 @@ using module .\testtools.psm1
         }
         #
         Write-Host '    collecting [warpkeys] defined task'
+        Write-Host '    *** slidelist:' $slides
         #
         $inp.getslideidregex($this.class)
         #
@@ -129,7 +130,7 @@ using module .\testtools.psm1
         $pythontask = $inp.getpythontask($dpath, $rpath)
         #
         Write-Host '    collecting [user] defined task'
-        $userpythontask = (('warpingcohort',
+        $userpythontask = (('warpingmulticohort',
             $this.basepath, 
             '--shardedim3root', $flatwpath,
             '--sampleregex', $slides,

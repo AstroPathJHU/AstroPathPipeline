@@ -27,6 +27,10 @@ class TestMeanImage(TestBaseSaveOutput) :
     """
 
     @property
+    def logging_root(self):
+        return folder/'test_for_jenkins'/'mean_image'/'root'
+
+    @property
     def meanimage_dir(self) :
         return folder/'test_for_jenkins'/'mean_image'/'root'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
 
@@ -54,6 +58,8 @@ class TestMeanImage(TestBaseSaveOutput) :
             all_fps.append(self.masking_dir/f'{fn.name.rstrip(UNIV_CONST.RAW_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}')
         for fns in rectangle_files_with_full_masks :
             all_fps.append(self.masking_dir/f'{fns}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}')
+        all_fps.append(self.logging_root/'logfiles'/'meanimage.log')
+        all_fps.append(self.logging_root/SlideID/'logfiles'/f'{SlideID}-meanimage.log')
         return all_fps
 
     def test_mean_image(self,n_threads=1) :
@@ -121,4 +127,3 @@ class TestMeanImage(TestBaseSaveOutput) :
             mid = folder/'test_for_jenkins'/'mean_image'
             if mid.is_dir() :
                 shutil.rmtree(mid)
-

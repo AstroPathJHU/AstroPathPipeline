@@ -206,8 +206,7 @@ Class testpsmeanimage : testtools {
         #
         $addedargs = '--selectrectangles',
                      '17 18 19 20 23 24 25 26 29 30 31 32 35 36 37 38 39 40', 
-                     '--maskroot', $this.processloc,
-                     '--exposure-time-offset-file', $et_offset_file -join ' '
+                     '--maskroot', $this.processloc -join ' '
                      
         $pythontask = $pythontask, $addedargs -join ' '
         #
@@ -254,8 +253,7 @@ Class testpsmeanimage : testtools {
         #
         $addedargs = '--selectrectangles',
                      '17 18 19 20 23 24 25 26 29 30 31 32 35 36 37 38 39 40', 
-                     '--maskroot', $this.processloc,
-                     '--exposure-time-offset-file', $et_offset_file -join ' '
+                     '--maskroot', $this.processloc -join ' '
                      
         $pythontask = $pythontask, $addedargs -join ' '
         #
@@ -304,8 +302,7 @@ Class testpsmeanimage : testtools {
         #
         $addedargs = '--selectrectangles',
                      '17 18 19 20 23 24 25 26 29 30 31 32 35 36 37 38 39 40', 
-                     '--maskroot', $this.processloc,
-                     '--exposure-time-offset-file', $et_offset_file -join ' '
+                     '--maskroot', $this.processloc -join ' '
                      
         $pythontask = $pythontask, $addedargs -join ' '
         #

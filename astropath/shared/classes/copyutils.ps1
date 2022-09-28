@@ -88,17 +88,24 @@ class copyutils{
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des, [array]$filespec){
         $filespeco = $filespec
-        if ($this.isWindows()){
-            if ($filespec -match '\*'){
-                robocopy $sor $des -r:3 -w:3 -np -E -mt:1 | out-null
+        try {
+            if ($this.isWindows()){
+                if ($filespec -match '\*'){
+                    robocopy $sor $des -r:3 -w:3 -np -E -mt:1 | out-null
+                } else {
+                    $filespec = $filespec | foreach-object {'*' + $_}
+                    robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:1 | out-null
+                }
             } else {
-                $filespec = $filespec | foreach-object {'*' + $_}
-                robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:1 | out-null
+                $this.lxcopy($sor, $des, $filespec)
             }
-        } else {
-            $this.lxcopy($sor, $des, $filespec)
         }
-        $this.verifyChecksum($sor, $des, $filespeco, 0)
+        catch {
+            #Ignore copy exceptions
+        }
+        finally {
+            $this.verifyChecksum($sor, $des, $filespeco, 0)
+        }
     }
     <# -----------------------------------------
      copy
@@ -116,17 +123,24 @@ class copyutils{
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des, [array]$filespec, [int]$threads){
         $filespeco = $filespec
-        if ($this.isWindows()){
-            if ($filespec -match '\*'){
-                robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads | out-null
+        try {
+            if ($this.isWindows()){
+                if ($filespec -match '\*'){
+                    robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads | out-null
+                } else {
+                    $filespec = $filespec | foreach-object {'*' + $_}
+                    robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads | out-null
+                }
             } else {
-                $filespec = $filespec | foreach-object {'*' + $_}
-                robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads | out-null
+                $this.lxcopy($sor, $des, $filespec)
             }
-        } else {
-            $this.lxcopy($sor, $des, $filespec)
         }
-        $this.verifyChecksum($sor, $des, $filespeco, 0)
+        catch {
+            #Ignore copy exceptions
+        }
+        finally {
+            $this.verifyChecksum($sor, $des, $filespeco, 0)
+        }
     }
     <# -----------------------------------------
      copy
@@ -145,17 +159,24 @@ class copyutils{
     ----------------------------------------- #>
     [void]copy([string]$sor, [string]$des, [array]$filespec, [int]$threads, [string]$logfile){
         $filespeco = $filespec
-        if ($this.isWindows()){
-            if ($filespec -match '\*'){
-               robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads -log:$logfile | out-null
+        try {
+            if ($this.isWindows()){
+                if ($filespec -match '\*'){
+                   robocopy $sor $des -r:3 -w:3 -np -E -mt:$threads -log:$logfile | out-null
+                } else {
+                   $filespec = $filespec | foreach-object {'*' + $_}
+                   robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads -log:$logfile  | out-null
+                }
             } else {
-               $filespec = $filespec | foreach-object {'*' + $_}
-               robocopy $sor $des $filespec -r:3 -w:3 -np -s -mt:$threads -log:$logfile  | out-null
+                $this.lxcopy($sor, $des, $filespec)
             }
-        } else {
-            $this.lxcopy($sor, $des, $filespec)
         }
-        $this.verifyChecksum($sor, $des, $filespeco, 0)
+        catch {
+            #Ignore copy exceptions
+        }
+        finally {
+            $this.verifyChecksum($sor, $des, $filespeco, 0)
+        }
     }
     <# -----------------------------------------
      lxcopy
@@ -198,20 +219,7 @@ class copyutils{
      Usage: lxcopy(sor, des, filespec)
     ----------------------------------------- #>
     [void]lxcopy($sor, $des, $filespec){
-        <#
-        $sor1 = ($sor -replace '\\', '/') + '/'
-        $des1 = $des -replace '\\', '/'
-        mkdir -p $des1
         #
-        if (!($filespec -match '\*')){
-            $filespec = $filespec | foreach-object {'*' + $_}
-        }
-        #
-        $filespec | ForEach-Object{
-            $find = ('"'+$_+'"')
-            find $sor1 -name $find | xargs cp -r -t ($des1 + '/')
-        }
-        #>
         $des1 = $des -replace '\\', '/'
         $sor1 = $sor -replace '\\', '/'
         #
@@ -258,7 +266,7 @@ class copyutils{
     [system.object]listfiles([string]$sor, [array]$filespec){
         #
         if ($this.isWindows()) {
-            if (!([System.IO.Directory]::Exists($sor))){
+            if (!($this.testpathi($sor))){
                 return @()
             }
             if ($filespec -match '\*'){
@@ -303,14 +311,14 @@ class copyutils{
         if ($filespec -match '\*'){
             $files = Get-ChildItem $sor
         } else {
-            $files = ([array](Get-ChildItem $sor)) -match $filespec
+            $files = ([array](Get-ChildItem $sor)) | Where-Object {$_.name -match $filespec}
         }
         return $files
     }
     #
     [system.object]fastlistfiles([string]$sor, [array]$filespec){
         #
-        if (!([System.IO.Directory]::Exists($sor))){
+        if (!($this.testpathi($sor))){
             return @()
         }
         #
@@ -334,7 +342,7 @@ class copyutils{
     [int]countfiles([string]$sor, [array]$filespec){
         #
         $cnt = 0
-        if (!([System.IO.Directory]::Exists($sor))){
+        if (!($this.testpathi($sor))){
             return $cnt
         }
         $filespec | foreach-object {
@@ -403,6 +411,30 @@ class copyutils{
         #
         $this.createdirs($path)
         #
+    }
+    <# -----------------------------------------
+    testpathi 
+    test a path and return a logical. platform 
+    depedent.
+    ----------------------------------------- #> 
+    [switch]testpathi($path){
+        if (!$this.isWindows()){
+            return (test-path $path)
+        } else {
+            return ([System.IO.Directory]::Exists($path))
+        }
+    }
+    <# -----------------------------------------
+    testpathi 
+    test a path and return a logical. platform 
+    depedent.
+    ----------------------------------------- #> 
+    [switch]testfilei($path){
+        if (!$this.isWindows()){
+            return (test-path $path)
+        } else {
+            return ([System.IO.File]::Exists($path))
+        }
     }
     <# -----------------------------------------
      verifyChecksum

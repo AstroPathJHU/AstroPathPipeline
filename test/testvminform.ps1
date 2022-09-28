@@ -14,6 +14,7 @@ Class testvminform : testtools {
     [string]$module = 'vminform'
     [string]$outpath = "C:\Users\Public\BatchProcessing"
     [string]$referenceim3
+    [string]$protocolcopy
     [switch]$jenkins = $false
     [switch]$versioncheck = $false
     [string]$class = 'vminform'
@@ -27,7 +28,6 @@ Class testvminform : testtools {
         #
         $this.jenkins = $true
         $this.launchtests()
-        throw 'Tests Complete'
         #
     }
     testvminform($ver, $proj) : base(){
@@ -61,6 +61,7 @@ Class testvminform : testtools {
         $this.testfindfixableandmerge($inp)
         $this.testcheckexportoptions($inp)
         $this.runversioncheck($inp)
+        $this.cleanprotocol($inp)
         Write-Host '.'
         #
     }
@@ -102,8 +103,10 @@ Class testvminform : testtools {
     run on jenkins
     --------------------------------------------#>
     [void]setupjenkinspaths($inp){
+        
         if ($this.jenkins) {
             $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
+            $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\vminform'
             $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
             $inp.informoutpath = $this.outpath + '\' + $this.informantibody + '_0'
             $inp.image_list_file = $this.outpath + '\image_list.tmp'
@@ -142,6 +145,10 @@ Class testvminform : testtools {
         #
         Write-Host '.'
         Write-Host 'test create output directory started'
+        #
+        Write-Host '    saving initial protocol'
+        Write-Host ('    copying from ' + $inp.algpath + ' to ' + $this.protocolcopy)
+        $inp.sample.copy($inp.algpath, $this.protocolcopy)
         #
         $md_processloc = (
             $this.outpath,
@@ -205,6 +212,7 @@ Class testvminform : testtools {
         #
         Write-Host '.'
         Write-Host 'test check export options started'
+        #
         $inp.GetMergeConfigData()
         #
         Write-Host '    checking default export option'
@@ -775,6 +783,18 @@ Class testvminform : testtools {
         $inp.sample.CreateNewDirs($this.outpath)
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         Write-Host 'test inform logs checking versions finished'
+        #
+    }
+    <# --------------------------------------------
+    cleanprotocol
+    cleanprotocol for future tests
+    --------------------------------------------#>
+    [void]cleanprotocol($inp) {
+        #
+        Write-Host '    returning initial protocol'
+        $savedalg = $this.protocolcopy + '\' + $inp.alg
+        Write-Host ('    copying from ' + $savedalg + ' to ' + $inp.algpath + '\..')
+        $inp.sample.copy($savedalg, ($inp.algpath + '\..'))
         #
     }
     #

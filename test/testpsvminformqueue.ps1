@@ -26,7 +26,7 @@ using module .\testtools.psm1
     #
     [void]launchtests(){
         #
-        $this.copypath = $this.mpath + '\vminform-queue.csv'
+        $this.copypath = $this.mpath + '\vminform-queue-Tplate.csv'
         $vminformqueue = vminformqueue -mpath $this.mpath
         $this.testvminformqueuecontstructors()
         $vminformqueue = vminformqueue -mpath $this.mpath
@@ -66,6 +66,8 @@ using module .\testtools.psm1
         $vminformqueue.removefile($this.basepath +
             '\test\upkeep_and_progress\progress_tables\inForm_queue.csv')
         $vminformqueue.copy($this.copypath, ($this.mpath + $vminformqueue.mainqueue_path))
+        $vminformqueue.renamefile(($this.mpath + $vminformqueue.mainqueue_path),
+         'vminform-queue-Tplate.csv', 'vminform-queue.csv' )
     }
     #
     [void]testvminformqueuecontstructors(){
@@ -198,12 +200,12 @@ using module .\testtools.psm1
         #
         write-host '    updating local queue'
         $vminformqueue.updatelocalvminformqueue($currentprojecttasks, $this.project)
-        $this.checklocalqueue($vminformqueue, 5)
+        $this.checklocalqueue($vminformqueue, 6)
         #
         write-host '    update main queue'
         $vminformqueue.updatemainvminformqueue($currentprojecttasks, $this.project)
         write-host ($vminformqueue.maincsv | Format-Table | Out-String)
-        if ($vminformqueue.maincsv.Length -ne 11){
+        if ($vminformqueue.maincsv.Length -ne 12){
             Throw 'main queue tasks were added with no new local tasks'
         }
         #
@@ -221,7 +223,7 @@ using module .\testtools.psm1
     [void]testcoalescemethods($vminformqueue, $v2){
         #
         Write-host '.'
-        Write-Host 'Tests for [vminformqueue] internal methods starting'
+        Write-Host 'Tests for [vminformqueue] internal methods 2 starting'
         #
         $vminformqueue.openmainqueue($false)
         $currentprojecttasks = $vminformqueue.maincsv -match ('T' + $this.project.PadLeft(3,'0'))
@@ -229,16 +231,16 @@ using module .\testtools.psm1
         #
         write-host '    updating local queue'
         $vminformqueue.updatelocalvminformqueue($currentprojecttasks, $this.project)
-        $this.checklocalqueue($vminformqueue, 5)
+        $this.checklocalqueue($vminformqueue, 6)
         #
         write-host '    update main queue'
         $vminformqueue.updatemainvminformqueue($currentprojecttasks, $this.project)
-        $this.checkmainqueue($vminformqueue, 5)
+        $this.checkmainqueue($vminformqueue, 6)
         #
         $vminformqueue.writelocalqueue($this.project)
         $vminformqueue.writemainqueue($vminformqueue.mainqueuelocation())
         #
-        Write-Host 'Tests for [vminformqueue] internal methods finished'
+        Write-Host 'Tests for [vminformqueue] internal methods 2 finished'
     }
     #
     [void]testfullcoalesce($vminformqueue){
@@ -249,14 +251,14 @@ using module .\testtools.psm1
         $vminformqueue.getlocalqueue($this.project, $false)
         $this.checklocalqueue($vminformqueue, 0)
         $vminformqueue.openmainqueue($false)
-        $this.checkmainqueue($vminformqueue, 11)
+        $this.checkmainqueue($vminformqueue, 12)
         #
         try{
             $vminformqueue.coalescevminformqueues($this.project)
         } catch {
             Throw ('could not do the intial coalation of the inform queue. ' + $_.Exception.Message)
         }
-        $this.checklocalqueue($vminformqueue, 5)
+        $this.checklocalqueue($vminformqueue, 6)
         #
         if ((get-filehash $vminformqueue.mainqueuelocation()).hash `
             -ne (get-filehash $this.copypath).hash){
@@ -298,12 +300,12 @@ using module .\testtools.psm1
         #
         $vminformqueue.coalescevminformqueues($this.project)
         $vminformqueue.checkfornewtask($this.project, $this.slideid, 'NewAB')
-        $this.checklocalqueue($vminformqueue, 6)
+        $this.checklocalqueue($vminformqueue, 7)
         #
         $currentprojecttasks = $vminformqueue.maincsv -match ('T' + $this.project.PadLeft(3,'0'))
         $vminformqueue.openmainqueue()
         $vminformqueue.updatemainvminformqueue($currentprojecttasks, $this.project)
-        $this.checkmainqueue($vminformqueue, 11)
+        $this.checkmainqueue($vminformqueue, 12)
         #
         write-host 'check that new local tasks are written to local w/o alg finished'
     }
@@ -323,10 +325,10 @@ using module .\testtools.psm1
             Algorithm = 'newalg.ifp'
         } 
         $vminformqueue.localqueue.($this.project) += $NewRow
-        $this.checklocalqueue($vminformqueue, 6)
+        $this.checklocalqueue($vminformqueue, 7)
         #
         $vminformqueue.pairqueues($this.project)
-        $this.checkmainqueue($vminformqueue, 12)
+        $this.checkmainqueue($vminformqueue, 13)
         #
         write-host 'check that the new added algorithms get moved to the main queue finished'
         #
@@ -345,8 +347,8 @@ using module .\testtools.psm1
         $vminformqueue.pairqueues($this.project)
         
         #
-        $this.checklocalqueue($vminformqueue, 7)
-        $this.checkmainqueue($vminformqueue, 13)
+        $this.checklocalqueue($vminformqueue, 8)
+        $this.checkmainqueue($vminformqueue, 14)
         #
         write-host 'test that the code handles local taskdid and main taskid mismatches finished'
         #
@@ -372,8 +374,8 @@ using module .\testtools.psm1
         $vminformqueue.pairqueues($this.project)
         
         #
-        $this.checklocalqueue($vminformqueue, 8)
-        $this.checkmainqueue($vminformqueue, 14)
+        $this.checklocalqueue($vminformqueue, 9)
+        $this.checkmainqueue($vminformqueue, 15)
         #
         write-host 'test that the code handles double local taskdid finished'
         #
