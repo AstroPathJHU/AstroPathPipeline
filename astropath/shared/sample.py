@@ -581,10 +581,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     data = pd.DataFrame(pd.read_excel(fp))
     if "layer" in data.columns :
       rownames = ['layer',*rownames]
-    else :
-      warnmsg = f'WARNING: layers/opals/targets will be found from {fp.name} which has no layer column. '
-      warnmsg+= 'Will assume that layers are sorted in order.'
-      self.logger.warningonenter(warnmsg)
     for ri,row in data.loc[:,rownames].iterrows() :
         #get the layer from the entry in the table if possible, or from the index in the frame if not
         if 'layer' in rownames :
