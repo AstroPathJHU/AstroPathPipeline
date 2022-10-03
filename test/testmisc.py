@@ -260,7 +260,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  def testHPFOffset(self, SlideID="M21_1"):
+  def testHPFOffset(self):
     root = thisfolder/"data"
     shardedim3root = thisfolder/"data"/"flatw"
     for SlideID in "M21_1", "YZ71":
