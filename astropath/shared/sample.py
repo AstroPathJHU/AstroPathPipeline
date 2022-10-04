@@ -73,6 +73,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def printlogger(self): return self.__printlogger
   @classmethod
   def usegloballogger(cls): return False
+  @property
+  def uselogfiles(self): return self.logger.uselogfiles
 
   @property
   def rootnames(self):
@@ -502,6 +504,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       sample = cls(**initkwargs)
       with sample:
         sample.run(**runkwargs)
+        missingoutputs = sample.missingoutputfiles
+        if missingoutputs:
+          raise RuntimeError(f"{sample.logger.SlideID} ran successfully but some output files are missing: {', '.join(str(_) for _ in missingoutputs)}")
       return sample
 
   @classmethod
