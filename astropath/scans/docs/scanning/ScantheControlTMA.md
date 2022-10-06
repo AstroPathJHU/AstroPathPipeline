@@ -1,4 +1,4 @@
-# 4.4.5.3. Scan the *Control TMA*
+# 4.4.5.3. Scan the *Control TMA* on Vectra Polaris
 1. Take references for the microscope
 2. When a batch is finished staining we first check that the slides are designated in the *Specimen_Table* ([4.3.1](#431-specimen_table “Title”)).
    - If the slide is designated in the *Specimen_Table_N*; check that the ‘M’ numbers are written on the slides and that they are the correct numbers
