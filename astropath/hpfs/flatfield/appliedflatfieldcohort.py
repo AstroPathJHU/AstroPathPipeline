@@ -10,10 +10,10 @@ from ...shared.overlap import Overlap
 from ...shared.sample import WorkflowSample
 from ...shared.cohort import CorrectedImageCohort, WorkflowCohort
 from .config import CONST
-from .meanimagesample import MeanImageSampleBase
+from .meanimagesample import MeanImageSampleBaseIm3
 from .imagestack import CorrectedMeanImage, Flatfield
 
-class AppliedFlatfieldSample(MeanImageSampleBase,WorkflowSample) :
+class AppliedFlatfieldSample(MeanImageSampleBaseIm3,WorkflowSample) :
     """
     Class to use in running most of the MeanImageSample functions but handling the output differently
     """
