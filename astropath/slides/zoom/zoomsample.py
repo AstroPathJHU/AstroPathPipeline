@@ -558,7 +558,10 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, **otherrootkwargs):
-    nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs")
+    try:
+      nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs")
+    except FileNotFoundError:
+      nlayers = 1
     if layers is None:
       layers = range(1, nlayers+1)
     result = [
