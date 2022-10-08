@@ -900,17 +900,11 @@
         $sid = $this.sample.slideid
         #
         $this.getslideidregex()
-        Write-Host '*** batchslides:' $this.batchslides
         #
-        Write-Host '*** cmodule:' $cmodule
         if (@('batchwarpkeys', 'batchwarpfits') -match $cmodule){
             foreach ($slide in $this.batchslides){
-                Write-Host '*** slide:' $slide
                 $this.sample.slideid = $slide
-                Write-Host '*** warpoctets folder:' $this.sample.warpoctetsfolder()
-                Write-Host '*** folder contents:' (gci $this.sample.warpoctetsfolder())
                 if ($this.sample.testwarpoctetsfiles()){
-                    Write-Host '*** Passed test warpoctets files'
                     $nbatchslides += $slide
                 }
             }
