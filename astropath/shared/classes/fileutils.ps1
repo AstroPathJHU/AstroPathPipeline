@@ -513,7 +513,7 @@ class fileutils : generalutils {
         $this.popfile($file, 'test line')
         $a = (Get-Content $file | Measure-Object)
         if ($a.count -eq 1){
-            $this.setfile($file, "")
+            set-content $file
         } else {
             (Get-Content $file) |
                 Where-Object {($a.count) -notcontains $_.ReadCount} |
