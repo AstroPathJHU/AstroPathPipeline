@@ -35,6 +35,21 @@ Class segmaps : moduletools {
         $this.datavalidation()
     }
     <# -----------------------------------------
+     silentcleanup
+     silentcleanup
+     ------------------------------------------
+     Usage: $this.silentcleanup()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
+        #
+        if ($this.processvars[4]){
+            $sor = $this.sample.componentfolder()
+            Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
+            #$this.sample.removefile($sor, 'w_seg.tif')
+        }
+        #
+    }
+    <# -----------------------------------------
      cleanup
      cleanup the data directory
      ------------------------------------------
@@ -43,12 +58,7 @@ Class segmaps : moduletools {
     [void]cleanup(){
         #
         $this.sample.info("cleanup started")
-        #
-        if ($this.processvars[4]){
-            $sor = $this.sample.componentfolder()
-            Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
-            #$this.sample.removefile($sor, 'w_seg.tif')
-        }
+        $this.silentcleanup()
         $this.sample.info("cleanup finished")
         #
     }
@@ -93,7 +103,7 @@ Class segmaps : moduletools {
      Usage: $this.datavalidation()
     ----------------------------------------- #>
     [void]datavalidation(){
-        if (!$this.sample.testsegmentationfiles()){
+        if (!$this.sample.testsegmapsfiles()){
             throw 'Output files are not correct'
         }
     }
