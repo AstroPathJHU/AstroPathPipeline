@@ -842,7 +842,7 @@ Class testtools{
         write-host '.'
         write-host ('test git status after [' + $this.class + '] started')
         #
-        if (!$sample.checkgitstatustest()){
+        if ($sample.iswindows() -and !$sample.checkgitstatustest()){
             $gitstatus = git -C $sample.testpackagepath() status
             write-host $gitstatus
             Throw 'git status not empty changes on branch'
