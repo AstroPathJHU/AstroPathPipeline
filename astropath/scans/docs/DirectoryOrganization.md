@@ -75,4 +75,4 @@ The following is the directory structure for each ```<SlideID>``` in the *AstroP
 |  |  |  +-- <SlideID>_[XXXX,YYYY]_cellGeomLoad.csv
 ```
 
-\*[link to QC documentation](../../hpfs/merge/funcs/MaSS#section-83-output)
+\*[link to QC documentation](https://github.com/AstroPathJHU/MaSS#section-83-output)
