@@ -60,6 +60,6 @@ This code starts by extracting the cohorts from the *AstropathCohortProgress.xls
     - Files are organized according to the format in the [Important Definitions](#592-important-definitions) section
     - Once files *for each antibody* are processed the code merges all output to a ```<base>\<SlideID>\<inform_data>\<Phenotyped>\<Results>\<Tables>``` folder additional details on how to export files for different antibodies and their settings can be found in the *inform_processing* module
   - Once files are merged the QA\QC files are generated here  ```<base>\<SlideID>\<inform_data>\<Phenotyped>\<Results>\<QAQC>```
-    - additional details on these files can be found in the *MaSS* documentation [here](MaSS#merge-a-single-sample-mass)
+    - additional details on these files can be found in the *MaSS* documentation [here](https://github.com/AstroPathJHU/MaSS#merge-a-single-sample-mass)
 - After all specimens are looped through the code builds the *samples_summary.xlsx* spreadsheet and exports it
 - Finially the code checks the *inForm_queue.csv* at the project level, compares it to the *inForm_queue.csv* in the ```<Mpath>``` directory. New tasks are added to the *main* *inForm_queue.csv* and completed tasks are added to the project level *inForm_queue.csv*. A copy of the *main* *inForm_queue.csv* is added to the project level and labeled *Main_inForm_queue.csv* for referencing.
