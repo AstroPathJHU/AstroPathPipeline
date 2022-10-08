@@ -37,7 +37,7 @@ This module servers to track processing, interact with the inForm® processing q
 ## 5.9.3. Instructions
 The code should be launched through MATLAB. To start download the repository to a working location. Next, open a new session of matlab and add the ```AstroPathPipline``` to the matlab path. Then use the following to launch:   
 ``` 
-mergeloop(<Mpath>)
+merge(<Mpath>)
 ```
 - ```<Mpath>[string]```: the full path to the directory containing the *AstropathCohortsProgress.csv* file
    - description of this file can be found [here](../../scans/docs/AstroPathProcessingDirectoryandInitializingProjects.md#451-astropath_processing-directory)

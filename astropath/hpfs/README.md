@@ -66,7 +66,7 @@ A final checklist of things to verify and complete before loading into the datab
   - [5.9.2. Important Definitions](merge#592-important-definitions)
   - [5.9.3. Instructions](merge#593-instructions)
   - [5.9.4. Workflow](merge#594-workflow)
-  - [5.9.6. Merge a Single Sample (MaSS)](merge/funcs/MaSS#merge-a-single-sample-mass)
+  - [5.9.6. Merge a Single Sample (MaSS)](https://github.com/AstroPathJHU/MaSS/#merge-a-single-sample-mass)
   - [5.9.7. Create Image QA QC utility](merge/funcs/MaSS#section-8-create-image-qa-qc-utility)
 - [5.10. Segmaps](segmaps#510-seg-maps "Title")
   - [5.10.1. Description](segmaps#5101-description)
