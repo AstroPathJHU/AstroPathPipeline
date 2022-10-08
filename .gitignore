@@ -8,6 +8,7 @@
 *.com
 *.class
 *.dll
+!/astropath/utilities/ConvertIm3/*.dll
 *.exe
 *.o
 *.so
