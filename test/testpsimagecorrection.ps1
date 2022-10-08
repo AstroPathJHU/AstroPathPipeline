@@ -30,7 +30,7 @@ Class testpsimagecorrection : testtools {
         #
         $this.testpsimconstruction($this.task)
         $inp = imagecorrection $this.task
-        $inp.teststatus = $true  
+        $inp.sample.teststatus = $true  
         #
         $this.testrpath = $inp.processvars[1]
         #

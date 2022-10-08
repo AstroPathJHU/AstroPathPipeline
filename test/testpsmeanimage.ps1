@@ -36,7 +36,7 @@ Class testpsmeanimage : testtools {
         #
         $this.testpsmeanimageconstruction($this.task)
         $inp = meanimage $this.task 
-        $inp.teststatus = $true  
+        $inp.sample.teststatus = $true  
         $this.checkcreatepyenv($inp.sample)
         $this.testprocessroot($inp, $true)
         $this.testcleanupbase($inp)

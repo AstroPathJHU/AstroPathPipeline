@@ -29,7 +29,7 @@ Class testpswarpoctets : testtools {
         #
         $this.testpswarpoctetsconstruction($this.task)
         $inp = warpoctets $this.task
-        $inp.teststatus = $true  
+        $inp.sample.teststatus = $true  
         $this.testprocessroot($inp, $true)
         $this.testcorrectionfile($inp)
         $this.comparepywarpoctetsinput($inp)

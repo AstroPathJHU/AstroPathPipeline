@@ -388,7 +388,7 @@ class fileutils : generalutils {
          try {
             $mxtx = New-Object System.Threading.Mutex -ArgumentList 'false', $mxtxid
             $count = 0
-            while (-not $mxtx.WaitOne(1000)) {
+            while (!$mxtx.WaitOne(1000)) {
                 Start-Sleep -m 1000;
                 $count ++
                 if ($count -eq $this.MAX) {
@@ -413,19 +413,22 @@ class fileutils : generalutils {
     ----------------------------------------- #>
     [void]ReleaseMxtx([System.Threading.Mutex]$mxtx, [string] $fpath){
         try{
-            $mxtx.ReleaseMutex()
+            $this.releasemxtx($mxtx)
             $mxtx.Dispose()
-            #
-            # if another process crashes the mutex is never given up,
-            # but is passed to the next grabbing process.
-            # this attempts to close it again for the off chance there
-            # is a duplicate grab
-            #
-            try { $mxtx.ReleaseMutex() 
-                    $mxtx.Dispose()} catch {} 
-            $Error.Clear()
         } catch {
             Throw "mutex not released: " + $fpath
+        }
+    }
+    #
+    [void]ReleaseMxtx([System.Threading.Mutex]$mxtx){
+        $notreleased = $true
+        while ($notreleased){
+            try {
+                $mxtx.ReleaseMutex()
+            } catch [System.ApplicationException] {
+                $notreleased = $false
+                $Error.Clear()
+            }
         }
     }
     <# -----------------------------------------
@@ -510,7 +513,7 @@ class fileutils : generalutils {
         $this.popfile($file, 'test line')
         $a = (Get-Content $file | Measure-Object)
         if ($a.count -eq 1){
-            set-content $file ""
+            $this.setfile($file, "")
         } else {
             (Get-Content $file) |
                 Where-Object {($a.count) -notcontains $_.ReadCount} |

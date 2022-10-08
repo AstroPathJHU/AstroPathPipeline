@@ -30,7 +30,7 @@ using module .\testtools.psm1
         #
         $this.testpswarpfitsconstruction($this.task)
         $inp = batchwarpfits $this.task
-        $inp.teststatus = $true  
+        $inp.sample.teststatus = $true  
         $this.testprocessroot($inp)
         $this.testshreddatim($inp)
         $this.testwarpfitsinput($inp)
