@@ -5,3 +5,6 @@
 	path = astropath/hpfs/merge/funcs/MaSS
 	url = https://github.com/AstroPathJHU/MaSS.git
 	shallow = true
+[submodule "astropath/utilities/ConvertIm3"]
+	path = astropath/utilities/ConvertIm3
+	url = https://github.com/AstroPathJHU/ConvertIm3

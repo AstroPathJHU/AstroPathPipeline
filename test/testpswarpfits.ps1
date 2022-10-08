@@ -29,7 +29,8 @@ using module .\testtools.psm1
     launchtests(){
         #
         $this.testpswarpfitsconstruction($this.task)
-        $inp = batchwarpfits $this.task  
+        $inp = batchwarpfits $this.task
+        $inp.teststatus = $true  
         $this.testprocessroot($inp)
         $this.testshreddatim($inp)
         $this.testwarpfitsinput($inp)
