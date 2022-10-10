@@ -911,9 +911,7 @@
         } else {
             $nbatchslides = $this.batchslides
         }
-        Write-Host '*** nbatchslides:' $nbatchslides
         #
-        Write-Host '*** sid:' $sid
         $this.sample.slideid = $sid
         $this.sample.info(([string]$nbatchslides.length +
                 ' sample(s) selected for sample regex'))

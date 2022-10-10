@@ -62,6 +62,7 @@ Class testvminform : testtools {
         $this.testcheckexportoptions($inp)
         $this.runversioncheck($inp)
         $this.cleanprotocol($inp)
+        $this.testgitstatus($inp.sample)
         Write-Host '.'
         #
     }
@@ -787,7 +788,7 @@ Class testvminform : testtools {
     }
     <# --------------------------------------------
     cleanprotocol
-    cleanprotocol for future tests
+    clean protocol for future tests
     --------------------------------------------#>
     [void]cleanprotocol($inp) {
         #
@@ -795,9 +796,9 @@ Class testvminform : testtools {
         $savedalg = $this.protocolcopy + '\' + $inp.alg
         Write-Host ('    copying from ' + $savedalg + ' to ' + $inp.algpath + '\..')
         $inp.sample.copy($savedalg, ($inp.algpath + '\..'))
+        $inp.sample.CreateNewDirs($this.protocolcopy)
         #
     }
-    #
 }
 #
 # launch test and exit if no error found
