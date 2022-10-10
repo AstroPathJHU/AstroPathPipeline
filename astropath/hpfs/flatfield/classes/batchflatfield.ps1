@@ -1,13 +1,13 @@
 ﻿<#
 --------------------------------------------------------
 batchflatfield
-Created By: Andrew Jorquera
+Benjamin Green, Andrew Jorquera
 Last Edit: 09/23/2021
 --------------------------------------------------------
 #>
 class batchflatfield : moduletools {
     #
-    batchflatfield([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    batchflatfield([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
         $this.processloc = $this.sample.basepath + '\flatfield\' + $this.sample.batchID
         $this.sample.createdirs($this.processloc)
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs"' 

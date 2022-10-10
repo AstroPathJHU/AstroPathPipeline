@@ -32,14 +32,13 @@
     FINISHED = 256
  }
 #
-class mylogger : sampledef {
-    [string]$mainlog
-    [string]$slidelog
+class mylogger : samplereqs {
     [int]$level = 2
     [string]$message
     [string]$messageappend = ''
     [string]$vers
-    [array]$val
+    [hashtable]$val
+    [string]$currentlogID
     #
     # constructors
     #
@@ -49,28 +48,17 @@ class mylogger : sampledef {
     #
     mylogger($mpath, $module, $slideid) : base($mpath, $module, $slideid){
         $this.getlogger()
+        $this.currentlogID = $this.slideid
     }
     #
-    mylogger($mpath, $module, $slideid, $project) : base($mpath, $module, $slideid, $project){
+    mylogger($mpath, $module, $batchid, $project) : base($mpath, $module, $batchid, $project){
         $this.level = 4
         $this.getlogger()
+        $this.currentlogID = $this.batchid
     }
     #
     getlogger(){
         $this.vers = $this.GetVersion($this.mpath, $this.module, $this.project)
-        $this.defpaths()
-    }
-    #
-    # define paths
-    #
-    [void]defpaths(){
-        #
-        $this.mainlog = $this.basepath + '\logfiles\' + $this.module + '.log'
-        $this.slidelog = $this.basepath + '\' + $this.slideid + '\logfiles\' +
-             $this.slideid + '-' + $this.module + '.log'
-        #
-        #$this.mainlog = Convert-Path $this.mainlog
-        #$this.samplelog = Convert-Path $this.samplelog
     }
     #
     # change level default 
@@ -81,12 +69,20 @@ class mylogger : sampledef {
     #
     [string]formatter(
         ){
-           $mydate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+           $mydate = $this.getformatdate()
            $this.message = $this.message -replace ';', '-'
            $msg = @($this.Project, $this.Cohort, $this.slideid, `
                 ($this.message+$this.messageappend), $mydate) -join ';'
            return  @($msg,"`r`n") -join ''
-        }   
+        }
+    [string]formatternonewline(
+    ){
+        $mydate = $this.getformatdate()
+        $this.message = $this.message -replace ';', '-'
+        $msg = @($this.Project, $this.Cohort, $this.currentlogID, `
+            ($this.message+$this.messageappend), $mydate) -join ';'
+        return  $msg
+    }     
     #
     [void]info($msg){
         $this.info($msg, $this.level)
@@ -134,7 +130,7 @@ class mylogger : sampledef {
             $tag = ''
         }
         #
-        $msg | foreach {
+        $msg | ForEach-Object {
             $this.message = $tag + ": " + $_
             $this.Writelog($ilevel)
         }
@@ -147,6 +143,7 @@ class mylogger : sampledef {
     }
     #
     [void]finish($msg){
+        $this.buildappend()
         $this.message =  "FINISH: "+$msg+' '+$this.vers
         $this.defmsgcaps()
     }
@@ -173,15 +170,15 @@ class mylogger : sampledef {
         }
         #
         if (($ilevel -band [LogLevels]::CONSOLE) -eq [LogLevels]::CONSOLE){
-            Write-Host $this.formatter()
+            Write-Host $this.formatternonewline()
         }
     }
     #
     [void]buildappend(){
         if ($this.module -eq 'vminform'){
-            $this.messageappend = ": Antibody: " + $this.val[2] + 
-                " - Algorithm: " + $this.val[3] + 
-                " - inForm version: " + $this.val[4]
+            $this.messageappend = ": Antibody: " + $this.val.antibody + 
+                " - Algorithm: " + $this.val.algorithm + 
+                " - inForm version: " + $this.val.informvers
         }
     }
 }

@@ -7,20 +7,59 @@
  methods used to build a sample object
  -------------------------------------------#>
 class sampledef : sharedtools{
+    #
     [string]$cohort
     [string]$project
     [string]$BatchID
     [string]$basepath
     [PSCustomObject]$project_data
     [PSCustomObject]$batchslides
+    [string]$mainlog
+    [string]$slidelog
+    [string]$cantibody
+    [hashtable]$moduleinfo = @{}
+    [system.object]$im3files
+    [system.object]$xmlfiles
+    [system.object]$exposurexmlfiles
+    [system.object]$fwfiles
+    [system.object]$fw01files
+    [system.object]$flatwim3files
+    [system.object]$segmapfiles
+    [system.object]$mergefiles
+    [system.object]$cantibodyfiles
+    #
+    [string]$im3constant = '.im3'
+    [string]$fwconstant = '.fw'
+    [string]$fw01constant = '.fw01'
+    [string]$rawconstant = '.Data.dat'
+    [string]$flatwim3constant = '.im3'
+    [string]$xmlconstant = '.xml'
+    [string]$exposurexmlconstant = '.SpectralBasisInfo.Exposure.xml'
+    [string]$algorithmconstant = '.ifp'
+    [string]$projectconstant = '.ifp'
+    [string]$segmapconstant = '_component_data_w_seg.tif'
+    [string]$mergeconstant = '_cleaned_phenotype_data.csv'
+    [string]$cellsegconstant = '_cell_seg_data.txt'
+    [string]$binsegconstant = '_binary_seg_maps.tif'
+    [string]$cellsegsumconstant = '_cell_seg_data_summary.tif'
+    [string]$componentconstant = '_component_data.tif'
+    [string]$cantibodyconstant = '_cell_seg_data.txt'
+    #
+    [array]$antibodies
+    [array]$componenttarget
+    [array]$binarysegtargets
     #
     sampledef(){}
     #
-    # sampledef([string]$mpath) : base($mpath){}
+    sampledef($mpath){
+        $this.mpath = $mpath
+        $this.defbase()
+    }
     #
     sampledef($mpath, $module){
         $this.mpath = $mpath
         $this.module = $module 
+        $this.defbase()
     }
     #
     sampledef($mpath, $module, $slideid){
@@ -36,339 +75,208 @@ class sampledef : sharedtools{
     }
     #
     sampledefslide($slideid){
-        $slides = $this.importslideids($this.mpath)
-        $this.Sample($slideid, $this.mpath, $slides)
+        $this.importslide($this.mpath)
+        $this.Sample($slideid, $this.slide_data)
     }
     #
     sampledefbatch($batchid, $project){
         $this.project = $project
-        $slides = $this.importslideids($this.mpath)
-        $this.Batch($batchid, $this.mpath, $slides)
+        $this.importslide($this.mpath)
+        $this.Batch($batchid, $this.slide_data)
     }
     #
     Sample(
         [string]$slideid="",
-        [string]$mpath,
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdef($slideid, $slides)
-        $this.defbase($mpath)
+        $this.defbase()
+        $this.deflogpaths()
+    }
+    #
+    Sample(
+        [string]$slideid="",
+        [string]$module,
+        [PSCustomObject]$slides
+    ){
+        $this.module = $module
+        $this.ParseAPIDdef($slideid, $slides)
+        $this.defbase() 
+        $this.deflogpaths()
     }
     #
     Batch(
         [string]$batchid="",
-        [string]$mpath,
         [PSCustomObject]$slides
     ){
         $this.ParseAPIDdefbatch($batchid, $slides)
-        $this.defbase($mpath)
+        $this.defbase()
+        $this.deflogpaths()
+    }
+    #
+    [void]ParseAPIDdef([string]$slideid){
+        $this.ParseAPIDdef($slideid, $this.slide_data)
+        #
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
-        $slide = $slides | 
-                Where-Object -FilterScript {$_.SlideID -eq $slideid.trim()}
+        $slide = $slides | & { process { 
+            if ($_.SlideID -eq $slideid.trim()){ $_ }
+        }}
         #
         if (!$slide){
-            Throw ($slideid.trim() + ' is not a valid slideid. Check the APID tables and\or confirm the SlideID.')
+            Throw ($slideid.trim() +
+             ' is not a valid slideid. Check the APID tables and\or confirm the SlideID.')
         }
         $this.slideid = $slide.SlideID.trim()
         $this.project = $slide.Project
         $this.cohort = $slide.Cohort
+        $this.BatchID = $slide.BatchID.padleft(2, '0')
         #
-        if ($slide.BatchID.Length -eq 1){
-            $this.BatchID = '0' + $slide.BatchID
-        } else {
-            $this.BatchID = $slide.BatchID 
-        }
+    }
+    #
+    [void]ParseAPIDdefbatch([string]$mbatchid){
+        $this.ParseAPIDdefbatch($mbatchid, $this.slide_data)
+        #
     }
     #
     [void]ParseAPIDdefbatch([string]$mbatchid, [PSCustomObject]$slides){
         #
         if ($mbatchid[0] -match '0'){
-            $mbatchid = $mbatchid[1]
+            [string]$mbatchid = $mbatchid[1]
         }
         #
-        $batch = $slides | 
-                Where-Object -FilterScript {$_.BatchID -eq $mbatchid.trim() -and 
-                    $_.Project -eq $this.project.trim()}
+        $batch = $slides | & {process { 
+            if (
+                $_.BatchID -eq $mbatchid.trim() -and 
+                $_.Project -eq $this.project.trim()
+            ) { $_ }
+        }}
         #
         if (!$batch){
-            Throw 'Not a valid batchid'
+            Throw ('Not a valid batchid: project - ' + $this.project +
+                 '; batchid - ' + $mbatchid.trim() + '; module - ' + $this.module)
+        } elseif ($batch.Count -eq 1){
+            $this.project = $batch.Project
+            $this.cohort = $batch.Cohort
+            $this.BatchID = $batch.BatchID.padleft(2, '0')
+        } else{
+            $this.project = $batch.Project[0]
+            $this.cohort = $batch.Cohort[0]
+            $this.BatchID = $batch.BatchID[0].padleft(2, '0')
         }
-        $this.project = $batch.Project[1]
-        $this.cohort = $batch.Cohort[1]
         #
-        if ($batch.BatchID[1].Length -eq 1){
-            $this.BatchID = '0' + $batch.BatchID[1]
-        } else {
-            $this.BatchID = $batch.BatchID[1] 
-        }
         $this.slideid = $this.BatchID
-        #
         $this.batchslides = $batch
+        #
+    }
+    #
+    [void]defbase(){
+        #
+        $this.importcohortsinfo($this.mpath)
+        #
+        $this.project_data = $this.full_project_dat | & { process {
+            if ($_.Project -eq $this.project) {$_}
+        }}
+        #
+        $this.basepath = (
+            $this.uncpaths($this.project_data.dpath),
+            $this.project_data.dname -join '\'
+        )
         #
     }
     #
     [void]defbase([string]$mpath){
         $this.mpath = $mpath
-        $project_dat = $this.importcohortsinfo($this.mpath)
-        $project_dat = $project_dat | 
-                Where-Object -FilterScript {$_.Project -eq $this.project}
-        $this.basepath = '\\' + $project_dat.dpath + '\' + $project_dat.dname
-        $this.project_data = $project_dat
-    }
-    #
-    [string]im3folder(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3'
-        return $path
-
-    }
-    #
-    [string]Scan(){
-        $path = $this.basepath + '\' + $this.slideid + '\im3\Scan*'
-        $paths = gci $path
-        $scan = $paths | 
-            select-object *, @{n = "IntVal"; e = {[int]$_.Name.substring(4)}} |
-            sort-object IntVal |
-            Select-Object -Last 1
-        return $scan.Name
-    }
-    #
-    [string]Scanfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\im3\'+$this.Scan()
-        return $path
-
-    }
-    #
-    [string]qptifffile(){
-        $path = $this.Scanfolder() + '\' + $this.slideid + 
-            '_' + $this.Scan() + '.qptiff'
-        return $path
-    }
-    #
-    [string]annotationxml(){
-        $path = $this.Scanfolder() + '\' + $this.slideid + '_' + 
-            $this.Scan() + '_annotations.xml'
-        return $path
-    }
-    #
-    [string]batchIDfile(){
-        $path = $this.Scanfolder() + '\BatchID.txt'
-        return $path
-    }
-    #
-    [string]flatfieldfolder(){
-        $path = $this.basepath +'\flatfield'
-        return $path
-    }
-    #
-    [string]batchflatfield(){
-        $path = $this.basepath +'\flatfield\flatfield_BatchID_' + 
-            $this.BatchID + '.bin'
-        return $path
-    }
-    #
-    [string]pybatchflatfield(){
-        $ids = $this.ImportCorrectionModels($this.mpath)
-        $file = ($ids | Where-Object { $_.slideid -contains $this.slideid}).FlatfieldVersion
-        return $file
-    }
-    #
-    [string]pybatchflatfieldfullpath(){
-          $flatfield = $this.mpath + '\flatfield\flatfield_' + $this.pybatchflatfield() + '.bin'
-          return $flatfield
-    }
-    #
-    [string]CheckSumsfile(){
-        $path = $this.Scanfolder() + '\CheckSums.txt'
-        return $path
-    }
-    #
-    [string]MSIfolder(){
-        $path = $this.Scanfolder() + '\MSI'
-        return $path 
-    }
-    #
-    [string]informfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\inform_data'
-        return $path
-
-    }
-    #
-    [string]componentfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\inform_data\Component_Tiffs'
-        return $path
-    }
-    #
-    [string]phenotypefolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\inform_data\Phenotyped'
-        return $path
-
-    }
-    #
-    [string]xmlfolder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\im3\xml'
-        return $path
-
-    }
-    #
-    [string]meanimagefile(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\im3\' + $this.slideid + '-mean.flt'
-        return $path
-    }
-    #
-    [string]meanimagefolder(){
-        $path = $this.im3folder() + '\meanimage'
-        return $path
-    }
-    #
-    [string]flatwim3folder(){
-        $path = $this.basepath + '\' + $this.slideid + 
-            '\im3\flatw'
-        return $path
-    }
-    #
-    [string]flatwfolder(){
-        $path = '\\'+$this.project_data.fwpath + '\' + 
-            $this.slideid
-        return $path
-    }
-    #
-    [string]mergeconfigfile(){
-        $path = $this.basepath + '\Batch\MergeConfig_' + 
-            $this.BatchID
-        return $path
-    }
-    #
-    [void]testim3folder(){
-        if (!(test-path $this.im3folder())){
-            Throw "im3 folder not found for:" + $this.im3folder()
-        }
-    }
-    #
-    [switch]testbatchflatfield(){
-        #
-        if (!(test-path $this.batchflatfield())){
-            return $false
-        }
-        #
-        return $true
-    }
-    #
-    [switch]testpybatchflatfield(){
-        #
-        if (!(test-path $this.pybatchflatfieldfullpath())){
-            return $false
-        }
-        #
-        return $true
-    }
-    #
-    [switch]testxmlfiles(){
-        #
-        $xml = $this.xmlfolder()
-        $im3s = gci ($this.Scanfolder() + '\MSI\*') *im3
-        $im3n = ($im3s).Count + 2
-        #
-        if (!(test-path $xml)){
-            return $false
-        }
-        #
-        # check xml files = im3s
-        #
-        $xmls = gci ($xml + '\*') '*xml'
-        $files = ($xmls).Count
-        if (!($im3n -eq $files)){
-            return $false
-        }
-        #
-        return $true
+        $this.defbase()
         #
     }
     #
-    [switch]testmeanimagefiles(){
+    # define log paths
+    #
+    [void]deflogpaths(){
         #
-        if ($this.vers -match '0.0.1'){
-            #
-            # check for mean images
-            # 
-            $file = $this.im3folder() + '\' + $this.slideid + '-mean.csv'
-            $file2 = $this.im3folder() + '\' + $this.slideid + '-mean.flt'
-            #
-            if (!(test-path $file)){
-                return $false
-            }
-            if (!(test-path $file2)){
-                return $false
-            }
+        $this.mainlog = $this.basepath + '\logfiles\' +
+            $this.module + '.log'
+        if ($this.module -match 'batch'){
+            $this.slidelog = $this.mainlog
         } else {
-            #
-            # check for meanimage directory
-            #
-            $p = $this.meanimagefolder()
-            if (!(test-path $p)){
-                return $false
-            }
+            $this.slidelog = $this.basepath + '\' +
+                $this.slideid + '\logfiles\' +
+                $this.slideid + '-' + $this.module + '.log'
         }
-        #
-        return $true
         #
     }
     #
-    [switch]testimagecorrectionfiles(){
+    [void]deflogpaths($cmodule){
         #
-        $im3s = (gci ($this.Scanfolder() + '\MSI\*') *im3).Count
-        #
-        $paths = @($this.flatwim3folder(), $this.flatwfolder(), $this.flatwfolder())
-        $filetypes = @('*im3', '*fw', '*fw01')
-        #
-        for ($i=0; $i -lt 3; $i++){
-            #
-            if (!(test-path $paths[$i])){
-                return $false
-            }
-            #
-            # check files = im3s
-            #
-            $files = (gci ($paths[$i] + '\*') $filetypes[$i]).Count
-            if (!($im3s -eq $files)){
-                return $false
-            }
+        $cmainlog = $this.basepath + '\logfiles\' + $cmodule + '.log'
+        if ($cmodule -match 'batch'){
+            $cslidelog = $cmainlog
+        } else {
+            $cslidelog = $this.basepath + '\' + 
+                $this.slideid + '\logfiles\' + 
+                $this.slideid + '-' + $cmodule + '.log'
         }
+        $vers = $this.GetVersion($this.mpath, $cmodule, $this.project, $true)
+        $this.moduleinfo.($cmodule) = @{mainlog=$cmainlog; slidelog=$cslidelog; version=$vers}
         #
-        return $true
+        $cmainlog = $null
+        $cslidelog = $null
+        $vers = $null
         #
     }
     #
-    [switch]testsegmentationfiles(){
-        #
-        $table = $this.phenotypefolder() + '\Results\Tables'
-        if (!(test-path $table + '\*csv')){
-            return $false
-        }
-        $comp = (gci ($table + '\*') '*csv').Count
-        $seg = (gci ($this.componentfolder() + '\*') '*data_w_seg.tif').Count
-        if (!($comp -eq $seg)){
-            return $false
-        }
-        return $true
-        #
+    [string]slidelogfolder(){
+        return ($this.basepath + '\' + $this.slideid + '\logfiles')
     }
     #
-    [switch]testwarpoctets(){
+    [string]slidelogbase(){
+        return ($this.slidelogfolder() +
+            '\' + $this.slideid + '-' )
+    }
+    #
+    [string]slidelogbase($cmodule){
+        return ($this.slidelogfolder() + 
+            '\' + $this.slideid + '-' + $cmodule + '.log')
+    }
+    #
+    [string]mainlogfolder(){
+        return ($this.basepath + '\logfiles' )
+
+    }
+    #
+    [string]mainlogbase(){
+        return ($this.mainlogfolder() + '\' )
+    }
+    #
+    [string]mainlogbase($cmodule){
+        return ($this.mainlogfolder() + '\' + $cmodule + '.log')
+    }
+    #
+    [void]findsegmentationtargets(){
         #
-        $file = $this.basepath + '\warping\octets\' + $this.slideid + 'all-overlap-octets.csv'
-        if (!(test-path $file)){
-            return $false
-        }
+        $this.ImportMergeConfigCSV($this.basepath, $this.batchid)
         #
-        return $true
+        $sorted = $this.mergeconfig_data | 
+            Where-Object {$_.SegmentationStatus -gt 0} | 
+            Sort-Object -Property Opal
+        $this.componenttarget = $sorted[0]
+        #
+        $this.binarysegtargets = $this.mergeconfig_data | 
+            Where-Object {
+                $_.SegmentationStatus -gt 0 -and
+                $_.TargetType -eq 'Lineage'
+            } | 
+            Group-Object SegmentationStatus | 
+            foreach-object {
+                $lowestopal = ($_.group | Sort-Object -Property Opal)[0]
+                if ($lowestopal.ImageQA -eq 'Tumor') {
+                    $lowestopal.Target = 'Tumor'
+                }
+                $lowestopal
+            }
+        #
     }
     #
 }
