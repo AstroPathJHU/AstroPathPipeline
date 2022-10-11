@@ -1,18 +1,24 @@
 ﻿#
 class launchmodule : mylogger{
     #
+    [int]$output
+    #
     launchmodule(){}
     #
     launchmodule($mpath, $module, $val) : base($mpath, $module){
         #
         $this.val = $val
+        $this.level = 12
+        #
         if ($module -match 'batch'){
-            $this.level = 4
-            $this.sampledefbatch($val[1], $val[0])
+            $this.sampledefbatch($val.batchid, $val.project)
+            $this.currentlogID = $this.batchid
         } else {
-            $this.sampledefslide($val[1])            
-
+            $this.sampledefslide($val.slideid)
+            $this.currentlogID = $this.slideid            
         }
+        #
+        $this.teststatus = $true
         $this.getlogger()
         $this.start($module+'-test')
         #
@@ -37,14 +43,13 @@ class launchmodule : mylogger{
         $this.start($this.module)
         #
         try {
-            $( & $this.module $this.val $this)  
-            Write-Output 1
+            initmodule -module $this.module -task $this.val -log $this
+            $this.output = 0
         } catch {
             $this.error($_.Exception.Message)
-            Write-Output 0
-        } finally { # end messages
+            $this.output = $_
+        } finally { # end message
             $this.finish($this.module)
-            
         }
         #
     }

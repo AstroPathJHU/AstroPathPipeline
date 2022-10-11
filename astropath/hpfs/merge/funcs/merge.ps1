@@ -1,7 +1,7 @@
 ﻿<#
 --------------------------------------------------------
 merge
-Created By: Andrew Jorquera
+Benjamin Green, Andrew Jorquera
 --------------------------------------------------------
 Description
 Task to be launched remotely to ANY computer from ANYWHERE
@@ -17,12 +17,12 @@ $vers[string]: The version number of inform to use
 #
 Function merge {
      #
-     param($task, $log)
+     param($task, $log, [Parameter()][switch]$test)
      #
      # used for testing; when launched manually without launchmodule
      #
-     if (!($PSBoundParameters.ContainsKey('log'))){ 
-        $log = [launchmodule]::new($task[$task.Count-1], 'merge', $task) 
+     if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
+        $log = [launchmodule]::new($task.mpath, 'merge', $task) 
         $e = 1
      } else {$e = 0}
      #

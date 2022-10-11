@@ -440,5 +440,6 @@ ENV PATH=/usr/local/texlive/bin/x86_64-linux:/home/astropath/.local/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
 
 USER astropath
+LABEL astropath=true
 
 CMD ["/bin/bash"]
