@@ -176,7 +176,13 @@ class astropathwftools : sampledb {
                 CommandLine = "powershell Start-Process powershell -ArgumentList 'Enable-PSRemoting -Force'"
             }
         }
-        Invoke-CimMethod @MethodArgs
+        try {
+            Invoke-CimMethod @MethodArgs
+        }
+        catch {
+            Write-Output 'Error remoting to computer:' $cname
+            Write-Output $_
+        }
         #
     }
     #
