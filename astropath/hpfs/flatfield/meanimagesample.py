@@ -135,7 +135,7 @@ class MeanImageSampleBaseComponentTiff(MeanImageSampleBase, ReadRectanglesOverla
     """
     MeanImage base class that reads ComponentTiff files
     """
-    pass
+    multilayercomponenttiff=True
 
 class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, 
                              FileTypeArgumentParser) :
@@ -520,7 +520,7 @@ class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSamp
         #        raise NotImplementedError(f'ERROR: cannot run MeanImageSampleComponentTiff without pre-computed masks!')
         ##make the mean image from all of the tissue bulk rectangles
         #n_threads = self.njobs if self.njobs is not None else 4
-        #ets_to_use = [1. for li in range(self.nlayersunmixed)] #unmixed images are already exposure time corrected
+        #ets_to_use = np.ones((self.nlayersunmixed)) #unmixed images are already exposure time corrected
         #new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,ets_to_use,
         #                                                         self.image_masking_dirpath,n_threads)
         #for fl in new_field_logs :

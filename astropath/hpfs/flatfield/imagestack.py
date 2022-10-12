@@ -1,6 +1,8 @@
 #imports
 import copy
 import numpy as np
+from abc import abstractmethod
+from contextlib import contextmanager
 from threading import Thread
 from queue import Queue
 from ...utilities.config import CONST as UNIV_CONST
@@ -15,16 +17,6 @@ from .utilities import FieldLog
 class ImageStackBase(ThingWithLogger) :
     """
     Base class for stacks of different types of images, possibly with masks
-    """
-
-class ImageStackComponentTiff(ImageStackBase) :
-    """
-    Class to handle stacks of component tiff images
-    """
-
-class ImageStackIm3(ImageStackBase) :
-    """
-    Class to handle stacks of raw im3 images
     """
 
     #################### PUBLIC FUNCTIONS ####################
@@ -53,7 +45,7 @@ class ImageStackIm3(ImageStackBase) :
                          (minimum 4 will be used)
         """
         self.__logger.info(f'Stacking {len(rectangles)} images')
-        img_dims = rectangles[0].im3shape
+        img_dims = self._get_rectangle_img_shape(rectangles[0])
         if img_dims!=self.__image_stack.shape :
             errmsg = f'ERROR: called stack_images with rectangles that have dimensions {img_dims} '
             errmsg+= f'but an image stack with dimensions {self.__image_stack.shape}!'
@@ -74,9 +66,9 @@ class ImageStackIm3(ImageStackBase) :
         Add the already-created meanimage/mask stack for a single given sample to the model by reading its files
         """
         #make sure the dimensions match
-        if get_image_hwl_from_xml_file(sample.root,sample.SlideID)!=self.__image_stack.shape :
+        if self._get_rectangle_img_shape(sample.rectangles[0])!=self.__image_stack.shape :
             errmsg = 'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have '
-            errmsg+= f'dimensions {sample.rectangles[0].im3shape} but an image stack with '
+            errmsg+= f'dimensions {self._get_rectangle_img_shape(sample.rectangles[0])} but an image stack with '
             errmsg+= f'dimensions {self.__image_stack.shape}'
             raise ValueError(errmsg)
         #read and add the images from the sample
@@ -128,36 +120,22 @@ class ImageStackIm3(ImageStackBase) :
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 
-    @staticmethod
-    def __add_rect_to_stacking_queue_no_masking(rect,norm_ets,queue) :
-        with rect.using_corrected_im3() as im :
-            normalized_image = im/norm_ets
-            new_field_log = FieldLog(None,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
-                                     'bulk','stacking',str(list(range(1,normalized_image.shape[-1]+1))))
-            queue.put((normalized_image,np.power(normalized_image,2),new_field_log))
+    @abstractmethod
+    def _get_rectangle_img_shape(self,rect) :
+        """
+        return the shape of a given rectangle's image. Not implemented in the base class.
+        """
+        pass
 
     @staticmethod
-    def __add_rect_to_stacking_queue_with_masking(rect,samp,masking_dir_path,keys_with_full_masks,norm_ets,queue) :
-        imkey = rect.file.rstrip(UNIV_CONST.IM3_EXT)
-        with rect.using_corrected_im3() as im :
-            normalized_im = im/norm_ets
-            if imkey in keys_with_full_masks :
-                mask_path = masking_dir_path/f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
-                mask = ImageMask.onehot_mask_from_full_mask_file_no_blur(samp,mask_path)
-                layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
-            else :
-                mask_path = masking_dir_path/f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
-                mask = (ImageMask.unpack_tissue_mask(mask_path,im.shape[:-1]))[:,:,np.newaxis]
-                layers_to_add = np.ones(im.shape[-1],dtype=np.uint64) if np.sum(mask[:,:,0])/(im.shape[0]*im.shape[1])>=CONST.MIN_PIXEL_FRAC else np.zeros(im.shape[-1],dtype=np.uint64)
-            normalized_masked_im = normalized_im*mask*layers_to_add[np.newaxis,np.newaxis,:]
-            stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
-            new_field_log = FieldLog(None,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
-                                     'bulk','stacking',str(stacked_in_layers))
-            queue.put((normalized_masked_im,
-                       np.power(normalized_masked_im,2),
-                       mask*layers_to_add[np.newaxis,np.newaxis,:],
-                       layers_to_add,
-                       new_field_log))
+    @abstractmethod
+    def _add_rect_to_stacking_queue_no_masking(rect,norm_ets,queue) :
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def _add_rect_to_stacking_queue_with_masking(rect,samp,masking_dir_path,keys_with_full_masks,norm_ets,queue) :
+        pass
 
     def __accumulate_from_stacking_queue(self,image_queue,return_queue) :
         n_images_read = 0
@@ -195,7 +173,7 @@ class ImageStackIm3(ImageStackBase) :
                 thread.join()
             msg = f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....'
             self.__logger.debug(msg)
-            new_thread = Thread(target=self.__add_rect_to_stacking_queue_no_masking,
+            new_thread = Thread(target=self._add_rect_to_stacking_queue_no_masking,
                                 args=[r,
                                       med_ets if med_ets is not None else r.allexposuretimes[np.newaxis,np.newaxis,:],
                                       image_queue])
@@ -250,7 +228,7 @@ class ImageStackIm3(ImageStackBase) :
             msg = f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack '
             msg+= f'({ri+1} of {len(rectangles_to_stack)})....'
             self.__logger.debug(msg)
-            new_thread = Thread(target=self.__add_rect_to_stacking_queue_with_masking,
+            new_thread = Thread(target=self._add_rect_to_stacking_queue_with_masking,
                                 args=[r,
                                       samp,
                                       maskingdirpath,
@@ -265,3 +243,77 @@ class ImageStackIm3(ImageStackBase) :
         acc_thread.join()
         (n_images_read, n_images_stacked_by_layer, field_logs) = return_queue.get()
         return n_images_read, n_images_stacked_by_layer, field_logs
+
+class ImageStackComponentTiff(ImageStackBase) :
+    """
+    Class to handle stacks of component tiff images
+    """
+
+    def _get_rectangle_img_shape(self,rect) :
+        return rect.componenttiffshape
+
+    @staticmethod
+    def _add_rect_to_stacking_queue_no_masking(rect,norm_ets,queue) :
+        with rect.using_component_tiff() as im :
+            normalized_image = im/norm_ets
+            new_field_log = FieldLog(None,rect.componenttifffile,
+                                     'bulk','stacking',str(list(range(1,normalized_image.shape[-1]+1))))
+            queue.put((normalized_image,np.power(normalized_image,2),new_field_log))
+
+    @staticmethod
+    def _add_rect_to_stacking_queue_with_masking(rect,samp,masking_dir_path,keys_with_full_masks,norm_ets,queue) :
+        imkey = rect.componenttifffile.rstrip(UNIV_CONST.COMPONENT_TIFF_SUFFIX)
+        with rect.using_component_tiff() as im :
+            normalized_im = im/norm_ets
+            #only ever use the tissue masks alone for the component tiffs
+            mask_path = masking_dir_path/f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
+            mask = (ImageMask.unpack_tissue_mask(mask_path,im.shape[:-1]))[:,:,np.newaxis]
+            layers_to_add = np.ones(im.shape[-1],dtype=np.uint64) if np.sum(mask[:,:,0])/(im.shape[0]*im.shape[1])>=CONST.MIN_PIXEL_FRAC else np.zeros(im.shape[-1],dtype=np.uint64)
+            normalized_masked_im = normalized_im*mask*layers_to_add[np.newaxis,np.newaxis,:]
+            stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
+            new_field_log = FieldLog(None,rect.componenttifffile,
+                                     'bulk','stacking',str(stacked_in_layers))
+            queue.put((normalized_masked_im,
+                       np.power(normalized_masked_im,2),
+                       mask*layers_to_add[np.newaxis,np.newaxis,:],
+                       layers_to_add,
+                       new_field_log))
+
+class ImageStackIm3(ImageStackBase) :
+    """
+    Class to handle stacks of raw im3 images
+    """
+
+    def _get_rectangle_img_shape(self,rect) :
+        return rect.im3shape
+
+    @staticmethod
+    def _add_rect_to_stacking_queue_no_masking(rect,norm_ets,queue) :
+        with rect.using_corrected_im3() as im :
+            normalized_image = im/norm_ets
+            new_field_log = FieldLog(None,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+                                     'bulk','stacking',str(list(range(1,normalized_image.shape[-1]+1))))
+            queue.put((normalized_image,np.power(normalized_image,2),new_field_log))
+
+    @staticmethod
+    def _add_rect_to_stacking_queue_with_masking(rect,samp,masking_dir_path,keys_with_full_masks,norm_ets,queue) :
+        imkey = rect.file.rstrip(UNIV_CONST.IM3_EXT)
+        with rect.using_corrected_im3() as im :
+            normalized_im = im/norm_ets
+            if imkey in keys_with_full_masks :
+                mask_path = masking_dir_path/f'{imkey}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
+                mask = ImageMask.onehot_mask_from_full_mask_file_no_blur(samp,mask_path)
+                layers_to_add = np.where(np.sum(mask,axis=(0,1))/(mask.shape[0]*mask.shape[1])>=CONST.MIN_PIXEL_FRAC,1,0).astype(np.uint64)
+            else :
+                mask_path = masking_dir_path/f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
+                mask = (ImageMask.unpack_tissue_mask(mask_path,im.shape[:-1]))[:,:,np.newaxis]
+                layers_to_add = np.ones(im.shape[-1],dtype=np.uint64) if np.sum(mask[:,:,0])/(im.shape[0]*im.shape[1])>=CONST.MIN_PIXEL_FRAC else np.zeros(im.shape[-1],dtype=np.uint64)
+            normalized_masked_im = normalized_im*mask*layers_to_add[np.newaxis,np.newaxis,:]
+            stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
+            new_field_log = FieldLog(None,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+                                     'bulk','stacking',str(stacked_in_layers))
+            queue.put((normalized_masked_im,
+                       np.power(normalized_masked_im,2),
+                       mask*layers_to_add[np.newaxis,np.newaxis,:],
+                       layers_to_add,
+                       new_field_log))

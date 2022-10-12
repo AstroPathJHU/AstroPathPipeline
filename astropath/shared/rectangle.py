@@ -525,7 +525,7 @@ class RectangleReadComponentTiffBase(RectangleWithImageLoaderBase):
 
   @property
   def componenttifffile(self):
-    return self.componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, "_component_data.tif")
+    return self.componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, UNIV_CONST.COMPONENT_TIFF_SUFFIX)
 
   @methodtools.lru_cache()
   @property
@@ -573,6 +573,14 @@ class RectangleReadComponentTiffMultiLayer(RectangleReadComponentTiffBase):
       **super().componenttiffloaderkwargs,
       "layers": self.layerscomponenttiff,
     }
+
+  @property
+  def componenttiffshape(self):
+    return (
+      floattoint(float(self.height / self.onepixel)),
+      floattoint(float(self.width / self.onepixel)),
+      len(self.layerscomponenttiff),
+    )
 
 class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
   """

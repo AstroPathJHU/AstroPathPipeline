@@ -14,6 +14,9 @@ class Const :
     def IM3_EXT(self) :
         return '.im3' # extension of .im3 image files
     @property
+    def COMPONENT_TIFF_SUFFIX(self) :
+        return '_component_data.tif' # suffix of the component tiff image files
+    @property
     def QPTIFF_SUFFIX(self) :
         return '_qptiff.jpg' # suffix for the qptiff files
     @property
