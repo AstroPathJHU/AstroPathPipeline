@@ -45,12 +45,17 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
     return self.__annoscale
   @property
   def usesubindex(self): return self.__usesubindex
+
+  class __DiscardSubIndexType(object):
+    def __bool__(self): return False
+  discardsubindex = __DiscardSubIndexType()
+
   @usesubindex.setter
   def usesubindex(self, value):
-    if value is None or value is True or value is False:
+    if value is None or value is True or value is False or value is self.discardsubindex:
       self.__usesubindex = value
     else:
-      raise ValueError("usesubindex can only be None, True, or False")
+      raise ValueError(f"usesubindex can only be None, True, False, or {type(self).__name__}.discardsubindex")
   @property
   @abc.abstractmethod
   def rawname(self): pass
@@ -72,6 +77,8 @@ class AnnotationNodeBase(units.ThingWithAnnoscale):
       if subindex == 1:
         return re.sub(regex, "", result)
       raise ValueError(f"Can't force not having a subindex when the subindex is > 1: {result}")
+    elif self.usesubindex is self.discardsubindex:
+      return re.sub(regex, "", result)
 
   @property
   def annotationtype(self):
@@ -331,10 +338,24 @@ class MergedAnnotationFiles(ThingWithAnnotationInfos):
       if info.isfromxml:
         if info.xmlpath not in xmldict:
           with open(info.xmlpath, "rb") as f:
-            xmldict[info.xmlpath] = {node.get_xml_attr("Name").strip().lower(): AnnotationNodeXML(node, annoscale=info.annoscale) for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation")}
+            dct = xmldict[info.xmlpath] = {}
+            for _, _, node in jxmlease.parse(f, generator="/Annotations/Annotation"):
+              name = node.get_xml_attr("Name").strip().lower()
+              node = AnnotationNodeXML(node, annoscale=info.annoscale)
+
+              if name in dct:
+                if dct[name].regions and node.regions:
+                  raise ValueError(f"Multiple non-empty annotations named {name} in {info.xmlpath}")
+                else:
+                  self.logger.warningglobal(f"Extra empty annotation with name {name}")
+                if not node.regions: continue
+
+              dct[name] = node
+
     return xmldict
+
   def getannotationnode(self, info):
-    if info.isfromxml:
+    if info.isfromxml or info.isdummy:
       return self.__xmldict[info.xmlpath][info.originalname.lower()]
     else:
       raise ValueError(f"Don't know how to get the node for {info}")
@@ -391,26 +412,37 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
     nodes = self.annotationnodes
 
     count = more_itertools.peekable(itertools.count(1))
+    seen = []
     for node in nodes[:]:
-      if not node.regions:
-        if node.annotationtype != "empty":
+      if not node.regions or node in seen:
+        if node.annotationtype != "empty" and node not in seen:
           self.logger.warningglobal(f"Annotation {node.annotationname} is empty, skipping it")
-        for info in annotationinfos[:]:
-          if info.originalname == node.annotationname:
-            annotationinfos.remove(info)
         nodes.remove(node)
+      seen.append(node)
+
+    seen = []
+    for info in annotationinfos[:]:
+      if info.isdummy or info in seen:
+        annotationinfos.remove(info)
+      else:
+        seen.append(info)
 
     annotationinfodict = {}
-    for node in nodes:
+    for node in nodes[:]:
+      relevantinfos = [info for info in annotationinfos if info.originalname == node.annotationname]
+      if len(relevantinfos) > 1 and any(not info.isdummy for info in relevantinfos):
+        relevantinfos = [info for info in relevantinfos if not info.isdummy]
       try:
-        annotationinfo, = (info for info in annotationinfos if info.originalname == node.annotationname)
+        annotationinfo, = relevantinfos
+      except ValueError as e:
+        errors.append(str(e))
+        nodes.remove(node)
+      else:
         annotationinfodict[node] = annotationinfo
         annotationinfos.remove(annotationinfo)
         node.annotationtype = annotationinfo.dbannotationtype
         node.annotation = self.allowedannotation(node.annotationtype)
         node.annotationtype = node.annotation.name
-      except ValueError as e:
-        node.annotationerror = e
 
     def annotationorder(node):
       try:
@@ -421,19 +453,17 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
 
     nodesbytype = collections.defaultdict(lambda: [])
     for node in nodes:
-      nodesbytype[node.annotationtype].append(node)
+      nodesbytype[node.annotation.name].append(node)
     for node in nodes:
-      if len(nodesbytype[node.annotationtype]) > 1:
+      if len(nodesbytype[node.annotation.name]) > 1:
         node.usesubindex = True
+      elif node.annotation.name != node.annotationtype: #renamed
+        node.usesubindex = AnnotationNodeBase.discardsubindex
       else:
         node.usesubindex = False
 
     for layeridx, (annotationtype, annotationnodes) in zip(count, nodesbytype.items()):
-      try:
-        targetannotation, = {node.annotation for node in annotationnodes}
-      except AttributeError:
-        errors += [str(node.annotationerror) for node in annotationnodes if hasattr(node, "annotationerror")]
-        continue
+      targetannotation, = {node.annotation for node in annotationnodes}
       subindices = [node.annotationsubindex for node in annotationnodes]
       if subindices != list(range(1, len(subindices)+1)):
         errors.append(f"Annotation subindices for {annotationtype} are not sequential: {', '.join(str(subindex) for subindex in subindices)}")

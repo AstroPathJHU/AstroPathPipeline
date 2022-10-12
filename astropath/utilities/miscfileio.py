@@ -164,13 +164,23 @@ def mountedpath(filename):
   like guesspathtype, but if the path starts with // it will assume
   it's a network path on windows
   """
+
   if filename.startswith("//"):
     try:
       return pathlib.WindowsPath(filename)
     except NotImplementedError:
       return pathlib.PureWindowsPath(filename)
-  else:
-    return guesspathtype(filename)
+
+  regex = r"([^/:]+):/srv/[^/]*/([^/]*)"
+  match = re.match(regex, filename)
+  if match:
+    newfilename = rf"\\{match.group(1)}\{match.group(2)}"
+    try:
+      return pathlib.WindowsPath(newfilename)
+    except NotImplementedError:
+      return pathlib.PureWindowsPath(newfilename)
+
+  return guesspathtype(filename)
 
 def checkwindowsnewlines(filename):
   r"""
