@@ -28,6 +28,7 @@ using module .\testtools.psm1
     launchtests(){
         $this.testpsbatchwarpkeysconstruction($this.task)
         $inp = batchwarpkeys $this.task
+        $inp.sample.teststatus = $true  
         $this.removewarpoctetsdep($inp)
         $this.testprocessroot($inp)
         $this.testwarpkeysinputbatch($inp)

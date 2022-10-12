@@ -132,7 +132,7 @@ Check out\ download the github repository. In MATLAB, add the entire *AstroPath 
    - [5.6 Warping](astropath/hpfs/warping#56-warping "Title")
    - [5.7. Image Correction](astropath/hpfs/imagecorrection#57-image-correction "Title")
    - [5.8. VMinForm](astropath/hpfs/vminform#58-vminform "Title")
-   - [5.9. Mergeloop](astropath/hpfs/mergeloop#59-mergeloop "Title")
+   - [5.9. Merge](astropath/hpfs/merge#59-merge "Title")
    - [5.10. Segmaps](astropath/hpfs/segmaps#510-seg-maps "Title")
    - [5.11. Create & Transfer Annotations](astropath/hpfs/transferanno#511-transfer-annotations "Title")
    - [5.12. Validate Data](astropath/hpfs/validatedata#512-validate-data)

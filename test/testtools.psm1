@@ -313,15 +313,11 @@ Class testtools{
         'M21_1-all_overlap_octets.csv' -join '\'
         #
         $inp.getslideidregex()
-        Write-Host '*** Slides in addwarpoctetsdep:' $inp.batchslides
         #
         $inp.batchslides | ForEach-Object{
             $des = $this.basepath, $_, 'im3', 'warping', 'octets' -join '\'
             Write-Host '   '$des 
             Write-Host '   '$_
-            Write-Host '*** sor:' $sor
-            Write-Host '*** sor contents:' (gci $sor)
-            Write-Host '*** des:' $des
             $inp.sample.copy($sor, $des)
             if ($_ -notmatch 'M21_1'){
                 rename-item ($des + '\M21_1-all_overlap_octets.csv') `
@@ -842,7 +838,7 @@ Class testtools{
         write-host '.'
         write-host ('test git status after [' + $this.class + '] started')
         #
-        if (!$sample.checkgitstatustest()){
+        if ($sample.iswindows() -and !$sample.checkgitstatustest()){
             $gitstatus = git -C $sample.testpackagepath() status
             write-host $gitstatus
             Throw 'git status not empty changes on branch'

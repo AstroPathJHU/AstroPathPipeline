@@ -12,9 +12,10 @@ class launchmodule : mylogger{
         #
         if ($module -match 'batch'){
             $this.sampledefbatch($val.batchid, $val.project)
+            $this.currentlogID = $this.batchid
         } else {
-            $this.sampledefslide($val.slideid)            
-
+            $this.sampledefslide($val.slideid)
+            $this.currentlogID = $this.slideid            
         }
         #
         $this.teststatus = $true
