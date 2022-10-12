@@ -12,16 +12,6 @@ class MeanImageBase(ImageStackBase) :
     Base class for any image that is the mean of a bunch of stacked images from some source
     """
 
-class MeanImageComponentTiff(MeanImageBase,ImageStackComponentTiff) :
-    """
-    Class representing an image that is the mean of a bunch of stacked unmixed component tiff images 
-    """
-
-class MeanImageIm3(MeanImageBase,ImageStackIm3) :
-    """
-    Class representing an image that is the mean of a bunch of stacked raw images 
-    """
-
     #################### PUBLIC FUNCTIONS ####################
 
     def __init__(self,*args,**kwargs) :
@@ -34,7 +24,7 @@ class MeanImageIm3(MeanImageBase,ImageStackIm3) :
         if len(rectangles)<1 :
             return []
         if self.__n_images_stacked_by_layer is None :
-            self.__n_images_stacked_by_layer = np.zeros((rectangles[0].im3shape[-1]),dtype=np.uint64)
+            self.__n_images_stacked_by_layer = np.zeros((self._get_rectangle_img_shape(rectangles[0])[-1]),dtype=np.uint64)
         n_images_read, n_images_stacked_by_layer, field_logs = super().stack_rectangle_images(samp,rectangles,
                                                                                               *otherstackimagesargs)
         self.n_images_read+=n_images_read
@@ -115,3 +105,15 @@ class MeanImageIm3(MeanImageBase,ImageStackIm3) :
     @property
     def std_err_of_mean_image(self) :
         return self.__std_err_of_mean_image
+
+class MeanImageComponentTiff(MeanImageBase,ImageStackComponentTiff) :
+    """
+    Class representing an image that is the mean of a bunch of stacked unmixed component tiff images 
+    """
+    pass
+
+class MeanImageIm3(MeanImageBase,ImageStackIm3) :
+    """
+    Class representing an image that is the mean of a bunch of stacked raw images 
+    """
+    pass
