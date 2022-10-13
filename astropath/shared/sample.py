@@ -460,7 +460,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     except FileNotFoundError:
       xmlfolder = None
     return self.getXMLplan(logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **self.workflowkwargs, **kwargs)
-    #return self.getXMLplan(annotationsxmlfile=self.annotationsxmlfile, xmlfolder=xmlfolder, pscale=self.pscale, **kwargs)
 
   @property
   def microscopename(self):
