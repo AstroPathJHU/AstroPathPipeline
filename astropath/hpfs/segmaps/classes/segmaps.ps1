@@ -1,7 +1,7 @@
 ﻿<#
 --------------------------------------------------------
 segmaps
-Created By: Andrew Jorquera
+Benjamin Green, Andrew Jorquera
 Last Edit: 09/29/2021
 --------------------------------------------------------
 Description
@@ -18,7 +18,7 @@ Usage: $a = [segmaps]::new($task, $sample)
 #>
 Class segmaps : moduletools {
     #
-    segmaps([array]$task,[launchmodule]$sample) : base ([array]$task,[launchmodule]$sample){
+    segmaps([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task,[launchmodule]$sample){
         $this.funclocation = '"'+$PSScriptRoot + '\..\funcs"'
         $this.processloc = $this.sample.componentfolder()  
     }
@@ -35,6 +35,21 @@ Class segmaps : moduletools {
         $this.datavalidation()
     }
     <# -----------------------------------------
+     silentcleanup
+     silentcleanup
+     ------------------------------------------
+     Usage: $this.silentcleanup()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
+        #
+        if ($this.processvars[4]){
+            $sor = $this.sample.componentfolder()
+            Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
+            #$this.sample.removefile($sor, 'w_seg.tif')
+        }
+        #
+    }
+    <# -----------------------------------------
      cleanup
      cleanup the data directory
      ------------------------------------------
@@ -43,11 +58,7 @@ Class segmaps : moduletools {
     [void]cleanup(){
         #
         $this.sample.info("cleanup started")
-        #
-        if ($this.processvars[4]){
-            $sor = $this.sample.componentfolder()
-            Get-ChildItem -Path $sor -Include *w_seg.tif -Recurse | Remove-Item -force
-        }
+        $this.silentcleanup()
         $this.sample.info("cleanup finished")
         #
     }
@@ -60,8 +71,12 @@ Class segmaps : moduletools {
     [void]GetaSeg(){
         $this.sample.info("started processing segmentation maps")
         $taskname = 'GetaSeg'
-        $matlabtask = ";GetaSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $matlabtask = ";GetaSeg('",
+            $this.sample.basepath,
+            "', '", $this.sample.slideid,
+            "', '", $this.sample.mergeconfigfile(),
+            "');exit(0);" -join ''
+        $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished processing segmentation maps")
     }
     <# -----------------------------------------
@@ -73,8 +88,12 @@ Class segmaps : moduletools {
     [void]GetnoSeg(){
         $this.sample.info("started processing fields without segmentation data")
         $taskname = 'GetnoSeg'
-        $matlabtask = ";GetnoSeg('"+$this.sample.basepath+"', '"+$this.sample.slideid+"', '"+$this.sample.mergeconfigfile()+"');exit(0);"
-        $this.runmatlabtask($taskname, $matlabtask, $this.funclocation)
+        $matlabtask = ";GetnoSeg('", 
+            $this.sample.basepath,
+            "', '", $this.sample.slideid, 
+            "', '", $this.sample.mergeconfigfile(),
+            "');exit(0);" -join ''
+        $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("finished processing fields without segmentation data")
     }
     <# -----------------------------------------
@@ -84,7 +103,7 @@ Class segmaps : moduletools {
      Usage: $this.datavalidation()
     ----------------------------------------- #>
     [void]datavalidation(){
-        if (!$this.sample.testsegmentationfiles()){
+        if (!$this.sample.testsegmapsfiles()){
             throw 'Output files are not correct'
         }
     }

@@ -22,7 +22,7 @@ The following folders are located in the ```<Dpath>\<Dname>``` folder and are in
 7.	```dbload```
     - Location of the files used for the database upload
 8.	```tmp_inform_data```
-    - Location of the inform data output and inform algorithms used. Additional information on this folder is provided [here](../../hpfs/mergeloop#592-important-definitions)
+    - Location of the inform data output and inform algorithms used. Additional information on this folder is provided [here](../../hpfs/merge#592-important-definitions)
 9.	```reject```
     - Location of the rejected slides
 
@@ -75,4 +75,4 @@ The following is the directory structure for each ```<SlideID>``` in the *AstroP
 |  |  |  +-- <SlideID>_[XXXX,YYYY]_cellGeomLoad.csv
 ```
 
-\*[link to QC documentation](../../hpfs/mergeloop/MaSS#section-83-output)
+\*[link to QC documentation](https://github.com/AstroPathJHU/MaSS#section-83-output)

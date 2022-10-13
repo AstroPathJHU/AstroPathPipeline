@@ -24,7 +24,7 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
     self.__logroot = pathlib.Path(logroot)
     if sampledefroot is None: sampledefroot = self.__root
     self.__sampledefroot = pathlib.Path(sampledefroot)
-    self.uselogfiles = uselogfiles
+    self.__uselogfiles = uselogfiles
     self.reraiseexceptions = reraiseexceptions
     self.moremainlogroots = moremainlogroots
     self.skipstartfinish = skipstartfinish
@@ -79,7 +79,7 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
     if isinstance(samp, WorkflowDependency):
       isglobal = isglobal or samp.usegloballogger()
       samp = samp.samp
-    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=uselogfiles and self.uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=skipstartfinish or self.skipstartfinish, printthreshold=self.printthreshold, sampledefroot=self.sampledefroot, **kwargs)
+    return getlogger(module=self.logmodule(), root=self.logroot, samp=samp, uselogfiles=uselogfiles and self.__uselogfiles, reraiseexceptions=self.reraiseexceptions, isglobal=isglobal, moremainlogroots=self.moremainlogroots, skipstartfinish=skipstartfinish or self.skipstartfinish, printthreshold=self.printthreshold, sampledefroot=self.sampledefroot, **kwargs)
 
   @classmethod
   @abc.abstractmethod
@@ -212,13 +212,21 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
     self.samplefilters = samplefilters
     self.xmlfolders = xmlfolders
 
-  def sampledefswithfilters(self, **kwargs):
+  def sampledefswithfilters(self, *, check_all_filters=False, **kwargs):
     for samp in self.sampledefs():
-      try:
-        yield samp, [filter(self, samp, **kwargs) for filter in self.slideidfilters]
-      except Exception: #don't log KeyboardInterrupt here
-        with self.handlesampledeffiltererror(samp, **kwargs):
-          raise
+      filterresults = []
+      exceptions = []
+      for filter in self.slideidfilters:
+        try:
+          filterresults.append(filter(self, samp, **kwargs))
+        except Exception as e:
+          exceptions.append(e)
+        if not check_all_filters and not all(filterresults):
+          break
+      if exceptions and all(filterresults):
+        #with self.handlesampledeffiltererror(samp, **kwargs):
+          raise exceptions[0]
+      yield samp, filterresults
 
   def filteredsampledefswithfilters(self, *, printnotrunning=False, **kwargs):
     """
@@ -254,9 +262,9 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
         with self.handlesampleiniterror(samp, **kwargs):
           raise
 
-  def samplesandsampledefswithfilters(self, *, moreinitkwargs=None, **kwargs):
+  def samplesandsampledefswithfilters(self, *, check_all_filters=False, moreinitkwargs=None, **kwargs):
     if moreinitkwargs is None: moreinitkwargs = {}
-    for samp, filters in self.sampledefswithfilters(**kwargs):
+    for samp, filters in self.sampledefswithfilters(check_all_filters=check_all_filters, **kwargs):
       if all(filters):
         try:
           sample = self.initiatesample(samp, **moreinitkwargs)
@@ -268,13 +276,16 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
           with self.handlesampleiniterror(samp, **kwargs):
             raise
         else:
-          try:
-            yield sample, filters + [filter(self, sample, **kwargs) for filter in self.samplefilters]
-          except Exception:
-            #enter the logger here to log exceptions in __init__ of the sample
-            #but not KeyboardInterrupt
-            with self.handlesamplefiltererror(samp, **kwargs):
-              raise
+          for filter in self.samplefilters:
+            try:
+              filters.append(filter(self, sample, **kwargs))
+            except Exception:
+              #enter the logger here to log exceptions in __init__ of the sample
+              #but not KeyboardInterrupt
+              with self.handlesamplefiltererror(samp, **kwargs):
+                raise
+            if not check_all_filters and not all(filters): break
+          yield sample, filters
       else:
         yield samp, filters
 
@@ -339,13 +350,13 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
       **self.rootkwargs,
     }
 
-  def run(self, *, cleanup=False, printnotrunning=True, moreinitkwargs=None, **kwargs):
+  def run(self, *, cleanup=False, printnotrunning=True, check_all_filters=False, moreinitkwargs=None, **kwargs):
     """
     Run the cohort by iterating over the samples and calling runsample on each.
     """
     result = []
     if moreinitkwargs is None: moreinitkwargs = {}
-    for sample, filters in self.samplesandsampledefswithfilters(printnotrunning=printnotrunning, moreinitkwargs=moreinitkwargs, **kwargs):
+    for sample, filters in self.samplesandsampledefswithfilters(printnotrunning=printnotrunning, check_all_filters=check_all_filters, moreinitkwargs=moreinitkwargs, **kwargs):
       result.append(self.processsample(sample, filters=filters, cleanup=cleanup, printnotrunning=printnotrunning, **kwargs))
     return result
 
@@ -737,6 +748,7 @@ class WorkflowCohort(Cohort):
     g.add_argument("--print-all", action="store_const", help="instead of running samples, print the status of all the samples, including error messages", dest="print_mode", const="all")
     g.add_argument("--print-timing", action="store_const", help="instead of running samples, print the status of the samples that finished already", dest="print_mode", const="timing")
     p.add_argument("--ignore-error", type=re.compile, action="append", dest="ignore_errors", help="for --print-errors, ignore any errors that match this regex")
+    p.add_argument("--check-all-filters", action="store_true", help="check all filters, even if one of them fails, in order to print more info")
     return p
 
   @classmethod
@@ -802,6 +814,7 @@ class WorkflowCohort(Cohort):
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "print_mode": parsed_args_dict.pop("print_mode"),
       "ignore_errors": parsed_args_dict.pop("ignore_errors"),
+      "check_all_filters": parsed_args_dict.pop("check_all_filters"),
     }
     return kwargs
 

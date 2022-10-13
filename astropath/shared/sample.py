@@ -578,17 +578,14 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     layers_opals_targets = []
     rownames = ['Opal','Target']
     if self.mergeconfigxlsx.is_file() :
-      rownames = ['layer',*rownames]
       fp = self.mergeconfigxlsx
     else :
       fp = self.batchxlsx
     if not fp.is_file() :
       raise FileNotFoundError(f'ERROR: Neither a Batch nor MergeConfig Excel file were found in {fp.parent}!')
-    if fp==self.batchxlsx :
-      warnmsg = 'WARNING: layers/opals/targets will be found from a BatchID file instead of a MergeConfig file. '
-      warnmsg+= 'Will assume that layers are sorted in order.'
-      self.logger.warningonenter(warnmsg)
     data = pd.DataFrame(pd.read_excel(fp))
+    if "layer" in data.columns :
+      rownames = ['layer',*rownames]
     for ri,row in data.loc[:,rownames].iterrows() :
         #get the layer from the entry in the table if possible, or from the index in the frame if not
         if 'layer' in rownames :
@@ -1627,7 +1624,7 @@ class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, XMLPolygonFileAr
         else:
           raise FileNotFoundError(f"Couldn't find any annotation xmls matching {self.__annotationsxmlregex.pattern}")
     if candidate != default:
-      self.logger.warning(f"Using {candidate.name} for annotations")
+      self.logger.warningonenter(f"Using {candidate.name} for annotations")
     return candidate
 
   @property

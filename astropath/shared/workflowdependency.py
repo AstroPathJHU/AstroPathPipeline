@@ -99,6 +99,8 @@ class WorkflowDependency(ThingWithRoots, ThingWithLogger, ThingWithWorkflowKwarg
     for filename in self.workinprogressfiles:
       canprint = True
       if not printed and filename.exists():
+        if not self.uselogfiles:
+          raise RuntimeError("Can't clean up if not using log files for tracking")
         self.logger.info("Cleaning up files from previous runs")
         printed = True
       rm_missing_ok(filename)
@@ -281,7 +283,7 @@ class SampleRunStatus(MyDataClass):
     lastattemptedcleanup = None
     lastcleanstart = None
     with contextlib.ExitStack() as stack:
-      stack.enter_context(field_size_limit_context(1000000))
+      stack.enter_context(field_size_limit_context(100000000))
       try:
         f = stack.enter_context(open(samplelog))
       except IOError:
