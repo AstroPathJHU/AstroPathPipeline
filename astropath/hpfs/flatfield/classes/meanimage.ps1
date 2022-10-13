@@ -22,7 +22,7 @@ Class meanimage : moduletools {
     #
     meanimage([hashtable]$task, [launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample){
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
-        $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
+        $this.flevel = [FileDownloads]::XML
     }
     <# -----------------------------------------
      RunMeanImage
@@ -38,11 +38,27 @@ Class meanimage : moduletools {
         $this.fixSIDs()
         $this.fixmlids()
         $this.DownloadFiles()
-        $this.ShredDat()
+        $this.ShredDatFromIM3Source()
         $this.GetMeanImage()
         $this.returndata()
         $this.cleanup()
         $this.datavalidation()
+    }
+    <# -----------------------------------------
+     ShredDatFromIM3Source
+        ShredDat() but give the im3 source
+        (not the processing directory) as where
+        we want to get im3 files from
+     ------------------------------------------
+     Usage: $this.ShredDatFromIM3Source()
+    ----------------------------------------- #>
+    [void]ShredDatFromIM3Source(){
+        #
+        $processing_temp = $this.processvars[0]
+        $this.processvars[0] = $this.sample.im3folder()
+        $this.ShredDat()
+        $this.processvars[0] = $processing_temp
+        #
     }
    <# -----------------------------------------
      GetMeanImage
