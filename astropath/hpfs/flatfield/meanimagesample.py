@@ -18,7 +18,7 @@ from .utilities import RectangleThresholdTableEntry, FieldLog, ThresholdTableEnt
 from .latexsummary import ThresholdingLatexSummary, MaskingLatexSummary
 from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms
 from .plotting import plot_background_thresholds_by_layer, plot_flagged_HPF_locations
-from .imagestack import MeanImageComponentTiff, MeanImageIm3
+from .meanimage import MeanImageComponentTiff, MeanImageIm3
 
 class MeanImageSampleBase(MaskSampleBase,ParallelSample,WorkingDirArgumentParser) :
     """
