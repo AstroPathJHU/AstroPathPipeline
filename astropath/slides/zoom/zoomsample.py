@@ -42,7 +42,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   @classmethod
   def logmodule(self): return "zoom"
 
-  def zoom_wsi_fast(self, *, fmax=50, tissuemeanintensity=100., usememmap=False):
+  def zoom_wsi_fast(self, *, fmax=50, tissuemeanintensity=25., usememmap=False):
     """
     Assemble the wsi images either in memory (usememmap=False)
     or in a memmap in a temp directory (usememmap=True)
@@ -246,7 +246,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
           rm_missing_ok(filename)
           raise
 
-  def zoom_memory(self, *, fmax=50, tissuemeanintensity=100.):
+  def zoom_memory(self, *, fmax=50, tissuemeanintensity=25.):
     """
     Run zoom by saving one big tile at a time
     (afterwards you can call wsi_vips to save the wsi)
@@ -519,7 +519,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
     self.makewsitiff(fortiff)
 
-  def zoom_wsi_memory(self, fmax=50, tissuemeanintensity=100.):
+  def zoom_wsi_memory(self, fmax=50, tissuemeanintensity=25.):
     scaleby = self.zoom_memory(fmax=fmax, tissuemeanintensity=tissuemeanintensity)
     self.wsi_vips(scaleby=scaleby)
 

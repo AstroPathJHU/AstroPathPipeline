@@ -1619,7 +1619,7 @@ class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, XMLPolygonFileAr
         else:
           raise FileNotFoundError(f"Couldn't find any annotation xmls matching {self.__annotationsxmlregex.pattern}")
     if candidate != default:
-      self.logger.warning(f"Using {candidate.name} for annotations")
+      self.logger.warningonenter(f"Using {candidate.name} for annotations")
     return candidate
 
   @property
