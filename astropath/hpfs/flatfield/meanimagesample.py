@@ -25,7 +25,7 @@ class MeanImageSampleBase(MaskSampleBase,ParallelSample,WorkingDirArgumentParser
     Base class to use for defining MeanImageSamples for multiple types of input files
     """
 
-    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),skip_masking=False,**kwargs) :
+    def __init__(self,*args,workingdir,skip_masking=False,**kwargs) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
         self.__workingdirpath = workingdir
@@ -83,8 +83,8 @@ class MeanImageSampleBase(MaskSampleBase,ParallelSample,WorkingDirArgumentParser
         "_DEBUG": False, #need to load images multiple times
       }
 
-    #################### CLASS METHODS ####################
-
+    #################### PRIVATE HELPER FUNCTIONS ####################
+    
     def __dir_has_precomputed_masks(self,dirpath) :
         """
         Return True if the given directory has a complete set of mask files needed to run for the slide
@@ -135,13 +135,20 @@ class MeanImageSampleBaseComponentTiff(MeanImageSampleBase, ReadRectanglesOverla
     """
     MeanImage base class that reads ComponentTiff files
     """
+    
     multilayercomponenttiff=True
+
+    def __init__(self,*args,workingdir=pathlib.Path(f'{UNIV_CONST.MEANIMAGE_DIRNAME}_comp_tiff'),**kwargs) :
+        super().__init__(*args,workingdir=workingdir,**kwargs)
 
 class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, 
                              FileTypeArgumentParser) :
     """
     MeanImage base class that reads Im3 files
     """
+
+    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),**kwargs) :
+        super().__init__(*args,workingdir=workingdir,**kwargs)
 
     #################### PUBLIC FUNCTIONS ####################
 
@@ -513,31 +520,30 @@ class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSamp
         """
         Main "run" function to be looped when entire cohorts are run
         """
-        pass
-        #if not self.skip_masking :
-        #    self.set_image_masking_dirpath()
-        #    if not self.use_precomputed_masks :
-        #        raise NotImplementedError(f'ERROR: cannot run MeanImageSampleComponentTiff without pre-computed masks!')
-        ##make the mean image from all of the tissue bulk rectangles
-        #n_threads = self.njobs if self.njobs is not None else 4
-        #ets_to_use = np.ones((self.nlayersunmixed)) #unmixed images are already exposure time corrected
-        #new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,ets_to_use,
-        #                                                         self.image_masking_dirpath,n_threads)
-        #for fl in new_field_logs :
-        #    fl.slide = self.SlideID
-        #    self.field_logs.append(fl)
-        #bulk_rect_ts = [r.t for r in self.tissue_bulk_rects]
-        #if len(bulk_rect_ts)>0 :
-        #    mds = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
-        #                          str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))
-        #    writetable(self.workingdirpath/f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',[mds])
-        ##create and write out the final mask stack, mean image, and std. error of the mean image
-        #self.__meanimage.make_mean_image()
-        #self.__meanimage.write_output(self.SlideID,self.workingdirpath)
-        ##write out the field log
-        #if len(self.field_logs)>0 :
-        #    with cd(self.workingdirpath) :
-        #        writetable(CONST.FIELDS_USED_CSV_FILENAME,self.field_logs)
+        if not self.skip_masking :
+            self.set_image_masking_dirpath()
+            if not self.use_precomputed_masks :
+                raise NotImplementedError(f'ERROR: cannot run MeanImageSampleComponentTiff without pre-computed masks!')
+        #make the mean image from all of the tissue bulk rectangles
+        n_threads = self.njobs if self.njobs is not None else 4
+        ets_to_use = np.ones(self.nlayersunmixed) #unmixed images are already exposure time corrected
+        new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,ets_to_use,
+                                                                 self.image_masking_dirpath,n_threads)
+        for fl in new_field_logs :
+            fl.slide = self.SlideID
+            self.field_logs.append(fl)
+        bulk_rect_ts = [r.t for r in self.tissue_bulk_rects]
+        if len(bulk_rect_ts)>0 :
+            mds = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
+                                  str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))
+            writetable(self.workingdirpath/f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',[mds])
+        #create and write out the final mask stack, mean image, and std. error of the mean image
+        self.__meanimage.make_mean_image()
+        self.__meanimage.write_output(self.SlideID,self.workingdirpath)
+        #write out the field log
+        if len(self.field_logs)>0 :
+            with cd(self.workingdirpath) :
+                writetable(CONST.FIELDS_USED_CSV_FILENAME,self.field_logs)
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
