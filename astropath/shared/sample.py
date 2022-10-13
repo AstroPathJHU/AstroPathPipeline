@@ -445,7 +445,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @methodtools.lru_cache()
   @classmethod
-  def getXMLplan(cls, SlideID, *, annotationsxmlfile, xmlfolder, pscale, logger, includehpfsflaggedforacquisition=False, **otherworkflowkwargs):
+  def getXMLplan(cls, SlideID, *, annotationsxmlfile, xmlfolder, pscale, logger, includehpfsflaggedforacquisition=False):
     """
     Read the annotations xml file to get the structure of the
     image as well as the microscope name (really the name of the
@@ -459,7 +459,12 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       xmlfolder = self.xmlfolder
     except FileNotFoundError:
       xmlfolder = None
-    return self.getXMLplan(logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **self.workflowkwargs, **kwargs)
+    workflowkwargs = {
+      kw: kwarg
+      for kw, kwarg in self.workflowkwargs.items()
+      if kw in ("SlideID", "annotationsxmlfile", "xmlfolder", "pscale", "logger", "includehpfsflaggedforacquisition")
+    }
+    return self.getXMLplan(logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **workflowkwargs, **kwargs)
 
   @property
   def microscopename(self):
