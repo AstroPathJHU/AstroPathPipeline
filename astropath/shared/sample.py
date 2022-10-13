@@ -85,6 +85,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return {
       **super().workflowkwargs,
       "Scan": self.Scan,
+      "annotationsxmlfile": self.annotationsxmlfile,
+      "xmlfolder": self.xmlfolder,
     }
 
   @property
@@ -442,26 +444,30 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return layers
 
   @methodtools.lru_cache()
-  def getXMLplan(self, includehpfsflaggedforacquisition=False):
+  @classmethod
+  def getXMLplan(cls, SlideID, *, annotationsxmlfile, xmlfolder, pscale, logger, includehpfsflaggedforacquisition=False, **otherworkflowkwargs):
     """
     Read the annotations xml file to get the structure of the
     image as well as the microscope name (really the name of the
     computer that processed the image).
     """
-    xmlfile = self.annotationsxmlfile
+    reader = AnnotationXMLReader(annotationsxmlfile, xmlfolder=xmlfolder, pscale=pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=logger)
+    return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
+
+  def XMLplan(self, **kwargs):
     try:
       xmlfolder = self.xmlfolder
     except FileNotFoundError:
       xmlfolder = None
-    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
-    return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
+    return self.getXMLplan(logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **self.workflowkwargs, **kwargs)
+    #return self.getXMLplan(annotationsxmlfile=self.annotationsxmlfile, xmlfolder=xmlfolder, pscale=self.pscale, **kwargs)
 
   @property
   def microscopename(self):
     """
     Name of the computer that processed the image.
     """
-    return self.getXMLplan()[3]
+    return self.XMLplan()[3]
 
   def __enter__(self):
     self.__nentered += 1
@@ -1201,6 +1207,10 @@ class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgume
     if not self.__initedrectangles: self.initrectangles()
     return self.__rectangles
 
+  @property
+  def workflowkwargs(self):
+    return {"selectrectangles": self.__rectanglefilter, **super().workflowkwargs}
+
 class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
   """
   Base class for any sample that loads images from an im3 file.
@@ -1422,8 +1432,8 @@ class XMLLayoutReader(SampleBase):
     self.__includehpfsflaggedforacquisition = includehpfsflaggedforacquisition
     super().__init__(*args, **kwargs)
 
-  def getXMLplan(self):
-    return super().getXMLplan(includehpfsflaggedforacquisition=self.__includehpfsflaggedforacquisition)
+  def XMLplan(self, **kwargs):
+    return super().XMLplan(includehpfsflaggedforacquisition=self.__includehpfsflaggedforacquisition, **kwargs)
 
   @methodtools.lru_cache()
   def getrectanglelayout(self):
@@ -1431,7 +1441,7 @@ class XMLLayoutReader(SampleBase):
     Find the rectangle layout from both the XML metadata
     and the im3 files, compare them, and return the rectangles.
     """
-    rectangles, globals, perimeters, microscopename = self.getXMLplan()
+    rectangles, globals, perimeters, microscopename = self.XMLplan()
     self.fixM2(rectangles)
     self.fixrectanglefilenames(rectangles)
     self.fixduplicaterectangles(rectangles)
@@ -1465,10 +1475,10 @@ class XMLLayoutReader(SampleBase):
     Fix any _M2 in the rectangle filenames
     """
     for rectangle in rectangles[:]:
-      if rectangle.file is not None and "_M2" in rectangle.file:
+      if rectangle.file is not None and "_M2" in rectangle.file.name:
         duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
         if not duplicates:
-          rectangle.file = rectangle.file.replace("_M2", "")
+          rectangle.file = rectangle.file.with_name(rectangle.file.name.replace("_M2", ""))
         for d in duplicates:
           rectangles.remove(d)
         self.logger.warningglobalonenter(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
@@ -1480,7 +1490,7 @@ class XMLLayoutReader(SampleBase):
     Fix rectangle filenames if the coordinates are messed up
     """
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}]{UNIV_CONST.IM3_EXT}"
+      expected = pathlib.Path(self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
       actual = r.file
       if expected != actual:
         self.logger.warningglobalonenter(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")

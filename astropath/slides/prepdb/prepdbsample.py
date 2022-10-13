@@ -79,7 +79,7 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollec
     ]
 
   @property
-  def globals(self): return self.getXMLplan()[1]
+  def globals(self): return self.XMLplan()[1]
 
   @property
   def jpgfilename(self): return self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)

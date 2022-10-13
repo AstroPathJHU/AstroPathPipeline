@@ -1,6 +1,7 @@
 #imports
 import methodtools
 import numpy as np
+from ...shared.logging import dummylogger
 from ...shared.sample import SampleWithSegmentationFolder, WorkflowSample, ParallelSample 
 from ...shared.sample import ReadRectanglesComponentTiffFromXML, ReadRectanglesComponentAndIHCTiffFromXML
 from .config import SEG_CONST
@@ -58,11 +59,11 @@ class SegmentationSampleUsingComponentTiff(SegmentationSampleBase,ReadRectangles
                ]
 
     @classmethod
-    def getoutputfiles(cls,SlideID,segmentationroot,informdataroot,segmentationfolderarg,**otherworkflowkwargs) :
-        outputdir=cls.segmentation_folder(segmentationfolderarg,segmentationroot,SlideID)
+    def getoutputfiles(cls,SlideID,*,segmentationroot,segmentationfolderarg,selectrectangles=lambda r: True,**otherworkflowkwargs) :
+        rectangles, _, _, _ = cls.getXMLplan(SlideID=SlideID, pscale=1, logger=dummylogger, **otherworkflowkwargs)
+        file_stems = [r.file.stem for r in rectangles if selectrectangles(r)]
+        outputdir = cls.segmentation_folder(segmentationfolderarg,segmentationroot,SlideID)
         append = cls.getsegfileappend()
-        file_stems = [fp.name[:-len('_component_data.tif')] 
-                      for fp in (informdataroot/SlideID/'inform_data'/'Component_Tiffs').glob('*_component_data.tif')]
         outputfiles = []
         for stem in file_stems :
             outputfiles.append(outputdir/f'{stem}_{append}')

@@ -71,7 +71,7 @@ class AnnotationXMLReader(units.ThingWithPscale):
               w=field.w,
               h=field.h,
               t=field.time,
-              file=field.im3path.name if field.im3path is not None else None,
+              file=field.im3path.relative_to(field.im3path.parent) if field.im3path is not None else None,
               pscale=self.pscale,
               readingfromfile=False,
               xmlfolder=self.__xmlfolder,

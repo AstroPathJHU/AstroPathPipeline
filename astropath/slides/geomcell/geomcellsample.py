@@ -153,10 +153,6 @@ class GeomCellSampleBase(GeomSampleBase, SampleWithSegmentations, ReadRectangles
   def getworkinprogressfiles(cls, **kwargs):
     return cls.getoutputfiles(**kwargs)
 
-  @property
-  def workflowkwargs(self):
-    return {"selectrectangles": rectanglefilter(lambda r: r.n in {r.n for r in self.rectangles}), **super().workflowkwargs}
-
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, geomroot, selectrectangles=lambda r: True, **otherworkflowkwargs):
     dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
