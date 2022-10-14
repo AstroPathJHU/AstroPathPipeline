@@ -176,7 +176,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   @staticmethod
   def _colormatrix(*, dtype):
     here = pathlib.Path(__file__).parent
-    with open(here/"color_matrix_{self.nlayersunmixed}.txt") as f:
+    with open(here/f"color_matrix_{self.nlayersunmixed}.txt") as f:
       matrix = re.search(r"(?<=\[).*(?=\])", f.read(), re.DOTALL).group(0)
     return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")], dtype=dtype)
 
