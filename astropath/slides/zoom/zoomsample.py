@@ -174,14 +174,14 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   @methodtools.lru_cache()
   @staticmethod
-  def _colormatrix(*, dtype):
+  def _colormatrix(*, dtype, nlayers):
     here = pathlib.Path(__file__).parent
-    with open(here/f"color_matrix_{self.nlayersunmixed}.txt") as f:
+    with open(here/f"color_matrix_{nlayers}.txt") as f:
       matrix = re.search(r"(?<=\[).*(?=\])", f.read(), re.DOTALL).group(0)
     return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")], dtype=dtype)
 
   @property
-  def colormatrix(self): return self._colormatrix(dtype=np.float16)[tuple(np.array(self.layerscomponenttiff)-1), :]
+  def colormatrix(self): return self._colormatrix(dtype=np.float16, nlayers=self.nlayersunmixed)[tuple(np.array(self.layerscomponenttiff)-1), :]
 
   @property
   def needtifflayers(self):
