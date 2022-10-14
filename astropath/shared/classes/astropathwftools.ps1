@@ -98,6 +98,14 @@ class astropathwftools : sampledb {
             $this.importaplog($jobname)
             $workertasklog = $this.workertasklog($jobname)
             $workertaskfile = $this.workertaskfile($jobname)
+            #
+            if (!($this.fastping($worker))){
+                $this.writeoutput(('WARNING:', 
+                    $worker.server, $worker.location,
+                    'is set to ON but state is OFF!' -join ' '))
+                continue
+            }
+            #
             $processid = $this.checkprocessid($jobname)
             #
             if ($processid -ne 0){
@@ -180,8 +188,8 @@ class astropathwftools : sampledb {
             Invoke-CimMethod @MethodArgs
         }
         catch {
-            Write-Output 'Error remoting to computer:' $cname
-            Write-Output $_
+            $this.output('Error remoting to computer:' + $cname)
+            $this.output($_)
         }
         #
     }
