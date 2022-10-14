@@ -546,7 +546,13 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layerscomponenttiff, "tifflayers": self.tifflayers, **super().workflowkwargs}
+    result = super().workflowkwargs
+    try:
+      result["layers"] = self.layerscomponenttiff
+    except FileNotFoundError:
+      result["layers"] = 1
+    result["tifflayers"] = self.tifflayers
+    return result
 
   @classmethod
   def getworkinprogressfiles(cls, SlideID, *, zoomroot, **otherworkflowkwargs):
