@@ -186,7 +186,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   @property
   def needtifflayers(self):
     if self.tifflayers is None: return ()
-    if self.tifflayers == "color": return range(1, 9)
+    if self.tifflayers == "color": return range(1, self.nlayersunmixed)
     return self.tifflayers
 
   def makewsitiff(self, layers):
