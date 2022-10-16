@@ -84,6 +84,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def workflowkwargs(self):
     result = {
       **super().workflowkwargs,
+      **{name: getattr(self, name) for name in self.rootnames},
       "Scan": self.Scan,
       "SlideID": self.SlideID,
     }
