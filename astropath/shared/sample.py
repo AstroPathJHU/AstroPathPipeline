@@ -82,11 +82,15 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @property
   def workflowkwargs(self):
-    return {
+    result = {
       **super().workflowkwargs,
       "Scan": self.Scan,
-      "xmlfolder": self.xmlfolder,
     }
+    try:
+      result["xmlfolder"] = self.xmlfolder
+    except FileNotFoundError:
+      pass
+    return result
 
   @property
   def SampleID(self): return self.samp.SampleID

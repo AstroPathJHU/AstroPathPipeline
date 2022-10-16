@@ -51,7 +51,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       raise ValueError(variant)
     regex = ".*annotations.polygons.xml"
-    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--annotations-on-qptiff", "--units", units, "--allow-local-edits", "--annotations-xml-regex", regex, "--project", "0", "--xmlfolder", os.fspath(thisfolder/"data"/SlideID/"im3"/"xml")]
+    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--annotations-on-qptiff", "--units", units, "--allow-local-edits", "--annotations-xml-regex", regex, "--project", "0"]
     s = WriteAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID, annotationsource="qptiff", annotationposition=None, annotationpositionfromaffineshift=False, annotationsxmlregex=regex, xmlfolders=[thisfolder/"data"/SlideID/"im3"/"xml"])
 
     try:
