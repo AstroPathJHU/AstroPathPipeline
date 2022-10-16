@@ -78,7 +78,7 @@ class SegmentationSampleMesmer(SegmentationSampleUsingComponentTiff) :
         return "segmentationmesmer"
 
     def __get_rect_segmented_fp(self,rect) :
-        seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{SEG_CONST.MESMER_SEGMENT_FILE_APPEND}'
+        seg_fn = f'{rect.file.stem}_{SEG_CONST.MESMER_SEGMENT_FILE_APPEND}'
         return self.segmentationfolder/seg_fn
 
 class SegmentationSampleMesmerWithIHC(SegmentationSampleDAPIComponentMembraneIHCTiff,SegmentationSampleMesmer) :

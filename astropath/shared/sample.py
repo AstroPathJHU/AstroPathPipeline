@@ -20,7 +20,7 @@ from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import ThingWithWorkflowKwargs, WorkflowDependencySlideID
 
-class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger, contextlib.ExitStack):
+class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
   Base class for all sample classes.
 
@@ -462,9 +462,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     workflowkwargs = {
       kw: kwarg
       for kw, kwarg in self.workflowkwargs.items()
-      if kw in ("SlideID", "annotationsxmlfile", "xmlfolder", "pscale", "logger", "includehpfsflaggedforacquisition")
+      if kw in ("annotationsxmlfile", "xmlfolder", "pscale", "logger", "includehpfsflaggedforacquisition")
     }
-    return self.getXMLplan(logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **workflowkwargs, **kwargs)
+    return self.getXMLplan(SlideID=self.SlideID, logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **workflowkwargs, **kwargs)
 
   @property
   def microscopename(self):
