@@ -348,7 +348,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, X
                         image_background_thresholds_by_layer[current_image_i,:] = thresholds
                         tissue_edge_layer_hists+=hists
                         self.field_logs.append(FieldLog(self.SlideID,
-                                                        rfile.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+                                                        rfile.with_suffix(UNIV_CONST.RAW_EXT),
                                                         'edge','thresholding'))
                         current_image_i+=1
                     except Exception as e :
@@ -376,7 +376,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, X
                     image_background_thresholds_by_layer[current_image_i,:] = thresholds
                     tissue_edge_layer_hists+=hists
                     self.field_logs.append(FieldLog(self.SlideID,
-                                                    r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+                                                    r.file.with_suffix(UNIV_CONST.RAW_EXT),
                                                     'edge','thresholding'))
                     current_image_i+=1
                 except Exception as e :
