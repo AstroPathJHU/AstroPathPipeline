@@ -85,6 +85,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     result = {
       **super().workflowkwargs,
       "Scan": self.Scan,
+      "SlideID": self.SlideID,
     }
     try:
       result["xmlfolder"] = self.xmlfolder
@@ -449,15 +450,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if layers is None: raise FileNotFoundError("Couldn't get image info from any source that has flayers")
     return layers
 
-  @methodtools.lru_cache()
-  @classmethod
-  def __getXMLplan(cls, SlideID, *, annotationsxmlfile, xmlfolder, pscale, logger, includehpfsflaggedforacquisition):
-    """
-    nested function to make the lru_cache() work more reliably
-    """
-    reader = AnnotationXMLReader(annotationsxmlfile, xmlfolder=xmlfolder, pscale=pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=logger, SlideID=SlideID)
-    return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
-
   @classmethod
   def getXMLplan(cls, SlideID, *, xmlfolder=None, pscale, logger, includehpfsflaggedforacquisition=False, **otherworkflowkwargs):
     """
@@ -466,15 +458,10 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     computer that processed the image).
     """
     annotationsxmlfile = cls.getannotationsxmlfile(SlideID=SlideID, **otherworkflowkwargs)
-    return cls.__getXMLplan(
-      SlideID=SlideID,
-      annotationsxmlfile=annotationsxmlfile,
-      xmlfolder=xmlfolder,
-      pscale=pscale,
-      logger=logger,
-      includehpfsflaggedforacquisition=includehpfsflaggedforacquisition,
-    )
+    reader = AnnotationXMLReader(annotationsxmlfile, xmlfolder=xmlfolder, pscale=pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=logger, SlideID=SlideID)
+    return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
+  @methodtools.lru_cache()
   def XMLplan(self, **kwargs):
     try:
       xmlfolder = self.xmlfolder
