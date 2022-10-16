@@ -85,7 +85,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return {
       **super().workflowkwargs,
       "Scan": self.Scan,
-      "annotationsxmlfile": self.annotationsxmlfile,
       "xmlfolder": self.xmlfolder,
     }
 
@@ -199,9 +198,12 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   @property
   def fullxmlfile(self):
     return self.xmlfolder/(self.SlideID+".Full.xml")
+  @classmethod
+  def getannotationsxmlfile(cls, SlideID, *, Scan, im3root, **otherworkflowkwargs):
+    return im3root/SlideID/"im3"/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}_annotations.xml"
   @property
   def annotationsxmlfile(self):
-    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
+    return self.getannotationsxmlfile(**self.workflowkwargs)
 
   def __getimageinfofromXMLfiles(self):
     """
@@ -445,14 +447,29 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @methodtools.lru_cache()
   @classmethod
-  def getXMLplan(cls, SlideID, *, annotationsxmlfile, xmlfolder, pscale, logger, includehpfsflaggedforacquisition=False):
+  def __getXMLplan(cls, SlideID, *, annotationsxmlfile, xmlfolder, pscale, logger, includehpfsflaggedforacquisition):
+    """
+    nested function to make the lru_cache() work more reliably
+    """
+    reader = AnnotationXMLReader(annotationsxmlfile, xmlfolder=xmlfolder, pscale=pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=logger)
+    return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
+
+  @classmethod
+  def getXMLplan(cls, SlideID, *, xmlfolder=None, pscale, logger, includehpfsflaggedforacquisition=False, **otherworkflowkwargs):
     """
     Read the annotations xml file to get the structure of the
     image as well as the microscope name (really the name of the
     computer that processed the image).
     """
-    reader = AnnotationXMLReader(annotationsxmlfile, xmlfolder=xmlfolder, pscale=pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=logger)
-    return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
+    annotationsxmlfile = cls.getannotationsxmlfile(SlideID=SlideID, **otherworkflowkwargs)
+    return cls.__getXMLplan(
+      SlideID=SlideID,
+      annotationsxmlfile=annotationsxmlfile,
+      xmlfolder=xmlfolder,
+      pscale=pscale,
+      logger=logger,
+      includehpfsflaggedforacquisition=includehpfsflaggedforacquisition,
+    )
 
   def XMLplan(self, **kwargs):
     try:
