@@ -3,10 +3,10 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.miscfileio import cd
 from ...utilities.img_file_io import write_image_to_file
 from ...shared.argumentparser import SelectLayersArgumentParser, WorkingDirArgumentParser
-from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample
+from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, XMLLayoutReaderTissue
 from .config import IMAGECORRECTION_CONST
 
-class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, 
+class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, XMLLayoutReaderTissue, WorkflowSample, ParallelSample, 
                             WorkingDirArgumentParser, SelectLayersArgumentParser) :
     """
     Read raw image files, correct them for flatfielding and/or warping effects 

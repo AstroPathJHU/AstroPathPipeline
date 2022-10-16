@@ -3,10 +3,10 @@ import methodtools
 import numpy as np
 from ...shared.logging import dummylogger
 from ...shared.sample import SampleWithSegmentationFolder, WorkflowSample, ParallelSample 
-from ...shared.sample import ReadRectanglesComponentTiffFromXML, ReadRectanglesComponentAndIHCTiffFromXML
+from ...shared.sample import ReadRectanglesComponentTiffFromXML, ReadRectanglesComponentAndIHCTiffFromXML, ReadRectanglesFromXML, XMLLayoutReaderTissue
 from .config import SEG_CONST
 
-class SegmentationSampleBase(SampleWithSegmentationFolder,WorkflowSample,ParallelSample) :
+class SegmentationSampleBase(SampleWithSegmentationFolder,ReadRectanglesFromXML,XMLLayoutReaderTissue,WorkflowSample,ParallelSample) :
     """
     Base class for all segmentation samples in general regardless of the images on which they're meant to run
     """
