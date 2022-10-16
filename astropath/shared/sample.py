@@ -476,12 +476,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       xmlfolder = self.xmlfolder
     except FileNotFoundError:
       xmlfolder = None
-    workflowkwargs = {
-      kw: kwarg
-      for kw, kwarg in self.workflowkwargs.items()
-      if kw in ("annotationsxmlfile", "xmlfolder", "pscale", "logger", "includehpfsflaggedforacquisition")
-    }
-    return self.getXMLplan(SlideID=self.SlideID, logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **workflowkwargs, **kwargs)
+    workflowkwargs = self.workflowkwargs
+    return self.getXMLplan(logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **workflowkwargs, **kwargs)
 
   @property
   def microscopename(self):
