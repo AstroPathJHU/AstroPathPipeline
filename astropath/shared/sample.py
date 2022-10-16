@@ -464,12 +464,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @methodtools.lru_cache()
   def XMLplan(self, **kwargs):
-    try:
-      xmlfolder = self.xmlfolder
-    except FileNotFoundError:
-      xmlfolder = None
-    workflowkwargs = self.workflowkwargs
-    return self.getXMLplan(logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **workflowkwargs, **kwargs)
+    return self.getXMLplan(logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **self.workflowkwargs, **kwargs)
 
   @property
   def microscopename(self):

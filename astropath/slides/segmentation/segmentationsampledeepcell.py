@@ -1,7 +1,6 @@
 #imports
 import numpy as np
 from ...utilities.optionalimports import deepcell
-from ...utilities.config import CONST as UNIV_CONST
 from .config import SEG_CONST
 from .utilities import initialize_app, run_deepcell_nuclear_segmentation
 from .segmentationsample import SegmentationSampleDAPIComponentTiff

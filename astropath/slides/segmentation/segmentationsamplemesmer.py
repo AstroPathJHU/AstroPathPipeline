@@ -2,7 +2,6 @@
 import numpy as np
 from abc import abstractmethod
 from ...utilities.optionalimports import deepcell
-from ...utilities.config import CONST as UNIV_CONST
 from .config import SEG_CONST
 from .utilities import initialize_app, run_mesmer_segmentation
 from .segmentationsample import SegmentationSampleDAPIMembraneComponentTiff, SegmentationSampleUsingComponentTiff, SegmentationSampleDAPIComponentMembraneIHCTiff

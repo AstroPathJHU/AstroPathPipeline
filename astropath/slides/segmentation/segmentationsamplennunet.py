@@ -2,7 +2,6 @@
 import os, shutil
 from batchgenerators.utilities.file_and_folder_operations import join
 from ...utilities.optionalimports import nnunet
-from ...utilities.config import CONST as UNIV_CONST
 from .config import SEG_CONST
 from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im, convert_nnunet_output
 from .segmentationsample import SegmentationSampleDAPIComponentTiff
