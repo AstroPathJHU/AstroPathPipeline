@@ -22,7 +22,7 @@ Class meanimage : moduletools {
     #
     meanimage([hashtable]$task, [launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample){
         $this.funclocation = '"' + $PSScriptRoot + '\..\funcs"'  
-        $this.flevel = [FileDownloads]::XML
+        $this.flevel = [FileDownloads]::IM3 + [FileDownloads]::XML
     }
     <# -----------------------------------------
      RunMeanImage
