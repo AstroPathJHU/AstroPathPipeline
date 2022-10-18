@@ -451,7 +451,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       xmlfolder = self.xmlfolder
     except FileNotFoundError:
       xmlfolder = None
-    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
+    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=self.logger if not self.__suppressinitwarnings else dummylogger, SlideID=self.SlideID)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
 
   @property
@@ -734,6 +734,12 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       else :
         raise ValueError(f'ERROR: unrecognized layer group name "{lgn}"!')
     return result
+
+class TissueSampleBase(SampleBase):
+  pass
+
+class TMASampleBase(SampleBase):
+  pass
 
 class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
@@ -1475,7 +1481,7 @@ class XMLLayoutReader(SampleBase):
     Fix rectangle filenames if the coordinates are messed up
     """
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}]{UNIV_CONST.IM3_EXT}"
+      expected = r.expectedfilename
       actual = r.file
       if expected != actual:
         self.logger.warningglobalonenter(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
@@ -1500,6 +1506,11 @@ class XMLLayoutReader(SampleBase):
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
 
+  @property
+  @abc.abstractmethod
+  def im3filenameregex(self):
+    pass
+
   @methodtools.lru_cache()
   def getdir(self):
     """
@@ -1511,10 +1522,10 @@ class XMLLayoutReader(SampleBase):
     im3s = folder.glob(f"*{UNIV_CONST.IM3_EXT}")
     result = []
     for im3 in im3s:
-      regex = self.SlideID+r"_\[([0-9]+),([0-9]+)\]"+UNIV_CONST.IM3_EXT
+      regex = self.im3filenameregex
       match = re.match(regex, im3.name)
       if not match:
-        raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
+        raise ValueError(f"Unknown im3 filename {im3.name}, should match {regex}")
       x = int(match.group(1)) * self.onemicron
       y = int(match.group(2)) * self.onemicron
       t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
@@ -1569,6 +1580,15 @@ class XMLLayoutReader(SampleBase):
       "includehpfsflaggedforacquisition": parsed_args_dict.pop("include_hpfs_flagged_for_acquisition"),
     }
 
+class XMLLayoutReaderTissue(XMLLayoutReader, TissueSampleBase):
+  @property
+  def im3filenameregex(self):
+    return rf"{self.SlideID}_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
+
+class XMLLayoutReaderTMA(XMLLayoutReader, TMASampleBase):
+  @property
+  def im3filenameregex(self):
+    return rf"{self.SlideID}_Core\[[0-9]+,[0-9]+,[0-9]+\]_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
 
 class SampleWithAnnotationInfos(SampleBase, ThingWithAnnotationInfos):
   def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
@@ -1619,7 +1639,7 @@ class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, XMLPolygonFileAr
         else:
           raise FileNotFoundError(f"Couldn't find any annotation xmls matching {self.__annotationsxmlregex.pattern}")
     if candidate != default:
-      self.logger.warning(f"Using {candidate.name} for annotations")
+      self.logger.warningonenter(f"Using {candidate.name} for annotations")
     return candidate
 
   @property

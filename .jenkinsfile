@@ -257,12 +257,6 @@ pipeline {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
               }
             }
-			
-            stage('code checks') {
-              steps {
-                sh 'python -m pyflakes .'
-              }
-            }
           }
         }
         stage('check that the repo is clean') {

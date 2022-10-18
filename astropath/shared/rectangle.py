@@ -9,7 +9,7 @@ from .image_masking.maskloader import ThingWithMask, ThingWithTissueMask
 from .imageloader import ImageLoaderBin, ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderNpz, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
 from .rectangletransformation import AsTypeTransformation, RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
 
-class Rectangle(DataClassWithPscale):
+class RectangleBase(DataClassWithPscale):
   """
   Base class for all HPFs
   n, x, y, w, h, cx, cy, t, and file are columns in SlideID_rect.csv
@@ -35,6 +35,7 @@ class Rectangle(DataClassWithPscale):
   cy: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
   t: datetime.datetime = timestampfield()
   file: str
+  SlideID: str = MetaDataAnnotation(None, includeintable=False)
 
   def __post_init__(self, *args, xmlfolder=None, allexposures=None, **kwargs):
     self.__xmlfolder = xmlfolder
@@ -133,6 +134,28 @@ class Rectangle(DataClassWithPscale):
     The broadband filter ids (numbered from 1) of the layers
     """
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
+
+  @property
+  @abc.abstractmethod
+  def expectedfilename(self):
+    pass
+
+class Rectangle(RectangleBase):
+  @property
+  def expectedfilename(self):
+    if self.SlideID is None:
+      raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
+    return f"{self.SlideID}_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}"
+
+class TMARectangle(RectangleBase):
+  TMAsector: int
+  TMAname1: int
+  TMAname2: int
+  @property
+  def expectedfilename(self):
+    if self.SlideID is None:
+      raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
+    return f"{self.SlideID}_Core[{self.TMAsector},{self.TMAname1},{self.TMAname2}]_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}"
 
 class RectangleWithImageLoaderBase(Rectangle):
   def __post_init__(self, *args, _DEBUG=True, _DEBUG_PRINT_TRACEBACK=False, **kwargs):
