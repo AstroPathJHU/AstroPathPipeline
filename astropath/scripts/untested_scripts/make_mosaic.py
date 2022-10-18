@@ -30,7 +30,7 @@ def main() :
     #load the tile image and create the mosaic image
     print(f'loading tile image from {args.input_file}....')
     tile_image = get_raw_as_hwl(args.input_file,*TILE_DIMENSIONS,IMG_DTYPE)
-    print(f'creating placeholder output image....')
+    print('creating placeholder output image....')
     mosaic_image = np.empty(MOSAIC_DIMENSIONS,dtype=IMG_DTYPE)
     #build the mosaic image from the tiles
     print('creating mosaic image from tiles....')
