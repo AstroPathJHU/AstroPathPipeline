@@ -3,7 +3,7 @@
 import contextlib, methodtools, numpy as np
 
 from ...shared.argumentparser import DbloadArgumentParser, SelectRectanglesArgumentParser
-from ...shared.sample import DbloadSample, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, WorkflowSample
+from ...shared.sample import DbloadSample, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, WorkflowSample, XMLLayoutReaderTissue
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
 from ...utilities.tableio import writetable
@@ -345,7 +345,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample, Dbloa
       "skipannotations": True,  #don't need prepdb annotations output
     }
 
-class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
+class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML, XMLLayoutReaderTissue):
   """
   An alignment set that does not rely on the dbload folder and cannot write the output.
   It is a little slower to initialize than an alignment set that does have dbload.

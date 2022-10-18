@@ -2,18 +2,19 @@ import abc, dateutil, jxmlease, methodtools, numpy as np, pathlib
 from ..utilities import units
 from ..utilities.miscmath import floattoint
 from .csvclasses import ROIGlobals, ROIPerimeter
-from .rectangle import Rectangle
+from .rectangle import Rectangle, TMARectangle
 
 class AnnotationXMLReader(units.ThingWithPscale):
   """
   Class to read the annotations from an xml file
   """
-  def __init__(self, filename, *, pscale, logger, includehpfsflaggedforacquisition=True, xmlfolder=None):
+  def __init__(self, filename, *, pscale, logger, includehpfsflaggedforacquisition=True, xmlfolder=None, SlideID=None):
     self.__filename = filename
     self.__pscale = pscale
     self.__logger = logger
     self.__xmlfolder = xmlfolder
     self.__includehpfsflaggedforacquisition = includehpfsflaggedforacquisition
+    self.__SlideID = SlideID
 
   @property
   def pscale(self): return self.__pscale
@@ -62,19 +63,13 @@ class AnnotationXMLReader(units.ThingWithPscale):
             or field.isflaggedforacquisition and self.__includehpfsflaggedforacquisition
           ): continue
           rectangles.append(
-            Rectangle(
+            field.rectangletype(
               n=len(rectangles)+1,
-              x=field.x,
-              y=field.y,
-              cx=field.cx,
-              cy=field.cy,
-              w=field.w,
-              h=field.h,
-              t=field.time,
-              file=field.im3path.name if field.im3path is not None else None,
+              **field.rectanglekwargs,
               pscale=self.pscale,
               readingfromfile=False,
               xmlfolder=self.__xmlfolder,
+              SlideID=self.__SlideID,
             )
           )
           if microscopename is None is not annotation.microscopename:
@@ -143,14 +138,14 @@ class AnnotationBase(units.ThingWithPscale):
     """
     return self.__xmlnode.get_xml_attr("subtype")
 
-class RectangleAnnotation(AnnotationBase):
+class SimpleAnnotation(AnnotationBase):
   """
-  A rectangle annotation is for a single HPF.
+  A simple annotation is for a single HPF.
   """
   @property
   def fields(self):
     """
-    A rectangle annotation is for a single HPF
+    A simple annotation is for a single HPF
     """
     return self,
   @property
@@ -237,20 +232,69 @@ class RectangleAnnotation(AnnotationBase):
     return dateutil.parser.parse(self.acquisitionnode["TimeStamp"])
 
   @property
-  def globals(self): "RectangleAnnotations don't have global variables"
+  def globals(self): "{type(self).__name__}s don't have global variables"
   @property
-  def perimeters(self): "RectangleAnnotations don't have perimeters"
+  def perimeters(self): "{type(self).__name__}s don't have perimeters"
 
-class ROIAnnotation(AnnotationBase):
+  @abc.abstractmethod
+  def rectangletype(self): pass
+  @property
+  def rectanglekwargs(self):
+    return {
+      "x": self.x,
+      "y": self.y,
+      "cx": self.cx,
+      "cy": self.cy,
+      "w": self.w,
+      "h": self.h,
+      "t": self.time,
+      "file": self.im3path.name if self.im3path is not None else None,
+    }
+
+class RectangleAnnotation(SimpleAnnotation):
   """
-  An ROIAnnotation includes multiple HPFs within the region of interest
+  A RectangleAnnotation is for a single HPF of a normal slide
   """
+  @property
+  def rectangletype(self): return Rectangle
+
+class TMACoreAnnotation(SimpleAnnotation):
+  """
+  A TMACoreAnnotation is for a single TMA core
+  """
+  @property
+  def rectangletype(self): return TMARectangle
+  @property
+  def TMAsector(self):
+    return int(self.xmlnode["Sector"])
+  @property
+  def TMAname(self):
+    name1, name2 = (int(_) for _ in self.xmlnode["Name"].split(","))
+    return name1, name2
+  @property
+  def rectanglekwargs(self):
+    return {
+      **super().rectanglekwargs,
+      "TMAsector": self.TMAsector,
+      "TMAname1": self.TMAname[0],
+      "TMAname2": self.TMAname[1],
+    }
+
+class CompoundAnnotation(AnnotationBase):
+  """
+  An CompoundAnnotation includes multiple HPFs within the region of interest
+  """
+  @property
+  @abc.abstractmethod
+  def fieldtagname(self):
+    pass
+
   @property
   def fields(self):
     """
     The HPFs in this ROI
     """
-    fields = self.xmlnode["Fields"]["Fields-i"]
+    fields = self.xmlnode[self.fieldtagname][f"{self.fieldtagname}-i"]
     if isinstance(fields, jxmlease.XMLDictNode): fields = fields,
     for field in fields:
       yield from AnnotationFactory(field, nestdepth=self.nestdepth+1, pscale=self.pscale).fields
@@ -267,6 +311,26 @@ class ROIAnnotation(AnnotationBase):
       "Unit": "microns",
       "Tc": dateutil.parser.parse(self.xmlnode["History"]["History-i"]["TimeStamp"]),
     }
+
+  @property
+  def microscopename(self):
+    """
+    Name of the computer operating the microscope
+    """
+    names = {field.microscopename for field in self.fields if field.microscopename is not None}
+    if not names:
+      return None
+    if len(names) > 1:
+      raise ValueError("Multiple microscope names: "+", ".join(names))
+    return names.pop()
+
+class ROIAnnotation(CompoundAnnotation):
+  """
+  A ROIAnnotation is for a region of a normal slide
+  """
+  @property
+  def fieldtagname(self):
+    return "Fields"
   @property
   def perimeters(self):
     """
@@ -283,17 +347,15 @@ class ROIAnnotation(AnnotationBase):
       })
     return result
 
+class TMASectorAnnotation(CompoundAnnotation):
+  """
+  A TMASectorAnnotation is for a TMA sector
+  """
   @property
-  def microscopename(self):
-    """
-    Name of the computer operating the microscope
-    """
-    names = {field.microscopename for field in self.fields if field.microscopename is not None}
-    if not names:
-      return None
-    if len(names) > 1:
-      raise ValueError("Multiple microscope names: "+", ".join(names))
-    return names.pop()
+  def fieldtagname(self):
+    return "Cores"
+  @property
+  def perimeters(self): "{type(self).__name__}s don't have perimeters"
 
 def AnnotationFactory(xmlnode, **kwargs):
   """
@@ -302,4 +364,6 @@ def AnnotationFactory(xmlnode, **kwargs):
   return {
     "RectangleAnnotation": RectangleAnnotation,
     "ROIAnnotation": ROIAnnotation,
+    "TMACoreAnnotation": TMACoreAnnotation,
+    "TMASectorAnnotation": TMASectorAnnotation,
   }[xmlnode.get_xml_attr("subtype")](xmlnode, **kwargs)
