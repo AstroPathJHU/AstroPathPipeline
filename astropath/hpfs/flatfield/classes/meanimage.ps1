@@ -38,7 +38,7 @@ Class meanimage : moduletools {
         $this.fixSIDs()
         $this.fixmlids()
         $this.DownloadFiles()
-        $this.ShredDatFromIM3Source()
+        $this.ShredDat()
         $this.GetMeanImage()
         $this.returndata()
         $this.cleanup()
