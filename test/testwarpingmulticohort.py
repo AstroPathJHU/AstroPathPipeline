@@ -59,9 +59,9 @@ class TestWarpingMultiCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         shutil.copy(existing_path,new_path)
         super().setUpClass()
         sample = DummySample(root,shardedim3root,slideID)
-        existing_filepaths = [shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
+        existing_filepaths = [shardedim3root/slideID/r.file.with_suffix(UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
         for ir,r in enumerate(sample.rectangles) :
-            thisrfilepath = shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)
+            thisrfilepath = shardedim3root/slideID/r.file.with_suffix(UNIV_CONST.RAW_EXT)
             if not thisrfilepath.is_file() :
                 shutil.copy(existing_filepaths[ir%len(existing_filepaths)],thisrfilepath)
 

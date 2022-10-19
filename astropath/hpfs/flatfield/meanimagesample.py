@@ -195,7 +195,7 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
             proc_results = {}
             with self.pool() as pool :
                 for ri,r in enumerate(self.rectangles) :
-                    msg = f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} '
+                    msg = f'Creating masks for {r.file.stem} '
                     msg+= f'({ri+1} of {len(self.rectangles)})....'
                     self.logger.debug(msg)
                     with r.using_corrected_im3() as im :
@@ -203,7 +203,7 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         proc_results[r_key] = pool.apply_async(return_new_mask_labelled_regions,
                                                                (im,self.layer_groups,self.brightest_layers,
-                                                                r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                                r.file.stem,
                                                                 background_thresholds,ets,
                                                                 self.image_masking_dirpath))
                 for (rn,rfile),res in proc_results.items() :
@@ -211,25 +211,25 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
                         new_lmrs = res.get()
                         labelled_mask_regions+=new_lmrs
                     except Exception as e :
-                        warnmsg = f'WARNING: getting image mask for rectangle {rn} ({rfile.rstrip(UNIV_CONST.IM3_EXT)})'
+                        warnmsg = f'WARNING: getting image mask for rectangle {rn} ({rfile.stem})'
                         warnmsg+= f' failed with the error "{e}" and this rectangle WILL BE SKIPPED when stacking '
                         warnmsg+= 'images in the meanimage!'
                         self.logger.warning(warnmsg)
         #do the same as above except serially
         else :
             for ri,r in enumerate(self.rectangles) :
-                msg = f'Creating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} ({ri+1} of {len(self.rectangles)})....'
+                msg = f'Creating masks for {r.file.stem} ({ri+1} of {len(self.rectangles)})....'
                 self.logger.debug(msg)
                 try :
                     with r.using_corrected_im3() as im :
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         new_lmrs=return_new_mask_labelled_regions(im,self.layer_groups,self.brightest_layers,
-                                                                  r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                                  r.file.stem,
                                                                   background_thresholds,ets,
                                                                   self.image_masking_dirpath)
                         labelled_mask_regions+=new_lmrs
                 except Exception as e :
-                    warnmsg = f'WARNING: getting image mask for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)})'
+                    warnmsg = f'WARNING: getting image mask for rectangle {r.n} ({r.file.stem})'
                     warnmsg+= f' failed with the error "{e}" and this rectangle WILL BE SKIPPED when stacking images '
                     warnmsg+= 'in the meanimage!'
                     self.logger.warning(warnmsg) 
@@ -361,7 +361,7 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
             proc_results = {}; current_image_i = 0
             with self.pool() as pool :
                 for ri,r in enumerate(self.tissue_edge_rects) :
-                    msg = f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} '
+                    msg = f'Finding background thresholds for {r.file.stem} '
                     msg+= f'({ri+1} of {len(self.tissue_edge_rects)})....'
                     self.logger.debug(msg)
                     with r.using_corrected_im3() as im :
@@ -380,11 +380,11 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
                         image_background_thresholds_by_layer[current_image_i,:] = thresholds
                         tissue_edge_layer_hists+=hists
                         self.field_logs.append(FieldLog(self.SlideID,
-                                                        rfile.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+                                                        rfile.with_suffix(UNIV_CONST.RAW_EXT),
                                                         'edge','thresholding'))
                         current_image_i+=1
                     except Exception as e :
-                        warnmsg = f'WARNING: finding thresholds for rectangle {rn} ({rfile.rstrip(UNIV_CONST.IM3_EXT)})'
+                        warnmsg = f'WARNING: finding thresholds for rectangle {rn} ({rfile.stem})'
                         warnmsg+= f' failed with the error "{e}" and this rectangle WILL BE SKIPPED when finding '
                         warnmsg+= 'thresholds for the overall slide!'
                         self.logger.warning(warnmsg)
@@ -392,7 +392,7 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
         else :
             current_image_i=0
             for ri,r in enumerate(self.tissue_edge_rects) :
-                msg = f'Finding background thresholds for {r.file.rstrip(UNIV_CONST.IM3_EXT)} '
+                msg = f'Finding background thresholds for {r.file.stem} '
                 msg+= f'({ri+1} of {len(self.tissue_edge_rects)})....'
                 self.logger.debug(msg)
                 try :
@@ -408,11 +408,11 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
                     image_background_thresholds_by_layer[current_image_i,:] = thresholds
                     tissue_edge_layer_hists+=hists
                     self.field_logs.append(FieldLog(self.SlideID,
-                                                    r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+                                                    r.file.with_suffix(UNIV_CONST.RAW_EXT),
                                                     'edge','thresholding'))
                     current_image_i+=1
                 except Exception as e :
-                    warnmsg = f'WARNING: finding thresholds for rectangle {r.n} ({r.file.rstrip(UNIV_CONST.IM3_EXT)})'
+                    warnmsg = f'WARNING: finding thresholds for rectangle {r.n} ({r.file.stem})'
                     warnmsg+= f' failed with error {e} and this rectangle WILL BE SKIPPED when finding thresholds '
                     warnmsg+= 'for the overall slide!'
                     self.logger.warning(warnmsg)
@@ -452,15 +452,15 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
         if len((top_blur_keys | top_saturation_keys)) < 20 :
             random_rects = random.sample(self.rectangles,
                                          min(10,20-len((top_blur_keys | top_saturation_keys)),len(self.rectangles)))
-            random_keys = set([r.file.rstrip(UNIV_CONST.IM3_EXT) for r in random_rects])
+            random_keys = set([r.file.stem for r in random_rects])
         #recompute the masks for those images and write out the masking plots for them
         keys_to_plot = (top_blur_keys | top_saturation_keys | random_keys)
-        rects_to_plot = [r for r in self.rectangles if r.file.rstrip(UNIV_CONST.IM3_EXT) in keys_to_plot]
+        rects_to_plot = [r for r in self.rectangles if r.file.stem in keys_to_plot]
         if (self.njobs is not None) and (self.njobs>1) :
             proc_results = {}
             with self.pool() as pool :
                 for ri,r in enumerate(rects_to_plot) :
-                    msg = f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots '
+                    msg = f'Recreating masks for {r.file.stem} and saving masking plots '
                     msg+= f'({ri+1} of {len(rects_to_plot)})....'
                     self.logger.debug(msg)
                     with r.using_corrected_im3() as im :
@@ -468,7 +468,7 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
                         ets = self.med_ets if self.et_offset_file is not None else r.allexposuretimes
                         proc_results[r_key] = pool.apply_async(save_plots_for_image,
                                                                (im,self.layer_groups,self.brightest_layers,
-                                                                r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                                r.file.stem,
                                                                 background_thresholds,ets,r.allexposuretimes,
                                                                 self.exposure_time_histograms_and_bins_by_layer_group,
                                                                 self.image_masking_dirpath))
@@ -477,24 +477,24 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
                         res.get()
                     except Exception as e :
                         warnmsg = f'WARNING: saving masking plots for rectangle {rn} '
-                        warnmsg+= f'({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed with the error "{e}"'
+                        warnmsg+= f'({rfile.stem}) failed with the error "{e}"'
                         self.logger.warning(warnmsg)
         #do the same as above except serially
         else :
             for ri,r in enumerate(rects_to_plot) :
-                msg = f'Recreating masks for {r.file.rstrip(UNIV_CONST.IM3_EXT)} and saving masking plots '
+                msg = f'Recreating masks for {r.file.stem} and saving masking plots '
                 msg+= f'({ri+1} of {len(rects_to_plot)})....'
                 self.logger.debug(msg)
                 try :
                     with r.using_corrected_im3() as im :
                         save_plots_for_image(im,self.layer_groups,self.brightest_layers,
-                                             r.file.rstrip(UNIV_CONST.IM3_EXT),background_thresholds,
+                                             r.file.stem,background_thresholds,
                                              self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
                                              r.allexposuretimes,self.exposure_time_histograms_and_bins_by_layer_group,
                                              self.image_masking_dirpath)
                 except Exception as e :
                     warnmsg = f'WARNING: saving masking plots for rectangle {r.n} '
-                    warnmsg+= f'({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed with the error "{e}"'
+                    warnmsg+= f'({r.file.stem}) failed with the error "{e}"'
                     self.logger.warning(warnmsg) 
                     raise e
 

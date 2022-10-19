@@ -171,7 +171,7 @@ class ImageStackBase(ThingWithLogger) :
             while len(nq_threads)>=(n_threads-1) :
                 thread = nq_threads.pop(0)
                 thread.join()
-            msg = f'Adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack ({ri+1} of {len(rectangles)})....'
+            msg = f'Adding {r.file.stem} to the image stack ({ri+1} of {len(rectangles)})....'
             self.__logger.debug(msg)
             new_thread = Thread(target=self._add_rect_to_stacking_queue_no_masking,
                                 args=[r,
@@ -202,7 +202,7 @@ class ImageStackBase(ThingWithLogger) :
         else :
             keys_with_full_masks = set()
         for r in rectangles :
-            imkey = r.file.rstrip(UNIV_CONST.IM3_EXT)
+            imkey = r.file.stem
             if not (maskingdirpath / f'{imkey}_{CONST.TISSUE_MASK_FILE_NAME_STEM}').is_file() :
                 warnmsg = f'WARNING: missing a tissue mask file for {imkey} in {maskingdirpath} '
                 warnmsg+= 'and so this image will be skipped!'
@@ -225,7 +225,7 @@ class ImageStackBase(ThingWithLogger) :
             while len(nq_threads)>=(n_threads-1) :
                 thread = nq_threads.pop(0)
                 thread.join()
-            msg = f'Masking and adding {r.file.rstrip(UNIV_CONST.IM3_EXT)} to the image stack '
+            msg = f'Masking and adding {r.file.stem} to the image stack '
             msg+= f'({ri+1} of {len(rectangles_to_stack)})....'
             self.__logger.debug(msg)
             new_thread = Thread(target=self._add_rect_to_stacking_queue_with_masking,

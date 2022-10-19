@@ -44,6 +44,22 @@ Class meanimage : moduletools {
         $this.cleanup()
         $this.datavalidation()
     }
+    <# -----------------------------------------
+     ShredDatFromIM3Source
+        ShredDat() but give the im3 source
+        (not the processing directory) as where
+        we want to get im3 files from
+     ------------------------------------------
+     Usage: $this.ShredDatFromIM3Source()
+    ----------------------------------------- #>
+    [void]ShredDatFromIM3Source(){
+        #
+        $processing_temp = $this.processvars[0]
+        $this.processvars[0] = $this.sample.im3folder()
+        $this.ShredDat()
+        $this.processvars[0] = $processing_temp
+        #
+    }
    <# -----------------------------------------
      GetMeanImage
         Get the mean image

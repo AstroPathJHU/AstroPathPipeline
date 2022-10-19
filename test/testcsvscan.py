@@ -40,6 +40,7 @@ class TestCsvScan(TestBaseCopyInput, TestBaseSaveOutput):
 
       yield dataroot/SlideID/"im3"/f"{SlideID}-mean.csv", testroot/SlideID/"im3"
       yield dataroot/SlideID/"im3"/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}_annotations.xml", testroot/SlideID/"im3"/f"Scan{Scan}"
+      yield dataroot/SlideID/"im3"/"xml"/f"{SlideID}.Parameters.xml", testroot/SlideID/"im3"/"xml"
 
   @property
   def outputfilenames(self):

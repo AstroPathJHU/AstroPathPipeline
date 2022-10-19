@@ -248,7 +248,7 @@ class SimpleAnnotation(AnnotationBase):
       "w": self.w,
       "h": self.h,
       "t": self.time,
-      "file": self.im3path.name if self.im3path is not None else None,
+      "file": self.im3path.relative_to(self.im3path.parent) if self.im3path is not None else None,
     }
 
 class RectangleAnnotation(SimpleAnnotation):

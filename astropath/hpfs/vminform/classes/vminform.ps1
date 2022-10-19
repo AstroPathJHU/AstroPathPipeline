@@ -473,7 +473,7 @@ Class vminform : moduletools {
         #
         while($value){
             #
-            if ((Get-ChildItem $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-20)){
+            if ((Get-ChildItem $this.informbatchlog).LastWriteTime -lt (Get-Date).AddMinutes(-30)){
                 $this.sample.warning('Timeout reached for batch run')
                 $value = $false
             } else {
