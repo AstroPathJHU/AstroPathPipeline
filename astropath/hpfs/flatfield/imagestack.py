@@ -2,7 +2,6 @@
 import copy
 import numpy as np
 from abc import abstractmethod
-from contextlib import contextmanager
 from threading import Thread
 from queue import Queue
 from ...utilities.config import CONST as UNIV_CONST
@@ -65,16 +64,15 @@ class ImageStackBase(ThingWithLogger) :
         """
         Add the already-created meanimage/mask stack for a single given sample to the model by reading its files
         """
-        #make sure the dimensions match
-        if self._get_rectangle_img_shape(sample.rectangles[0])!=self.__image_stack.shape :
-            errmsg = 'ERROR: called add_sample_meanimage_from_files with a sample whose rectangles have '
-            errmsg+= f'dimensions {self._get_rectangle_img_shape(sample.rectangles[0])} but an image stack with '
-            errmsg+= f'dimensions {self.__image_stack.shape}'
-            raise ValueError(errmsg)
         #read and add the images from the sample
-        thismeanimage = get_raw_as_hwl(sample.meanimage,*(self.__image_stack.shape),dtype=np.float64)
-        thisimagesquaredstack = get_raw_as_hwl(sample.sumimagessquared,*(self.__image_stack.shape),dtype=np.float64)
-        thismaskstack = get_raw_as_hwl(sample.maskstack,*(self.__image_stack.shape),dtype=np.uint64)
+        try :
+            thismeanimage = get_raw_as_hwl(sample.meanimage,*(self.__image_stack.shape),dtype=np.float64)
+            thisimagesquaredstack = get_raw_as_hwl(sample.sumimagessquared,*(self.__image_stack.shape),dtype=np.float64)
+            thismaskstack = get_raw_as_hwl(sample.maskstack,*(self.__image_stack.shape),dtype=np.uint64)
+        except :
+            errmsg = f'ERROR: failed to read meanimage, images squared, and mask stack for {sample.SlideID}! '
+            errmsg+= f'Expecting dimensions = {self.__image_stack.shape}'
+            raise ValueError(errmsg)
         if self.__mask_stack is None :
             self.__mask_stack = np.zeros(self.__image_stack.shape,dtype=np.uint64)
         self.__mask_stack+=thismaskstack
