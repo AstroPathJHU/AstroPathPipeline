@@ -550,7 +550,7 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     try:
       result["layers"] = self.layerscomponenttiff
     except FileNotFoundError:
-      result["layers"] = 1
+      result["layers"] = [1]
     result["tifflayers"] = self.tifflayers
     return result
 
