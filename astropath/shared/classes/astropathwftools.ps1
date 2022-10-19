@@ -99,7 +99,7 @@ class astropathwftools : sampledb {
             $workertasklog = $this.workertasklog($jobname)
             $workertaskfile = $this.workertaskfile($jobname)
             #
-            if (!($this.fastping($worker))){
+            if (!($this.fastping($idleworkers[$worker]))){
                 $this.writeoutput(('WARNING:', 
                     $worker.server, $worker.location,
                     'is set to ON but state is OFF!' -join ' '))
