@@ -194,6 +194,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+
     if variant == "rename":
       dbloadroot /= "renameannotation"
       logroot /= "renameannotation"
@@ -237,6 +238,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+
     s = AnnoWarpSampleAstroPathTissueMask(root=root, samp=SlideID, zoomroot=zoomroot, dbloadroot=dbloadroot, logroot=logroot, im3root=im3root, tilepixels=100)
     referencefilename = thisfolder/"data"/"reference"/"annowarp"/SlideID/"dbload"/s.alignmentcsv.name
     s.readalignments(filename=referencefilename)

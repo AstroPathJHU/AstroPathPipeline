@@ -20,7 +20,7 @@ from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import SampleDef
 from .workflowdependency import ThingWithWorkflowKwargs, WorkflowDependencySlideID
 
-class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger, contextlib.ExitStack):
+class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
   Base class for all sample classes.
 
@@ -73,6 +73,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def printlogger(self): return self.__printlogger
   @classmethod
   def usegloballogger(cls): return False
+  @property
+  def uselogfiles(self): return self.logger.uselogfiles
 
   @property
   def rootnames(self):
@@ -80,10 +82,17 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @property
   def workflowkwargs(self):
-    return {
+    result = {
       **super().workflowkwargs,
+      **{name: getattr(self, name) for name in self.rootnames},
       "Scan": self.Scan,
+      "SlideID": self.SlideID,
     }
+    try:
+      result["xmlfolder"] = self.xmlfolder
+    except FileNotFoundError:
+      pass
+    return result
 
   @property
   def SampleID(self): return self.samp.SampleID
@@ -195,9 +204,12 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   @property
   def fullxmlfile(self):
     return self.xmlfolder/(self.SlideID+".Full.xml")
+  @classmethod
+  def getannotationsxmlfile(cls, SlideID, *, Scan, im3root, **otherworkflowkwargs):
+    return im3root/SlideID/"im3"/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}_annotations.xml"
   @property
   def annotationsxmlfile(self):
-    return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+"_annotations.xml")
+    return self.getannotationsxmlfile(**self.workflowkwargs)
 
   def __getimageinfofromXMLfiles(self):
     """
@@ -439,27 +451,27 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if layers is None: raise FileNotFoundError("Couldn't get image info from any source that has flayers")
     return layers
 
-  @methodtools.lru_cache()
-  def getXMLplan(self, includehpfsflaggedforacquisition=False):
+  @classmethod
+  def getXMLplan(cls, SlideID, *, xmlfolder=None, pscale, logger, includehpfsflaggedforacquisition=False, **otherworkflowkwargs):
     """
     Read the annotations xml file to get the structure of the
     image as well as the microscope name (really the name of the
     computer that processed the image).
     """
-    xmlfile = self.annotationsxmlfile
-    try:
-      xmlfolder = self.xmlfolder
-    except FileNotFoundError:
-      xmlfolder = None
-    reader = AnnotationXMLReader(xmlfile, xmlfolder=xmlfolder, pscale=self.pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
+    annotationsxmlfile = cls.getannotationsxmlfile(SlideID=SlideID, **otherworkflowkwargs)
+    reader = AnnotationXMLReader(annotationsxmlfile, xmlfolder=xmlfolder, pscale=pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=logger, SlideID=SlideID)
     return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
+
+  @methodtools.lru_cache()
+  def XMLplan(self, **kwargs):
+    return self.getXMLplan(logger=self.logger if not self.__suppressinitwarnings else dummylogger, pscale=self.pscale, **self.workflowkwargs, **kwargs)
 
   @property
   def microscopename(self):
     """
     Name of the computer that processed the image.
     """
-    return self.getXMLplan()[3]
+    return self.XMLplan()[3]
 
   def __enter__(self):
     self.__nentered += 1
@@ -502,6 +514,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       sample = cls(**initkwargs)
       with sample:
         sample.run(**runkwargs)
+        missingoutputs = sample.missingoutputfiles
+        if missingoutputs:
+          raise RuntimeError(f"{sample.logger.SlideID} ran successfully but some output files are missing: {', '.join(str(_) for _ in missingoutputs)}")
       return sample
 
   @classmethod
@@ -734,6 +749,12 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       else :
         raise ValueError(f'ERROR: unrecognized layer group name "{lgn}"!')
     return result
+
+class TissueSampleBase(SampleBase):
+  pass
+
+class TMASampleBase(SampleBase):
+  pass
 
 class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
@@ -1196,6 +1217,10 @@ class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgume
     if not self.__initedrectangles: self.initrectangles()
     return self.__rectangles
 
+  @property
+  def workflowkwargs(self):
+    return {"selectrectangles": self.__rectanglefilter, **super().workflowkwargs}
+
 class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
   """
   Base class for any sample that loads images from an im3 file.
@@ -1417,8 +1442,8 @@ class XMLLayoutReader(SampleBase):
     self.__includehpfsflaggedforacquisition = includehpfsflaggedforacquisition
     super().__init__(*args, **kwargs)
 
-  def getXMLplan(self):
-    return super().getXMLplan(includehpfsflaggedforacquisition=self.__includehpfsflaggedforacquisition)
+  def XMLplan(self, **kwargs):
+    return super().XMLplan(includehpfsflaggedforacquisition=self.__includehpfsflaggedforacquisition, **kwargs)
 
   @methodtools.lru_cache()
   def getrectanglelayout(self):
@@ -1426,7 +1451,7 @@ class XMLLayoutReader(SampleBase):
     Find the rectangle layout from both the XML metadata
     and the im3 files, compare them, and return the rectangles.
     """
-    rectangles, globals, perimeters, microscopename = self.getXMLplan()
+    rectangles, globals, perimeters, microscopename = self.XMLplan()
     self.fixM2(rectangles)
     self.fixrectanglefilenames(rectangles)
     self.fixduplicaterectangles(rectangles)
@@ -1460,10 +1485,10 @@ class XMLLayoutReader(SampleBase):
     Fix any _M2 in the rectangle filenames
     """
     for rectangle in rectangles[:]:
-      if rectangle.file is not None and "_M2" in rectangle.file:
+      if rectangle.file is not None and "_M2" in rectangle.file.name:
         duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
         if not duplicates:
-          rectangle.file = rectangle.file.replace("_M2", "")
+          rectangle.file = rectangle.file.with_name(rectangle.file.name.replace("_M2", ""))
         for d in duplicates:
           rectangles.remove(d)
         self.logger.warningglobalonenter(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
@@ -1475,7 +1500,7 @@ class XMLLayoutReader(SampleBase):
     Fix rectangle filenames if the coordinates are messed up
     """
     for r in rectangles:
-      expected = self.SlideID+f"_[{floattoint(float(r.cx/r.onemicron)):d},{floattoint(float(r.cy/r.onemicron)):d}]{UNIV_CONST.IM3_EXT}"
+      expected = r.expectedfilename
       actual = r.file
       if expected != actual:
         self.logger.warningglobalonenter(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
@@ -1500,6 +1525,11 @@ class XMLLayoutReader(SampleBase):
     for i, rectangle in enumerate(rectangles, start=1):
       rectangle.n = i
 
+  @property
+  @abc.abstractmethod
+  def im3filenameregex(self):
+    pass
+
   @methodtools.lru_cache()
   def getdir(self):
     """
@@ -1511,10 +1541,10 @@ class XMLLayoutReader(SampleBase):
     im3s = folder.glob(f"*{UNIV_CONST.IM3_EXT}")
     result = []
     for im3 in im3s:
-      regex = self.SlideID+r"_\[([0-9]+),([0-9]+)\]"+UNIV_CONST.IM3_EXT
+      regex = self.im3filenameregex
       match = re.match(regex, im3.name)
       if not match:
-        raise ValueError(f"Unknown im3 filename {im3}, should match {regex}")
+        raise ValueError(f"Unknown im3 filename {im3.name}, should match {regex}")
       x = int(match.group(1)) * self.onemicron
       y = int(match.group(2)) * self.onemicron
       t = datetime.datetime.fromtimestamp(os.path.getmtime(im3)).astimezone()
@@ -1569,6 +1599,15 @@ class XMLLayoutReader(SampleBase):
       "includehpfsflaggedforacquisition": parsed_args_dict.pop("include_hpfs_flagged_for_acquisition"),
     }
 
+class XMLLayoutReaderTissue(XMLLayoutReader, TissueSampleBase):
+  @property
+  def im3filenameregex(self):
+    return rf"{self.SlideID}_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
+
+class XMLLayoutReaderTMA(XMLLayoutReader, TMASampleBase):
+  @property
+  def im3filenameregex(self):
+    return rf"{self.SlideID}_Core\[[0-9]+,[0-9]+,[0-9]+\]_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
 
 class SampleWithAnnotationInfos(SampleBase, ThingWithAnnotationInfos):
   def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):

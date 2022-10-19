@@ -52,7 +52,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
       raise ValueError(variant)
     regex = ".*annotations.polygons.xml"
     args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--annotations-on-qptiff", "--units", units, "--allow-local-edits", "--annotations-xml-regex", regex, "--project", "0"]
-    s = WriteAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID, annotationsource="qptiff", annotationposition=None, annotationpositionfromaffineshift=False, annotationsxmlregex=regex)
+    s = WriteAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID, annotationsource="qptiff", annotationposition=None, annotationpositionfromaffineshift=False, annotationsxmlregex=regex, xmlfolders=[thisfolder/"data"/SlideID/"im3"/"xml"])
 
     try:
       if usecohort:
@@ -90,8 +90,8 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
       refroot /= "emptyannotation"
     else:
       raise ValueError(variant)
-    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
-    s = CopyAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID, renameannotations={})
+    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits", "--xmlfolder", os.fspath(thisfolder/"data"/SlideID/"im3"/"xml")]
+    s = CopyAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID, renameannotations={}, xmlfolders=[thisfolder/"data"/SlideID/"im3"/"xml"])
 
     try:
       CopyAnnotationInfoCohort.runfromargumentparser(args)
@@ -113,7 +113,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     root = thisfolder/"data"
     dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
     s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set(), renameannotations={})
-    commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
+    commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits", "--xmlfolder", os.fspath(thisfolder/"data"/SlideID/"im3"/"xml")]
     write1args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons.xml"]
     write2args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons_2.xml"]
     mergeargs = ["--annotation", "Good tissue", ".*annotations.polygons.xml", "--skip-annotation", "tumor"]
@@ -139,8 +139,8 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testAnnotationPosition(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
-    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set(), renameannotations={})
-    commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set(), renameannotations={}, xmlfolders=[thisfolder/"data"/SlideID/"im3"/"xml"])
+    commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits", "--xmlfolder", os.fspath(thisfolder/"data"/SlideID/"im3"/"xml")]
     regex1 = ".*annotations.polygons.xml"
     regex2 = ".*annotations.polygons_2.xml"
     write1args = ["--annotations-on-wsi", "--annotation-position", "100", "100", "--annotations-xml-regex", regex1]
@@ -169,8 +169,8 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
   def testRenameAnnotation(self, *, SlideID="M206", units="safe"):
     root = thisfolder/"data"
     dbloadroot = im3root = logroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
-    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set(), renameannotations={})
-    commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits"]
+    s = MergeAnnotationXMLsSample(root=root, im3root=im3root, dbloadroot=dbloadroot, samp=SlideID, annotationselectiondict={}, skipannotations=set(), renameannotations={}, xmlfolders=[thisfolder/"data"/SlideID/"im3"/"xml"])
+    commonargs = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--sampleregex", SlideID, "--debug", "--units", units, "--ignore-dependencies", "--allow-local-edits", "--xmlfolder", os.fspath(thisfolder/"data"/SlideID/"im3"/"xml")]
     write1args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons.xml"]
     write2args = ["--annotations-on-qptiff", "--annotations-xml-regex", ".*annotations.polygons_2.xml"]
     mergeargs = ["--annotation", "Good tissue", ".*annotations.polygons.xml", "--annotation", "tumor", ".*annotations.polygons_2.xml", "--rename-annotation", "outline", "good tissue", "--rename-annotation", "good tissue", "good tissue x", "--rename-annotation", "tumor", "tumor x"]

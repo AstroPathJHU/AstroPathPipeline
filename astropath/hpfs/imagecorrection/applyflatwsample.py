@@ -3,10 +3,10 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.miscfileio import cd
 from ...utilities.img_file_io import write_image_to_file
 from ...shared.argumentparser import SelectLayersArgumentParser, WorkingDirArgumentParser
-from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample
+from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, XMLLayoutReaderTissue
 from .config import IMAGECORRECTION_CONST
 
-class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, 
+class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, XMLLayoutReaderTissue, WorkflowSample, ParallelSample, 
                             WorkingDirArgumentParser, SelectLayersArgumentParser) :
     """
     Read raw image files, correct them for flatfielding and/or warping effects 
@@ -61,10 +61,10 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
                 proc_results = {}
                 with self.pool() as pool :
                     for ri,r in enumerate(self.rectangles,start=1) :
-                        msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
+                        msg = f'{r.file.stem} {msg_append} ({ri}/{len(self.rectangles)})....'
                         with r.using_corrected_im3() as im :
                             proc_results[(r.n,r.file)] = pool.apply_async(write_out_corrected_image_files,
-                                                                          (im,r.file.rstrip(UNIV_CONST.IM3_EXT),
+                                                                          (im,r.file.stem,
                                                                            layers,outextstem))
                             self.logger.debug(msg)
                     for (rn,rfile),res in proc_results.items() :
@@ -73,19 +73,19 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
                         except Exception as e :
                             if debug: raise
                             warnmsg = f'WARNING: writing out corrected images for rectangle {rn} '
-                            warnmsg+= f'({rfile.rstrip(UNIV_CONST.IM3_EXT)}) failed with the error "{e}"'
+                            warnmsg+= f'({rfile.stem}) failed with the error "{e}"'
                             self.logger.warning(warnmsg)
             else :
                 for ri,r in enumerate(self.rectangles,start=1) :
-                    msg = f'{r.file.rstrip(UNIV_CONST.IM3_EXT)} {msg_append} ({ri}/{len(self.rectangles)})....'
+                    msg = f'{r.file.stem} {msg_append} ({ri}/{len(self.rectangles)})....'
                     try :
                         with r.using_corrected_im3() as im :
-                            write_out_corrected_image_files(im,r.file.rstrip(UNIV_CONST.IM3_EXT),layers,outextstem)
+                            write_out_corrected_image_files(im,r.file.stem,layers,outextstem)
                             self.logger.debug(msg)
                     except Exception as e :
                         if debug: raise
                         warnmsg = f'WARNING: writing out corrected images for rectangle {r.n} '
-                        warnmsg+= f'({r.file.rstrip(UNIV_CONST.IM3_EXT)}) failed with the error "{e}"'
+                        warnmsg+= f'({r.file.stem}) failed with the error "{e}"'
                         self.logger.warning(warnmsg) 
 
     #################### PROPERTIES ####################

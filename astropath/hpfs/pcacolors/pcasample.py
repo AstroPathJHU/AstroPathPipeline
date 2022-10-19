@@ -7,11 +7,11 @@ from ...utilities.miscmath import floattoint
 from ...utilities.img_file_io import smooth_image_worker
 from ...shared.overlap import Overlap
 from ...shared.image_masking.image_mask import ImageMask
-from ...shared.sample import ReadRectanglesBase, MaskSampleBase
+from ...shared.sample import ReadRectanglesOverlapsFromXML, MaskSampleBase, XMLLayoutReaderTissue
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML
 from ...shared.sample import ReadRectanglesOverlapsComponentTiffFromXML
 
-class PCASampleBase(ReadRectanglesBase,MaskSampleBase) :
+class PCASampleBase(ReadRectanglesOverlapsFromXML,XMLLayoutReaderTissue,MaskSampleBase) :
     """
     General class to work with a PCA across a set of rectangle images
 
@@ -34,15 +34,15 @@ class PCASampleBase(ReadRectanglesBase,MaskSampleBase) :
                 self.flayers)
         #loop over the rectangles
         for ir,r in enumerate(self.rectangles,start=1) :
-            self.logger.debug(f'Adding {r.file.replace(".im3","")} to PCA ({ir}/{len(self.rectangles)})...')
+            self.logger.debug(f'Adding {r.file.stem} to PCA ({ir}/{len(self.rectangles)})...')
             #find the mask to use for this image
-            fmfp = self.maskfolder/r.file.replace('.im3','_full_mask.bin')
+            fmfp = self.maskfolder/f'{r.file.stem}_full_mask.bin'
             if fmfp.is_file() :
                 mask_as_read = ImageMask.onehot_mask_from_full_mask_file(self,fmfp,dims)
                 sum_mask = np.sum(mask_as_read,axis=2)
                 mask = np.where(sum_mask==dims[2],1,0)
             else :
-                tmfp = self.maskfolder/r.file.replace('.im3','_tissue_mask.bin')
+                tmfp = self.maskfolder/f'{r.file.stem}_tissue_mask.bin'
                 if not tmfp.is_file() :
                     raise ValueError(f'ERROR: tissue mask file {tmfp} not found!')
                 mask = ImageMask.unpack_tissue_mask(tmfp,dims[:-1])

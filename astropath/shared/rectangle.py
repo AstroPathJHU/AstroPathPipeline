@@ -9,7 +9,7 @@ from .image_masking.maskloader import ThingWithMask, ThingWithTissueMask
 from .imageloader import ImageLoaderBin, ImageLoaderComponentTiffMultiLayer, ImageLoaderComponentTiffSingleLayer, ImageLoaderIm3MultiLayer, ImageLoaderIm3SingleLayer, ImageLoaderHasSingleLayerTiff, ImageLoaderNpz, ImageLoaderSegmentedComponentTiffMultiLayer, ImageLoaderSegmentedComponentTiffSingleLayer, TransformedImage
 from .rectangletransformation import AsTypeTransformation, RectangleExposureTimeTransformationMultiLayer, RectangleExposureTimeTransformationSingleLayer, RectangleFlatfieldTransformationMultilayer, RectangleFlatfieldTransformationSinglelayer, RectangleWarpingTransformationMultilayer, RectangleWarpingTransformationSinglelayer
 
-class Rectangle(DataClassWithPscale):
+class RectangleBase(DataClassWithPscale):
   """
   Base class for all HPFs
   n, x, y, w, h, cx, cy, t, and file are columns in SlideID_rect.csv
@@ -34,7 +34,8 @@ class Rectangle(DataClassWithPscale):
   cx: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
   cy: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
   t: datetime.datetime = timestampfield()
-  file: str
+  file: pathlib.Path = pathfield()
+  SlideID: str = MetaDataAnnotation(None, includeintable=False)
 
   def __post_init__(self, *args, xmlfolder=None, allexposures=None, **kwargs):
     self.__xmlfolder = xmlfolder
@@ -87,7 +88,7 @@ class Rectangle(DataClassWithPscale):
     if self.__xmlfolder is None:
       raise ValueError("Can't get xml info if you don't provide the rectangle with an xml folder")
     for xml_file_ext in UNIV_CONST.EXPOSURE_XML_EXTS :
-      xml_filepath = self.__xmlfolder/self.file.replace(UNIV_CONST.IM3_EXT,xml_file_ext)
+      xml_filepath = self.__xmlfolder/self.file.name.replace(UNIV_CONST.IM3_EXT,xml_file_ext)
       if xml_filepath.is_file() :
         return xml_filepath
     raise FileNotFoundError(f'ERROR: Could not find an xml file for {self.file} with any of the expected file extensions in {self.__xmlfolder}')
@@ -133,6 +134,28 @@ class Rectangle(DataClassWithPscale):
     The broadband filter ids (numbered from 1) of the layers
     """
     return [exposuretimeandbroadbandfilter[1] for exposuretimeandbroadbandfilter in self.__allexposuretimesandbroadbandfilters]
+
+  @property
+  @abc.abstractmethod
+  def expectedfilename(self):
+    pass
+
+class Rectangle(RectangleBase):
+  @property
+  def expectedfilename(self):
+    if self.SlideID is None:
+      raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
+    return pathlib.Path(f"{self.SlideID}_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
+
+class TMARectangle(RectangleBase):
+  TMAsector: int
+  TMAname1: int
+  TMAname2: int
+  @property
+  def expectedfilename(self):
+    if self.SlideID is None:
+      raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
+    return pathlib.Path(f"{self.SlideID}_Core[{self.TMAsector},{self.TMAname1},{self.TMAname2}]_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
 
 class RectangleWithImageLoaderBase(Rectangle):
   def __post_init__(self, *args, _DEBUG=True, _DEBUG_PRINT_TRACEBACK=False, **kwargs):
@@ -212,7 +235,7 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
     else :
       raise ValueError(f"requested file type {self.__im3filetype} not recognized")
 
-    return self.im3folder/self.file.replace(UNIV_CONST.IM3_EXT, ext)
+    return self.im3folder/self.file.name.replace(UNIV_CONST.IM3_EXT, ext)
 
   @property
   def exposuretimes(self):
@@ -483,7 +506,7 @@ class RectangleReadIHCTiff(RectangleWithImageLoaderBase) :
 
   @property
   def ihctifffile(self):
-    return self.ihctifffolder/self.file.replace(UNIV_CONST.IM3_EXT, '_IHC.tif')
+    return self.ihctifffolder/self.file.name.replace(UNIV_CONST.IM3_EXT, '_IHC.tif')
 
   @methodtools.lru_cache()
   @property
@@ -525,7 +548,7 @@ class RectangleReadComponentTiffBase(RectangleWithImageLoaderBase):
 
   @property
   def componenttifffile(self):
-    return self.componenttifffolder/self.file.replace(UNIV_CONST.IM3_EXT, "_component_data.tif")
+    return self.componenttifffolder/self.file.name.replace(UNIV_CONST.IM3_EXT, "_component_data.tif")
 
   @methodtools.lru_cache()
   @property
@@ -789,7 +812,7 @@ class GeomLoadRectangle(Rectangle):
     self.__geomfolder = pathlib.Path(geomfolder)
     super().__post_init__(*args, **kwargs)
   def geomloadcsv(self, segmentationalgorithm):
-    return self.__geomfolder/segmentationalgorithm/self.file.replace(UNIV_CONST.IM3_EXT, "_cellGeomLoad.csv")
+    return self.__geomfolder/segmentationalgorithm/self.file.name.replace(UNIV_CONST.IM3_EXT, "_cellGeomLoad.csv")
 
 class SegmentationRectangle(Rectangle):
   """
@@ -801,7 +824,7 @@ class SegmentationRectangle(Rectangle):
     super().__post_init__(*args, **kwargs)
   @property
   def segmentationnpzfile(self):
-    return self.__segmentationfolder/self.file.replace(UNIV_CONST.IM3_EXT, self.segmentationnpzsuffix)
+    return self.__segmentationfolder/self.file.name.replace(UNIV_CONST.IM3_EXT, self.segmentationnpzsuffix)
   @property
   @abc.abstractmethod
   def segmentationnpzsuffix(self): pass
@@ -845,7 +868,7 @@ class AstroPathMaskRectangle(MaskRectangleBase, RectangleWithImageSize):
 class AstroPathTissueMaskRectangle(AstroPathMaskRectangle, TissueMaskRectangleBase):
   @property
   def tissuemaskfile(self):
-    return self.maskfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_tissue_mask.bin")
+    return self.maskfolder/self.file.name.replace(UNIV_CONST.IM3_EXT, "_tissue_mask.bin")
   @methodtools.lru_cache()
   @property
   def maskloader(self):
@@ -864,7 +887,7 @@ class AstroPathTissueMaskRectangle(AstroPathMaskRectangle, TissueMaskRectangleBa
 class FullMaskRectangle(MaskRectangleBase):
   @property
   def fullmaskfile(self):
-    return self.__maskfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_full_mask.bin")
+    return self.__maskfolder/self.file.name.replace(UNIV_CONST.IM3_EXT, "_full_mask.bin")
   @methodtools.lru_cache()
   @property
   def maskloader(self):
@@ -889,12 +912,12 @@ class PhenotypedRectangle(Rectangle):
     return self.__phenotypefolder/"Results"/"Tables"
   @property
   def phenotypecsv(self):
-    return self.__phenotypetablesfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_cleaned_phenotype_table.csv")
+    return self.__phenotypetablesfolder/self.file.name.replace(UNIV_CONST.IM3_EXT, "_cleaned_phenotype_table.csv")
   @property
   def __phenotypeQAQCtablesfolder(self):
     return self.__phenotypefolder/"Results"/"QA_QC"/"Tables_QA_QC"
   @property
   def phenotypeQAQCcsv(self):
-    return self.__phenotypeQAQCtablesfolder/self.file.replace(UNIV_CONST.IM3_EXT, "_cleaned_phenotype_table.csv")
+    return self.__phenotypeQAQCtablesfolder/self.file.name.replace(UNIV_CONST.IM3_EXT, "_cleaned_phenotype_table.csv")
 
 rectanglefilter = rectangleoroverlapfilter

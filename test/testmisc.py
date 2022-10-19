@@ -7,6 +7,7 @@ from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.align.alignsample import AlignSample
+from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
 from astropath.utilities.tableio import readtable, writetable
@@ -260,7 +261,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       self.removeoutput()
 
-  def testHPFOffset(self, SlideID="M21_1"):
+  def testHPFOffset(self):
     root = thisfolder/"data"
     shardedim3root = thisfolder/"data"/"flatw"
     for SlideID in "M21_1", "YZ71":
@@ -294,3 +295,12 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
 
     for k, v in bylayer.items():
       self.assertLengthEqual(v, 1)
+
+  def testMissingOutputs(self, SlideID="M21_1"):
+    dbloadroot = thisfolder/"test_for_jenkins"/"misc"/"missingoutputs"
+    args = [os.fspath(thisfolder/"data"), SlideID, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(dbloadroot)]
+    class DummyPrepDbSample(PrepDbSample):
+      def run(self, *args, **kwargs): pass
+    args = [os.fspath(thisfolder/"data"), SlideID, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot)]
+    with self.assertRaises(RuntimeError):
+      DummyPrepDbSample.runfromargumentparser([*args, "--no-log"])

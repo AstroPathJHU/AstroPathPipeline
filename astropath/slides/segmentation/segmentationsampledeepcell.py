@@ -1,7 +1,6 @@
 #imports
 import numpy as np
 from ...utilities.optionalimports import deepcell
-from ...utilities.config import CONST as UNIV_CONST
 from .config import SEG_CONST
 from .utilities import initialize_app, run_deepcell_nuclear_segmentation
 from .segmentationsample import SegmentationSampleDAPIComponentTiff
@@ -75,7 +74,7 @@ class SegmentationSampleDeepCell(SegmentationSampleDAPIComponentTiff) :
                 self.logger.info(msg)
 
     def __get_rect_segmented_fp(self,rect) :
-        seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{SEG_CONST.DEEPCELL_SEGMENT_FILE_APPEND}'
+        seg_fn = f'{rect.file.stem}_{SEG_CONST.DEEPCELL_SEGMENT_FILE_APPEND}'
         return self.segmentationfolder/seg_fn
 
 def main(args=None) :

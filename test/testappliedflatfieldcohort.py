@@ -4,7 +4,7 @@ import numpy as np
 from astropath.utilities.config import CONST as UNIV_CONST
 from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
 from astropath.shared.samplemetadata import MetadataSummary
-from astropath.shared.sample import ReadRectanglesIm3FromXML
+from astropath.shared.sample import ReadRectanglesIm3FromXML, XMLLayoutReaderTissue
 from astropath.hpfs.flatfield.config import CONST
 from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohort
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
@@ -16,7 +16,7 @@ shardedim3root = folder/'test_for_jenkins'/'applied_flatfield_cohort'/'raw'
 slideID = 'M21_1'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
 
-class DummySample(ReadRectanglesIm3FromXML) :
+class DummySample(ReadRectanglesIm3FromXML, XMLLayoutReaderTissue) :
 
     def __init__(self,*args,filetype='raw',**kwargs) :
         super().__init__(*args,filetype=filetype,uselogfiles=False,**kwargs)
@@ -66,9 +66,9 @@ class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         if not (shardedim3root/slideID).is_dir() :
             (shardedim3root/slideID).mkdir(parents=True)
         sample = DummySample(root,root/'raw',slideID)
-        existing_filepaths = [root/'raw'/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
+        existing_filepaths = [root/'raw'/slideID/r.file.with_suffix(UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
         for ir,r in enumerate(sample.rectangles) :
-            thisrfilepath = shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)
+            thisrfilepath = shardedim3root/slideID/r.file.with_suffix(UNIV_CONST.RAW_EXT)
             if not thisrfilepath.is_file() :
                 shutil.copy(existing_filepaths[ir%len(existing_filepaths)],thisrfilepath)
                 self.__files_to_remove.append(thisrfilepath)

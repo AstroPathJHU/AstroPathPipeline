@@ -333,7 +333,19 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
   @property
   def initiatesamplekwargs(self):
     "Keyword arguments to pass to the sample class"
-    return {"root": self.root, "reraiseexceptions": self.reraiseexceptions, "uselogfiles": self.uselogfiles, "logroot": self.logroot, "im3root": self.im3root, "informdataroot": self.informdataroot, "xmlfolders": self.xmlfolders, "moremainlogroots": self.moremainlogroots, "skipstartfinish": self.skipstartfinish, "printthreshold": self.printthreshold, "sampledefroot": self.sampledefroot}
+    return {
+      "root": self.root,
+      "reraiseexceptions": self.reraiseexceptions,
+      "uselogfiles": self.uselogfiles,
+      "logroot": self.logroot,
+      "im3root": self.im3root,
+      "informdataroot": self.informdataroot,
+      "xmlfolders": self.xmlfolders,
+      "moremainlogroots": self.moremainlogroots,
+      "skipstartfinish": self.skipstartfinish,
+      "printthreshold": self.printthreshold,
+      "sampledefroot": self.sampledefroot,
+    }
 
   @classmethod
   def logmodule(cls):
@@ -346,6 +358,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
   @property
   def workflowkwargs(self):
     return {
+      "xmlfolder": None,
       **super().workflowkwargs,
       **self.rootkwargs,
     }

@@ -380,7 +380,7 @@ class aptabletools : fileutils {
         $this.importcohortsinfo($mpath)
         #
         $defpath = $this.sampledef_local_fullfile($mpath)
-        $this.sampledef_local_data = $this.OpencsvFile($defpath)
+        $this.sampledef_local_data = [array]($this.OpencsvFile($defpath))
         $this.sampledef_local_data = $this.sampledef_local_data | & { process {
             if (
                 $_.project -match ($this.matcharray($this.allprojects))
@@ -412,7 +412,7 @@ class aptabletools : fileutils {
         $this.importcohortsinfo($mpath)
         #
         $defpath = $this.slide_local_fullfile($mpath)
-        $this.slide_local_data = $this.OpencsvFile($defpath)
+        $this.slide_local_data = [array]($this.OpencsvFile($defpath))
         $this.slide_local_data = $this.slide_local_data | & { process {
             if (
                 $_.project -match ($this.matcharray($this.allprojects))

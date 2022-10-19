@@ -3,7 +3,7 @@ from ...shared.argumentparser import DbloadArgumentParser
 from ...shared.csvclasses import Constant, Batch, ExposureTime, QPTiffCsv
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
-from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader
+from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReaderTissue
 from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 
@@ -29,7 +29,7 @@ class PrepDbArgumentParser(DbloadArgumentParser):
       "margin": parsed_args_dict.pop("margin"),
     }
 
-class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
+class PrepDbSampleBase(XMLLayoutReaderTissue, DbloadSampleBase, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
   """
   The prepdb stage of the pipeline extracts metadata for a sample from the `.xml` files
   and writes it out to `.csv` files.
@@ -79,7 +79,7 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollec
     ]
 
   @property
-  def globals(self): return self.getXMLplan()[1]
+  def globals(self): return self.XMLplan()[1]
 
   @property
   def jpgfilename(self): return self.dbload/(self.SlideID+UNIV_CONST.QPTIFF_SUFFIX)

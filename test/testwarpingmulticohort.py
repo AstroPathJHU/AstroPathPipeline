@@ -4,7 +4,7 @@ import numpy as np
 from astropath.utilities.config import CONST as UNIV_CONST
 from astropath.utilities.img_file_io import read_image_from_layer_files, write_image_to_file
 from astropath.shared.samplemetadata import MetadataSummary
-from astropath.shared.sample import ReadRectanglesIm3FromXML
+from astropath.shared.sample import ReadRectanglesIm3FromXML, XMLLayoutReaderTissue
 from astropath.hpfs.warping.utilities import FieldLog
 from astropath.hpfs.warping.warpingmulticohort import WarpingMultiCohort
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
@@ -18,7 +18,7 @@ slideID = 'M21_1'
 ff_file = folder/'data'/'reference'/'batchflatfieldcohort'/'flatfield_TEST.bin'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
 
-class DummySample(ReadRectanglesIm3FromXML) :
+class DummySample(ReadRectanglesIm3FromXML, XMLLayoutReaderTissue) :
 
     def __init__(self,*args,filetype='raw',**kwargs) :
         super().__init__(*args,filetype=filetype,uselogfiles=False,**kwargs)
@@ -59,9 +59,9 @@ class TestWarpingMultiCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         shutil.copy(existing_path,new_path)
         super().setUpClass()
         sample = DummySample(root,shardedim3root,slideID)
-        existing_filepaths = [shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
+        existing_filepaths = [shardedim3root/slideID/r.file.with_suffix(UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
         for ir,r in enumerate(sample.rectangles) :
-            thisrfilepath = shardedim3root/slideID/r.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT)
+            thisrfilepath = shardedim3root/slideID/r.file.with_suffix(UNIV_CONST.RAW_EXT)
             if not thisrfilepath.is_file() :
                 shutil.copy(existing_filepaths[ir%len(existing_filepaths)],thisrfilepath)
 

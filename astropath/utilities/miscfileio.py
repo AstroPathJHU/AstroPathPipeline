@@ -156,6 +156,8 @@ def guesspathtype(path):
       return pathlib.WindowsPath(path)
     except NotImplementedError:
       return pathlib.PureWindowsPath(path)
+  elif "/" not in path and "\\" not in path:
+    return pathlib.Path(path)
   else:
     raise ValueError(f"Can't guess the path type for {path}")
 
