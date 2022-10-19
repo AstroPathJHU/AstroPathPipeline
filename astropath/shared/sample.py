@@ -319,7 +319,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
         raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
   @classmethod
-  def getbatchprocedurefile(cls, *, componenttiffsfolder, missing_ok=False):
+  def getbatchprocedurefile(cls, componenttiffsfolder, *, missing_ok=False):
     filenames = [componenttiffsfolder/"batch_procedure.ifp", componenttiffsfolder/"batch_procedure.ifr"]
     for filename in filenames:
       if filename.exists():
@@ -336,8 +336,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return self.getbatchprocedurefile(componenttiffsfolder=self.componenttiffsfolder, missing_ok=missing_ok)
 
   @classmethod
-  def getnlayersunmixed(cls, **kwargs):
-    filename = cls.getbatchprocedurefile(**kwargs)
+  def getnlayersunmixed(cls, *args, **kwargs):
+    filename = cls.getbatchprocedurefile(*args, **kwargs)
     with open(filename, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="AllComponents"):
         return int(node.xml_attrs["dim"])
