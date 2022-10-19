@@ -11,7 +11,7 @@ from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
 from ...shared.overlap import Overlap
 from ...shared.sample import WorkflowSample, ParallelSample, ReadRectanglesOverlapsComponentTiffFromXML
-from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase, XMLLayoutReaderTissue
 from .config import CONST
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image
 from .utilities import RectangleThresholdTableEntry, FieldLog, ThresholdTableEntry
@@ -95,11 +95,11 @@ class MeanImageSampleBase(MaskSampleBase,ParallelSample,WorkingDirArgumentParser
         else :
             masked_rect_keys = set([])
         for r in self.rectangles :
-            mfp = dirpath/f'{r.file.rstrip(UNIV_CONST.IM3_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
+            mfp = dirpath/f'{r.file.name.rstrip(UNIV_CONST.IM3_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
             if not mfp.is_file() :
                 return False
-            if r.file.rstrip(UNIV_CONST.IM3_EXT) in masked_rect_keys :
-                mfp = dirpath/f'{r.file.rstrip(UNIV_CONST.IM3_EXT)}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
+            if r.file.name.rstrip(UNIV_CONST.IM3_EXT) in masked_rect_keys :
+                mfp = dirpath/f'{r.file.name.rstrip(UNIV_CONST.IM3_EXT)}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
                 if not mfp.is_file() :
                     return False
         return True
@@ -498,7 +498,7 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
                     self.logger.warning(warnmsg) 
                     raise e
 
-class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSample) :
+class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSample,XMLLayoutReaderTissue) :
     """
     Class to handle creating the meanimage for a slide based on the unmixed component tiff images
     """
@@ -644,6 +644,9 @@ class MeanImageSampleIm3(MeanImageSampleBaseIm3,WorkflowSample) :
 
 def main(args=None) :
     MeanImageSampleIm3.runfromargumentparser(args)
+
+def meanimagesamplecomponenttiff(args=None) :
+    MeanImageSampleComponentTiff.runfromargumentparser(args)
 
 if __name__=='__main__' :
     main()
