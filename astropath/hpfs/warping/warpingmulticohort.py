@@ -219,7 +219,7 @@ class WarpingMultiCohort(MultiCohortBase) :
             for samp in cohort.samples() :
                 keys_by_rect_n = {}
                 for rect in samp.rectangles :
-                    keys_by_rect_n[rect.n] = rect.file[:-len(UNIV_CONST.IM3_EXT)]
+                    keys_by_rect_n[rect.n] = rect.file.stem
                 for octet in selected_octets :
                     if octet.slide_ID!=samp.SlideID :
                         continue

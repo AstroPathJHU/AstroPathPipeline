@@ -2,7 +2,6 @@
 import os, shutil
 from batchgenerators.utilities.file_and_folder_operations import join
 from ...utilities.optionalimports import nnunet
-from ...utilities.config import CONST as UNIV_CONST
 from .config import SEG_CONST
 from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im, convert_nnunet_output
 from .segmentationsample import SegmentationSampleDAPIComponentTiff
@@ -151,7 +150,7 @@ class SegmentationSampleNNUNet(SegmentationSampleDAPIComponentTiff) :
         return self.segmentationfolder/f'{rect.componenttifffile.name[:-4]}.nii.gz'
 
     def __get_rect_nnunet_segmented_fp(self,rect) :
-        seg_fn = f'{rect.file.rstrip(UNIV_CONST.IM3_EXT)}_{SEG_CONST.NNUNET_SEGMENT_FILE_APPEND}'
+        seg_fn = f'{rect.file.stem}_{SEG_CONST.NNUNET_SEGMENT_FILE_APPEND}'
         return self.segmentationfolder/seg_fn
 
 def main(args=None) :

@@ -164,7 +164,7 @@ def plot_flagged_HPF_locations(sid,rectangles,lmrs,save_dirpath=None) :
     all_flagged_hpf_keys = [lmr.image_key for lmr in lmrs]
     hpf_identifiers = []
     for r in rectangles :
-        key=r.file.rstrip(UNIV_CONST.IM3_EXT)
+        key=r.file.stem
         key_x = float(key.split(',')[0].split('[')[1])
         key_y = float(key.split(',')[1].split(']')[0])
         if key in all_flagged_hpf_keys :
