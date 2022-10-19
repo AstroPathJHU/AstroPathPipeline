@@ -539,10 +539,16 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     self.zoom_wsi(**kwargs)
 
   def inputfiles(self, **kwargs):
-    return super().inputfiles(**kwargs) + [
-      *(r.componenttifffile for r in self.rectangles),
+    result = super().inputfiles(**kwargs)
+    result += [
       self.csv("fields"),
+      self.batchprocedurefile(missing_ok=True),
     ]
+    if all(_.exists() for _ in result):
+      result += [
+        *(r.componenttifffile for r in self.rectangles),
+      ]
+    return result
 
   @property
   def workflowkwargs(self):

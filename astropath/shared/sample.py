@@ -319,12 +319,25 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
         raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
   @classmethod
-  def getnlayersunmixed(cls, componenttiffsfolder):
+  def getbatchprocedurefile(cls, *, componenttiffsfolder, missing_ok=False):
     filenames = [componenttiffsfolder/"batch_procedure.ifp", componenttiffsfolder/"batch_procedure.ifr"]
-    try:
-      filename = next(_ for _ in filenames if _.exists())
-    except StopIteration:
-      raise FileNotFoundError("Didn't find any batch procedure files: " + ", ".join(str(_) for _ in filenames))
+    for filename in filenames:
+      if filename.exists():
+        return filename
+    if missing_ok:
+      return filenames[0]
+    raise FileNotFoundError("Didn't find any batch procedure files: " + ", ".join(str(_) for _ in filenames))
+
+  @methodtools.lru_cache()
+  def batchprocedurefile(self, *, missing_ok=False):
+    """
+    Find the batch procedure filename
+    """
+    return self.getbatchprocedurefile(componenttiffsfolder=self.componenttiffsfolder, missing_ok=missing_ok)
+
+  @classmethod
+  def getnlayersunmixed(cls, **kwargs):
+    filename = cls.getbatchprocedurefile(**kwargs)
     with open(filename, "rb") as f:
       for path, _, node in jxmlease.parse(f, generator="AllComponents"):
         return int(node.xml_attrs["dim"])
@@ -335,7 +348,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the number of component tiff layers from the xml metadata
     """
-    return self.getnlayersunmixed(self.componenttiffsfolder)
+    return self.getnlayersunmixed(componenttiffsfolder=self.componenttiffsfolder)
 
   def _getimageinfos(self):
     """
