@@ -597,14 +597,6 @@ class RectangleReadComponentTiffMultiLayer(RectangleReadComponentTiffBase):
       "layers": self.layerscomponenttiff,
     }
 
-  @property
-  def componenttiffshape(self):
-    return (
-      floattoint(float(self.height / self.onepixel)),
-      floattoint(float(self.width / self.onepixel)),
-      len(self.layerscomponenttiff),
-    )
-
 class RectangleReadComponentTiffSingleLayer(RectangleReadComponentTiffBase):
   """
   Single layer image read from a component tiff.

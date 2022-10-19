@@ -250,7 +250,12 @@ class ImageStackComponentTiff(ImageStackBase) :
     """
 
     def _get_rectangle_img_shape(self,rect) :
-        return rect.componenttiffshape
+        height = None; width = None; nlayers = None
+        with rect.using_component_tiff() as im :
+            height = im.shape[0]
+            width = im.shape[1]
+            nlayers = im.shape[2]
+        return (height,width,nlayers)
 
     @staticmethod
     def _add_rect_to_stacking_queue_no_masking(rect,norm_ets,queue) :
@@ -262,7 +267,7 @@ class ImageStackComponentTiff(ImageStackBase) :
 
     @staticmethod
     def _add_rect_to_stacking_queue_with_masking(rect,samp,masking_dir_path,keys_with_full_masks,norm_ets,queue) :
-        imkey = rect.componenttifffile.rstrip(UNIV_CONST.COMPONENT_TIFF_SUFFIX)
+        imkey = rect.componenttifffile.name.rstrip(UNIV_CONST.COMPONENT_TIFF_SUFFIX)
         with rect.using_component_tiff() as im :
             normalized_im = im/norm_ets
             #only ever use the tissue masks alone for the component tiffs
