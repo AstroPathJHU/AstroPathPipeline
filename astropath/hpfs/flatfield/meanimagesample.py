@@ -571,7 +571,7 @@ class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSamp
     def workflowdependencyclasses(cls, **kwargs):
         return super().workflowdependencyclasses(**kwargs)
 
-class MeanImageSampleIm3(MeanImageSampleBaseIm3,WorkflowSample) :
+class MeanImageSampleIm3(MeanImageSampleBaseIm3,WorkflowSample,XMLLayoutReaderTissue) :
     """
     Main class to handle creating the meanimage for a slide based on the Im3 images
     """
