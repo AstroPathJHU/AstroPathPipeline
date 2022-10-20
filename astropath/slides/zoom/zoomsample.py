@@ -174,19 +174,19 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
 
   @methodtools.lru_cache()
   @staticmethod
-  def _colormatrix(*, dtype):
+  def _colormatrix(*, dtype, nlayers):
     here = pathlib.Path(__file__).parent
-    with open(here/"color_matrix.txt") as f:
+    with open(here/f"color_matrix_{nlayers}.txt") as f:
       matrix = re.search(r"(?<=\[).*(?=\])", f.read(), re.DOTALL).group(0)
     return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")], dtype=dtype)
 
   @property
-  def colormatrix(self): return self._colormatrix(dtype=np.float16)[tuple(np.array(self.layerscomponenttiff)-1), :]
+  def colormatrix(self): return self._colormatrix(dtype=np.float16, nlayers=self.nlayersunmixed)[tuple(np.array(self.layerscomponenttiff)-1), :]
 
   @property
   def needtifflayers(self):
     if self.tifflayers is None: return ()
-    if self.tifflayers == "color": return range(1, 9)
+    if self.tifflayers == "color": return range(1, self.nlayersunmixed+1)
     return self.tifflayers
 
   def makewsitiff(self, layers):
@@ -539,14 +539,26 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
     self.zoom_wsi(**kwargs)
 
   def inputfiles(self, **kwargs):
-    return super().inputfiles(**kwargs) + [
-      *(r.componenttifffile for r in self.rectangles),
+    result = super().inputfiles(**kwargs)
+    result += [
       self.csv("fields"),
+      self.batchprocedurefile(missing_ok=True),
     ]
+    if all(_.exists() for _ in result):
+      result += [
+        *(r.componenttifffile for r in self.rectangles),
+      ]
+    return result
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layerscomponenttiff, "tifflayers": self.tifflayers, **super().workflowkwargs}
+    result = super().workflowkwargs
+    try:
+      result["layers"] = self.layerscomponenttiff
+    except FileNotFoundError:
+      result["layers"] = [1]
+    result["tifflayers"] = self.tifflayers
+    return result
 
   @classmethod
   def getworkinprogressfiles(cls, SlideID, *, zoomroot, **otherworkflowkwargs):
