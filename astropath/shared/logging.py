@@ -373,6 +373,16 @@ def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.NOTSET
 dummylogger = logging.getLogger("dummy")
 dummylogger.addHandler(logging.NullHandler())
 dummylogger.warningglobal = dummylogger.warning
+dummylogger.imageinfo = dummylogger.debug
+
+dummylogger.logonenter = dummylogger.log
+dummylogger.debugonenter = dummylogger.debug
+dummylogger.imageinfoonenter = dummylogger.imageinfo
+dummylogger.infoonenter = dummylogger.info
+dummylogger.warningonenter = dummylogger.warning
+dummylogger.warningglobalonenter = dummylogger.warningglobal
+dummylogger.erroronenter = dummylogger.error
+dummylogger.criticalonenter = dummylogger.critical
 
 def printlogger(module):
   return getlogger(module=module, root=None, samp=None)

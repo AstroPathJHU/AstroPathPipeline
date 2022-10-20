@@ -336,11 +336,27 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return self.getbatchprocedurefile(componenttiffsfolder=self.componenttiffsfolder, missing_ok=missing_ok)
 
   @classmethod
-  def getnlayersunmixed(cls, *args, **kwargs):
-    filename = cls.getbatchprocedurefile(*args, **kwargs)
-    with open(filename, "rb") as f:
-      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-        return int(node.xml_attrs["dim"])
+  def getnlayersunmixed(cls, componenttiffsfolder, *args, logger=dummylogger, **kwargs):
+    try:
+      filename = cls.getbatchprocedurefile(componenttiffsfolder, *args, **kwargs)
+    except FileNotFoundError:
+      try:
+        filename = next(componenttiffsfolder.glob("*_component_data.tif"))
+      except StopIteration:
+        raise FileNotFoundError("Didn't find any batch procedure files or component tiffs")
+      with tifffile.TiffFile(filename) as f:
+        for i, page in enumerate(f.pages, start=1):
+          #iterate until we get the color picture
+          if page.tags["SamplesPerPixel"].value != 1:
+            i -= 1
+            break
+        logger.warningonenter(f"Didn't find any batch procedure files, using {i} layers based on the component tiff files")
+        return i
+      
+    else:
+      with open(filename, "rb") as f:
+        for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+          return int(node.xml_attrs["dim"])
 
   @methodtools.lru_cache()
   @property
@@ -348,7 +364,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the number of component tiff layers from the xml metadata
     """
-    return self.getnlayersunmixed(componenttiffsfolder=self.componenttiffsfolder)
+    return self.getnlayersunmixed(componenttiffsfolder=self.componenttiffsfolder, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
 
   def _getimageinfos(self):
     """
