@@ -85,7 +85,7 @@ class FlatfieldBase(ImageStackBase) :
                 if np.sum(weights)<=0 :
                     warnmsg = f'WARNING: sum of weights in layer {li+1} is {np.sum(weights)}, '
                     warnmsg+= 'so this layer of the flatfield will be all ones!'
-                    self.logger.warningglobal()
+                    self.logger.warningglobal(warnmsg)
                     self.__flatfield_image[:,:,li] = 1.0
                     self.__flatfield_image_err[:,:,li] = 1.0
                 else :
