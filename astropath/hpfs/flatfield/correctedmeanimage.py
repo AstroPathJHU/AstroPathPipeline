@@ -90,7 +90,7 @@ class CorrectedMeanImageBase(MeanImageBase) :
             if check!=0 :
                 warnmsg = 'WARNING: failed while compiling flatfield summary LaTeX file into a PDF. '
                 warnmsg+= f'tex file will be in {latex_summary.failed_compilation_tex_file_path}'
-            self.logger.warning(warnmsg)
+                self.logger.warning(warnmsg)
         except Exception as e :
             warnmsg = 'WARNING: failed to write out some optional plots (scripts will need to be run separately). '
             warnmsg+= f'Exception: {e}'
