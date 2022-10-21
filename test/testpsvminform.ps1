@@ -373,7 +373,7 @@ Class testpsvminform : testtools {
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         $inp.sample.CreateNewDirs($this.outpath)
         #
-        $this.referenceim3 = $inp.sample.MSIfolder() + '\M21_1_[45093,13253].im3'
+        $this.referenceim3 = $inp.sample.im3folder() + '\M21_1_[45093,13253].im3'
         Write-Host '    copying reference im3 file to flatw folder:' $this.referenceim3
         $inp.sample.copy($this.referenceim3, $inp.sample.flatwim3folder())
         #
@@ -459,7 +459,7 @@ Class testpsvminform : testtools {
         $inp.sample.CreateNewDirs($this.outpath)
         #
         Write-Host '    copying reference im3 files to flatw folder'
-        $inp.sample.copy($inp.sample.MSIfolder(), $inp.sample.flatwim3folder(), '.im3', 30)
+        $inp.sample.copy($inp.sample.im3folder(), $inp.sample.flatwim3folder(), '.im3', 30)
         #
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
