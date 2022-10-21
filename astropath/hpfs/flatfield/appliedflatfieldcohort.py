@@ -12,72 +12,9 @@ from ...shared.cohort import CorrectedImageCohort, WorkflowCohort
 from .config import CONST
 from .meanimagesample import MeanImageSampleBaseIm3
 from .imagestack import CorrectedMeanImage, Flatfield
+from .appliedflatfieldsample import AppliedFlatfieldSampleBase, AppliedFlatfieldSampleComponentTiff, AppliedFlatfieldSampleIm3
 
-class AppliedFlatfieldSample(MeanImageSampleBaseIm3,WorkflowSample) :
-    """
-    Class to use in running most of the MeanImageSample functions but handling the output differently
-    """
-
-    def __init__(self,*args,image_set_split='random',**kwargs) :
-        super().__init__(*args,**kwargs)
-        self.__metadata_summary_ff = None
-        self.__metadata_summary_cmi = None
-        if len(self.tissue_bulk_rects)>1 :
-            if image_set_split=='random' :
-                self.__flatfield_rectangles = random.sample(self.tissue_bulk_rects,round(len(self.tissue_bulk_rects)/2))
-            elif image_set_split=='sequential' :
-                self.__flatfield_rectangles = self.tissue_bulk_rects[:round(len(self.tissue_bulk_rects)/2)]
-            self.__meanimage_rectangles = [r for r in self.tissue_bulk_rects if r not in self.__flatfield_rectangles]
-        else :
-            self.__flatfield_rectangles = []
-            self.__meanimage_rectangles = []
-
-    def inputfiles(self,**kwargs) :
-        return [*super().inputfiles(**kwargs),
-                *(r.im3file for r in self.rectangles),
-               ]
-
-    def run(self) :
-        #find or create the masks for the sample if they're needed
-        if not self.skip_masking :
-            self.create_or_find_image_masks()
-        #set the metadata summaries for the sample
-        ff_rect_ts = [r.t for r in self.__flatfield_rectangles]
-        cmi_rect_ts = [r.t for r in self.__meanimage_rectangles]
-        self.__metadata_summary_ff = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
-                                                     str(min(ff_rect_ts)),str(max(ff_rect_ts)))
-        self.__metadata_summary_cmi = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
-                                                      str(min(cmi_rect_ts)),str(max(cmi_rect_ts)))
-
-    @property
-    def flatfield_rectangles(self) :
-        return self.__flatfield_rectangles
-    @property
-    def meanimage_rectangles(self) :
-        return self.__meanimage_rectangles
-    @property
-    def flatfield_metadata_summary(self) :
-        return self.__metadata_summary_ff
-    @property
-    def corrected_meanimage_metadata_summary(self) :
-        return self.__metadata_summary_cmi
-
-    multilayer = True
-    rectangletype = RectangleCorrectedIm3MultiLayer
-    overlaptype = Overlap
-    nclip = UNIV_CONST.N_CLIP
-
-    @classmethod
-    def getoutputfiles(cls,**kwargs) :
-        return [*super().getoutputfiles(**kwargs)]
-    @classmethod
-    def logmodule(cls) : 
-        return "appliedflatfield"
-    @classmethod
-    def workflowdependencyclasses(cls, **kwargs):
-        return super().workflowdependencyclasses(**kwargs)
-
-class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgumentParser) :
+class AppliedFlatfieldCohortBase(WorkflowCohort) :
     """
     Class to use in investigating the effects of applying flatfield corrections within a cohort
     Each sample in the cohort will have its tissue bulk rectangles randomly split in two. 
@@ -87,43 +24,38 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir,filetype='raw',skip_masking=False,image_set_split='random',**kwargs) :
+    def __init__(self,*args,workingdir,skip_masking=False,image_set_split='random',**kwargs) :
         """
         workingdir = Path to a directory that will hold the results
         """
         super().__init__(*args,**kwargs)
         self.__workingdir = workingdir
-        self.__filetype = filetype
         self.__skip_masking = skip_masking
         self.__image_set_split = image_set_split
-        #figure out the image dimensions to give to the flatfield and corrected mean image
-        for sample in self.samples() :
-            if len(sample.rectangles)>0 :
-                image_dimensions = sample.rectangles[0].im3shape
-                break
-        self.__flatfield = Flatfield(image_dimensions,self.logger)
-        self.__corrected_meanimage = CorrectedMeanImage(image_dimensions,self.logger)
         self.__metadata_summaries_ff = []
         self.__metadata_summaries_cmi = []
         self.__field_logs_ff = []
         self.__field_logs_cmi = []
+        #the next two variables need to be set in subclasses
+        self._flatfield = None
+        self._corrected_meanimage=None
 
     def run(self,**kwargs) :
         #run all of the samples individually first like any other cohort (just checks that files exist)
         super().run(**kwargs)
         #after all of the samples have run individually
         with self.globallogger() as logger :
-            self.__flatfield.logger = logger
-            self.__corrected_meanimage.logger = logger
+            self._flatfield.logger = logger
+            self._corrected_meanimage.logger = logger
             #derive the corrections
             logger.info('Creating flatfield model....')
-            self.__flatfield.create_flatfield_model()
+            self._flatfield.create_flatfield_model()
             #create the mean image that will be corrected
             logger.info('Creating mean image to correct....')
-            self.__corrected_meanimage.make_mean_image()
+            self._corrected_meanimage.make_mean_image()
             #correct the meanimage with the flatfield model
             logger.info('Applying flatfield corrections to meanimage....')
-            self.__corrected_meanimage.apply_flatfield_corrections(self.__flatfield)
+            self._corrected_meanimage.apply_flatfield_corrections(self._flatfield)
             #save the metadata summaries and the field logs
             logger.info('Writing out metadata summaries and field logs....')
             if not self.__workingdir.is_dir() :
@@ -148,14 +80,14 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
                 if samp is None :
                     samp = sample
                     break
-            self.__corrected_meanimage.write_output(samp,self.__workingdir)
+            self._corrected_meanimage.write_output(samp,self.__workingdir)
 
     def runsample(self,sample,**kwargs) :
         """
         Add the sample's meanimage and mask stack to the batch flatfield meanimage and collect its metadata
         """
-        self.__flatfield.logger = sample.logger
-        self.__corrected_meanimage.logger = sample.logger
+        self._flatfield.logger = sample.logger
+        self._corrected_meanimage.logger = sample.logger
         #make sure the sample has enough rectangles in the bulk of the tissue to be used
         if len(sample.flatfield_rectangles)<1 or len(sample.meanimage_rectangles)<1 :
             msg = f'{sample.SlideID} only has {len(sample.tissue_bulk_rects)} images in the bulk of the tissue '
@@ -167,14 +99,14 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
         #add half the rectangles to the flatfield model
         msg = f'{sample.SlideID} will add {len(sample.flatfield_rectangles)} images to the flatfield model'
         sample.logger.info(msg)
-        new_field_logs = self.__flatfield.stack_rectangle_images(sample,sample.flatfield_rectangles,sample.med_ets,
+        new_field_logs = self._flatfield.stack_rectangle_images(sample,sample.flatfield_rectangles,sample.med_ets,
                                                                  sample.image_masking_dirpath)
         self.__field_logs_ff+=new_field_logs
         self.__metadata_summaries_ff.append(sample.flatfield_metadata_summary)
         #add the other half of the rectangles to the corrected mean image
         msg = f'{sample.SlideID} will add {len(sample.meanimage_rectangles)} images to the corrected mean image'
         sample.logger.info(msg)
-        new_field_logs = self.__corrected_meanimage.stack_rectangle_images(sample,sample.meanimage_rectangles,
+        new_field_logs = self._corrected_meanimage.stack_rectangle_images(sample,sample.meanimage_rectangles,
                                                                            sample.med_ets,
                                                                            sample.image_masking_dirpath)
         self.__field_logs_cmi+=new_field_logs
@@ -182,13 +114,12 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
-    sampleclass = AppliedFlatfieldSample
+    sampleclass = AppliedFlatfieldSampleBase
 
     @property
     def initiatesamplekwargs(self) :
         return {**super().initiatesamplekwargs,
                 'workingdir':self.__workingdir,
-                'filetype':self.__filetype,
                 'skip_masking':self.__skip_masking,
                 'image_set_split':self.__image_set_split,
                }
@@ -220,10 +151,61 @@ class AppliedFlatfieldCohort(CorrectedImageCohort, WorkflowCohort, FileTypeArgum
                 'image_set_split': parsed_args_dict.pop('image_set_split'),
                }
 
+class AppliedFlatfieldCohortComponentTiff(AppliedFlatfieldCohortBase) :
+    """
+    Class for testing the impact of flatfielding on component tiff files
+    """
+
+    sampleclass = AppliedFlatfieldSampleComponentTiff
+
+    def __init__(self,*args,**kwargs) :
+        """
+        workingdir = Path to a directory that will hold the results
+        """
+        super().__init__(*args,**kwargs)
+        #figure out the image dimensions to give to the flatfield and corrected mean image
+        for sample in self.samples() :
+            if len(sample.rectangles)>0 :
+                with sample.rectangles[0].using_component_tiff() as im :
+                    image_dimensions = (im.shape[0],im.shape[1],im.shape[2])
+                break
+        self._flatfield = Flatfield(image_dimensions,self.logger)
+        self._corrected_meanimage = CorrectedMeanImage(image_dimensions,self.logger)
+
+class AppliedFlatfieldCohortIm3(AppliedFlatfieldCohortBase,CorrectedImageCohort,FileTypeArgumentParser) :
+    """
+    Class for testing the impact of flatfielding on im3 files
+    """
+
+    sampleclass = AppliedFlatfieldSampleIm3
+
+    def __init__(self,*args,filetype='raw',**kwargs) :
+        """
+        workingdir = Path to a directory that will hold the results
+        """
+        super().__init__(*args,**kwargs)
+        self.__filetype = filetype
+        #figure out the image dimensions to give to the flatfield and corrected mean image
+        for sample in self.samples() :
+            if len(sample.rectangles)>0 :
+                image_dimensions = sample.rectangles[0].im3shape
+                break
+        self._flatfield = Flatfield(image_dimensions,self.logger)
+        self._corrected_meanimage = CorrectedMeanImage(image_dimensions,self.logger)
+
+    @property
+    def initiatesamplekwargs(self) :
+        return {**super().initiatesamplekwargs,
+                'filetype':self.__filetype,
+               }
+
 #################### FILE-SCOPE FUNCTIONS ####################
 
 def main(args=None) :
-    AppliedFlatfieldCohort.runfromargumentparser(args)
+    AppliedFlatfieldCohortIm3.runfromargumentparser(args)
+
+def appliedflatfieldcohortcomponenttiff(args=None) :
+    AppliedFlatfieldCohortComponentTiff.runfromargumentparser(args)
 
 if __name__=='__main__' :
     main()

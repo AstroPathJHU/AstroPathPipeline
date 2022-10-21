@@ -52,6 +52,7 @@ setupkwargs = dict(
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpsample=astropath.slides.annowarp.annowarpsample:main",
       "appliedflatfieldcohort=astropath.hpfs.flatfield.appliedflatfieldcohort:main",
+      "appliedflatfieldcohortcomponenttiff=astropath.hpfs.flatfield.appliedflatfieldcohort:appliedflatfieldcohortcomponenttiff",
       "applyflatwsample=astropath.hpfs.imagecorrection.applyflatwsample:main",
       "applyflatwcohort=astropath.hpfs.imagecorrection.applyflatwcohort:main",
       "ast-gen=astropath.scans.astroidgen.ASTgen:start_gen",
