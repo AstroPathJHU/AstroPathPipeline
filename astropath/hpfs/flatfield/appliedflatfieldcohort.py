@@ -159,11 +159,15 @@ class AppliedFlatfieldCohortComponentTiff(AppliedFlatfieldCohortBase) :
         """
         super().__init__(*args,**kwargs)
         #figure out the image dimensions to give to the flatfield and corrected mean image
+        image_dimensions = None
         for sample in self.samples() :
             if len(sample.rectangles)>0 :
                 with sample.rectangles[0].using_component_tiff() as im :
                     image_dimensions = (im.shape[0],im.shape[1],im.shape[2])
                 break
+        if image_dimensions is None :
+            errmsg = f"ERROR: could not set image dimensions from any sample's rectangles in {self.__class__.__name__}"
+            raise RuntimeError(errmsg)
         self._flatfield = FlatfieldComponentTiff(image_dimensions,self.logger)
         self._corrected_meanimage = CorrectedMeanImageComponentTiff(image_dimensions,self.logger)
 
