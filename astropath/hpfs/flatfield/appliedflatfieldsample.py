@@ -5,9 +5,9 @@ from ...shared.samplemetadata import MetadataSummary
 from ...shared.rectangle import RectangleReadComponentTiffMultiLayer, RectangleCorrectedIm3MultiLayer
 from ...shared.overlap import Overlap
 from ...shared.sample import WorkflowSample, XMLLayoutReaderTissue
-from .meanimagesample import MeanImageSampleBaseComponentTiff, MeanImageSampleBaseIm3
+from .meanimagesample import MeanImageSampleBase, MeanImageSampleBaseComponentTiff, MeanImageSampleBaseIm3
 
-class AppliedFlatfieldSampleBase(WorkflowSample,XMLLayoutReaderTissue) :
+class AppliedFlatfieldSampleBase(MeanImageSampleBase,WorkflowSample,XMLLayoutReaderTissue) :
     """
     Class to use in running most of the MeanImageSample functions but handling the output differently
     """
@@ -22,16 +22,10 @@ class AppliedFlatfieldSampleBase(WorkflowSample,XMLLayoutReaderTissue) :
         self._metadata_summary_cmi = None
 
     def run(self) :
-        #find or create the masks for the sample if they're needed
-        if not self.skip_masking :
-            self.create_or_find_image_masks()
-        #set the metadata summaries for the sample
-        ff_rect_ts = [r.t for r in self._flatfield_rectangles]
-        cmi_rect_ts = [r.t for r in self._meanimage_rectangles]
-        self._metadata_summary_ff = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
-                                                     str(min(ff_rect_ts)),str(max(ff_rect_ts)))
-        self._metadata_summary_cmi = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
-                                                      str(min(cmi_rect_ts)),str(max(cmi_rect_ts)))
+        """
+        Not implemented in the base class
+        """
+        pass
 
     @property
     def flatfield_rectangles(self) :
@@ -72,6 +66,20 @@ class AppliedFlatfieldSampleComponentTiff(AppliedFlatfieldSampleBase,MeanImageSa
             self._flatfield_rectangles = []
             self._meanimage_rectangles = []
 
+    def run(self) :
+        #find the masks for the sample if they're needed
+        if not self.skip_masking :
+            self.set_image_masking_dirpath()
+            if not self.use_precomputed_masks :
+                raise NotImplementedError('ERROR: cannot run MeanImageSampleComponentTiff without pre-computed masks!')
+        #set the metadata summaries for the sample
+        ff_rect_ts = [r.t for r in self._flatfield_rectangles]
+        cmi_rect_ts = [r.t for r in self._meanimage_rectangles]
+        self._metadata_summary_ff = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
+                                                     str(min(ff_rect_ts)),str(max(ff_rect_ts)))
+        self._metadata_summary_cmi = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
+                                                      str(min(cmi_rect_ts)),str(max(cmi_rect_ts)))
+
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
                 *(r.componenttifffile for r in self.rectangles),
@@ -99,6 +107,18 @@ class AppliedFlatfieldSampleIm3(AppliedFlatfieldSampleBase,MeanImageSampleBaseIm
         else :
             self._flatfield_rectangles = []
             self._meanimage_rectangles = []
+
+    def run(self) :
+        #find or create the masks for the sample if they're needed
+        if not self.skip_masking :
+            self.create_or_find_image_masks()
+        #set the metadata summaries for the sample
+        ff_rect_ts = [r.t for r in self._flatfield_rectangles]
+        cmi_rect_ts = [r.t for r in self._meanimage_rectangles]
+        self._metadata_summary_ff = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
+                                                     str(min(ff_rect_ts)),str(max(ff_rect_ts)))
+        self._metadata_summary_cmi = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
+                                                      str(min(cmi_rect_ts)),str(max(cmi_rect_ts)))
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
