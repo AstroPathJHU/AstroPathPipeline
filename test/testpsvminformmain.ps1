@@ -9,14 +9,14 @@ using module .\testtools.psm1
  vminform tests
  -------------------------------------------#>
 #
-Class testvminformmain : testtools {
+Class testpsvminformmain : testtools {
     #
     [string]$processloc
     [string]$module = 'vminform'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
     [string]$class = 'vminformmain'
     #
-    testvminformmain() : base(){
+    testpsvminformmain() : base(){
         #
         $this.testruninform()
         #
@@ -43,7 +43,7 @@ Class testvminformmain : testtools {
         #
         $creds = $dis.GetCreds()  
         $currentworkerip = 'vminform38'
-        $workertaskfile = '\\BKI08\h$\andrew\AstroPathPipelinePrivate\test\testvminform.ps1'
+        $workertaskfile = '\\BKI08\e$\andrew\AstroPathPipelinePrivate\test\testpsvminform.ps1'
         #
         Write-Host '    worker task file location:' $workertaskfile
         #
@@ -51,12 +51,12 @@ Class testvminformmain : testtools {
         #
         psexec -i -nobanner -accepteula -u $creds[0] -p $creds[1] \\$currentworkerip `
         pwsh -noprofile -noexit -executionpolicy bypass -command "$workertaskfile" `
-                *>> ($this.processloc + '\testvminform-job.log')
+                *>> ($this.processloc + '\testpsvminform-job.log')
         #
     }
 }
 #
 # launch test and exit if no error found
 #
-[testvminformmain]::new() | Out-Null
+[testpsvminformmain]::new() | Out-Null
 exit 0

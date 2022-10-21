@@ -9,7 +9,7 @@ using module .\testtools.psm1
  functioning as intended
  -------------------------------------------#>
 #
-Class testvminform : testtools {
+Class testpsvminform : testtools {
     #
     [string]$module = 'vminform'
     [string]$outpath = "C:\Users\Public\BatchProcessing"
@@ -19,18 +19,18 @@ Class testvminform : testtools {
     [switch]$versioncheck = $false
     [string]$class = 'vminform'
     #
-    testvminform() : base(){
+    testpsvminform() : base(){
         #
         $this.launchtests()
         #
     }
-    testvminform($jenkins) : base(){
+    testpsvminform($jenkins) : base(){
         #
         $this.jenkins = $true
         $this.launchtests()
         #
     }
-    testvminform($ver, $proj) : base(){
+    testpsvminform($ver, $proj) : base(){
         #
         $this.versioncheck = $true
         $this.informvers = $ver
@@ -107,7 +107,6 @@ Class testvminform : testtools {
         
         if ($this.jenkins) {
             $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
-            $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\vminform'
             $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
             $inp.informoutpath = $this.outpath + '\' + $this.informantibody + '_0'
             $inp.image_list_file = $this.outpath + '\image_list.tmp'
@@ -116,6 +115,7 @@ Class testvminform : testtools {
             $inp.processvars[1] = $this.outpath
             $inp.processvars[2] = $this.outpath
         }
+        $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\vminform'
     }
     <# --------------------------------------------
     testvminformconstruction
@@ -804,15 +804,15 @@ Class testvminform : testtools {
 #
 # launch test and exit if no error found
 #
-[testvminform]::new() | Out-Null
+[testpsvminform]::new() | Out-Null
 
 #
 # add $jenkins parameter to constructor if testing on jenkins
 #
-#[testvminform]::new($jenkins) | Out-Null
+#[testpsvminform]::new($jenkins) | Out-Null
 
 #
 # add version and project parameters to constructor to test different versions of inform
 #
-#[testvminform]::new('2.6.0', 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr') | Out-Null
+#[testpsvminform]::new('2.6.0', 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr') | Out-Null
 exit 0
