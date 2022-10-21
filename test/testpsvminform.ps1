@@ -616,6 +616,7 @@ Class testvminform : testtools {
             '2022-04-09 02:06:26,645 ERROR - C:\Users\Public\BatchProcessing\M21_1\im3\flatw\M21_1_[47521,11163].im3:',
             '     Sequence contains no elements',
             '2022-04-08 21:43:49,192 ERROR - Phenotyping problem processing image "M21_1_[40866,11715]": A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond'
+            #'2022-04-08 21:43:49,192 ERROR - Unknown Error'
         ) -join "`n"
         $inp.sample.PopFile($inp.informbatchlog, $errorlines)
         $batchlog = $inp.sample.GetContent($inp.informbatchlog)
@@ -803,12 +804,12 @@ Class testvminform : testtools {
 #
 # launch test and exit if no error found
 #
-#[testvminform]::new() | Out-Null
+[testvminform]::new() | Out-Null
 
 #
 # add $jenkins parameter to constructor if testing on jenkins
 #
-[testvminform]::new($jenkins) | Out-Null
+#[testvminform]::new($jenkins) | Out-Null
 
 #
 # add version and project parameters to constructor to test different versions of inform
