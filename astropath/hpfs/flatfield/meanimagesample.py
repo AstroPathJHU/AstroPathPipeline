@@ -141,6 +141,7 @@ class MeanImageSampleBaseComponentTiff(MeanImageSampleBase, ReadRectanglesOverla
 
     def __init__(self,*args,workingdir=pathlib.Path(f'{UNIV_CONST.MEANIMAGE_DIRNAME}_comp_tiff'),**kwargs) :
         super().__init__(*args,workingdir=workingdir,**kwargs)
+        self.med_ets = np.ones(self.nlayersunmixed) #unmixed images are already exposure time corrected
 
 class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, 
                              FileTypeArgumentParser) :
@@ -511,7 +512,6 @@ class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSamp
         super().__init__(*args,**kwargs)
         #start up the meanimage
         self.__meanimage = MeanImageComponentTiff((self.fheight,self.fwidth,self.nlayersunmixed),self.logger)
-        self.med_ets = np.ones(self.nlayersunmixed) #unmixed images are already exposure time corrected
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
