@@ -1,17 +1,12 @@
 #imports
-import random, pathlib
-from ...utilities.config import CONST as UNIV_CONST
+import pathlib
 from ...utilities.miscfileio import cd
 from ...utilities.tableio import writetable
-from ...shared.samplemetadata import MetadataSummary
 from ...shared.argumentparser import FileTypeArgumentParser
-from ...shared.rectangle import RectangleCorrectedIm3MultiLayer
-from ...shared.overlap import Overlap
-from ...shared.sample import WorkflowSample
 from ...shared.cohort import CorrectedImageCohort, WorkflowCohort
 from .config import CONST
-from .meanimagesample import MeanImageSampleBaseIm3
-from .imagestack import CorrectedMeanImage, Flatfield
+from .flatfield import FlatfieldComponentTiff, FlatfieldIm3
+from .correctedmeanimage import CorrectedMeanImageComponentTiff, CorrectedMeanImageIm3
 from .appliedflatfieldsample import AppliedFlatfieldSampleBase, AppliedFlatfieldSampleComponentTiff, AppliedFlatfieldSampleIm3
 
 class AppliedFlatfieldCohortBase(WorkflowCohort) :
@@ -169,8 +164,8 @@ class AppliedFlatfieldCohortComponentTiff(AppliedFlatfieldCohortBase) :
                 with sample.rectangles[0].using_component_tiff() as im :
                     image_dimensions = (im.shape[0],im.shape[1],im.shape[2])
                 break
-        self._flatfield = Flatfield(image_dimensions,self.logger)
-        self._corrected_meanimage = CorrectedMeanImage(image_dimensions,self.logger)
+        self._flatfield = FlatfieldComponentTiff(image_dimensions,self.logger)
+        self._corrected_meanimage = CorrectedMeanImageComponentTiff(image_dimensions,self.logger)
 
 class AppliedFlatfieldCohortIm3(AppliedFlatfieldCohortBase,CorrectedImageCohort,FileTypeArgumentParser) :
     """
@@ -190,8 +185,8 @@ class AppliedFlatfieldCohortIm3(AppliedFlatfieldCohortBase,CorrectedImageCohort,
             if len(sample.rectangles)>0 :
                 image_dimensions = sample.rectangles[0].im3shape
                 break
-        self._flatfield = Flatfield(image_dimensions,self.logger)
-        self._corrected_meanimage = CorrectedMeanImage(image_dimensions,self.logger)
+        self._flatfield = FlatfieldIm3(image_dimensions,self.logger)
+        self._corrected_meanimage = CorrectedMeanImageIm3(image_dimensions,self.logger)
 
     @property
     def initiatesamplekwargs(self) :

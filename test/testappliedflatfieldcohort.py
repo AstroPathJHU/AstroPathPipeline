@@ -6,7 +6,7 @@ from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_laye
 from astropath.shared.samplemetadata import MetadataSummary
 from astropath.shared.sample import ReadRectanglesIm3FromXML, XMLLayoutReaderTissue
 from astropath.hpfs.flatfield.config import CONST
-from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohort
+from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohortIm3
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
@@ -30,7 +30,7 @@ class DummySample(ReadRectanglesIm3FromXML, XMLLayoutReaderTissue) :
 
 class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
     """
-    Class to test AppliedFlatfieldCohort functions
+    Class to test AppliedFlatfieldCohortIm3 functions
     """
 
     @classmethod
@@ -84,7 +84,7 @@ class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
                ]
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
-        AppliedFlatfieldCohort.runfromargumentparser(args=args)
+        AppliedFlatfieldCohortIm3.runfromargumentparser(args=args)
         #compare the output to the reference files
         reffolder = folder/'data'/'reference'/'appliedflatfieldcohort'
         try :

@@ -4,10 +4,10 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...shared.samplemetadata import MetadataSummary
 from ...shared.rectangle import RectangleReadComponentTiffMultiLayer, RectangleCorrectedIm3MultiLayer
 from ...shared.overlap import Overlap
-from ...shared.sample import WorkflowSample
+from ...shared.sample import WorkflowSample, XMLLayoutReaderTissue
 from .meanimagesample import MeanImageSampleBaseComponentTiff, MeanImageSampleBaseIm3
 
-class AppliedFlatfieldSampleBase(WorkflowSample) :
+class AppliedFlatfieldSampleBase(WorkflowSample,XMLLayoutReaderTissue) :
     """
     Class to use in running most of the MeanImageSample functions but handling the output differently
     """

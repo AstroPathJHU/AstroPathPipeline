@@ -523,7 +523,7 @@ class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSamp
         if not self.skip_masking :
             self.set_image_masking_dirpath()
             if not self.use_precomputed_masks :
-                raise NotImplementedError(f'ERROR: cannot run MeanImageSampleComponentTiff without pre-computed masks!')
+                raise NotImplementedError('ERROR: cannot run MeanImageSampleComponentTiff without pre-computed masks!')
         #make the mean image from all of the tissue bulk rectangles
         n_threads = self.njobs if self.njobs is not None else 4
         ets_to_use = np.ones(self.nlayersunmixed) #unmixed images are already exposure time corrected
