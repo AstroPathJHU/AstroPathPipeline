@@ -36,6 +36,19 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     for SlideID in "M21_1", "M206":
       yield thisfolder/"data"/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/SlideID
     yield thisfolder/"data"/"upkeep_and_progress"/"AstropathAPIDdef_0.csv", thisfolder/"test_for_jenkins"/"misc"/"sampledef_from_apid"/"upkeep_and_progress"
+    for SlideID in "M21_1",:
+      copyfrom = thisfolder/"data"/SlideID/"inform_data"/"Component_Tiffs"
+      copyto = thisfolder/"test_for_jenkins"/"misc"/"missingbatchprocedure"/SlideID/"inform_data"/"Component_Tiffs"
+      for filename in copyfrom.glob("*_component_data.tif"):
+        yield filename, copyto
+        break
+      else:
+        assert False
+      for filename in copyfrom.glob("*_component_data_w_seg.tif"):
+        yield filename, copyto/"only_segmented"
+        break
+      else:
+        assert False
 
   def testRectangleOverlapList(self):
     l = rectangleoverlaplist_fromcsvs(thisfolder/"data"/"M21_1"/"dbload", layer=1)
@@ -304,3 +317,12 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     args = [os.fspath(thisfolder/"data"), SlideID, "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--dbloadroot", os.fspath(dbloadroot)]
     with self.assertRaises(RuntimeError):
       DummyPrepDbSample.runfromargumentparser([*args, "--no-log"])
+
+  def testMissingBatchProcedure(self, SlideID="M21_1"):
+    informdataroot = thisfolder/"test_for_jenkins"/"misc"/"missingbatchprocedure"
+    s1 = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False)
+    s2 = PrepDbSample(thisfolder/"data", SlideID, informdataroot=informdataroot, uselogfiles=False)
+    s3 = PrepDbSample(thisfolder/"data", SlideID, informdataroot=informdataroot/"only_segmented", uselogfiles=False)
+    with self.assertRaises(FileNotFoundError):
+      s3.nlayersunmixed
+    self.assertEqual(s1.nlayersunmixed, s2.nlayersunmixed)
