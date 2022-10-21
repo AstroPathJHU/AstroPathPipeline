@@ -54,6 +54,7 @@ class MeanImageSampleBase(MaskSampleBase,ParallelSample,WorkingDirArgumentParser
             and self.maskroot==self.root ) :
             self.maskfolder=self.__workingdirpath/CONST.IMAGE_MASKING_SUBDIR_NAME
         self.__image_masking_dirpath = self.maskfolder if not self.__skip_masking else None
+        #self.__image_masking_dirpath = self.im3folder/'meanimage'/'image_masking'
         if (self.__image_masking_dirpath is not None) and (not self.__image_masking_dirpath.is_dir()) :
             self.__image_masking_dirpath.mkdir(parents=True)
         if self.__image_masking_dirpath.is_dir() :
@@ -510,6 +511,7 @@ class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSamp
         super().__init__(*args,**kwargs)
         #start up the meanimage
         self.__meanimage = MeanImageComponentTiff((self.fheight,self.fwidth,self.nlayersunmixed),self.logger)
+        self.med_ets = np.ones(self.nlayersunmixed) #unmixed images are already exposure time corrected
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
@@ -526,8 +528,7 @@ class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSamp
                 raise NotImplementedError('ERROR: cannot run MeanImageSampleComponentTiff without pre-computed masks!')
         #make the mean image from all of the tissue bulk rectangles
         n_threads = self.njobs if self.njobs is not None else 4
-        ets_to_use = np.ones(self.nlayersunmixed) #unmixed images are already exposure time corrected
-        new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,ets_to_use,
+        new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,self.med_ets,
                                                                  self.image_masking_dirpath,n_threads)
         for fl in new_field_logs :
             fl.slide = self.SlideID
