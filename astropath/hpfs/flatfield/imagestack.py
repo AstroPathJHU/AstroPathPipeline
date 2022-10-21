@@ -294,13 +294,13 @@ class ImageStackIm3(ImageStackBase) :
     def _add_rect_to_stacking_queue_no_masking(rect,norm_ets,queue) :
         with rect.using_corrected_im3() as im :
             normalized_image = im/norm_ets
-            new_field_log = FieldLog(None,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+            new_field_log = FieldLog(None,rect.file.name.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
                                      'bulk','stacking',str(list(range(1,normalized_image.shape[-1]+1))))
             queue.put((normalized_image,np.power(normalized_image,2),new_field_log))
 
     @staticmethod
     def _add_rect_to_stacking_queue_with_masking(rect,samp,masking_dir_path,keys_with_full_masks,norm_ets,queue) :
-        imkey = rect.file.rstrip(UNIV_CONST.IM3_EXT)
+        imkey = rect.file.name.rstrip(UNIV_CONST.IM3_EXT)
         with rect.using_corrected_im3() as im :
             normalized_im = im/norm_ets
             if imkey in keys_with_full_masks :
@@ -313,7 +313,7 @@ class ImageStackIm3(ImageStackBase) :
                 layers_to_add = np.ones(im.shape[-1],dtype=np.uint64) if np.sum(mask[:,:,0])/(im.shape[0]*im.shape[1])>=CONST.MIN_PIXEL_FRAC else np.zeros(im.shape[-1],dtype=np.uint64)
             normalized_masked_im = normalized_im*mask*layers_to_add[np.newaxis,np.newaxis,:]
             stacked_in_layers = [i+1 for i in range(layers_to_add.shape[0]) if layers_to_add[i]==1]
-            new_field_log = FieldLog(None,rect.file.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
+            new_field_log = FieldLog(None,rect.file.name.replace(UNIV_CONST.IM3_EXT,UNIV_CONST.RAW_EXT),
                                      'bulk','stacking',str(stacked_in_layers))
             queue.put((normalized_masked_im,
                        np.power(normalized_masked_im,2),
