@@ -114,6 +114,17 @@ class APIDDef(MyDataClassFrozen):
   def __bool__(self):
     return bool(self.isGood)
 
+class ControlTMASampleDef(MyDataClassFrozen):
+  Project: int
+  Cohort: int
+  CtrlID: int
+  TMA: int
+  Ctrl: int
+  Date: str
+  BatchID: str
+  Scan: str
+  SlideID: str
+
 class MetadataSummary(MyDataClassFrozen):
   """
   helper dataclass for some common sample metadata information
