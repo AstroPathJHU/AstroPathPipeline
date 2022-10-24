@@ -10,7 +10,8 @@ from ...shared.samplemetadata import SampleDef
 from .config import CONST
 from .utilities import FlatfieldModelTableEntry, ComparisonTableEntry, normalize_mean_image
 from .plotting import meanimage_comparison_plot
-from .batchflatfieldmulticohort import BatchFlatfieldSample, BatchFlatfieldMultiCohort
+from .batchflatfieldsample import BatchFlatfieldSampleIm3
+from .batchflatfieldmulticohort import BatchFlatfieldMultiCohortIm3
 
 class MeanImageComparison :
     """
@@ -185,7 +186,7 @@ class MeanImageComparison :
     def save_model(self,root_dirs,version_tag,skip_creation) :
         """
         Add lines to the flatfield models .csv file defining a model with this group of slides under the given 
-        version_tag, and then run BatchFlatfieldMultiCohort to actually create the model in the default location
+        version_tag, and then run BatchFlatfieldMultiCohortIm3 to actually create the model in the default location
         """
         all_lines = []
         #read anything already in the table
@@ -205,7 +206,7 @@ class MeanImageComparison :
             batchflatfieldmulticohortargs+=['--flatfield-model-file',os.fspath(self.MODEL_TABLE_PATH)]
             batchflatfieldmulticohortargs+=['--include-bad-samples']
             batchflatfieldmulticohortargs+=['--ignore-dependencies']
-            BatchFlatfieldMultiCohort.runfromargumentparser(args=batchflatfieldmulticohortargs)
+            BatchFlatfieldMultiCohortIm3.runfromargumentparser(args=batchflatfieldmulticohortargs)
 
     #################### CLASS VARIABLES & PROPERTIES ####################
 
@@ -412,7 +413,7 @@ class MeanImageComparison :
         samples = []
         for rd,sids in self.slide_ids_by_rootdir.items() :
             for sid in sids :
-                samples.append(BatchFlatfieldSample(rd,sid,version=None)) #version is not needed for anything we use in this function
+                samples.append(BatchFlatfieldSampleIm3(rd,sid,version=None)) #version is not needed for anything we use in this function
         ordered_tuples = []
         lines_after = []
         if sort_by=='project_cohort_batch' :
