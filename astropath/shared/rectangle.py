@@ -548,7 +548,7 @@ class RectangleReadComponentTiffBase(RectangleWithImageLoaderBase):
 
   @property
   def componenttifffile(self):
-    return self.componenttifffolder/self.file.name.replace(UNIV_CONST.IM3_EXT, "_component_data.tif")
+    return self.componenttifffolder/self.file.name.replace(UNIV_CONST.IM3_EXT, UNIV_CONST.COMPONENT_TIFF_SUFFIX)
 
   @methodtools.lru_cache()
   @property
