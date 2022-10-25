@@ -1656,7 +1656,7 @@ class SampleWithAnnotationInfos(SampleBase, ThingWithAnnotationInfos):
       extrakwargs["scanfolder"] = self.scanfolder
     return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
 
-class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, XMLPolygonFileArgumentParser):
+class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, TissueSampleBase, XMLPolygonFileArgumentParser):
   """
   Base class for any sample that uses the XML annotations file.
   """

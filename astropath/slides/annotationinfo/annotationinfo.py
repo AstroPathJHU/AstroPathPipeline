@@ -59,7 +59,7 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
       "annotationpositionfromaffineshift": annotationpositionfromaffineshift,
     }
 
-class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationFileSample, WorkflowSample, AnnotationInfoWriterArgumentParser, XMLPolygonAnnotationFileInfoWriter, TissueSampleBase):
+class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationFileSample, WorkflowSample, AnnotationInfoWriterArgumentParser, XMLPolygonAnnotationFileInfoWriter):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
@@ -178,7 +178,7 @@ class CopyAnnotationInfoArgumentParserBase(DbloadArgumentParser):
 class CopyAnnotationInfoArgumentParser(CopyAnnotationInfoArgumentParserBase, XMLPolygonFileArgumentParser):
   pass
 
-class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, CopyAnnotationInfoArgumentParserBase):
+class CopyAnnotationInfoSampleBase(DbloadSample, WorkflowSample, TissueSampleBase, CopyAnnotationInfoArgumentParserBase):
   @classmethod
   def getoutputfiles(cls, **kwargs):
     SlideID = kwargs["SlideID"]

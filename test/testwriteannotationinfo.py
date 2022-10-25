@@ -31,6 +31,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     destroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
     destrootempty = thisfolder/"test_for_jenkins"/"writeannotationinfo"/"emptyannotation"
     yield sourceroot/"upkeep_and_progress"/"AstropathAPIDdef_0.csv", destroot/"upkeep_and_progress"
+    yield sourceroot/"sampledef.csv", destroot
     for SlideID in "M206",:
       yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1"
       yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1", f"{SlideID}_Scan1.annotations.polygons_2.xml"
