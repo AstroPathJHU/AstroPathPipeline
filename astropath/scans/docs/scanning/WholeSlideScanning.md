@@ -4,6 +4,7 @@ This section describes the methods for whole slide scanning. The directions assu
 ## 4.4.5.1. Contents
   - [4.4.5.2. Preparing 20% Overlap](Preparing20Overlap.md)
   - [4.4.5.3. Scan the *Control TMA*](ScantheControlTMA.md)
-  - [4.4.5.4. Scan the Whole Slide Specimens](ScantheWholeSlideSpecimens.md)
-  - [4.4.5.5. Creating a Whole Slide Scanning Plan](CreatingaWholeSlideScanningPlan.md)
-  - [4.4.5.6. Important Scanning Notes](ImportantScanningNotes.md)
+  - [4.4.5.4. Scan the Whole Slide Specimens (Vectra 3.0)](ScantheWholeSlideSpecimensVectra3.md)
+  - [4.4.5.5. Scan the Whole Slide Specimens (Vectra Polaris)](ScantheWholeSlideSpecimensVectraPolaris.md)
+  - [4.4.5.6. Creating a Whole Slide Scanning Plan](CreatingaWholeSlideScanningPlan.md)
+  - [4.4.5.7. Important Scanning Notes](ImportantScanningNotes.md)
