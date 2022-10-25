@@ -11,7 +11,7 @@ This section also includes the code for the modules that carry out the transfer 
  - [4.4. Scanning Instructions Introduction](docs/ScanningInstructionsIntro.md)
    - [4.4.1. Contents](docs/ScanningInstructionsIntro.md/#441-contents) 
    - [4.4.2. Specimen Table](docs/scanning/SpecimenTable.md#442-specimen_table)
-   - [4.4.3. SampleNames (Patient # or M Numbers)](docs/scanning/SampleNames.md)
+   - [4.4.3. SampleNames (Patient # or CS Numbers)](docs/scanning/SampleNames.md)
    - [4.4.4. Control TMA Conventions](docs/scanning/ControlTMAConventions.md)
    - [4.4.5. Whole Slide Scanning Introduction](docs/scanning/WholeSlideScanning.md)
      - [4.4.5.1. Contents](docs/scanning/WholeSlideScanning.md/#4451-contents)
