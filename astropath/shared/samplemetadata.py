@@ -1,22 +1,25 @@
-import dataclassy, pathlib
+import abc, dataclassy, pathlib
 from ..utilities.config import CONST as UNIV_CONST
-from ..utilities.dataclasses import MyDataClassFrozen
+from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.tableio import boolasintfield, readtable, writetable
 
-class SampleDef(MyDataClassFrozen):
+class SampleDefBase(MyDataClassFrozen):
   """
-  The sample definition from sampledef.csv in the cohort folder.
-  To construct it, you can give all the arguments, or you can give
-  SlideID and leave out some of the others.  If you give a root,
-  it will try to figure out the other arguments from there.
   """
-  SampleID: int = 0
-  SlideID: str = None
-  Project: int = None
-  Cohort: int = None
-  Scan: int = None
-  BatchID: int = None
-  isGood: bool = boolasintfield(True)
+  @abc.abstractmethod
+  def SlideID(self): pass
+  @abc.abstractmethod
+  def Project(self): pass
+  @abc.abstractmethod
+  def Cohort(self): pass
+  @abc.abstractmethod
+  def Scan(self): pass
+  @abc.abstractmethod
+  def BatchID(self): pass
+
+  @property
+  @abc.abstractmethod
+  def isGood(self): pass
 
   def __post_init__(self, *args, **kwargs):
     if self.SlideID is None:
@@ -24,10 +27,22 @@ class SampleDef(MyDataClassFrozen):
     super().__post_init__(*args, **kwargs)
 
   @classmethod
-  def transforminitargs(cls, *args, root=None, samp=None, apidfile=None, **kwargs):
-    Project = kwargs.get("Project", None)
-    if Project is None: kwargs.pop("Project", None)
+  def initargsfromsampledefcsv(cls, *args, root=None, **kwargs):
+    if "SlideID" in kwargs and root is not None:
+      root = pathlib.Path(root)
+      try:
+        cohorttable = readtable(cls.sampledefcsv(root=root), cls)
+      except (IOError, EOFError):
+        pass
+      else:
+        for row in cohorttable:
+          if row.SlideID == kwargs["SlideID"]:
+            return cls.transforminitargs(root=root, samp=row)
 
+    return args, kwargs
+
+  @classmethod
+  def transforminitargs(cls, *args, root=None, samp=None, **kwargs):
     if samp is not None:
       if isinstance(samp, str):
         if "SlideID" in kwargs:
@@ -49,16 +64,44 @@ class SampleDef(MyDataClassFrozen):
         if isinstance(samp, SampleDef):
           return super().transforminitargs(*args, **kwargs)
 
+    args, kwargs = cls.initargsfromsampledefcsv(*args, root=root, **kwargs)
+
     if "SlideID" in kwargs and root is not None:
-      root = pathlib.Path(root)
-      try:
-        cohorttable = readtable(root/"sampledef.csv", SampleDef)
-      except (IOError, EOFError):
-        pass
-      else:
-        for row in cohorttable:
-          if row.SlideID == kwargs["SlideID"]:
-            return cls.transforminitargs(root=root, samp=row)
+      if "Scan" not in kwargs:
+        try:
+          kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/UNIV_CONST.IM3_DIR_NAME).glob("Scan*/"))
+        except ValueError:
+          pass
+      if "BatchID" not in kwargs and kwargs.get("Scan", None) is not None:
+        try:
+          with open(root/kwargs["SlideID"]/UNIV_CONST.IM3_DIR_NAME/f"Scan{kwargs['Scan']}"/"BatchID.txt") as f:
+            kwargs["BatchID"] = int(f.read())
+        except FileNotFoundError:
+          pass
+
+    return super().transforminitargs(*args, **kwargs)
+
+class SampleDef(SampleDefBase):
+  """
+  The sample definition from sampledef.csv in the cohort folder.
+  To construct it, you can give all the arguments, or you can give
+  SlideID and leave out some of the others.  If you give a root,
+  it will try to figure out the other arguments from there.
+  """
+  SampleID: int = 0
+  SlideID: str = None
+  Project: int = None
+  Cohort: int = None
+  Scan: int = None
+  BatchID: int = None
+  isGood: bool = boolasintfield(True)
+
+  @classmethod
+  def initargsfromsampledefcsv(cls, *args, root=None, apidfile=None, **kwargs):
+    args, kwargs = super().initargsfromsampledefcsv(*args, root=root, **kwargs)
+
+    Project = kwargs.get("Project", None)
+    if Project is None: kwargs.pop("Project", None)
 
     if "SlideID" in kwargs and root is not None is not Project and apidfile is None:
       apidfile = root/"upkeep_and_progress"/f"AstropathAPIDdef_{Project:d}.csv"
@@ -79,34 +122,35 @@ class SampleDef(MyDataClassFrozen):
           if "isGood" not in kwargs:
             kwargs["isGood"] = row.isGood
 
-    if "SlideID" in kwargs and root is not None:
-      if "Scan" not in kwargs:
-        try:
-          kwargs["Scan"] = max(int(folder.name.replace("Scan", "")) for folder in (root/kwargs["SlideID"]/UNIV_CONST.IM3_DIR_NAME).glob("Scan*/"))
-        except ValueError:
-          pass
-      if "BatchID" not in kwargs and kwargs.get("Scan", None) is not None:
-        try:
-          with open(root/kwargs["SlideID"]/UNIV_CONST.IM3_DIR_NAME/f"Scan{kwargs['Scan']}"/"BatchID.txt") as f:
-            kwargs["BatchID"] = int(f.read())
-        except FileNotFoundError:
-          pass
+    return args, kwargs
 
-    return super().transforminitargs(*args, **kwargs)
+  @classmethod
+  def transforminitargs(cls, *args, **kwargs):
+    args, kwargs = super().transforminitargs(*args, **kwargs)
+    kwargs.pop("apidfile", None)
+    return args, kwargs
 
   def __bool__(self):
     return bool(self.isGood)
 
-class APIDDef(MyDataClassFrozen):
-  SlideID: str
-  SampleName: str
-  Project: int
-  Cohort: int
+  @classmethod
+  def sampledefcsv(cls, root):
+    return root/"sampledef.csv"
+
+class APIDDef(SampleDefBase):
+  SlideID: str = None
+  SampleName: str = None
+  Project: int = None
+  Cohort: int = None
   Scan: int = None
   BatchID: int = None
   isGood: bool = boolasintfield(None)
 
   def __post_init__(self, **kwargs):
+    if self.SlideID is None: raise ValueError("Have to provide SlideID")
+    if self.SampleName is None: raise ValueError("Have to provide SampleName")
+    if self.Project is None: raise ValueError("Have to provide Project")
+    if self.Cohort is None: raise ValueError("Have to provide Cohort")
     if self.BatchID is None: raise ValueError("Have to provide BatchID")
     if self.isGood is None: raise ValueError("Have to provide isGood")
     return super().__post_init__(**kwargs)
@@ -114,7 +158,7 @@ class APIDDef(MyDataClassFrozen):
   def __bool__(self):
     return bool(self.isGood)
 
-class ControlTMASampleDef(MyDataClassFrozen):
+class ControlTMASampleDef(SampleDefBase):
   Project: int
   Cohort: int
   CtrlID: int
@@ -124,6 +168,8 @@ class ControlTMASampleDef(MyDataClassFrozen):
   BatchID: str
   Scan: str
   SlideID: str
+  @property
+  def isGood(self): return True
 
 class MetadataSummary(MyDataClassFrozen):
   """

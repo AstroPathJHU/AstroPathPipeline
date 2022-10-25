@@ -95,8 +95,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return result
 
   @property
-  def SampleID(self): return self.samp.SampleID
-  @property
   def SlideID(self): return self.samp.SlideID
   @property
   def Project(self): return self.samp.Project
@@ -780,10 +778,18 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return result
 
 class TissueSampleBase(SampleBase):
-  pass
+  @property
+  def SampleID(self): return self.samp.SampleID
 
 class TMASampleBase(SampleBase):
-  pass
+  @property
+  def CtrlID(self): return self.samp.CtrlID
+  @property
+  def TMA(self): return self.samp.TMA
+  @property
+  def Ctrl(self): return self.samp.Ctrl
+  @property
+  def Date(self): return self.samp.Date
 
 class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
