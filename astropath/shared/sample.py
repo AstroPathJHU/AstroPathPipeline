@@ -17,7 +17,7 @@ from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinica
 from .logging import dummylogger, getlogger, ThingWithLogger
 from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
-from .samplemetadata import SampleDef
+from .samplemetadata import ControlTMASampleDef, SampleDef
 from .workflowdependency import ThingWithWorkflowKwargs, WorkflowDependencySlideID
 
 class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger, ThingWithWorkflowKwargs, contextlib.ExitStack):
@@ -37,7 +37,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressinitwarnings=False, **kwargs):
     self.__root = pathlib.Path(root)
     if sampledefroot is None: sampledefroot = root
-    self.samp = SampleDef(root=sampledefroot, samp=samp, Project=Project)
+    self.samp = self.sampledefclass(root=sampledefroot, samp=samp, Project=Project)
     if not (self.root/self.SlideID).exists():
       raise FileNotFoundError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
@@ -59,6 +59,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if not self.scanfolder.is_dir():
       raise OSError(f"{self.scanfolder} is not a directory")
 
+  @property
+  @abc.abstractmethod
+  def sampledefclass(self): pass
   @property
   def root(self): return self.__root
   @property
@@ -778,10 +781,12 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return result
 
 class TissueSampleBase(SampleBase):
+  sampledefclass = SampleDef
   @property
   def SampleID(self): return self.samp.SampleID
 
 class TMASampleBase(SampleBase):
+  sampledefclass = ControlTMASampleDef
   @property
   def CtrlID(self): return self.samp.CtrlID
   @property

@@ -3,7 +3,7 @@ from ...shared.annotationpolygonxmlreader import AllowedAnnotation, XMLPolygonAn
 from ...shared.argumentparser import DbloadArgumentParser, XMLPolygonFileArgumentParser
 from ...shared.cohort import DbloadCohort, XMLPolygonFileCohort, WorkflowCohort
 from ...shared.csvclasses import AnnotationInfo
-from ...shared.sample import DbloadSample, WorkflowSample, XMLPolygonAnnotationFileSample
+from ...shared.sample import DbloadSample, TissueSampleBase, WorkflowSample, XMLPolygonAnnotationFileSample
 from ...utilities import units
 from ...utilities.misc import ArgParseAddRegexToDict, ArgParseAddToDict
 from ...utilities.miscfileio import PathGlobExists
@@ -59,7 +59,7 @@ class AnnotationInfoWriterArgumentParser(DbloadArgumentParser):
       "annotationpositionfromaffineshift": annotationpositionfromaffineshift,
     }
 
-class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationFileSample, WorkflowSample, AnnotationInfoWriterArgumentParser, XMLPolygonAnnotationFileInfoWriter):
+class WriteAnnotationInfoSample(ReadAffineShiftSample, XMLPolygonAnnotationFileSample, WorkflowSample, AnnotationInfoWriterArgumentParser, XMLPolygonAnnotationFileInfoWriter, TissueSampleBase):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 

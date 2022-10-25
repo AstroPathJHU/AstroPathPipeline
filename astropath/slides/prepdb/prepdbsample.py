@@ -3,7 +3,7 @@ from ...shared.argumentparser import DbloadArgumentParser
 from ...shared.csvclasses import Constant, Batch, ExposureTime, QPTiffCsv
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
-from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReaderTissue
+from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader, XMLLayoutReaderTissue
 from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 
@@ -29,7 +29,7 @@ class PrepDbArgumentParser(DbloadArgumentParser):
       "margin": parsed_args_dict.pop("margin"),
     }
 
-class PrepDbSampleBase(XMLLayoutReaderTissue, DbloadSampleBase, RectangleOverlapCollection, WorkflowSample, units.ThingWithQpscale, units.ThingWithApscale):
+class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollection, WorkflowSample, PrepDbArgumentParser, units.ThingWithQpscale, units.ThingWithApscale):
   """
   The prepdb stage of the pipeline extracts metadata for a sample from the `.xml` files
   and writes it out to `.csv` files.
@@ -249,7 +249,6 @@ class PrepDbSampleBase(XMLLayoutReaderTissue, DbloadSampleBase, RectangleOverlap
     ]
     return constants
 
-class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
   def writebatch(self):
     self.logger.info("write batch")
     self.writecsv("batch", self.getbatch())
@@ -347,6 +346,9 @@ class PrepDbSample(PrepDbSampleBase, PrepDbArgumentParser):
     new = super().logendregex()
     old = "prepSample end"
     return rf"(?:{old}|{new})"
+
+class PrepDbSample(PrepDbSampleBase, XMLLayoutReaderTissue):
+  pass
 
 def main(args=None):
   PrepDbSample.runfromargumentparser(args)

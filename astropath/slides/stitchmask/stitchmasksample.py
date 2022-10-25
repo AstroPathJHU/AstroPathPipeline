@@ -7,7 +7,7 @@ from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
 from ...shared.logging import ThingWithLogger
 from ...shared.rectangle import MaskRectangleBase, AstroPathTissueMaskRectangle
 from ...shared.rectangletransformation import ImageTransformation
-from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, MaskWorkflowSampleBase
+from ...shared.sample import MaskSampleBase, MaskWorkflowSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, TissueSampleBase
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
@@ -123,7 +123,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   def tissuemasktransformation(self):
     return ImageTransformation(lambda mask: mask.astype(bool))
 
-class StitchMaskSample(WriteMaskSampleBase):
+class StitchMaskSample(WriteMaskSampleBase, TissueSampleBase):
   """
   Base class for stitching the global mask together from the individual HPF masks
   """

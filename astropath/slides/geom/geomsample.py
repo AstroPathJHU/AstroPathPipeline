@@ -3,13 +3,13 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import Vertex
 from ...shared.polygon import DataClassWithPolygon, SimplePolygon, Polygon, polygonfield
-from ...shared.sample import ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample
+from ...shared.sample import ReadRectanglesDbloadSegmentedComponentTiff, TissueSampleBase, WorkflowSample
 from ...utilities import units
 from ...utilities.tableio import writetable
 from ..align.alignsample import AlignSample
 from ..align.field import FieldReadSegmentedComponentTiffSingleLayer
 
-class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, WorkflowSample):
+class GeomSample(ReadRectanglesDbloadSegmentedComponentTiff, TissueSampleBase, WorkflowSample):
   """
   The geom step of the pipeline writes out the boundaries of the HPF
   primary regions and the boundaries of the tumor region determined

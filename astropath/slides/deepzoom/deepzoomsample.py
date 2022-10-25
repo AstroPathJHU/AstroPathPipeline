@@ -1,14 +1,14 @@
 import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, WorkflowSample, ZoomFolderSampleBase
+from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips
 from ...utilities.tableio import pathfield, readtable, writetable
 from ..zoom.zoomsample import ZoomSample
 
-class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
+class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   The deepzoom step takes the whole slide image and produces an image pyramid
   of different zoom levels.
