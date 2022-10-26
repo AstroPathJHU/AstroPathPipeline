@@ -6,7 +6,7 @@ from ...shared.argumentparser import SelectLayersArgumentParser, WorkingDirArgum
 from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, TissueSampleBase, XMLLayoutReaderByHPF
 from .config import IMAGECORRECTION_CONST
 
-class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, XMLLayoutReaderByHPF, WorkflowSample, ParallelSample, TissueSampleBase
+class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, XMLLayoutReaderByHPF, WorkflowSample, ParallelSample, TissueSampleBase,
                             WorkingDirArgumentParser, SelectLayersArgumentParser) :
     """
     Read raw image files, correct them for flatfielding and/or warping effects 

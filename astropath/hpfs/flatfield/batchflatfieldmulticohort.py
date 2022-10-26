@@ -3,7 +3,7 @@ import pathlib, re
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.tableio import readtable
 from ...utilities.img_file_io import get_image_hwl_from_xml_file
-from ...shared.sample import WorkflowSample
+from ...shared.sample import TissueSampleBase, WorkflowSample
 from ...shared.cohort import WorkflowCohort
 from ...shared.multicohort import MultiCohortBase
 from .config import CONST
@@ -11,7 +11,7 @@ from .utilities import FlatfieldModelTableEntry
 from .imagestack import Flatfield
 from .meanimagesample import MeanImageSample
 
-class BatchFlatfieldSample(WorkflowSample) :
+class BatchFlatfieldSample(WorkflowSample, TissueSampleBase) :
     """
     Small utility class to hold sample-dependent information for the batch flatfield run
     Just requires as input files the relevant output of the meanimage mode

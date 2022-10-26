@@ -1,6 +1,7 @@
 import collections, contextlib, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.registration, skimage.transform, uncertainties as unc, uncertainties.umath as umath, uncertainties.unumpy as unp
 
 from ...shared.logging import dummylogger, MultiLogger, ThingWithLogger
+from ...shared.sample import TissueSampleBase
 from ...slides.align.computeshift import computeshift, OptimizeResult, shiftimg
 from ...slides.align.overlap import AlignmentComparison
 from ...slides.annowarp.annowarpsample import WSISample
@@ -18,7 +19,7 @@ DataClassWithZoomedScale, DataClassWithZoomedScaleFrozen = makedataclasswithpsca
 class DataClassWithZoomedScale(DataClassWithZoomedScale, DataClassWithPscale): pass
 class DataClassWithZoomedScaleFrozen(DataClassWithZoomedScaleFrozen, DataClassWithPscaleFrozen): pass
 
-class CrossRegistrationSample(WSISample, AstroPathTissueMaskSample, ThingWithZoomedScale):
+class CrossRegistrationSample(WSISample, AstroPathTissueMaskSample, TissueSampleBase, ThingWithZoomedScale):
   """
   Just a utility class for reading the WSI info
   """
