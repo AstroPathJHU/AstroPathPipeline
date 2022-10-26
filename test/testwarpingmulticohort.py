@@ -4,7 +4,7 @@ import numpy as np
 from astropath.utilities.config import CONST as UNIV_CONST
 from astropath.utilities.img_file_io import read_image_from_layer_files, write_image_to_file
 from astropath.shared.samplemetadata import MetadataSummary
-from astropath.shared.sample import ReadRectanglesIm3FromXML, XMLLayoutReaderTissue
+from astropath.shared.sample import ReadRectanglesIm3FromXML, TissueSampleBase, XMLLayoutReaderByHPF
 from astropath.hpfs.warping.utilities import FieldLog
 from astropath.hpfs.warping.warpingmulticohort import WarpingMultiCohort
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
@@ -18,7 +18,7 @@ slideID = 'M21_1'
 ff_file = folder/'data'/'reference'/'batchflatfieldcohort'/'flatfield_TEST.bin'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
 
-class DummySample(ReadRectanglesIm3FromXML, XMLLayoutReaderTissue) :
+class DummySample(ReadRectanglesIm3FromXML, XMLLayoutReaderByHPF, TissueSampleBase) :
 
     def __init__(self,*args,filetype='raw',**kwargs) :
         super().__init__(*args,filetype=filetype,uselogfiles=False,**kwargs)

@@ -5,7 +5,7 @@ from ...utilities.gpu import get_GPU_thread
 from ...utilities.miscfileio import cd
 from ...utilities.tableio import readtable, writetable
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser
-from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample, XMLLayoutReaderTissue
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, TissueSampleBase, WorkflowSample, XMLLayoutReaderByHPF
 from ..flatfield.config import CONST as FF_CONST
 from ..flatfield.utilities import ThresholdTableEntry
 from ..flatfield.meanimagesample import MeanImageSample
@@ -14,7 +14,7 @@ from .utilities import OverlapOctet
 from .rectangle import AlignmentRectangleForWarping
 from .overlap import AlignmentOverlapForWarping
 
-class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, XMLLayoutReaderTissue, WorkflowSample,
+class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, XMLLayoutReaderByHPF, WorkflowSample, TissueSampleBase,
                     FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser) :
     """
     Class to find octets to use in determining warping patterns and 

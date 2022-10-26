@@ -7,11 +7,11 @@ from ...utilities.miscmath import floattoint
 from ...utilities.img_file_io import smooth_image_worker
 from ...shared.overlap import Overlap
 from ...shared.image_masking.image_mask import ImageMask
-from ...shared.sample import ReadRectanglesOverlapsFromXML, MaskSampleBase, XMLLayoutReaderTissue
+from ...shared.sample import ReadRectanglesOverlapsFromXML, MaskSampleBase, TissueSampleBase, XMLLayoutReaderByHPF
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML
 from ...shared.sample import ReadRectanglesOverlapsComponentTiffFromXML
 
-class PCASampleBase(ReadRectanglesOverlapsFromXML,XMLLayoutReaderTissue,MaskSampleBase) :
+class PCASampleBase(ReadRectanglesOverlapsFromXML,XMLLayoutReaderByHPF,MaskSampleBase,TissueSampleBase) :
     """
     General class to work with a PCA across a set of rectangle images
 

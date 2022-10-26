@@ -11,7 +11,7 @@ from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
 from ...shared.overlap import Overlap
 from ...shared.sample import WorkflowSample, ParallelSample
-from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase, XMLLayoutReaderTissue
+from ...shared.sample import MaskSampleBase, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, TissueSampleBase, XMLLayoutReaderByHPF
 from .config import CONST
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image
 from .utilities import RectangleThresholdTableEntry, FieldLog, ThresholdTableEntry
@@ -20,8 +20,8 @@ from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thr
 from .plotting import plot_background_thresholds_by_layer, plot_flagged_HPF_locations
 from .imagestack import MeanImage
 
-class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, XMLLayoutReaderTissue, MaskSampleBase, 
-                          ParallelSample, FileTypeArgumentParser, WorkingDirArgumentParser) :
+class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, XMLLayoutReaderByHPF, MaskSampleBase, 
+                          ParallelSample, TissueSampleBase, FileTypeArgumentParser, WorkingDirArgumentParser) :
     """
     Base class to use in running the basic MeanImage methods (i.e. not to be used bare in workflows)
     Used as the starting point for actual MeanImageSamples as well as other types of samples that use MeanImage stuff

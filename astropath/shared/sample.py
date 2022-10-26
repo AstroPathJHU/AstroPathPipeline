@@ -1639,12 +1639,12 @@ class XMLLayoutReader(SampleBase):
       "includehpfsflaggedforacquisition": parsed_args_dict.pop("include_hpfs_flagged_for_acquisition"),
     }
 
-class XMLLayoutReaderTissue(XMLLayoutReader, TissueSampleBase):
+class XMLLayoutReaderByHPF(XMLLayoutReader):
   @property
   def im3filenameregex(self):
     return rf"{self.SlideID}_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
 
-class XMLLayoutReaderTMA(XMLLayoutReader, TMASampleBase):
+class XMLLayoutReaderByTMACore(XMLLayoutReader, TMASampleBase):
   @property
   def im3filenameregex(self):
     return rf"{self.SlideID}_Core\[[0-9]+,[0-9]+,[0-9]+\]_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"

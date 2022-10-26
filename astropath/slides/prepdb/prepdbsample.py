@@ -3,7 +3,7 @@ from ...shared.argumentparser import DbloadArgumentParser
 from ...shared.csvclasses import Constant, Batch, ExposureTime, QPTiffCsv
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
-from ...shared.sample import DbloadSampleBase, WorkflowSample, XMLLayoutReader, XMLLayoutReaderTissue
+from ...shared.sample import DbloadSampleBase, TissueSampleBase, WorkflowSample, XMLLayoutReader, XMLLayoutReaderByHPF
 from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 
@@ -347,7 +347,7 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollec
     old = "prepSample end"
     return rf"(?:{old}|{new})"
 
-class PrepDbSample(PrepDbSampleBase, XMLLayoutReaderTissue):
+class PrepDbSample(PrepDbSampleBase, XMLLayoutReaderByHPF, TissueSampleBase):
   pass
 
 def main(args=None):
