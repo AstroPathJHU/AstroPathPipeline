@@ -1,11 +1,11 @@
 import itertools, numpy as np, PIL, skimage.filters
-from ...shared.sample import ReadRectanglesDbloadIm3
+from ...shared.sample import ReadRectanglesDbloadIm3, TissueSampleBase
 from ...utilities import units
 from ...utilities.miscmath import floattoint
 from ..align.computeshift import computeshift
 from .annowarpsample import QPTiffSample
 
-class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, scale="zoomedscale"):
+class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, TissueSampleBase, scale="zoomedscale"):
   def __init__(self, *args, shiftthresholdmicrons=100, filetype="flatWarp", **kwargs):
     self.qptifflayer = 1
     self.im3layer = 1
