@@ -64,6 +64,7 @@ Class vminform : moduletools {
         NoElements = 'Sequence contains no elements';
         SegmentCells = 'Please segment cells';
         CorruptIM3 = 'External component has thrown an exception';
+        AdaptiveCell = 'Adaptive Cell Segmentation problem processing image';
         OverlappedObjects = 'The stencil contains overlapped objects'
     }
     #
@@ -142,6 +143,7 @@ Class vminform : moduletools {
         }
         #
         $this.ReturnData()
+        $this.datavalidation()
         #
     }
     <# -----------------------------------------
@@ -496,7 +498,8 @@ Class vminform : moduletools {
         #
         $errs = $this.sample.GetContent($this.informprocesserrorlog)
         if ($errs){
-            $this.sample.warning($errs)
+            $this.sample.error($errs)
+            throw 'Error in inform process, please check logs for information'
         }
         #
         $batchlog = $this.sample.GetContent($this.informbatchlog)
@@ -612,6 +615,9 @@ Class vminform : moduletools {
                 $this.skippedfiles += $filepath
             }
             $this.error_dictionary.CorruptIM3 {
+                $this.skippedfiles += $filepath
+            }
+            $this.error_dictionary.AdaptiveCell {
                 $this.skippedfiles += $filepath
             }
             $this.error_dictionary.OverlappedObjects {
@@ -734,6 +740,17 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]silentcleanup(){
         $this.sample.CreateNewDirs($this.outpath)
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
+        if (!$this.sample.testinformfiles($this.abx, $this.alg)){
+            throw 'Output files are not correct'
+        }
     }
     #
 }
