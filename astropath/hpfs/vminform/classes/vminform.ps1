@@ -499,7 +499,7 @@ Class vminform : moduletools {
         $errs = $this.sample.GetContent($this.informprocesserrorlog)
         if ($errs){
             $this.sample.error($errs)
-            throw 'Error in inform process, please check logs for information'
+            throw 'Error in inform process, please check log for information'
         }
         #
         $batchlog = $this.sample.GetContent($this.informbatchlog)
@@ -622,6 +622,10 @@ Class vminform : moduletools {
             }
             $this.error_dictionary.OverlappedObjects {
                 $this.skippedfiles += $filepath
+            }
+            default {
+                $this.sample.error($errorline)
+                throw 'New inform error, check log for information'
             }
         }
         #
