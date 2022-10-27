@@ -1,4 +1,4 @@
-# 4.4.5.6. Important Scanning Notes
+# 4.4.5.7. Important Scanning Notes
 1.	To scan multiple pieces of tissue:
     - if they are close enough that there is asymmetric overlap between tissues include them in the same ROI drawing
     - If there is no overlap between fields; circle the ROIs separately 

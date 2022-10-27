@@ -6,7 +6,7 @@ from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_laye
 from astropath.shared.samplemetadata import MetadataSummary
 from astropath.hpfs.flatfield.config import CONST
 from astropath.hpfs.flatfield.utilities import FieldLog
-from astropath.hpfs.flatfield.batchflatfieldmulticohort import BatchFlatfieldMultiCohort
+from astropath.hpfs.flatfield.batchflatfieldmulticohort import BatchFlatfieldMultiCohortIm3
 from .testbase import compare_two_csv_files, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
@@ -16,7 +16,7 @@ slide_IDs = ['M21_1','M148','M206']
 
 class TestBatchFlatfieldMultiCohort(TestBaseSaveOutput) :
     """
-    Class to test BatchFlatfieldMultiCohort functions
+    Class to test BatchFlatfieldMultiCohortIm3 functions
     """
 
     @property
@@ -73,7 +73,7 @@ class TestBatchFlatfieldMultiCohort(TestBaseSaveOutput) :
             self.__files_to_remove.append(slide_meanimage_folder/f'{sid}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}')
 
     def test_batch_flatfield_multi_cohort(self) :
-        #run the BatchFlatfieldMultiCohort selecting the three contrived samples
+        #run the BatchFlatfieldMultiCohortIm3 selecting the three contrived samples
         root = folder/'data'
         args = [os.fspath(root),
                 '--version',version,
@@ -83,7 +83,7 @@ class TestBatchFlatfieldMultiCohort(TestBaseSaveOutput) :
                 '--outdir',os.fspath(root),
                 '--debug',
                ]
-        BatchFlatfieldMultiCohort.runfromargumentparser(args=args)
+        BatchFlatfieldMultiCohortIm3.runfromargumentparser(args=args)
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'batchflatfieldcohort'
         try :

@@ -7,7 +7,7 @@ from astropath.shared.samplemetadata import MetadataSummary
 from astropath.shared.image_masking.utilities import LabelledMaskRegion
 from astropath.hpfs.flatfield.config import CONST
 from astropath.hpfs.flatfield.utilities import RectangleThresholdTableEntry, ThresholdTableEntry
-from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohort
+from astropath.hpfs.flatfield.meanimagecohort import MeanImageCohortIm3
 from .testbase import compare_two_csv_files, TestBaseSaveOutput
 
 folder = pathlib.Path(__file__).parent
@@ -23,7 +23,7 @@ rectangle_files_with_full_masks = [
 
 class TestMeanImage(TestBaseSaveOutput) :
     """
-    Class to test MeanImageSample and MeanImageCohort functions
+    Class to test MeanImageSample and MeanImageCohortIm3 functions
     """
 
     @property
@@ -63,7 +63,7 @@ class TestMeanImage(TestBaseSaveOutput) :
         return all_fps
 
     def test_mean_image(self,n_threads=1) :
-        #run the MeanImageCohort selecting just the single sample with raw files
+        #run the MeanImageCohortIm3 selecting just the single sample with raw files
         root = folder/'data'
         shardedim3root = folder/'data'/'raw'
         (folder/'test_for_jenkins'/'mean_image'/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/CONST.IMAGE_MASKING_SUBDIR_NAME).mkdir(parents=True,exist_ok=True)
@@ -81,7 +81,7 @@ class TestMeanImage(TestBaseSaveOutput) :
         args.append('--allow-local-edits')
         args.append('--ignore-dependencies')
         args.append('--rerun-finished')
-        MeanImageCohort.runfromargumentparser(args=args)
+        MeanImageCohortIm3.runfromargumentparser(args=args)
         #compare the output files with the references
         reffolder = folder/'data'/'reference'/'meanimage'
         try :

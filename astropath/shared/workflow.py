@@ -1,6 +1,6 @@
 import argparse
 from .argumentparser import RunFromArgumentParserBase
-from ..hpfs.flatfield.meanimagecohort import MeanImageCohort
+from ..hpfs.flatfield.meanimagecohort import MeanImageCohortIm3
 from ..slides.align.aligncohort import AlignCohort
 from ..slides.annotationinfo.annotationinfo import CopyAnnotationInfoCohort, WriteAnnotationInfoCohort
 from ..slides.annowarp.annowarpcohort import AnnoWarpCohortAstroPathTissueMask
@@ -18,7 +18,7 @@ class Workflow(RunFromArgumentParserBase):
   Run the full AstroPath slide processing workflow.
   """
 
-  cohorts = PrepDbCohort, MeanImageCohort, SegmentationCohortDeepCell, SegmentationCohortMesmer, AlignCohort, StitchAstroPathTissueMaskCohort, WriteAnnotationInfoCohort, CopyAnnotationInfoCohort, ZoomCohort, DeepZoomCohort, AnnoWarpCohortAstroPathTissueMask, GeomCohort, GeomCellCohortInform, GeomCellCohortDeepCell, GeomCellCohortMesmer, CsvScanCohort
+  cohorts = PrepDbCohort, MeanImageCohortIm3, SegmentationCohortDeepCell, SegmentationCohortMesmer, AlignCohort, StitchAstroPathTissueMaskCohort, WriteAnnotationInfoCohort, CopyAnnotationInfoCohort, ZoomCohort, DeepZoomCohort, AnnoWarpCohortAstroPathTissueMask, GeomCohort, GeomCellCohortInform, GeomCellCohortDeepCell, GeomCellCohortMesmer, CsvScanCohort
 
   _istmpclass = False
   @classmethod
