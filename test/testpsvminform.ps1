@@ -62,7 +62,6 @@ Class testpsvminform : testtools {
         $this.testcheckexportoptions($inp)
         $this.runversioncheck($inp)
         $this.cleanprotocol($inp)
-        $this.testgitstatus($inp.sample)
         Write-Host '.'
         #
     }
@@ -115,7 +114,9 @@ Class testpsvminform : testtools {
             $inp.processvars[1] = $this.outpath
             $inp.processvars[2] = $this.outpath
         }
-        $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\vminform'
+        $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\testing_vminform'
+        $inp.islocal = $false
+        $inp.inputimagepath = $inp.outpath + '\' + $inp.sample.slideid + '\im3\flatw'
     }
     <# --------------------------------------------
     testvminformconstruction
@@ -200,6 +201,7 @@ Class testpsvminform : testtools {
         }
         #
         $inp.sample.CreateNewDirs($this.outpath)
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         Write-Host 'test create image list finished'
         #
     }
@@ -379,6 +381,7 @@ Class testpsvminform : testtools {
         #
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
+        $inp.inputimageids = $null
         $inp.CreateImageList()
         $inp.CheckExportOptions()
         #
@@ -463,6 +466,7 @@ Class testpsvminform : testtools {
         #
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
+        $inp.inputimageids = $null
         $inp.CreateImageList()
         $inp.CheckExportOptions()
         #
@@ -615,8 +619,9 @@ Class testpsvminform : testtools {
             '2022-04-09 02:06:26,645 ERROR - Phenotyping problem processing image "M21_1_[47521,11163]": Please segment cells.',
             '2022-04-09 02:06:26,645 ERROR - C:\Users\Public\BatchProcessing\M21_1\im3\flatw\M21_1_[47521,11163].im3:',
             '     Sequence contains no elements',
-            '2022-04-08 21:43:49,192 ERROR - Phenotyping problem processing image "M21_1_[40866,11715]": A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond'
-            #'2022-04-08 21:43:49,192 ERROR - Unknown Error'
+            '2022-04-08 21:43:49,192 ERROR - Phenotyping problem processing image "M21_1_[40866,11715]": A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond',
+            '2022-06-07 15:24:13,680 ERROR - Adaptive Cell Segmentation problem processing image',
+            '<!>C:/Program Files/Akoya/inForm/2.4.8/AcapellaResources/AcapellaJengaPlugin/Scripts/DetectMembrane.script(112) [Stencil::AssertFlat]: The stencil contains overlapped objects, cannot raise stencil.@prop:flat flag.'
         ) -join "`n"
         $inp.sample.PopFile($inp.informbatchlog, $errorlines)
         $batchlog = $inp.sample.GetContent($inp.informbatchlog)
@@ -625,7 +630,7 @@ Class testpsvminform : testtools {
         if ($inp.corruptedfiles.length -ne 1) {
             throw 'check batch error failed - incorrect number of corrupted files'
         }
-        if ($inp.skippedfiles.length -ne 43) {
+        if ($inp.skippedfiles.length -ne 45) {
             throw 'check batch error failed - incorrect number of skipped files'
         }
         if ($inp.corruptedfiles -notmatch 'M21_1_\[40866,11715\]') {
@@ -747,6 +752,7 @@ Class testpsvminform : testtools {
         #
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
+        $inp.inputimageids = $null
         $inp.CreateImageList()
         $inp.CheckExportOptions()
         #
@@ -793,23 +799,25 @@ Class testpsvminform : testtools {
     --------------------------------------------#>
     [void]cleanprotocol($inp) {
         #
-        Write-Host '    returning initial protocol'
+        Write-Host '.'
+        Write-Host 'returning initial protocol'
         $savedalg = $this.protocolcopy + '\' + $inp.alg
         Write-Host ('    copying from ' + $savedalg + ' to ' + $inp.algpath + '\..')
         $inp.sample.copy($savedalg, ($inp.algpath + '\..'))
-        $inp.sample.CreateNewDirs($this.protocolcopy)
+        $inp.sample.removefile($savedalg)
+        Write-Host 'finished return initial protocol'
         #
     }
 }
 #
 # launch test and exit if no error found
 #
-[testpsvminform]::new() | Out-Null
+#[testpsvminform]::new() | Out-Null
 
 #
 # add $jenkins parameter to constructor if testing on jenkins
 #
-#[testpsvminform]::new($jenkins) | Out-Null
+[testpsvminform]::new($jenkins) | Out-Null
 
 #
 # add version and project parameters to constructor to test different versions of inform

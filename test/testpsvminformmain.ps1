@@ -28,30 +28,18 @@ Class testpsvminformmain : testtools {
         Write-Host 'test run on inform started'
         #
         $cred = Get-Credential -Message "Provide a user name (domain\username) and password"
-        $dis = dispatchtasks $this.module $cred $this.mpath -test
-        $this.starttestjob($dis)
-        #
-        Write-Host 'test run on inform finished'
-        #
-    }
-    <# --------------------------------------------
-    starttestjob
-    runs powershell operation on virtual
-    machine to run tests
-    --------------------------------------------#>
-    [void]starttestjob($dis){
-        #
-        $creds = $dis.GetCreds()  
-        $currentworkerip = 'vminform38'
+        $currentworkerip = 'vminform37'
         $workertaskfile = '\\BKI08\e$\andrew\AstroPathPipelinePrivate\test\testpsvminform.ps1'
         #
         Write-Host '    worker task file location:' $workertaskfile
         #
         # write workertask to a .ps1 file, put name of file into $workertaskfile
         #
-        psexec -i -nobanner -accepteula -u $creds[0] -p $creds[1] \\$currentworkerip `
+        psexec -i -nobanner -accepteula -u $cred.username -p $cred.getnetworkcredential().password \\$currentworkerip `
         pwsh -noprofile -noexit -executionpolicy bypass -command "$workertaskfile" `
                 *>> ($this.processloc + '\testpsvminform-job.log')
+        #
+        Write-Host 'test run on inform finished'
         #
     }
 }
