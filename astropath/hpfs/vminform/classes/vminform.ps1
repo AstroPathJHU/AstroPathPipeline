@@ -60,11 +60,10 @@ Class vminform : moduletools {
     }
     #
     $error_dictionary = @{
-        ConnectionFailed = 'A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond';
+        ConnectionFailed = 'A connection attempt failed because the connected party did not properly respond after a period of time';
         NoElements = 'Sequence contains no elements';
         SegmentCells = 'Please segment cells';
         CorruptIM3 = 'External component has thrown an exception';
-        AdaptiveCell = 'Adaptive Cell Segmentation problem processing image';
         OverlappedObjects = 'The stencil contains overlapped objects'
     }
     #
@@ -578,12 +577,16 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]CheckForKnownErrors($batchlog){
         $completestring = 'Batch process is completed'
-        $errormessage = $batchlog.Where({$_ -match $completestring}, 'SkipUntil')
-        $this.sample.warning(($errormessage | Select-Object -skip 1))
+        $errormessage = ($batchlog.Where({$_ -match $completestring}, 'SkipUntil'))
+        $this.sample.warning($errormessage)
+        #
+        #Combine multi-line errors and split up unique errors based on AP error lines
+        $fullerror = ($errormessage -join '') -split '\d+-\d+-\d+ \d+:\d+:\d+,\d+'
         #
         $this.skippedfiles = @()
-        if ($errormessage.length -gt 0) {
-            foreach ($errorline in $errormessage) {
+        if ($fullerror.length -gt 0) {
+            foreach ($errorline in $fullerror) {
+                $matches = $null
                 $errorline -match '\[\d+,\d+\]'
                 if ($matches) {
                     $imageid = $matches[0]
@@ -615,9 +618,6 @@ Class vminform : moduletools {
                 $this.skippedfiles += $filepath
             }
             $this.error_dictionary.CorruptIM3 {
-                $this.skippedfiles += $filepath
-            }
-            $this.error_dictionary.AdaptiveCell {
                 $this.skippedfiles += $filepath
             }
             $this.error_dictionary.OverlappedObjects {
