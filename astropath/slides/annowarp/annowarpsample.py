@@ -619,13 +619,13 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       if len(alignmentresults) < 15:
         self.logger.warningglobal("didn't find good alignment results in big islands, trying to stitch with smaller islands")
         allkwargs["_choosetiles"] = "smallislands"
-        return self.stitch_nocvxpy(**allkwargs)
+        return self.stitch_cvxpy(**allkwargs)
     elif _choosetiles == "smallislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=4)
       if len(alignmentresults) < 15:
         self.logger.warningglobal("didn't find good alignment results in small islands, using all good alignment results for stitching")
         allkwargs["_choosetiles"] = "all"
-        return self.stitch_nocvxpy(**allkwargs)
+        return self.stitch_cvxpy(**allkwargs)
     elif _choosetiles == "all":
       alignmentresults = alignmentresults.goodresults
     else:
