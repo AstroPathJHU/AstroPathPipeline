@@ -101,7 +101,8 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
     p = super().makeargumentparser(_forworkflow=_forworkflow, **kwargs)
     p.add_argument("--tilepixels", type=int, default=cls.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {cls.defaulttilepixels})")
     p.add_argument("--round-initial-shift-pixels", type=int, default=1, help="for the initial shift, shift by increments of this many pixels (default: 1)")
-    p.add_argument("--constant-shift-only", action="store_const", dest="floatedparams", const="constants", default="all", help="don't warp the annotations, force a constant shift only")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--constant-shift-only", action="store_true", help="don't warp the annotations, force a constant shift only")
     if not _forworkflow:
       p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
     return p
@@ -120,8 +121,9 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "readalignments": parsed_args_dict.pop("dont_align", False),
       "roundinitialshiftpixels": parsed_args_dict.pop("round_initial_shift_pixels", 1),
-      "floatedparams": parsed_args_dict.pop("floatedparams", "all"),
     }
+    if parsed_args_dict.pop("constant_shift_only"):
+      kwargs["floatedparams"] = "constants"
     return kwargs
 
   @classmethod
