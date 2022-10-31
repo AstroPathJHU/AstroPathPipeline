@@ -18,7 +18,7 @@ def main() :
     parser.add_argument('--outdir',type=pathlib.Path,
                         help='Path to the directory that should hold the output *_cores.csv and *_samples.csv files')
     args = parser.parse_args()
-    #get necessary information from files that already exist
+    #get information from files that already exist
     #write out the *_cores.csv file
     #write out the *_samples.csv file
 
