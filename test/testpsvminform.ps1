@@ -15,6 +15,7 @@ Class testpsvminform : testtools {
     [string]$outpath = "C:\Users\Public\BatchProcessing"
     [string]$referenceim3
     [string]$protocolcopy
+    [string]$placeholder
     [switch]$jenkins = $false
     [switch]$versioncheck = $false
     [string]$class = 'vminform'
@@ -117,6 +118,7 @@ Class testpsvminform : testtools {
         $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\testing_vminform'
         $inp.islocal = $false
         $inp.inputimagepath = $inp.outpath + '\' + $inp.sample.slideid + '\im3\flatw'
+        $this.placeholder = $this.basepath + '\..\test_for_jenkins\testing_vminform'
     }
     <# --------------------------------------------
     testvminformconstruction
@@ -151,6 +153,11 @@ Class testpsvminform : testtools {
         Write-Host '    saving initial protocol'
         Write-Host ('    copying from ' + $inp.algpath + ' to ' + $this.protocolcopy)
         $inp.sample.copy($inp.algpath, $this.protocolcopy)
+        #
+        Write-Host '    saving flatwim3 placeholder'
+        $placeholderfile = $inp.sample.flatwim3folder() + '\placeholder.txt'
+        Write-Host ('    copying from ' + $placeholderfile + ' to ' + $this.placeholder)
+        $inp.sample.copy($placeholderfile, $this.placeholder)
         #
         $md_processloc = (
             $this.outpath,
@@ -620,7 +627,7 @@ Class testpsvminform : testtools {
             '2022-04-09 02:06:26,645 ERROR - C:\Users\Public\BatchProcessing\M21_1\im3\flatw\M21_1_[47521,11163].im3:',
             '     Sequence contains no elements',
             '2022-04-08 21:43:49,192 ERROR - Phenotyping problem processing image "M21_1_[40866,11715]": A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond',
-            '2022-06-07 15:24:13,680 ERROR - Adaptive Cell Segmentation problem processing image',
+            '2022-06-07 15:24:13,680 ERROR - Adaptive Cell Segmentation problem processing image "M21_1_[19572,40984]"',
             '<!>C:/Program Files/Akoya/inForm/2.4.8/AcapellaResources/AcapellaJengaPlugin/Scripts/DetectMembrane.script(112) [Stencil::AssertFlat]: The stencil contains overlapped objects, cannot raise stencil.@prop:flat flag.'
         ) -join "`n"
         $inp.sample.PopFile($inp.informbatchlog, $errorlines)
@@ -630,7 +637,7 @@ Class testpsvminform : testtools {
         if ($inp.corruptedfiles.length -ne 1) {
             throw 'check batch error failed - incorrect number of corrupted files'
         }
-        if ($inp.skippedfiles.length -ne 45) {
+        if ($inp.skippedfiles.length -ne 44) {
             throw 'check batch error failed - incorrect number of skipped files'
         }
         if ($inp.corruptedfiles -notmatch 'M21_1_\[40866,11715\]') {
@@ -639,6 +646,12 @@ Class testpsvminform : testtools {
         if (!($inp.skippedfiles -match 'M21_1_\[41633,16763\]' -and $inp.skippedfiles -match 'M21_1_\[47521,11163\]')) {
             throw 'segment cell error check failed to add skipped files'
         }
+        if (!($inp.skippedfiles -match 'M21_1_\[19572,40984\]')) {
+            throw 'stencil contains overlapped objects check failed to add skipped files'
+        }
+        #
+        $inp.sample.CreateNewDirs($this.outpath)
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         #
         Write-Host 'test check for known batch errors finished'
     }
@@ -800,12 +813,20 @@ Class testpsvminform : testtools {
     [void]cleanprotocol($inp) {
         #
         Write-Host '.'
-        Write-Host 'returning initial protocol'
+        Write-Host 'starting clean protocol'
+        'returning initial protocol'
         $savedalg = $this.protocolcopy + '\' + $inp.alg
         Write-Host ('    copying from ' + $savedalg + ' to ' + $inp.algpath + '\..')
         $inp.sample.copy($savedalg, ($inp.algpath + '\..'))
         $inp.sample.removefile($savedalg)
         Write-Host 'finished return initial protocol'
+        #
+        Write-Host 'returning initial flatw placeholder'
+        $savedplaceholder = $this.placeholder + '\placeholder.txt'
+        Write-Host ('    copying from ' + $savedplaceholder + ' to ' + $inp.sample.flatwim3folder())
+        $inp.sample.copy($savedplaceholder, ($inp.sample.flatwim3folder()))
+        $inp.sample.removefile($savedplaceholder)
+        Write-Host 'finished return initial flatwplaceholder'
         #
     }
 }
