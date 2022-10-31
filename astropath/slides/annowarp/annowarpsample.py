@@ -1,4 +1,4 @@
-import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, skimage.transform, sklearn.linear_model, uncertainties as unc
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import AnnotationInfo, Region, Vertex
@@ -190,7 +190,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     """
     return units.convertpscale(self.__bigtileoffsetpixels*self.oneappixel, self.apscale, self.imscale)
 
-  def getimages(self, *, keep=False):
+  def getimages(self, *, keep=False, **kwargs):
     """
     Load the wsi and qptiff images and scale them to the same scale
 
@@ -198,6 +198,11 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
           this function it's quicker (default: False)
     """
     if self.__images is not None: return self.__images
+    images = self._getimages(**kwargs)
+    if keep: self.__images = images
+    return images
+
+  def _getimages(self):
     #load the images
     with self.using_images() as (wsi, qptiff):
       #scale them so that they're at the same scale
@@ -217,10 +222,9 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
       wsi = np.asarray(wsi)
       qptiff = np.asarray(qptiff)
 
-      if keep: self.__images = wsi, qptiff
       return wsi, qptiff
 
-  def align(self, *, debug=False, write_result=False, roundinitialshiftpixels=1):
+  def align(self, *, debug=False, write_result=False, roundinitialshiftpixels=1, initialshiftzoomfactor=5):
     """
     Break the wsi and qptiff into tiles and align them
     with respect to each other.  Returns a list of results.
@@ -252,11 +256,10 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     #the results reported are the total relative shift of the wsi and
     #qptiff.
 
-    zoomfactor = 5
     wsizoom = PIL.Image.fromarray(wsi)
-    wsizoom = np.asarray(wsizoom.resize(np.array(wsizoom.size)//zoomfactor))
+    wsizoom = np.asarray(wsizoom.resize(np.array(wsizoom.size)//initialshiftzoomfactor))
     qptiffzoom = PIL.Image.fromarray(qptiff)
-    qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//zoomfactor))
+    qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//initialshiftzoomfactor))
     firstresult = computeshift((qptiffzoom, wsizoom), usemaxmovementcut=False)
 
     if roundinitialshiftpixels is None:
@@ -264,11 +267,11 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     else:
       roundtonearest = roundinitialshiftpixels * onepixel
     roundtonearest = roundtonearest // onepixel * onepixel
-    initialdx = floattoint(float(np.rint(firstresult.dx.n * zoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
-    initialdy = floattoint(float(np.rint(firstresult.dy.n * zoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
+    initialdx = floattoint(float(np.rint(firstresult.dx.n * initialshiftzoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
+    initialdy = floattoint(float(np.rint(firstresult.dy.n * initialshiftzoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
 
     if initialdx or initialdy:
-      self.logger.warningglobal(f"found a relative shift of {firstresult.dx*zoomfactor, firstresult.dy*zoomfactor} pixels between the qptiff and wsi")
+      self.logger.warningglobal(f"found a relative shift of {firstresult.dx*initialshiftzoomfactor, firstresult.dy*initialshiftzoomfactor} pixels between the qptiff and wsi")
 
     initialdxvec = np.array([initialdx, initialdy])
 
@@ -881,7 +884,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     if filename is None: filename = self.regionscsv
     writetable(filename, self.warpedregions)
 
-  def runannowarp(self, *, readalignments=False, roundinitialshiftpixels=1, **kwargs):
+  def runannowarp(self, *, readalignments=False, roundinitialshiftpixels=1, initialshiftzoomfactor=5, **kwargs):
     """
     run the full chain
 
@@ -891,7 +894,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnno
     """
     if any(a.isonqptiff for a in self.annotations if a.name != "empty"):
       if not readalignments:
-        self.align(roundinitialshiftpixels=roundinitialshiftpixels)
+        self.align(roundinitialshiftpixels=roundinitialshiftpixels, initialshiftzoomfactor=initialshiftzoomfactor)
         self.writealignments()
       else:
         self.readalignments()
@@ -1002,6 +1005,17 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSampleWithPolygons,
     """
     with self.using_tissuemask():
       return super().align(*args, **kwargs)
+
+  def _getimages(self, **kwargs):
+    wsi, qptiff = super()._getimages(**kwargs)
+
+    wsi = wsi.copy()
+    with self.using_tissuemask() as mask:
+      mask = skimage.transform.downscale_local_mean(mask, self.ppscale).astype(bool)
+      mask = mask[:wsi.shape[0], :wsi.shape[1]]
+      wsi[~mask] = 0
+
+    return wsi, qptiff
 
 class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample):
   """

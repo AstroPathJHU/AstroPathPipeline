@@ -71,6 +71,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"annowarp",
       thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation",
       thisfolder/"test_for_jenkins"/"annowarp"/"emptyannotation",
+      thisfolder/"test_for_jenkins"/"annowarp"/"constants",
     ):
       yield root/"logfiles"/"annowarp.log"
       for SlideID in "M206",:
