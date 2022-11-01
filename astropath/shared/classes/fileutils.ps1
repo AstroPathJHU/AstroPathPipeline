@@ -249,7 +249,7 @@ class fileutils : generalutils {
         $names = @()
         #
         foreach ($i1 in (1..$columns)){
-            $cell = $worksheet.Cells.Item(1, $i1).text
+            $cell = $worksheet.Cells.Item(1, $i1).text.trim()
             if ($cell){
                 $names += $cell
             } else {

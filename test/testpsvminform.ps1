@@ -9,28 +9,29 @@ using module .\testtools.psm1
  functioning as intended
  -------------------------------------------#>
 #
-Class testvminform : testtools {
+Class testpsvminform : testtools {
     #
     [string]$module = 'vminform'
     [string]$outpath = "C:\Users\Public\BatchProcessing"
     [string]$referenceim3
     [string]$protocolcopy
+    [string]$placeholder
     [switch]$jenkins = $false
     [switch]$versioncheck = $false
     [string]$class = 'vminform'
     #
-    testvminform() : base(){
+    testpsvminform() : base(){
         #
         $this.launchtests()
         #
     }
-    testvminform($jenkins) : base(){
+    testpsvminform($jenkins) : base(){
         #
         $this.jenkins = $true
         $this.launchtests()
         #
     }
-    testvminform($ver, $proj) : base(){
+    testpsvminform($ver, $proj) : base(){
         #
         $this.versioncheck = $true
         $this.informvers = $ver
@@ -62,7 +63,6 @@ Class testvminform : testtools {
         $this.testcheckexportoptions($inp)
         $this.runversioncheck($inp)
         $this.cleanprotocol($inp)
-        $this.testgitstatus($inp.sample)
         Write-Host '.'
         #
     }
@@ -107,7 +107,6 @@ Class testvminform : testtools {
         
         if ($this.jenkins) {
             $this.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
-            $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\vminform'
             $inp.outpath = $this.basepath + '\..\test_for_jenkins\BatchProcessing'
             $inp.informoutpath = $this.outpath + '\' + $this.informantibody + '_0'
             $inp.image_list_file = $this.outpath + '\image_list.tmp'
@@ -116,6 +115,10 @@ Class testvminform : testtools {
             $inp.processvars[1] = $this.outpath
             $inp.processvars[2] = $this.outpath
         }
+        $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\testing_vminform'
+        $inp.islocal = $false
+        $inp.inputimagepath = $inp.outpath + '\' + $inp.sample.slideid + '\im3\flatw'
+        $this.placeholder = $this.basepath + '\..\test_for_jenkins\testing_vminform'
     }
     <# --------------------------------------------
     testvminformconstruction
@@ -150,6 +153,11 @@ Class testvminform : testtools {
         Write-Host '    saving initial protocol'
         Write-Host ('    copying from ' + $inp.algpath + ' to ' + $this.protocolcopy)
         $inp.sample.copy($inp.algpath, $this.protocolcopy)
+        #
+        Write-Host '    saving flatwim3 placeholder'
+        $placeholderfile = $inp.sample.flatwim3folder() + '\placeholder.txt'
+        Write-Host ('    copying from ' + $placeholderfile + ' to ' + $this.placeholder)
+        $inp.sample.copy($placeholderfile, $this.placeholder)
         #
         $md_processloc = (
             $this.outpath,
@@ -200,6 +208,7 @@ Class testvminform : testtools {
         }
         #
         $inp.sample.CreateNewDirs($this.outpath)
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         Write-Host 'test create image list finished'
         #
     }
@@ -373,12 +382,13 @@ Class testvminform : testtools {
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         $inp.sample.CreateNewDirs($this.outpath)
         #
-        $this.referenceim3 = $inp.sample.MSIfolder() + '\M21_1_[45093,13253].im3'
+        $this.referenceim3 = $inp.sample.im3folder() + '\M21_1_[45093,13253].im3'
         Write-Host '    copying reference im3 file to flatw folder:' $this.referenceim3
         $inp.sample.copy($this.referenceim3, $inp.sample.flatwim3folder())
         #
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
+        $inp.inputimageids = $null
         $inp.CreateImageList()
         $inp.CheckExportOptions()
         #
@@ -459,10 +469,11 @@ Class testvminform : testtools {
         $inp.sample.CreateNewDirs($this.outpath)
         #
         Write-Host '    copying reference im3 files to flatw folder'
-        $inp.sample.copy($inp.sample.MSIfolder(), $inp.sample.flatwim3folder(), '.im3', 30)
+        $inp.sample.copy($inp.sample.im3folder(), $inp.sample.flatwim3folder(), '.im3', 30)
         #
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
+        $inp.inputimageids = $null
         $inp.CreateImageList()
         $inp.CheckExportOptions()
         #
@@ -615,7 +626,9 @@ Class testvminform : testtools {
             '2022-04-09 02:06:26,645 ERROR - Phenotyping problem processing image "M21_1_[47521,11163]": Please segment cells.',
             '2022-04-09 02:06:26,645 ERROR - C:\Users\Public\BatchProcessing\M21_1\im3\flatw\M21_1_[47521,11163].im3:',
             '     Sequence contains no elements',
-            '2022-04-08 21:43:49,192 ERROR - Phenotyping problem processing image "M21_1_[40866,11715]": A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond'
+            '2022-04-08 21:43:49,192 ERROR - Phenotyping problem processing image "M21_1_[40866,11715]": A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond',
+            '2022-06-07 15:24:13,680 ERROR - Adaptive Cell Segmentation problem processing image "M21_1_[19572,40984]"',
+            '<!>C:/Program Files/Akoya/inForm/2.4.8/AcapellaResources/AcapellaJengaPlugin/Scripts/DetectMembrane.script(112) [Stencil::AssertFlat]: The stencil contains overlapped objects, cannot raise stencil.@prop:flat flag.'
         ) -join "`n"
         $inp.sample.PopFile($inp.informbatchlog, $errorlines)
         $batchlog = $inp.sample.GetContent($inp.informbatchlog)
@@ -624,7 +637,7 @@ Class testvminform : testtools {
         if ($inp.corruptedfiles.length -ne 1) {
             throw 'check batch error failed - incorrect number of corrupted files'
         }
-        if ($inp.skippedfiles.length -ne 43) {
+        if ($inp.skippedfiles.length -ne 44) {
             throw 'check batch error failed - incorrect number of skipped files'
         }
         if ($inp.corruptedfiles -notmatch 'M21_1_\[40866,11715\]') {
@@ -633,6 +646,12 @@ Class testvminform : testtools {
         if (!($inp.skippedfiles -match 'M21_1_\[41633,16763\]' -and $inp.skippedfiles -match 'M21_1_\[47521,11163\]')) {
             throw 'segment cell error check failed to add skipped files'
         }
+        if (!($inp.skippedfiles -match 'M21_1_\[19572,40984\]')) {
+            throw 'stencil contains overlapped objects check failed to add skipped files'
+        }
+        #
+        $inp.sample.CreateNewDirs($this.outpath)
+        $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         #
         Write-Host 'test check for known batch errors finished'
     }
@@ -746,6 +765,7 @@ Class testvminform : testtools {
         #
         $inp.CreateOutputDir()
         $inp.DownloadFiles()
+        $inp.inputimageids = $null
         $inp.CreateImageList()
         $inp.CheckExportOptions()
         #
@@ -792,26 +812,36 @@ Class testvminform : testtools {
     --------------------------------------------#>
     [void]cleanprotocol($inp) {
         #
-        Write-Host '    returning initial protocol'
+        Write-Host '.'
+        Write-Host 'starting clean protocol'
+        'returning initial protocol'
         $savedalg = $this.protocolcopy + '\' + $inp.alg
         Write-Host ('    copying from ' + $savedalg + ' to ' + $inp.algpath + '\..')
         $inp.sample.copy($savedalg, ($inp.algpath + '\..'))
-        $inp.sample.CreateNewDirs($this.protocolcopy)
+        $inp.sample.removefile($savedalg)
+        Write-Host 'finished return initial protocol'
+        #
+        Write-Host 'returning initial flatw placeholder'
+        $savedplaceholder = $this.placeholder + '\placeholder.txt'
+        Write-Host ('    copying from ' + $savedplaceholder + ' to ' + $inp.sample.flatwim3folder())
+        $inp.sample.copy($savedplaceholder, ($inp.sample.flatwim3folder()))
+        $inp.sample.removefile($savedplaceholder)
+        Write-Host 'finished return initial flatwplaceholder'
         #
     }
 }
 #
 # launch test and exit if no error found
 #
-#[testvminform]::new() | Out-Null
+#[testpsvminform]::new() | Out-Null
 
 #
 # add $jenkins parameter to constructor if testing on jenkins
 #
-[testvminform]::new($jenkins) | Out-Null
+[testpsvminform]::new($jenkins) | Out-Null
 
 #
 # add version and project parameters to constructor to test different versions of inform
 #
-#[testvminform]::new('2.6.0', 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr') | Out-Null
+#[testpsvminform]::new('2.6.0', 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr') | Out-Null
 exit 0

@@ -375,6 +375,7 @@
         $cmodule = 'vminform'
         $this.moduleinfo.($cmodule).($antibody).algorithm  = ''
         #
+        #If previous module is not complete, fail
         if ($this.checkpreviousstep($cmodule)){
             return 1
         }
@@ -382,6 +383,7 @@
         $this.vmq.getmainslide($this.slideid, $true) 
         $this.vmq.getlocalslide($this.slideid, $this.project, $true) 
         #
+        #If there are still running or queued tasks to run, fail
         if ($this.vmq.checkfornewtask($this.project, 
             $this.slideid, $antibody)){
                 return 1
@@ -392,6 +394,7 @@
             return 1
         }
         #
+        #If task has been previously queued and is currently running, return 'running'
         $taskid = $this.vmq.checkforreadytask($this.project, 
             $this.slideid, $antibody)
         #
@@ -401,7 +404,6 @@
         if ($taskid){
             return 2
         }
-        #
         $taskid = $this.vmq.checkforfinishtask($this.project, 
             $this.slideid, $antibody)
         #
@@ -413,10 +415,12 @@
             return 5
         }
         #
+        #If batch log algorithm does not match last queued algorithm, fail
         if (!$this.testinformfiles($antibody, $taskid.algorithm)) {
             return 6
         }
         #
+        #Otherwise, return 'complete'
         return 3
         #
     }
