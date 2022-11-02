@@ -4,7 +4,7 @@ import numpy as np
 from astropath.utilities.config import CONST as UNIV_CONST
 from astropath.utilities.img_file_io import get_raw_as_hwl, read_image_from_layer_files
 from astropath.shared.samplemetadata import MetadataSummary
-from astropath.shared.sample import ReadRectanglesIm3FromXML, TissueSampleBase, XMLLayoutReaderByHPF
+from astropath.shared.sample import ReadRectanglesIm3FromXML, TissueSampleBase
 from astropath.hpfs.flatfield.config import CONST
 from astropath.hpfs.flatfield.appliedflatfieldcohort import AppliedFlatfieldCohort
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
@@ -16,7 +16,7 @@ shardedim3root = folder/'test_for_jenkins'/'applied_flatfield_cohort'/'raw'
 slideID = 'M21_1'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
 
-class DummySample(ReadRectanglesIm3FromXML, XMLLayoutReaderByHPF, TissueSampleBase) :
+class DummySample(ReadRectanglesIm3FromXML, TissueSampleBase) :
 
     def __init__(self,*args,filetype='raw',**kwargs) :
         super().__init__(*args,filetype=filetype,uselogfiles=False,**kwargs)

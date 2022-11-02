@@ -3,7 +3,7 @@ from ...shared.argumentparser import DbloadArgumentParser
 from ...shared.csvclasses import Constant, Batch, ExposureTime, QPTiffCsv
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.qptiff import QPTiff
-from ...shared.sample import DbloadSampleBase, TissueSampleBase, WorkflowSample, XMLLayoutReader, XMLLayoutReaderByHPF
+from ...shared.sample import DbloadSampleBase, TissueSampleBase, TMASampleBase, WorkflowSample, XMLLayoutReader
 from ...utilities import units
 from ...utilities.config import CONST as UNIV_CONST
 
@@ -286,9 +286,7 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollec
   def writemetadata(self, *, _skipqptiff=False):
     self.dbload.mkdir(parents=True, exist_ok=True)
     self.writerectangles()
-    self.writeexposures()
     self.writeoverlaps()
-    self.writebatch()
     self.writeglobals()
     if _skipqptiff:
       self.logger.warningglobal("as requested, not writing the qptiff info.  subsequent steps that rely on constants.csv may not work.")
@@ -302,8 +300,6 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollec
   def inputfiles(self, *, _skipqptiff=False, **kwargs):
     result = super().inputfiles(**kwargs) + [
       self.annotationsxmlfile,
-      self.fullxmlfile,
-      self.parametersxmlfile,
     ]
     imagefolder = self.scanfolder/"MSI"
     if not imagefolder.exists():
@@ -318,18 +314,21 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollec
     return result
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, dbloadroot, _skipqptiff=False, **otherkwargs):
+  def getoutputfiles(cls, **kwargs):
+    SlideID = kwargs["SlideID"]
+    dbloadroot = kwargs["dbloadroot"]
+    _skipqptiff = kwargs.get("_skipqptiff", False)
     dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [
-      dbload/f"{SlideID}_batch.csv",
-      dbload/f"{SlideID}_exposures.csv",
       dbload/f"{SlideID}_overlap.csv",
       dbload/f"{SlideID}_rect.csv",
-    ] + ([
-      dbload/f"{SlideID}_constants.csv",
-      dbload/f"{SlideID}_qptiff.csv",
-      dbload/f"{SlideID}{UNIV_CONST.QPTIFF_SUFFIX}",
-    ] if not _skipqptiff else [])
+      *([
+        dbload/f"{SlideID}_constants.csv",
+        dbload/f"{SlideID}_qptiff.csv",
+        dbload/f"{SlideID}{UNIV_CONST.QPTIFF_SUFFIX}",
+      ] if not _skipqptiff else []),
+      *super().getoutputfiles(**kwargs),
+    ]
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
@@ -347,11 +346,39 @@ class PrepDbSampleBase(XMLLayoutReader, DbloadSampleBase, RectangleOverlapCollec
     old = "prepSample end"
     return rf"(?:{old}|{new})"
 
-class PrepDbSample(PrepDbSampleBase, XMLLayoutReaderByHPF, TissueSampleBase):
+class PrepDbSample(PrepDbSampleBase, TissueSampleBase):
+  def writemetadata(self, **kwargs):
+    super().writemetadata(**kwargs)
+    self.writeexposures()
+    self.writebatch()
+
+  def inputfiles(self, **kwargs):
+    result = super().inputfiles(**kwargs) + [
+      self.fullxmlfile,
+      self.parametersxmlfile,
+    ]
+    return result
+
+  @classmethod
+  def getoutputfiles(cls, **kwargs):
+    SlideID = kwargs["SlideID"]
+    dbloadroot = kwargs["dbloadroot"]
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
+    return [
+      dbload/f"{SlideID}_exposures.csv",
+      dbload/f"{SlideID}_batch.csv",
+      *super().getoutputfiles(**kwargs),
+    ]
+
+
+class PrepDbSampleTMA(PrepDbSampleBase, TMASampleBase):
   pass
 
 def main(args=None):
   PrepDbSample.runfromargumentparser(args)
+
+def tma(args=None):
+  PrepDbSampleTMA.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

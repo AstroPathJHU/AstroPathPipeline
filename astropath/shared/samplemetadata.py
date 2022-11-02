@@ -1,7 +1,7 @@
-import abc, dataclassy, pathlib
+import abc, dataclassy, datetime, pathlib
 from ..utilities.config import CONST as UNIV_CONST
-from ..utilities.dataclasses import MyDataClassFrozen
-from ..utilities.tableio import boolasintfield, readtable, writetable
+from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
+from ..utilities.tableio import boolasintfield, datefield, readtable, writetable
 
 class SampleDefBase(MyDataClassFrozen):
   """
@@ -20,6 +20,10 @@ class SampleDefBase(MyDataClassFrozen):
   @property
   @abc.abstractmethod
   def isGood(self): pass
+
+  @classmethod
+  @abc.abstractmethod
+  def sampledefcsv(cls, root): pass
 
   def __post_init__(self, *args, **kwargs):
     if self.SlideID is None:
@@ -61,7 +65,7 @@ class SampleDefBase(MyDataClassFrozen):
         if duplicates:
           raise TypeError(f"Provided {', '.join(duplicates)} multiple times, explicitly and within samp")
         kwargs.update(newkwargs)
-        if isinstance(samp, SampleDef):
+        if isinstance(samp, SampleDefBase):
           return super().transforminitargs(*args, **kwargs)
 
     args, kwargs = cls.initargsfromsampledefcsv(*args, root=root, **kwargs)
@@ -74,7 +78,7 @@ class SampleDefBase(MyDataClassFrozen):
           pass
       if "BatchID" not in kwargs and kwargs.get("Scan", None) is not None:
         try:
-          with open(root/kwargs["SlideID"]/UNIV_CONST.IM3_DIR_NAME/f"Scan{kwargs['Scan']}"/"BatchID.txt") as f:
+          with open(root/kwargs["SlideID"]/UNIV_CONST.IM3_DIR_NAME/f"Scan{kwargs['Scan']:d}"/"BatchID.txt") as f:
             kwargs["BatchID"] = int(f.read())
         except FileNotFoundError:
           pass
@@ -158,18 +162,38 @@ class APIDDef(SampleDefBase):
   def __bool__(self):
     return bool(self.isGood)
 
+  @classmethod
+  def sampledefcsv(cls, root):
+    result, = (root/"upkeep_and_progress").glob("AstropathAPIDdef_*.csv")
+    return result
+
 class ControlTMASampleDef(SampleDefBase):
-  Project: int
-  Cohort: int
-  CtrlID: int
-  TMA: int
-  Ctrl: int
-  Date: str
-  BatchID: str
-  Scan: str
-  SlideID: str
+  Project: int = MetaDataAnnotation(None)
+  Cohort: int = MetaDataAnnotation(None)
+  CtrlID: int = MetaDataAnnotation(None)
+  TMA: int = MetaDataAnnotation(None)
+  Ctrl: int = MetaDataAnnotation(None)
+  Date: datetime.datetime = datefield("%m.%d.%Y", None)
+  BatchID: str = MetaDataAnnotation(None)
+  Scan: int = MetaDataAnnotation(None, readfunction=lambda x: int(x.replace("Scan", "")), writefunction="Scan{:d}".format)
+  SlideID: str = MetaDataAnnotation(None)
+  def __post_init__(self, **kwargs):
+    if self.Project is None: raise ValueError("Have to provide Project")
+    if self.Cohort is None: raise ValueError("Have to provide Cohort")
+    if self.CtrlID is None: raise ValueError("Have to provide CtrlID")
+    if self.TMA is None: raise ValueError("Have to provide TMA")
+    if self.Ctrl is None: raise ValueError("Have to provide Ctrl")
+    if self.Date is None: raise ValueError("Have to provide Date")
+    if self.BatchID is None: raise ValueError("Have to provide BatchID")
+    if self.Scan is None: raise ValueError("Have to provide Scan")
+    if self.SlideID is None: raise ValueError("Have to provide SlideID")
+    return super().__post_init__(**kwargs)
   @property
   def isGood(self): return True
+  @classmethod
+  def sampledefcsv(cls, root):
+    result, = (root/"Ctrl").glob("project*_ctrlsamples.csv")
+    return result
 
 class MetadataSummary(MyDataClassFrozen):
   """

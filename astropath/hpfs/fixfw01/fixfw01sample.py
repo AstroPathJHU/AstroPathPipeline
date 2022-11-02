@@ -1,6 +1,6 @@
 import contextlib, dataclassy, job_lock, numpy as np
 from ...shared.argumentparser import Im3ArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser
-from ...shared.sample import ReadRectanglesDbloadIm3, ReadRectanglesIm3Base, ReadRectanglesIm3FromXML, SelectLayersIm3WorkflowSample, TissueSampleBase, XMLLayoutReaderByHPF
+from ...shared.sample import ReadRectanglesDbloadIm3, ReadRectanglesIm3Base, ReadRectanglesIm3FromXML, SelectLayersIm3WorkflowSample, TissueSampleBase
 from ...slides.prepdb.prepdbsample import PrepDbSample
 from ...utilities.miscfileio import CorruptMemmapError, memmapcontext, rm_missing_ok
 
@@ -107,7 +107,7 @@ class FixFW01SampleBase(ReadRectanglesIm3Base, SelectLayersIm3WorkflowSample, Ti
       for filename in (shardedim3root/SlideID).glob(f"{SlideID}_*.fw")
     ]
 
-class FixFW01SampleXML(FixFW01SampleBase, ReadRectanglesIm3FromXML, XMLLayoutReaderByHPF):
+class FixFW01SampleXML(FixFW01SampleBase, ReadRectanglesIm3FromXML):
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
     return super().workflowdependencyclasses(**kwargs)

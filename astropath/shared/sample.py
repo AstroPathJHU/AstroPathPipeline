@@ -133,7 +133,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     The sample's scan folder
     """
-    return self.im3folder/f"Scan{self.Scan}"
+    return self.im3folder/f"Scan{self.Scan:d}"
 
   @property
   def qptifffilename(self):
@@ -207,7 +207,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return self.xmlfolder/(self.SlideID+".Full.xml")
   @classmethod
   def getannotationsxmlfile(cls, SlideID, *, Scan, im3root, **otherworkflowkwargs):
-    return im3root/SlideID/"im3"/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}_annotations.xml"
+    return im3root/SlideID/"im3"/f"Scan{Scan:d}"/f"{SlideID}_Scan{Scan:d}_annotations.xml"
   @property
   def annotationsxmlfile(self):
     return self.getannotationsxmlfile(**self.workflowkwargs)
@@ -1566,9 +1566,8 @@ class XMLLayoutReader(SampleBase):
       rectangle.n = i
 
   @property
-  @abc.abstractmethod
   def im3filenameregex(self):
-    pass
+    return rf"{self.SlideID}(?:_Core\[[0-9]+,[0-9]+,[0-9]+\])?_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
 
   @methodtools.lru_cache()
   def getdir(self):
@@ -1638,16 +1637,6 @@ class XMLLayoutReader(SampleBase):
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "includehpfsflaggedforacquisition": parsed_args_dict.pop("include_hpfs_flagged_for_acquisition"),
     }
-
-class XMLLayoutReaderByHPF(XMLLayoutReader):
-  @property
-  def im3filenameregex(self):
-    return rf"{self.SlideID}_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
-
-class XMLLayoutReaderByTMACore(XMLLayoutReader, TMASampleBase):
-  @property
-  def im3filenameregex(self):
-    return rf"{self.SlideID}_Core\[[0-9]+,[0-9]+,[0-9]+\]_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
 
 class SampleWithAnnotationInfos(SampleBase, ThingWithAnnotationInfos):
   def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):

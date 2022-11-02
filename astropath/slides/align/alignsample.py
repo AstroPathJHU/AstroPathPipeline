@@ -3,7 +3,7 @@
 import contextlib, methodtools, numpy as np
 
 from ...shared.argumentparser import DbloadArgumentParser, SelectRectanglesArgumentParser
-from ...shared.sample import DbloadSample, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, TissueSampleBase, TMASampleBase, WorkflowSample, XMLLayoutReaderByHPF
+from ...shared.sample import DbloadSample, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, TissueSampleBase, TMASampleBase, WorkflowSample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
 from ...utilities.tableio import writetable
@@ -392,7 +392,7 @@ class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSamp
   see README.md and README.pdf in this folder.
   """
 
-class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTissueBase, XMLLayoutReaderByHPF):
+class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTissueBase):
   """
   An align sample that runs on im3 images and does not rely on the dbload folder.
   This class is used for calibrating the warping.
@@ -404,13 +404,13 @@ class AlignSampleComponentTiff(AlignSampleComponentTiffBase, ReadRectanglesOverl
   This class is not currently used but is here for completeness.
   """
 
-class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, AlignSampleTissueBase, ReadRectanglesOverlapsComponentTiffFromXML, XMLLayoutReaderByHPF):
+class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, AlignSampleTissueBase, ReadRectanglesOverlapsComponentTiffFromXML):
   """
   An align sample that runs on component tiff images and does not rely on the dbload folder.
   This class is used for identifying overexposed HPFs.
   """
 
-class AlignSampleFromXMLTMA(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTMABase, XMLLayoutReaderByHPF):
+class AlignSampleFromXMLTMA(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTMABase):
   """
   Like AlignSampleFromXML, but for a TMA control sample instead of a tissue sample
   """
