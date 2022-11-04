@@ -1529,8 +1529,8 @@ class XMLLayoutReader(SampleBase):
     Fix rectangle filenames if the coordinates are messed up
     """
     for r in rectangles:
-      expected = r.expectedfilename.name
-      actual = r.file.name
+      expected = r.expectedfilename
+      actual = r.file
       if expected != actual:
         self.logger.warningglobalonenter(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
       r.file = expected
