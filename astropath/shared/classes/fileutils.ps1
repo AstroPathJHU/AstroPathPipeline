@@ -498,7 +498,7 @@ class fileutils : generalutils {
             #
             $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
             $newwatcher.Filter = $fname
-            $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite'
+            $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite, Attributes'
             #
             Register-ObjectEvent $newwatcher `
                 -EventName Changed `
@@ -520,8 +520,9 @@ class fileutils : generalutils {
     #
     [switch]testwatcher($fpath, $fname, $SI){
         #
-        $this.renamefile($fpath, $fname, "$fname.tmp")
-        $this.renamefile($fpath, "$fname.tmp", $fname)
+        $file = Get-ChildItem ("$fpath\$fname")
+        $file.Attributes = 'Archive, Hidden'
+        $file.Attributes = 'Archive'
         #
         $mevents = get-event | 
             Where-Object{$_.sourceidentifier -match [regex]::Escape($SI)}
