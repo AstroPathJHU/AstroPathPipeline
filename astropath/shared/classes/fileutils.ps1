@@ -520,7 +520,7 @@ class fileutils : generalutils {
     #
     [switch]testwatcher($fpath, $fname, $SI){
         #
-        $file = Get-ChildItem ("$fpath/$fname")
+        $file = Get-ChildItem ("$fpath\$fname")
         $file.Attributes = 'Archive, Hidden'
         $file.Attributes = 'Archive'
         #
