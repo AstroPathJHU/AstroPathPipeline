@@ -34,7 +34,7 @@ class RectangleBase(DataClassWithPscale):
   cx: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
   cy: units.Distance = distancefield(pixelsormicrons="microns", dtype=int)
   t: datetime.datetime = timestampfield()
-  file: pathlib.Path = pathfield()
+  file: pathlib.PurePath = pathfield()
   SlideID: str = MetaDataAnnotation(None, includeintable=False)
 
   def __post_init__(self, *args, xmlfolder=None, allexposures=None, **kwargs):
@@ -145,7 +145,7 @@ class Rectangle(RectangleBase):
   def expectedfilename(self):
     if self.SlideID is None:
       raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
-    return pathlib.Path(f"{self.SlideID}_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
+    return type(self.file)(f"{self.SlideID}_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
 
 class TMARectangle(RectangleBase):
   TMAsector: int
@@ -155,7 +155,7 @@ class TMARectangle(RectangleBase):
   def expectedfilename(self):
     if self.SlideID is None:
       raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
-    return pathlib.Path(f"{self.SlideID}_Core[{self.TMAsector},{self.TMAname1},{self.TMAname2}]_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
+    return type(self.file)(f"{self.SlideID}_Core[{self.TMAsector},{self.TMAname1},{self.TMAname2}]_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
 
 class RectangleWithImageLoaderBase(Rectangle):
   def __post_init__(self, *args, _DEBUG=True, _DEBUG_PRINT_TRACEBACK=False, **kwargs):
