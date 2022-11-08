@@ -65,7 +65,7 @@ class SampleDefBase(MyDataClassFrozen):
         if duplicates:
           raise TypeError(f"Provided {', '.join(duplicates)} multiple times, explicitly and within samp")
         kwargs.update(newkwargs)
-        if isinstance(samp, SampleDefBase):
+        if isinstance(samp, SampleDef):
           return super().transforminitargs(*args, **kwargs)
 
     args, kwargs = cls.initargsfromsampledefcsv(*args, root=root, **kwargs)
