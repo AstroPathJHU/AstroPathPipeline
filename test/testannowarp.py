@@ -7,6 +7,7 @@ from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohortAstroPathTiss
 from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.utilities import units
 
+from .data.assembleqptiff import assembleqptiff
 from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 from .testwriteannotationinfo import emptyannotationregexfind, emptyannotationregexreplace
 
@@ -55,8 +56,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
   @classmethod
   def setUpClass(cls):
-    from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
-    assembleqptiff()
+    assembleqptiff("M206")
     from .testzoom import gunzipreference
     gunzipreference("M206")
     from .data.M206.im3.meanimage.image_masking.hackmask import hackmask

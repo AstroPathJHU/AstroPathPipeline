@@ -8,6 +8,7 @@ from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities.miscfileio import checkwindowsnewlines
 from astropath.utilities.version.git import thisrepo
+from .data.assembleqptiff import assembleqptiff
 from .testbase import assertAlmostEqual, compare_two_images, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -90,8 +91,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
 
   @classmethod
   def setUpClass(cls):
-    from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
-    assembleqptiff()
+    assembleqptiff("M206")
     super().setUpClass()
 
 
@@ -125,7 +125,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       "M21_1": False,
       "YZ71": False,
       "ZW2": True,
-      "Control_TMA_1372_97_05.14.2019": True,
+      "Control_TMA_1372_97_05.14.2019": False,
     }[SlideID]
 
   def testPrepDb(self, SlideID="M21_1", units="safe", moreargs=[], removeoutput=True):
@@ -205,8 +205,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
     self.testPrepDb(SlideID, units="fast")
 
   def testPrepDbPolaris(self, **kwargs):
-    from .data.YZ71.im3.Scan3.assembleqptiff import assembleqptiff
-    assembleqptiff()
+    assembleqptiff("YZ71")
     self.testPrepDb(SlideID="YZ71", **kwargs)
   def testPrepDbPolarisFastUnits(self):
     self.testPrepDbPolaris(units="fast")
@@ -229,4 +228,5 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=moreargs + ["--include-bad-samples"])
 
   def testPrepDbTMA(self):
+    assembleqptiff("Control_TMA_1372_97_05.14.2019")
     self.testPrepDb(SlideID="Control_TMA_1372_97_05.14.2019", units="fast_pixels")
