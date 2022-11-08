@@ -272,5 +272,8 @@ class MakeSampleDef(RunCohortBase):
     p.add_argument("--outfile", type=pathlib.Path, help="output filename (default: root/sampledef.csv")
     return p
 
+  usetissue = True
+  useTMA = False
+
 def makesampledef(args=None):
   return MakeSampleDef.runfromargumentparser(args)
