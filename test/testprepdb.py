@@ -8,6 +8,7 @@ from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities.miscfileio import checkwindowsnewlines
 from astropath.utilities.version.git import thisrepo
+from .data.assembleqptiff import assembleqptiff
 from .testbase import assertAlmostEqual, compare_two_images, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -17,7 +18,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
 
   @property
   def outputfilenames(self):
-    SlideIDs = "M21_1", "YZ71", "M206", "ZW2"
+    SlideIDs = "M21_1", "YZ71", "M206", "ZW2", "Control_TMA_1372_97_05.14.2019"
     return [
       thisfolder/"test_for_jenkins"/"prepdb"/SlideID/"dbload"/filename.name
       for SlideID in SlideIDs
@@ -39,7 +40,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
     stack = self.__stack = contextlib.ExitStack()
     super().setUp()
     try:
-      slideids = "M21_1", "M206", "YZ71", "ZW2"
+      slideids = "M21_1", "M206", "YZ71", "ZW2", "Control_TMA_1372_97_05.14.2019"
       testroot = thisfolder/"test_for_jenkins"/"prepdb"
       for SlideID in slideids:
         logfolder = testroot/SlideID/"logfiles"
@@ -78,6 +79,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
         for filename in "batch.csv", "exposures.csv", "overlap.csv", "rect.csv", "constants.csv", "qptiff.csv", "qptiff.jpg", "globals.csv":
           if self.skipqptiff(SlideID) and filename in ("constants.csv", "qptiff.csv", "qptiff.jpg"): continue
           if SlideID == "M21_1" and filename == "globals.csv": continue
+          if "Control_TMA" in SlideID and filename in ("batch.csv", "exposures.csv", "globals.csv"): continue
           (dbloadfolder/f"{SlideID}_{filename}").touch()
     except:
       stack.close()
@@ -89,8 +91,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
 
   @classmethod
   def setUpClass(cls):
-    from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
-    assembleqptiff()
+    assembleqptiff("M206")
     super().setUpClass()
 
 
@@ -124,6 +125,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       "M21_1": False,
       "YZ71": False,
       "ZW2": True,
+      "Control_TMA_1372_97_05.14.2019": False,
     }[SlideID]
 
   def testPrepDb(self, SlideID="M21_1", units="safe", moreargs=[], removeoutput=True):
@@ -152,6 +154,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
         (f"{SlideID}_overlap.csv", Overlap, {"nclip": sample.nclip}),
       ):
         if filename == "M21_1_globals.csv": continue
+        if "Control_TMA" in filename and ("exposures" in filename or "batch" in filename or "globals" in filename): continue
         if filename == "ZW2_exposures.csv": continue #that file is huge and unnecessary
         if skipqptiff and cls in (Constant, QPTiffCsv):
           self.assertFalse((dbloadroot/SlideID/"dbload"/filename).exists())
@@ -202,8 +205,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
     self.testPrepDb(SlideID, units="fast")
 
   def testPrepDbPolaris(self, **kwargs):
-    from .data.YZ71.im3.Scan3.assembleqptiff import assembleqptiff
-    assembleqptiff()
+    assembleqptiff("YZ71")
     self.testPrepDb(SlideID="YZ71", **kwargs)
   def testPrepDbPolarisFastUnits(self):
     self.testPrepDbPolaris(units="fast")
@@ -224,3 +226,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
       with self.assertRaises(EOFError):
         self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=moreargs, removeoutput=False)
       self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=moreargs + ["--include-bad-samples"])
+
+  def testPrepDbTMA(self):
+    assembleqptiff("Control_TMA_1372_97_05.14.2019")
+    self.testPrepDb(SlideID="Control_TMA_1372_97_05.14.2019", units="fast_pixels")

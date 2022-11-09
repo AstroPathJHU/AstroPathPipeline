@@ -4,7 +4,7 @@ from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, S
 from ...shared.csvclasses import AnnotationInfo, Region, Vertex
 from ...shared.polygon import SimplePolygon
 from ...shared.qptiff import QPTiff
-from ...shared.sample import MaskWorkflowSampleBase, SampleBase, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ZoomFolderSampleBase
+from ...shared.sample import MaskWorkflowSampleBase, SampleBase, TissueSampleBase, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ZoomFolderSampleBase
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
@@ -130,7 +130,7 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
   def argumentparserhelpmessage(cls):
     return AnnoWarpSampleBase.__doc__
 
-class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, XMLPolygonAnnotationReaderSampleWithOutline, ReadAffineShiftSample, AnnoWarpArgumentParserBase):
+class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, TissueSampleBase, XMLPolygonAnnotationReaderSampleWithOutline, ReadAffineShiftSample, AnnoWarpArgumentParserBase):
   r"""
   The annowarp module aligns the wsi image created by zoom to the qptiff.
   It rewrites the annotations, which were drawn in qptiff coordinates,

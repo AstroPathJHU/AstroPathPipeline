@@ -3,7 +3,7 @@
 import contextlib, methodtools, numpy as np
 
 from ...shared.argumentparser import DbloadArgumentParser, SelectRectanglesArgumentParser
-from ...shared.sample import DbloadSample, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, WorkflowSample, XMLLayoutReaderTissue
+from ...shared.sample import DbloadSample, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, TissueSampleBase, TMASampleBase, WorkflowSample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
 from ...utilities.tableio import writetable
@@ -205,7 +205,7 @@ class AlignSampleBase(ReadRectanglesOverlapsBase):
 
 class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample, DbloadArgumentParser, SelectRectanglesArgumentParser):
   """
-  An alignment set that runs from the dbload folder and can write results
+  An align sample that runs from the dbload folder and can write results
   to the dbload folder
   """
   @property
@@ -345,10 +345,13 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample, Dbloa
       "skipannotations": True,  #don't need prepdb annotations output
     }
 
-class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML, XMLLayoutReaderTissue):
+class AlignSampleTissueBase(AlignSampleBase, TissueSampleBase): pass
+class AlignSampleTMABase(AlignSampleBase, TMASampleBase): pass
+
+class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
   """
-  An alignment set that does not rely on the dbload folder and cannot write the output.
-  It is a little slower to initialize than an alignment set that does have dbload.
+  An align sample that does not rely on the dbload folder and cannot write the output.
+  It is a little slower to initialize than an align sample that does have dbload.
   """
   def __init__(self, *args, nclip, margin=None, position=None, **kwargs):
     self.__nclip = nclip
@@ -366,7 +369,7 @@ class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML, XML
 
 class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
   """
-  An alignment set that uses im3 images
+  An align sample that uses im3 images
   """
   rectangletype = AlignmentRectangleIm3SingleLayer
   def __init__(self, *args, filetype="flatWarp", layer=None, **kwargs):
@@ -374,14 +377,14 @@ class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
 
 class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsComponentTiffBase):
   """
-  An alignment set that uses component tiffs
+  An align sample that uses component tiffs
   """
   rectangletype = AlignmentRectangleComponentTiffSingleLayer
   def __init__(self, *args, layer=None, **kwargs):
     super().__init__(*args, layercomponenttiff=layer, **kwargs)
 
-class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase):
-  #An alignment set that runs on im3 images and can write results to the dbload folder.
+class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase, AlignSampleTissueBase):
+  #An align sample that runs on im3 images and can write results to the dbload folder.
   #This is the primary AlignSample class that is used for calibration.
   """
   The alignment step of the pipeline finds the relative shift between adjacent HPFs.
@@ -389,22 +392,27 @@ class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSamp
   see README.md and README.pdf in this folder.
   """
 
-class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase):
+class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTissueBase):
   """
-  An alignment set that runs on im3 images and does not rely on the dbload folder.
+  An align sample that runs on im3 images and does not rely on the dbload folder.
   This class is used for calibrating the warping.
   """
 
-class AlignSampleComponentTiff(AlignSampleComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignSampleDbloadBase):
+class AlignSampleComponentTiff(AlignSampleComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignSampleDbloadBase, AlignSampleTissueBase):
   """
-  An alignment set that runs on component tiff images and can write results to the dbload folder.
+  An align sample that runs on component tiff images and can write results to the dbload folder.
   This class is not currently used but is here for completeness.
   """
 
-class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, ReadRectanglesOverlapsComponentTiffFromXML):
+class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, AlignSampleTissueBase, ReadRectanglesOverlapsComponentTiffFromXML):
   """
-  An alignment set that runs on component tiff images and does not rely on the dbload folder.
+  An align sample that runs on component tiff images and does not rely on the dbload folder.
   This class is used for identifying overexposed HPFs.
+  """
+
+class AlignSampleFromXMLTMA(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTMABase):
+  """
+  Like AlignSampleFromXML, but for a TMA control sample instead of a tissue sample
   """
 
 class ReadAffineShiftSample(DbloadSample):

@@ -6,7 +6,7 @@ from ...shared.argumentparser import ArgumentParserWithVersionRequirement, InitA
 from ...shared.csvclasses import Annotation, AnnotationInfo, Batch, Constant, ExposureTime, PhenotypedCell, QPTiffCsv, Region, ROIGlobals
 from ...shared.rectangle import GeomLoadRectangle, PhenotypedRectangle, Rectangle
 from ...shared.overlap import Overlap
-from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, WorkflowSample
+from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectanglesDbload, TissueSampleBase, WorkflowSample
 from ...shared.workflowdependency import ThingWithRoots, ThingWithWorkflowKwargs
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield, TableReader
@@ -98,7 +98,7 @@ class RunCsvScanBase(CsvScanBase, ArgumentParserWithVersionRequirement, InitAndR
     }
     return kwargs
 
-class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase, RunCsvScanBase):
+class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPhenotypeSampleBase, TissueSampleBase, RunCsvScanBase):
   rectangletype = CsvScanRectangle
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)

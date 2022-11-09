@@ -138,7 +138,7 @@ using module .\testtools.psm1
             '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
                          $this.pybatchflatfieldtest + '.bin'),
             '--octets-only',$inp.gpuopt(), '--no-log --ignore-dependencies --allow-local-edits',
-            '--use-apiddef --project', $this.project.PadLeft(2,'0')
+            '--use-apiddef'
         ) -join ' ') + $wd
         #
         $this.compareinputs($userpythontask, $pythontask)

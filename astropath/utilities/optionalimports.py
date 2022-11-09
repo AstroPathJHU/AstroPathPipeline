@@ -24,7 +24,12 @@ class OptionalImport:
     pass
 
   def __getattr__(self, attr):
-    self.doimport()
+    try:
+      self.doimport()
+    except ImportError:
+      if attr == "__wrapped__": #make doctest work even if the import fails
+        return False
+      raise
     return getattr(self.__module, attr)
 
 class OgrImport(OptionalImport):

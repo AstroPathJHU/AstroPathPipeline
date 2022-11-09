@@ -1,13 +1,13 @@
 import abc, methodtools, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
-from ...hpfs.flatfield.meanimagesample import MeanImageSampleIm3
+from ...hpfs.flatfield.meanimagesample import MeanImageSampleIm3Tissue
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMask, ThingWithTissueMaskPolygons
 from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
 from ...shared.logging import ThingWithLogger
 from ...shared.rectangle import MaskRectangleBase, AstroPathTissueMaskRectangle
 from ...shared.rectangletransformation import ImageTransformation
-from ...shared.sample import MaskSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, MaskWorkflowSampleBase
+from ...shared.sample import MaskSampleBase, MaskWorkflowSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, TissueSampleBase
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
@@ -123,7 +123,7 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   def tissuemasktransformation(self):
     return ImageTransformation(lambda mask: mask.astype(bool))
 
-class StitchMaskSample(WriteMaskSampleBase):
+class StitchMaskSample(WriteMaskSampleBase, TissueSampleBase):
   """
   Base class for stitching the global mask together from the individual HPF masks
   """
@@ -267,7 +267,7 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [MeanImageSampleIm3] + super().workflowdependencyclasses(**kwargs)
+    return [MeanImageSampleIm3Tissue] + super().workflowdependencyclasses(**kwargs)
 
   @property
   def workflowkwargs(self):

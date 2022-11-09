@@ -177,6 +177,9 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   def workflowdependencies(self, **kwargs):
     return [(CsvScanSample, sampledef.SlideID) for sampledef in self.sampledefs() if sampledef]
 
+  usetissue = True
+  useTMA = False
+
 class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort, SelectRectanglesCohort, WorkflowCohort, RunCsvScanBase):
   sampleclass = CsvScanSample
   __doc__ = sampleclass.__doc__
