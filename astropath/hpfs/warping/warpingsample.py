@@ -8,7 +8,7 @@ from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentP
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, TissueSampleBase, WorkflowSample
 from ..flatfield.config import CONST as FF_CONST
 from ..flatfield.utilities import ThresholdTableEntry
-from ..flatfield.meanimagesample import MeanImageSample
+from ..flatfield.meanimagesample import MeanImageSampleIm3
 from .config import CONST
 from .utilities import OverlapOctet
 from .rectangle import AlignmentRectangleForWarping
@@ -134,7 +134,7 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
         return{**super().workflowkwargs,'skip_masking':False,'workingdir':self.__workingdir}
     @classmethod
     def workflowdependencyclasses(cls, **kwargs):
-        return [MeanImageSample]+super().workflowdependencyclasses(**kwargs)
+        return [MeanImageSampleIm3]+super().workflowdependencyclasses(**kwargs)
 
     #################### PRIVATE HELPER FUNCTIONS ####################
 

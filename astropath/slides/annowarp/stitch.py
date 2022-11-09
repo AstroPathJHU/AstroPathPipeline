@@ -150,6 +150,12 @@ class AnnoWarpStitchResultBase(units.ThingWithImscale):
         floatedparams = [True] * cls.nparams()
       else:
         raise ValueError(f"Unknown floatedparams {floatedparams!r}")
+
+    if mus is None:
+      mus = [None] * cls.nparams()
+    if sigmas is None:
+      sigmas = [None] * cls.nparams()
+
     return np.asarray(floatedparams), mus, sigmas
 
 class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
@@ -208,15 +214,10 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     sigmas: widths of the gaussian constraints
     floatedparams: which parameters to float
     """
-    if mus is None:
-      mus = [None] * cls.nparams()
-    if sigmas is None:
-      sigmas = [None] * cls.nparams()
+    floatedparams, mus, sigmas = cls.floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
 
     mus = np.array(mus)
     sigmas = np.array(sigmas)
-
-    floatedparams, mus, sigmas = cls.floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
 
     #add the alignment result contributions
     A = b = c = 0
@@ -441,6 +442,10 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
     if isinstance(floatedparams, str):
       if floatedparams == "constants":
         floatedparams = [False]*8+[True]*2
+        if mus is sigmas is None:
+          mus = [0] * 8 + [None] * 2
+          sigmas = [1e-10 * alignmentresults[0].onepixel] * 8 + [None] * 2
+
     floatedparams, mus, sigmas = super().floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
 
     bigtileindices = np.array([_.bigtileindex for _ in alignmentresults])

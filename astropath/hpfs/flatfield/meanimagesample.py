@@ -10,26 +10,21 @@ from ...shared.image_masking.config import CONST as MASK_CONST
 from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
 from ...shared.overlap import Overlap
-from ...shared.sample import WorkflowSample, ParallelSample
-from ...shared.sample import MaskSampleBase, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, TissueSampleBase
+from ...shared.sample import MaskSampleBase, ParallelSample, ReadRectanglesOverlapsComponentTiffFromXML, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, TissueSampleBase, WorkflowSample
 from .config import CONST
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image
 from .utilities import RectangleThresholdTableEntry, FieldLog, ThresholdTableEntry
 from .latexsummary import ThresholdingLatexSummary, MaskingLatexSummary
 from .plotting import plot_tissue_edge_rectangle_locations, plot_image_layer_thresholds_with_histograms
 from .plotting import plot_background_thresholds_by_layer, plot_flagged_HPF_locations
-from .imagestack import MeanImage
+from .meanimage import MeanImageComponentTiff, MeanImageIm3
 
-class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, MaskSampleBase, 
-                          ParallelSample, TissueSampleBase, FileTypeArgumentParser, WorkingDirArgumentParser) :
+class MeanImageSampleBase(MaskSampleBase,ParallelSample,WorkingDirArgumentParser) :
     """
-    Base class to use in running the basic MeanImage methods (i.e. not to be used bare in workflows)
-    Used as the starting point for actual MeanImageSamples as well as other types of samples that use MeanImage stuff
+    Base class to use for defining MeanImageSamples for multiple types of input files
     """
 
-    #################### PUBLIC FUNCTIONS ####################
-
-    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),skip_masking=False,**kwargs) :
+    def __init__(self,*args,workingdir,skip_masking=False,**kwargs) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
         self.__workingdirpath = workingdir
@@ -41,11 +36,13 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         self.__skip_masking = skip_masking
         self.field_logs = []
         self.__image_masking_dirpath = None
+        self.__use_precomputed_masks = False
 
-    def create_or_find_image_masks(self) :
+    #################### PUBLIC FUNCTIONS ####################
+
+    def set_image_masking_dirpath(self) :
         """
         Sets some variables as to where to find the image masks for the sample
-        If they can't be found they will be created
         """
         #set the image masking directory path 
         #by default this is just the default maskfolder in root/slideID/im3/meanimage/image_masking
@@ -56,21 +53,17 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
             and self.maskroot==self.root ) :
             self.maskfolder=self.__workingdirpath/CONST.IMAGE_MASKING_SUBDIR_NAME
         self.__image_masking_dirpath = self.maskfolder if not self.__skip_masking else None
+        #self.__image_masking_dirpath = self.im3folder/'meanimage'/'image_masking'
         if (self.__image_masking_dirpath is not None) and (not self.__image_masking_dirpath.is_dir()) :
             self.__image_masking_dirpath.mkdir(parents=True)
-        self.__use_precomputed_masks = False
         if self.__image_masking_dirpath.is_dir() :
             self.__use_precomputed_masks = self.__dir_has_precomputed_masks(self.__image_masking_dirpath)
-        if not self.__use_precomputed_masks :
-            self.__create_sample_image_masks()
-        else :
-            self.logger.debug(f'Will use already-created image masks in {self.__image_masking_dirpath}')
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
     overlaptype = Overlap
     nclip = UNIV_CONST.N_CLIP
-    
+
     @property
     def workingdirpath(self) :
         return self.__workingdirpath
@@ -80,27 +73,36 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
     @property
     def image_masking_dirpath(self) :
         return self.__image_masking_dirpath
-    @methodtools.lru_cache()
     @property
-    def exposure_time_histograms_and_bins_by_layer_group(self) :
-        all_exp_times = {}
-        for lgn in self.layer_groups.keys() :
-            all_exp_times[lgn] = []
-        for r in self.rectangles :
-            for lgn,lgb in self.layer_groups.items() :
-                all_exp_times[lgn].append(r.allexposuretimes[lgb[0]-1])    
-        exp_time_hists_and_bins = {}
-        for lgn in self.layer_groups.keys() :
-            newhist,newbins = np.histogram(all_exp_times[lgn],bins=60)
-            exp_time_hists_and_bins[lgn] = (newhist,newbins)
-        return exp_time_hists_and_bins
-
+    def use_precomputed_masks(self) :
+        return self.__use_precomputed_masks
     @property
     def rectangleextrakwargs(self):
       return {
         **super().rectangleextrakwargs,
         "_DEBUG": False, #need to load images multiple times
       }
+
+    #################### PRIVATE HELPER FUNCTIONS ####################
+    
+    def __dir_has_precomputed_masks(self,dirpath) :
+        """
+        Return True if the given directory has a complete set of mask files needed to run for the slide
+        """
+        if (dirpath/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME).is_file() :
+            lmrs_as_read = readtable(dirpath/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,LabelledMaskRegion)
+            masked_rect_keys = set([lmr.image_key for lmr in lmrs_as_read])
+        else :
+            masked_rect_keys = set([])
+        for r in self.rectangles :
+            mfp = dirpath/f'{r.file.name.rstrip(UNIV_CONST.IM3_EXT)}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
+            if not mfp.is_file() :
+                return False
+            if r.file.name.rstrip(UNIV_CONST.IM3_EXT) in masked_rect_keys :
+                mfp = dirpath/f'{r.file.name.rstrip(UNIV_CONST.IM3_EXT)}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
+                if not mfp.is_file() :
+                    return False
+        return True
 
     #################### CLASS METHODS ####################
 
@@ -129,26 +131,57 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
     def defaultunits(cls) :
         return "fast"
 
-    #################### PRIVATE HELPER FUNCTIONS ####################
+class MeanImageSampleBaseComponentTiff(MeanImageSampleBase, ReadRectanglesOverlapsComponentTiffFromXML) :
+    """
+    MeanImage base class that reads ComponentTiff files
+    """
+    
+    multilayercomponenttiff=True
 
-    def __dir_has_precomputed_masks(self,dirpath) :
+    def __init__(self,*args,workingdir=pathlib.Path(f'{UNIV_CONST.MEANIMAGE_DIRNAME}_comp_tiff'),**kwargs) :
+        super().__init__(*args,workingdir=workingdir,**kwargs)
+        self.med_ets = np.ones(self.nlayersunmixed) #unmixed images are already exposure time corrected
+
+class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, 
+                             FileTypeArgumentParser) :
+    """
+    MeanImage base class that reads Im3 files
+    """
+
+    def __init__(self,*args,workingdir=pathlib.Path(UNIV_CONST.MEANIMAGE_DIRNAME),**kwargs) :
+        super().__init__(*args,workingdir=workingdir,**kwargs)
+
+    #################### PUBLIC FUNCTIONS ####################
+
+    def create_or_find_image_masks(self) :
         """
-        Return True if the given directory has a complete set of mask files needed to run for the slide
+        Sets some variables as to where to find the image masks for the sample
+        If they can't be found they will be created
         """
-        if (dirpath/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME).is_file() :
-            lmrs_as_read = readtable(dirpath/CONST.LABELLED_MASK_REGIONS_CSV_FILENAME,LabelledMaskRegion)
-            masked_rect_keys = set([lmr.image_key for lmr in lmrs_as_read])
+        self.set_image_masking_dirpath()
+        if not self.use_precomputed_masks :
+            self.__create_sample_image_masks()
         else :
-            masked_rect_keys = set([])
+            self.logger.debug(f'Will use already-created image masks in {self.image_masking_dirpath}')
+
+    #################### CLASS VARIABLES + PROPERTIES ####################
+    
+    @methodtools.lru_cache()
+    @property
+    def exposure_time_histograms_and_bins_by_layer_group(self) :
+        all_exp_times = {}
+        for lgn in self.layer_groups.keys() :
+            all_exp_times[lgn] = []
         for r in self.rectangles :
-            mfp = dirpath/f'{r.file.stem}_{CONST.TISSUE_MASK_FILE_NAME_STEM}'
-            if not mfp.is_file() :
-                return False
-            if r.file.stem in masked_rect_keys :
-                mfp = dirpath/f'{r.file.stem}_{CONST.BLUR_AND_SATURATION_MASK_FILE_NAME_STEM}'
-                if not mfp.is_file() :
-                    return False
-        return True
+            for lgn,lgb in self.layer_groups.items() :
+                all_exp_times[lgn].append(r.allexposuretimes[lgb[0]-1])    
+        exp_time_hists_and_bins = {}
+        for lgn in self.layer_groups.keys() :
+            newhist,newbins = np.histogram(all_exp_times[lgn],bins=60)
+            exp_time_hists_and_bins[lgn] = (newhist,newbins)
+        return exp_time_hists_and_bins
+
+    #################### PRIVATE HELPER FUNCTIONS ####################
 
     def __create_sample_image_masks(self) :
         """
@@ -173,7 +206,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                                                                (im,self.layer_groups,self.brightest_layers,
                                                                 r.file.stem,
                                                                 background_thresholds,ets,
-                                                                self.__image_masking_dirpath))
+                                                                self.image_masking_dirpath))
                 for (rn,rfile),res in proc_results.items() :
                     try :
                         new_lmrs = res.get()
@@ -194,7 +227,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                         new_lmrs=return_new_mask_labelled_regions(im,self.layer_groups,self.brightest_layers,
                                                                   r.file.stem,
                                                                   background_thresholds,ets,
-                                                                  self.__image_masking_dirpath)
+                                                                  self.image_masking_dirpath)
                         labelled_mask_regions+=new_lmrs
                 except Exception as e :
                     warnmsg = f'WARNING: getting image mask for rectangle {r.n} ({r.file.stem})'
@@ -205,14 +238,14 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         if len(labelled_mask_regions)>0 :
             #write out the table of labelled mask regions
             self.logger.debug('Writing out labelled mask regions')
-            with cd(self.__image_masking_dirpath) :
+            with cd(self.image_masking_dirpath) :
                 writetable(f'{CONST.LABELLED_MASK_REGIONS_CSV_FILENAME}',labelled_mask_regions)
             #save some masking plots for images with the largest numbers of masked pixels
             self.__save_set_of_masking_plots(labelled_mask_regions,background_thresholds)
         #make and save the plot of the flagged HPF locations
-        plot_flagged_HPF_locations(self.SlideID,self.rectangles,labelled_mask_regions,self.__image_masking_dirpath)
+        plot_flagged_HPF_locations(self.SlideID,self.rectangles,labelled_mask_regions,self.image_masking_dirpath)
         #write out the latex summary containing all of the image masking plots that were made
-        latex_summary = MaskingLatexSummary(self.SlideID,self.__image_masking_dirpath)
+        latex_summary = MaskingLatexSummary(self.SlideID,self.image_masking_dirpath)
         latex_summary.build_tex_file()
         check = latex_summary.compile()
         if check!=0 :
@@ -226,7 +259,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         or calculating them from the rectangles on the edges of the tissue
         """
         #first check the working directory for the background threshold file
-        threshold_file_path = self.__workingdirpath/f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}'
+        threshold_file_path = self.workingdirpath/f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}'
         #if it's not in the working directory, check in the slide's meanimage directory (if it exists)
         if not threshold_file_path.is_file() :
             other_tfp = self.root/self.SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME 
@@ -264,7 +297,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         Also makes some plots and datatables in the process
         """
         self.logger.debug(f'Finding background thresholds for {self.SlideID} using images on the edges of the tissue')
-        thresholding_plot_dir = self.__workingdirpath/CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
+        thresholding_plot_dir = self.workingdirpath/CONST.THRESHOLDING_SUMMARY_PDF_FILENAME.replace('.pdf','_plots')
         #get the list of rectangles that are on the edge of the tissue, plot their locations, 
         #and save a summary of their metadata
         msg = f'Found {len(self.tissue_edge_rects)} images on the edge of the tissue from a set of '
@@ -276,7 +309,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         edge_rect_ts = [r.t for r in self.tissue_edge_rects]
         mds = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
                               str(min(edge_rect_ts)),str(max(edge_rect_ts)))
-        writetable(self.__workingdirpath/f'{self.SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}',
+        writetable(self.workingdirpath/f'{self.SlideID}-{CONST.METADATA_SUMMARY_THRESHOLDING_IMAGES_CSV_FILENAME}',
                   [mds])
         #find the optimal thresholds for each tissue edge image, write them out, 
         #and make plots of the thresholds found in each layer
@@ -295,10 +328,10 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                                                              np.median(valid_layer_thresholds)/self.med_ets[li]))
             else :
                 chosen_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),-1.))
-        writetable(self.__workingdirpath/f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',
+        writetable(self.workingdirpath/f'{self.SlideID}-{CONST.BACKGROUND_THRESHOLD_CSV_FILE_NAME_STEM}',
                    chosen_thresholds)
         self.logger.debug('Saving final thresholding plots')
-        thresholding_datatable_fp = self.__workingdirpath/f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}'
+        thresholding_datatable_fp = self.workingdirpath/f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}'
         if thresholding_datatable_fp.is_file() :
             plot_background_thresholds_by_layer(thresholding_datatable_fp,chosen_thresholds,thresholding_plot_dir)
         plot_image_layer_thresholds_with_histograms(image_bgts_by_layer,chosen_thresholds,image_hists_by_layer,
@@ -387,7 +420,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
         #write out the data table of all the individual rectangle layer thresholds
         if len(rectangle_data_table_entries)>0 :
             self.logger.debug('Writing out individual image threshold datatable')
-            with cd(self.__workingdirpath) :
+            with cd(self.workingdirpath) :
                 writetable(f'{self.SlideID}-{CONST.THRESHOLDING_DATA_TABLE_CSV_FILENAME}',rectangle_data_table_entries)
         return image_background_thresholds_by_layer, tissue_edge_layer_hists
 
@@ -439,7 +472,7 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                                                                 r.file.stem,
                                                                 background_thresholds,ets,r.allexposuretimes,
                                                                 self.exposure_time_histograms_and_bins_by_layer_group,
-                                                                self.__image_masking_dirpath))
+                                                                self.image_masking_dirpath))
                 for (rn,rfile),res in proc_results.items() :
                     try :
                         res.get()
@@ -459,16 +492,16 @@ class MeanImageSampleBase(ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, M
                                              r.file.stem,background_thresholds,
                                              self.med_ets if self.et_offset_file is not None else r.allexposuretimes,
                                              r.allexposuretimes,self.exposure_time_histograms_and_bins_by_layer_group,
-                                             self.__image_masking_dirpath)
+                                             self.image_masking_dirpath)
                 except Exception as e :
                     warnmsg = f'WARNING: saving masking plots for rectangle {r.n} '
                     warnmsg+= f'({r.file.stem}) failed with the error "{e}"'
                     self.logger.warning(warnmsg) 
                     raise e
 
-class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
+class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSample,XMLLayoutReaderTissue) :
     """
-    Main class to handle creating the meanimage for a slide
+    Class to handle creating the meanimage for a slide based on the unmixed component tiff images
     """
 
     #################### PUBLIC FUNCTIONS ####################
@@ -477,11 +510,11 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         #initialize the parent classes
         super().__init__(*args,**kwargs)
         #start up the meanimage
-        self.__meanimage = MeanImage((self.fheight,self.fwidth,self.nlayersim3),self.logger)
+        self.__meanimage = MeanImageComponentTiff((self.fheight,self.fwidth,self.nlayersunmixed),self.logger)
 
     def inputfiles(self,**kwargs) :
         return [*super().inputfiles(**kwargs),
-                *(r.im3file for r in self.rectangles),
+                *(r.componenttifffile for r in self.rectangles),
                ]
 
     def run(self) :
@@ -489,7 +522,9 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
         Main "run" function to be looped when entire cohorts are run
         """
         if not self.skip_masking :
-            self.create_or_find_image_masks()
+            self.set_image_masking_dirpath()
+            if not self.use_precomputed_masks :
+                raise NotImplementedError('ERROR: cannot run MeanImageSampleComponentTiff without pre-computed masks!')
         #make the mean image from all of the tissue bulk rectangles
         n_threads = self.njobs if self.njobs is not None else 4
         new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,self.med_ets,
@@ -522,6 +557,70 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
     def getoutputfiles(cls,SlideID,root,skip_masking,workingdir=None,**otherworkflowkwargs) :
         outputfiles = []
         if workingdir is None:
+            meanimagedir = root/SlideID/UNIV_CONST.IM3_DIR_NAME/f'{UNIV_CONST.MEANIMAGE_DIRNAME}_comp_tiff'
+        else:
+            meanimagedir = workingdir
+        outputfiles.append(meanimagedir/f'{SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        outputfiles.append(meanimagedir/f'{SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}')
+        outputfiles.append(meanimagedir/f'{SlideID}-{CONST.STD_ERR_OF_MEAN_IMAGE_BIN_FILE_NAME_STEM}')
+        return outputfiles
+    @classmethod
+    def logmodule(cls) : 
+        return "meanimage_comp_tiff"
+    @classmethod
+    def workflowdependencyclasses(cls, **kwargs):
+        return super().workflowdependencyclasses(**kwargs)
+
+class MeanImageSampleIm3(MeanImageSampleBaseIm3,WorkflowSample,XMLLayoutReader) :
+    """
+    Main class to handle creating the meanimage for a slide based on the Im3 images
+    """
+
+    def __init__(self,*args,**kwargs) :
+        #initialize the parent classes
+        super().__init__(*args,**kwargs)
+        #start up the meanimage
+        self.__meanimage = MeanImageIm3((self.fheight,self.fwidth,self.nlayersim3),self.logger)
+
+    def inputfiles(self,**kwargs) :
+        return [*super().inputfiles(**kwargs),
+                *(r.im3file for r in self.rectangles),
+               ]
+
+    def run(self) :
+        """
+        Main "run" function to be looped when entire cohorts are run
+        """
+        if not self.skip_masking :
+            self.create_or_find_image_masks()
+        #make the mean image from all of the tissue bulk rectangles
+        n_threads = self.njobs if self.njobs is not None else 4
+        new_field_logs = self.__meanimage.stack_rectangle_images(self,self.tissue_bulk_rects,self.med_ets,
+                                                                 self.image_masking_dirpath,n_threads)
+        for fl in new_field_logs :
+            fl.slide = self.SlideID
+            self.field_logs.append(fl)
+        bulk_rect_ts = [r.t for r in self.tissue_bulk_rects]
+        if len(bulk_rect_ts)>0 :
+            mds = MetadataSummary(self.SlideID,self.Project,self.Cohort,self.microscopename,
+                                  str(min(bulk_rect_ts)),str(max(bulk_rect_ts)))
+            writetable(self.workingdirpath/f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}',[mds])
+        #create and write out the final mask stack, mean image, and std. error of the mean image
+        self.__meanimage.make_mean_image()
+        self.__meanimage.write_output(self.SlideID,self.workingdirpath)
+        #write out the field log
+        if len(self.field_logs)>0 :
+            with cd(self.workingdirpath) :
+                writetable(CONST.FIELDS_USED_CSV_FILENAME,self.field_logs)
+
+    @property
+    def workflowkwargs(self) :
+        return{**super().workflowkwargs,'skip_masking':self.skip_masking,'workingdir':self.workingdirpath}
+
+    @classmethod
+    def getoutputfiles(cls,SlideID,root,skip_masking,workingdir=None,**otherworkflowkwargs) :
+        outputfiles = []
+        if workingdir is None:
             meanimagedir = root/SlideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
         else:
             meanimagedir = workingdir
@@ -541,10 +640,18 @@ class MeanImageSample(MeanImageSampleBase,WorkflowSample) :
     def workflowdependencyclasses(cls, **kwargs):
         return super().workflowdependencyclasses(**kwargs)
 
+class MeanImageSampleComponentTiffTissue(MeanImageSampleComponentTiff, TissueSampleBase) :
+    pass
+class MeanImageSampleIm3Tissue(MeanImageSampleIm3, TissueSampleBase) :
+    pass
+
 #################### FILE-SCOPE FUNCTIONS ####################
 
 def main(args=None) :
-    MeanImageSample.runfromargumentparser(args)
+    MeanImageSampleIm3Tissue.runfromargumentparser(args)
+
+def meanimagesamplecomponenttiff(args=None) :
+    MeanImageSampleComponentTiffTissue.runfromargumentparser(args)
 
 if __name__=='__main__' :
     main()

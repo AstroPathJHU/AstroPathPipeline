@@ -1,4 +1,4 @@
-import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, sklearn.linear_model, uncertainties as unc
+import abc, contextlib, itertools, methodtools, more_itertools, networkx as nx, numpy as np, PIL, skimage.filters, skimage.transform, sklearn.linear_model, uncertainties as unc
 
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser, SelectRectanglesArgumentParser, ZoomFolderArgumentParser
 from ...shared.csvclasses import AnnotationInfo, Region, Vertex
@@ -101,6 +101,8 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
     p = super().makeargumentparser(_forworkflow=_forworkflow, **kwargs)
     p.add_argument("--tilepixels", type=int, default=cls.defaulttilepixels, help=f"size of the tiles to use for alignment (default: {cls.defaulttilepixels})")
     p.add_argument("--round-initial-shift-pixels", type=int, default=1, help="for the initial shift, shift by increments of this many pixels (default: 1)")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--constant-shift-only", action="store_true", help="don't warp the annotations, force a constant shift only")
     if not _forworkflow:
       p.add_argument("--dont-align", action="store_true", help="read the alignments from existing csv files and just stitch")
     return p
@@ -118,8 +120,10 @@ class AnnoWarpArgumentParserBase(DbloadArgumentParser, SelectRectanglesArgumentP
     kwargs = {
       **super().runkwargsfromargumentparser(parsed_args_dict),
       "readalignments": parsed_args_dict.pop("dont_align", False),
-      "roundinitialshiftpixels": parsed_args_dict.pop("round_initial_shift_pixels", 1)
+      "roundinitialshiftpixels": parsed_args_dict.pop("round_initial_shift_pixels", 1),
     }
+    if parsed_args_dict.pop("constant_shift_only"):
+      kwargs["floatedparams"] = "constants"
     return kwargs
 
   @classmethod
@@ -186,7 +190,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, TissueSampleBa
     """
     return units.convertpscale(self.__bigtileoffsetpixels*self.oneappixel, self.apscale, self.imscale)
 
-  def getimages(self, *, keep=False):
+  def getimages(self, *, keep=False, **kwargs):
     """
     Load the wsi and qptiff images and scale them to the same scale
 
@@ -194,6 +198,11 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, TissueSampleBa
           this function it's quicker (default: False)
     """
     if self.__images is not None: return self.__images
+    images = self._getimages(**kwargs)
+    if keep: self.__images = images
+    return images
+
+  def _getimages(self):
     #load the images
     with self.using_images() as (wsi, qptiff):
       #scale them so that they're at the same scale
@@ -213,10 +222,9 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, TissueSampleBa
       wsi = np.asarray(wsi)
       qptiff = np.asarray(qptiff)
 
-      if keep: self.__images = wsi, qptiff
       return wsi, qptiff
 
-  def align(self, *, debug=False, write_result=False, roundinitialshiftpixels=1):
+  def align(self, *, debug=False, write_result=False, roundinitialshiftpixels=1, initialshiftzoomfactor=5):
     """
     Break the wsi and qptiff into tiles and align them
     with respect to each other.  Returns a list of results.
@@ -248,11 +256,10 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, TissueSampleBa
     #the results reported are the total relative shift of the wsi and
     #qptiff.
 
-    zoomfactor = 5
     wsizoom = PIL.Image.fromarray(wsi)
-    wsizoom = np.asarray(wsizoom.resize(np.array(wsizoom.size)//zoomfactor))
+    wsizoom = np.asarray(wsizoom.resize(np.array(wsizoom.size)//initialshiftzoomfactor))
     qptiffzoom = PIL.Image.fromarray(qptiff)
-    qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//zoomfactor))
+    qptiffzoom = np.asarray(qptiffzoom.resize(np.array(qptiffzoom.size)//initialshiftzoomfactor))
     firstresult = computeshift((qptiffzoom, wsizoom), usemaxmovementcut=False)
 
     if roundinitialshiftpixels is None:
@@ -260,11 +267,11 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, TissueSampleBa
     else:
       roundtonearest = roundinitialshiftpixels * onepixel
     roundtonearest = roundtonearest // onepixel * onepixel
-    initialdx = floattoint(float(np.rint(firstresult.dx.n * zoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
-    initialdy = floattoint(float(np.rint(firstresult.dy.n * zoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
+    initialdx = floattoint(float(np.rint(firstresult.dx.n * initialshiftzoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
+    initialdy = floattoint(float(np.rint(firstresult.dy.n * initialshiftzoomfactor / (roundtonearest/onepixel)) * np.rint(roundtonearest/onepixel)), rtol=1e-4) * onepixel
 
     if initialdx or initialdy:
-      self.logger.warningglobal(f"found a relative shift of {firstresult.dx*zoomfactor, firstresult.dy*zoomfactor} pixels between the qptiff and wsi")
+      self.logger.warningglobal(f"found a relative shift of {firstresult.dx*initialshiftzoomfactor, firstresult.dy*initialshiftzoomfactor} pixels between the qptiff and wsi")
 
     initialdxvec = np.array([initialdx, initialdy])
 
@@ -612,13 +619,13 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, TissueSampleBa
       if len(alignmentresults) < 15:
         self.logger.warningglobal("didn't find good alignment results in big islands, trying to stitch with smaller islands")
         allkwargs["_choosetiles"] = "smallislands"
-        return self.stitch_nocvxpy(**allkwargs)
+        return self.stitch_cvxpy(**allkwargs)
     elif _choosetiles == "smallislands":
       alignmentresults = alignmentresults.goodconnectedresults(minislandsize=4)
       if len(alignmentresults) < 15:
         self.logger.warningglobal("didn't find good alignment results in small islands, using all good alignment results for stitching")
         allkwargs["_choosetiles"] = "all"
-        return self.stitch_nocvxpy(**allkwargs)
+        return self.stitch_cvxpy(**allkwargs)
     elif _choosetiles == "all":
       alignmentresults = alignmentresults.goodresults
     else:
@@ -877,7 +884,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, TissueSampleBa
     if filename is None: filename = self.regionscsv
     writetable(filename, self.warpedregions)
 
-  def runannowarp(self, *, readalignments=False, roundinitialshiftpixels=1, **kwargs):
+  def runannowarp(self, *, readalignments=False, roundinitialshiftpixels=1, initialshiftzoomfactor=5, **kwargs):
     """
     run the full chain
 
@@ -887,7 +894,7 @@ class AnnoWarpSampleBase(QPTiffSample, WSISample, WorkflowSample, TissueSampleBa
     """
     if any(a.isonqptiff for a in self.annotations if a.name != "empty"):
       if not readalignments:
-        self.align(roundinitialshiftpixels=roundinitialshiftpixels)
+        self.align(roundinitialshiftpixels=roundinitialshiftpixels, initialshiftzoomfactor=initialshiftzoomfactor)
         self.writealignments()
       else:
         self.readalignments()
@@ -998,6 +1005,17 @@ class AnnoWarpSampleTissueMask(AnnoWarpSampleBase, TissueMaskSampleWithPolygons,
     """
     with self.using_tissuemask():
       return super().align(*args, **kwargs)
+
+  def _getimages(self, **kwargs):
+    wsi, qptiff = super()._getimages(**kwargs)
+
+    wsi = wsi.copy()
+    with self.using_tissuemask() as mask:
+      mask = skimage.transform.downscale_local_mean(mask, self.ppscale).astype(bool)
+      mask = mask[:wsi.shape[0], :wsi.shape[1]]
+      wsi[~mask] = 0
+
+    return wsi, qptiff
 
 class AnnoWarpSampleInformTissueMask(AnnoWarpSampleTissueMask, InformMaskSample):
   """

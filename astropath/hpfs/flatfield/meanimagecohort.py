@@ -1,16 +1,15 @@
 #imports
 from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort
-from .meanimagesample import MeanImageSample
+from .meanimagesample import MeanImageSampleBase, MeanImageSampleComponentTiff, MeanImageSampleIm3
 
-class MeanImageCohort(CorrectedImageCohort, ParallelCohort, MaskCohort, SelectRectanglesCohort, 
-                      WorkflowCohort, WorkingDirArgumentParser, FileTypeArgumentParser) :
-    sampleclass = MeanImageSample
+class MeanImageCohortBase(CorrectedImageCohort, ParallelCohort, MaskCohort, SelectRectanglesCohort, 
+                          WorkflowCohort, WorkingDirArgumentParser) :
+    sampleclass = MeanImageSampleBase
     __doc__ = sampleclass.__doc__
 
-    def __init__(self,*args,filetype='raw',workingdir=None,skip_masking=False,**kwargs) :
+    def __init__(self,*args,workingdir=None,skip_masking=False,**kwargs) :
         super().__init__(*args,**kwargs)
-        self.filetype = filetype
         self.workingdir=workingdir
         self.skip_masking = skip_masking
 
@@ -32,7 +31,6 @@ class MeanImageCohort(CorrectedImageCohort, ParallelCohort, MaskCohort, SelectRe
     @property
     def initiatesamplekwargs(self) :
         rd = {**super().initiatesamplekwargs,
-              'filetype':self.filetype,
               'skip_masking':self.skip_masking,
             }
         if self.workingdir is not None :
@@ -46,8 +44,24 @@ class MeanImageCohort(CorrectedImageCohort, ParallelCohort, MaskCohort, SelectRe
             result['workingdir'] = self.workingdir
         return result
 
+class MeanImageCohortComponentTiff(MeanImageCohortBase) :
+    sampleclass = MeanImageSampleComponentTiff
+
+class MeanImageCohortIm3(MeanImageCohortBase, FileTypeArgumentParser) :
+    sampleclass = MeanImageSampleIm3
+
+    def __init__(self,*args,filetype='raw',**kwargs) :
+        super().__init__(*args,**kwargs)
+        self.filetype = filetype
+
+    @property
+    def initiatesamplekwargs(self) :
+        return {**super().initiatesamplekwargs,
+                'filetype':self.filetype,
+            }
+
 def main(args=None) :
-    MeanImageCohort.runfromargumentparser(args)
+    MeanImageCohortIm3.runfromargumentparser(args)
 
 if __name__ == "__main__":
     main()

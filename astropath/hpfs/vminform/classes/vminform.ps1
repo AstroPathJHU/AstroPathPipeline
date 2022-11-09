@@ -60,7 +60,7 @@ Class vminform : moduletools {
     }
     #
     $error_dictionary = @{
-        ConnectionFailed = 'A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond';
+        ConnectionFailed = 'A connection attempt failed because the connected party did not properly respond after a period of time';
         NoElements = 'Sequence contains no elements';
         SegmentCells = 'Please segment cells';
         CorruptIM3 = 'External component has thrown an exception';
@@ -142,6 +142,7 @@ Class vminform : moduletools {
         }
         #
         $this.ReturnData()
+        $this.datavalidation()
         #
     }
     <# -----------------------------------------
@@ -496,7 +497,8 @@ Class vminform : moduletools {
         #
         $errs = $this.sample.GetContent($this.informprocesserrorlog)
         if ($errs){
-            $this.sample.warning($errs)
+            $this.sample.error($errs)
+            throw 'Error in inform process, please check log for information'
         }
         #
         $batchlog = $this.sample.GetContent($this.informbatchlog)
@@ -575,12 +577,16 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]CheckForKnownErrors($batchlog){
         $completestring = 'Batch process is completed'
-        $errormessage = $batchlog.Where({$_ -match $completestring}, 'SkipUntil')
-        $this.sample.warning(($errormessage | Select-Object -skip 1))
+        $errormessage = ($batchlog.Where({$_ -match $completestring}, 'SkipUntil'))
+        $this.sample.warning($errormessage)
+        #
+        #Combine multi-line errors and split up unique errors based on AP error lines
+        $fullerror = ($errormessage -join '') -split '\d+-\d+-\d+ \d+:\d+:\d+,\d+'
         #
         $this.skippedfiles = @()
-        if ($errormessage.length -gt 0) {
-            foreach ($errorline in $errormessage) {
+        if ($fullerror.length -gt 0) {
+            foreach ($errorline in $fullerror) {
+                $matches = $null
                 $errorline -match '\[\d+,\d+\]'
                 if ($matches) {
                     $imageid = $matches[0]
@@ -616,6 +622,10 @@ Class vminform : moduletools {
             }
             $this.error_dictionary.OverlappedObjects {
                 $this.skippedfiles += $filepath
+            }
+            default {
+                $this.sample.error($errorline)
+                throw 'New inform error, check log for information'
             }
         }
         #
@@ -734,6 +744,17 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]silentcleanup(){
         $this.sample.CreateNewDirs($this.outpath)
+    }
+    <# -----------------------------------------
+     datavalidation
+     Validation of output data
+     ------------------------------------------
+     Usage: $this.datavalidation()
+    ----------------------------------------- #>
+    [void]datavalidation(){
+        if (!$this.sample.testinformfiles($this.abx, $this.alg)){
+            throw 'Output files are not correct'
+        }
     }
     #
 }

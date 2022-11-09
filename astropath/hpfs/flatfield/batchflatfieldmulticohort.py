@@ -3,76 +3,21 @@ import pathlib, re
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.tableio import readtable
 from ...utilities.img_file_io import get_image_hwl_from_xml_file
-from ...shared.sample import TissueSampleBase, WorkflowSample
 from ...shared.cohort import WorkflowCohort
 from ...shared.multicohort import MultiCohortBase
 from .config import CONST
 from .utilities import FlatfieldModelTableEntry
-from .imagestack import Flatfield
-from .meanimagesample import MeanImageSample
+from .flatfield import FlatfieldComponentTiff, FlatfieldIm3
+from .batchflatfieldsample import BatchFlatfieldSampleBase, BatchFlatfieldSampleComponentTiffTissue, BatchFlatfieldSampleIm3Tissue
 
-class BatchFlatfieldSample(WorkflowSample, TissueSampleBase) :
+class BatchFlatfieldCohortBase(WorkflowCohort) :
     """
-    Small utility class to hold sample-dependent information for the batch flatfield run
-    Just requires as input files the relevant output of the meanimage mode
-    """
-
-    multilayer = True
-
-    def __init__(self,*args,version,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
-        super().__init__(*args,**kwargs)
-        self.__meanimage_dirname = meanimage_dirname
-        self.__version = version
-
-    @property
-    def meanimagefolder(self) :
-        return self.im3folder/self.__meanimage_dirname
-    @property
-    def meanimage(self) :
-        return self.meanimagefolder/f'{self.SlideID}-{CONST.MEAN_IMAGE_BIN_FILE_NAME_STEM}'
-    @property
-    def sumimagessquared(self) :
-        return self.meanimagefolder/f'{self.SlideID}-{CONST.SUM_IMAGES_SQUARED_BIN_FILE_NAME_STEM}'
-    @property
-    def maskstack(self) :
-        return self.meanimagefolder/f'{self.SlideID}-{CONST.MASK_STACK_BIN_FILE_NAME_STEM}'
-    @property
-    def fieldsused(self) :
-        return self.meanimagefolder/CONST.FIELDS_USED_CSV_FILENAME
-    @property
-    def metadatasummary(self) :
-        return self.meanimagefolder/f'{self.SlideID}-{CONST.METADATA_SUMMARY_STACKED_IMAGES_CSV_FILENAME}'
-    def inputfiles(self,**kwargs) :
-        return [*super().inputfiles(**kwargs),
-                self.meanimage,self.sumimagessquared,self.maskstack,self.fieldsused,self.metadatasummary]
-    def run(self,flatfield,samplesprocessed,totalsamples) :
-        msg = f'Adding mean image and mask stack from {self.SlideID} meanimage directory "{self.meanimagefolder}" '
-        msg+= f'to flatfield model version {self.__version} ({len(samplesprocessed)+1} of {totalsamples})....'
-        self.logger.info(msg)
-        flatfield.add_batchflatfieldsample(self)
-        samplesprocessed.append(self)
-    @classmethod
-    def getoutputfiles(cls,**kwargs) :
-        return [*super().getoutputfiles(**kwargs)]
-    @classmethod
-    def defaultunits(cls) :
-        return MeanImageSample.defaultunits()
-    @classmethod
-    def logmodule(cls) : 
-        return "batchflatfield"
-    @classmethod
-    def workflowdependencyclasses(cls, **kwargs):
-        return [*super().workflowdependencyclasses(**kwargs),MeanImageSample]
-
-class BatchFlatfieldCohort(WorkflowCohort) :
-    """
-    Class to handle combining several samples' meanimages into a single flatfield model for a batch
-    (Single-cohort placeholder for BatchFlatfieldMultiCohort)
+    Base class for combining several samples' mean images into a flatfield model
     """
 
-    sampleclass = BatchFlatfieldSample
+    sampleclass = BatchFlatfieldSampleBase
 
-    def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,version,outdir,**kwargs) :
+    def __init__(self,*args,meanimage_dirname,version,outdir,**kwargs) :
         super().__init__(*args,**kwargs) 
         self.__meanimage_dirname = meanimage_dirname
         self.__version = version
@@ -89,7 +34,27 @@ class BatchFlatfieldCohort(WorkflowCohort) :
     def workflowkwargs(self) :
         return{**super().workflowkwargs,'skip_masking':False}
 
-class BatchFlatfieldMultiCohort(MultiCohortBase):
+class BatchFlatfieldCohortComponentTiff(BatchFlatfieldCohortBase) :
+    """
+    Class to handle combining several samples' component tiff meanimages into a single flatfield model for a batch
+    """
+
+    sampleclass = BatchFlatfieldSampleComponentTiffTissue
+
+    def __init__(self,*args,meanimage_dirname=f'{UNIV_CONST.MEANIMAGE_DIRNAME}_comp_tiff',**kwargs) :
+        super().__init__(*args,meanimage_dirname=meanimage_dirname,**kwargs) 
+
+class BatchFlatfieldCohortIm3(BatchFlatfieldCohortBase) :
+    """
+    Class to handle combining several samples' im3 meanimages into a single flatfield model for a batch
+    """
+
+    sampleclass = BatchFlatfieldSampleIm3Tissue
+
+    def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
+        super().__init__(*args,meanimage_dirname=meanimage_dirname,**kwargs) 
+
+class BatchFlatfieldMultiCohortBase(MultiCohortBase):
     """
     Multi-cohort version of batch flatfield code that combines several samples' meanimages 
     into a single flatfield model
@@ -117,7 +82,7 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
                     totalsamples += 1
             if image_dimensions is None :
                 raise ValueError("No non-empty samples")
-            flatfield = Flatfield(image_dimensions,logger)
+            flatfield = self.flatfield_type(image_dimensions,logger)
             samplesprocessed=[]
             #Run all the samples individually like for a regular MultiCohort
             super().run(flatfield=flatfield, 
@@ -139,7 +104,8 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
 
     #################### CLASS VARIABLES + PROPERTIES ####################
 
-    singlecohortclass = BatchFlatfieldCohort
+    singlecohortclass = None
+    flatfield_type = None
 
     @property
     def workingdir(self) :
@@ -193,10 +159,17 @@ class BatchFlatfieldMultiCohort(MultiCohortBase):
             'outdir': parsed_args_dict.pop('outdir'), 
         }
 
+class BatchFlatfieldMultiCohortComponentTiff(BatchFlatfieldMultiCohortBase) :
+    singlecohortclass = BatchFlatfieldCohortComponentTiff
+    flatfield_type = FlatfieldComponentTiff
+class BatchFlatfieldMultiCohortIm3(BatchFlatfieldMultiCohortBase) :
+    singlecohortclass = BatchFlatfieldCohortIm3
+    flatfield_type = FlatfieldIm3
+
 #################### FILE-SCOPE FUNCTIONS ####################
 
 def main(args=None) :
-    BatchFlatfieldMultiCohort.runfromargumentparser(args)
+    BatchFlatfieldMultiCohortIm3.runfromargumentparser(args)
 
 if __name__=='__main__' :
     main()
