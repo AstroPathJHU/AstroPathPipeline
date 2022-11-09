@@ -607,7 +607,7 @@
     }
     #
     [string]buildpyopts($opt){
-        $str = '--allow-local-edits --use-apiddef ',
+        $str = '--allow-local-edits --use-apiddef',
             $this.pyoptsnoaxquiredannos() -join ''
         return $str
     }
