@@ -10,7 +10,7 @@ from ...shared.image_masking.config import CONST as MASK_CONST
 from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
 from ...shared.overlap import Overlap
-from ...shared.sample import MaskSampleBase, ParallelSample, ReadRectanglesOverlapsComponentTiffFromXML, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, TissueSampleBase, WorkflowSample
+from ...shared.sample import MaskSampleBase, ParallelSample, ReadRectanglesOverlapsComponentTiffFromXML, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, TissueSampleBase, WorkflowSample, XMLLayoutReader
 from .config import CONST
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image
 from .utilities import RectangleThresholdTableEntry, FieldLog, ThresholdTableEntry
@@ -499,7 +499,7 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
                     self.logger.warning(warnmsg) 
                     raise e
 
-class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSample,XMLLayoutReaderTissue) :
+class MeanImageSampleComponentTiff(MeanImageSampleBaseComponentTiff,WorkflowSample,XMLLayoutReader) :
     """
     Class to handle creating the meanimage for a slide based on the unmixed component tiff images
     """

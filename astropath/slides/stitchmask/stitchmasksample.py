@@ -1,6 +1,6 @@
 import abc, methodtools, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
-from ...hpfs.flatfield.meanimagesample import MeanImageSampleIm3
+from ...hpfs.flatfield.meanimagesample import MeanImageSampleIm3Tissue
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMask, ThingWithTissueMaskPolygons
 from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
@@ -267,7 +267,7 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [MeanImageSampleIm3] + super().workflowdependencyclasses(**kwargs)
+    return [MeanImageSampleIm3Tissue] + super().workflowdependencyclasses(**kwargs)
 
   @property
   def workflowkwargs(self):

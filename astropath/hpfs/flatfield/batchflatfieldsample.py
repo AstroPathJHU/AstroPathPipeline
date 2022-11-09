@@ -2,7 +2,7 @@
 from ...utilities.config import CONST as UNIV_CONST
 from ...shared.sample import TissueSampleBase, WorkflowSample
 from .config import CONST
-from .meanimagesample import MeanImageSampleBase, MeanImageSampleComponentTiff, MeanImageSampleIm3
+from .meanimagesample import MeanImageSampleBase, MeanImageSampleComponentTiffTissue, MeanImageSampleIm3Tissue
 
 class BatchFlatfieldSampleBase(WorkflowSample) :
     """
@@ -62,9 +62,6 @@ class BatchFlatfieldSampleComponentTiff(BatchFlatfieldSampleBase) :
     @classmethod
     def logmodule(cls) : 
         return "batchflatfield_comp_tiff"
-    @classmethod
-    def workflowdependencyclasses(cls, **kwargs):
-        return [*super().workflowdependencyclasses(**kwargs),MeanImageSampleComponentTiff]
 
 class BatchFlatfieldSampleIm3(BatchFlatfieldSampleBase) :
     """
@@ -77,12 +74,13 @@ class BatchFlatfieldSampleIm3(BatchFlatfieldSampleBase) :
     @classmethod
     def logmodule(cls) : 
         return "batchflatfield"
-    @classmethod
-    def workflowdependencyclasses(cls, **kwargs):
-        return [*super().workflowdependencyclasses(**kwargs),MeanImageSampleIm3]
 
 class BatchFlatfieldSampleIm3Tissue(BatchFlatfieldSampleIm3, TissueSampleBase) :
-    pass
+    @classmethod
+    def workflowdependencyclasses(cls, **kwargs):
+        return [*super().workflowdependencyclasses(**kwargs),MeanImageSampleIm3Tissue]
 
 class BatchFlatfieldSampleComponentTiffTissue(BatchFlatfieldSampleComponentTiff, TissueSampleBase) :
-    pass
+    @classmethod
+    def workflowdependencyclasses(cls, **kwargs):
+        return [*super().workflowdependencyclasses(**kwargs),MeanImageSampleComponentTiffTissue]
