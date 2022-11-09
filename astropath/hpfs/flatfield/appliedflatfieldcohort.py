@@ -7,7 +7,7 @@ from ...shared.cohort import CorrectedImageCohort, WorkflowCohort
 from .config import CONST
 from .flatfield import FlatfieldComponentTiff, FlatfieldIm3
 from .correctedmeanimage import CorrectedMeanImageComponentTiff, CorrectedMeanImageIm3
-from .appliedflatfieldsample import AppliedFlatfieldSampleBase, AppliedFlatfieldSampleComponentTiff, AppliedFlatfieldSampleIm3
+from .appliedflatfieldsample import AppliedFlatfieldSampleBase, AppliedFlatfieldSampleComponentTiffTissue, AppliedFlatfieldSampleIm3Tissue
 
 class AppliedFlatfieldCohortBase(WorkflowCohort) :
     """
@@ -151,7 +151,7 @@ class AppliedFlatfieldCohortComponentTiff(AppliedFlatfieldCohortBase) :
     Class for testing the impact of flatfielding on component tiff files
     """
 
-    sampleclass = AppliedFlatfieldSampleComponentTiff
+    sampleclass = AppliedFlatfieldSampleComponentTiffTissue
 
     def __init__(self,*args,**kwargs) :
         """
@@ -176,7 +176,7 @@ class AppliedFlatfieldCohortIm3(AppliedFlatfieldCohortBase,CorrectedImageCohort,
     Class for testing the impact of flatfielding on im3 files
     """
 
-    sampleclass = AppliedFlatfieldSampleIm3
+    sampleclass = AppliedFlatfieldSampleIm3Tissue
 
     def __init__(self,*args,filetype='raw',**kwargs) :
         """

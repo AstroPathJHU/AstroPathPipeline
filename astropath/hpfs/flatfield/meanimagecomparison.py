@@ -10,7 +10,7 @@ from ...shared.samplemetadata import SampleDef
 from .config import CONST
 from .utilities import FlatfieldModelTableEntry, ComparisonTableEntry, normalize_mean_image
 from .plotting import meanimage_comparison_plot
-from .batchflatfieldsample import BatchFlatfieldSampleIm3
+from .batchflatfieldsample import BatchFlatfieldSampleIm3Tissue
 from .batchflatfieldmulticohort import BatchFlatfieldMultiCohortIm3
 
 class MeanImageComparison :
@@ -413,7 +413,7 @@ class MeanImageComparison :
         samples = []
         for rd,sids in self.slide_ids_by_rootdir.items() :
             for sid in sids :
-                samples.append(BatchFlatfieldSampleIm3(rd,sid,version=None)) #version is not needed for anything we use in this function
+                samples.append(BatchFlatfieldSampleIm3Tissue(rd,sid,version=None)) #version is not needed for anything we use in this function
         ordered_tuples = []
         lines_after = []
         if sort_by=='project_cohort_batch' :
