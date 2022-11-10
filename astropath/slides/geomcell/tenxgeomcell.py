@@ -151,7 +151,7 @@ class TenXGeomCell(TenXSampleWithFields, ArgumentParserWithVersionRequirement, P
                 )
               )
 
-        writetable(outputfile, geomload)
+        writetable(outputfile, geomload, rowclass=CellGeomLoad)
 
   def run(self, minarea=None, **kwargs):
     if minarea is None:
