@@ -104,6 +104,7 @@ setupkwargs = dict(
       "stitchinformmasksample=astropath.slides.stitchmask.stitchmasksample:informmain",
       "stitchastropathtissuemaskcohort=astropath.slides.stitchmask.stitchmaskcohort:astropathtissuemain",
       "stitchinformmaskcohort=astropath.slides.stitchmask.stitchmaskcohort:informmain",
+      "tenxgeomcell=astropath.slides.geomcell.tenxgeomcell:main",
       "transfer-daemon=astropath.scans.transferdaemon.Daemon:launch_transfer",
       "warpingsample=astropath.hpfs.warping.warpingsample:main",
       "warpingmulticohort=astropath.hpfs.warping.warpingmulticohort:main",
