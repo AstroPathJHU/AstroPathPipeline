@@ -35,12 +35,15 @@ class FixFW01ArgumentParser(SelectLayersArgumentParser, SelectRectanglesArgument
       "removedisagreement": remove_disagreement,
     }
 
+  @classmethod
+  def defaultim3filetype(cls): return "flatWarp"
+
 class FixFW01SampleBase(ReadRectanglesIm3Base, SelectLayersIm3WorkflowSample, TissueSampleBase, FixFW01ArgumentParser):
   def __init__(self, *args, layer=None, layers=None, **kwargs):
     if layers is not None and layer is None:
       layer, = layers
       layers = None
-    super().__init__(*args, layerim3=layer, layersim3=layers, readlayerfile=False, filetype="flatWarp", **kwargs)
+    super().__init__(*args, layerim3=layer, layersim3=layers, readlayerfile=False, **kwargs)
 
   @classmethod
   def logmodule(self): return "fixfw01"

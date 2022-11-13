@@ -228,13 +228,19 @@ class Im3ArgumentParser(RunFromArgumentParser):
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--shardedim3root", type=pathlib.Path, help="root location of sharded im3 files.", required=True)
+    p.add_argument("--im3filetype", choices=("raw", "flatWarp", "camWarp"), help="file type of im3 files: flatWarp, raw, or camWarp.  Default {cls.defaultim3filetype()}.")
     return p
+
+  @classmethod
+  @abc.abstractmethod
+  def defaultim3filetype(cls): pass
 
   @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "shardedim3root": parsed_args_dict.pop("shardedim3root"),
+      "im3filetype": parsed_args_dict.pop("im3filetype"),
     }
 
 class WorkingDirArgumentParser(RunFromArgumentParser) :
@@ -271,20 +277,6 @@ class SegmentationFolderArgumentParser(RunFromArgumentParser) :
       **super().initkwargsfromargumentparser(parsed_args_dict),
       'segmentationroot': parsed_args_dict.pop('segmentationroot'),
       'segmentationfolder': parsed_args_dict.pop('segmentationfolder'),
-    }
-
-class FileTypeArgumentParser(RunFromArgumentParser) :
-  @classmethod
-  def makeargumentparser(cls, **kwargs):
-    p = super().makeargumentparser(**kwargs)
-    p.add_argument('--filetype',choices=['raw','flatWarp'],default='raw',
-                   help=f'Whether to use "raw" files (extension {UNIV_CONST.RAW_EXT}, default) or "flatWarp" files (extension {UNIV_CONST.FLATW_EXT}).')
-    return p
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      'filetype': parsed_args_dict.pop('filetype'), 
     }
 
 class GPUArgumentParser(RunFromArgumentParser) :

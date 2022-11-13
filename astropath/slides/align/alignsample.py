@@ -346,7 +346,13 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample, Dbloa
     }
 
 class AlignSampleTissueBase(AlignSampleBase, TissueSampleBase): pass
-class AlignSampleTMABase(AlignSampleBase, TMASampleBase): pass
+class AlignSampleTMABase(AlignSampleBase, TMASampleBase):
+  def run(self, *args, **kwargs):
+    for rect in self.rectangles:
+      if "_Core[" in rect.file:
+        self.logger.info("sample was imaged by TMA core, not by HPF, no need to align")
+        return
+    super().run(*args, **kwargs)
 
 class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
   """
@@ -372,8 +378,10 @@ class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
   An align sample that uses im3 images
   """
   rectangletype = AlignmentRectangleIm3SingleLayer
-  def __init__(self, *args, filetype="flatWarp", layer=None, **kwargs):
-    super().__init__(*args, filetype=filetype, layerim3=layer, **kwargs)
+  @classmethod
+  def defaultim3filetype(cls): return "flatWarp"
+  def __init__(self, *args, layer=None, **kwargs):
+    super().__init__(*args, layerim3=layer, **kwargs)
 
 class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsComponentTiffBase):
   """
@@ -390,6 +398,11 @@ class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSamp
   The alignment step of the pipeline finds the relative shift between adjacent HPFs.
   It then stitches the results together using a spring model.  For more information,
   see README.md and README.pdf in this folder.
+  """
+
+class AlignSampleTMA(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase, AlignSampleTMABase):
+  """
+  Like AlignSample, but for a TMA control sample instead of a tissue sample
   """
 
 class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTissueBase):
@@ -412,7 +425,7 @@ class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleF
 
 class AlignSampleFromXMLTMA(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTMABase):
   """
-  Like AlignSampleFromXML, but for a TMA control sample instead of a tissue sample
+  Like AlignSampleFromXML, but for a control TMA sample instead of a tissue sample
   """
 
 class ReadAffineShiftSample(DbloadSample):
