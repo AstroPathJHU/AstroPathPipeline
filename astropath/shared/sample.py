@@ -17,7 +17,7 @@ from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinica
 from .logging import dummylogger, getlogger, ThingWithLogger
 from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
-from .samplemetadata import SampleDef
+from .samplemetadata import ControlTMASampleDef, SampleDef
 from .workflowdependency import ThingWithWorkflowKwargs, WorkflowDependencySlideID
 
 class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger, ThingWithWorkflowKwargs, contextlib.ExitStack):
@@ -37,7 +37,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressinitwarnings=False, **kwargs):
     self.__root = pathlib.Path(root)
     if sampledefroot is None: sampledefroot = root
-    self.samp = SampleDef(root=sampledefroot, samp=samp, Project=Project)
+    self.samp = self.sampledefclass(root=sampledefroot, samp=samp, Project=Project)
     if not (self.root/self.SlideID).exists():
       raise FileNotFoundError(f"{self.root/self.SlideID} does not exist")
     if logroot is None: logroot = root
@@ -59,6 +59,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if not self.scanfolder.is_dir():
       raise OSError(f"{self.scanfolder} is not a directory")
 
+  @property
+  @abc.abstractmethod
+  def sampledefclass(self): pass
   @property
   def root(self): return self.__root
   @property
@@ -95,8 +98,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return result
 
   @property
-  def SampleID(self): return self.samp.SampleID
-  @property
   def SlideID(self): return self.samp.SlideID
   @property
   def Project(self): return self.samp.Project
@@ -132,7 +133,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     The sample's scan folder
     """
-    return self.im3folder/f"Scan{self.Scan}"
+    return self.im3folder/f"Scan{self.Scan:d}"
 
   @property
   def qptifffilename(self):
@@ -206,7 +207,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return self.xmlfolder/(self.SlideID+".Full.xml")
   @classmethod
   def getannotationsxmlfile(cls, SlideID, *, Scan, im3root, **otherworkflowkwargs):
-    return im3root/SlideID/"im3"/f"Scan{Scan}"/f"{SlideID}_Scan{Scan}_annotations.xml"
+    return im3root/SlideID/"im3"/f"Scan{Scan:d}"/f"{SlideID}_Scan{Scan:d}_annotations.xml"
   @property
   def annotationsxmlfile(self):
     return self.getannotationsxmlfile(**self.workflowkwargs)
@@ -780,10 +781,20 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return result
 
 class TissueSampleBase(SampleBase):
-  pass
+  sampledefclass = SampleDef
+  @property
+  def SampleID(self): return self.samp.SampleID
 
 class TMASampleBase(SampleBase):
-  pass
+  sampledefclass = ControlTMASampleDef
+  @property
+  def CtrlID(self): return self.samp.CtrlID
+  @property
+  def TMA(self): return self.samp.TMA
+  @property
+  def Ctrl(self): return self.samp.Ctrl
+  @property
+  def Date(self): return self.samp.Date
 
 class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
@@ -1555,9 +1566,8 @@ class XMLLayoutReader(SampleBase):
       rectangle.n = i
 
   @property
-  @abc.abstractmethod
   def im3filenameregex(self):
-    pass
+    return rf"{self.SlideID}(?:_Core\[[0-9]+,[0-9]+,[0-9]+\])?_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
 
   @methodtools.lru_cache()
   def getdir(self):
@@ -1628,16 +1638,6 @@ class XMLLayoutReader(SampleBase):
       "includehpfsflaggedforacquisition": parsed_args_dict.pop("include_hpfs_flagged_for_acquisition"),
     }
 
-class XMLLayoutReaderTissue(XMLLayoutReader, TissueSampleBase):
-  @property
-  def im3filenameregex(self):
-    return rf"{self.SlideID}_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
-
-class XMLLayoutReaderTMA(XMLLayoutReader, TMASampleBase):
-  @property
-  def im3filenameregex(self):
-    return rf"{self.SlideID}_Core\[[0-9]+,[0-9]+,[0-9]+\]_\[([0-9]+),([0-9]+)\]{UNIV_CONST.IM3_EXT}"
-
 class SampleWithAnnotationInfos(SampleBase, ThingWithAnnotationInfos):
   def readtable(self, filename, rowclass, *, extrakwargs=None, **kwargs):
     if extrakwargs is None: extrakwargs = {}
@@ -1645,7 +1645,7 @@ class SampleWithAnnotationInfos(SampleBase, ThingWithAnnotationInfos):
       extrakwargs["scanfolder"] = self.scanfolder
     return super().readtable(filename=filename, rowclass=rowclass, extrakwargs=extrakwargs, **kwargs)
 
-class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, XMLPolygonFileArgumentParser):
+class XMLPolygonAnnotationFileSample(SampleWithAnnotationInfos, TissueSampleBase, XMLPolygonFileArgumentParser):
   """
   Base class for any sample that uses the XML annotations file.
   """

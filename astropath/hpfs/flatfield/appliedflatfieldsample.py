@@ -4,10 +4,10 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...shared.samplemetadata import MetadataSummary
 from ...shared.rectangle import RectangleReadComponentTiffMultiLayer, RectangleCorrectedIm3MultiLayer
 from ...shared.overlap import Overlap
-from ...shared.sample import WorkflowSample, XMLLayoutReaderTissue
+from ...shared.sample import TissueSampleBase, WorkflowSample, XMLLayoutReader
 from .meanimagesample import MeanImageSampleBase, MeanImageSampleBaseComponentTiff, MeanImageSampleBaseIm3
 
-class AppliedFlatfieldSampleBase(MeanImageSampleBase,WorkflowSample,XMLLayoutReaderTissue) :
+class AppliedFlatfieldSampleBase(MeanImageSampleBase,WorkflowSample,XMLLayoutReader) :
     """
     Class to use in running most of the MeanImageSample functions but handling the output differently
     """
@@ -128,3 +128,8 @@ class AppliedFlatfieldSampleIm3(AppliedFlatfieldSampleBase,MeanImageSampleBaseIm
     @classmethod
     def logmodule(cls) : 
         return "appliedflatfield"
+
+class AppliedFlatfieldSampleComponentTiffTissue(AppliedFlatfieldSampleComponentTiff, TissueSampleBase) :
+    pass
+class AppliedFlatfieldSampleIm3Tissue(AppliedFlatfieldSampleIm3, TissueSampleBase) :
+    pass

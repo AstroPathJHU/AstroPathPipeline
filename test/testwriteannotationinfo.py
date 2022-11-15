@@ -31,6 +31,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     destroot = thisfolder/"test_for_jenkins"/"writeannotationinfo"
     destrootempty = thisfolder/"test_for_jenkins"/"writeannotationinfo"/"emptyannotation"
     yield sourceroot/"upkeep_and_progress"/"AstropathAPIDdef_0.csv", destroot/"upkeep_and_progress"
+    yield sourceroot/"sampledef.csv", destroot
     for SlideID in "M206",:
       yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1"
       yield sourceroot/SlideID/"im3"/"Scan1"/f"{SlideID}_Scan1.annotations.polygons.xml", destroot/SlideID/"im3"/"Scan1", f"{SlideID}_Scan1.annotations.polygons_2.xml"
@@ -51,7 +52,7 @@ class TestWriteAnnotationInfo(TestBaseCopyInput, TestBaseSaveOutput):
     else:
       raise ValueError(variant)
     regex = ".*annotations.polygons.xml"
-    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--annotations-on-qptiff", "--units", units, "--allow-local-edits", "--annotations-xml-regex", regex, "--project", "0"]
+    args = [os.fspath(root), "--im3root", os.fspath(im3root), "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--annotations-on-qptiff", "--units", units, "--allow-local-edits", "--annotations-xml-regex", regex]
     s = WriteAnnotationInfoSample(root=root, dbloadroot=dbloadroot, im3root=im3root, logroot=logroot, samp=SlideID, annotationsource="qptiff", annotationposition=None, annotationpositionfromaffineshift=False, annotationsxmlregex=regex, xmlfolders=[thisfolder/"data"/SlideID/"im3"/"xml"])
 
     try:

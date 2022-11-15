@@ -17,7 +17,7 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
   Base class for a cohort.  This class doesn't actually run anything
   (for that use Cohort, below).
   """
-  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.NOTSET-100, runfromapid=False, Project=None, **kwargs):
+  def __init__(self, *args, root, sampledefroot=None, logroot=None, uselogfiles=True, reraiseexceptions=False, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.NOTSET-100, runfromapid=False, **kwargs):
     super().__init__(*args, **kwargs)
     self.__root = pathlib.Path(root)
     if logroot is None: logroot = self.__root
@@ -30,26 +30,42 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
     self.skipstartfinish = skipstartfinish
     self.printthreshold = printthreshold
     self.runfromapid = runfromapid
-    self.__Project = Project
-    if runfromapid and Project is None:
-      raise ValueError("Have to provide a Project if running from apid")
 
-  def sampledefs(self, **kwargs):
+  def tissuesampledefs(self, **kwargs):
     from .samplemetadata import APIDDef, SampleDef
     if self.runfromapid:
-      csvfile = self.sampledefroot/"upkeep_and_progress"/f"AstropathAPIDdef_{self.__Project:d}.csv"
+      csvfiles = (self.sampledefroot/"upkeep_and_progress").glob("AstropathAPIDdef_*.csv")
       csvclass = APIDDef
     else:
-      csvfile = self.sampledefroot/"sampledef.csv"
+      csvfiles = [self.sampledefroot/"sampledef.csv"]
       csvclass = SampleDef
-    return readtable(csvfile, csvclass)
+    for csvfile in csvfiles:
+      yield from readtable(csvfile, csvclass)
+  def controlsampledefs(self, **kwargs):
+    from .samplemetadata import ControlTMASampleDef
+    csvfiles = (self.sampledefroot/"Ctrl").glob("project*_ctrlsamples.csv")
+    csvclass = ControlTMASampleDef
+    for csvfile in csvfiles:
+      yield from readtable(csvfile, csvclass)
+
+  def sampledefs(self, **kwargs):
+    if self.usetissue:
+      yield from self.tissuesampledefs(**kwargs)
+    if self.useTMA:
+      yield from self.controlsampledefs(**kwargs)
+
+  @property
+  @abc.abstractmethod
+  def usetissue(self): pass
+  @property
+  @abc.abstractmethod
+  def useTMA(self): pass
+
   @property
   def SlideIDs(self): return [_.SlideID for _ in self.sampledefs()]
   @property
   def Project(self):
     Project, = {_.Project for _ in self.sampledefs()}
-    if self.__Project is not None and self.__Project != Project:
-      raise ValueError(f"--project {self.__Project} from the command line is not consistent with Project {Project} in the {'AstropathAPIDdef' if self.runfromapid else 'sampledef'} csv file")
     return Project
   @property
   def Cohort(self):
@@ -119,7 +135,6 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
     g = p.add_mutually_exclusive_group()
     g.add_argument("--use-apiddef", action="store_true", dest="runfromapid", help="use AstropathAPIDdef_Project.csv to get the list of samples to run")
     g.add_argument("--use-sampledef", action="store_false", dest="runfromapid", help="use sampledef.csv to get the list of samples to run")
-    p.add_argument("--project", type=int, help="Project number (used to identify the AstropathAPIDdef file)")
     p.add_argument("--dry-run", action="store_true", help="print the sample ids that would be run and exit")
     return p
 
@@ -130,13 +145,10 @@ class RunCohortBase(CohortBase, RunFromArgumentParser):
     from the parsed arguments
     """
     dct = parsed_args_dict
-    if dct["runfromapid"] and dct["project"] is None:
-      raise ValueError("If you --use-apiddef, you also have to provide the --project number")
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "sampledefroot": dct.pop("sampledefroot"),
       "runfromapid": dct.pop("runfromapid"),
-      "Project": dct.pop("project"),
     }
     return kwargs
 
@@ -325,10 +337,26 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
   @abc.abstractmethod
   def sampleclass(cls):
     "What type of samples to create"
+  TMAsampleclass = None
+
+  @classmethod
+  def sampleclassforsampledef(cls, samp):
+    from .samplemetadata import APIDDef, ControlTMASampleDef, SampleDef
+    return {
+      SampleDef: cls.sampleclass,
+      APIDDef: cls.sampleclass,
+      ControlTMASampleDef: cls.TMAsampleclass,
+    }[type(samp)]
+
+  @property
+  def usetissue(self): return self.sampleclass is not None
+  @property
+  def useTMA(self): return self.TMAsampleclass is not None
 
   def initiatesample(self, samp, **morekwargs):
     "Create a Sample object (subclass of SampleBase) from SampleDef samp to run on"
-    return self.sampleclass(samp=samp, **self.initiatesamplekwargs, **morekwargs)
+    sampleclass = self.sampleclassforsampledef(samp)
+    return sampleclass(samp=samp, **self.initiatesamplekwargs, **morekwargs)
 
   @property
   def initiatesamplekwargs(self):
@@ -350,7 +378,12 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
   @classmethod
   def logmodule(cls):
     "name of the log files for this class (e.g. align)"
-    return cls.sampleclass.logmodule()
+    result, = {
+      sampleclass.logmodule()
+      for sampleclass in (cls.sampleclass, cls.TMAsampleclass)
+      if sampleclass is not None
+    }
+    return result
 
   @property
   def rootnames(self):
@@ -405,7 +438,12 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
 
   @classmethod
   def defaultunits(cls):
-    return cls.sampleclass.defaultunits()
+    result, = {
+      sampleclass.defaultunits()
+      for sampleclass in (cls.sampleclass, cls.TMAsampleclass)
+      if sampleclass is not None
+    }
+    return result
 
   @classmethod
   def makeargumentparser(cls, **kwargs):
@@ -789,11 +827,12 @@ class WorkflowCohort(Cohort):
     }
 
     def slideidfilter(self, sample, **kwargs):
+      sampleclass = self.sampleclassforsampledef(sample)
       return runstatusfilter(
-        runstatus=self.sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
+        runstatus=sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
-          for dependency in self.sampleclass.workflowdependencyclasses(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
+          for dependency in sampleclass.workflowdependencyclasses(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
         ],
         **runstatusfilterkwargs,
       )

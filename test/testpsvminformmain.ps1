@@ -9,14 +9,14 @@ using module .\testtools.psm1
  vminform tests
  -------------------------------------------#>
 #
-Class testvminformmain : testtools {
+Class testpsvminformmain : testtools {
     #
     [string]$processloc
     [string]$module = 'vminform'
     [string]$apmodule = $PSScriptRoot + '/../astropath'
     [string]$class = 'vminformmain'
     #
-    testvminformmain() : base(){
+    testpsvminformmain() : base(){
         #
         $this.testruninform()
         #
@@ -28,35 +28,23 @@ Class testvminformmain : testtools {
         Write-Host 'test run on inform started'
         #
         $cred = Get-Credential -Message "Provide a user name (domain\username) and password"
-        $dis = dispatchtasks $this.module $cred $this.mpath -test
-        $this.starttestjob($dis)
-        #
-        Write-Host 'test run on inform finished'
-        #
-    }
-    <# --------------------------------------------
-    starttestjob
-    runs powershell operation on virtual
-    machine to run tests
-    --------------------------------------------#>
-    [void]starttestjob($dis){
-        #
-        $creds = $dis.GetCreds()  
-        $currentworkerip = 'vminform38'
-        $workertaskfile = '\\BKI08\h$\andrew\AstroPathPipelinePrivate\test\testvminform.ps1'
+        $currentworkerip = 'vminform37'
+        $workertaskfile = '\\BKI08\e$\andrew\AstroPathPipelinePrivate\test\testpsvminform.ps1'
         #
         Write-Host '    worker task file location:' $workertaskfile
         #
         # write workertask to a .ps1 file, put name of file into $workertaskfile
         #
-        psexec -i -nobanner -accepteula -u $creds[0] -p $creds[1] \\$currentworkerip `
+        psexec -i -nobanner -accepteula -u $cred.username -p $cred.getnetworkcredential().password \\$currentworkerip `
         pwsh -noprofile -noexit -executionpolicy bypass -command "$workertaskfile" `
-                *>> ($this.processloc + '\testvminform-job.log')
+                *>> ($this.processloc + '\testpsvminform-job.log')
+        #
+        Write-Host 'test run on inform finished'
         #
     }
 }
 #
 # launch test and exit if no error found
 #
-[testvminformmain]::new() | Out-Null
+[testpsvminformmain]::new() | Out-Null
 exit 0

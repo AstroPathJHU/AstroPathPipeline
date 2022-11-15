@@ -14,9 +14,9 @@ writeannotationinforoot = here/".."/".."/"test"/"data"/"reference"/"writeannotat
 samp = "M206"
 
 def makeplots():
-  from ...test.data.M206.im3.Scan1.assembleqptiff import assembleqptiff
+  from ...test.data.assembleqptiff import assembleqptiff
   from ...test.data.M206.im3.meanimage.image_masking.hackmask import hackmask
-  assembleqptiff()
+  assembleqptiff("M206")
   hackmask()
   with tempfile.TemporaryDirectory() as dbloadroot:
     dbloadroot = pathlib.Path(dbloadroot)

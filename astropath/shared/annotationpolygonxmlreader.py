@@ -504,6 +504,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           self.logger.warning(f"Annotation {name} has the wrong color {color}, changing it to {targetcolor}")
           color = targetcolor
 
+        info = annotationinfodict[node]
         annotation = Annotation(
           color=color,
           visible=visible,
@@ -513,7 +514,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
           poly="poly",
           pscale=pscale,
           apscale=self.apscale,
-          annotationinfo=annotationinfodict[node],
+          annotationinfo=info,
         )
         annotations.append(annotation)
 
@@ -566,8 +567,8 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
                 raise ValueError("saving images is not implemented on wsi")
               else:
                 fqptiff = stack.enter_context(QPTiff(self.qptifffilename))
-                img = stack.enter_context(fqptiff.zoomlevels[0].using_image(layer=0))
-              pixel = self.oneannopixel
+                img = stack.enter_context(fqptiff.zoomlevels[0].using_image(layer=1))
+              pixel = node.oneannopixel
               xymin = np.min(poly.vertexarray, axis=0).astype(units.unitdtype)
               xymax = np.max(poly.vertexarray, axis=0).astype(units.unitdtype)
               xybuffer = (xymax - xymin) / 20
@@ -591,7 +592,7 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
                 boxxmax, boxymax = np.max([openvertex1, openvertex2], axis=0) + xybuffer/2
                 ax.add_patch(matplotlib.patches.Rectangle((boxxmin//pixel, boxymin//pixel), (boxxmax-boxxmin)//pixel, (boxymax-boxymin)//pixel, color="violet", fill=False))
 
-              fig.savefig(self.__annotationimagefolder/node.xmlpath.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__annotationimagefiletype}").name)
+              fig.savefig(self.__annotationimagefolder/info.xmlpath.with_suffix("").with_suffix("").with_suffix(f".annotation-{regionid}.{self.__annotationimagefiletype}").name)
               plt.close(fig)
 
           areacutoff = node.areacutoff
@@ -635,10 +636,11 @@ class XMLPolygonAnnotationReader(MergedAnnotationFiles, units.ThingWithApscale, 
     return annotations, allregions, allvertices
 
 class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
-  def __init__(self, infofile, *, pscale=None, apscale=None, logger=dummylogger, **kwargs):
+  def __init__(self, infofile, *, scanfolder=None, pscale=None, apscale=None, logger=dummylogger, **kwargs):
     self.__infofile = infofile
     self.__logger = logger
     super().__init__(**kwargs)
+    self.__scanfolder = scanfolder
     if pscale is None: pscale = 1
     if apscale is None:
       if self.annotationimagefolder is not None:
@@ -659,7 +661,14 @@ class XMLPolygonAnnotationReaderStandalone(XMLPolygonAnnotationReader):
   @property
   def annotationinfofile(self): return self.__infofile
   @property
-  def scanfolder(self): return self.annotationinfofile.parent
+  def scanfolder(self):
+    if self.__scanfolder is not None: return self.__scanfolder
+    return self.annotationinfofile.parent
+
+  @property
+  def qptifffilename(self):
+    result, = self.scanfolder.glob("*.qptiff")
+    return result
 
   @property
   def SampleID(self): return 0
@@ -848,6 +857,7 @@ def checkannotations(args=None):
   g.add_argument("--save-bad-polygon-images", action="store_const", dest="badannotationimagefolder", const=pathlib.Path("."), help="if there are unclosed annotations, save a debug image to the current directory pointing out the problem")
   g.add_argument("--save-bad-polygon-images-folder", type=pathlib.Path, dest="badannotationimagefolder", help="if there are unclosed annotations, save a debug image to the given directory pointing out the problem")
   p.add_argument("--save-images-filetype", default="pdf", choices=("pdf", "png"), dest="annotationimagefiletype", help="image format to save debug images")
+  p.add_argument("--scan-folder", type=pathlib.Path, dest="scanfolder", help="scan folder for the sample (default: folder where the infofile is)")
   args = p.parse_args(args=args)
   if args.annotationimagefolder is not None:
     args.saveallannotationimages = True

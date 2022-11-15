@@ -6,7 +6,7 @@ from ...shared.csvclasses import constantsdict
 from ...shared.logging import dummylogger
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
-from ...shared.sample import DeepCellSegmentationSample, DeepCellSegmentationSampleBase, GeomSampleBase, InformSegmentationSample, MesmerSegmentationSample, ParallelSample, ReadRectanglesDbload, ReadRectanglesDbloadSegmentedComponentTiff, SampleWithSegmentations, WorkflowSample
+from ...shared.sample import DeepCellSegmentationSample, DeepCellSegmentationSampleBase, GeomSampleBase, InformSegmentationSample, MesmerSegmentationSample, ParallelSample, ReadRectanglesDbload, ReadRectanglesDbloadSegmentedComponentTiff, SampleWithSegmentations, TissueSampleBase, WorkflowSample
 from ...utilities import units
 from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
@@ -43,7 +43,7 @@ class GeomCellFieldMesmer(GeomCellFieldDeepCellBase, SegmentationRectangleMesmer
     with self.using_segmentation_array() as im:
       yield im.transpose(2, 0, 1)
 
-class GeomCellSampleBase(GeomSampleBase, SampleWithSegmentations, ReadRectanglesDbload, ParallelSample, WorkflowSample, CleanupArgumentParser):
+class GeomCellSampleBase(GeomSampleBase, SampleWithSegmentations, ReadRectanglesDbload, ParallelSample, WorkflowSample, TissueSampleBase, CleanupArgumentParser):
   rectangletype = GeomCellField
 
   @property

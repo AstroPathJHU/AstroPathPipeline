@@ -168,7 +168,7 @@ Class testpsimagecorrection : testtools {
                 $this.pybatchflatfieldtest + '.bin'), 
             '--warping-file', $this.pybatchwarpingfiletest, 
             "--njobs '8' --no-log --layers -1 1 --allow-local-edits",
-            '--use-apiddef --project', $this.project.PadLeft(2,'0')
+            '--use-apiddef'
             ) -join ' ') + $wd
         #
         #$this.runpytesttask($inp, $userpythontask, $externaltask)

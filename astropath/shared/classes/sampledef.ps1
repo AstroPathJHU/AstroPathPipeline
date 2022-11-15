@@ -120,6 +120,9 @@ class sampledef : sharedtools{
     }
     #
     [void]ParseAPIDdef([string]$slideid, [PSCustomObject]$slides){
+        if ($slideid -match 'Control_TMA') {
+            return
+        }
         $slide = $slides | & { process { 
             if ($_.SlideID -eq $slideid.trim()){ $_ }
         }}

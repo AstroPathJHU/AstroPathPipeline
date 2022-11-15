@@ -7,6 +7,7 @@ from astropath.slides.annowarp.annowarpcohort import AnnoWarpCohortAstroPathTiss
 from astropath.slides.annowarp.stitch import AnnoWarpStitchResultEntry
 from astropath.utilities import units
 
+from .data.assembleqptiff import assembleqptiff
 from .testbase import assertAlmostEqual, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 from .testwriteannotationinfo import emptyannotationregexfind, emptyannotationregexreplace
 
@@ -19,19 +20,20 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
     destroot = thisfolder/"test_for_jenkins"/"annowarp"
     destrootrename = thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation"
     destrootempty = thisfolder/"test_for_jenkins"/"annowarp"/"emptyannotation"
+    destrootconstants = thisfolder/"test_for_jenkins"/"annowarp"/"constants"
     for SlideID in "M206",:
       olddbload = sourceroot/SlideID/"dbload"
       newdbload = destroot/SlideID/"dbload"
       newdbloadrename = destrootrename/SlideID/"dbload"
       newdbloadempty = destrootempty/SlideID/"dbload"
+      newdbloadconstants = destrootconstants/SlideID/"dbload"
       for csv in (
         "affine",
         "constants",
         "fields",
       ):
-        yield olddbload/f"{SlideID}_{csv}.csv", newdbload
-        yield olddbload/f"{SlideID}_{csv}.csv", newdbloadrename
-        yield olddbload/f"{SlideID}_{csv}.csv", newdbloadempty
+        for new in newdbload, newdbloadrename, newdbloadempty, newdbloadconstants:
+          yield olddbload/f"{SlideID}_{csv}.csv", new
 
       olddbload = sourceroot/"reference"/"writeannotationinfo"/SlideID/"dbload"
       olddbloadrename = sourceroot/"reference"/"writeannotationinfo"/"renameannotation"/SlideID/"dbload"
@@ -42,6 +44,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
         yield olddbload/f"{SlideID}_{csv}.csv", newdbload
         yield olddbloadrename/f"{SlideID}_{csv}.csv", newdbloadrename
         yield olddbloadempty/f"{SlideID}_{csv}.csv", newdbloadempty
+        yield olddbload/f"{SlideID}_{csv}.csv", newdbloadconstants
 
       oldscanfolder = sourceroot/SlideID/"im3"/"Scan1"
       newscanfolder = destroot/SlideID/"im3"/"Scan1"
@@ -55,8 +58,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
   @classmethod
   def setUpClass(cls):
-    from .data.M206.im3.Scan1.assembleqptiff import assembleqptiff
-    assembleqptiff()
+    assembleqptiff("M206")
     from .testzoom import gunzipreference
     gunzipreference("M206")
     from .data.M206.im3.meanimage.image_masking.hackmask import hackmask
@@ -69,6 +71,7 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"annowarp",
       thisfolder/"test_for_jenkins"/"annowarp"/"renameannotation",
       thisfolder/"test_for_jenkins"/"annowarp"/"emptyannotation",
+      thisfolder/"test_for_jenkins"/"annowarp"/"constants",
     ):
       yield root/"logfiles"/"annowarp.log"
       for SlideID in "M206",:
@@ -190,10 +193,11 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       rtol=0.01,
     )
 
-  def testCohort(self, SlideID="M206", units="safe", moreargs=[], variant=None, **compareoutputkwargs):
+  def testCohort(self, SlideID="M206", units="safe", moreargs=None, variant=None, **compareoutputkwargs):
     root = thisfolder/"data"
     zoomroot = thisfolder/"data"/"reference"/"zoom"
     dbloadroot = logroot = im3root = thisfolder/"test_for_jenkins"/"annowarp"
+    if moreargs is None: moreargs = []
 
     if variant == "rename":
       dbloadroot /= "renameannotation"
@@ -208,6 +212,13 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
       variantkwargs = {
         "reffolder": thisfolder/"data"/"reference"/"annowarp"/"emptyannotation",
       }
+    elif variant == "constants":
+      dbloadroot /= "constants"
+      logroot /= "constants"
+      variantkwargs = {
+        "reffolder": thisfolder/"data"/"reference"/"annowarp"/"constants",
+      }
+      moreargs += ["--constant-shift-only"]
     elif variant is None:
       variantkwargs = {}
     else:
@@ -301,3 +312,6 @@ class TestAnnoWarp(TestBaseCopyInput, TestBaseSaveOutput):
 
   def testEmptyAnnotation(self, **kwargs):
     self.testCohort(units="fast_microns", variant="empty", **kwargs)
+
+  def testConstants(self, **kwargs):
+    self.testCohort(units="fast_pixels", variant="constants", **kwargs)

@@ -607,9 +607,8 @@
     }
     #
     [string]buildpyopts($opt){
-        $project = $this.sample.project.PadLeft(2,  '0')
-        $str = ('--allow-local-edits --use-apiddef --project',
-            $project -join ' '), $this.pyoptsnoaxquiredannos() -join ''
+        $str = '--allow-local-edits --use-apiddef',
+            $this.pyoptsnoaxquiredannos() -join ''
         return $str
     }
     #

@@ -1,8 +1,9 @@
 from ...shared.cohort import DbloadCohort, WorkflowCohort
-from .prepdbsample import PrepDbArgumentParser, PrepDbSample
+from .prepdbsample import PrepDbArgumentParser, PrepDbSample, PrepDbSampleTMA
 
 class PrepDbCohort(DbloadCohort, WorkflowCohort, PrepDbArgumentParser):
   sampleclass = PrepDbSample
+  TMAsampleclass = PrepDbSampleTMA
   __doc__ = sampleclass.__doc__
 
   def __init__(self, *args, margin, **kwargs):

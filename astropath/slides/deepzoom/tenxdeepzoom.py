@@ -1,33 +1,33 @@
-import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
-
-from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase
-from ...utilities.dataclasses import MyDataClass
+import collections, errno, numpy as np, os, pathlib, PIL, re, shutil
+from ...shared.argumentparser import ArgumentParserWithVersionRequirement
+from ...shared.logging import printlogger, ThingWithLogger
+from ...utilities import units
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips
-from ...utilities.tableio import pathfield, readtable, writetable
-from ..zoom.zoomsample import ZoomSample
+from ...utilities.tableio import writetable
+from .deepzoomsample import DeepZoomFile
 
-class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
-  """
-  The deepzoom step takes the whole slide image and produces an image pyramid
-  of different zoom levels.
-  """
-
-  def __init__(self, *args, layers=None, tilesize=256, **kwargs):
-    """
-    tilesize: size of the tiles at each level of the image pyramid
-    """
-    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
-    self.__tilesize = tilesize
-
-  multilayercomponenttiff = True
-
-  @classmethod
-  def logmodule(self): return "deepzoom"
+class TenXDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units.ThingWithPscale):
+  def __init__(self, *, mainfolder, SlideID, **kwargs):
+    super().__init__(**kwargs)
+    self.mainfolder = pathlib.Path(mainfolder)
+    self.SlideID = SlideID
 
   @property
-  def tilesize(self): return self.__tilesize
+  def wsitiff(self):
+    result, = (self.mainfolder/"whole_slide").glob("*.tif")
+    return result
+  @property
+  def deepzoomfolder(self):
+    return self.mainfolder/"whole_slide"/"deepzoom"
+  @property
+  def pscale(self): return 1
+
+  @property
+  def layersqptiff(self):
+    return 1, 2, 3
+  @property
+  def tilesize(self): return 256
 
   def layerfolder(self, layer):
     """
@@ -35,16 +35,19 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     """
     return self.deepzoomfolder/f"L{layer:d}_files"
 
+  @property
+  def logger(self):
+    return printlogger("tenxdeepzoom")
+
   def deepzoom_vips(self, layer):
     """
     Use vips to create the image pyramid.  This is an out of the box
     functionality of vips.
     """
     self.logger.info("running vips for layer %d", layer)
-    filename = self.wsifilename(layer)
 
-    #create the output folder and make sure it's empty
     self.deepzoomfolder.mkdir(parents=True, exist_ok=True)
+
     destfolder = self.layerfolder(layer)
     if destfolder.exists():
       for subfolder in destfolder.iterdir():
@@ -55,9 +58,9 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     #vips adds that
     dest = destfolder.with_name(destfolder.name.replace("_files", ""))
 
-    #open the wsi in vips and save the deepzoom
-    wsi = pyvips.Image.new_from_file(os.fspath(filename))
-    wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
+    #open the tiff in vips, shift, and save the deepzoom
+    tiffimage = pyvips.Image.tiffload(os.fspath(self.wsitiff), page=layer-1, n=1)
+    tiffimage.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
 
   def prunezoom(self, layer):
     """
@@ -222,7 +225,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     Write the csv file that lists all the png files to load
     """
     lst = []
-    for layer in self.layerscomponenttiff:
+    for layer in self.layersqptiff:
       folder = self.layerfolder(layer)
       for zoomfolder in sorted(folder.iterdir()):
         zoom = int(re.match("Z([0-9]*)", zoomfolder.name).group(1))
@@ -231,7 +234,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
           x = int(match.group(1))
           y = int(match.group(2))
 
-          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, name=filename.relative_to(self.deepzoomroot)))
+          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, name=filename))
 
     lst.sort()
     writetable(self.deepzoomfolder/"zoomlist.csv", lst)
@@ -240,7 +243,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     """
     Run the full deepzoom pipeline
     """
-    for layer in self.layerscomponenttiff:
+    for layer in self.layersqptiff:
       folder = self.layerfolder(layer)
       if folder.exists():
         for i in range(10):
@@ -272,77 +275,35 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
     self.writezoomlist()
 
-  def run(self, *, cleanup=False, **kwargs):
-    if cleanup: self.cleanup()
-    self.deepzoom(**kwargs)
-
-  def inputfiles(self, **kwargs):
-    return super().inputfiles(**kwargs) + [
-      *(self.wsifilename(layer) for layer in self.layerscomponenttiff),
-    ]
+  def run(self, **kwargs):
+    return self.deepzoom(**kwargs)
 
   @classmethod
-  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, layers, **workflowkwargs):
-    deepzoomfolder = deepzoomroot/SlideID
-    return itertools.chain(
-      deepzoomfolder.glob("L*_files/Z*/*.png"),
-      deepzoomfolder.glob("L*.dzi"),
-      [deepzoomfolder/"zoomlist.csv"],
-    )
-
-  @property
-  def workflowkwargs(self):
-    return {"layers": self.layerscomponenttiff, "tifflayers": None, **super().workflowkwargs}
+  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
+    if misckwargs:
+      raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
+    sample = cls(**initkwargs)
+    with sample:
+      sample.run(**runkwargs)
+    return sample
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, informdataroot, deepzoomroot, layers, checkimages=False, **otherworkflowkwargs):
-    zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
-    if layers is None:
-      try:
-        nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs")
-      except FileNotFoundError:
-        nlayers = 1
-      layers = range(1, nlayers+1)
-    result = [
-      zoomlist,
-      *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),
-    ]
-    if checkimages and zoomlist.exists():
-      files = readtable(zoomlist, DeepZoomFile)
-      result += [file.name for file in files]
-    return result
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    return {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "mainfolder": parsed_args_dict.pop("mainfolder"),
+      "SlideID": parsed_args_dict.pop("SlideID"),
+    }
 
   @classmethod
-  def workflowdependencyclasses(cls, **kwargs):
-    return [ZoomSample] + super().workflowdependencyclasses(**kwargs)
-
-@functools.total_ordering
-class DeepZoomFile(MyDataClass):
-  """
-  Metadata for a png file for the zoomlist.csv
-
-  sample: the SlideID
-  zoom: the zoom level
-  marker: the layer number
-  x, y: the x and y index of the tile
-  name: the png filename
-  """
-  sample: str
-  zoom: int
-  marker: int
-  x: int
-  y: int
-  name: pathlib.Path = pathfield()
-
-  def __lt__(self, other):
-    """
-    The ordering goes by zoom level, then layer, then x, then y.
-    This is used to sort for the csv file.
-    """
-    return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("mainfolder", type=pathlib.Path, help="The main folder for the sample")
+    p.add_argument("SlideID", help="ID of this slide for the zoomlist.csv")
+    return p
 
 def main(args=None):
-  DeepZoomSample.runfromargumentparser(args)
+  return TenXDeepZoom.runfromargumentparser(args=args)
 
 if __name__ == "__main__":
   main()

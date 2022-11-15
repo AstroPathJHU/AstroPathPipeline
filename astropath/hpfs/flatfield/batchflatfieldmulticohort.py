@@ -8,7 +8,7 @@ from ...shared.multicohort import MultiCohortBase
 from .config import CONST
 from .utilities import FlatfieldModelTableEntry
 from .flatfield import FlatfieldComponentTiff, FlatfieldIm3
-from .batchflatfieldsample import BatchFlatfieldSampleBase, BatchFlatfieldSampleComponentTiff, BatchFlatfieldSampleIm3
+from .batchflatfieldsample import BatchFlatfieldSampleBase, BatchFlatfieldSampleComponentTiffTissue, BatchFlatfieldSampleIm3Tissue
 
 class BatchFlatfieldCohortBase(WorkflowCohort) :
     """
@@ -39,7 +39,7 @@ class BatchFlatfieldCohortComponentTiff(BatchFlatfieldCohortBase) :
     Class to handle combining several samples' component tiff meanimages into a single flatfield model for a batch
     """
 
-    sampleclass = BatchFlatfieldSampleComponentTiff
+    sampleclass = BatchFlatfieldSampleComponentTiffTissue
 
     def __init__(self,*args,meanimage_dirname=f'{UNIV_CONST.MEANIMAGE_DIRNAME}_comp_tiff',**kwargs) :
         super().__init__(*args,meanimage_dirname=meanimage_dirname,**kwargs) 
@@ -49,7 +49,7 @@ class BatchFlatfieldCohortIm3(BatchFlatfieldCohortBase) :
     Class to handle combining several samples' im3 meanimages into a single flatfield model for a batch
     """
 
-    sampleclass = BatchFlatfieldSampleIm3
+    sampleclass = BatchFlatfieldSampleIm3Tissue
 
     def __init__(self,*args,meanimage_dirname=UNIV_CONST.MEANIMAGE_DIRNAME,**kwargs) :
         super().__init__(*args,meanimage_dirname=meanimage_dirname,**kwargs) 

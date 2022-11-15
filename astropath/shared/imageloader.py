@@ -1,4 +1,4 @@
-import abc, contextlib, numpy as np, pathlib, tifffile, traceback, warnings
+import abc, contextlib, numpy as np, pathlib, PIL, tifffile, traceback, warnings
 from ..utilities.miscfileio import memmapcontext
 from .image_masking.image_mask import ImageMask
 from .logging import printlogger
@@ -318,3 +318,12 @@ class ImageLoaderBin(ImageLoaderBase):
 
   def getimage(self):
     return ImageMask.unpack_tissue_mask(self.__filename, self.__dimensions)
+
+class ImageLoaderPng(ImageLoaderBase):
+  def __init__(self, *args, filename, **kwargs):
+    self.__filename = pathlib.Path(filename)
+    super().__init__(*args, **kwargs)
+
+  def getimage(self):
+    with PIL.Image.open(self.__filename) as im:
+      return np.asarray(im)
