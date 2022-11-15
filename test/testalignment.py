@@ -63,21 +63,21 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       shardedim3root = thisfolder/"data"/"raw"
     else:
       shardedim3root = thisfolder/"data"/"flatw"
-    alignsampleargs = (
-      thisfolder/"data",
-      shardedim3root,
-      samp,
-    ) if not componenttiff else (
-      thisfolder/"data",
-      samp,
-    )
+    alignsamplekwargs = {
+      "root": thisfolder/"data",
+      "samp": samp,
+      "uselogfiles": True,
+      "dbloadroot": dbloadroot,
+      "logroot": dbloadroot,
+      "layer": 1,
+    }
+    if not componenttiff:
+      alignsamplekwargs.update({
+        "shardedim3root": shardedim3root,
+        "im3filetype": im3filetype,
+      })
     a = alignsampletype(
-      *alignsampleargs,
-      uselogfiles=True,
-      dbloadroot=dbloadroot,
-      logroot=dbloadroot,
-      layer=1,
-      im3filetype=im3filetype,
+      **alignsamplekwargs,
       **kwargs,
     )
     with a:
