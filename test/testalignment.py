@@ -300,7 +300,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
     self.testCohort(units="fast_microns")
 
   def testTMA(self):
-    self.testAlignment(SlideID="Control_TMA_1372_97_05.14.2019", im3filetype="raw", readlayerfile=False, TMA=True, selectrectangles=[55, 56, 66, 67, 77])
+    self.testAlignment(SlideID="Control_TMA_1372_97_05.14.2019", im3filetype="raw", TMA=True, selectrectangles=[55, 56, 66, 67, 77])
 
   def testNoLog(self, SlideID="M21_1"):
     samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0, root=thisfolder/"data")
