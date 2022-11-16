@@ -179,6 +179,12 @@ class vminformqueue : modulequeue {
             $nexttaskid = $this.correctmismatches($project, $_, $nexttaskid)
             #
         }}
+        $this.localqueue.($project) | & { process {
+            #
+            $nexttaskid = $this.correctduplicates($project, $_.localtaskid, $nexttaskid)
+            $nexttaskid = $this.correctmismatches($project, $_, $nexttaskid)
+            #
+        }}
         #
     }
     #
