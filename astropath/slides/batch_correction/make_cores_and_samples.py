@@ -147,7 +147,6 @@ def getList_ctrlsamples(projectNumber):
     ctrlsamples['TMA'] = llist.SlideID.apply(lambda ttext: 
         re.search(fBegin+'(\d{4})_', ttext).group(1) )
     ctrlsamples['Ctrl'] = llist.SlideID
-    print(ctrlsamples)
     ctrlsamples['Ctrl'] = ctrlsamples.apply(lambda df: 
         re.search(fBegin+df['TMA']+'_(\d{1,3})_', df['Ctrl']).group(1), axis=1 )
     ctrlsamples['Date'] = llist.SlideID
@@ -163,7 +162,7 @@ def getList_ctrlsamples(projectNumber):
     ctrlsamples['SlideID'] = llist.SlideID
     ctrlsamples['TMA_imageType'] = ['']*ctrlsamples.shape[0]
     ctrlsamples['ComponentTIFF_No'] = ['']*ctrlsamples.shape[0]
-    
+    print(ctrlsamples)
     for ii in range(0,ctrlsamples.shape[0],1):
 
         # Identify Scan number
@@ -176,8 +175,9 @@ def getList_ctrlsamples(projectNumber):
         llist.Scan = llist.Scan+'replace'
         llist.Scan = llist.Scan.apply(lambda ttext: re.search('\\Scan(\d{1,2})replace', ttext).group(1) )
         llist.Scan = llist.Scan.apply(lambda ttext: int(ttext) )
-
-        ctrlsamples['Scan'][ii] = 'Scan'+ str(llist.Scan.max())#.copy()
+            #ctrlsamples.iloc['Scan'][ii] = 'Scan'+ str( np.max(np.array(llist)) )
+            #ctrlsamples['Scan'].iloc[ii] = 'Scan'+ str(llist.Scan.max())#.copy()
+        ctrlsamples.loc[ii,['Scan']] = 'Scan'+ str(llist.Scan.max())#.copy()
 
         # Get BatchID:
         # Matlab, getBatchId() within getCtrlInfo.m
@@ -185,9 +185,8 @@ def getList_ctrlsamples(projectNumber):
             # If the file is available:
             BatchID = pd.read_csv(os.path.join(path,ctrlsamples['Scan'].iloc[ii],
                 'BatchID.txt'), header=None)
-            ctrlsamples['BatchID'][ii] = BatchID.loc[0,0]
-        else:
-            ctrlsamples['BatchID'][ii] = -1 
+                #ctrlsamples['BatchID'].iloc[ii] = np.array(BatchID.loc[0,0])#BatchID.loc[0,0].copy()
+            ctrlsamples.loc[ii,['BatchID']] = np.array(BatchID.loc[0,0])
 
         folderTIFF, folderIM3 = getControlTMApath(projectFolder,ctrlsamples['Ctrl'].iloc[ii],ctrlsamples)
         
@@ -198,7 +197,7 @@ def getList_ctrlsamples(projectNumber):
             ctrlsamples['TMA_imageType'] = 'mosaic'
 
         # Check if there are .tif files
-        ctrlsamples['ComponentTIFF_No'][ii] = len( glob.glob( os.path.join(folderTIFF,'*.tif') ) )
+        ctrlsamples.loc[ii,['ComponentTIFF_No']] = len( glob.glob( os.path.join(folderTIFF,'*.tif') ) )
         
     ctrlsamples_all = pd.DataFrame( {'SlideID':glob.glob( projectFolder+'Control_'+'*', recursive=False )} )
 
