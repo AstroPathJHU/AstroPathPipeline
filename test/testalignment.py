@@ -1,7 +1,7 @@
 import logging, more_itertools, numpy as np, os, pathlib, re
 from astropath.shared.samplemetadata import SampleDef
 from astropath.slides.align.aligncohort import AlignCohort
-from astropath.slides.align.alignsample import AlignSample, AlignSampleComponentTiff, AlignSampleFromXML, ImageStats
+from astropath.slides.align.alignsample import AlignSample, AlignSampleComponentTiff, AlignSampleFromXML, AlignSampleTMA, ImageStats
 from astropath.slides.align.overlap import AlignmentResult
 from astropath.slides.align.field import Field, FieldOverlap
 from astropath.slides.align.stitch import AffineEntry
@@ -14,7 +14,7 @@ thisfolder = pathlib.Path(__file__).parent
 class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
   @classmethod
   def filestocopy(cls):
-    for SlideID in "M21_1", "YZ71", "M206":
+    for SlideID in "M21_1", "YZ71", "M206", "Control_TMA_1372_97_05.14.2019":
       olddbload = thisfolder/"data"/SlideID/"dbload"
       newdbload = thisfolder/"test_for_jenkins"/"alignment"/SlideID/"dbload"
       newdbload2 = thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/SlideID/"dbload"
@@ -35,6 +35,9 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"alignment"/"YZ71"/"dbload"/filename.name
       for filename in (thisfolder/"data"/"reference"/"alignment"/"YZ71"/"dbload").glob("YZ71_*")
     ] + [
+      thisfolder/"test_for_jenkins"/"alignment"/"Control_TMA_1372_97_05.14.2019"/"dbload"/filename.name
+      for filename in (thisfolder/"data"/"reference"/"alignment"/"Control_TMA_1372_97_05.14.2019"/"dbload").glob("Control_TMA_1372_97_05.14.2019_*")
+    ] + [
       thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/"M206"/"dbload"/filename.name
       for filename in (thisfolder/"data"/"reference"/"alignment"/"component_tiff"/"M206"/"dbload").glob("M206_*")
     ] + [
@@ -42,27 +45,40 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/"logfiles"/"align.log",
       thisfolder/"test_for_jenkins"/"alignment"/"M21_1"/"logfiles"/"M21_1-align.log",
       thisfolder/"test_for_jenkins"/"alignment"/"YZ71"/"logfiles"/"YZ71-align.log",
+      thisfolder/"test_for_jenkins"/"alignment"/"Control_TMA_1372_97_05.14.2019"/"logfiles"/"Control_TMA_1372_97_05.14.2019-align.log",
       thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/"M206"/"logfiles"/"M206-align.log",
     ]
 
-  def testAlignment(self, SlideID="M21_1", componenttiff=False, **kwargs):
+  def testAlignment(self, SlideID="M21_1", componenttiff=False, TMA=False, im3filetype="flatWarp", **kwargs):
     samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0, root=thisfolder/"data")
     dbloadroot = thisfolder/"test_for_jenkins"/"alignment"/("" if not componenttiff else "component_tiff")
-    alignsampletype = AlignSample if not componenttiff else AlignSampleComponentTiff
-    alignsampleargs = (
-      thisfolder/"data",
-      thisfolder/"data"/"flatw",
-      samp,
-    ) if not componenttiff else (
-      thisfolder/"data",
-      samp,
-    )
+    if not componenttiff and not TMA:
+      alignsampletype = AlignSample
+    elif componenttiff and not TMA:
+      alignsampletype = AlignSampleComponentTiff
+    elif not componenttiff and TMA:
+      alignsampletype = AlignSampleTMA
+    else:
+      assert False
+    if im3filetype == "raw":
+      shardedim3root = thisfolder/"data"/"raw"
+    else:
+      shardedim3root = thisfolder/"data"/"flatw"
+    alignsamplekwargs = {
+      "root": thisfolder/"data",
+      "samp": samp,
+      "uselogfiles": True,
+      "dbloadroot": dbloadroot,
+      "logroot": dbloadroot,
+      "layer": 1,
+    }
+    if not componenttiff:
+      alignsamplekwargs.update({
+        "shardedim3root": shardedim3root,
+        "im3filetype": im3filetype,
+      })
     a = alignsampletype(
-      *alignsampleargs,
-      uselogfiles=True,
-      dbloadroot=dbloadroot,
-      logroot=dbloadroot,
-      layer=1,
+      **alignsamplekwargs,
       **kwargs,
     )
     with a:
@@ -272,16 +288,20 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       assertAlmostEqual(o1.result.covyy, o2.result.covyy, rtol=1e-5)
       assertAlmostEqual(o1.result.covxy, o2.result.covxy, rtol=1e-5)
 
-  def testCohort(self, units="safe"):
-    SlideID = "M21_1"
-    args = [os.fspath(thisfolder/"data"), "--shardedim3root", os.fspath(thisfolder/"data"/"flatw"), "--debug", "--dbloadroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--logroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
+  def testCohort(self, SlideID="M21_1", units="safe"):
+    shardedim3root = thisfolder/"data"/"flatw"
+    args = [os.fspath(thisfolder/"data"), "--shardedim3root", os.fspath(shardedim3root), "--debug", "--dbloadroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--logroot", os.fspath(thisfolder/"test_for_jenkins"/"alignment"), "--sampleregex", SlideID, "--units", units, "--allow-local-edits", "--ignore-dependencies", "--rerun-finished"]
     AlignCohort.runfromargumentparser(args)
 
-    a = AlignSample(thisfolder/"data", thisfolder/"data"/"flatw", SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
+    samplecls = AlignSample
+    a = samplecls(thisfolder/"data", shardedim3root, SlideID, dbloadroot=thisfolder/"test_for_jenkins"/"alignment", logroot=thisfolder/"test_for_jenkins"/"alignment")
     self.compareoutput(a)
 
   def testCohortFastUnits(self):
     self.testCohort(units="fast_microns")
+
+  def testTMA(self):
+    self.testAlignment(SlideID="Control_TMA_1372_97_05.14.2019", im3filetype="raw", TMA=True, selectrectangles=[55, 56, 66, 67, 77])
 
   def testNoLog(self, SlideID="M21_1"):
     samp = SampleDef(SlideID=SlideID, Project=0, Cohort=0, root=thisfolder/"data")

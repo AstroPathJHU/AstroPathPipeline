@@ -5,7 +5,7 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.miscfileio import cd
 from ...utilities.tableio import readtable, writetable
 from ...shared.samplemetadata import MetadataSummary
-from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
+from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.image_masking.config import CONST as MASK_CONST
 from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
@@ -142,8 +142,7 @@ class MeanImageSampleBaseComponentTiff(MeanImageSampleBase, ReadRectanglesOverla
         super().__init__(*args,workingdir=workingdir,**kwargs)
         self.med_ets = np.ones(self.nlayersunmixed) #unmixed images are already exposure time corrected
 
-class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, 
-                             FileTypeArgumentParser) :
+class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML) :
     """
     MeanImage base class that reads Im3 files
     """
@@ -639,6 +638,9 @@ class MeanImageSampleIm3(MeanImageSampleBaseIm3,WorkflowSample,XMLLayoutReader) 
     @classmethod
     def workflowdependencyclasses(cls, **kwargs):
         return super().workflowdependencyclasses(**kwargs)
+    @classmethod
+    def defaultim3filetype(cls):
+        return "raw"
 
 class MeanImageSampleComponentTiffTissue(MeanImageSampleComponentTiff, TissueSampleBase) :
     pass

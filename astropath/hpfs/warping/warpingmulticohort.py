@@ -27,6 +27,8 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
 
     def __init__(self,*args,workingdir=None,useGPU=True,**kwargs) :
         super().__init__(*args,**kwargs)
+        if self.im3filetype != 'raw':
+            raise ValueError('only run warping on raw files')
         self.__workingdir = workingdir
         #if running with the GPU, create a GPU thread and start a dictionary of GPU FFTs to give to each sample
         self.gputhread = get_GPU_thread(sys.platform=='darwin',self.logger) if useGPU else None
@@ -40,7 +42,6 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
     @property
     def initiatesamplekwargs(self) :
         to_return = {**super().initiatesamplekwargs,
-                'filetype':'raw',
                 'useGPU':self.__useGPU,
                 'gputhread':self.gputhread,
                 'gpufftdict':self.gpufftdict,
@@ -61,6 +62,10 @@ class WarpingCohort(CorrectedImageCohort,SelectLayersCohort,WorkflowCohort,WarpF
             # output should be in the default location for running under normal workflow conditions
             #'workingdir':self.__workingdir if self.__workingdir.parent!=APPROC_OUTPUT_LOCATION else None,
             }
+
+    @classmethod
+    def defaultim3filetype(cls) :
+        return 'raw'
 
 class WarpingMultiCohort(MultiCohortBase) :
     """

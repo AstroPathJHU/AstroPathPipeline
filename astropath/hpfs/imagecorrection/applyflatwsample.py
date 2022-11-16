@@ -20,6 +20,8 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
 
     def __init__(self,*args,layers,workingdir=None,**kwargs) :
         super().__init__(*args,layersim3=layers,**kwargs)
+        if self.im3filetype != 'raw':
+            raise ValueError('only ever run image correction on raw files')
         self.__workingdir = workingdir
         #if no directory is given for the output
         if self.__workingdir is None :
@@ -143,12 +145,15 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
     @classmethod
     def initkwargsfromargumentparser(cls, parsed_args_dict):
         to_return = super().initkwargsfromargumentparser(parsed_args_dict)
-        to_return['filetype']='raw' # only ever run image correction on raw files
         to_return['skip_et_corrections']=True # never apply corrections for exposure time
         # Give the correction model file by default
         if to_return['correction_model_file'] is None :
             to_return['correction_model_file']=IMAGECORRECTION_CONST.DEFAULT_CORRECTION_MODEL_FILEPATH
         return to_return
+
+    @classmethod
+    def defaultim3filetype(cls):
+        return "raw"
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

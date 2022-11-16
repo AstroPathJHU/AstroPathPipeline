@@ -482,10 +482,12 @@ class Im3Cohort(Cohort, Im3ArgumentParser):
   """
   Base class for any cohort that uses im3 files
   shardedim3root: the location of the sharded im3s
+  im3filetype: file type of the im3s (raw or flatWarp)
   """
-  def __init__(self, root, shardedim3root, *args, **kwargs):
+  def __init__(self, root, shardedim3root, *args, im3filetype, **kwargs):
     super().__init__(root=root, *args, **kwargs)
     self.shardedim3root = pathlib.Path(shardedim3root)
+    self.im3filetype = im3filetype
 
   @property
   def root1(self): return self.root
@@ -496,7 +498,11 @@ class Im3Cohort(Cohort, Im3ArgumentParser):
 
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "shardedim3root": self.shardedim3root}
+    return {
+      **super().initiatesamplekwargs,
+      "shardedim3root": self.shardedim3root,
+      "im3filetype": self.im3filetype,
+    }
 
 class DbloadCohortBase(CohortBase):
   def __init__(self, *args, dbloadroot=None, **kwargs):

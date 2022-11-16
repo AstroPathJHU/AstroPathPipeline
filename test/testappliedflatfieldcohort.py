@@ -18,8 +18,9 @@ rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,3
 
 class DummySample(ReadRectanglesIm3FromXML, TissueSampleBase) :
 
-    def __init__(self,*args,filetype='raw',**kwargs) :
-        super().__init__(*args,filetype=filetype,uselogfiles=False,**kwargs)
+    def __init__(self,*args,**kwargs) :
+        super().__init__(*args,uselogfiles=False,**kwargs)
+
 
     def run(self,**kwargs) :
         pass
@@ -27,6 +28,9 @@ class DummySample(ReadRectanglesIm3FromXML, TissueSampleBase) :
     @classmethod
     def logmodule(cls) : 
         return "dummy_sample"
+
+    @classmethod
+    def defaultim3filetype(cls): return "raw"
 
 class TestAppliedFlatfieldCohort(TestBaseCopyInput,TestBaseSaveOutput) :
     """

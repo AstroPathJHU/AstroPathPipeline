@@ -1,5 +1,5 @@
 #imports
-from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser
+from ...shared.argumentparser import WorkingDirArgumentParser
 from ...shared.cohort import CorrectedImageCohort, SelectRectanglesCohort, MaskCohort, ParallelCohort, WorkflowCohort
 from .meanimagesample import MeanImageSampleBase, MeanImageSampleComponentTiffTissue, MeanImageSampleIm3Tissue
 
@@ -47,18 +47,15 @@ class MeanImageCohortBase(CorrectedImageCohort, ParallelCohort, MaskCohort, Sele
 class MeanImageCohortComponentTiff(MeanImageCohortBase) :
     sampleclass = MeanImageSampleComponentTiffTissue
 
-class MeanImageCohortIm3(MeanImageCohortBase, FileTypeArgumentParser) :
+class MeanImageCohortIm3(MeanImageCohortBase) :
     sampleclass = MeanImageSampleIm3Tissue
 
-    def __init__(self,*args,filetype='raw',**kwargs) :
+    def __init__(self,*args,**kwargs) :
         super().__init__(*args,**kwargs)
-        self.filetype = filetype
 
-    @property
-    def initiatesamplekwargs(self) :
-        return {**super().initiatesamplekwargs,
-                'filetype':self.filetype,
-            }
+    @classmethod
+    def defaultim3filetype(cls) :
+        return 'raw'
 
 def main(args=None) :
     MeanImageCohortIm3.runfromargumentparser(args)

@@ -995,10 +995,13 @@ class Im3SampleBase(SampleBase, Im3ArgumentParser):
   Base class for any sample that uses sharded im3 images.
   shardedim3root: Root location of the im3 images.
          (The images are in shardedim3root/SlideID)
+  im3filetype: "raw", "flatWarp", or "camWarp"
   """
-  def __init__(self, root, shardedim3root, samp, *args, **kwargs):
-    super().__init__(root=root, samp=samp, *args, **kwargs)
+  def __init__(self, root, shardedim3root, samp, *args, im3filetype=None, **kwargs):
     self.shardedim3root = pathlib.Path(shardedim3root)
+    if im3filetype is None: im3filetype = self.defaultim3filetype()
+    self.__im3filetype = im3filetype
+    super().__init__(root=root, samp=samp, *args, **kwargs)
 
   @property
   def root1(self): return self.root
@@ -1009,6 +1012,9 @@ class Im3SampleBase(SampleBase, Im3ArgumentParser):
   @property
   def possiblexmlfolders(self):
     return super().possiblexmlfolders + [self.shardedim3root/self.SlideID]
+
+  @property
+  def im3filetype(self): return self.__im3filetype
 
 class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   """
@@ -1264,15 +1270,12 @@ class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgume
 class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
   """
   Base class for any sample that loads images from an im3 file.
-  filetype: "raw", "flatWarp", or "camWarp"
   layer or layers: the layer or layers to read, depending on whether
                    the class uses multilayer images or not
   readlayerfile: whether or not to read from a file with a single layer, e.g. .fw01
   """
 
-  def __init__(self, *args, filetype, readlayerfile=None, **kwargs):
-    self.__filetype = filetype
-
+  def __init__(self, *args, readlayerfile=None, **kwargs):
     if readlayerfile is None: readlayerfile = not self.multilayerim3
 
     if self.multilayerim3 and readlayerfile:
@@ -1297,7 +1300,7 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
     kwargs = {
       **super().rectangleextrakwargs,
       "im3folder": self.shardedim3root/self.SlideID,
-      "im3filetype": self.filetype,
+      "im3filetype": self.im3filetype,
       "width": self.fwidth,
       "height": self.fheight,
       "nlayersim3": self.nlayersim3,
@@ -1312,9 +1315,6 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
         "layerim3": self.layerim3,
       })
     return kwargs
-
-  @property
-  def filetype(self): return self.__filetype
 
 class ReadRectanglesComponentTiffBase(ReadRectanglesBase, SelectLayersComponentTiff):
   """
