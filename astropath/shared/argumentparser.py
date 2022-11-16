@@ -1,6 +1,5 @@
 import abc, argparse, contextlib, job_lock, logging, pathlib, re
 from ..utilities.tableio import TableReader
-from ..utilities.config import CONST as UNIV_CONST
 from ..utilities.misc import dict_of_init_par_values_callback, dict_of_par_bounds_callback
 from .workflowdependency import MRODebuggingMetaClass, ThingWithRoots
 
@@ -228,7 +227,7 @@ class Im3ArgumentParser(RunFromArgumentParser):
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--shardedim3root", type=pathlib.Path, help="root location of sharded im3 files.", required=True)
-    p.add_argument("--im3filetype", choices=("raw", "flatWarp", "camWarp"), help="file type of im3 files: flatWarp, raw, or camWarp.  Default {cls.defaultim3filetype()}.")
+    p.add_argument("--im3filetype", choices=("raw", "flatWarp", "camWarp"), default=cls.defaultim3filetype(), help="file type of im3 files: flatWarp, raw, or camWarp.  Default {cls.defaultim3filetype()}.")
     return p
 
   @classmethod

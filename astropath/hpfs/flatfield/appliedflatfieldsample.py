@@ -129,6 +129,10 @@ class AppliedFlatfieldSampleIm3(AppliedFlatfieldSampleBase,MeanImageSampleBaseIm
     def logmodule(cls) : 
         return "appliedflatfield"
 
+    @classmethod
+    def defaultim3filetype(cls):
+        return "raw"
+
 class AppliedFlatfieldSampleComponentTiffTissue(AppliedFlatfieldSampleComponentTiff, TissueSampleBase) :
     pass
 class AppliedFlatfieldSampleIm3Tissue(AppliedFlatfieldSampleIm3, TissueSampleBase) :

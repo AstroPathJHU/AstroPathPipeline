@@ -638,6 +638,9 @@ class MeanImageSampleIm3(MeanImageSampleBaseIm3,WorkflowSample,XMLLayoutReader) 
     @classmethod
     def workflowdependencyclasses(cls, **kwargs):
         return super().workflowdependencyclasses(**kwargs)
+    @classmethod
+    def defaultim3filetype(cls):
+        return "raw"
 
 class MeanImageSampleComponentTiffTissue(MeanImageSampleComponentTiff, TissueSampleBase) :
     pass

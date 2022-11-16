@@ -151,6 +151,10 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
             to_return['correction_model_file']=IMAGECORRECTION_CONST.DEFAULT_CORRECTION_MODEL_FILEPATH
         return to_return
 
+    @classmethod
+    def defaultim3filetype(cls):
+        return "raw"
+
 #################### FILE-SCOPE FUNCTIONS ####################
 
 def write_out_corrected_image_files(im,filenamestem,layers,outextstem) :
