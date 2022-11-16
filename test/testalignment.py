@@ -45,6 +45,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/"logfiles"/"align.log",
       thisfolder/"test_for_jenkins"/"alignment"/"M21_1"/"logfiles"/"M21_1-align.log",
       thisfolder/"test_for_jenkins"/"alignment"/"YZ71"/"logfiles"/"YZ71-align.log",
+      thisfolder/"test_for_jenkins"/"alignment"/"Control_TMA_1372_97_05.14.2019"/"logfiles"/"Control_TMA_1372_97_05.14.2019-align.log",
       thisfolder/"test_for_jenkins"/"alignment"/"component_tiff"/"M206"/"logfiles"/"M206-align.log",
     ]
 
