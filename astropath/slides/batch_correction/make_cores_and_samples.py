@@ -6,12 +6,15 @@ This script creates the Ctrl/*_cores.csv and Ctrl/*_samples.csv files for a coho
 from asyncio import coroutines
 import pathlib
 from argparse import ArgumentParser
+from ...shared.samplemetadata import ControlTMASampleDef
+from ...utilities.tableio import writetable
 
 import glob 
 import os
 import pandas as pd
 import numpy as np
 import re # for regular expressions
+from datetime import datetime
 
 #constants
 DEFAULT_TMA_TISSUE_TYPES_FILE = '//bki04/astropath_processing/batch_correction/TMA_tissuetypes.xlsx'
@@ -138,6 +141,7 @@ def getList_ctrlsamples(projectNumber):
     llist.SlideID = llist.SlideID.apply(lambda ttext: ttext.replace('\\','/') )
     llist.SlideID = llist.SlideID.apply(lambda ttext: ttext.replace(projectFolder,'') )
     
+    ctrlsamples_obj = [] 
     ctrlsamples = pd.DataFrame({})
     ctrlsamples['Project'] = np.arange(0,len(llist),1)*0 + projectDescription.Project[0]
     ctrlsamples['Cohort'] = np.arange(0,len(llist),1)*0 + projectDescription.Cohort[0]
@@ -162,7 +166,7 @@ def getList_ctrlsamples(projectNumber):
     ctrlsamples['SlideID'] = llist.SlideID
     ctrlsamples['TMA_imageType'] = ['']*ctrlsamples.shape[0]
     ctrlsamples['ComponentTIFF_No'] = ['']*ctrlsamples.shape[0]
-    print(ctrlsamples)
+    
     for ii in range(0,ctrlsamples.shape[0],1):
 
         # Identify Scan number
@@ -198,10 +202,28 @@ def getList_ctrlsamples(projectNumber):
 
         # Check if there are .tif files
         ctrlsamples.loc[ii,['ComponentTIFF_No']] = len( glob.glob( os.path.join(folderTIFF,'*.tif') ) )
-        
+
+        # Create “dataclass” object, eg:
+        # result2writeout = ControlTMASampleDef(project,cohort,…) -- attributes given in order
+        # the information, as data object, is stored in a list,
+        # that will be written out in a .csv file using utilities.tableio.writetable() as writetable(filepath,list_of_objects)
+        ControlTMASampleDef_obj = ControlTMASampleDef(
+                    ctrlsamples['Project'].iloc[ii],# Project
+                    ctrlsamples['Cohort'].iloc[ii], # Cohort
+                    ctrlsamples['CtrlID'].iloc[ii], # CtrlID
+                    ctrlsamples['TMA'].iloc[ii],    # TMA
+                    ctrlsamples['Ctrl'].iloc[ii],   # Ctrl
+                    datetime.strptime(ctrlsamples['Date'].iloc[ii], "%m.%d.%Y"),   # Date
+                    ctrlsamples['BatchID'].iloc[ii],# BatchID
+                    int(ctrlsamples['Scan'].iloc[ii].replace('Scan','')),   # Scan
+                    ctrlsamples['SlideID'].iloc[ii] # SlideID
+                    )
+        print(ControlTMASampleDef_obj)
+        ctrlsamples_obj.append(ControlTMASampleDef_obj)
+    
     ctrlsamples_all = pd.DataFrame( {'SlideID':glob.glob( projectFolder+'Control_'+'*', recursive=False )} )
 
-    return ctrlsamples, ctrlsamples_all
+    return ctrlsamples, ctrlsamples_all, ctrlsamples_obj
 
 # 
 def getList_ctrlcores(projectNumber,outputpath,TMAinfo):
@@ -232,7 +254,7 @@ def getList_ctrlcores(projectNumber,outputpath,TMAinfo):
     if TMAinfo == '':
         # read only Tonsil and Spleen
         llist = llist.loc[llist.flag==-1,['folders']]# .to_string(header=False,index=False)
-    elif TMAinfo == 'all':
+    elif TMAinfo == '_all':
         # read all control cores:
         llist = llist.loc[llist.flag!=-1,['folders']]# .to_string(header=False,index=False)
     
@@ -280,10 +302,8 @@ def main() :
                         help='Path to the directory that should hold the output *_cores.csv and *_samples.csv files')
     
     args = parser.parse_args()
-    #get information from files that already exist
-    #write out the *_cores.csv file
-    #write out the *_samples.csv file
 
+    # ------------------------------------------------------------------- #
     # Create Control_TMA_info files for the different TMA types:
     tmaDictionary, ctrlFolder = getFile_ControlTMAinfo(args.project_number, args.outdir);
 
@@ -292,22 +312,28 @@ def main() :
             tmaDictionary[kkeys].fillna('').to_excel(writer, index=False)
         print(kkeys)
 
-    # Create _ctrlsamples file
-        # NOTE:
-        # For some reason I get the following error message (however, everything happens as it supposed to)
-        # AttributeError: 'int' object has no attribute 'copy'
-        # Origin in line: ctrlsamples['Scan'][ii] = 'Scan'+ str(llist.Scan.max().copy())
-    ctrlsamples, ctrlsamples_all = getList_ctrlsamples(args.project_number);
+    # ------------------------------------------------------------------- # 
+    # Create _ctrlsamples file:
+    ctrlsamples, ctrlsamples_all, ctrlsamples_obj = getList_ctrlsamples(args.project_number);
 
-    with pd.ExcelWriter(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlsamples.xlsx')) as writer:
+    writetable(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlsamples.csv'),
+        ctrlsamples_obj) 
+        # utilities.tableio.writetable()
+    with pd.ExcelWriter(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlsamples_ext.xlsx')) as writer:
         ctrlsamples.to_excel(writer, index=False, sheet_name='ctrlsamples')
         ctrlsamples_all.to_excel(writer, index=False, sheet_name='ctrlsamplesList')
-    
-    ctrlcores = getList_ctrlcores(args.project_number, args.outdir, '');
+
+    # ------------------------------------------------------------------- #
+    # Create _ctrlcores file:
+    TMAinfo = ''
         # TMAinfo = '' - use only Tonsil and Spleen cores
-        # TMAinfo = 'all' - use all control cores
-    with pd.ExcelWriter(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores.xlsx')) as writer:
-        ctrlcores.to_excel(writer, index=False, sheet_name='ctrlcores')
+        # TMAinfo = '_all' - use all control cores
+    ctrlcores = getList_ctrlcores(args.project_number, args.outdir, TMAinfo);
+
+    ctrlcores.to_csv(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores'+TMAinfo+'.csv'), 
+        sep=';', index=False)
+        # with pd.ExcelWriter(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores.xlsx')) as writer:
+        #     ctrlcores.to_excel(writer, index=False, sheet_name='ctrlcores')
 
 if __name__=='__main__' :
     main()
