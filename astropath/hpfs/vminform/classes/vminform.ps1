@@ -497,8 +497,7 @@ Class vminform : moduletools {
         #
         $errs = $this.sample.GetContent($this.informprocesserrorlog)
         if ($errs){
-            $this.sample.error($errs)
-            throw 'Error in inform process: ' + $errs
+            $this.sample.warning($errs)
         }
         #
         $batchlog = $this.sample.GetContent($this.informbatchlog)
