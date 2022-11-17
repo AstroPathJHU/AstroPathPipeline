@@ -6,10 +6,10 @@ from ..align.computeshift import computeshift
 from .annowarpsample import QPTiffSample
 
 class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, TissueSampleBase, scale="zoomedscale"):
-  def __init__(self, *args, shiftthresholdmicrons=100, filetype="flatWarp", **kwargs):
+  def __init__(self, *args, shiftthresholdmicrons=100, **kwargs):
     self.qptifflayer = 1
     self.im3layer = 1
-    super().__init__(*args, filetype=filetype, layerim3=self.im3layer, **kwargs)
+    super().__init__(*args, layerim3=self.im3layer, **kwargs)
     self.__shiftthresholdmicrons = shiftthresholdmicrons
     if len(self.rectangles) != 1:
       raise ValueError("Please specify a rectangle in selectrectangles")
@@ -82,3 +82,7 @@ class DetectBigShiftSample(ReadRectanglesDbloadIm3, QPTiffSample, TissueSampleBa
       return self.__shift
 
   def run(self, *args, **kwargs): return self.getshift(*args, **kwargs)
+
+  @classmethod
+  def defaultim3filetype(cls):
+    return "flatWarp"

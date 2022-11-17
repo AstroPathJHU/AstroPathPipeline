@@ -13,13 +13,14 @@ class ApplyFlatWCohort(CorrectedImageCohort, SelectRectanglesCohort, ParallelCoh
     def __init__(self,*args,workingdir=None,**kwargs) :
         super().__init__(*args,**kwargs)
         self.workingdir = workingdir
+        if self.im3filetype != 'raw':
+            raise ValueError('only ever run image correction on raw files')
 
     @property
     def initiatesamplekwargs(self) :
         to_return = super().initiatesamplekwargs
         to_return['workingdir']=self.workingdir
         to_return['layers']=self.layers
-        to_return['filetype']='raw' # only ever run image correction on raw files
         to_return['skip_et_corrections']=True # Never apply corrections for exposure time
         # Give the correction model file by default
         if to_return['correction_model_file'] is None :
@@ -33,6 +34,10 @@ class ApplyFlatWCohort(CorrectedImageCohort, SelectRectanglesCohort, ParallelCoh
             'layers':self.layers,
             'workingdir':self.workingdir,
         }
+
+    @classmethod
+    def defaultim3filetype(cls) :
+        return 'raw'
 
 def main(args=None) :
     ApplyFlatWCohort.runfromargumentparser(args)

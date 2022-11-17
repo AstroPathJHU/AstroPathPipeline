@@ -4,7 +4,7 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
 from ...utilities.miscfileio import cd
 from ...utilities.tableio import readtable, writetable
-from ...shared.argumentparser import FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser
+from ...shared.argumentparser import WorkingDirArgumentParser, GPUArgumentParser
 from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, TissueSampleBase, WorkflowSample
 from ..flatfield.config import CONST as FF_CONST
 from ..flatfield.utilities import ThresholdTableEntry
@@ -15,7 +15,7 @@ from .rectangle import AlignmentRectangleForWarping
 from .overlap import AlignmentOverlapForWarping
 
 class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, WorkflowSample, TissueSampleBase,
-                    FileTypeArgumentParser, WorkingDirArgumentParser, GPUArgumentParser) :
+                    WorkingDirArgumentParser, GPUArgumentParser) :
     """
     Class to find octets to use in determining warping patterns and 
     help collect results of fits to find those patterns
@@ -129,6 +129,9 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
     @classmethod
     def defaultunits(cls) :
         return "fast"
+    @classmethod
+    def defaultim3filetype(cls) :
+        return "raw"
     @property
     def workflowkwargs(self) :
         return{**super().workflowkwargs,'skip_masking':False,'workingdir':self.__workingdir}

@@ -1,5 +1,5 @@
 from ...shared.cohort import DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort
-from .alignsample import AlignSample
+from .alignsample import AlignSample, AlignSampleTMA
 
 class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohort):
   __doc__ = AlignSample.__doc__
@@ -12,6 +12,7 @@ class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohor
       raise ValueError("If you do neither alignment nor stitching, there's nothing to do")
 
   sampleclass = AlignSample
+  TMAsampleclass = AlignSampleTMA
 
   @classmethod
   def makeargumentparser(cls, *, _forworkflow=False, **kwargs):
@@ -37,6 +38,9 @@ class AlignCohort(DbloadCohort, Im3Cohort, SelectRectanglesCohort, WorkflowCohor
       **super().workflowkwargs,
       "skipannotations": True,  #don't need prepdb annotations output
     }
+
+  @classmethod
+  def defaultim3filetype(cls): return "flatWarp"
 
 def main(args=None):
   AlignCohort.runfromargumentparser(args)

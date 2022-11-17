@@ -51,6 +51,8 @@ using module .\testtools.psm1
         $this.testmismatchtaskid($vminformqueue)
         $this.testdoubletaskid($vminformqueue)
         $this.resetinformqueue($vminformqueue)
+        $this.testtaskinbothqueues($vminformqueue)
+        $this.resetinformqueue($vminformqueue)
         $vminformqueue.removedir($this.mpath + '\across_project_queues')
         #
         $this.testgitstatus($vminformqueue)  
@@ -357,7 +359,7 @@ using module .\testtools.psm1
     [void]testdoubletaskid($vminformqueue){
         #
         write-host '.'
-        write-host 'test that the code handles double local taskdid started'
+        write-host 'test that the code handles double local task id started'
         #
         $vminformqueue.coalescevminformqueues($this.project)
         #
@@ -372,12 +374,52 @@ using module .\testtools.psm1
         write-host ($vminformqueue.localqueue.($this.project) | Format-Table | Out-String)
         write-host ($vminformqueue.maincsv | Format-Table | Out-String)
         $vminformqueue.pairqueues($this.project)
-        
         #
         $this.checklocalqueue($vminformqueue, 9)
         $this.checkmainqueue($vminformqueue, 15)
         #
-        write-host 'test that the code handles double local taskdid finished'
+        $vminformqueue.coalescevminformqueues($this.project)
+        $this.checklocalqueue($vminformqueue, 9)
+        $this.checkmainqueue($vminformqueue, 15)
+        #
+        write-host 'test that the code handles double local task id finished'
+        #
+    }
+    #
+    [void]testtaskinbothqueues($vminformqueue){
+        #
+        write-host '.'
+        write-host 'test that the code handles same task in both queues started'
+        #
+        $vminformqueue.coalescevminformqueues($this.project)
+        #
+        $NewRow =  [PSCustomObject]@{
+            TaskID = '102'
+            SlideID = 'newslide'
+            Antibody = 'Newab'
+            Algorithm = 'alginboth.ifp'
+            localTaskID = '102'
+        } 
+        $vminformqueue.localqueue.($this.project) += $NewRow
+        #
+        $NewRowMain =  [PSCustomObject]@{
+            TaskID = 'T00000102'
+            SlideID = 'newslide'
+            Antibody = 'Newab'
+            Algorithm = 'alginboth.ifp'
+            localtaskid = '102'
+        } 
+        $vminformqueue.maincsv += $NewRowMain
+        #
+        write-host ($vminformqueue.localqueue.($this.project) | Format-Table | Out-String)
+        write-host ($vminformqueue.maincsv | Format-Table | Out-String)
+        #
+        $vminformqueue.pairqueues($this.project)
+        #
+        $this.checklocalqueue($vminformqueue, 10)
+        $this.checkmainqueue($vminformqueue, 16)
+        #
+        write-host 'test that the code handles same task in both queues finished'
         #
     }
     #

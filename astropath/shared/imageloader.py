@@ -114,7 +114,7 @@ class ImageLoaderIm3Base(ImageLoaderBase):
         dtype=np.uint16,
         shape=tuple(self.imageshapeininput),
         order="F",
-        mode="r"
+        mode="r",
       ))
       result = memmap.transpose(self.imagetransposefrominput)[self.imageslicefrominput]
       if not self.__usememmap:

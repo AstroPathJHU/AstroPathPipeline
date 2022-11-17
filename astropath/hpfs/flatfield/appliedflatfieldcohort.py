@@ -2,7 +2,6 @@
 import pathlib
 from ...utilities.miscfileio import cd
 from ...utilities.tableio import writetable
-from ...shared.argumentparser import FileTypeArgumentParser
 from ...shared.cohort import CorrectedImageCohort, WorkflowCohort
 from .config import CONST
 from .flatfield import FlatfieldComponentTiff, FlatfieldIm3
@@ -171,19 +170,18 @@ class AppliedFlatfieldCohortComponentTiff(AppliedFlatfieldCohortBase) :
         self._flatfield = FlatfieldComponentTiff(image_dimensions,self.logger)
         self._corrected_meanimage = CorrectedMeanImageComponentTiff(image_dimensions,self.logger)
 
-class AppliedFlatfieldCohortIm3(AppliedFlatfieldCohortBase,CorrectedImageCohort,FileTypeArgumentParser) :
+class AppliedFlatfieldCohortIm3(AppliedFlatfieldCohortBase,CorrectedImageCohort) :
     """
     Class for testing the impact of flatfielding on im3 files
     """
 
     sampleclass = AppliedFlatfieldSampleIm3Tissue
 
-    def __init__(self,*args,filetype='raw',**kwargs) :
+    def __init__(self,*args,**kwargs) :
         """
         workingdir = Path to a directory that will hold the results
         """
         super().__init__(*args,**kwargs)
-        self.__filetype = filetype
         #figure out the image dimensions to give to the flatfield and corrected mean image
         for sample in self.samples() :
             if len(sample.rectangles)>0 :
@@ -192,11 +190,8 @@ class AppliedFlatfieldCohortIm3(AppliedFlatfieldCohortBase,CorrectedImageCohort,
         self._flatfield = FlatfieldIm3(image_dimensions,self.logger)
         self._corrected_meanimage = CorrectedMeanImageIm3(image_dimensions,self.logger)
 
-    @property
-    def initiatesamplekwargs(self) :
-        return {**super().initiatesamplekwargs,
-                'filetype':self.__filetype,
-               }
+    @classmethod
+    def defaultim3filetype(cls): return 'raw'
 
 #################### FILE-SCOPE FUNCTIONS ####################
 

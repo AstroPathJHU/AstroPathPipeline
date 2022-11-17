@@ -147,7 +147,7 @@ def get_overlap_comparisons(uncorr_samp,args,mi_ff_fp,basic_ff,basic_df,max_shif
                                       et_offset_file=None,
                                       skip_et_corrections=False,
                                       flatfield_file=mi_ff_fp,warping_file=None,correction_model_file=None,
-                                      filetype='raw',layer=li+1,
+                                      im3filetype='raw',layer=li+1,
                                       )
         overlap_comparisons[li+1] = [oc for oc in overlap_comparisons_found if oc.layer_n==li+1]
         comp_ns_found = [oc.n for oc in overlap_comparisons[li+1]]
@@ -238,7 +238,7 @@ def main() :
                                        #don't apply ANY corrections before running BaSiC
                                        skip_et_corrections=True, 
                                        flatfield_file=None,warping_file=None,correction_model_file=None,
-                                       filetype='raw',
+                                       im3filetype='raw',
                                        )
     dims = (uncorrected_sample.fheight,uncorrected_sample.fwidth,uncorrected_sample.nlayersim3)
     print(f'{timestamp()} done creating MeanImageSample for {args.slideID}')

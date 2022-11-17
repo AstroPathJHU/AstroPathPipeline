@@ -35,11 +35,13 @@ Class imagecorrection : moduletools {
     ----------------------------------------- #>
     [void]RunImageCorrection(){
         $this.TestPaths()
+        $this.sample.CreateNewDirs($this.processloc)
         $this.fixM2()
         $this.DownloadFiles()
         $this.ShredDat()
         $this.ApplyFlatw()
         $this.InjectDat()
+        $this.ReturnData()
         $this.cleanup()
         $this.datavalidation()
     }
@@ -146,13 +148,16 @@ Class imagecorrection : moduletools {
         $this.runmatlabtask($taskname, $matlabtask)
         $this.sample.info("Extract Layer finished")
     }
-    <#
+   <# -----------------------------------------
+     renamefw2dat
         in order to run the inject written by richard
         you have to use the Data.dat files. With the 'layers'
         option for py applyflatw the files are appended with 
         .fw, instead of the original .Data.dat. Remove old 
         .Data.dat and rename .fw to Data.dat to run inject 
-    #>
+     ------------------------------------------
+     Usage: $this.renamefw2dat()
+    ----------------------------------------- #>
     [void]renamefw2dat(){
         #
         $this.sample.info("rename fw 2 dat started")
@@ -184,20 +189,6 @@ Class imagecorrection : moduletools {
         $this.sample.info("rename fw 2 dat finished")
         #
     }
-    <# -----------------------------------------
-     cleanup
-     cleanup the data directory and return the 
-     data to the dpath locations
-     ------------------------------------------
-     Usage: $this.cleanup()
-    ----------------------------------------- #>
-    [void]cleanup(){
-        #
-        $this.sample.info("cleanup started")
-        $this.silentcleanup()
-        $this.sample.info("cleanup finished")
-        #
-    }
     #
     [void]loggedcopy($sor, $des, $type, $filespec){
         #
@@ -216,14 +207,16 @@ Class imagecorrection : moduletools {
         #
     }
     <# -----------------------------------------
-     silentcleanup
-     silentcleanup
+     ReturnData
+     returns im3, fw, and fw01 files to
+     appropriate folder
      ------------------------------------------
-     Usage: $this.silentcleanup()
+     Usage: $this.ReturnData()
     ----------------------------------------- #>
-    [void]silentcleanup(){
+    [void]ReturnData(){
         #
         if ($this.processvars[4]){
+            $this.sample.info("return data started")
             #
             # im3s
             #
@@ -246,8 +239,35 @@ Class imagecorrection : moduletools {
             }
             #
             $this.sample.copy($sor, $des, '.log')
-            $this.sample.removedir($this.processloc)
             #
+            $this.sample.info("return data finished")
+        }
+        #
+    }
+    <# -----------------------------------------
+     cleanup
+     cleanup the data directory and return the 
+     data to the dpath locations
+     ------------------------------------------
+     Usage: $this.cleanup()
+    ----------------------------------------- #>
+    [void]cleanup(){
+        #
+        $this.sample.info("cleanup started")
+        $this.silentcleanup()
+        $this.sample.info("cleanup finished")
+        #
+    }
+    <# -----------------------------------------
+     silentcleanup
+     silentcleanup
+     ------------------------------------------
+     Usage: $this.silentcleanup()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
+        #
+        if ($this.processvars[4]){
+            $this.sample.removedir($this.processloc)
         }
         #
     }

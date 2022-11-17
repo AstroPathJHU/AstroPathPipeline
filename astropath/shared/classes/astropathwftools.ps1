@@ -188,8 +188,8 @@ class astropathwftools : sampledb {
             Invoke-CimMethod @MethodArgs
         }
         catch {
-            $this.output('Error remoting to computer:' + $cname)
-            $this.output($_)
+            $this.writeoutput('Error remoting to computer:' + $cname)
+            $this.writeoutput($_)
         }
         #
     }
