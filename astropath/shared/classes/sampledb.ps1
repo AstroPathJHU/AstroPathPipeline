@@ -332,7 +332,7 @@ class sampledb : sampletracker {
     refreshmoduledbsub
     -----------------------------------------
     preforms the module table updates for the
-    specified slide and moduel. overload (3) 
+    specified slide and module. overload (3) 
     to include the project for vminform task
     ----------------------------------------- #>
     [void]refreshmoduledbsub($cmodule){
