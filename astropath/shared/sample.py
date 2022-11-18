@@ -2239,6 +2239,8 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
       for k, v in dct.items():
         if isinstance(v, str) and k > segid:
           toadd += 1
+        if "Immune" not in dct.values() or "Tumor" not in dct.values():
+          toadd += 2
       return segid + toadd
 
     return tuple(f(dct[k]) for k in range(1, len(dct)+1))
