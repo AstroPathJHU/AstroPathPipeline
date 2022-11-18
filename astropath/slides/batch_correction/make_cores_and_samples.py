@@ -7,6 +7,7 @@ from asyncio import coroutines
 import pathlib
 from argparse import ArgumentParser
 from ...shared.samplemetadata import ControlTMASampleDef
+from ...utilities.dataclasses import MyDataClassFrozen
 from ...utilities.tableio import writetable
 
 import glob 
@@ -156,6 +157,7 @@ def getList_ctrlsamples(projectNumber):
     ctrlsamples['Date'] = llist.SlideID
     ctrlsamples['Date'] = ctrlsamples.apply(lambda df: 
         df['Date'].replace(fBegin+df['TMA']+'_'+df['Ctrl']+'_', '' ), axis=1 )
+    ctrlsamples['Date'] = ctrlsamples['Date'].apply(lambda ttext: ttext.replace('.',''))
     
     ctrlsamples['TMA'] = ctrlsamples['TMA'].apply(lambda ttext: int(ttext) )
     ctrlsamples['Ctrl'] = ctrlsamples['Ctrl'].apply(lambda ttext: int(ttext) )
@@ -194,11 +196,20 @@ def getList_ctrlsamples(projectNumber):
 
         folderTIFF, folderIM3 = getControlTMApath(projectFolder,ctrlsamples['Ctrl'].iloc[ii],ctrlsamples)
         
-        # Check if TMAs are mosaic imaces or HPFs
-        if len(glob.glob( os.path.join(folderIM3,'*Core*.im3') ))==0:
-            ctrlsamples['TMA_imageType'] = 'HPFs'
+        # Check if TMAs are mosaic imaces or HPFs (or both)
+        im3_number = len(glob.glob( os.path.join(folderIM3,'*.im3') ))
+        if len(glob.glob( os.path.join(folderIM3,'*Core*.im3') ))/im3_number == 0:
+            # No .im3 with 'Core' filename --> only HPFs available
+            ctrlsamples.loc[ii,['TMA_imageType']] = 'HPFs'
+        elif len(glob.glob( os.path.join(folderIM3,'*Core*.im3') ))/im3_number == 1:
+            # All .im3 contains 'Core' --> only mosaic images available 
+            ctrlsamples.loc[ii,['TMA_imageType']] = 'mosaic'
         else:
-            ctrlsamples['TMA_imageType'] = 'mosaic'
+            ctrlsamples.loc[ii,['TMA_imageType']] = 'both mosaic & HPFs'
+        # if len(glob.glob( os.path.join(folderIM3,'*Core*.im3') ))==0:
+        #     ctrlsamples['TMA_imageType'] = 'HPFs'
+        # else:
+        #     ctrlsamples['TMA_imageType'] = 'mosaic'
 
         # Check if there are .tif files
         ctrlsamples.loc[ii,['ComponentTIFF_No']] = len( glob.glob( os.path.join(folderTIFF,'*.tif') ) )
@@ -213,17 +224,29 @@ def getList_ctrlsamples(projectNumber):
                     ctrlsamples['CtrlID'].iloc[ii], # CtrlID
                     ctrlsamples['TMA'].iloc[ii],    # TMA
                     ctrlsamples['Ctrl'].iloc[ii],   # Ctrl
-                    datetime.strptime(ctrlsamples['Date'].iloc[ii], "%m.%d.%Y"),   # Date
+                    datetime.strptime(ctrlsamples['Date'].iloc[ii], "%m%d%Y"),   # Date
                     ctrlsamples['BatchID'].iloc[ii],# BatchID
                     int(ctrlsamples['Scan'].iloc[ii].replace('Scan','')),   # Scan
                     ctrlsamples['SlideID'].iloc[ii] # SlideID
                     )
-        print(ControlTMASampleDef_obj)
         ctrlsamples_obj.append(ControlTMASampleDef_obj)
     
     ctrlsamples_all = pd.DataFrame( {'SlideID':glob.glob( projectFolder+'Control_'+'*', recursive=False )} )
 
     return ctrlsamples, ctrlsamples_all, ctrlsamples_obj
+
+#
+class ControlCores(MyDataClassFrozen):
+    # dataclass to store _ctrlcore data
+
+    ncore   : int
+    project : int
+    cohort  : int 
+    TMA     : int
+    cx      : int
+    cy      : int
+    Core    : str
+    Tissue  : str
 
 # 
 def getList_ctrlcores(projectNumber,outputpath,TMAinfo):
@@ -290,7 +313,20 @@ def getList_ctrlcores(projectNumber,outputpath,TMAinfo):
     ctrlcores = ctrlcores.sort_values(by=['TMA','cx','cy']).reset_index(drop=True)
     ctrlcores['ncore'] = np.arange(1,ctrlcores.shape[0]+1,1)
 
-    return ctrlcores
+    ctrlcores_obj = []
+    for ii in range(0,ctrlcores.shape[0],1):
+        ctrlcores_obj.append(ControlCores(
+                    ctrlcores['ncore'].iloc[ii],
+                    ctrlcores['project'].iloc[ii], 
+                    ctrlcores['cohort'].iloc[ii], 
+                    ctrlcores['TMA'].iloc[ii],
+                    ctrlcores['cx'].iloc[ii],
+                    ctrlcores['cy'].iloc[ii],
+                    ctrlcores['Core'].iloc[ii],
+                    ctrlcores['Tissue'].iloc[ii]
+                    ))
+
+    return ctrlcores, ctrlcores_obj
 
 def main() :
     #take in command line arguments
@@ -328,10 +364,12 @@ def main() :
     TMAinfo = ''
         # TMAinfo = '' - use only Tonsil and Spleen cores
         # TMAinfo = '_all' - use all control cores
-    ctrlcores = getList_ctrlcores(args.project_number, args.outdir, TMAinfo);
+    ctrlcores, ctrlcores_obj = getList_ctrlcores(args.project_number, args.outdir, TMAinfo);
 
-    ctrlcores.to_csv(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores'+TMAinfo+'.csv'), 
-        sep=';', index=False)
+    writetable(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores'+TMAinfo+'.csv'),
+        ctrlcores_obj)
+        # ctrlcores.to_csv(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores'+TMAinfo+'.csv'), 
+        #     sep=';', index=False)
         # with pd.ExcelWriter(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores.xlsx')) as writer:
         #     ctrlcores.to_excel(writer, index=False, sheet_name='ctrlcores')
 
