@@ -5,7 +5,7 @@ from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
 from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMask, ThingWithTissueMaskPolygons
 from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
 from ...shared.logging import ThingWithLogger
-from ...shared.rectangle import MaskRectangleBase, AstroPathTissueMaskRectangle
+from ...shared.rectangle import AstroPathTissueMaskRectangle, IHCTissueMaskRectangle, MaskRectangleBase
 from ...shared.rectangletransformation import ImageTransformation
 from ...shared.sample import MaskSampleBase, MaskWorkflowSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, TissueSampleBase
 from ...utilities.img_file_io import im3writeraw
@@ -17,6 +17,7 @@ from ..zoom.zoomsamplebase import ZoomSampleBase
 
 class MaskField(Field, MaskRectangleBase): pass
 class AstroPathTissueMaskField(MaskField, AstroPathTissueMaskRectangle): pass
+class IHCTissueMaskField(MaskField, IHCTissueMaskRectangle): pass
 
 class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser, ThingWithMask, ThingWithLogger):
   """
@@ -119,6 +120,16 @@ class AstroPathTissueMaskSample(TissueMaskSample):
   """
   @classmethod
   def maskfilestem(cls): return "tissue_mask"
+  @property
+  def tissuemasktransformation(self):
+    return ImageTransformation(lambda mask: mask.astype(bool))
+
+class IHCTissueMaskSample(TissueMaskSample):
+  """
+  Any class that inherits from this can load the IHC tissue mask
+  """
+  @classmethod
+  def maskfilestem(cls): return "IHC_mask"
   @property
   def tissuemasktransformation(self):
     return ImageTransformation(lambda mask: mask.astype(bool))
@@ -273,8 +284,44 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
   def workflowkwargs(self):
     return {**super().workflowkwargs, "skip_masking": False}
 
+class StitchIHCTissueMaskSample(StitchMaskSample, IHCTissueMaskSample):
+  """
+  Stitch the IHC tissue mask together from the bin files.
+  The implementation is the same as zoom, and the mask will match the
+  wsi image to within a pixel (fractional pixel shifts are unavoidable
+  because the mask is discrete)
+  """
+  @classmethod
+  def logmodule(self): return "stitchIHCtissuemask"
+
+  rectangletype = IHCTissueMaskField
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "ihcmaskfolder": self.ihcmaskfolder,
+      "width": self.fwidth,
+      "height": self.fheight,
+    }
+
+  def inputfiles(self, **kwargs):
+    result = [self.csv("fields")]
+    if result[0].exists():
+      result += [
+        r.ihctissuemaskfile for r in self.rectangles
+      ]
+    return result
+
+  @property
+  def backgroundvalue(self): return False
+  def getHPFmask(self, field):
+    with field.using_tissuemask() as mask: return mask
+
 def astropathtissuemain(args=None):
   StitchAstroPathTissueMaskSample.runfromargumentparser(args=args)
 
 def informmain(args=None):
   StitchInformMaskSample.runfromargumentparser(args=args)
+
+def ihcmain(args=None):
+  StitchIHCTissueMaskSample.runfromargumentparser(args=args)

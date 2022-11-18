@@ -156,6 +156,10 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     return self.informdataroot/self.SlideID/"IHC"/"HPFs"
 
+  @property
+  def ihcmaskfolder(self):
+   return self.ihctiffsfolder/"image_masking"
+
   def __getimageinfofromcomponenttiff(self):
     """
     Find the pscale and image dimensions from the component tiff.
