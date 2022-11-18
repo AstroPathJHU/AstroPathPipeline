@@ -307,7 +307,7 @@ def boolasintfield(*defaultvalue, **metadata):
 
   return MetaDataAnnotation(*defaultvalue, **metadata)
 
-def datefield(dateformat, *defaultvalue, optional=False, **metadata):
+def datefield(dateformat, *defaultvalue, optional=False, otherdateformats=(), **metadata):
   """
   returns a MetaDataAnnotation for writing a date
 
@@ -318,17 +318,27 @@ def datefield(dateformat, *defaultvalue, optional=False, **metadata):
     ...     f.write('''
     ...       x,date
     ...       1,1/1/2021 1:00:00
-    ...       2,1/2/2021 2:00:00
+    ...       2,1/2/21 2:00:00
     ...     '''.replace("      ", "").strip()) and None #avoid printing return value of f.write
     ...   class DateDataClass(MyDataClass):
     ...     x: int
-    ...     date: datetime.datetime = datefield("%d/%m/%Y %H:%M:%S")
+    ...     date: datetime.datetime = datefield("%d/%m/%Y %H:%M:%S", otherdateformats=["%d/%m/%y %H:%M:%S"])
     ...   table = readtable(filename, DateDataClass)
     ...   print(table)
     [DateDataClass(x=1, date=datetime.datetime(2021, 1, 1, 1, 0)), DateDataClass(x=2, date=datetime.datetime(2021, 2, 1, 2, 0))]
   """
+  def readfunction(x):
+    try:
+      return datetime.datetime.strptime(x, dateformat)
+    except ValueError:
+      for otherformat in otherdateformats:
+        try:
+          return datetime.datetime.strptime(x, otherformat)
+        except ValueError:
+          pass
+      raise
   metadata = {
-    "readfunction": lambda x: datetime.datetime.strptime(x, dateformat),
+    "readfunction": readfunction,
     "writefunction": lambda x: x.strftime(format=dateformat),
     **metadata,
   }
