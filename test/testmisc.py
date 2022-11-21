@@ -1,15 +1,17 @@
-import collections, cv2, datetime, hashlib, more_itertools, numpy as np, os, pathlib
+import collections, csv, cv2, datetime, hashlib, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, re
 from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, checkannotations, writeannotationcsvs, writeannotationinfo
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
-from astropath.shared.logging import printlogger
+from astropath.shared.logging import getlogger, printlogger
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle
 from astropath.slides.align.alignsample import AlignSample
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
+from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.shared.samplemetadata import APIDDef, MakeSampleDef, SampleDef
 from astropath.utilities import units
+from astropath.utilities.version.git import thisrepo
 from astropath.utilities.tableio import readtable, writetable
 from .testbase import assertAlmostEqual, TestBaseCopyInput, TestBaseSaveOutput
 
@@ -18,7 +20,7 @@ thisfolder = pathlib.Path(__file__).parent
 class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
   @property
   def outputfilenames(self):
-    return [
+    yield from [
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_Scan1.annotationinfo.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_annotations.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M206"/"M206_regions.csv",
@@ -27,10 +29,22 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_annotations.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_regions.csv",
       thisfolder/"test_for_jenkins"/"misc"/"standaloneannotations"/"M21_1"/"M21_1_vertices.csv",
+
       thisfolder/"test_for_jenkins"/"misc"/"makesampledef"/"sampledef.csv",
+
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"sampledef.csv",
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"noheader.csv",
     ]
+
+    for folder in ("error_regex", "require_commit"):
+      yield from [
+        thisfolder/"test_for_jenkins"/"misc"/folder/"logfiles"/"prepdb.log",
+        thisfolder/"test_for_jenkins"/"misc"/folder/"M21_1"/"logfiles"/"M21_1-prepdb.log",
+        thisfolder/"test_for_jenkins"/"misc"/folder/"M21_1"/"dbload"/f"M21_1_qptiff.jpg",
+      ]
+      for csv in ("batch", "constants", "exposures", "overlap", "qptiff", "rect"):
+        yield thisfolder/"test_for_jenkins"/"misc"/folder/"M21_1"/"dbload"/f"M21_1_{csv}.csv"
+
   @classmethod
   def filestocopy(cls):
     for SlideID in "M21_1", "M206":
@@ -326,3 +340,72 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     with self.assertRaises(FileNotFoundError):
       s3.nlayersunmixed
     self.assertEqual(s1.nlayersunmixed, s2.nlayersunmixed)
+
+  def testRequireCommit(self):
+    testrequirecommit = thisrepo.getcommit("cf271f3a")
+
+    root = thisfolder/"data"
+    dbloadroot = logroot = thisfolder/"test_for_jenkins"/"misc"/"require_commit"
+    SlideID = "M21_1"
+    logfolder = logroot/SlideID/"logfiles"
+    logfolder.mkdir(exist_ok=True, parents=True)
+
+    logfile = logfolder/f"{SlideID}-prepdb.log"
+    with getlogger(root=logroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="prepdb", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1) as logger:
+      logger.info("testing")
+
+    with open(logfile, newline="") as f:
+      f, f2 = itertools.tee(f)
+      startregex = re.compile(PrepDbSample.logstartregex())
+      reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";")
+      for row in reader:
+        match = startregex.match(row["message"])
+        istag = not bool(match.group("commit"))
+        if match: break
+      else:
+        assert False
+      contents = "".join(f2)
+
+    usecommit = testrequirecommit.parents[0]
+    #purposely write an INVALID commit hash (with aaaaa at the end)
+    #testing with --require-commit is in testgeomcell.py
+    if istag:
+      contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}aaaaa")
+    else:
+      contents = contents.replace(match.group("commit"), usecommit.shorthash(8)+"aaaaa")
+
+    with open(logfile, "w", newline="") as f:
+      f.write(contents)
+
+    s = PrepDbSample(root=root, dbloadroot=dbloadroot, logroot=logroot, samp=SlideID)
+    s.dbload.mkdir(parents=True, exist_ok=True)
+    for filename in s.outputfiles:
+      filename.touch()
+
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", "fast", "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--skip-qptiff"]
+    PrepDbCohort.runfromargumentparser(args) #this should not run anything
+    with open(s.csv("rect")) as f: assert not f.read().strip()
+    PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(testrequirecommit.parents[0].parents[0])])
+    with open(s.csv("rect")) as f: assert f.read().strip()
+
+  def testErrorRegex(self):
+    root = thisfolder/"data"
+    dbloadroot = logroot = thisfolder/"test_for_jenkins"/"misc"/"error_regex"
+    SlideID = "M21_1"
+    logfolder = logroot/SlideID/"logfiles"
+    logfolder.mkdir(exist_ok=True, parents=True)
+
+    logfile = logfolder/f"{SlideID}-prepdb.log"
+    with getlogger(root=logroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="prepdb", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1) as logger:
+      raise ValueError("testing error regex matching")
+
+    s = PrepDbSample(root=root, dbloadroot=dbloadroot, logroot=logroot, samp=SlideID)
+    s.dbload.mkdir(parents=True, exist_ok=True)
+    for filename in s.outputfiles:
+      filename.touch()
+
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", "fast", "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--skip-qptiff", "--rerun-error", "other error"]
+    PrepDbCohort.runfromargumentparser(args) #this should not run anything
+    with open(s.csv("rect")) as f: assert not f.read().strip()
+    PrepDbCohort.runfromargumentparser(args + ["--rerun-error", "testing error regex matching"])
+    with open(s.csv("rect")) as f: assert f.read().strip()
