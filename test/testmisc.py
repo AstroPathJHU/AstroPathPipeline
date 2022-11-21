@@ -1,4 +1,4 @@
-import collections, csv, cv2, datetime, hashlib, itertools, job_lock, logging, more_itertools, numpy as np, os, pathlib, re
+import collections, csv, cv2, datetime, hashlib, itertools, logging, more_itertools, numpy as np, os, pathlib, re
 from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, checkannotations, writeannotationcsvs, writeannotationinfo
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
@@ -40,10 +40,10 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       yield from [
         thisfolder/"test_for_jenkins"/"misc"/folder/"logfiles"/"prepdb.log",
         thisfolder/"test_for_jenkins"/"misc"/folder/"M21_1"/"logfiles"/"M21_1-prepdb.log",
-        thisfolder/"test_for_jenkins"/"misc"/folder/"M21_1"/"dbload"/f"M21_1_qptiff.jpg",
+        thisfolder/"test_for_jenkins"/"misc"/folder/"M21_1"/"dbload"/"M21_1_qptiff.jpg",
       ]
-      for csv in ("batch", "constants", "exposures", "overlap", "qptiff", "rect"):
-        yield thisfolder/"test_for_jenkins"/"misc"/folder/"M21_1"/"dbload"/f"M21_1_{csv}.csv"
+      for csvfile in ("batch", "constants", "exposures", "overlap", "qptiff", "rect"):
+        yield thisfolder/"test_for_jenkins"/"misc"/folder/"M21_1"/"dbload"/f"M21_1_{csvfile}.csv"
 
   @classmethod
   def filestocopy(cls):
@@ -395,8 +395,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     logfolder = logroot/SlideID/"logfiles"
     logfolder.mkdir(exist_ok=True, parents=True)
 
-    logfile = logfolder/f"{SlideID}-prepdb.log"
-    with getlogger(root=logroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="prepdb", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1) as logger:
+    with getlogger(root=logroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="prepdb", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1):
       raise ValueError("testing error regex matching")
 
     s = PrepDbSample(root=root, dbloadroot=dbloadroot, logroot=logroot, samp=SlideID)
