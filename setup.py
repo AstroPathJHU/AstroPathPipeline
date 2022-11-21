@@ -128,7 +128,7 @@ setupkwargs = dict(
     "methodtools",
     "more_itertools>=8.3.0",
     "networkx",
-    "numba",
+    "numba>=0.54", #require np.clip, added in numba/numba#6808
     "numpy>=1.23.0",
     "opencv-python",
     "openpyxl",
