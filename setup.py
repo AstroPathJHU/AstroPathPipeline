@@ -56,7 +56,6 @@ setupkwargs = dict(
       "applyflatwsample=astropath.hpfs.imagecorrection.applyflatwsample:main",
       "applyflatwcohort=astropath.hpfs.imagecorrection.applyflatwcohort:main",
       "ast-gen=astropath.scans.astroidgen.ASTgen:start_gen",
-      "astropathworkflow=astropath.shared.workflow:main",
       "batchflatfieldmulticohort=astropath.hpfs.flatfield.batchflatfieldmulticohort:main",
       "checkannotations=astropath.shared.annotationpolygonxmlreader:checkannotations",
       "copyannotationinfocohort=astropath.slides.annotationinfo.annotationinfo:copyannotationinfocohort",
