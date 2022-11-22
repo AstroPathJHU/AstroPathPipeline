@@ -349,7 +349,7 @@ class AlignSampleTissueBase(AlignSampleBase, TissueSampleBase): pass
 class AlignSampleTMABase(AlignSampleBase, TMASampleBase):
   def run(self, *args, **kwargs):
     for rect in self.rectangles:
-      if "_Core[" in rect.file:
+      if "_Core[" in rect.file.name:
         self.logger.info("sample was imaged by TMA core, not by HPF, no need to align")
         return
     super().run(*args, **kwargs)
