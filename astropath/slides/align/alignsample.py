@@ -263,6 +263,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample, Dbloa
       self.csv("affine"),
       self.csv("fields"),
       self.csv("fieldoverlaps"),
+      self.csv("fieldGeometry"),
     )
 
   def writestitchresult(self, result, *, filenames=None, check=False):
@@ -324,6 +325,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample, Dbloa
       dbload/f"{SlideID}_affine.csv",
       dbload/f"{SlideID}_fields.csv",
       dbload/f"{SlideID}_fieldoverlaps.csv",
+      dbload/f"{SlideID}_fieldGeometry.csv",
     ]
 
   def inputfiles(self, **kwargs):

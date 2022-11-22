@@ -156,12 +156,6 @@ pipeline {
               }
             }
 
-            stage('geom') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeom'
-              }
-            }
-
             stage('geomcell') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeomcell'

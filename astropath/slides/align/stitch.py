@@ -784,10 +784,13 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
   @property
   def globalshift(self):
     return self.__fields_and_shift[1]
+  @property
+  def fieldboundaries(self):
+    return [field.boundary for field in self.fields]
 
   def writetable(self, *filenames, rtol=1e-3, atol=1e-5, check=False, **kwargs):
     """
-    Write the affine, fields, and fieldoverlaps csvs
+    Write the affine, fields, fieldoverlaps, and fieldGeometry csvs
 
     check: cross check that reading the csvs back gives the same result
            this is nontrivial because we lose part of the covariance matrix
@@ -796,7 +799,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     rtol, atol: tolerance for the cross check
     """
 
-    affinefilename, fieldsfilename, fieldoverlapfilename = filenames
+    affinefilename, fieldsfilename, fieldoverlapfilename, fieldgeometryfilename = filenames
 
     fields = self.fields
     writetable(fieldsfilename, fields, rowclass=Field, **kwargs)
@@ -832,6 +835,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     writetable(affinefilename, affine, rowclass=AffineEntry, **kwargs)
 
     writetable(fieldoverlapfilename, self.fieldoverlaps, **kwargs)
+    writetable(fieldgeometryfilename, self.fieldboundaries, **kwargs)
 
     if check:
       self.__logger.debug("reading back from the file")
@@ -960,7 +964,7 @@ class StitchResultOverlapCovariances(StitchResultBase):
     return self.__fieldoverlapdict()[frozenset((overlap.p1, overlap.p2))]
 
   def readtables(self, *filenames, adjustoverlaps=True):
-    affinefilename, fieldsfilename, fieldoverlapfilename = filenames
+    affinefilename, fieldsfilename, fieldoverlapfilename, fieldgeometryfilename = filenames
 
     layer, = {_.alignmentlayer for _ in self.rectangles}
     fields = self.readtable(fieldsfilename, Field)
