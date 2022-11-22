@@ -145,11 +145,11 @@ setupkwargs = dict(
     "SimpleITK>=2.1.1",
     "slurm-python-utils>=1.6.1",
     "uncertainties",
+    "gpu": ["pyopencl", "reikna"],
   ],
   extras_require = {
     "deepcell": ["deepcell>=0.12.0"],
     "gdal": ["gdal>=3.3.0"],
-    "gpu": ["pyopencl", "reikna"],
     "nnunet": ["nnunet>=1.6.0"],
     "test": [
       #packages needed for running tests
