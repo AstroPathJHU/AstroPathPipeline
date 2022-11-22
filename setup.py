@@ -135,7 +135,9 @@ setupkwargs = dict(
     "openpyxl",
     "pathos>=0.2.8",
     "psutil;sys_platform!='cygwin'", #please note astropath is NOT been tested on cygwin
+    "pyopencl",
     "rdp",
+    "reikna",
     "seaborn",
     "scikit-image>=0.18",
     "scikit-learn>=0.17",
@@ -148,7 +150,6 @@ setupkwargs = dict(
   extras_require = {
     "deepcell": ["deepcell>=0.12.0"],
     "gdal": ["gdal>=3.3.0"],
-    "gpu": ["pyopencl", "reikna"],
     "nnunet": ["nnunet>=1.6.0"],
     "test": [
       #packages needed for running tests
