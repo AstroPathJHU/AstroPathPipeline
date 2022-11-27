@@ -346,7 +346,7 @@ class PolygonFinder(ThingWithPscale):
         self.cleanup()
       if not np.any(self.slicedmask):
         if self.isprimary:
-          self.logger.warningglobal(f"Cleaned up cell is empty {self.loginfo}")
+          self.logger.warningglobal(f"Cleaned up empty cell {self.loginfo}")
         return None
       polygon, = self.__findpolygons(cellmask=self.slicedmask.astype(np.uint8))
 
@@ -364,7 +364,11 @@ class PolygonFinder(ThingWithPscale):
           if self.isprimary:
             biggestarea = polygons[0].area
             discardedarea = sum(p.area for p in polygons[1:])
-            self.logger.warningglobal(f"Multiple polygons connected by 1-dimensional lines - keeping the biggest ({biggestarea} pixels) and discarding the rest (total {discardedarea} pixels)")
+            if discardedarea > max(10*p.onepixel**2, 0.2*biggestarea):
+              logfunction = self.logger.warningglobal
+            else:
+              logfunction = self.logger.debug
+            logfunction(f"Multiple polygons connected by 1-dimensional lines - keeping the biggest ({biggestarea} pixels) and discarding the rest (total {discardedarea} pixels)")
         polygon = polygons[0]
     except:
       if self._debugdrawonerror: self._debugdraw = True
@@ -616,7 +620,13 @@ class PolygonFinder(ThingWithPscale):
       return slicedmask
     nlabeled = {label: np.sum(labeled == label) for label in labels}
     biggest = max(nlabeled.items(), key=lambda kv: kv[1])[0]
-    self.logger.warning(f"Broken cell: picking the biggest region ({nlabeled[biggest]} pixels) and discarding the others (total {sum(nlabeled.values()) - nlabeled[biggest]} pixels)")
+    keptarea = nlabeled[biggest]
+    discardedarea = sum(nlabeled.values()) - keptarea
+    if discardedarea > max(10, 0.2*keptarea):
+      logfunction = self.logger.warningglobal
+    else:
+      logfunction = self.logger.debug
+    logfunction(f"Broken cell: picking the biggest region ({keptarea} pixels) and discarding the others (total {discardedarea} pixels)")
     slicedmask[labeled != biggest] = 0
 
   def cleanup(self):
