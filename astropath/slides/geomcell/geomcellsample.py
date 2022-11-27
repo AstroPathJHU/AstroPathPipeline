@@ -364,7 +364,7 @@ class PolygonFinder(ThingWithPscale):
           if self.isprimary:
             biggestarea = polygons[0].area
             discardedarea = sum(p.area for p in polygons[1:])
-            if discardedarea > max(10*p.onepixel**2, 0.2*biggestarea):
+            if discardedarea > max(10*self.onepixel**2, 0.2*biggestarea):
               logfunction = self.logger.warningglobal
             else:
               logfunction = self.logger.debug
