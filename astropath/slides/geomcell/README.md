@@ -1,4 +1,4 @@
-# 6.10. Cell geometries
+# 6.9. Cell geometries
 
 The `geomcell` step of the pipeline writes out the boundaries of the
 segmented cells by reading from the component tiff.

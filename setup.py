@@ -56,7 +56,6 @@ setupkwargs = dict(
       "applyflatwsample=astropath.hpfs.imagecorrection.applyflatwsample:main",
       "applyflatwcohort=astropath.hpfs.imagecorrection.applyflatwcohort:main",
       "ast-gen=astropath.scans.astroidgen.ASTgen:start_gen",
-      "astropathworkflow=astropath.shared.workflow:main",
       "batchflatfieldmulticohort=astropath.hpfs.flatfield.batchflatfieldmulticohort:main",
       "checkannotations=astropath.shared.annotationpolygonxmlreader:checkannotations",
       "copyannotationinfocohort=astropath.slides.annotationinfo.annotationinfo:copyannotationinfocohort",
@@ -70,8 +69,6 @@ setupkwargs = dict(
       "fixfw01cohortdbload=astropath.hpfs.fixfw01.fixfw01cohort:main_dbload",
       "fixfw01sample=astropath.hpfs.fixfw01.fixfw01sample:main_xml",
       "fixfw01sampledbload=astropath.hpfs.fixfw01.fixfw01sample:main_dbload",
-      "geomcohort=astropath.slides.geom.geomcohort:main",
-      "geomsample=astropath.slides.geom.geomsample:main",
       "geomcellcohortdeepcell=astropath.slides.geomcell.geomcellcohort:deepcell",
       "geomcellcohortinform=astropath.slides.geomcell.geomcellcohort:inform",
       "geomcellcohortmesmer=astropath.slides.geomcell.geomcellcohort:mesmer",
@@ -132,13 +129,15 @@ setupkwargs = dict(
     "methodtools",
     "more_itertools>=8.3.0",
     "networkx",
-    "numba",
+    "numba>=0.54", #require np.clip, added in numba/numba#6808
     "numpy>=1.23.0",
     "opencv-python",
     "openpyxl",
     "pathos>=0.2.8",
     "psutil;sys_platform!='cygwin'", #please note astropath is NOT been tested on cygwin
+    "pyopencl",
     "rdp",
+    "reikna",
     "seaborn",
     "scikit-image>=0.18",
     "scikit-learn>=0.17",
@@ -151,7 +150,6 @@ setupkwargs = dict(
   extras_require = {
     "deepcell": ["deepcell>=0.12.0"],
     "gdal": ["gdal>=3.3.0"],
-    "gpu": ["pyopencl", "reikna"],
     "nnunet": ["nnunet>=1.6.0"],
     "test": [
       #packages needed for running tests

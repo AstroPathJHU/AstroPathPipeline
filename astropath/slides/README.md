@@ -15,6 +15,5 @@ This section of the documentation and code continues after the HPFs have been fu
   - [6.7.1 Write annotation info](annotationinfo/#671-write-annotation-info)
   - [6.7.2 Copy annotation info](annotationinfo/#672-copy-annotation-info)
 - [6.8 Warp annotations](annowarp/#68-warp-annotations)
-- [6.9 Tumor and field geometries](geom/#69-tumor-and-field-geometries)
-- [6.10 Cell Geometries](geomcell/#610-cell-geometries)
-- [6.11 Csvscan](csvscan/#611-csvscan)
+- [6.9 Cell Geometries](geomcell/#69-cell-geometries)
+- [6.10 Csvscan](csvscan/#610-csvscan)

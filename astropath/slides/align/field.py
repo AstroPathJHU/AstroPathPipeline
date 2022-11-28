@@ -1,4 +1,6 @@
-import dataclassy, itertools, numpy as np
+import dataclassy, itertools, methodtools, more_itertools, numpy as np
+from ...shared.csvclasses import Vertex
+from ...shared.polygon import DataClassWithPolygon, Polygon, polygonfield, SimplePolygon
 from ...shared.rectangle import Rectangle, RectangleCollection, RectangleList, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer
 from ...shared.overlap import Overlap
 from ...utilities import units
@@ -88,6 +90,16 @@ class Field(Rectangle):
   @property
   def mxbox(self):
     return np.array([self.my1, self.mx1, self.my2, self.mx2])
+
+  @methodtools.lru_cache()
+  @property
+  def boundary(self):
+    my1, mx1, my2, mx2 = self.mxbox // self.onepixel * self.onepixel
+    Px = mx1, mx2, mx2, mx1
+    Py = my1, my1, my2, my2
+    vertices = [Vertex(regionid=None, vid=i, im3x=x, im3y=y, pscale=self.pscale, annoscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
+    poly = SimplePolygon(vertices=vertices, pscale=self.pscale)
+    return FieldBoundary(n=self.n, k=1, poly=poly, pscale=self.pscale)
 
 class FieldOverlap(Overlap):
   """
@@ -194,3 +206,23 @@ class FieldCollection(RectangleCollection):
       plt.close()
 
 class FieldList(RectangleList, FieldCollection): pass
+
+class FieldBoundary(DataClassWithPolygon):
+  """
+  Data class for storing a field boundary.
+
+  n: index of the HPF
+  k: index of the boundary within the HPF
+  poly: gdal polygon string for the boundary
+  """
+  @classmethod
+  def transforminitargs(cls, *args, pscale, **kwargs):
+    if "annoscale" not in kwargs: kwargs["annoscale"] = pscale
+    return super().transforminitargs(
+      *args,
+      pscale=pscale,
+      **kwargs,
+    )
+  n: int
+  k: int
+  poly: Polygon = polygonfield()
