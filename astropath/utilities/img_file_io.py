@@ -110,15 +110,17 @@ def read_image_from_layer_files(fpath,height,width,nlayers,dtype=np.uint16) :
   return img_array_to_return
 
 #smooth an image with a Gaussian filter of the specified size
-#runs on the CPU by default, but can be run on the GPU by passing gpu=True
+#runs on the CPU by default, but can try to be run on the GPU by passing gpu=True
 def smooth_image_worker(im_array,smoothsigma,gpu=False) :
   if gpu :
-    im_in_umat = cv2.UMat(im_array)
-    im_out_umat = cv2.UMat(np.empty_like(im_array))
-    cv2.GaussianBlur(im_in_umat,(0,0),smoothsigma,im_out_umat,borderType=cv2.BORDER_REPLICATE)
-    return im_out_umat.get()
-  else :
-    return cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
+    try :
+      im_in_umat = cv2.UMat(im_array)
+      im_out_umat = cv2.UMat(np.empty_like(im_array))
+      cv2.GaussianBlur(im_in_umat,(0,0),smoothsigma,im_out_umat,borderType=cv2.BORDER_REPLICATE)
+      return im_out_umat.get()
+    except Exception :
+      pass
+  return cv2.GaussianBlur(im_array,(0,0),smoothsigma,borderType=cv2.BORDER_REPLICATE)
 
 #smooth an image and its uncertainty with a Gaussian filter of the specified size
 #runs on the CPU by default, but can be run on the GPU by passing gpu=True
