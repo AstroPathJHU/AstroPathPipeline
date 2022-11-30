@@ -54,14 +54,6 @@ pipeline {
 
         stage('run tests') {
           parallel {
-			      stage('console scripts and documents') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmarkdownlinks'
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcaseinsensitivenames'
-              }
-            }
-
             stage('some short tests') {
               stages {
                 stage('code checks') {
@@ -69,9 +61,26 @@ pipeline {
                     sh 'python -m pyflakes .'
                   }
                 }
+                stage('console scripts and documents') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdocstrings'
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmarkdownlinks'
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcaseinsensitivenames'
+                  }
+                }
                 stage('miscellaneous framework tests') {
                   steps {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmisc'
+                  }
+                }
+                stage('csvscan') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcsvscan'
+                  }
+                }
+                stage('applyflatw') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
                   }
                 }
                 stage('fix fw01') {
@@ -79,23 +88,57 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testfixfw01'
                   }
                 }
+                stage('prepdb') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
+                  }
+                }
                 stage('stitch mask') {
                   steps {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.teststitchmask'
                   }
                 }
+                stage('crossregistration') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
+                  }
+                }
+                stage('segmentation') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testsegmentation'
+                  }
+                }
               }
             }
-            /*
-            stage('workflow') {
-              steps {
-                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsworkflow.ps1'
-              }
-            }
-            */
-            stage('prepdb') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testprepdb'
+
+            stage('powershell') {
+              stages {
+                /*
+                stage('workflow') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsworkflow.ps1'
+                  }
+                }
+                */
+                stage('test segmaps') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
+                  }
+                }
+                stage('test ps warping workflow'){
+                  steps{
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpkeys.ps1'
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpfits.ps1'
+                  }
+                }
+                /*
+                stage('test meanimage ps workflow') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
+                  }
+                }
+                */
               }
             }
 
@@ -116,15 +159,18 @@ pipeline {
               }
             }
 
-            stage('test segmaps') {
-              steps {
-                sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssegmaps.ps1'
-              }
-            }
-
-            stage('zoom') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
+            stage('zooms') {
+              stages {
+                stage('zoom') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testzoom'
+                  }
+                }
+                stage('deepzoom') {
+                  steps {
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
+                  }
+                }
               }
             }
 
@@ -150,21 +196,9 @@ pipeline {
               }
             }
 
-            stage('deepzoom') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testdeepzoom'
-              }
-            }
-
             stage('geomcell') {
               steps {
                 sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testgeomcell'
-              }
-            }
-
-            stage('csvscan') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcsvscan'
               }
             }
 
@@ -178,13 +212,6 @@ pipeline {
                 stage('test warpingmulticohort') {
                   steps {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testwarpingmulticohort'
-                  }
-                }
-                stage('test ps warping workflow'){
-                  steps{
-                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpoctets.ps1'
-                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpkeys.ps1'
-                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpfits.ps1'
                   }
                 }
               }
@@ -203,13 +230,11 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
                   }
                 }
-                /*
-                stage('test meanimage ps workflow') {
+                stage('meanimagecomparison') {
                   steps {
-                    sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimagecomparison'
                   }
                 }
-                */
               }
             }
 
@@ -228,29 +253,6 @@ pipeline {
               }
             }
 
-            stage('meanimagecomparison') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimagecomparison'
-              }
-            }
-
-            stage('applyflatw') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
-              }
-            }
-
-            stage('segmentation') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testsegmentation'
-              }
-            }
-
-            stage('crossregistration') {
-              steps {
-                sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcrossregistration'
-              }
-            }
           }
         }
         stage('check that the repo is clean') {
