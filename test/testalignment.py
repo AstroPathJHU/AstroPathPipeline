@@ -3,7 +3,7 @@ from astropath.shared.samplemetadata import SampleDef
 from astropath.slides.align.aligncohort import AlignCohort
 from astropath.slides.align.alignsample import AlignSample, AlignSampleComponentTiff, AlignSampleFromXML, AlignSampleTMA, ImageStats
 from astropath.slides.align.overlap import AlignmentResult
-from astropath.slides.align.field import Field, FieldOverlap
+from astropath.slides.align.field import Field, FieldBoundary, FieldOverlap
 from astropath.slides.align.stitch import AffineEntry
 from astropath.utilities import units
 from astropath.utilities.misc import re_subs
@@ -102,6 +102,7 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
       (f"{SlideID}_fields.csv", Field, {}),
       (f"{SlideID}_affine.csv", AffineEntry, {}),
       (f"{SlideID}_fieldoverlaps.csv", FieldOverlap, {"rectangles": a.rectangles, "nclip": a.nclip}),
+      (f"{SlideID}_fieldGeometry.csv", FieldBoundary, {}),
     ):
       testfolder = thisfolder/"test_for_jenkins"/"alignment"/("" if not componenttiff else "component_tiff")
       reffolder = thisfolder/"data"/"reference"/"alignment"/("" if not componenttiff else "component_tiff")
@@ -182,8 +183,8 @@ class TestAlignment(TestBaseCopyInput, TestBaseSaveOutput):
 
       for filename, cls, extrakwargs in more_itertools.zip_equal(
         a.stitchfilenames,
-        (AffineEntry, Field, FieldOverlap),
-        ({}, {}, {"nclip": a.nclip, "rectangles": a.rectangles}),
+        (AffineEntry, Field, FieldOverlap, FieldBoundary),
+        ({}, {}, {"nclip": a.nclip, "rectangles": a.rectangles}, {}),
       ):
         rows = a.readtable(filename, cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)
         targetrows = a.readtable(referencefilename(filename), cls, extrakwargs=extrakwargs, checkorder=True, checknewlines=True)

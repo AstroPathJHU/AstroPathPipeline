@@ -10,14 +10,13 @@ from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectan
 from ...shared.workflowdependency import ThingWithRoots, ThingWithWorkflowKwargs
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield, TableReader
-from ..align.field import Field, FieldOverlap
+from ..align.field import Field, FieldBoundary, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
 from ..align.stitch import AffineEntry
 from ..annotationinfo.annotationinfo import CopyAnnotationInfoSampleBase
 from ..annowarp.annowarpsample import AnnoWarpAlignmentResult, AnnoWarpSampleInformTissueMask, WarpedVertex
 from ..annowarp.stitch import AnnoWarpStitchResultEntry
-from ..geom.geomsample import Boundary, GeomSample
 from ..geomcell.geomcellsample import CellGeomLoad, GeomCellSampleDeepCell, GeomCellSampleInform, GeomCellSampleMesmer
 
 class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
@@ -138,7 +137,6 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         "qptiff",
         "rect",
         "regions",
-        "tumorGeometry",
         "vertices",
       )
     }
@@ -172,6 +170,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     optionalcsvs = {
       self.csv(_) for _ in (
         "globals",
+        "tumorGeometry",
       )
     } | {
       r.phenotypeQAQCcsv for r in self.rectangles if any(hasanycells(r, algo) for algo in self.segmentationalgorithms)
@@ -209,7 +208,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
           "constants": (Constant, "Constants"),
           "exposures": (ExposureTime, "Exposures"),
           "fieldoverlaps": (FieldOverlap, "FieldOverlaps"),
-          "fieldGeometry": (Boundary, "FieldGeometry"),
+          "fieldGeometry": (FieldBoundary, "FieldGeometry"),
           "fields": (Field, "Fields"),
           "globals": (ROIGlobals, "Globals"),
           "imstat": (ImageStats, "Imstat"),
@@ -217,7 +216,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
           "qptiff": (QPTiffCsv, "Qptiff"),
           "rect": (Rectangle, "Rect"),
           "regions": (Region, "Regions"),
-          "tumorGeometry": (Boundary, "TumorGeometry"),
+          "tumorGeometry": (FieldBoundary, "TumorGeometry"),
           "vertices": (WarpedVertex, "Vertices"),
         }[match.group(1)]
         allannotationinfos = self.readcsv("annotationinfo", AnnotationInfo, extrakwargs={"scanfolder": self.scanfolder})
@@ -282,7 +281,6 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     segmentationalgorithms = kwargs["segmentationalgorithms"]
     return [
       AnnoWarpSampleInformTissueMask,
-      GeomSample,
       CopyAnnotationInfoSampleBase,
     ] + [
       {
