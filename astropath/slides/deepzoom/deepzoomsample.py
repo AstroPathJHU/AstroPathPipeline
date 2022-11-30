@@ -128,6 +128,8 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     for folder in sorted((_ for _ in destfolder.iterdir() if _.name != "runningflag"), key=lambda x: int(x.name)):
       #find the images that have the max x or the max y
       filenames = list(folder.glob("*.png"))
+      if not filenames:
+        continue
       maxx = tilex(max(filenames, key=tilex))
       maxxfilenames = [_ for _ in filenames if tilex(_) == maxx]
       maxy = tiley(max(filenames, key=tiley))
