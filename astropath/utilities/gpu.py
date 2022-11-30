@@ -13,9 +13,10 @@ def get_GPU_thread(interactive,logger) :
   try :
     thread = api.Thread.create(interactive=interactive)
     return thread
-  except pyopencl._cl.LogicError :
+  except (pyopencl._cl.LogicError, pyopencl._cl.RuntimeError) as error :
     warnmsg = 'WARNING: A GPU Thread could not be created using PyOpenCL and Reikna. '
     warnmsg+= 'Please make sure an OpenCL-compatible GPU is available and that the OpenCL driver for it is installed. '
-    warnmsg+= 'GPU computation will be disabled. Rerun with "--noGPU" to remove this warning.'
-    logger.warningglobal(warnmsg)
+    warnmsg+= 'GPU computation will be disabled. Rerun with "--noGPU" to remove this warning. '
+    warnmsg+= 'Specific error will also be logged.'
+    logger.warningglobal(warnmsg,exc_info=error)
     return None
