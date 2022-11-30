@@ -61,6 +61,8 @@ class ImageMask() :
 
         The last three arguments are only needed (and the last two are required) to save plots for this image
         """
+        #always start out using the GPU
+        self.use_gpu = True
         #set the layer groups for the image
         self.__layer_groups=layer_groups
         #set the number of layers in each group that can be missed and still have the region flagged
@@ -83,7 +85,7 @@ class ImageMask() :
         #apply smoothing to Vectra images only
         microscope_name = ((list(self.__layer_groups.keys())[0]).split('_'))[0]
         if microscope_name=='vectra' :
-            self.__blur_mask_sm_img_array = smooth_image_worker(im_array,CONST.BLUR_MASK_SMOOTHING_SIGMA)
+            self.__blur_mask_sm_img_array = smooth_image_worker(im_array,CONST.BLUR_MASK_SMOOTHING_SIGMA,self.use_gpu)
         elif microscope_name=='polaris' :
             self.__blur_mask_sm_img_array = im_array
         else :
@@ -207,19 +209,27 @@ class ImageMask() :
         return the fully-determined overall tissue mask as a 2d array of ones and zeroes for a given multilayer image
         """
         #smooth the image
-        sm_img_array = smooth_image_worker(self.__im_array,CONST.TISSUE_MASK_SMOOTHING_SIGMA,gpu=True)
+        sm_img_array = smooth_image_worker(self.__im_array,CONST.TISSUE_MASK_SMOOTHING_SIGMA,gpu=self.use_gpu)
         #threshold all the image layers
         thresholded_image = get_thresholded_image_compiled(sm_img_array,
                                                            self.__bg_thresholds[np.newaxis,np.newaxis,:])
         #make masks for each individual layer
         layer_masks = []
         for li in range(self.__im_array.shape[-1]) :
-            #convert to UMat to use on the GPU
-            layer_mask = cv2.UMat(thresholded_image[:,:,li])
+            if self.use_gpu :
+                try :
+                    #convert to UMat to use on the GPU
+                    layer_mask = cv2.UMat(thresholded_image[:,:,li])
+                except Exception :
+                    self.use_gpu = False
+            if not self.use_gpu :
+                layer_mask = thresholded_image[:,:,li]
             #small close/open
             cv2.morphologyEx(layer_mask,cv2.MORPH_CLOSE,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
             cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,layer_mask,borderType=cv2.BORDER_REPLICATE)
-            layer_masks.append(layer_mask.get())
+            if self.use_gpu :
+                layer_mask = layer_mask.get()
+            layer_masks.append(layer_mask)
         #find the well-defined tissue and background in each layer group
         overall_tissue_mask = np.zeros_like(layer_masks[0])
         overall_background_mask = np.zeros_like(layer_masks[0])
@@ -248,12 +258,17 @@ class ImageMask() :
         if np.min(final_mask) != np.max(final_mask) :
             #filter the tissue and background portions to get rid of the small islands
             final_mask = get_size_filtered_mask(final_mask,min_size=CONST.TISSUE_MIN_SIZE)
-            #convert to UMat
-            final_mask = cv2.UMat(final_mask)
+            if self.use_gpu :
+                try :
+                    #convert to UMat
+                    final_mask = cv2.UMat(final_mask)
+                except Exception :
+                    self.use_gpu = False
             #medium size close/open to smooth out edges
             cv2.morphologyEx(final_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,final_mask,borderType=cv2.BORDER_REPLICATE)
             cv2.morphologyEx(final_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,final_mask,borderType=cv2.BORDER_REPLICATE)
-            final_mask = final_mask.get()
+            if self.use_gpu :
+                final_mask = final_mask.get()
         return final_mask
 
     def __get_image_blur_mask(self) :
@@ -263,15 +278,27 @@ class ImageMask() :
         #first set the normalized laplacian variance of the image
         self.__im_nlv = np.zeros(self.__im_array.shape,dtype=np.float32)
         for li in range(self.__im_array.shape[-1]) :
-            layer_nlv = get_image_layer_local_variance_of_normalized_laplacian(self.__blur_mask_sm_img_array[:,:,li])
+            try :
+                layer_nlv = get_image_layer_local_variance_of_normalized_laplacian(self.__blur_mask_sm_img_array[:,:,li],
+                                                                                   self.use_gpu)
+            except Exception :
+                self.use_gpu = False
+                layer_nlv = get_image_layer_local_variance_of_normalized_laplacian(self.__blur_mask_sm_img_array[:,:,li],
+                                                                                   self.use_gpu)
             self.__im_nlv[:,:,li] = layer_nlv
         #then set the local mean of the normalized laplacian variance
         self.__im_nlv_loc_mean = np.zeros_like(self.__im_nlv)
         for li in range(self.__im_array.shape[-1]) :
-            layer_nlv_loc_mean = cv2.UMat(np.empty_like(self.__im_nlv[:,:,li]))
+            layer_nlv_loc_mean = np.empty_like(self.__im_nlv[:,:,li])
+            if self.use_gpu :
+                try :
+                    layer_nlv_loc_mean = cv2.UMat(layer_nlv_loc_mean)
+                except Exception :
+                    self.use_gpu = False
             cv2.filter2D(self.__im_nlv[:,:,li],cv2.CV_32F,CONST.SMALLER_WINDOW_EL,layer_nlv_loc_mean,
                          borderType=cv2.BORDER_REFLECT)
-            layer_nlv_loc_mean=layer_nlv_loc_mean.get()
+            if self.use_gpu :
+                layer_nlv_loc_mean=layer_nlv_loc_mean.get()
             layer_nlv_loc_mean=normalize_compiled(layer_nlv_loc_mean,np.sum(CONST.SMALLER_WINDOW_EL))
             self.__im_nlv_loc_mean[:,:,li] = layer_nlv_loc_mean
         #find the tissue fold mask, beginning with each layer group separately
@@ -291,8 +318,13 @@ class ImageMask() :
         # or both the DAPI and FITC layer groups
         overall_fold_mask = get_thresholded_image_compiled(stacked_fold_masks,12,invert=True)
         #morph and filter the mask using the common operations
-        tissue_fold_mask = get_morphed_and_filtered_mask(overall_fold_mask,self.__tissue_mask,
-                                                         CONST.FOLD_MIN_PIXELS,CONST.FOLD_MIN_SIZE)
+        try :
+            tissue_fold_mask = get_morphed_and_filtered_mask(overall_fold_mask,self.__tissue_mask,
+                                                             CONST.FOLD_MIN_PIXELS,CONST.FOLD_MIN_SIZE,self.use_gpu)
+        except Exception :
+            self.use_gpu = False
+            tissue_fold_mask = get_morphed_and_filtered_mask(overall_fold_mask,self.__tissue_mask,
+                                                             CONST.FOLD_MIN_PIXELS,CONST.FOLD_MIN_SIZE,self.use_gpu)
         #get dust masks for the blurriest areas of the DAPI layer group
         dapi_group_name = None
         for lgn in self.__layer_groups.keys() :
@@ -310,8 +342,15 @@ class ImageMask() :
                                                                   CONST.DUST_MAX_MEANS[dapi_group_name],
                                                                   n_layers_dust_flag_cut)
         #same morphology transformations as for the multilayer blur masks
-        morphed_dapi_dust_mask = get_morphed_and_filtered_mask(dapi_dust_mask,self.__tissue_mask,
-                                                               CONST.DUST_MIN_PIXELS,CONST.DUST_MIN_SIZE)
+        try :
+            morphed_dapi_dust_mask = get_morphed_and_filtered_mask(dapi_dust_mask,self.__tissue_mask,
+                                                                   CONST.DUST_MIN_PIXELS,CONST.DUST_MIN_SIZE,
+                                                                   self.use_gpu)
+        except Exception :
+            self.use_gpu = False
+            morphed_dapi_dust_mask = get_morphed_and_filtered_mask(dapi_dust_mask,self.__tissue_mask,
+                                                                   CONST.DUST_MIN_PIXELS,CONST.DUST_MIN_SIZE,
+                                                                   self.use_gpu)
         #make sure any regions in that mask are sufficiently exclusive w.r.t. what's already flagged as blurry
         exclusive_dapi_dust_mask = get_exclusive_mask(morphed_dapi_dust_mask,tissue_fold_mask,0.25)
         #combine the multilayer and single layer blur masks into one by multiplying them together
@@ -341,8 +380,12 @@ class ImageMask() :
             #threshold on the local variance of the normalized laplacian and its local mean to make a binary mask
             layer_mask = get_double_thresholded_image_compiled(layer_nlv,nlv_cut,layer_nlv_loc_mean,max_mean)
             if np.min(layer_mask) != np.max(layer_mask) :
-                #convert to UMat
-                layer_mask = cv2.UMat(layer_mask)
+                if self.use_gpu :
+                    try :
+                        #convert to UMat
+                        layer_mask = cv2.UMat(layer_mask)
+                    except Exception :
+                        self.use_gpu = False
                 #small open/close to refine it
                 cv2.morphologyEx(layer_mask,cv2.MORPH_OPEN,CONST.SMALL_CO_EL,layer_mask,
                                  borderType=cv2.BORDER_REPLICATE)
@@ -351,7 +394,8 @@ class ImageMask() :
                 #erode by the smaller window element
                 cv2.morphologyEx(layer_mask,cv2.MORPH_ERODE,CONST.SMALLER_WINDOW_EL,layer_mask,
                                  borderType=cv2.BORDER_REPLICATE)
-                layer_mask = layer_mask.get()
+                if self.use_gpu :
+                    layer_mask = layer_mask.get()
             #add it to the stack 
             stacked_masks+=layer_mask
         #determine the final mask for this group by thresholding on how many individual layers contribute
@@ -366,7 +410,7 @@ class ImageMask() :
         #normalize the image by its exposure time
         normalized_image_arr = normalize_compiled(self.__im_array,self.__norm_ets[np.newaxis,np.newaxis,:])
         #smooth the normalized image image
-        sm_n_image_arr = smooth_image_worker(normalized_image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA,gpu=True)
+        sm_n_image_arr = smooth_image_worker(normalized_image_arr,CONST.TISSUE_MASK_SMOOTHING_SIGMA,gpu=self.use_gpu)
         #make masks for each layer group
         layer_group_saturation_masks = {}
         for lgn,lgb in self.__layer_groups.items() :
@@ -376,14 +420,19 @@ class ImageMask() :
             #the final mask is anything flagged in ANY layer
             group_mask = get_thresholded_image_compiled(stacked_masks,lgb[1]-lgb[0]) 
             if np.min(group_mask)!=np.max(group_mask) :
-                #convert to UMat
-                group_mask = cv2.UMat(group_mask)
+                if self.use_gpu :
+                    try :
+                        #convert to UMat
+                        group_mask = cv2.UMat(group_mask)
+                    except Exception :
+                        self.use_gpu=False
                 #medium sized open/close to refine it
                 cv2.morphologyEx(group_mask,cv2.MORPH_OPEN,CONST.MEDIUM_CO_EL,group_mask,
                                  borderType=cv2.BORDER_REPLICATE)
                 cv2.morphologyEx(group_mask,cv2.MORPH_CLOSE,CONST.MEDIUM_CO_EL,group_mask,
                                  borderType=cv2.BORDER_REPLICATE)
-                group_mask = group_mask.get()
+                if self.use_gpu :
+                    group_mask = group_mask.get()
                 #filter the mask for the total number of pixels and regions by the minimum size
                 group_mask = get_size_filtered_mask(group_mask,CONST.SATURATION_MIN_SIZE)
             if np.sum(group_mask==0)<CONST.SATURATION_MIN_PIXELS :
