@@ -54,7 +54,7 @@ pipeline {
 
         stage('run tests') {
           parallel {
-            stage('some short tests') {
+            stage('short tests') {
               stages {
                 stage('code checks') {
                   steps {
@@ -83,6 +83,11 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testapplyflatw'
                   }
                 }
+              }
+            }
+
+            stage('short tests 2') {
+              stages {
                 stage('fix fw01') {
                   steps {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testfixfw01'
