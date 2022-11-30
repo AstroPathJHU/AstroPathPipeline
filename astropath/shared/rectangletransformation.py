@@ -190,10 +190,18 @@ class RectangleWarpingTransformationMultilayer(RectangleTransformationBase) :
       if self._warps_by_layer[li] is None :
         corr_img[:,:,li] = originalimage[:,:,li]
       else :
-        layer_in_umat = cv2.UMat(originalimage[:,:,li])
-        layer_out_umat = cv2.UMat(corr_img[:,:,li])
-        self._warps_by_layer[li].warpLayerInPlace(layer_in_umat,layer_out_umat)
-        corr_img[:,:,li] = layer_out_umat.get()
+        layer_in = originalimage[:,:,li]
+        layer_out = corr_img[:,:,li]
+        use_gpu = True
+        try :
+          layer_in = cv2.UMat(layer_in)
+          layer_out = cv2.UMat(layer_out)
+        except Exception :
+          use_gpu = False
+        self._warps_by_layer[li].warpLayerInPlace(layer_in,layer_out)
+        if use_gpu :
+          layer_out = layer_out.get()
+        corr_img[:,:,li] = layer_out
     return corr_img
 
 class RectangleWarpingTransformationSinglelayer(RectangleTransformationBase) :
@@ -215,10 +223,15 @@ class RectangleWarpingTransformationSinglelayer(RectangleTransformationBase) :
       errmsg = f'ERROR: RectangleWarpingTransformationSinglelayer was passed an image with shape {originalimage.shape} '
       errmsg+= f'but a warp definition with (m,n) = ({self._warp.m},{self._warp.n})'
       raise ValueError(errmsg)
-    layer_in_umat = cv2.UMat(originalimage)
-    layer_out_umat = cv2.UMat(corr_img)
-    self._warp.warpLayerInPlace(layer_in_umat,layer_out_umat)
-    corr_img = layer_out_umat.get()
+    use_gpu = True
+    try :
+      originalimage = cv2.UMat(originalimage)
+      corr_img = cv2.UMat(corr_img)
+    except Exception :
+      use_gpu = False
+    self._warp.warpLayerInPlace(originalimage,corr_img)
+    if use_gpu :
+      corr_img = corr_img.get()
     return corr_img
 
 class ImageTransformation(RectangleTransformationBase):
