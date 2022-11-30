@@ -77,9 +77,15 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
     #save all file sizes in a dict
     filesizedict = collections.defaultdict(list)
-    for nfiles, filename in enumerate(destfolder.glob("*/*.png"), start=1):
-      size = filename.stat().st_size
-      filesizedict[size].append(filename)
+    nfiles = 0
+    folders = [_ for _ in destfolder.glob("*/") if _.is_dir()]
+    for folder in folders:
+      firstfolder = int(folder.name) == min(int(_.name) for _ in folders)
+      print(folder, firstfolder)
+      for nfiles, filename in enumerate(folder.glob("*.png"), start=nfiles+1):
+        if firstfolder: continue #do not delete most zoomed out files
+        size = filename.stat().st_size
+        filesizedict[size].append(filename)
 
     nbad = 0
 
