@@ -703,6 +703,7 @@
     [void]getexternallogs($externallog){
         #
         $this.logoutput = $this.sample.GetContent($externallog)
+        #$this.sample.copy($externallog, $this.sample.slidelogfolder())
         $this.sample.removefile($externallog)
         $this.checkexternalerrors()
         $this.checkastropathlog()

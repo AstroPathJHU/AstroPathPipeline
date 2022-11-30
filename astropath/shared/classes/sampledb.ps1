@@ -534,7 +534,7 @@ class sampledb : sampletracker {
             $this.enqueuetask($cmodule, $cmoduleinfo)
             $row.($statlabel) = $slidestatus
         }
-         #
+        #
         if ($modulestatus -notmatch (
                 [regex]::Escape($slidestatus), $this.status.rerun -join '|') -and 
             $slidestatus -match $this.status_settings.update_status){
