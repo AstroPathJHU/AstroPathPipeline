@@ -133,7 +133,7 @@ Class imagecorrection : moduletools {
     #
     [string]getpythontasksample($dpath, $rpath){
         #
-        $globalargs = $this.buildpyopts('sample')
+        $globalargs = $this.buildpyopts()
         $pythontask = ($this.pythonmodulename,
             $dpath, 
             $this.sample.slideid,
