@@ -89,11 +89,14 @@ def get_exclusive_mask(mask_to_check,prior_mask,min_independent_pixel_frac,inver
     return new_mask
 
 #erode a binary mask near a corresponding tissue mask and filter for size
-def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size) :
+def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size,use_gpu=True) :
     if np.min(mask)<1 and np.max(mask)!=np.min(mask) :
         #a window-sized open incorporating the tissue mask to get rid of any remaining thin borders
-        mask_to_transform = cv2.UMat(np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype))
-        twice_eroded_fold_mask = cv2.UMat(np.empty_like(mask))
+        mask_to_transform = np.where((mask==0) | (tissue_mask==0),0,1).astype(mask.dtype)
+        twice_eroded_fold_mask = np.empty_like(mask)
+        if use_gpu :
+            mask_to_transform = cv2.UMat(mask_to_transform)
+            twice_eroded_fold_mask = cv2.UMat(twice_eroded_fold_mask)
         cv2.morphologyEx(mask,cv2.MORPH_ERODE,CONST.WINDOW_EL,twice_eroded_fold_mask,iterations=2,
                          borderType=cv2.BORDER_REPLICATE)
         cv2.morphologyEx(mask_to_transform,cv2.MORPH_ERODE,CONST.SMALLER_WINDOW_EL,mask_to_transform,
@@ -102,8 +105,9 @@ def get_morphed_and_filtered_mask(mask,tissue_mask,min_pixels,min_size) :
                          borderType=cv2.BORDER_REPLICATE)
         cv2.morphologyEx(mask_to_transform,cv2.MORPH_DILATE,CONST.SMALLER_WINDOW_EL,mask_to_transform,
                          borderType=cv2.BORDER_REPLICATE)
-        mask_to_transform = mask_to_transform.get()
-        twice_eroded_fold_mask = twice_eroded_fold_mask.get()
+        if use_gpu :
+            mask_to_transform = mask_to_transform.get()
+            twice_eroded_fold_mask = twice_eroded_fold_mask.get()
         mask[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)] = mask_to_transform[(mask==1) & (tissue_mask==1) & (twice_eroded_fold_mask==0)]
         #remove any remaining small spots after the tissue mask incorporation
         filtered_mask = get_size_filtered_mask(mask,min_size)
@@ -122,21 +126,29 @@ def get_local_norm_lap_var_compiled(window_element,norm_lap_loc_mean,norm_lap_2_
     return local_norm_lap_var
 
 #compute and return the variance of the normalized laplacian for a given image layer
-def get_image_layer_local_variance_of_normalized_laplacian(img_layer) :
+def get_image_layer_local_variance_of_normalized_laplacian(img_layer,use_gpu=True) :
     #build the laplacian image and normalize it to get the curvature
     img_laplacian = cv2.Laplacian(img_layer,cv2.CV_32F,borderType=cv2.BORDER_REFLECT)
-    img_lap_norm = cv2.UMat(np.empty(img_layer.shape,dtype=np.float32))
+    img_lap_norm = np.empty(img_layer.shape,dtype=np.float32)
+    if use_gpu :
+        img_lap_norm = cv2.UMat(img_lap_norm)
     cv2.filter2D(img_layer,cv2.CV_32F,CONST.LOCAL_MEAN_KERNEL,img_lap_norm,borderType=cv2.BORDER_REFLECT)
-    img_lap_norm = img_lap_norm.get()
+    if use_gpu :
+        img_lap_norm = img_lap_norm.get()
     img_norm_lap = img_laplacian
     img_norm_lap[img_lap_norm!=0] /= img_lap_norm[img_lap_norm!=0]
     img_norm_lap[img_lap_norm==0] = 0
     #find the variance of the normalized laplacian in the neighborhood window
-    norm_lap_loc_mean = cv2.UMat(np.empty_like(img_norm_lap))
+    norm_lap_loc_mean = np.empty_like(img_norm_lap)
+    if use_gpu :
+        norm_lap_loc_mean = cv2.UMat(norm_lap_loc_mean)
     cv2.filter2D(img_norm_lap,cv2.CV_32F,CONST.WINDOW_EL,norm_lap_loc_mean,borderType=cv2.BORDER_REFLECT)
-    norm_lap_2_loc_mean = cv2.UMat(np.empty_like(img_norm_lap))
+    norm_lap_2_loc_mean = np.empty_like(img_norm_lap)
+    if use_gpu :
+        norm_lap_2_loc_mean = cv2.UMat(norm_lap_2_loc_mean)
     cv2.filter2D(np.power(img_norm_lap,2),cv2.CV_32F,CONST.WINDOW_EL,norm_lap_2_loc_mean,borderType=cv2.BORDER_REFLECT)
-    norm_lap_loc_mean = norm_lap_loc_mean.get()
-    norm_lap_2_loc_mean = norm_lap_2_loc_mean.get()
+    if use_gpu :
+        norm_lap_loc_mean = norm_lap_loc_mean.get()
+        norm_lap_2_loc_mean = norm_lap_2_loc_mean.get()
     #return the local variance of the normalized laplacian
     return get_local_norm_lap_var_compiled(CONST.WINDOW_EL,norm_lap_loc_mean,norm_lap_2_loc_mean)

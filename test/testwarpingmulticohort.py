@@ -17,6 +17,9 @@ shardedim3root = output_dir/'raw'
 slideID = 'M21_1'
 ff_file = folder/'data'/'reference'/'batchflatfieldcohort'/'flatfield_TEST.bin'
 rectangle_ns_with_raw_files = [17,18,19,20,23,24,25,26,29,30,31,32,35,36,37,38,39,40]
+background_thresholds_file_ref = folder/'data'/'reference'/'meanimage'/f'{slideID}-background_thresholds.csv'
+background_thresholds_file_new = folder/'data'/slideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
+background_thresholds_file_new = background_thresholds_file_new/f'{slideID}-background_thresholds.csv'
 
 class DummySample(ReadRectanglesIm3FromXML, TissueSampleBase) :
 
@@ -44,8 +47,7 @@ class TestWarpingMultiCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         for fp in (origraw/slideID).glob('*.Data.dat') :
             yield fp,(shardedim3root/slideID)
 
-    @classmethod
-    def setUpClass(cls) :
+    def setUp(self) :
         """
         Need to contrive some extra raw data files to have enough to do the test
         Will copy some that already exist to do that 
@@ -57,9 +59,7 @@ class TestWarpingMultiCohort(TestBaseCopyInput,TestBaseSaveOutput) :
             output_dir.mkdir(parents=True)
         write_image_to_file(ff_img,output_dir/ff_file.name)
         #move the example background thresholds file to the expected location
-        existing_path = folder/'data'/'reference'/'meanimage'/f'{slideID}-background_thresholds.csv'
-        new_path = folder/'data'/slideID/UNIV_CONST.IM3_DIR_NAME/'meanimage'/existing_path.name
-        shutil.copy(existing_path,new_path)
+        shutil.copy(background_thresholds_file_ref,background_thresholds_file_new)
         super().setUpClass()
         sample = DummySample(root,shardedim3root,slideID)
         existing_filepaths = [shardedim3root/slideID/r.file.with_suffix(UNIV_CONST.RAW_EXT) for r in sample.rectangles if r.n in rectangle_ns_with_raw_files]
@@ -162,9 +162,9 @@ class TestWarpingMultiCohort(TestBaseCopyInput,TestBaseSaveOutput) :
         else :
             self.removeoutput()
 
-    @classmethod
-    def tearDownClass(cls) :
+    def tearDown(self) :
         #Remove the copied background threshold file
-        (folder/'data'/slideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME/f'{slideID}-background_thresholds.csv').unlink()
+        if background_thresholds_file_new.is_file() :
+            background_thresholds_file_new.unlink()
         shutil.rmtree(output_dir)
         super().tearDownClass()

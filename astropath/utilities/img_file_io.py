@@ -131,18 +131,20 @@ def smooth_image_with_uncertainty_worker(im_array,im_unc_array,smoothsigma,gpu=F
   x_kernel = cv2.getGaussianKernel(ksize,smoothsigma)
   gaussian_kernel = (x_kernel.T)*(x_kernel)
   if gpu :
-    im_in_umat = cv2.UMat(im_array); im_out_umat = cv2.UMat(np.empty_like(im_array))
-    im_var_in_umat = cv2.UMat(im_unc_array**2); im_var_out_umat = cv2.UMat(np.empty_like(im_unc_array))
-    cv2.filter2D(im_in_umat,cv2.CV_64F,cv2.UMat(gaussian_kernel),im_out_umat,borderType=cv2.BORDER_REPLICATE)
-    cv2.filter2D(im_var_in_umat,cv2.CV_64F,cv2.UMat(gaussian_kernel**2),im_var_out_umat,borderType=cv2.BORDER_REPLICATE)
-    sm_im_var = im_var_out_umat.get()
-    sm_im_unc = np.where(sm_im_var>0,np.sqrt(sm_im_var),0.)
-    return im_out_umat.get(),sm_im_unc
-  else :
-    sm_im = cv2.filter2D(im_array,cv2.CV_64F,gaussian_kernel,borderType=cv2.BORDER_REPLICATE)
-    sm_im_var = cv2.filter2D(im_unc_array**2,cv2.CV_64F,gaussian_kernel**2,borderType=cv2.BORDER_REPLICATE)
-    sm_im_unc = np.where(sm_im_var>0,np.sqrt(sm_im_var),0.)
-    return sm_im,sm_im_unc
+    try :
+      im_in_umat = cv2.UMat(im_array); im_out_umat = cv2.UMat(np.empty_like(im_array))
+      im_var_in_umat = cv2.UMat(im_unc_array**2); im_var_out_umat = cv2.UMat(np.empty_like(im_unc_array))
+      cv2.filter2D(im_in_umat,cv2.CV_64F,cv2.UMat(gaussian_kernel),im_out_umat,borderType=cv2.BORDER_REPLICATE)
+      cv2.filter2D(im_var_in_umat,cv2.CV_64F,cv2.UMat(gaussian_kernel**2),im_var_out_umat,borderType=cv2.BORDER_REPLICATE)
+      sm_im_var = im_var_out_umat.get()
+      sm_im_unc = np.where(sm_im_var>0,np.sqrt(sm_im_var),0.)
+      return im_out_umat.get(),sm_im_unc
+    except Exception :
+      pass
+  sm_im = cv2.filter2D(im_array,cv2.CV_64F,gaussian_kernel,borderType=cv2.BORDER_REPLICATE)
+  sm_im_var = cv2.filter2D(im_unc_array**2,cv2.CV_64F,gaussian_kernel**2,borderType=cv2.BORDER_REPLICATE)
+  sm_im_unc = np.where(sm_im_var>0,np.sqrt(sm_im_var),0.)
+  return sm_im,sm_im_unc
 
 #get an image dimension tuple from a slide's XML file
 def get_image_hwl_from_xml_file(root_dir,slideID) :
