@@ -160,15 +160,15 @@ Class testpsimagecorrection : testtools {
             ($this.processloc, 'astropath_ws\imagecorrection',
              $this.slideid, 'flatw', $this.slideid -join '\')  -join ' '
         #
-        $userpythontask = (('applyflatwcohort',
+        $userpythontask = (('applyflatwsample',
             $dpath,
-            '--sampleregex', $this.slideid, 
+            $this.slideid, 
             '--shardedim3root', $rpath,
             '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
                 $this.pybatchflatfieldtest + '.bin'), 
             '--warping-file', $this.pybatchwarpingfiletest, 
             "--njobs '8' --no-log --layers -1 1 --allow-local-edits",
-            '--use-apiddef'
+            '--skip-start-finish'
             ) -join ' ') + $wd
         #
         #$this.runpytesttask($inp, $userpythontask, $externaltask)
