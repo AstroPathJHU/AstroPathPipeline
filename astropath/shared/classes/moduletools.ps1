@@ -486,7 +486,7 @@
         }
         #
         if (!$row){
-            $this.sample.slide_local_data +=  $row
+            [array]$this.sample.slide_local_data +=  $row
             $this.sample.writecsv(
                 $this.sample.slide_local_fullfile($this.sample.basepath),
                 $this.sample.slide_local_data
@@ -514,7 +514,7 @@
         }
         #
         if (!$row){
-            $this.sample.sampledef_local_data += [PSCustomObject]@{
+            [array]$this.sample.sampledef_local_data += [PSCustomObject]@{
                 SampleID = 0
                 SlideID = $this.sample.slideid
                 Project = $this.sample.project
@@ -522,7 +522,6 @@
                 Scan = $this.sample.scannumber()
                 BatchID = $this.sample.batchid
                 isGood = 1
-
             }
             $this.sample.writecsv(
                 $this.sample.sampledef_local_fullfile($this.sample.basepath),
