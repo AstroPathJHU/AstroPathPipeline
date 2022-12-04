@@ -908,7 +908,11 @@ class WorkflowCohort(Cohort):
       logger.info(f"{sample.SlideID} " + str(status).replace("\n", " "))
     else:
       with sample.joblock() if passedfilters else contextlib.nullcontext(True) as lock:
-        if not lock: return
+        if not lock:
+          logger = self.printlogger(sample)
+          logger.info(f"Not running {sample.SlideID}:")
+          logger.info(f"{sample.SlideID} is already being run by another process")
+          return
         if passedfilters:
           try:
             missinginputs = [file for file in sample.inputfiles(**kwargs) if not file.exists()]
