@@ -34,9 +34,12 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   #calculate the cross correlation between the images
   use_gpu = gputhread is not None and gpufftdict is not None
   if use_gpu :
-    images_gpu = tuple(image.astype(np.csingle) for image in images)
-    fftc = gpufftdict[images_gpu[0].shape]
-    invfourier = crosscorrelation_gpu(images_gpu,gputhread,fftc)
+    try :
+      images_gpu = tuple(image.astype(np.csingle) for image in images)
+      fftc = gpufftdict[images_gpu[0].shape]
+      invfourier = crosscorrelation_gpu(images_gpu,gputhread,fftc)
+    except Exception :
+      invfourier = crosscorrelation(images)
   else :
     invfourier = crosscorrelation(images)
 
@@ -233,8 +236,11 @@ def shiftimg(images, dx, dy, *, clip=True, use_gpu=False, shiftwhich=None):
   warpkwargs = {"flags": cv2.INTER_CUBIC, "borderMode": cv2.BORDER_CONSTANT, "dsize": a.T.shape}
 
   if use_gpu :
-    if shifta: a = cv2.UMat(a)
-    if shiftb: b = cv2.UMat(b)
+    try :
+      if shifta: a = cv2.UMat(a)
+      if shiftb: b = cv2.UMat(b)
+    except Exception :
+      use_gpu=False
 
   if shifta: a = cv2.warpAffine(a, np.array([[1, 0,  dx*shifta/2], [0, 1,  dy*shifta/2]]), **warpkwargs)
   if shiftb: b = cv2.warpAffine(b, np.array([[1, 0, -dx*shiftb/2], [0, 1, -dy*shiftb/2]]), **warpkwargs)

@@ -144,7 +144,7 @@ setupkwargs = dict(
     "scipy>=0.12",
     "setuptools-scm",
     "SimpleITK>=2.1.1",
-    "slurm-python-utils>=1.6.1",
+    "slurm-python-utils>=1.7",
     "uncertainties",
     "gpu": ["pyopencl", "reikna"],
   ],

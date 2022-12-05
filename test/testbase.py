@@ -1,4 +1,4 @@
-import abc, contextlib, dataclassy, more_itertools, numbers, numpy as np, pathlib, PIL.Image, re, shutil, tempfile, unittest
+import abc, contextlib, dataclassy, itertools, more_itertools, numbers, numpy as np, pathlib, PIL.Image, re, shutil, tempfile, unittest
 
 from astropath.utilities import units
 from astropath.utilities.miscfileio import rm_missing_ok
@@ -89,6 +89,9 @@ class TestBaseSaveOutput(TestBase):
   @abc.abstractmethod
   def outputfilenames(self): pass
 
+  @property
+  def deletefilenames(self): return []
+
   def saveoutput(self):
     for filename in self.outputfilenames:
       if filename not in self.__saved and filename.exists():
@@ -96,7 +99,7 @@ class TestBaseSaveOutput(TestBase):
         self.__output.enter_context(temporarilyremove(filename))
 
   def removeoutput(self):
-    for filename in self.outputfilenames:
+    for filename in itertools.chain(self.outputfilenames, self.deletefilenames):
       rm_missing_ok(filename)
 
   def setUp(self):
