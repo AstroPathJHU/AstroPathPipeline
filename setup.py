@@ -146,7 +146,6 @@ setupkwargs = dict(
     "SimpleITK>=2.1.1",
     "slurm-python-utils>=1.7",
     "uncertainties",
-    "gpu": ["pyopencl", "reikna"],
   ],
   extras_require = {
     "deepcell": ["deepcell>=0.12.0"],
