@@ -357,8 +357,11 @@
             $mname = "$Env:_CONDA_ROOT\shell\condabin\Conda.psm1"
             Import-Module $mname -Global
             #
-        } 
+        }
+        #
+        $this.testcondapython()
     }
+    #
     [void]testcondainstall($minicondapath){
         #
         if (!(test-path $minicondapath )){
@@ -370,6 +373,21 @@
                 $minicondapath
         }
         #
+    }
+    #
+    [void]testcondapython(){
+        #
+        $pyscript = $PSScriptRoot + '\..\condapython.py'
+        conda activate $this.pyenv()
+        try {
+            python $pyscript
+            conda deactivate
+        }
+        catch {
+            conda deactivate
+            Throw $_.Exception.Message
+        }
+
     }
     <# ------------------------------------------
     CheckMikTex
