@@ -1,4 +1,4 @@
-import collections, csv, cv2, datetime, hashlib, itertools, logging, more_itertools, numpy as np, os, pathlib, re
+import collections, csv, cv2, datetime, hashlib, itertools, logging, more_itertools, numpy as np, os, pathlib, re, time
 from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, checkannotations, writeannotationcsvs, writeannotationinfo
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
@@ -36,7 +36,7 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"misc"/"tableappend"/"noheader.csv",
     ]
 
-    for folder in ("error_regex", "require_commit"):
+    for folder in ("error_regex", "require_commit", "job_lock"):
       yield from [
         thisfolder/"test_for_jenkins"/"misc"/folder/"logfiles"/"prepdb.log",
         thisfolder/"test_for_jenkins"/"misc"/folder/"M21_1"/"logfiles"/"M21_1-prepdb.log",
@@ -388,6 +388,8 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(testrequirecommit.parents[0].parents[0])])
     with open(s.csv("rect")) as f: assert f.read().strip()
 
+    self.removeoutput()
+
   def testErrorRegex(self):
     root = thisfolder/"data"
     dbloadroot = logroot = thisfolder/"test_for_jenkins"/"misc"/"error_regex"
@@ -408,3 +410,28 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     with open(s.csv("rect")) as f: assert not f.read().strip()
     PrepDbCohort.runfromargumentparser(args + ["--rerun-error", "testing error regex matching"])
     with open(s.csv("rect")) as f: assert f.read().strip()
+
+    self.removeoutput()
+
+  def testJobLock(self):
+    root = thisfolder/"data"
+    dbloadroot = logroot = thisfolder/"test_for_jenkins"/"misc"/"job_lock"
+    SlideID = "M21_1"
+    logfolder = logroot/SlideID/"logfiles"
+    logfolder.mkdir(exist_ok=True, parents=True)
+
+    s = PrepDbSample(root=root, dbloadroot=dbloadroot, logroot=logroot, samp=SlideID)
+    s.dbload.mkdir(parents=True, exist_ok=True)
+    for filename in s.outputfiles:
+      filename.touch()
+
+    with open(s.lockfile, "w") as f: pass
+
+    args = [os.fspath(thisfolder/"data"), "--sampleregex", SlideID, "--debug", "--units", "fast", "--xmlfolder", os.fspath(thisfolder/"data"/"raw"/SlideID), "--allow-local-edits", "--ignore-dependencies", "--dbloadroot", os.fspath(dbloadroot), "--logroot", os.fspath(logroot), "--skip-qptiff", "--rerun-error", "other error"]
+    PrepDbCohort.runfromargumentparser(args + ["--job-lock-timeout", "0:0:1"]) #this should not run anything
+    with open(s.csv("rect")) as f: assert not f.read().strip()
+    time.sleep(1)
+    PrepDbCohort.runfromargumentparser(args + ["--job-lock-timeout", "0:0:1"])
+    with open(s.csv("rect")) as f: assert f.read().strip()
+
+    self.removeoutput()
