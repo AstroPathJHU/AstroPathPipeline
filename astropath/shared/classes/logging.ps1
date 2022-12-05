@@ -140,6 +140,12 @@ class mylogger : samplereqs {
         $this.buildappend()
         $this.message = "START: "+$msg+' '+$this.vers
         $this.defmsgcaps()
+        $this.addprocessloc()
+    }
+    [void]addprocessloc() {
+        if ($this.val.processloc) {
+            $this.info("ProcessLoc: " + $this.val.processloc)
+        }
     }
     #
     [void]finish($msg){
