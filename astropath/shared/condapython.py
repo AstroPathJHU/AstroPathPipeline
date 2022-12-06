@@ -1,3 +1,8 @@
+"""
+condapython.py
+Checks if python is working in current conda environment
+"""
+
 #import sys
 import os
 from pathlib import Path
