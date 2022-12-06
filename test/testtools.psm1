@@ -14,7 +14,7 @@ Class testtools{
     [switch]$dryrun = $false 
     [string]$batchreferencefile
     [string]$pybatchflatfieldtest = 'melanoma_batches_3_5_6_7_8_9_v2'
-    [string]$slidelist = '"L1_1|M148|M206|M21_1|M55_1|YZ71|ZW2|MA12"'
+    [string]$slidelist = '"^(L1_1|M148|M206|M21_1|M55_1|YZ71|ZW2|MA12)$"'
     [string]$slideid2 = 'M55_1'
     [string]$testrpath
     [string]$apfile_temp_constant = 'Template.csv'
