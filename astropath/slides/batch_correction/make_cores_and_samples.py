@@ -342,7 +342,7 @@ def main() :
     # ------------------------------------------------------------------- #
     # Create Control_TMA_info files for the different TMA types:
     tmaDictionary, ctrlFolder = getFile_ControlTMAinfo(args.project_number, args.outdir);
-
+   
     for kkeys in tmaDictionary.keys():
         with pd.ExcelWriter(os.path.join(ctrlFolder,'Control_'+kkeys+'_info.xlsx')) as writer:
             tmaDictionary[kkeys].fillna('').to_excel(writer, index=False)
@@ -372,6 +372,12 @@ def main() :
         #     sep=';', index=False)
         # with pd.ExcelWriter(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores.xlsx')) as writer:
         #     ctrlcores.to_excel(writer, index=False, sheet_name='ctrlcores')
+
+    TMAinfo = '_all'
+    _, ctrlcores_obj = getList_ctrlcores(args.project_number, args.outdir, TMAinfo);
+
+    writetable(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores'+TMAinfo+'.csv'),
+        ctrlcores_obj)
 
 if __name__=='__main__' :
     main()
