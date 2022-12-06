@@ -173,7 +173,7 @@ class ControlTMASampleDef(SampleDefBase):
   CtrlID: int = MetaDataAnnotation(None)
   TMA: int = MetaDataAnnotation(None)
   Ctrl: int = MetaDataAnnotation(None)
-  Date: datetime.datetime = datefield("%m.%d.%Y", None)
+  Date: datetime.datetime = datefield("%m.%d.%Y", None, otherdateformats=["%m%d%Y"])
   BatchID: str = MetaDataAnnotation(None)
   Scan: int = MetaDataAnnotation(None, readfunction=lambda x: int(x.replace("Scan", "")), writefunction="Scan{:d}".format)
   SlideID: str = MetaDataAnnotation(None)

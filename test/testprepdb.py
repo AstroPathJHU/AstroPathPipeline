@@ -1,21 +1,16 @@
-import contextlib, csv, itertools, job_lock, logging, more_itertools, os, pathlib, re, shutil
+import more_itertools, os, pathlib, re, shutil
 from astropath.shared.csvclasses import Batch, Constant, ExposureTime, QPTiffCsv, ROIGlobals
-from astropath.shared.logging import getlogger
 from astropath.shared.overlap import Overlap
 from astropath.shared.rectangle import Rectangle
-from astropath.shared.sample import SampleDef
 from astropath.slides.prepdb.prepdbcohort import PrepDbCohort
 from astropath.slides.prepdb.prepdbsample import PrepDbSample
 from astropath.utilities.miscfileio import checkwindowsnewlines
-from astropath.utilities.version.git import thisrepo
 from .data.assembleqptiff import assembleqptiff
 from .testbase import assertAlmostEqual, compare_two_images, temporarilyreplace, TestBaseCopyInput, TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
 
 class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
-  testrequirecommit = thisrepo.getcommit("cf271f3a")
-
   @property
   def outputfilenames(self):
     SlideIDs = "M21_1", "YZ71", "M206", "ZW2", "Control_TMA_1372_97_05.14.2019"
@@ -35,59 +30,6 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
     ] + [
       thisfolder/"test_for_jenkins"/"prepdb"/"logfiles"/"prepdb.log",
     ]
-
-  def setUp(self):
-    stack = self.__stack = contextlib.ExitStack()
-    super().setUp()
-    try:
-      slideids = "M21_1", "M206", "YZ71", "ZW2", "Control_TMA_1372_97_05.14.2019"
-      testroot = thisfolder/"test_for_jenkins"/"prepdb"
-      for SlideID in slideids:
-        logfolder = testroot/SlideID/"logfiles"
-        logfolder.mkdir(exist_ok=True, parents=True)
-
-        filename = logfolder/f"{SlideID}-prepdb.log"
-        assert stack.enter_context(job_lock.JobLock(filename))
-        filename.unlink()
-        with getlogger(root=testroot, samp=SampleDef(SlideID=SlideID, Project=0, Cohort=0), module="prepdb", reraiseexceptions=False, uselogfiles=True, printthreshold=logging.CRITICAL+1) as logger:
-          logger.info("testing")
-        with open(filename, newline="") as f:
-          f, f2 = itertools.tee(f)
-          startregex = re.compile(PrepDbSample.logstartregex())
-          reader = csv.DictReader(f, fieldnames=("Project", "Cohort", "SlideID", "message", "time"), delimiter=";")
-          for row in reader:
-            match = startregex.match(row["message"])
-            istag = not bool(match.group("commit"))
-            if match: break
-          else:
-            assert False
-          contents = "".join(f2)
-
-        usecommit = self.testrequirecommit.parents[0]
-        #purposely write an INVALID commit hash (with X at the end)
-        #testing with --require-commit is in testgeomcell.py
-        if istag:
-          contents = contents.replace(match.group("version"), f"{match.group('version')}.dev0+g{usecommit.shorthash(8)}aaaaa")
-        else:
-          contents = contents.replace(match.group("commit"), usecommit.shorthash(8)+"aaaaa")
-
-        with open(filename, "w", newline="") as f:
-          f.write(contents)
-
-        dbloadfolder = testroot/SlideID/"dbload"
-        dbloadfolder.mkdir(exist_ok=True, parents=True)
-        for filename in "batch.csv", "exposures.csv", "overlap.csv", "rect.csv", "constants.csv", "qptiff.csv", "qptiff.jpg", "globals.csv":
-          if self.skipqptiff(SlideID) and filename in ("constants.csv", "qptiff.csv", "qptiff.jpg"): continue
-          if SlideID == "M21_1" and filename == "globals.csv": continue
-          if "Control_TMA" in SlideID and filename in ("batch.csv", "exposures.csv", "globals.csv"): continue
-          (dbloadfolder/f"{SlideID}_{filename}").touch()
-    except:
-      stack.close()
-      raise
-
-  def tearDown(self):
-    super().tearDown()
-    self.__stack.close()
 
   @classmethod
   def setUpClass(cls):
@@ -139,9 +81,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
 
     try:
       sample = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False, xmlfolders=[thisfolder/"data"/"raw"/SlideID], dbloadroot=dbloadroot, logroot=dbloadroot)
-      PrepDbCohort.runfromargumentparser(args) #this should not run anything
-      with open(sample.csv("rect")) as f: assert not f.read().strip()
-      PrepDbCohort.runfromargumentparser(args + ["--require-commit", str(self.testrequirecommit.parents[0].parents[0])])
+      PrepDbCohort.runfromargumentparser(args)
 
       rectangles = None
       for filename, cls, extrakwargs in (
@@ -223,7 +163,7 @@ class TestPrepDb(TestBaseCopyInput, TestBaseSaveOutput):
     self.assertNotEqual(newcontents, contents)
     moreargs = ["--sampledefroot", os.fspath(testroot)]
     with temporarilyreplace(sampledef, newcontents):
-      with self.assertRaises(EOFError):
+      with self.assertRaises(FileNotFoundError):
         self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=moreargs, removeoutput=False)
       self.testPrepDb(SlideID="ZW2", units="fast_microns", moreargs=moreargs + ["--include-bad-samples"])
 

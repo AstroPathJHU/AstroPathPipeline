@@ -865,6 +865,18 @@ class AstroPathMaskRectangle(MaskRectangleBase, RectangleWithImageSize):
   def maskfolder(self):
     return self.__maskfolder
 
+class IHCMaskRectangle(MaskRectangleBase, RectangleWithImageSize):
+  """
+  Rectangle that has IHC mask files, e.g. _tissue_mask.bin
+  You have to provide the folder where those files live.
+  """
+  def __post_init__(self, *args, ihcmaskfolder, **kwargs):
+    self.__ihcmaskfolder = pathlib.Path(ihcmaskfolder)
+    super().__post_init__(*args, **kwargs)
+  @property
+  def ihcmaskfolder(self):
+    return self.__ihcmaskfolder
+
 class AstroPathTissueMaskRectangle(AstroPathMaskRectangle, TissueMaskRectangleBase):
   @property
   def tissuemaskfile(self):
@@ -874,6 +886,25 @@ class AstroPathTissueMaskRectangle(AstroPathMaskRectangle, TissueMaskRectangleBa
   def maskloader(self):
     return ImageLoaderBin(
       filename=self.tissuemaskfile,
+      dimensions=(
+        floattoint(float(self.height/self.onepixel)),
+        floattoint(float(self.width/self.onepixel)),
+      )
+    )
+
+  @property
+  def tissuemasktransformation(self):
+    return AsTypeTransformation(bool)
+
+class IHCTissueMaskRectangle(IHCMaskRectangle, TissueMaskRectangleBase):
+  @property
+  def ihctissuemaskfile(self):
+    return self.ihcmaskfolder/self.file.name.replace(UNIV_CONST.IM3_EXT, "_tissue_mask.bin")
+  @methodtools.lru_cache()
+  @property
+  def maskloader(self):
+    return ImageLoaderBin(
+      filename=self.ihctissuemaskfile,
       dimensions=(
         floattoint(float(self.height/self.onepixel)),
         floattoint(float(self.width/self.onepixel)),

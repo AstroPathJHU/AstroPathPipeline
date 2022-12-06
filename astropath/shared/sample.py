@@ -156,6 +156,10 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     return self.informdataroot/self.SlideID/"IHC"/"HPFs"
 
+  @property
+  def ihcmaskfolder(self):
+   return self.ihctiffsfolder/"image_masking"
+
   def __getimageinfofromcomponenttiff(self):
     """
     Find the pscale and image dimensions from the component tiff.
@@ -821,8 +825,11 @@ class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwa
   def workflowdependencies(self, **kwargs):
     return [(dependencycls, self.SlideID) for dependencycls in self.workflowdependencyclasses(**kwargs)]
 
+  @property
+  def lockfile(self):
+    return self.samplelog.with_suffix(".lock")
   def joblock(self, corruptfiletimeout=datetime.timedelta(minutes=10), **kwargs):
-    return job_lock.JobLock(self.samplelog.with_suffix(".lock"), corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
+    return job_lock.JobLock(self.lockfile, corruptfiletimeout=corruptfiletimeout, mkdir=True, **kwargs)
 
 class DbloadSampleBase(SampleBase, DbloadArgumentParser):
   """
@@ -2235,6 +2242,8 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
       for k, v in dct.items():
         if isinstance(v, str) and k > segid:
           toadd += 1
+        if "Immune" not in dct.values() or "Tumor" not in dct.values():
+          toadd += 2
       return segid + toadd
 
     return tuple(f(dct[k]) for k in range(1, len(dct)+1))
