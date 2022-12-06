@@ -56,15 +56,16 @@ def getControlTMApath(projectRoot,CtrlNo,controlSamples):
     return folderTIFF, folderIM3
 
 #
-def getFile_ControlTMAinfo(projectNumber, outputpath):
+def getFile_ControlTMAinfo(projectNumber, outputpath, tissue_types_file, projectFolder=None):
     # TMAinfo -- create: 
     # Control_TMA_info for Tonsil and Spleen only and
     # Control_TMA_info_all for all tissue types
     # stored in a dictionary
     # ------------------------------------- # 
 
-    projectFolder, projectDescription = getProjectRoot(projectNumber)
-    controlTMAcollectioFile = DEFAULT_TMA_TISSUE_TYPES_FILE
+    if projectFolder is None :
+        projectFolder, _ = getProjectRoot(projectNumber)
+    controlTMAcollectioFile = tissue_types_file
     tmaDictionary = {}
     
     # Write the Ctrl files either under the project folder, 
@@ -76,9 +77,8 @@ def getFile_ControlTMAinfo(projectNumber, outputpath):
 
     # Check if Ctrl folder exists:
     if os.path.exists(ctrlFolder) is False:
-        os.mkdir(ctrlFolder)
-        print('Ctrl folder crerated for '+projectFolder +
-            '\nin folder '+str(ctrlFolder))
+        os.makedirs(ctrlFolder)
+        print(f'Ctrl folder created for {projectFolder}\nin folder {ctrlFolder}')
         #return 
 
     fBegin = 'Control_TMA_'
@@ -120,12 +120,14 @@ def getFile_ControlTMAinfo(projectNumber, outputpath):
     return tmaDictionary, ctrlFolder
 
 #
-def getList_ctrlsamples(projectNumber):
+def getList_ctrlsamples(projectNumber,projectFolder=None,cohortNumber=None):
     # create content of *ProjectFolder* \ Ctrl \ *_ctrlsamples.csv
     # Uses *ProjectFolder* \ Control_TMA_* \ im3 \ Scan* \ BatchID.txt
     # ------------------------------------- # 
 
-    projectFolder, projectDescription = getProjectRoot(projectNumber)
+    projectDescription = None
+    if (projectFolder is None) or (cohortNumber is None) :
+        projectFolder, projectDescription = getProjectRoot(projectNumber)
     
     fBegin = 'Control_TMA_'
     projectFolder = projectFolder.replace('\\','/')+'/'
@@ -144,8 +146,12 @@ def getList_ctrlsamples(projectNumber):
     
     ctrlsamples_obj = [] 
     ctrlsamples = pd.DataFrame({})
-    ctrlsamples['Project'] = np.arange(0,len(llist),1)*0 + projectDescription.Project[0]
-    ctrlsamples['Cohort'] = np.arange(0,len(llist),1)*0 + projectDescription.Cohort[0]
+    if projectDescription is not None :
+        ctrlsamples['Project'] = np.arange(0,len(llist),1)*0 + projectDescription.Project[0]
+        ctrlsamples['Cohort'] = np.arange(0,len(llist),1)*0 + projectDescription.Cohort[0]
+    else :
+        ctrlsamples['Project'] = np.arange(0,len(llist),1)*0 + int(projectNumber)
+        ctrlsamples['Cohort'] = np.arange(0,len(llist),1)*0 + int(cohortNumber)
     ctrlsamples['CtrlID'] = np.arange(1,len(llist)+1,1)
         # Matlab, getCtrlInfo() -- 'CtrlID' -- cid = (1:numel(tma));
     
@@ -249,7 +255,7 @@ class ControlCores(MyDataClassFrozen):
     Tissue  : str
 
 # 
-def getList_ctrlcores(projectNumber,outputpath,TMAinfo):
+def getList_ctrlcores(projectNumber,outputpath,TMAinfo,projectFolder=None,cohortNumber=None):
     # create content of *ProjectFolder* \ Ctrl \ *_ctrlcores.csv
     # Uses only Ctrl\Control_TMA_info.xlsx
     # Matlab getCoreInfo()
@@ -260,7 +266,9 @@ def getList_ctrlcores(projectNumber,outputpath,TMAinfo):
     # Control_TMA_info_all for all tissue types
     # ------------------------------------- # 
 
-    projectFolder, projectDescription = getProjectRoot(projectNumber)
+    projectDescription = None
+    if (projectFolder is None) and (cohortNumber is None) :
+        projectFolder, projectDescription = getProjectRoot(projectNumber)
 
     # Search for Ctrl files either under the project folder, 
     # or under a given optput folder:
@@ -294,11 +302,17 @@ def getList_ctrlcores(projectNumber,outputpath,TMAinfo):
     for ii in range(0,len(cTMA.columns),1):
         ttext = cTMA.columns[ii]
         ccTMA = cTMA[ttext].dropna()
+        if projectDescription is not None :
+            project = np.arange(0,ccTMA.shape[0],1)*0 + projectDescription.Project[0]
+            cohort = np.arange(0,ccTMA.shape[0],1)*0 + projectDescription.Cohort[0]
+        else :
+            project = np.arange(0,ccTMA.shape[0],1)*0 + int(projectNumber)
+            cohort = np.arange(0,ccTMA.shape[0],1)*0 + int(cohortNumber)
         ctrlcores = pd.concat([ctrlcores,
             pd.DataFrame({
                 'ncore': np.arange(0,ccTMA.shape[0],1)*0 +-1,
-                'project': np.arange(0,ccTMA.shape[0],1)*0 + projectDescription.Project[0],
-                'cohort': np.arange(0,ccTMA.shape[0],1)*0 + projectDescription.Cohort[0],
+                'project': project,
+                'cohort': cohort,
                 'TMA': [re.search('_(\d{4})', ttext).group(1)]*ccTMA.shape[0],
                 'cx': ccTMA,
                 'cy': ccTMA,
@@ -328,7 +342,7 @@ def getList_ctrlcores(projectNumber,outputpath,TMAinfo):
 
     return ctrlcores, ctrlcores_obj
 
-def main() :
+def main(args=None) :
     #take in command line arguments
     parser = ArgumentParser()
     parser.add_argument('project_number',type=int,help='The project number whose csv files should be created')
@@ -336,12 +350,20 @@ def main() :
                         help=f'The path to the TMA tissue types file (default = {DEFAULT_TMA_TISSUE_TYPES_FILE})')
     parser.add_argument('--outdir',type=pathlib.Path,default=OUTDIR,
                         help='Path to the directory that should hold the output *_cores.csv and *_samples.csv files')
-    
-    args = parser.parse_args()
+    parser.add_argument('--project_folder',
+                        help='Path to the root directory for the project in question (optional)')
+    parser.add_argument('--cohort_number',type=int,
+                        help='The cohort number whose csv files should be created (optional)')
+    args = parser.parse_args(args)
 
     # ------------------------------------------------------------------- #
     # Create Control_TMA_info files for the different TMA types:
-    tmaDictionary, ctrlFolder = getFile_ControlTMAinfo(args.project_number, args.outdir);
+    tmaDictionary, ctrlFolder = getFile_ControlTMAinfo(
+        args.project_number,
+        args.outdir,
+        args.tissue_types_file,
+        projectFolder=args.project_folder
+    )
    
     for kkeys in tmaDictionary.keys():
         with pd.ExcelWriter(os.path.join(ctrlFolder,'Control_'+kkeys+'_info.xlsx')) as writer:
@@ -350,7 +372,11 @@ def main() :
 
     # ------------------------------------------------------------------- # 
     # Create _ctrlsamples file:
-    ctrlsamples, ctrlsamples_all, ctrlsamples_obj = getList_ctrlsamples(args.project_number);
+    ctrlsamples, ctrlsamples_all, ctrlsamples_obj = getList_ctrlsamples(
+        args.project_number,
+        projectFolder=args.project_folder,
+        cohortNumber=args.cohort_number
+    )
 
     writetable(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlsamples.csv'),
         ctrlsamples_obj) 
@@ -364,7 +390,13 @@ def main() :
     TMAinfo = ''
         # TMAinfo = '' - use only Tonsil and Spleen cores
         # TMAinfo = '_all' - use all control cores
-    ctrlcores, ctrlcores_obj = getList_ctrlcores(args.project_number, args.outdir, TMAinfo);
+    ctrlcores, ctrlcores_obj = getList_ctrlcores(
+        args.project_number,
+        args.outdir,
+        TMAinfo,
+        projectFolder=args.project_folder,
+        cohortNumber=args.cohort_number
+    )
 
     writetable(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores'+TMAinfo+'.csv'),
         ctrlcores_obj)
@@ -374,7 +406,13 @@ def main() :
         #     ctrlcores.to_excel(writer, index=False, sheet_name='ctrlcores')
 
     TMAinfo = '_all'
-    _, ctrlcores_obj = getList_ctrlcores(args.project_number, args.outdir, TMAinfo);
+    _, ctrlcores_obj = getList_ctrlcores(
+        args.project_number,
+        args.outdir,
+        TMAinfo,
+        projectFolder=args.project_folder,
+        cohortNumber=args.cohort_number
+    )
 
     writetable(os.path.join(ctrlFolder,'Project'+str(args.project_number)+'_ctrlcores'+TMAinfo+'.csv'),
         ctrlcores_obj)

@@ -258,6 +258,16 @@ pipeline {
               }
             }
 
+            stage('batch corrections') {
+              stages {
+                stage('control cores/samples/TMA') {
+                  steps{
+                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testcontrolcoresandsamples'
+                  }
+                }
+              }
+            }
+
           }
         }
         stage('check that the repo is clean') {
