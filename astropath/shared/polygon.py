@@ -1,4 +1,4 @@
-import dataclassy, itertools, matplotlib.patches, methodtools, numba as nb, numbers, numpy as np, rdp, skimage.draw
+import dataclassy, itertools, matplotlib.patches, methodtools, numba as nb, numbers, numpy as np, rdp, re, skimage.draw
 from numba.core.errors import TypingError
 from ..utilities import units
 from ..utilities.dataclasses import MetaDataAnnotation
@@ -12,7 +12,9 @@ class InvalidPolygonError(Exception):
     self.reason = reason
     message = "Polygon is not valid"
     if reason is not None: message += " ("+reason+")"
-    message += ": "+str(polygon)
+    strpolygon = str(polygon)
+    long = len(strpolygon) > 2000
+    if not long: message += ": "+str(polygon)
     try:
       self.madevalid = polygon.MakeValid()
     except (RuntimeError, RecursionError) as e:
@@ -20,8 +22,11 @@ class InvalidPolygonError(Exception):
       message += f"\n\nMakeValid failed: {e}"
     else:
       message += "\n\nMakeValid result:"
-      for _ in self.madevalid:
-        message += "\n"+str(_)
+      for subpolygon in self.madevalid:
+        strsubpolygon = str(subpolygon)
+        if long:
+          strsubpolygon = re.sub("\([^()]+\)", "(...)", subpolygon)
+        message += "\n"+strsubpolygon
     super().__init__(message)
 
   @property
