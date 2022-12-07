@@ -113,13 +113,12 @@ using module .\testtools.psm1
             $wd = ' --workingdir', ($this.mpath +
                  '\warping\Project_' + $this.project) -join ' '
         } else {
-            $slides = '"M21_1"'
+            $slides = '"^(M21_1)$"'
             $wd = ' --workingdir', ($this.basepath + '\warping\Batch_'+
                  $this.batchid.PadLeft(2,'0')) -join ' '
         }
         #
         Write-Host '    collecting [warpkeys] defined task'
-        Write-Host '    *** slidelist:' $slides
         #
         $inp.getslideidregex($this.class)
         #
