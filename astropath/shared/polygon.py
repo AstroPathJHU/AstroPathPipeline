@@ -25,7 +25,7 @@ class InvalidPolygonError(Exception):
       for subpolygon in self.madevalid:
         strsubpolygon = str(subpolygon)
         if long:
-          strsubpolygon = re.sub("\([^()]+\)", "(...)", subpolygon)
+          strsubpolygon = re.sub("\([^()]+\)", "(...)", strsubpolygon)
         message += "\n"+strsubpolygon
     super().__init__(message)
 
