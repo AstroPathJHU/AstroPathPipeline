@@ -110,7 +110,7 @@ class batchwarpfits : moduletools {
             $this.pythonmodulename,
             $dpath,
             '--shardedim3root',  $rpath, 
-            '--sampleregex',  ('"'+($this.batchslides -join '|')+'"'), 
+            '--sampleregex',  ('"^('+($this.batchslides -join '|')+')$"'), 
             '--flatfield-file',  $this.sample.pybatchflatfieldfullpath(), 
             $this.gpuopt(),'--no-log',
             '--ignore-dependencies',
