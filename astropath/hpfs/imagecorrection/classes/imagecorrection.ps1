@@ -18,7 +18,7 @@ Usage: $a = [imagecorrection]::new($task, $sample)
 #>
 Class imagecorrection : moduletools {
     #
-    [string]$pytype = 'cohort'
+    [string]$pytype = 'sample'
     #
     imagecorrection([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample){
         $this.flevel = [FileDownloads]::BATCHID + 
@@ -122,6 +122,21 @@ Class imagecorrection : moduletools {
         $pythontask = ($this.pythonmodulename,
             $dpath, 
             '--sampleregex', $this.sample.slideid,
+            '--shardedim3root', $rpath, 
+            '--flatfield-file', $this.sample.pybatchflatfieldfullpath(),
+            '--warping-file', ('warping_BatchID_', $this.sample.batchid.padleft(2, '0'), '.csv' -join ''), 
+            "--njobs '8' --no-log --layers -1 1", $globalargs,
+            '--workingdir', ($rpath + '\' + $this.sample.slideid) -join ' ')
+        #
+        return $pythontask
+    }
+    #
+    [string]getpythontasksample($dpath, $rpath){
+        #
+        $globalargs = $this.buildpyopts()
+        $pythontask = ($this.pythonmodulename,
+            $dpath, 
+            $this.sample.slideid,
             '--shardedim3root', $rpath, 
             '--flatfield-file', $this.sample.pybatchflatfieldfullpath(),
             '--warping-file', ('warping_BatchID_', $this.sample.batchid.padleft(2, '0'), '.csv' -join ''), 

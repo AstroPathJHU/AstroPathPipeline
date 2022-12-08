@@ -486,7 +486,7 @@
         }
         #
         if (!$row){
-            $this.sample.slide_local_data +=  $row
+            [array]$this.sample.slide_local_data +=  $row
             $this.sample.writecsv(
                 $this.sample.slide_local_fullfile($this.sample.basepath),
                 $this.sample.slide_local_data
@@ -514,7 +514,7 @@
         }
         #
         if (!$row){
-            $this.sample.sampledef_local_data += [PSCustomObject]@{
+            [array]$this.sample.sampledef_local_data += [PSCustomObject]@{
                 SampleID = 0
                 SlideID = $this.sample.slideid
                 Project = $this.sample.project
@@ -522,7 +522,6 @@
                 Scan = $this.sample.scannumber()
                 BatchID = $this.sample.batchid
                 isGood = 1
-
             }
             $this.sample.writecsv(
                 $this.sample.sampledef_local_fullfile($this.sample.basepath),
@@ -702,7 +701,17 @@
     #
     [void]getexternallogs($externallog){
         #
+        if (Test-Path $externallog) {
+            $externalfile = Get-ChildItem $externallog
+            if ((!$externalfile.PSIsContainer) -and ($externalfile.length -eq 0)) {
+                Throw 'External log is empty, error running task' 
+            }
+        }
+        else {
+            Throw 'External log does not exist, error running task'
+        }
         $this.logoutput = $this.sample.GetContent($externallog)
+        #$this.sample.copy($externallog, $this.sample.slidelogfolder())
         $this.sample.removefile($externallog)
         $this.checkexternalerrors()
         $this.checkastropathlog()

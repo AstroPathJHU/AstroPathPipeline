@@ -138,10 +138,6 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
   covariance = 2 * error_crosscorrelation * errorfactor**2 * np.linalg.inv(hessian)
 
   exit = 0
-  dx, dy = unc.correlated_values(
-    -r.x,
-    covariance
-  )
 
   #various error codes:
   #  if there are other significant peaks in the cross correlation
@@ -167,6 +163,12 @@ def computeshift(images, *, gputhread=None, gpufftdict=None, windowsize=10, smoo
     dx = unc.ufloat(0, 9999.)
     dy = unc.ufloat(0, 9999.)
     exit = 3
+
+  if exit == 0:
+    dx, dy = unc.correlated_values(
+      -r.x,
+      covariance
+    )
 
   return OptimizeResult(
     dx=dx,
