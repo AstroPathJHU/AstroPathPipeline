@@ -419,6 +419,12 @@ class AlignSampleComponentTiff(AlignSampleComponentTiffBase, ReadRectanglesOverl
   This class is not currently used but is here for completeness.
   """
 
+class AlignSampleComponentTiffTMA(AlignSampleComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignSampleDbloadBase, AlignSampleTMABase):
+  """
+  An align sample that runs for control TMA samples on component tiff images and can write results to the dbload folder.
+  Used to align control TMAs imaged as regular HPFs (not mosaics) that are already unmixed
+  """
+
 class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, AlignSampleTissueBase, ReadRectanglesOverlapsComponentTiffFromXML):
   """
   An align sample that runs on component tiff images and does not rely on the dbload folder.
