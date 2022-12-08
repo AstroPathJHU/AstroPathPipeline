@@ -10,6 +10,7 @@ class MiniField(units.ThingWithPscale):
   def __init__(self, hpfid, pngfilename, csvfilename, pscale, position):
     self.hpfid = hpfid
     self.pngfilename = pngfilename
+    self.csvfilename = csvfilename
     self.__pscale = pscale
     self.__position = position
     self.__imageloader = ImageLoaderPng(filename=self.pngfilename)
@@ -77,7 +78,7 @@ class TenXSampleWithFields(units.ThingWithPscale, contextlib.ExitStack):
       for row in reader:
         hpfid = int(row["tile_ID"])
         coordinates = row["tile_coordinates [up_L, down_L, up_R, down_R]"]
-        x1, x2, y1, y2 = (int(_)*self.onepixel for _ in coordinates.strip("[]").split(","))
+        y1, y2, x1, x2 = (int(_)*self.onepixel for _ in coordinates.strip("[]").split(","))
         pngfilename = self.pngfolder/f"tile_nuclear_mask_{hpfid-1}.png"
         if not pngfilename.exists(): raise FileNotFoundError(f"{pngfilename} does not exist")
         csvfilename = self.csvfolder/f"tile_cell_coordinates_{hpfid-1}.csv"
