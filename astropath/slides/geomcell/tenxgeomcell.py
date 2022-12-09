@@ -81,9 +81,9 @@ class TenXSampleWithFields(units.ThingWithPscale, contextlib.ExitStack):
         y1 = int(row["y1"]) * self.onepixel
         x2 = int(row["x2"]) * self.onepixel
         y2 = int(row["y2"]) * self.onepixel
-        pngfilename = self.pngfolder/f"tile_nuclear_mask_{hpfid-1}.png"
+        pngfilename = self.pngfolder/f"tile_nuclear_mask_{hpfid}.png"
         if not pngfilename.exists(): raise FileNotFoundError(f"{pngfilename} does not exist")
-        csvfilename = self.csvfolder/f"tile_cell_coordinates_{hpfid-1}.csv"
+        csvfilename = self.csvfolder/f"tile_cell_coordinates_{hpfid}.csv"
         assert csvfilename.exists()
         mf = MiniField(
           hpfid=hpfid,
