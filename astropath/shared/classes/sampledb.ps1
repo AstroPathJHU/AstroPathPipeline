@@ -726,49 +726,41 @@ class sampledb : sampletracker {
                 $this.writeoutput(" cohorts file updated")
                 $this.updatefullprojectdata()
                 $this.writeoutput(" cohorts file checks finished")
-                return
             }
             $this.paths_file {
                 $this.writeoutput(" paths file updated")
                 $this.updatefullprojectdata()
                 $this.writeoutput(" paths file checks finished")
-                return
             }
             $this.config_file {
                 $this.writeoutput(" config file updated")
                 $this.updatefullprojectdata()
                 $this.writeoutput(" config file checks finished")
-                return
             }
             $this.slide_file {
                 $this.writeoutput(" apid file updated")
                 $this.fileupdate('slide')
                 $this.writeoutput(" apid file checks finished")
-                return
             }
             $this.ffmodels_file {
                 $this.writeoutput(" ffmodels file updated")
                 $this.fileupdate('ffmodels')
                 $this.writeoutput(" ffmodels file checks finished")
-                return
             }
             $this.corrmodels_file {
                 $this.writeoutput(" corrmodels file updated")
                 $this.fileupdate('corrmodels')
                 $this.writeoutput(" corrmodels file checks finished")
-                return
             }
             $this.micomp_file {
                 $this.writeoutput(" micomp file updated")
                 $this.fileupdate('micomp')
                 $this.writeoutput(" micomp file checks finished")
-                return
             }
             $this.worker_file {
                 $this.writeoutput(" workers file updated")
                 $this.Importworkerlist($this.mpath, $false)
                 $this.writeoutput(" workers file checks finished")
-                return
             }
             $this.vmq.mainqueue_filename {
                 $this.writeoutput(" main inform file updated")
@@ -777,13 +769,11 @@ class sampledb : sampletracker {
                 $this.vmq.newtasks = @()
                 $this.refreshsampledb('vminform')
                 $this.writeoutput(" main inform file checks finished")
-                return
             }
             'MergeConfig' {
                 $this.writeoutput(" merge config file updated")
                 $this.findallantibodies()
                 $this.writeoutput(" merge config file checks finished")
-                return
             }
         }
         #
@@ -796,7 +786,6 @@ class sampledb : sampletracker {
                     $this.vmq.newtasks = @()
                     $this.refreshsampledb('vminform')
                     $this.writeoutput(" local inform file checks finished for project: $cproject")
-                    return
                 }
             }
         }
@@ -808,7 +797,6 @@ class sampledb : sampletracker {
                     $this.writeoutput(" main module file updated for [$cmodule]")
                     $this.refreshmoduledb($cmodule)
                     $this.writeoutput(" main module file check finished for [$cmodule]")
-                    return
                 }
             }
             #
@@ -819,7 +807,6 @@ class sampledb : sampletracker {
                         $this.writeoutput(" checking log for new tasks [$cmodule] - project: $cproject")
                         $this.refreshsampledb($cmodule, $cproject)
                         $this.writeoutput(" logfile checks finished for [$cmodule] - project: $cproject")
-                        return
                     }
                 }
             }
