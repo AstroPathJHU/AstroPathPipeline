@@ -77,8 +77,10 @@ class TenXSampleWithFields(units.ThingWithPscale, contextlib.ExitStack):
       reader = csv.DictReader(f)
       for row in reader:
         hpfid = int(row["tile_ID"])
-        coordinates = row["tile_coordinates [up_L, down_L, up_R, down_R]"]
-        y1, y2, x1, x2 = (int(_)*self.onepixel for _ in coordinates.strip("[]").split(","))
+        x1 = int(row["x1"]) * self.onepixel
+        y1 = int(row["y1"]) * self.onepixel
+        x2 = int(row["x2"]) * self.onepixel
+        y2 = int(row["y2"]) * self.onepixel
         pngfilename = self.pngfolder/f"tile_nuclear_mask_{hpfid-1}.png"
         if not pngfilename.exists(): raise FileNotFoundError(f"{pngfilename} does not exist")
         csvfilename = self.csvfolder/f"tile_cell_coordinates_{hpfid-1}.csv"
