@@ -367,10 +367,17 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
     create an alignment result from the inverse alignment result
     """
     assert self.isinverseof(inverse)
+    try:
+      mse3 = inverse.result.mse3 / inverse.result.sc**2
+    except ZeroDivisionError:
+      if inverse.result.mse3 == 0:
+        mse3 = 0
+      else:
+        mse3 = np.inf
     self.result = self.alignmentresulttype(
       exit = inverse.result.exit,
       dxvec = -inverse.result.dxvec,
-      mse3 = inverse.result.mse3 / inverse.result.sc**2,
+      mse3 = mse3,
       **self.alignmentresultkwargs,
     )
     return self.result
