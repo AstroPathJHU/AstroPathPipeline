@@ -1,5 +1,5 @@
 from ...shared.cohort import DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort
-from .stitchmasksample import StitchAstroPathTissueMaskSample, StitchIHCTissueMaskSample, StitchInformMaskSample
+from .stitchmasksample import StitchAstroPathTissueMaskSample, StitchAstroPathTissueMaskSampleTMA, StitchIHCTissueMaskSample, StitchInformMaskSample
 
 class StitchMaskCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort, WorkflowCohort):
   pass
@@ -10,6 +10,7 @@ class StitchInformMaskCohort(StitchMaskCohortBase):
 
 class StitchAstroPathTissueMaskCohort(StitchMaskCohortBase):
   sampleclass = StitchAstroPathTissueMaskSample
+  TMAsampleclass = StitchAstroPathTissueMaskSampleTMA
   __doc__ = sampleclass.__doc__
 
   @property
