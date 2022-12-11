@@ -370,10 +370,10 @@ class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
     try:
       mse3 = inverse.result.mse3 / inverse.result.sc**2
     except ZeroDivisionError:
-      if inverse.result.mse3 == 0:
+      if inverse.result.exit != 0:
         mse3 = 0
       else:
-        mse3 = np.inf
+        raise ZeroDivisionError(f"Problem with mse3 for successful alignment: {inverse.result}")
     self.result = self.alignmentresulttype(
       exit = inverse.result.exit,
       dxvec = -inverse.result.dxvec,
