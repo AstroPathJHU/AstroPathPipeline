@@ -35,7 +35,6 @@ Class vminform : moduletools {
     [array]$corruptedfiles
     [array]$skippedfiles
     [bool]$needsbinaryseg
-    [bool]$needscomponent
     [string]$inputimagepath
     [array]$inputimageids
     [switch]$islocal = $true
@@ -48,15 +47,6 @@ Class vminform : moduletools {
                                       'eet_NucSegmentation,',
                                       'eet_CytoSegmentation,',
                                       'eet_MembraneSegmentation</ExportTypes>') -join " ");
-        Component        = (('     <ExportTypes>eet_NucSegmentation,',
-                                      'eet_CytoSegmentation,',
-                                      'eet_MembraneSegmentation,',
-                                      'eet_ComponentData</ExportTypes>') -join " ");
-        BinaryWComponent = (('     <ExportTypes>eet_Segmentation,',
-                                      'eet_NucSegmentation,',
-                                      'eet_CytoSegmentation,',
-                                      'eet_MembraneSegmentation,',
-                                      'eet_ComponentData</ExportTypes>') -join " ")
     }
     #
     $error_dictionary = @{
@@ -234,12 +224,7 @@ Class vminform : moduletools {
         $this.GetMergeConfigData()
         #
         $procedure = $this.sample.GetContent($this.algpath)
-        if ($this.abx -notmatch 'Component') {
-            $procedure = $this.CheckSegmentationTableOption($procedure, 'false', 'true')
-        }
-        else {
-            $procedure = $this.CheckSegmentationTableOption($procedure, 'true', 'false')
-        }
+        $procedure = $this.CheckSegmentationTableOption($procedure, 'false', 'true')
         #
         $procedure = $this.CheckCoordinateSpaceIndexOption($procedure)
         $this.CheckExportLineOption($procedure)
@@ -268,7 +253,6 @@ Class vminform : moduletools {
         }
         return $procedure
     }
-    
     <# -----------------------------------------
      CheckCoordinateSpaceIndexOption
      Checks the protocol file for the 
@@ -310,15 +294,8 @@ Class vminform : moduletools {
         #
         $changedline = ''
         switch ($true) {
-            {($this.needsbinaryseg -and $this.needscomponent)} {
-                $changedline = $this.export_type_setting.BinaryWComponent
-                break
-            }
             $this.needsbinaryseg {
                 $changedline = $this.export_type_setting.BinaryMaps
-            }
-            $this.needscomponent {
-                $changedline = $this.export_type_setting.Component
             }
             default {
                 $changedline = $this.export_type_setting.Default
@@ -340,10 +317,6 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]GetMergeConfigData(){
         #
-        if ($this.abx -match 'Component') {
-            $this.needscomponent = $true
-            return
-        }
         if ($this.sample.mergeconfig_data) {
             return
         }
@@ -354,8 +327,6 @@ Class vminform : moduletools {
             throw 'segmentation option not needed on any procedure'
         }
         $this.needsbinaryseg = $this.sample.binarysegtargets | 
-                        Where-Object {$_.Target -contains $this.abx}
-        $this.needscomponent = $this.sample.componenttarget | 
                         Where-Object {$_.Target -contains $this.abx}
         #
     }
@@ -522,7 +493,7 @@ Class vminform : moduletools {
      CheckInFormOutputFiles
      Record the number of complete inform 
      output files of each necessary type 
-     (cell_seg, binary_seg_maps, component_data)
+     (cell_seg, binary_seg_maps)
      check if any files needed - given the 
      files found in the image list - have 
      0bytes, indicating a potential error
@@ -534,9 +505,6 @@ Class vminform : moduletools {
         $informtypes = @('cell_seg_data.txt')
         if ($this.needsbinaryseg) {
             $informtypes += 'binary_seg_maps.tif'
-        }
-        if ($this.needscomponent) {
-            $informtypes += 'component_data.tif'
         }
         #
         $this.corruptedfiles = @()
@@ -721,14 +689,6 @@ Class vminform : moduletools {
         $logfile = $this.outpath+'\robolog.log'
         $filespec = @('maps.tif', '.txt', '.ifr', '.ifp', '.log')
         $this.sample.copy($sor, $this.abpath, $filespec, 50, $logfile)
-        #
-        $componentimages = $this.sample.listfiles($sor, 'data.tif')
-        if ($componentimages){
-            $cc = $this.sample.componentfolder()
-            $this.sample.removedir($cc)
-            $filespec = @('data.tif', '.ifr', '.ifp', '.log')
-            $this.sample.copy($sor, $cc, $filespec, 1, $logfile)
-        }
         #
         $this.sample.removedir($this.outpath)
         #

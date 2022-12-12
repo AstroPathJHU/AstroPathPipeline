@@ -34,8 +34,6 @@ Class vmcomponentinform : moduletools {
     [string]$informprocesserrorlog =  $this.outpath + "\informprocesserror.log"
     [array]$corruptedfiles
     [array]$skippedfiles
-    [bool]$needsbinaryseg
-    [bool]$needscomponent
     [string]$inputimagepath
     [array]$inputimageids
     [switch]$islocal = $true
@@ -55,13 +53,13 @@ Class vmcomponentinform : moduletools {
         OverlappedObjects = 'The stencil contains overlapped objects'
     }
     #
-    componentdata([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample) {
+    vmcomponentinform([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample) {
         #
         $this.flevel = [FileDownloads]::FLATWIM3
         #
         $this.sample = $sample
         $this.abx = 'Component'
-        $this.alg = $task.algorithm.trim()
+        $this.alg = 'component_' + $this.sample.BatchID + '.ifr'  
         $this.abpath = $this.sample.phenotypefolder() + '\' + $this.abx
         $this.algpath = $this.sample.basepath +
              '\tmp_inform_data\Project_Development\' + $this.alg
@@ -219,12 +217,9 @@ Class vmcomponentinform : moduletools {
     ----------------------------------------- #>
     [void]CheckExportOptions(){
         #
-        $this.GetMergeConfigData()
-        #
         $procedure = $this.sample.GetContent($this.algpath)
         $procedure = $this.CheckSegmentationTableOption($procedure, 'true', 'false')
         #
-        $procedure = $this.CheckCoordinateSpaceIndexOption($procedure)
         $this.CheckExportLineOption($procedure)
         #
     } 
@@ -251,30 +246,6 @@ Class vmcomponentinform : moduletools {
         }
         return $procedure
     }
-    
-    <# -----------------------------------------
-     CheckCoordinateSpaceIndexOption
-     Checks the protocol file for the 
-     coordinatespaceindex option and sets it 
-     to use pixels. Since there are multiple
-     lines, uses first match to fix the rest
-     ------------------------------------------
-     Usage: $this.CheckCoordinateSpaceIndexOption()
-    ----------------------------------------- #>
-    [array]CheckCoordinateSpaceIndexOption($procedure){
-        $coordinatespaceline = $procedure | 
-            Where-Object {$_ -match '<CoordinateSpaceIndex>'}
-        if (!$coordinatespaceline) {
-            throw 'error in reading <CoordinateSpaceIndex> line in procedure'
-        }
-        if ($coordinatespaceline -match '0') {
-            $this.sample.info("Setting CoordinateSpaceIndex setting to use pixels")
-            $newcoordinateline = $coordinatespaceline[0].replace('0', '1')
-            $procedure = $procedure.replace($coordinatespaceline[0], $newcoordinateline)
-            $procedure | Set-Content $this.algpath
-        }
-        return $procedure
-    }
     <# -----------------------------------------
      CheckExportLineOption
      Using information from the mergeconfig csv
@@ -296,35 +267,6 @@ Class vmcomponentinform : moduletools {
             $procedure.replace($exportline, $this.export_type_setting.Component) | 
                 Set-Content $this.algpath
         }
-    }
-    <# -----------------------------------------
-     GetMergeConfigData
-     Get merge configuration data from 
-     mergeconfig.csv and return if it already 
-     exists
-     ------------------------------------------
-     Usage: $this.GetMergeConfigData()
-    ----------------------------------------- #>
-    [void]GetMergeConfigData(){
-        #
-        if ($this.abx -match 'Component') {
-            $this.needscomponent = $true
-            return
-        }
-        if ($this.sample.mergeconfig_data) {
-            return
-        }
-        #
-        $this.sample.ImportMergeConfigCSV($this.sample.basepath)
-        $this.sample.findsegmentationtargets()
-        if (!$this.sample.mergeconfig_data) {
-            throw 'segmentation option not needed on any procedure'
-        }
-        $this.needsbinaryseg = $this.sample.binarysegtargets | 
-                        Where-Object {$_.Target -contains $this.abx}
-        $this.needscomponent = $this.sample.componenttarget | 
-                        Where-Object {$_.Target -contains $this.abx}
-        #
     }
     <# -----------------------------------------
      StartInForm
@@ -498,13 +440,7 @@ Class vmcomponentinform : moduletools {
     ----------------------------------------- #>
     [void]CheckInFormOutputFiles(){
         #
-        $informtypes = @('cell_seg_data.txt')
-        if ($this.needsbinaryseg) {
-            $informtypes += 'binary_seg_maps.tif'
-        }
-        if ($this.needscomponent) {
-            $informtypes += 'component_data.tif'
-        }
+        $informtypes = @('component_data.tif')
         #
         $this.corruptedfiles = @()
         #
@@ -673,21 +609,7 @@ Class vmcomponentinform : moduletools {
         #
         $this.sample.removefile($sor, "*legend.txt")
         #
-        # remove batch_procedure project and add the algorithm ##############validate##################
-        #
-        $this.sample.removefile($sor, '*.ifr')
-        $this.sample.copy($this.algpath, $sor)
-        #
-        $old_name = $sor + '\' + $this.alg
-        $new_name = $sor + '\' + 'batch_procedure' + 
-            $this.alg.Substring($this.alg.Length-4, 4)
-        Rename-Item -LiteralPath $old_name $new_name -Force
-        #
-        $this.sample.removedir($this.abpath)
-        #
         $logfile = $this.outpath+'\robolog.log'
-        $filespec = @('maps.tif', '.txt', '.ifr', '.ifp', '.log')
-        $this.sample.copy($sor, $this.abpath, $filespec, 50, $logfile)
         #
         $componentimages = $this.sample.listfiles($sor, 'data.tif')
         if ($componentimages){
@@ -695,6 +617,9 @@ Class vmcomponentinform : moduletools {
             $this.sample.removedir($cc)
             $filespec = @('data.tif', '.ifr', '.ifp', '.log')
             $this.sample.copy($sor, $cc, $filespec, 1, $logfile)
+        }
+        else {
+            throw 'Component images failed to create'
         }
         #
         $this.sample.removedir($this.outpath)
