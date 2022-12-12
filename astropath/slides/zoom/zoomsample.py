@@ -1,16 +1,16 @@
 import contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, skimage.transform
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, TissueSampleBase, TMASampleBase, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing_ok
 from ...utilities.miscimage import check_image_integrity, vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
 from ...utilities.optionalimports import pyvips
 from ..align.field import FieldReadComponentTiffMultiLayer
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, StitchAstroPathTissueMaskSample
-from .zoomsamplebase import ZoomSampleBase
+from .wsisamplebase import WSISampleBase
 
-class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
+class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
@@ -595,6 +595,11 @@ class ZoomSample(AstroPathTissueMaskSample, ZoomSampleBase, ZoomFolderSampleBase
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
     return [StitchAstroPathTissueMaskSample] + super().workflowdependencyclasses(**kwargs)
+
+class ZoomSample(ZoomSampleBase, TissueSampleBase):
+  pass
+class ZoomSampleTMA(ZoomSampleBase, TMASampleBase):
+  pass
 
 def main(args=None):
   ZoomSample.runfromargumentparser(args)

@@ -13,13 +13,13 @@ from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadSegmentedComponentTiffSingleLayer
-from ..zoom.zoomsamplebase import ZoomSampleBase
+from ..zoom.wsisamplebase import WSISampleBase
 
 class MaskField(Field, MaskRectangleBase): pass
 class AstroPathTissueMaskField(MaskField, AstroPathTissueMaskRectangle): pass
 class IHCTissueMaskField(MaskField, IHCTissueMaskRectangle): pass
 
-class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser, ThingWithMask, ThingWithLogger):
+class MaskSample(MaskSampleBase, WSISampleBase, DbloadArgumentParser, MaskArgumentParser, ThingWithMask, ThingWithLogger):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
