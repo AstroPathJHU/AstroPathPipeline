@@ -63,12 +63,14 @@ def plot_image_layer_thresholds_with_histograms(image_bgts_by_layer,slide_thresh
     for threshold in slide_thresholds :
         layer_n = threshold.layer_n
         thresholds_to_plot = image_bgts_by_layer[:,layer_n-1][image_bgts_by_layer[:,layer_n-1]!=0]
+        if len(thresholds_to_plot)<1 :
+            thresholds_to_plot = image_bgts_by_layer[:,layer_n-1]
         f,(ax1,ax2) = plt.subplots(1,2,figsize=(2*6.4,4.6))
         max_threshold_found = np.max(thresholds_to_plot)
         ax1.hist(thresholds_to_plot,max_threshold_found+11,(0,max_threshold_found+11))            
         mean = np.mean(thresholds_to_plot); med = np.median(thresholds_to_plot)
-        ax1.plot([mean,mean],[0.8*y for y in ax1.get_ylim()],linewidth=2,color='m',label=f'mean={mean:.2f}')
-        ax1.plot([med,med],[0.8*y for y in ax1.get_ylim()],linewidth=2,color='r',label=f'median={int(med)}')
+        ax1.axvline(mean,linewidth=2,color='m',label=f'mean={mean:.2f}')
+        ax1.axvline(med,linewidth=2,color='r',label=f'median={int(med)}')
         ax1.set_title(f'optimal thresholds for images in layer {layer_n}')
         ax1.set_xlabel('pixel intensity (counts)')
         ax1.set_ylabel('# of images')
@@ -94,9 +96,8 @@ def plot_image_layer_thresholds_with_histograms(image_bgts_by_layer,slide_thresh
                 alpha=0.7,label='background')
         ax2.bar(log_bins[:-1],signal_layer_log_hist,width=np.diff(log_bins),log=True,align='edge',
                 alpha=0.7,label='signal')
-        ax2.plot([chosen_t,chosen_t],[ax2.get_ylim()[0],0.8*ax2.get_ylim()[1]],linewidth=2,color='r',
-                 label=f'threshold = {chosen_t} counts')
         ax2.set_xscale('log')
+        ax2.axvline(chosen_t,linewidth=2,color='r',label=f'threshold = {chosen_t} counts')
         ax2.set_title('pixel histogram (summed over all images)')
         ax2.set_xlabel('log pixel intensity (counts)')
         ax2.set_ylabel('log(# of image pixels)')
