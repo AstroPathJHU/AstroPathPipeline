@@ -603,6 +603,8 @@ class ZoomSampleTMA(ZoomSampleBase, TMASampleBase):
 
 def main(args=None):
   ZoomSample.runfromargumentparser(args)
+def tma(args=None):
+  ZoomSampleTMA.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

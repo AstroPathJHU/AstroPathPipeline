@@ -324,7 +324,7 @@ class StitchIHCTissueMaskSample(StitchMaskSample, IHCTissueMaskSample):
 
 def astropathtissuemain(args=None):
   StitchAstroPathTissueMaskSample.runfromargumentparser(args=args)
-def astropathtissueTMAmain(args=None):
+def astropathtissuetma(args=None):
   StitchAstroPathTissueMaskSampleTMA.runfromargumentparser(args=args)
 
 def informmain(args=None):

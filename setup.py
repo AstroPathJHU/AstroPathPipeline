@@ -49,6 +49,7 @@ setupkwargs = dict(
     "console_scripts": [
       "aligncohort=astropath.slides.align.aligncohort:main",
       "alignsample=astropath.slides.align.alignsample:main",
+      "alignsampletma=astropath.slides.align.alignsample:tma",
       "annowarpcohort=astropath.slides.annowarp.annowarpcohort:main",
       "annowarpsample=astropath.slides.annowarp.annowarpsample:main",
       "appliedflatfieldcohort=astropath.hpfs.flatfield.appliedflatfieldcohort:main",
@@ -81,6 +82,7 @@ setupkwargs = dict(
       "motifprepdb=astropath.slides.prepdb.motifprepdb:main",
       "prepdbcohort=astropath.slides.prepdb.prepdbcohort:main",
       "prepdbsample=astropath.slides.prepdb.prepdbsample:main",
+      "prepdbsampletma=astropath.slides.prepdb.prepdbsample:tma",
       "read_annotation_xml=astropath.shared.annotationpolygonxmlreader:writeannotationcsvs",
       "makesampledef=astropath.shared.samplemetadata:makesampledef",
       "meanimagesample=astropath.hpfs.flatfield.meanimagesample:main",
@@ -99,6 +101,7 @@ setupkwargs = dict(
       "segmentationcohortnnunet=astropath.slides.segmentation.segmentationcohort:segmentationcohortnnunet",
       "stitchastropathtissuemaskcohort=astropath.slides.stitchmask.stitchmaskcohort:astropathtissuemain",
       "stitchastropathtissuemasksample=astropath.slides.stitchmask.stitchmasksample:astropathtissuemain",
+      "stitchastropathtissuemasksampletma=astropath.slides.stitchmask.stitchmasksample:astropathtissuetma",
       "stitchihctissuemaskcohort=astropath.slides.stitchmask.stitchmaskcohort:ihcmain",
       "stitchihctissuemasksample=astropath.slides.stitchmask.stitchmasksample:ihcmain",
       "stitchinformmaskcohort=astropath.slides.stitchmask.stitchmaskcohort:informmain",
@@ -113,6 +116,7 @@ setupkwargs = dict(
       "writeannotationinfosample=astropath.slides.annotationinfo.annotationinfo:writeannotationinfosample",
       "zoomcohort=astropath.slides.zoom.zoomcohort:main",
       "zoomsample=astropath.slides.zoom.zoomsample:main",
+      "zoomsampletma=astropath.slides.zoom.zoomsample:tma",
     ],
   },
   setup_requires = [

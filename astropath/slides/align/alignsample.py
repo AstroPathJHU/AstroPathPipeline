@@ -449,6 +449,8 @@ class ReadAffineShiftSample(DbloadSample):
 
 def main(args=None):
   AlignSample.runfromargumentparser(args)
+def tma(args=None):
+  AlignSampleTMA.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()
