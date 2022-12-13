@@ -268,7 +268,7 @@ Class testpsmeanimage : testtools {
         $sorxml = $inp.sample.Scanfolder()
         $inp.sample.copy($desxml, $sorxml, 'annotations.xml')
         #
-        Write-Host 'test python [meanimage] in workflow without apid finished'
+        Write-Host 'test python [meanimage] in workflow without xml annos finished'
         #
     }
     <# --------------------------------------------

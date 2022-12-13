@@ -563,7 +563,7 @@ Class testtools{
     [void]testlogsexpectednoxml($inp){
         #
         Write-Host '.'
-        Write-Host ('test python ['+$this.class+'] LOG in workflow without apid started')
+        Write-Host ('test python ['+$this.class+'] LOG in workflow without xml annos started')
         $inp.getmodulename()
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         Write-Host '    open log output'
@@ -577,7 +577,7 @@ Class testtools{
             Throw $_.Exception.Message
         }
         #
-        Write-Host ('test python ['+$this.class+'] LOG in workflow without apid finished')
+        Write-Host ('test python ['+$this.class+'] LOG in workflow without xml annos finished')
         #
     }
     #
@@ -996,7 +996,7 @@ Class testtools{
         $sampletracker.warpfolder(),
         $sampletracker.batchwarpingfile())
         #
-        $this.addalgorithms($sampledb)
+        $this.addalgorithms($sampletracker)
         #
         $this.addtestfiles($sampletracker, 
             $sampletracker.flatwfolder(),

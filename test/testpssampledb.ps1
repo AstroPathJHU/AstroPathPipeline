@@ -97,6 +97,7 @@ using module .\testtools.psm1
         $sampledb.removedir($this.mpath + '\across_project_queues')
         $sampledb.removedir($this.basepath + '\upkeep_and_progress\progress_tables')
         $sampledb.createnewdirs($this.basepath + '\logfiles')
+        $sampledb.setfile(($this.basepath, $this.slideid, 'im3\flatw\placeholder.txt' -join '\'), '')
         write-host 'clean up finished'
         #
     }
