@@ -1,0 +1,41 @@
+<#
+--------------------------------------------------------
+vmcomponentinform
+Created By: Andrew Jorquera
+--------------------------------------------------------
+Description
+Task to be launched remotely to ANY computer from ANYWHERE
+Input:
+$in[string]: the 3 part comma separated list of project, 
+    slideid, and worker location.
+    E.g. "7,M18_1,location"
+$vers[string]: The version number of inform to use 
+    (must be after the PerkinElmer to Akoya name switch)
+    E.g.: "2.4.8"
+--------------------------------------------------------
+#>
+#
+Function vmcomponentinform {
+    #
+    param(
+       $task,
+       $log,
+       [Parameter()][switch]$test
+   )
+    #
+    # used for testing; when launched manually without launchmodule
+    #
+    if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
+       $log = [launchmodule]::new($task.mpath, 'vmcomponentinform', $task) 
+       $e = 1
+    } else {$e = 0}
+    #
+    $inp = [vmcomponentinform]::new($task, $log)
+    if ($e -ne 1){
+        $inp.RunVMinForm()
+    } else{
+       return $inp
+    }
+    #
+}
+#
