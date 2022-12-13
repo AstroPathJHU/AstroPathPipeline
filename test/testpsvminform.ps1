@@ -801,12 +801,12 @@ Class testpsvminform : testtools {
 #
 # launch test and exit if no error found
 #
-[testpsvminform]::new() | Out-Null
+#[testpsvminform]::new() | Out-Null
 
 #
 # add $jenkins parameter to constructor if testing on jenkins
 #
-#[testpsvminform]::new($jenkins) | Out-Null
+[testpsvminform]::new($jenkins) | Out-Null
 
 #
 # add version and project parameters to constructor to test different versions of inform
