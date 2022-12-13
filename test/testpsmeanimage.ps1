@@ -39,7 +39,6 @@ Class testpsmeanimage : testtools {
         $inp.sample.teststatus = $true  
         $this.checkcreatepyenv($inp.sample)
         $this.testprocessroot($inp, $true)
-        #$this.testcleanupbase($inp)
         $this.comparepymeanimageinput($inp)
         $this.runpytaskpyerror($inp, $true)
         $this.testlogpyerror($inp)
@@ -83,51 +82,6 @@ Class testpsmeanimage : testtools {
         #>
         Write-Host 'test [meanimage] constructors finished'
         #
-    }
-    <# --------------------------------------------
-    testcleanupbase
-    Create a copy of the old results and then 
-    run the cleanupbase method. Finally copy the
-    results back to return the directory to it's
-    orginal state.
-    --------------------------------------------#>
-    [void]testcleanupbase($inp){
-        #
-        Write-Host '.'
-        Write-Host 'test cleanup base method started'
-        #
-        Write-Host '   copying old results to a safe location'
-        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
-        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
-        #
-        Write-Host '   source:' $sor
-        Write-Host '   destination:' $des
-        $inp.sample.copy($sor, $des, '*')
-        #
-        if (!(test-path -LiteralPath ($sor + '\.gitignore'))){
-            Throw 'da git ignore is not correct in meanimage source'
-        }
-        #
-        if (!(test-path -LiteralPath ($des + '\.gitignore'))){
-            Throw 'da git ignore is not correct in meanimage desitination'
-        }
-        #
-        Write-Host '   running cleanup protocol'
-        $inp.cleanupbase()
-        #
-        if (test-path $sor){
-            Throw 'meanimage directory still exists after cleanup'
-        }
-        #
-        Write-Host '   results appear to be cleared'
-        #
-        Write-Host '   replacing masks'
-        #
-        $inp.sample.copy($des, $sor, '*')
-        $this.comparepaths($des, $sor, $inp)
-        #
-        Write-Host 'test cleanup base method finished'
-
     }
     <# --------------------------------------------
     comparepymeanimageinput
@@ -334,15 +288,9 @@ Class testpsmeanimage : testtools {
     --------------------------------------------#>
     [void]testreturndatapy($inp){
         Write-Host '.'
-        Write-Host 'test py return data started'
+        Write-Host 'test py return data paths started'
         #
-        $module_processloc = (
-            $this.processloc,
-            'astropath_ws',
-            $this.module,
-            $this.slideid,
-            'meanimage'
-        ) -join '\'
+        $des = $inp.sample.im3mainfolder() + '\meanimage'
         #
         $returnpath = (
             $this.basepath,
@@ -350,25 +298,10 @@ Class testpsmeanimage : testtools {
             'im3\meanimage'
         ) -join '\'
         #
-        Write-Host '    Processing Path: ' $module_processloc
-        Write-Host '    Return Path:     ' $returnpath
+        $this.compareinputs($des, $returnpath)
+        $sor = $inp.processvars[0] +'\meanimage'
         #
-        try {
-            Write-Host '    running return data method'
-            $inp.ReturnDataPy()
-            Write-Host '    comparing paths'
-            $this.comparepaths($module_processloc, $returnpath, $inp)
-        } catch {
-            Throw $_.Exception.Message
-        } finally {
-            Write-Host '    removing files from meanimage dir'
-            $files = get-childitem $returnpath -file
-            foreach ($file in $files){
-                $inp.sample.removefile($file)
-            }
-        }
-        #
-        Write-Host 'test py return data finished'
+        Write-Host 'test py return data paths finished'
     }
     <# --------------------------------------------
     testmasks
@@ -425,27 +358,6 @@ Class testpsmeanimage : testtools {
             ) -join ' '
         }
         Write-Host '    cleanup method complete'
-        Write-Host '    delete the testing_meanimage folder'
-        #
-        $sor = $this.basepath, $this.slideid, 'im3\meanimage\image_masking' -join '\'
-        $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
-        #
-        $inp.sample.copy($des, $sor, '*')
-        #
-        $this.comparepaths($des, $sor, $inp)
-        #
-        if (!(test-path ($sor + '\.gitignore'))){
-            Throw 'da git ignore is not correct'
-        }
-        #
-        if (test-path ($this.mpath + '\warping')){
-            Write-Host '    delete the testing_warpoctets folder'
-            Write-Host '    path expected to be removed:' ($this.mpath + '\warping')
-            $inp.sample.removedir(($this.mpath + '\warping'))
-        }
-        #
-        $inp.sample.removedir($this.processloc)
-        #
         Write-Host 'test cleanup method finished'
     }
 }

@@ -137,13 +137,11 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpfits.ps1'
                   }
                 }
-                /*
                 stage('test meanimage ps workflow') {
                   steps {
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
                   }
                 }
-                */
               }
             }
 
