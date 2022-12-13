@@ -20,18 +20,18 @@ Class testpsvmcomponentinform : testtools {
     [switch]$versioncheck = $false
     [string]$class = 'vmcomponentinform'
     #
-    testpsvminform() : base(){
+    testpsvmcomponentinform() : base(){
         #
         $this.launchtests()
         #
     }
-    testpsvminform($jenkins) : base(){
+    testpsvmcomponentinform($jenkins) : base(){
         #
         $this.jenkins = $true
         $this.launchtests()
         #
     }
-    testpsvminform($ver, $proj) : base(){
+    testpsvmcomponentinform($ver, $proj) : base(){
         #
         $this.versioncheck = $true
         $this.informvers = $ver
