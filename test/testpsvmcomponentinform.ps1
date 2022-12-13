@@ -2,7 +2,7 @@ using module .\testtools.psm1
 <# -------------------------------------------
  testvmcomponentinform
  created by: Andrew Jorquera
- Last Edit: 12.7.2022
+ Last Edit: 12.13.2022
  --------------------------------------------
  Description
  test if the methods of vmcomponentinform are 
@@ -19,6 +19,8 @@ Class testpsvmcomponentinform : testtools {
     [switch]$jenkins = $false
     [switch]$versioncheck = $false
     [string]$class = 'vmcomponentinform'
+    [string]$informantibody = 'Component'
+    [string]$informproject = 'Component_99.ifr'
     #
     testpsvmcomponentinform() : base(){
         #
@@ -44,13 +46,13 @@ Class testpsvmcomponentinform : testtools {
     #
     [void]launchtests(){
         #
-        $this.testvminformconstruction($this.task)
-        $inp = vmcomponentinform $this.task
+        $this.testvmcomponentinformconstruction($this.task)
+        <#$inp = vmcomponentinform $this.task
         $this.setupjenkinspaths($inp)
         $this.testoutputdir($inp)
         $this.testimagelist($inp)
         $this.testcheckexportoptions($inp)
-        $this.comparevminforminput($inp)
+        $this.comparevmcomponentinforminput($inp)
         $this.testkillinformprocess($inp)
         $this.runinformexpected($inp)
         $this.testlogexpected($inp)
@@ -63,6 +65,7 @@ Class testpsvmcomponentinform : testtools {
         $this.testcheckexportoptions($inp)
         $this.runversioncheck($inp)
         $this.cleanprotocol($inp)
+        #>
         Write-Host '.'
         #
     }
@@ -115,31 +118,31 @@ Class testpsvmcomponentinform : testtools {
             $inp.processvars[1] = $this.outpath
             $inp.processvars[2] = $this.outpath
         }
-        $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\testing_vminform'
+        $this.protocolcopy = $this.basepath + '\..\test_for_jenkins\testing_vmcomponentinform'
         $inp.islocal = $false
         $inp.inputimagepath = $inp.outpath + '\' + $inp.sample.slideid + '\im3\flatw'
-        $this.placeholder = $this.basepath + '\..\test_for_jenkins\testing_vminform'
+        $this.placeholder = $this.basepath + '\..\test_for_jenkins\testing_vmcomponentinform'
     }
     <# --------------------------------------------
-    testvminformconstruction
-    test that the vminform object can be constucted
+    testvmcomponentinformconstruction
+    test that the vmcomponentinform object can be constucted
     --------------------------------------------#>
-    [void]testvminformconstruction($task){
+    [void]testvmcomponentinformconstruction($task){
         #
         Write-Host "."
-        Write-Host 'test [vminform] constructors started'
+        Write-Host 'test [vmcomponentinform] constructors started'
         try {
-            vminform $task | Out-Null
+            vmcomponentinform $task | Out-Null
         } catch {
-            Throw ('[vminform] construction with [1] input(s) failed. ' + $_.Exception.Message)
+            Throw ('[vmcomponentinform] construction with [1] input(s) failed. ' + $_.Exception.Message)
         }
-        Write-Host 'test [vminform] constructors finished'
+        Write-Host 'test [vmcomponentinform] constructors finished'
         #
     }
     <# --------------------------------------------
     testoutputdir
     compare the output directory root created by the 
-    vminform object is the same as the one created
+    vmcomponentinform object is the same as the one created
     by user defined or known input. Make sure that
     we reference user defined input so that if
     we run the test with an alternative sample
@@ -166,7 +169,7 @@ Class testpsvmcomponentinform : testtools {
         #
         $inp.CreateOutputDir()
         if (!([regex]::escape($md_processloc) -contains [regex]::escape($inp.informoutpath))){
-            Write-Host 'vminform module process location not defined correctly:'
+            Write-Host 'vmcomponentinform module process location not defined correctly:'
             Write-Host $md_processloc '~='
             Throw ($inp.informoutpath)
         }
@@ -181,7 +184,7 @@ Class testpsvmcomponentinform : testtools {
     <# --------------------------------------------
     testimagelist
     compare the image list created by the 
-    vminform object is the same as the one created
+    vmcomponentinform object is the same as the one created
     by user defined or known input. Make sure that
     we reference user defined input so that if
     we run the test with an alternative sample
@@ -198,7 +201,7 @@ Class testpsvmcomponentinform : testtools {
         $inp.DownloadFiles()
         $inp.CreateImageList()
         if (!([regex]::escape($md_imageloc) -contains [regex]::escape($inp.image_list_file))){
-            Write-Host 'vminform module process location not defined correctly:'
+            Write-Host 'vmcomponentinform module process location not defined correctly:'
             Write-Host $md_imageloc '~='
             Throw ($inp.image_list_file)
         }
@@ -226,28 +229,28 @@ Class testpsvmcomponentinform : testtools {
         $inp.GetMergeConfigData()
         #
         Write-Host '    checking default export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Default.ifr'
+        $checkpath = $inp.sample.basepath + '\reference\vmcomponentinform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Default.ifr'
         $inp.needsbinaryseg = $false
         $inp.needscomponent = $false
         $this.checkprotocol($inp, $checkpath)
         Write-Host '    default export type successful'
         #
         Write-Host '    checking binary seg map export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryMaps.ifr'
+        $checkpath = $inp.sample.basepath + '\reference\vmcomponentinform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryMaps.ifr'
         $inp.needsbinaryseg = $true
         $inp.needscomponent = $false
         $this.checkprotocol($inp, $checkpath)
         Write-Host '    binary seg map export type successful'
         #
         Write-Host '    checking component export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
+        $checkpath = $inp.sample.basepath + '\reference\vmcomponentinform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
         $inp.needsbinaryseg = $false
         $inp.needscomponent = $true
         $this.checkprotocol($inp, $checkpath)
         Write-Host '    default compoent type successful'
         #
         Write-Host '    checking binary with component export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryWComponent.ifr'
+        $checkpath = $inp.sample.basepath + '\reference\vmcomponentinform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryWComponent.ifr'
         $inp.needsbinaryseg = $true
         $inp.needscomponent = $true
         $this.checkprotocol($inp, $checkpath)
@@ -279,14 +282,14 @@ Class testpsvmcomponentinform : testtools {
         #>
     }
     <# --------------------------------------------
-    comparevminforminput
-    check that vminform input is what is expected
-    from the vminform module object
+    comparevmcomponentinforminput
+    check that vmcomponentinform input is what is expected
+    from the vmcomponentinform module object
     --------------------------------------------#>
-    [void]comparevminforminput($inp){
+    [void]comparevmcomponentinforminput($inp){
         #
         Write-Host '.'
-        Write-Host 'compare [vminform] expected input to actual started'
+        Write-Host 'compare [vmcomponentinform] expected input to actual started'
         #
         $informoutpath = $this.outpath, ($this.informantibody + '_0') -join '\'
         $md_imageloc = $this.outpath, 'image_list.tmp' -join '\'
@@ -408,7 +411,7 @@ Class testpsvmcomponentinform : testtools {
         Write-Host 'test inform logs with expected outcome started'
         #
         Write-Host '    comparing output with reference'
-        $reference = $inp.sample.basepath + '\reference\vminform\expected'
+        $reference = $inp.sample.basepath + '\reference\vmcomponentinform\expected'
         $excluded = @('*.log', '*.ifr')
         $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
         Write-Host '    compare successful'
@@ -496,7 +499,7 @@ Class testpsvmcomponentinform : testtools {
         Write-Host 'test inform logs with batch error started'
         #
         Write-Host 'comparing output with reference'
-        $reference = $inp.sample.basepath + '\reference\vminform\batcherror'
+        $reference = $inp.sample.basepath + '\reference\vmcomponentinform\batcherror'
         $excluded = @('*.log', '*.ifr')
         $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
         Write-Host '    compare successful'
@@ -543,7 +546,7 @@ Class testpsvmcomponentinform : testtools {
         $this.runinformexpected($inp)
         #
         Write-Host '    comparing output with reference'
-        $reference = $inp.sample.basepath + '\reference\vminform\coordinatespacetests\pixel_from_inform'
+        $reference = $inp.sample.basepath + '\reference\vmcomponentinform\coordinatespacetests\pixel_from_inform'
         $excluded = @('*.log', '*.ifr')
         $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
         Write-Host '    compare successful'
@@ -577,21 +580,21 @@ Class testpsvmcomponentinform : testtools {
         Write-Host '    default export type successful'
         #
         Write-Host '    checking binary seg map export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryMaps.ifr'
+        $checkpath = $inp.sample.basepath + '\reference\vmcomponentinform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryMaps.ifr'
         $inp.needsbinaryseg = $true
         $inp.needscomponent = $false
         $this.checkprotocol($inp, $checkpath)
         Write-Host '    binary seg map export type successful'
         #
         Write-Host '    checking component export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
+        $checkpath = $inp.sample.basepath + '\reference\vmcomponentinform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
         $inp.needsbinaryseg = $false
         $inp.needscomponent = $true
         $this.checkprotocol($inp, $checkpath)
         Write-Host '    default compoent type successful'
         #
         Write-Host '    checking binary with component export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryWComponent.ifr'
+        $checkpath = $inp.sample.basepath + '\reference\vmcomponentinform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryWComponent.ifr'
         $inp.needsbinaryseg = $true
         $inp.needscomponent = $true
         $this.checkprotocol($inp, $checkpath)
@@ -759,7 +762,7 @@ Class testpsvmcomponentinform : testtools {
         $inp.sample.CreateNewDirs($inp.sample.flatwim3folder())
         $inp.sample.CreateNewDirs($this.outpath)
         #
-        $this.referenceim3 = $inp.sample.basepath + '\reference\vminform\AP0150028_[46839,5637].im3'
+        $this.referenceim3 = $inp.sample.basepath + '\reference\vmcomponentinform\AP0150028_[46839,5637].im3'
         Write-Host '    copying reference im3 file to flatw folder:' $this.referenceim3
         $inp.sample.copy($this.referenceim3, $inp.sample.flatwim3folder())
         #
@@ -782,7 +785,7 @@ Class testpsvmcomponentinform : testtools {
         Write-Host 'test inform logs checking versions started'
         #
         Write-Host '    comparing output with reference'
-        $reference = $inp.sample.basepath + '\reference\vminform\versioncheck'
+        $reference = $inp.sample.basepath + '\reference\vmcomponentinform\versioncheck'
         $excluded = @('*.log', '*.ifr')
         $this.comparepathsexclude($reference, $inp.informoutpath, $inp, $excluded)
         Write-Host '    compare successful'
@@ -833,15 +836,15 @@ Class testpsvmcomponentinform : testtools {
 #
 # launch test and exit if no error found
 #
-#[testpsvminform]::new() | Out-Null
+[testpsvmcomponentinform]::new() | Out-Null
 
 #
 # add $jenkins parameter to constructor if testing on jenkins
 #
-[testpsvminform]::new($jenkins) | Out-Null
+#[testpsvmcomponentinform]::new($jenkins) | Out-Null
 
 #
 # add version and project parameters to constructor to test different versions of inform
 #
-#[testpsvminform]::new('2.6.0', 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr') | Out-Null
+#[testpsvmcomponentinform]::new('2.6.0', 'FoxP3_12.27.2021_Phenotyping_NE_overcall_v2.ifr') | Out-Null
 exit 0
