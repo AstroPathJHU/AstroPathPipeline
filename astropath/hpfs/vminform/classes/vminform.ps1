@@ -1,6 +1,6 @@
 ﻿<#
 --------------------------------------------------------
-informinput
+vminform
 Created By: Benjamin Green, Andrew Jorquera
 Last Edit: 03/28/2022
 --------------------------------------------------------
@@ -35,6 +35,7 @@ Class vminform : moduletools {
     [array]$corruptedfiles
     [array]$skippedfiles
     [bool]$needsbinaryseg
+    [bool]$needscomponent = $false
     [string]$inputimagepath
     [array]$inputimageids
     [switch]$islocal = $true
@@ -47,6 +48,10 @@ Class vminform : moduletools {
                                       'eet_NucSegmentation,',
                                       'eet_CytoSegmentation,',
                                       'eet_MembraneSegmentation</ExportTypes>') -join " ");
+        Component        = (('     <ExportTypes>eet_NucSegmentation,',
+                                      'eet_CytoSegmentation,',
+                                      'eet_MembraneSegmentation,',
+                                      'eet_ComponentData</ExportTypes>') -join " ")
     }
     #
     $error_dictionary = @{
@@ -224,9 +229,14 @@ Class vminform : moduletools {
         $this.GetMergeConfigData()
         #
         $procedure = $this.sample.GetContent($this.algpath)
-        $procedure = $this.CheckSegmentationTableOption($procedure, 'false', 'true')
+        if ($this.abx -notmatch 'Component') {
+            $procedure = $this.CheckSegmentationTableOption($procedure, 'false', 'true')
+            $procedure = $this.CheckCoordinateSpaceIndexOption($procedure)
+        }
+        else {
+            $procedure = $this.CheckSegmentationTableOption($procedure, 'true', 'false')
+        }
         #
-        $procedure = $this.CheckCoordinateSpaceIndexOption($procedure)
         $this.CheckExportLineOption($procedure)
         #
     } 
@@ -294,8 +304,13 @@ Class vminform : moduletools {
         #
         $changedline = ''
         switch ($true) {
+            $this.needscomponent {
+                $changedline = $this.export_type_setting.Component
+                break
+            }
             $this.needsbinaryseg {
                 $changedline = $this.export_type_setting.BinaryMaps
+                break
             }
             default {
                 $changedline = $this.export_type_setting.Default
@@ -502,9 +517,14 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]CheckInFormOutputFiles(){
         #
-        $informtypes = @('cell_seg_data.txt')
-        if ($this.needsbinaryseg) {
-            $informtypes += 'binary_seg_maps.tif'
+        if ($this.needscomponent) {
+            $informtypes = @('component_data.tif')
+        }
+        else {
+            $informtypes = @('cell_seg_data.txt')
+            if ($this.needsbinaryseg) {
+                $informtypes += 'binary_seg_maps.tif'
+            }
         }
         #
         $this.corruptedfiles = @()
@@ -674,23 +694,36 @@ Class vminform : moduletools {
         #
         $this.sample.removefile($sor, "*legend.txt")
         #
-        # remove batch_procedure project and add the algorithm ##############validate##################
-        #
-        $this.sample.removefile($sor, '*.ifr')
-        $this.sample.copy($this.algpath, $sor)
-        #
-        $old_name = $sor + '\' + $this.alg
-        $new_name = $sor + '\' + 'batch_procedure' + 
-            $this.alg.Substring($this.alg.Length-4, 4)
-        Rename-Item -LiteralPath $old_name $new_name -Force
-        #
-        $this.sample.removedir($this.abpath)
-        #
         $logfile = $this.outpath+'\robolog.log'
-        $filespec = @('maps.tif', '.txt', '.ifr', '.ifp', '.log')
-        $this.sample.copy($sor, $this.abpath, $filespec, 50, $logfile)
-        #
-        $this.sample.removedir($this.outpath)
+        if (!$this.needscomponent) {
+            #
+            # remove batch_procedure project and add the algorithm ##############validate##################
+            #
+            $this.sample.removefile($sor, '*.ifr')
+            $this.sample.copy($this.algpath, $sor)
+            #
+            $old_name = $sor + '\' + $this.alg
+            $new_name = $sor + '\' + 'batch_procedure' + 
+                $this.alg.Substring($this.alg.Length-4, 4)
+            Rename-Item -LiteralPath $old_name $new_name -Force
+            #
+            $this.sample.removedir($this.abpath)
+            #
+            $filespec = @('maps.tif', '.txt', '.ifr', '.ifp', '.log')
+            $this.sample.copy($sor, $this.abpath, $filespec, 50, $logfile)
+        }
+        else {
+            $componentimages = $this.sample.listfiles($sor, 'data.tif')
+            if ($componentimages){
+                $cc = $this.sample.componentfolder()
+                $this.sample.removedir($cc)
+                $filespec = @('data.tif', '.ifr', '.ifp', '.log')
+                $this.sample.copy($sor, $cc, $filespec, 1, $logfile)
+            }
+            else {
+                throw 'Component images failed to create'
+            }
+        }
         #
         $this.sample.info("Data transfer finished")
         #
@@ -711,8 +744,15 @@ Class vminform : moduletools {
      Usage: $this.datavalidation()
     ----------------------------------------- #>
     [void]datavalidation(){
-        if (!$this.sample.testinformfiles($this.abx, $this.alg)){
-            throw 'Output files are not correct'
+        if ($this.needscomponent) {
+            if (!$this.sample.testcomponentfiles()){
+                throw 'Output files are not correct'
+            }
+        }
+        else {
+            if (!$this.sample.testinformfiles($this.abx, $this.alg)){
+                throw 'Output files are not correct'
+            }
         }
     }
     #
