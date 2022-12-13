@@ -25,7 +25,7 @@ Class testtools{
     [string]$informantibody = 'FoxP3'
     [string]$informproject = 'FoxP3_Phenotyping_NE_v4_EC.ifr'
     [string]$componentinformantibody = 'Component'
-    [string]$componentinformproject = 'component.ifr'
+    [string]$componentinformproject = 'component_99.ifr'
     #
     testtools(){
        $this.importmodule()
