@@ -91,6 +91,9 @@ Class vminform : moduletools {
         $this.KillinFormProcess()
         #
     }
+    vminform([hashtable]$task,[launchmodule]$sample,[boolean]$component) : base ([hashtable]$task, [launchmodule]$sample) {
+        #
+    }
     <# -----------------------------------------
      TestPaths
      Test that the algorithm, flatw, and inform
