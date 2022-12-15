@@ -1,27 +1,17 @@
 import collections, errno, numpy as np, os, pathlib, PIL, re, shutil
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement
 from ...shared.logging import printlogger, ThingWithLogger
+from ...shared.tenx import TenXSampleBase
 from ...utilities import units
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips
 from ...utilities.tableio import writetable
 from .deepzoomsample import DeepZoomFile
 
-class TenXDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units.ThingWithPscale):
-  def __init__(self, *, mainfolder, SlideID, **kwargs):
+class TenXDeepZoom(TenXSampleBase):
+  def __init__(self, *, SlideID, **kwargs):
     super().__init__(**kwargs)
-    self.mainfolder = pathlib.Path(mainfolder)
     self.SlideID = SlideID
-
-  @property
-  def wsitiff(self):
-    result, = (self.mainfolder/"whole_slide").glob("*.tif")
-    return result
-  @property
-  def deepzoomfolder(self):
-    return self.mainfolder/"whole_slide"/"deepzoom"
-  @property
-  def pscale(self): return 1
 
   @property
   def layersqptiff(self):
@@ -36,8 +26,8 @@ class TenXDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units.
     return self.deepzoomfolder/f"L{layer:d}_files"
 
   @property
-  def logger(self):
-    return printlogger("tenxdeepzoom")
+  def logmodule(self):
+    return "tenxdeepzoom"
 
   def deepzoom_vips(self, layer):
     """
@@ -279,26 +269,15 @@ class TenXDeepZoom(ArgumentParserWithVersionRequirement, ThingWithLogger, units.
     return self.deepzoom(**kwargs)
 
   @classmethod
-  def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
-    if misckwargs:
-      raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
-    sample = cls(**initkwargs)
-    with sample:
-      sample.run(**runkwargs)
-    return sample
-
-  @classmethod
   def initkwargsfromargumentparser(cls, parsed_args_dict):
     return {
       **super().initkwargsfromargumentparser(parsed_args_dict),
-      "mainfolder": parsed_args_dict.pop("mainfolder"),
       "SlideID": parsed_args_dict.pop("SlideID"),
     }
 
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("mainfolder", type=pathlib.Path, help="The main folder for the sample")
     p.add_argument("SlideID", help="ID of this slide for the zoomlist.csv")
     return p
 

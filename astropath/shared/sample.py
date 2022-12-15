@@ -2309,4 +2309,3 @@ class MesmerSegmentationSample(DeepCellSegmentationSampleBase):
   @classmethod
   def segmentationalgorithm(cls):
     return "mesmer"
-
