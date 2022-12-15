@@ -29,16 +29,24 @@
     - Adjust the 3x3 images so that each box is centered over the TMA spot
     - Once you are satisfied click **Accept Grid** and close Phenochart
 7. Create an annotation scanning plan in Phenochart for the **Vectra Polaris**
-   - Open the TMA in  Phenochart
+    - Open the TMA in  Phenochart
    - Click **Login** at the upper left-hand corner
      - Type your name or initials
-    - Click **ROI** in the upper middle of the screen
-    - Draw the rectangle around all cores for Phenochart to locate the cores
+    - Click **TMA** in the upper middle of the screen
+    - Change the plan so that the bottom left core is labeled [1,1]
+      - For TMA 1372 the rows should go from 6 tp 1 and the columns from 1 to 4
+      - For TMA 1544 the rows should go from 11 to 1 and the columns from 1 to 9
+      - For TMA 1642 the rows should go from 5 to 1 and the columns from 1 to 5
+    - Change the **Core size:** to **2.0 mm**
+    - Draw a rectangle around all cores for Phenochart to locate the cores
     - To do this click and hold near one of the corners and drag across to the opposite corner (a search box should be displayed by Phenochart)
-    - Delete any fields that are completely missing tissue. If you are unsure if you should delete the field, leave it for scanning.
-    - To delete fields you can either:
-      - Hold down **Ctrl** on the keyboard and left-click on empty fields
-      - Right-click on the field and select **Delete**
+      - If the cores are mislabled, you need to delete the region and draw the rectangle again
+      - You may need to draw several different rectangular regions to get the cores to be labeled properly
+    - If a core is missing right-click the location of the core and select **Add missing core** and select the appropriate number
+      - Add all cores regardless of if any cores are completely missing from the slide
+    - Adjust the core images so that each circle is centered over the TMA spot
+      - Adjust core location by holding down Ctrl and dragging the image
+    - Once you are satisfied click **Accept Grid** and close Phenochart
 8. Select the **Acquire MSI fields** task for the TMA on the microscope and scan the slide
 9. Do the quality control of the TMA
    - Open images from three tonsil cores from a previous Control TMA in inForm
@@ -47,7 +55,7 @@
    - Open the Algorithm with a current library, created for each Clinical Specimen Project
    - Prepare all images with the library 
    - Compare the counts and the stain quality between the old and the new TMA
-     - Click on the icon with the box next to a mouse pointer to compare the counts between the old and new  TMAs
+     - Click on the icon with the box next to a mouse pointer to compare the counts between the old and new TMAs
      - It is easiest to write down the Opal and its respective counts range on a sheet of paper to refer to when switching between old and new versions
      - The colors are always as follows
        - DAPI - Blue
