@@ -212,7 +212,6 @@ Class testpsvminform : testtools {
         Write-Host 'test create image list finished'
         #
     }
-    
     <# --------------------------------------------
     testcheckexportoptions
     test that the check export options function
@@ -228,14 +227,30 @@ Class testpsvminform : testtools {
         Write-Host '    checking default export option'
         $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Default.ifr'
         $inp.needsbinaryseg = $false
+        $inp.needscomponent = $false
         $this.checkprotocol($inp, $checkpath)
         Write-Host '    default export type successful'
         #
         Write-Host '    checking binary seg map export option'
         $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryMaps.ifr'
         $inp.needsbinaryseg = $true
+        $inp.needscomponent = $false
         $this.checkprotocol($inp, $checkpath)
         Write-Host '    binary seg map export type successful'
+        #
+        Write-Host '    checking component export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
+        $inp.needsbinaryseg = $false
+        $inp.needscomponent = $true
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    default compoent type successful'
+        #
+        Write-Host '    checking binary with component export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
+        $inp.needsbinaryseg = $true
+        $inp.needscomponent = $true
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    default binary with component type successful'
         #
         $inp.sample.mergeconfig_data = $null
         $inp.GetMergeConfigData()
@@ -255,7 +270,6 @@ Class testpsvminform : testtools {
             Write-Host '    check hash:' (Get-FileHash $checkpath).Hash
             $obj = Compare-Object $inp.algpath $checkpath
             Write-Host 'compare:' $obj
-
             $obj2 = Compare-Object (Get-Content $inp.algpath) (Get-Content $checkpath)
             Write-Host '    compare2:' $obj2
             throw ($inp.algpath + ' != ' + $checkpath)
@@ -556,14 +570,30 @@ Class testpsvminform : testtools {
         #
         Write-Host '    checking default export option'
         $inp.needsbinaryseg = $false
+        $inp.needscomponent = $false
         $this.runinformexpected($inp)
         Write-Host '    default export type successful'
         #
         Write-Host '    checking binary seg map export option'
         $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryMaps.ifr'
         $inp.needsbinaryseg = $true
+        $inp.needscomponent = $false
         $this.checkprotocol($inp, $checkpath)
         Write-Host '    binary seg map export type successful'
+        #
+        Write-Host '    checking component export option'	
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
+        $inp.needsbinaryseg = $false
+        $inp.needscomponent = $true
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    default compoent type successful'
+        #
+        Write-Host '    checking binary with component export option'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
+        $inp.needsbinaryseg = $true
+        $inp.needscomponent = $true
+        $this.checkprotocol($inp, $checkpath)
+        Write-Host '    default binary with component type successful'
         #
         $inp.sample.mergeconfig_data = $null
         #
