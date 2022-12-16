@@ -1,7 +1,9 @@
-import abc, contextlib, pathlib
+import abc, contextlib, json, methodtools, numpy as np, pathlib
 from .argumentparser import ArgumentParserWithVersionRequirement
 from .logging import printlogger, ThingWithLogger
 from ..utilities import units
+from ..utilities.tableio import boolasintfield, optionalfield
+from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
 
 class TenXSampleBase(ArgumentParserWithVersionRequirement, ThingWithLogger, units.ThingWithPscale, contextlib.ExitStack):
   def __init__(self, *, mainfolder, SlideID, **kwargs):
@@ -14,6 +16,7 @@ class TenXSampleBase(ArgumentParserWithVersionRequirement, ThingWithLogger, unit
   def wholeslidefolder(self): return self.mainfolder/"whole_slide"
   @property
   def deepzoomfolder(self): return self.wholeslidefolder/"deepzoom"
+
   @property
   def tilefolder(self): return self.mainfolder/"tile"
   @property
@@ -27,8 +30,44 @@ class TenXSampleBase(ArgumentParserWithVersionRequirement, ThingWithLogger, unit
   def wsitiff(self):
     result, = self.wholeslidefolder.glob("*.tif")
     return result
+  @methodtools.lru_cache()
+  @property
+  def wsiloader(self):
+    return ImageLoaderTiff(filename=self.wsitiff, layers=[1, 2, 3])
+  def using_wsi(self, **kwargs):
+    return self.wsiloader.using_wsi(**kwargs)
   @property
   def pscale(self): return 1
+
+  @property
+  def metadatafolder(self):
+    return self.mainfolder/"metadata"
+  @property
+  def spotsfile(self):
+    result, = self.metadatafolder.glob("*_alignment_file.json")
+    return result
+  @methodtools.lru_cache()
+  @property
+  def __spots_and_matrix(self):
+    spots = {}
+    matrix = None
+    with open(self.spotsfile) as f:
+      for k, v in json.load(f).items():
+        if k == "transform":
+          matrix = np.asarray(v)
+        elif k in ("serialNumber", "area", "checksum"):
+          pass
+        elif k in ("oligo", "fiducial"):
+          spots[k] = [Spot(**spotkwargs, pscale=self.pscale) for spotkwargs in v]
+        else:
+          raise ValueError(k)
+    return spots, matrix
+  @property
+  def spots(self):
+    return self.__spots_and_matrix[0]
+  @property
+  def spotstransform(self):
+    return self.__spots_and_matrix[1]
 
   @classmethod
   def runfromargsdicts(cls, *, initkwargs, runkwargs, misckwargs):
@@ -66,3 +105,14 @@ class TenXSampleBase(ArgumentParserWithVersionRequirement, ThingWithLogger, unit
   def logmodule(self): pass
   @property
   def logger(self): return printlogger(self.logmodule)
+
+class Spot(DataClassWithPscale):
+  x: int
+  y: int
+  row: int
+  col: int
+  dia: units.Distance = distancefield(pixelsormicrons="pixels")
+  fidName: str = optionalfield(None, readfunction=str)
+  imageX: units.Distance = distancefield(pixelsormicrons="pixels")
+  imageY: units.Distance = distancefield(pixelsormicrons="pixels")
+  tissue: bool = boolasintfield(None, optional=True)

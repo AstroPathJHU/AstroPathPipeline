@@ -295,7 +295,7 @@ def pathfield(*defaultvalue, **metadata):
 
   return MetaDataAnnotation(*defaultvalue, **metadata)
 
-def boolasintfield(*defaultvalue, **metadata):
+def boolasintfield(*defaultvalue, optional=False, **metadata):
   """
   returns a MetaDataAnnotation for writing a bool as an int (i.e. 1 or 0)
   """
@@ -305,7 +305,7 @@ def boolasintfield(*defaultvalue, **metadata):
     **metadata,
   }
 
-  return MetaDataAnnotation(*defaultvalue, **metadata)
+  return (optionalfield if optional else MetaDataAnnotation)(*defaultvalue, **metadata)
 
 def datefield(dateformat, *defaultvalue, optional=False, otherdateformats=(), **metadata):
   """
