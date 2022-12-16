@@ -31,7 +31,7 @@ Class vmcomponentinform : vminform {
         $this.needscomponent = $true
         $this.abpath = $this.sample.phenotypefolder() + '\' + $this.abx
         $this.algpath = $this.sample.basepath +
-             '\tmp_inform_data\Project_Development\' + $this.alg
+             '\tmp_inform_data\Project_Development\Component\' + $this.alg
         $this.informoutpath = $this.outpath + "\" + $this.abx + '_' + $this.err
         $this.informpath = '"'+"C:\Program Files\Akoya\inForm\" + 
             $this.informvers + "\inForm.exe"+'"'

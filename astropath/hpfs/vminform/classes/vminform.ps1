@@ -48,10 +48,7 @@ Class vminform : moduletools {
                                       'eet_NucSegmentation,',
                                       'eet_CytoSegmentation,',
                                       'eet_MembraneSegmentation</ExportTypes>') -join " ");
-        Component        = (('     <ExportTypes>eet_NucSegmentation,',
-                                      'eet_CytoSegmentation,',
-                                      'eet_MembraneSegmentation,',
-                                      'eet_ComponentData</ExportTypes>') -join " ")
+        Component        = (('     <ExportTypes>eet_ComponentData</ExportTypes>') -join " ")
     }
     #
     $error_dictionary = @{

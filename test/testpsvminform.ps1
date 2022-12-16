@@ -222,6 +222,7 @@ Class testpsvminform : testtools {
         Write-Host '.'
         Write-Host 'test check export options started'
         #
+        $tempcomponent = $inp.needscomponent
         $inp.GetMergeConfigData()
         #
         Write-Host '    checking default export option'
@@ -249,10 +250,11 @@ Class testpsvminform : testtools {
         $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
         $inp.needsbinaryseg = $true
         $inp.needscomponent = $true
-        $this.checkprotocol($inp, $checkpath)
+        $this.checkprotocol($inp, $checkpath) 
         Write-Host '    default binary with component type successful'
         #
         $inp.sample.mergeconfig_data = $null
+        $inp.needscomponent = $tempcomponent
         $inp.GetMergeConfigData()
         Write-Host 'test check export options finished'
     }
