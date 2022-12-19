@@ -1,5 +1,6 @@
 import abc, contextlib, json, methodtools, numpy as np, pathlib
 from .argumentparser import ArgumentParserWithVersionRequirement
+from .imageloader import ImageLoaderTiff
 from .logging import printlogger, ThingWithLogger
 from ..utilities import units
 from ..utilities.tableio import boolasintfield, optionalfield
@@ -35,7 +36,10 @@ class TenXSampleBase(ArgumentParserWithVersionRequirement, ThingWithLogger, unit
   def wsiloader(self):
     return ImageLoaderTiff(filename=self.wsitiff, layers=[1, 2, 3])
   def using_wsi(self, **kwargs):
-    return self.wsiloader.using_wsi(**kwargs)
+    return self.wsiloader.using_image(**kwargs)
+  @property
+  def wsi(self):
+    return self.wsiloader.image
   @property
   def pscale(self): return 1
 
@@ -58,7 +62,10 @@ class TenXSampleBase(ArgumentParserWithVersionRequirement, ThingWithLogger, unit
         elif k in ("serialNumber", "area", "checksum"):
           pass
         elif k in ("oligo", "fiducial"):
-          spots[k] = [Spot(**spotkwargs, pscale=self.pscale) for spotkwargs in v]
+          spots[k] = []
+          for spotkwargs in v:
+            spotkwargs = {kk: vv*self.onepixel if kk in ("dia", "imageX", "imageY") else vv for kk, vv in spotkwargs.items()}
+            spots[k].append(Spot(**spotkwargs, pscale=self.pscale))
         else:
           raise ValueError(k)
     return spots, matrix
