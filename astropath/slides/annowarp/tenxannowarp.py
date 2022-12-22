@@ -29,7 +29,7 @@ class TenXAnnoWarp(TenXSampleBase):
     yc = float(spot.imageY / self.onepixel)
     dia = float(spot.dia / spot.onepixel)
     circles = cv2.HoughCircles(
-      gray,cv2.HOUGH_GRADIENT,1,2,
+      gray,cv2.HOUGH_GRADIENT,1,5,
       param1=50,param2=50,minRadius=int(dia*.9//2),maxRadius=int(dia*1.1//2)
     )
     if circles is None:
@@ -68,19 +68,19 @@ class TenXAnnoWarp(TenXSampleBase):
       if i % 50: continue
       self.logger.debug("aligning fiducial spot %d / %d", i, nspots)
       nominal = np.array([spot.imageX, spot.imageY])
-      circles = self.findcircle(spot)
+      circles = self.findcircle(spot, draw=True)
       alignmentresultkwargs = dict(
         **commonalignmentresultkwargs,
         n=i,
         x=nominal[0],
         y=nominal[1],
       )
-      if not circles.size:
+      if circles.shape[0] <= 1:
         results.append(
           TenXAnnoWarpAlignmentResult(
             **alignmentresultkwargs,
             dxvec=[unc.ufloat(0, 9999.)*self.onepixel]*2,
-            exit=1,
+            exit=2-circles.shape[0],
           )
         )
       else:
@@ -98,7 +98,7 @@ class TenXAnnoWarp(TenXSampleBase):
           )
         )
 
-    self.__alignmentresults = results
+    self.__alignmentresults = [result for result in results if result]
     if write_result:
       self.writealignments()
     return results
@@ -161,3 +161,6 @@ class TenXAnnoWarpAlignmentResult(DataClassWithPscale):
       (morekwargs["covxx"], morekwargs["covxy"]), (morekwargs["covxy"], morekwargs["covyy"]) = covariancematrix
 
     return super().transforminitargs(*args, **kwargs, **morekwargs)
+
+  def __bool__(self):
+    return self.exit == 0
