@@ -17,20 +17,11 @@ class TenXAnnoWarp(TenXSampleBase):
     with self.using_wsi() as wsi:
       return wsi[y1:y2, x1:x2], (x1, y1, x2, y2)
 
-  def drawcircle(self, spot):
-    xc = float(spot.imageX / self.onepixel)
-    yc = float(spot.imageY / self.onepixel)
-    dia = float(spot.dia / self.onepixel)
-
-    im, (x1, y1, x2, y2) = self.circle_subplot(spot)
-    circle = matplotlib.patches.Circle((xc, yc), dia/2, alpha=0.3, color='r')
-    ax.add_patch(circle)
-
   def findcircle(self, spot, draw=False):
     wsi, (x1, y1, x2, y2) = self.circle_subplot(spot)
     gray = cv2.cvtColor(wsi, cv2.COLOR_BGR2GRAY)
-    bw = np.where(gray>120, 255, 0).astype(np.uint8)
-    smooth = (skimage.filters.gaussian(bw, sigma=10, mode='nearest') * 255).astype(np.uint8)
+    #bw = np.where(gray>120, 255, 0).astype(np.uint8)
+    #smooth = (skimage.filters.gaussian(bw, sigma=10, mode='nearest') * 255).astype(np.uint8)
     xc = float(spot.imageX / self.onepixel)
     yc = float(spot.imageY / self.onepixel)
     dia = float(spot.dia / spot.onepixel)
