@@ -17,6 +17,8 @@ class TenXSampleBase(ArgumentParserWithVersionRequirement, ThingWithLogger, unit
   def wholeslidefolder(self): return self.mainfolder/"whole_slide"
   @property
   def deepzoomfolder(self): return self.wholeslidefolder/"deepzoom"
+  @property
+  def dbloadfolder(self): return self.wholeslidefolder/"dbload"
 
   @property
   def tilefolder(self): return self.mainfolder/"tile"
