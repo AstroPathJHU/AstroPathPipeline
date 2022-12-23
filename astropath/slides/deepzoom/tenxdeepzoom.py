@@ -1,8 +1,5 @@
-import collections, errno, numpy as np, os, pathlib, PIL, re, shutil
-from ...shared.argumentparser import ArgumentParserWithVersionRequirement
-from ...shared.logging import printlogger, ThingWithLogger
+import collections, errno, numpy as np, os, PIL, re, shutil
 from ...shared.tenx import TenXSampleBase
-from ...utilities import units
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips
 from ...utilities.tableio import writetable

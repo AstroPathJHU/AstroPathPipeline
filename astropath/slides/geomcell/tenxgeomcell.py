@@ -1,7 +1,6 @@
 import contextlib, csv, job_lock, methodtools, multiprocessing as mp, numpy as np, pathlib, skimage.measure
-from ...shared.argumentparser import ArgumentParserWithVersionRequirement, ParallelArgumentParser
+from ...shared.argumentparser import ParallelArgumentParser
 from ...shared.imageloader import ImageLoaderPng
-from ...shared.logging import printlogger, ThingWithLogger
 from ...shared.tenx import TenXSampleBase
 from ...utilities import units
 from ...utilities.tableio import writetable

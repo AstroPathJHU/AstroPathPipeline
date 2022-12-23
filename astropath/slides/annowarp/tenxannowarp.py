@@ -4,7 +4,6 @@ from ...utilities import units
 from ...utilities.miscmath import covariance_matrix
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
-from ..align.overlap import AlignmentComparison
 
 class TenXAnnoWarp(TenXSampleBase):
   @property
