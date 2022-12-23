@@ -236,6 +236,7 @@ RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install todonotes
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install enumitem
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install lineno
 RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install underscore
+RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install etoolbox
 
 from base as gdal
 
