@@ -1,7 +1,7 @@
-# The model files needed by nnU-Net
-/astropath/slides/segmentation/nnunet_models/nnUNet/2d/Task500_Pathology_DAPI/nnUNetTrainerV2_nnUNetPlansv2.1/*
-/astropath/slides/segmentation/nnunet_models/nnUNet/2d/Task500_Pathology_DAPI/nnUNetTrainerV2_nnUNetPlansv2.1/*/*
-!/astropath/slides/segmentation/nnunet_models/nnUNet/2d/Task500_Pathology_DAPI/nnUNetTrainerV2_nnUNetPlansv2.1/README.md
+# The model/pkl/json files needed by nnU-Net
+/astropath/slides/segmentation/nnunet_models/**/*.model
+/astropath/slides/segmentation/nnunet_models/**/*.pkl
+/astropath/slides/segmentation/nnunet_models/**/*.json
 
 *.pyc
 .ipynb_checkpoints
