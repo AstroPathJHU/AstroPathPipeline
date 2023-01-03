@@ -1,4 +1,4 @@
-import cv2, matplotlib.patches, matplotlib.pyplot as plt, numpy as np, uncertainties as unc
+import cv2, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, skimage.morphology, uncertainties as unc
 from ...shared.tenx import TenXSampleBase
 from ...utilities import units
 from ...utilities.miscmath import covariance_matrix
@@ -24,24 +24,46 @@ class TenXAnnoWarp(TenXSampleBase):
   def findcircle(self, spot, draw=False):
     wsi, (x1, y1, x2, y2) = self.circle_subplot(spot)
     gray = cv2.cvtColor(wsi, cv2.COLOR_BGR2GRAY)
+    thresh = 130
+    gray[gray>thresh] = 255
+    gray[gray<=thresh] = 0
     xc = float(spot.imageX / self.onepixel)
     yc = float(spot.imageY / self.onepixel)
     dia = float(spot.dia / spot.onepixel)
-    circles = cv2.HoughCircles(
-      gray,cv2.HOUGH_GRADIENT,1,5,
-      param1=50,param2=50,minRadius=int(dia*.9//2),maxRadius=int(dia*1.1//2)
+    houghcircles = cv2.HoughCircles(
+      gray,cv2.HOUGH_GRADIENT,dp=1,minDist=50,
+      param1=100,param2=10,minRadius=int(dia*.9//2),maxRadius=int(dia*1.1//2)
     )
-    if circles is None:
-      circles = np.zeros(shape=(0, 3))
+
+    if houghcircles is None:
+      houghcircles = np.zeros(shape=(0, 3))
     else:
-      circles, = circles
-    circles[:, 0:2] += [x1, y1]
+      houghcircles, = houghcircles
+
+    circles = []
+
+    eroded = skimage.morphology.binary_erosion(gray, np.ones((20, 20)))
+    for x, y, r in houghcircles:
+      allangles = np.linspace(-np.pi, np.pi, 1001)
+      goodindices = np.zeros_like(allangles, dtype=int)
+      goodangles = []
+      for i, angle in enumerate(allangles):
+        coordinate = (np.array([y, x]) + r*np.array([np.sin(angle), np.cos(angle)])).astype(int)
+        try:
+          goodindices[i] = not eroded[tuple(coordinate)]
+        except IndexError:
+          goodindices[i] = False
+
+      circle = FittedCircle(x=(x+x1)*self.onepixel, y=(y+y1)*self.onepixel, r=r*self.onepixel, angles=allangles, goodindices=goodindices, pscale=self.pscale)
+      if circle.isgood:
+        circles.append(circle)
 
     if draw:
       fig, ax = plt.subplots()
       plt.imshow(
-        wsi,
-        #smooth,
+        #wsi,
+        #gray,
+        eroded,
         extent=(x1, x2, y2, y1),
       )
       patchkwargs = {
@@ -50,13 +72,13 @@ class TenXAnnoWarp(TenXSampleBase):
         "linewidth": 2,
       }
       for circle in circles:
-        ax.add_patch(matplotlib.patches.Circle((circle[0], circle[1]), circle[2], color='b', **patchkwargs))
+        ax.add_patch(circle.patch(color='b', **patchkwargs))
       ax.add_patch(matplotlib.patches.Circle((xc, yc), dia/2, color='r', **patchkwargs))
       plt.show()
 
-    return circles * self.onepixel
+    return circles
 
-  def alignspots(self, *, write_result=True):
+  def alignspots(self, *, write_result=True, draw=False):
     commonalignmentresultkwargs = dict(
       pscale=self.pscale,
     )
@@ -64,10 +86,9 @@ class TenXAnnoWarp(TenXSampleBase):
     nspots = len(spots)
     results = []
     for i, spot in enumerate(spots, start=1):
-      if i % 50: continue
       self.logger.debug("aligning fiducial spot %d / %d", i, nspots)
       nominal = np.array([spot.imageX, spot.imageY])
-      circles = self.findcircle(spot, draw=True)
+      circles = self.findcircle(spot, draw=draw)
       alignmentresultkwargs = dict(
         **commonalignmentresultkwargs,
         n=i,
@@ -163,3 +184,77 @@ class TenXAnnoWarpAlignmentResult(DataClassWithPscale):
 
   def __bool__(self):
     return self.exit == 0
+
+class FittedCircle(DataClassWithPscale):
+  x: units.Distance = distancefield(pixelsormicrons="pixels")
+  y: units.Distance = distancefield(pixelsormicrons="pixels")
+  r: units.Distance = distancefield(pixelsormicrons="pixels")
+  angles: np.ndarray
+  goodindices: np.ndarray
+
+  @methodtools.lru_cache()
+  @property
+  def __isgood_xcut_ycut(self):
+    #close up little holes and get rid of little segments
+    padded = np.concatenate([self.goodindices]*3)
+    padded = skimage.morphology.closing(
+      padded,
+      footprint=np.ones(shape=25)
+    )
+    padded = skimage.morphology.opening(
+      padded,
+      footprint=np.ones(shape=25)
+    )
+
+    if np.all(padded):
+      return True, None, None
+    if not np.any(padded):
+      return False, None, None
+
+    derivative = padded[len(self.goodindices):2*len(self.goodindices)] - padded[len(self.goodindices)-1:2*len(self.goodindices)-1]
+    assert np.sum(derivative) == 0
+
+    regionstarts, = np.where(derivative==1)
+    regionends, = np.where(derivative==-1)
+    if regionstarts[0] > regionends[0]:
+      regionstarts = np.roll(regionstarts, 1)
+
+    regionlengths = regionends - regionstarts
+    if regionlengths[0] < 0: regionlengths[0] += len(self.goodindices)
+    np.testing.assert_all_greater(regionlengths, 0)
+
+    biggestidx = np.argmax(regionlengths)
+    start, end = regionstarts[biggestidx], regionends[biggestidx]
+
+    startangle = self.angles[start]
+    endangle = self.angles[end]
+
+    startsin = np.sin(startangle)
+    startcos = np.cos(startangle)
+    endsin = np.sin(endangle)
+    endcos = np.cos(endangle)
+
+    yclose = np.isclose(startsin, endsin, atol=1e-2)
+    xclose = np.isclose(startcos, endcos, atol=1e-2)
+
+    if xclose and yclose:
+      return False, None, None
+    elif xclose:
+      return True, self.x + self.r*(startcos+endcos)/2, None
+    elif yclose:
+      return True, None, self.y + self.r*(startsin+endsin)/2
+    else:
+      return False, None, None
+
+  @property
+  def isgood(self):
+    return self.__isgood_xcut_ycut[0]
+  @property
+  def xcut(self):
+    return self.__isgood_xcut_ycut[1]
+  @property
+  def ycut(self):
+    return self.__isgood_xcut_ycut[2]
+
+  def patch(self, **patchkwargs):
+    return matplotlib.patches.Circle((self.x/self.onepixel, self.y/self.onepixel), self.r/self.onepixel, **patchkwargs)
