@@ -1,0 +1,1 @@
+This directory is a placeholder for some pre-trained nnUNet model files that are stored on a public area of a SciServer volume accessible from [here](https://sciserver.org/public-data/bki-nnunet/). The files will be downloaded the first time that nnUNet segmentation is run on the system. They can be deleted at any time and they'll be re-downloaded when they're needed.

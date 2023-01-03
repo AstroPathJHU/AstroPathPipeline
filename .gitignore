@@ -1,5 +1,7 @@
-# The large "model_final_checkpoint.model" files needed by nnU-Net
-/astropath/slides/segmentation/nnunet_models/**/model_final_checkpoint.model
+# The model files needed by nnU-Net
+/astropath/slides/segmentation/nnunet_models/nnUNet/2d/Task500_Pathology_DAPI/nnUNetTrainerV2_nnUNetPlansv2.1/*
+/astropath/slides/segmentation/nnunet_models/nnUNet/2d/Task500_Pathology_DAPI/nnUNetTrainerV2_nnUNetPlansv2.1/*/*
+!/astropath/slides/segmentation/nnunet_models/nnUNet/2d/Task500_Pathology_DAPI/nnUNetTrainerV2_nnUNetPlansv2.1/README.md
 
 *.pyc
 .ipynb_checkpoints

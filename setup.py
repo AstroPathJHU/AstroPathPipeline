@@ -138,6 +138,7 @@ setupkwargs = dict(
     "pyopencl",
     "rdp",
     "reikna",
+    "requests",
     "seaborn",
     "scikit-image>=0.18",
     "scikit-learn>=0.17",
@@ -146,6 +147,7 @@ setupkwargs = dict(
     "SimpleITK>=2.1.1",
     "slurm-python-utils>=1.7",
     "uncertainties",
+    "urllib3",
   ],
   extras_require = {
     "deepcell": ["deepcell>=0.12.0"],
