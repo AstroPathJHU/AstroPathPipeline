@@ -600,7 +600,7 @@ Class vminform : moduletools {
      dictionary. errors can lead to files
      being rerun or skipped
      ------------------------------------------
-     Usage: $this.CheckInFormOutputFiles($errorline, $imageid)
+     Usage: $this.CheckErrorDictionary($errorline, $imageid)
     ----------------------------------------- #>
     [void]CheckErrorDictionary($errorline, $imageid){
         #

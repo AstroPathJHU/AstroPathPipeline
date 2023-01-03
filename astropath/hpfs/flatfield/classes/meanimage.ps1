@@ -193,8 +193,13 @@ Class meanimage : moduletools {
     [void]ReturnDataPy(){
         if ($this.processvars[4]){
             #
-		    $des = $this.sample.im3mainfolder() + '\meanimage'
             $sor = $this.processvars[0] +'\meanimage'
+            $des = $this.sample.im3mainfolder() + '\meanimage'
+            if (!(test-path $sor)){
+                $externallog = $this.ProcessLog($this.pythonmodulename)
+                $this.sample.copy($externallog, $this.sample.slidelogfolder())
+                throw "Meanimage directory not found after running GetMeanImage. Copying external log."
+            }
             #
             $this.sample.copy($sor, $des, '*', 30)
             #

@@ -173,7 +173,9 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         "tumorGeometry",
       )
     } | {
-      r.phenotypeQAQCcsv for r in self.rectangles if any(hasanycells(r, algo) for algo in self.segmentationalgorithms)
+      r.phenotypecsv for r in self.rectangles if not hasanycells(r, "inform")
+    } | {
+      r.phenotypeQAQCcsv for r in self.rectangles
     } | annotationinfocsvs | meanimagecsvs
     goodcsvs = set()
     unknowncsvs = set()
