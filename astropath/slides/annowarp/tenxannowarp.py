@@ -42,8 +42,10 @@ class TenXAnnoWarp(TenXSampleBase):
 
     circles = []
 
-    eroded = skimage.morphology.binary_erosion(gray, np.ones((20, 20)))
+    eroded = skimage.morphology.binary_erosion(gray, np.ones((10, 10)))
     for x, y, r in houghcircles:
+      if not np.all(np.abs([x, y] - np.array(gray.shape)/2) < 100):
+        continue
       allangles = np.linspace(-np.pi, np.pi, 1001)
       goodindices = np.zeros_like(allangles, dtype=int)
       goodangles = []
@@ -221,7 +223,7 @@ class FittedCircle(DataClassWithPscale):
 
     regionlengths = regionends - regionstarts
     if regionlengths[0] < 0: regionlengths[0] += len(self.goodindices)
-    np.testing.assert_all_greater(regionlengths, 0)
+    np.testing.assert_array_less(0, regionlengths)
 
     biggestidx = np.argmax(regionlengths)
     start, end = regionstarts[biggestidx], regionends[biggestidx]
@@ -234,15 +236,15 @@ class FittedCircle(DataClassWithPscale):
     endsin = np.sin(endangle)
     endcos = np.cos(endangle)
 
-    yclose = np.isclose(startsin, endsin, atol=1e-2)
-    xclose = np.isclose(startcos, endcos, atol=1e-2)
+    yclose = np.isclose(startsin, endsin, atol=0.3) and np.isclose(startcos, -endcos, atol=0.3)
+    xclose = np.isclose(startcos, endcos, atol=0.3) and np.isclose(startsin, -endsin, atol=0.3)
 
     if xclose and yclose:
       return False, None, None
     elif xclose:
-      return True, self.x + self.r*(startcos+endcos)/2, None
+      return True, (self.x + self.r*(startcos+endcos)/2, 1 if startsin > 0 else -1), None
     elif yclose:
-      return True, None, self.y + self.r*(startsin+endsin)/2
+      return True, None, (self.y + self.r*(startsin+endsin)/2, 1 if startcos > 0 else -1)
     else:
       return False, None, None
 
