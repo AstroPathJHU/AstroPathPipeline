@@ -216,12 +216,17 @@ using module .\testtools.psm1
         #
         Write-Host '    adding results for' $current 'and checking for normal behavior'
         #
+        Write-host '**'
         $this.('add' + $current + 'examples')($sampletracker)
         #
+        Write-host '***'
         $this.setstart($sampletracker, $log, $current)
         #
+        Write-host '****'
         $sampletracker.getlogstatus($current)
+        Write-host '*****'
         $sampletracker.getlogstatus($next)
+        Write-host '******'
         #
         Write-Host '        when started:'
         Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
