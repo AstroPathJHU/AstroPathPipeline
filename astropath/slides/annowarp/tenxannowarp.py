@@ -1,4 +1,4 @@
-import cv2, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, skimage.morphology, uncertainties as unc
+import cv2, itertools, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, skimage.morphology, uncertainties as unc
 from ...shared.tenx import TenXSampleBase
 from ...utilities import units
 from ...utilities.miscmath import covariance_matrix
@@ -32,7 +32,7 @@ class TenXAnnoWarp(TenXSampleBase):
     dia = float(spot.dia / spot.onepixel)
     houghcircles = cv2.HoughCircles(
       gray,cv2.HOUGH_GRADIENT,dp=1,minDist=50,
-      param1=100,param2=10,minRadius=int(dia*.9//2),maxRadius=int(dia*1.1//2)
+      param1=100,param2=10,minRadius=int(dia*.8/2),maxRadius=int(dia*1/2)
     )
 
     if houghcircles is None:
@@ -59,6 +59,35 @@ class TenXAnnoWarp(TenXSampleBase):
       circle = FittedCircle(x=(x+x1)*self.onepixel, y=(y+y1)*self.onepixel, r=r*self.onepixel, angles=allangles, goodindices=goodindices, pscale=self.pscale)
       if circle.isgood:
         circles.append(circle)
+
+    if any(c.xcut is None and c.ycut is None for c in circles):
+      try:
+        circle, = [c for c in circles if c.xcut is None and c.ycut is None]
+      except ValueError:
+        circles = []
+      else:
+        circles = [circle]
+    else:
+      pairs = []
+      for c1, c2 in itertools.combinations(circles, 2):
+        if c1.xcut is None and c2.ycut is None: continue
+        if c1.ycut is None and c2.xcut is None: continue
+
+        cut1, direction1 = c1.xcut if c1.xcut is not None else c1.ycut
+        cut2, direction2 = c2.xcut if c2.xcut is not None else c2.ycut
+
+        if direction1 == direction2: continue
+        if not np.isclose(cut1, cut2, atol=50*self.onepixel): continue
+
+        pairs.append([c1, c2])
+
+      if len(pairs) == 1:
+        circles, = pairs
+      elif not pairs:
+        circles = [c for c in circles if c.fractionalcoverage > 0.8]
+        if len(circles) > 1: circles = []
+      else:
+        raise ValueError(pairs)
 
     if draw:
       fig, ax = plt.subplots()
@@ -239,12 +268,12 @@ class FittedCircle(DataClassWithPscale):
     yclose = np.isclose(startsin, endsin, atol=0.3) and np.isclose(startcos, -endcos, atol=0.3)
     xclose = np.isclose(startcos, endcos, atol=0.3) and np.isclose(startsin, -endsin, atol=0.3)
 
-    if xclose and yclose:
-      return False, None, None
-    elif xclose:
+    if xclose and not yclose:
       return True, (self.x + self.r*(startcos+endcos)/2, 1 if startsin > 0 else -1), None
-    elif yclose:
+    elif yclose and not xclose:
       return True, None, (self.y + self.r*(startsin+endsin)/2, 1 if startcos > 0 else -1)
+    elif sum(regionlengths) > 0.8 * len(self.goodindices):
+      return True, None, None
     else:
       return False, None, None
 
@@ -260,3 +289,29 @@ class FittedCircle(DataClassWithPscale):
 
   def patch(self, **patchkwargs):
     return matplotlib.patches.Circle((self.x/self.onepixel, self.y/self.onepixel), self.r/self.onepixel, **patchkwargs)
+
+  @property
+  def fractionalcoverage(self):
+    if not self.isgood: return 0
+    if self.xcut is self.ycut is None: return 1
+    if self.xcut is not None is not self.ycut: assert False
+
+    if self.xcut is not None:
+      xcutangle = np.arccos((self.xcut[0] - self.x) / self.r)
+      if self.xcut[1] == -1:
+        return xcutangle / np.pi
+      elif self.xcut[1] == 1:
+        return 1 - xcutangle / np.pi
+      else:
+        assert False
+
+    if self.ycut is not None:
+      ycutangle = np.arcsin((self.ycut[0] - self.y) / self.r)
+      if self.ycut[1] == 1:
+        return 0.5 - ycutangle / np.pi
+      elif self.ycut[1] == -1:
+        return 0.5 + ycutangle / np.pi
+      else:
+        assert False
+
+    assert False
