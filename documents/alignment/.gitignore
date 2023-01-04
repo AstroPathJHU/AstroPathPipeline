@@ -1,5 +1,5 @@
 *.pdf
-!alignment.pdf
+!alignment_compiled.pdf
 !2D-shifts-AKY-[xy].pdf
 !2D-shifts-BMS-[xy].pdf
 !2D-shifts-BMS2-[xy].pdf
