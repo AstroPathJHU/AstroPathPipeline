@@ -456,16 +456,16 @@
     [switch]testfilecount($source, $testfile){
         #
         Write-host 'Starting test file count'
-        Write-host 'Before Source:' $source
-        Write-host 'Before Testfile' $testfile
         $source = $source -replace '\.', ''
         $testfile = $testfile -replace '\.', ''
-        Write-host 'After Source:' $source
-        Write-host 'After Testfile' $testfile
+        Write-host 'Source:' $source
+        Write-host 'Testfile' $testfile
+        Write-host 'Now Folder:' ($this.($source + 'folder')())
+        Write-host 'Now Constant:' ($this.($source + 'constant'))
 
         Write-host 'Testing with new linux source'
-        Write-host 'Linux Source:' $this.CrossPlatformPaths($source)
-        Write-host 'Linux Testfile' $this.CrossPlatformPaths($testfile)
+        Write-host 'Linux Folder:' $this.CrossPlatformPaths(($this.($source + 'folder')()))
+        Write-host 'Linux Constant' $this.CrossPlatformPaths(($this.($source + 'constant')))
         #
         $count1 = $this.countfiles(
             $this.($source + 'folder')(), $this.($source + 'constant')
