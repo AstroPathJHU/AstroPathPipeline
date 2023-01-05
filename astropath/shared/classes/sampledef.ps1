@@ -46,7 +46,6 @@ class sampledef : sharedtools{
     [string]$cantibodyconstant = '_cell_seg_data.txt'
     #
     [array]$antibodies
-    [array]$componenttarget
     [array]$binarysegtargets
     #
     sampledef(){}
@@ -264,7 +263,6 @@ class sampledef : sharedtools{
         $sorted = $this.mergeconfig_data | 
             Where-Object {$_.SegmentationStatus -gt 0} | 
             Sort-Object -Property Opal
-        $this.componenttarget = $sorted[0]
         #
         $this.binarysegtargets = $this.mergeconfig_data | 
             Where-Object {
