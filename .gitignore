@@ -1,5 +1,7 @@
-# The large "model_final_checkpoint.model" files needed by nnU-Net
-/astropath/slides/segmentation/nnunet_models/**/model_final_checkpoint.model
+# The model/pkl/json files needed by nnU-Net
+/astropath/slides/segmentation/nnunet_models/**/*.model
+/astropath/slides/segmentation/nnunet_models/**/*.pkl
+/astropath/slides/segmentation/nnunet_models/**/*.json
 
 *.pyc
 .ipynb_checkpoints

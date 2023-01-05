@@ -529,11 +529,11 @@
         $headers = $this.localqueueheadersvm
         #
         $this.antibodies | foreach-object{
-            $statusname = ($_ + '_Status')
             $algname = ($_ + '_Algorithm')
+            $statusname = ($_ + '_Status')
             $startname = ($_ + '_StartTime') 
             $finishname = ($_ + '_FinishTime')
-            $headers += @($statusname, $algname, $startname, $finishname)
+            $headers += @($algname, $statusname, $startname, $finishname)
         }
         #
         return $headers

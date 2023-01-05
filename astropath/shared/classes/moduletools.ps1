@@ -35,7 +35,7 @@
         $this.BuildProcessLocPaths($task)
         $this.vers = $this.sample.GetVersion($this.sample.mpath,
              $this.sample.module, $this.sample.project)
-        $this.sample.checksoftware()   
+        $this.sample.checksoftware()
     }
     <# -----------------------------------------
     BuildProcessLocPath
@@ -701,18 +701,7 @@
     #
     [void]getexternallogs($externallog){
         #
-        if (Test-Path $externallog) {
-            $externalfile = Get-ChildItem $externallog
-            if ((!$externalfile.PSIsContainer) -and ($externalfile.length -eq 0)) {
-                Throw 'External log is empty, error running task' 
-            }
-        }
-        else {
-            Throw 'External log does not exist, error running task'
-        }
         $this.logoutput = $this.sample.GetContent($externallog)
-        #$this.sample.copy($externallog, $this.sample.slidelogfolder())
-        $this.sample.removefile($externallog)
         $this.checkexternalerrors()
         $this.checkastropathlog()
         #
