@@ -110,7 +110,7 @@ using module .\testtools.psm1
         Write-Host '    Modules:' $sampletracker.modules 
         #
         $cmodules = @('scan', 'scanvalidation', 'transfer', 'shredxml', 'meanimage', 'batchflatfield', 'batchmicomp', 'imagecorrection',
-            'warpoctets', 'batchwarpkeys', 'batchwarpfits', 'vminform', 'merge', 'imageqa', 'segmaps', 'dbload')
+            'vmcomponentinform', 'warpoctets', 'batchwarpkeys', 'batchwarpfits', 'vminform', 'merge', 'imageqa', 'segmaps', 'dbload')
         $out = Compare-Object -ReferenceObject $sampletracker.modules  -DifferenceObject $cmodules
         if ($out){
             Throw ('module lists in [sampletracker] does not match, this may indicate new modules or a typo:' + $out)
