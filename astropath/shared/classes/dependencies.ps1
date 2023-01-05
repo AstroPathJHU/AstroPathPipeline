@@ -51,7 +51,9 @@
     #
     [void]getlogstatussub($cmodule){
         #
+        Write-host '***Get Log Status Sub'
         $logoutput = $this.checkloginit($cmodule, $false)
+        Write-host '***Finish check log init'
         #
         if ($logoutput[1]){
             $this.moduleinfo.($cmodule).status = $logoutput[1].Message
@@ -171,17 +173,21 @@
     #
     [array]checkloginit($cmodule, $antibody, $dependency){
         #
+        Write-host '*Check log init*'
+        Write-host '-'
         if ($antibody){
             $cmoduleinfo =  $this.moduleinfo.($cmodule).($antibody)
         } else {
             $cmoduleinfo =  $this.moduleinfo.($cmodule)
         }
+        Write-host '--'
         #
         if (!($this.modulelogs.($cmodule).($this.project))){
             $cmoduleinfo.StartTime = $this.empty_time
             $cmoduleinfo.FinishTime = $this.empty_time
             return @($true)
         }
+        Write-host '---'
         #
         $ID = $this.setlogid($cmodule)
         $loglines = $this.selectloglines(
@@ -194,8 +200,10 @@
         } else {
             $filteredloglines = $this.filterloglines($loglines, $ID, $vers)
         }
+        Write-host '----'
         #
         $this.setlogtimes($filteredloglines, $cmoduleinfo)
+        Write-host '-----'
         #
         return ($this.deflogstatus($filteredloglines.startdate,
             $filteredloglines.finishdate, $filteredloglines.errorline, $dependency))
