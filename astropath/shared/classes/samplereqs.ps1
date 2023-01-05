@@ -464,16 +464,16 @@
         Write-host 'Now Constant:' ($this.($source + 'constant'))
 
         Write-host 'Testing with new linux source'
-        Write-host 'Linux Folder:' $this.CrossPlatformPaths(($this.($source + 'folder')()))
-        Write-host 'Linux Constant' $this.CrossPlatformPaths(($this.($source + 'constant')))
+        Write-host 'Source Folder:' $this.CrossPlatformPaths(($this.($source + 'folder')()))
+        Write-host 'Testfile Folder:' $this.CrossPlatformPaths($this.($testfile + 'folder')())
         #
         $count1 = $this.countfiles(
-            $this.($source + 'folder')(), $this.($source + 'constant')
+            $this.CrossPlatformPaths($this.($source + 'folder')()), $this.($source + 'constant')
         )
         Write-host 'count 1:' $count1
         #
         $count2 = $this.countfiles(
-            $this.($testfile + 'folder')(), $this.($testfile + 'constant')
+            $this.CrossPlatformPaths($this.($testfile + 'folder')()), $this.($testfile + 'constant')
         )
         Write-host 'count 2:' $count2
         #
