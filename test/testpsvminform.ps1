@@ -212,7 +212,6 @@ Class testpsvminform : testtools {
         Write-Host 'test create image list finished'
         #
     }
-    
     <# --------------------------------------------
     testcheckexportoptions
     test that the check export options function
@@ -223,6 +222,7 @@ Class testpsvminform : testtools {
         Write-Host '.'
         Write-Host 'test check export options started'
         #
+        $tempcomponent = $inp.needscomponent
         $inp.GetMergeConfigData()
         #
         Write-Host '    checking default export option'
@@ -247,13 +247,14 @@ Class testpsvminform : testtools {
         Write-Host '    default compoent type successful'
         #
         Write-Host '    checking binary with component export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryWComponent.ifr'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
         $inp.needsbinaryseg = $true
         $inp.needscomponent = $true
-        $this.checkprotocol($inp, $checkpath)
+        $this.checkprotocol($inp, $checkpath) 
         Write-Host '    default binary with component type successful'
         #
         $inp.sample.mergeconfig_data = $null
+        $inp.needscomponent = $tempcomponent
         $inp.GetMergeConfigData()
         Write-Host 'test check export options finished'
     }
@@ -271,7 +272,6 @@ Class testpsvminform : testtools {
             Write-Host '    check hash:' (Get-FileHash $checkpath).Hash
             $obj = Compare-Object $inp.algpath $checkpath
             Write-Host 'compare:' $obj
-
             $obj2 = Compare-Object (Get-Content $inp.algpath) (Get-Content $checkpath)
             Write-Host '    compare2:' $obj2
             throw ($inp.algpath + ' != ' + $checkpath)
@@ -583,7 +583,7 @@ Class testpsvminform : testtools {
         $this.checkprotocol($inp, $checkpath)
         Write-Host '    binary seg map export type successful'
         #
-        Write-Host '    checking component export option'
+        Write-Host '    checking component export option'	
         $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
         $inp.needsbinaryseg = $false
         $inp.needscomponent = $true
@@ -591,7 +591,7 @@ Class testpsvminform : testtools {
         Write-Host '    default compoent type successful'
         #
         Write-Host '    checking binary with component export option'
-        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_BinaryWComponent.ifr'
+        $checkpath = $inp.sample.basepath + '\reference\vminform\exportoptions\FoxP3_Phenotyping_NE_v4_EC_Component.ifr'
         $inp.needsbinaryseg = $true
         $inp.needscomponent = $true
         $this.checkprotocol($inp, $checkpath)
