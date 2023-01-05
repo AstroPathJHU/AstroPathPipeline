@@ -75,6 +75,7 @@ PowerShellVersion = '7.0'
                         'shared\classes\astropathwftools.ps1',
                         'shared\classes\astropathworkflow.ps1',
                         'hpfs\vminform\classes\vminform.ps1',
+						'hpfs\vminform\classes\vmcomponentinform.ps1',
                         'hpfs\imagecorrection\classes\imagecorrection.ps1',
                         'hpfs\flatfield\classes\meanimage.ps1',
                         'hpfs\flatfield\classes\batchmicomp.ps1',

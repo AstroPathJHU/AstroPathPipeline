@@ -326,6 +326,12 @@
         )
     }
     #
+    [string]componentalgorithmfolder(){
+        return (
+            $this.basepath + '\tmp_inform_data\Project_Development\Component'
+        )
+    }
+    #
     [array]getalgorithms(){
         #
         $this.findantibodies() 
