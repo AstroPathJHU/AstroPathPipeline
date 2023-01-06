@@ -21,18 +21,24 @@ class TenXAnnoWarp(TenXSampleBase):
     with self.using_wsi() as wsi:
       return wsi[y1:y2, x1:x2], (x1, y1, x2, y2)
 
-  def findcircle(self, spot, draw=False):
+  def findcircle(self, spot, draw=False, returnall=False):
     wsi, (x1, y1, x2, y2) = self.circle_subplot(spot)
-    gray = cv2.cvtColor(wsi, cv2.COLOR_BGR2GRAY)
-    thresh = 130
-    gray[gray>thresh] = 255
-    gray[gray<=thresh] = 0
+    pcacomponent = np.array([0.43822899, -0.0274227, -0.89844496])
+    projected = np.tensordot(wsi, pcacomponent, axes=(2, 0))
+    thresh = -80
+    thresholded = np.where(projected>thresh, 0, 255).astype(np.uint8)
+    thresholded = skimage.morphology.closing(thresholded, footprint=np.ones((5, 5)))
+    thresholded = skimage.morphology.opening(thresholded, footprint=np.ones((10, 10)))
+    projected -= projected.min()
+    projected *= 255/projected.max()
+    projected = projected.astype(np.uint8)
+    blur = cv2.GaussianBlur(projected, (31,31), 1)
     xc = float(spot.imageX / self.onepixel)
     yc = float(spot.imageY / self.onepixel)
     dia = float(spot.dia / spot.onepixel)
     houghcircles = cv2.HoughCircles(
-      gray,cv2.HOUGH_GRADIENT,dp=1,minDist=50,
-      param1=100,param2=10,minRadius=int(dia*.8/2),maxRadius=int(dia*1/2)
+      blur,cv2.HOUGH_GRADIENT_ALT,dp=1,minDist=50,
+      param1=300,param2=0.9,minRadius=int(dia*.8/2),maxRadius=int(dia*1.1/2)
     )
 
     if houghcircles is None:
@@ -41,10 +47,11 @@ class TenXAnnoWarp(TenXSampleBase):
       houghcircles, = houghcircles
 
     circles = []
+    allcircles = []
 
-    eroded = skimage.morphology.binary_erosion(gray, np.ones((10, 10)))
+    eroded = skimage.morphology.binary_erosion(thresholded, np.ones((10, 10)))
     for x, y, r in houghcircles:
-      if not np.all(np.abs([x, y] - np.array(gray.shape)/2) < 100):
+      if not np.all(np.abs([x, y] - np.array(thresholded.shape)/2) < 100):
         continue
       allangles = np.linspace(-np.pi, np.pi, 1001)
       goodindices = np.zeros_like(allangles, dtype=int)
@@ -57,6 +64,7 @@ class TenXAnnoWarp(TenXSampleBase):
           goodindices[i] = False
 
       circle = FittedCircle(x=(x+x1)*self.onepixel, y=(y+y1)*self.onepixel, r=r*self.onepixel, angles=allangles, goodindices=goodindices, pscale=self.pscale)
+      allcircles.append(circle)
       if circle.isgood:
         circles.append(circle)
 
@@ -77,7 +85,7 @@ class TenXAnnoWarp(TenXSampleBase):
         cut2, direction2 = c2.xcut if c2.xcut is not None else c2.ycut
 
         if direction1 == direction2: continue
-        if not np.isclose(cut1, cut2, atol=50*self.onepixel): continue
+        if not np.isclose(cut1, cut2, atol=75*self.onepixel): continue
 
         pairs.append([c1, c2])
 
@@ -93,8 +101,9 @@ class TenXAnnoWarp(TenXSampleBase):
       fig, ax = plt.subplots()
       plt.imshow(
         #wsi,
-        #gray,
-        eroded,
+        #thresholded,
+        #eroded,
+        blur,
         extent=(x1, x2, y2, y1),
       )
       patchkwargs = {
@@ -102,10 +111,13 @@ class TenXAnnoWarp(TenXSampleBase):
         "fill": False,
         "linewidth": 2,
       }
-      for circle in circles:
-        ax.add_patch(circle.patch(color='b', **patchkwargs))
+      for circle in allcircles:
+        ax.add_patch(circle.patch(color='b' if circle in circles else 'g', **patchkwargs))
       ax.add_patch(matplotlib.patches.Circle((xc, yc), dia/2, color='r', **patchkwargs))
       plt.show()
+
+    if returnall:
+      return allcircles
 
     return circles
 
@@ -126,19 +138,19 @@ class TenXAnnoWarp(TenXSampleBase):
         x=nominal[0],
         y=nominal[1],
       )
-      if circles.shape[0] <= 1:
+      if len(circles) != 1:
         results.append(
           TenXAnnoWarpAlignmentResult(
             **alignmentresultkwargs,
             dxvec=[unc.ufloat(0, 9999.)*self.onepixel]*2,
-            exit=2-circles.shape[0],
+            exit=1 if not circles else 2,
           )
         )
       else:
-        centers = circles[:, 0:2]
-        mean = np.mean(centers, axis=0)
-        cov = np.cov(centers.T)
-        fitted = units.correlated_distances(distances=mean, covariance=cov)
+        circle, = circles
+        center = circle.center
+        cov = np.identity(2)
+        fitted = units.correlated_distances(distances=center, covariance=cov)
         dxvec = fitted - nominal
 
         results.append(
@@ -222,6 +234,10 @@ class FittedCircle(DataClassWithPscale):
   r: units.Distance = distancefield(pixelsormicrons="pixels")
   angles: np.ndarray
   goodindices: np.ndarray
+
+  @property
+  def center(self):
+    return np.array([self.x, self.y])
 
   @methodtools.lru_cache()
   @property
