@@ -137,6 +137,8 @@ class TenXAnnoWarp(TenXSampleBase):
         n=i,
         x=nominal[0],
         y=nominal[1],
+        row=spot.row,
+        col=spot.col,
       )
       if len(circles) != 1:
         results.append(
@@ -200,6 +202,8 @@ class TenXAnnoWarpAlignmentResult(DataClassWithPscale):
   n: int
   x: units.Distance = distancefield(pixelsormicrons="pixels")
   y: units.Distance = distancefield(pixelsormicrons="pixels")
+  row: int
+  col: int
   dx: units.Distance = distancefield(pixelsormicrons="pixels", secondfunction="{:.6g}".format)
   dy: units.Distance = distancefield(pixelsormicrons="pixels", secondfunction="{:.6g}".format)
   covxx: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format)
