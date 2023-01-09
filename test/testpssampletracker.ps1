@@ -58,7 +58,8 @@ using module .\testtools.psm1
         $this.testupdate($sampletracker, 'warpoctets', 'batchwarpkeys')
         $this.testupdate($sampletracker, 'batchwarpkeys', 'batchwarpfits')
         $this.testupdate($sampletracker, 'batchwarpfits', 'imagecorrection')
-        $this.testupdate($sampletracker, 'imagecorrection', 'vminform')
+        $this.testupdate($sampletracker, 'imagecorrection', 'vmcomponentinform')
+        $this.testupdate($sampletracker, 'vmcomponentinform', 'vminform')
         #
         $this.testupdate($sampletracker, 'vminform', 'merge')
         $this.testupdate($sampletracker, 'merge', 'imageqa')
