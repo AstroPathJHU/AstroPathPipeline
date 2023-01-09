@@ -650,7 +650,7 @@ using module .\testtools.psm1
         #
         $this.removetestfiles($sampletracker, 
             $sampletracker.componentfolder(),
-            $sampletracker.componentdatafiles[0],
+            $sampletracker.componentreqfiles[0],
             $sampletracker.im3constant)
         #
     }
@@ -659,7 +659,7 @@ using module .\testtools.psm1
         #
         $this.addtestfiles($sampletracker, 
                 $sampletracker.componentfolder(),
-                $sampletracker.componentdatafiles[0], 
+                $sampletracker.componentreqfiles[0], 
                 $sampletracker.im3constant)
         #
     }
