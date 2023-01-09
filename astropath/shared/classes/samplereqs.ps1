@@ -262,7 +262,7 @@
         #
     }
     #
-    [switch]testcomponentfiles(){
+    [switch]testvmcomponentinformfiles(){
         #
         return $this.testfiles($this.componentfolder(),
             $this.im3constant, $this.componentdatafiles)
