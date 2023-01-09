@@ -646,6 +646,24 @@ using module .\testtools.psm1
         #
     }
     #
+    [void]removevmcomponentinformexamples($sampletracker){
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.componentfolder(),
+            $sampletracker.componentdatafiles[0],
+            $sampletracker.im3constant)
+        #
+    }
+    #
+    [void]addvmcomponentinformexamples($sampletracker){
+        #
+        $this.addtestfiles($sampletracker, 
+                $sampletracker.componentfolder(),
+                $sampletracker.componentdatafiles[0], 
+                $sampletracker.im3constant)
+        #
+    }
+    #
     [void]removevminformexamples($sampletracker){
         #
         $this.addalgorithms($sampletracker)
