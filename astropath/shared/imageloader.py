@@ -74,8 +74,8 @@ class ImageLoaderBase(abc.ABC):
         self.__debug_load_image_tracebacks.append(traceback.format_stack())
       try:
         self.__image_cache = self.getimage()
-      except:
-        raise IOError(f"Error when loading {self}")
+      except Exception as e:
+        raise type(e)(f"Error when loading {self}")
     return self.__image_cache
 
   @contextlib.contextmanager
