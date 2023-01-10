@@ -196,6 +196,7 @@ using module .\testtools.psm1
         } else {
             $log = logger -mpath $this.mpath -module $current -slideid $sampletracker.slideid
         }
+        Write-Host 'log:' $log
         #
         $this.setstart($sampletracker, $log, $current)
         Start-Sleep -s 2
@@ -395,6 +396,7 @@ using module .\testtools.psm1
         #
         if ($module -contains 'vminform'){
             $status = ''
+            Write-host "** get status sampletracker antibodies: " $sampletracker.antibodies
             foreach ($abx in $sampletracker.antibodies){
                 $status = $sampletracker.moduleinfo.($module).($abx).status
                 if ($status -ne 'FINISHED'){

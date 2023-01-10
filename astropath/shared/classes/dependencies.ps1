@@ -39,7 +39,10 @@
         #
         if ($cmodule -match 'vminform'){
             #
+            Write-host 'Matched vminform'
+            Write-host 'Antibodies: ' $this.antibodies
             foreach ($abx in $this.antibodies) {
+                Write-host 'Antibody: ' $abx
                 $this.getlogstatussub($cmodule, $abx)
             }
             #
