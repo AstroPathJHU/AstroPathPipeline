@@ -37,14 +37,15 @@ pipeline {
 
         stage('ps module install') {
           steps {
-            sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
+			sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
+			sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssample.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
+			// sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsconvertim3path.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminform.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'

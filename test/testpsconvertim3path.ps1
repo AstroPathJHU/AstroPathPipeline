@@ -47,6 +47,9 @@ Class testpsconvertim3path : testtools{
         $this.launchinject()
         $this.cleanup()
         #
+        $inp = shredxml $this.task
+        $this.testgitstatus($inp.sample)
+        #
         Write-Host '.'
         #
     }
