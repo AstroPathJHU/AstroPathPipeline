@@ -901,9 +901,9 @@ class aptabletools : fileutils {
     #
     [void]findantibodies($basepath){
         #
-        if (!$this.isWindows()) {
-            return
-        }
+        #if (!$this.isWindows()) {
+        #    return
+        #}
         #
         $this.mergeconfigtocsv()
         #
