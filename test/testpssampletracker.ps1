@@ -393,8 +393,6 @@ using module .\testtools.psm1
         $sampletracker.preparesample($this.slideid)
         #
         if ($module -contains 'vminform'){
-            $sampletracker.ImportMergeConfigCSV($sampletracker.basepath)
-            $sampletracker.getantibodies($this.project)
             #
             $status = ''
             Write-host "** get status sampletracker antibodies: " $sampletracker.antibodies
