@@ -35,6 +35,7 @@ using module .\testtools.psm1
         Write-Host 'preparing sampletracker & dir started'
         Write-Host '    sample def slide'
         $sampletracker.sampledefslide($this.slideid)
+        $sampletracker.ImportMergeConfigCSV($sampletracker.basepath)
         #
         Write-Host '    cleanup'
         $sampletracker.teststatus = $true

@@ -375,7 +375,6 @@
         #
         $cmodule = 'vminform'
         $this.moduleinfo.($cmodule).($antibody).algorithm  = ''
-        Write-host '*checkvminform*'
         #
         #If previous module is not complete, fail
         if ($this.checkpreviousstep($cmodule)){
@@ -383,9 +382,7 @@
         }
         #
         $this.vmq.getmainslide($this.slideid, $true)
-        Write-host '***main slide:' $this.vmq.mainslide
         $this.vmq.getlocalslide($this.slideid, $this.project, $true)
-        Write-host '***local slide:' $this.vmq.localslide
         #
         #If there are still running or queued tasks to run, fail
         if ($this.vmq.checkfornewtask($this.project, 
@@ -424,7 +421,6 @@
             return 6
         }
         #
-        Write-host 'Getting to end'
         #Otherwise, return 'complete'
         return 3
         #
