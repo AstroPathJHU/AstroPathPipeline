@@ -35,7 +35,6 @@ using module .\testtools.psm1
         Write-Host 'preparing sampletracker & dir started'
         Write-Host '    sample def slide'
         $sampletracker.sampledefslide($this.slideid)
-        $sampletracker.ImportMergeConfigCSV($sampletracker.basepath)
         #
         Write-Host '    cleanup'
         $sampletracker.teststatus = $true
@@ -394,6 +393,9 @@ using module .\testtools.psm1
         $sampletracker.preparesample($this.slideid)
         #
         if ($module -contains 'vminform'){
+            $sampletracker.ImportMergeConfigCSV($sampletracker.basepath)
+            $sampletracker.getantibodies($this.project)
+            #
             $status = ''
             Write-host "** get status sampletracker antibodies: " $sampletracker.antibodies
             foreach ($abx in $sampletracker.antibodies){
