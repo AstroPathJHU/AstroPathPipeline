@@ -902,10 +902,12 @@ class aptabletools : fileutils {
     [void]findantibodies($basepath){
         #
         if (!$this.isWindows()) {
-            return
+            if (!(test-path $this.mergeconfigcsv_fullfile($basepath))) {
+                return
+            }
+        } else {
+            $this.mergeconfigtocsv()
         }
-        #
-        $this.mergeconfigtocsv()
         #
         $this.ImportMergeConfigCSV($basepath)
         $lintargets = $this.deflineagemarkers()

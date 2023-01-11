@@ -217,6 +217,17 @@ using module .\testtools.psm1
         Write-Host '    adding results for' $current 'and checking for normal behavior'
         #
         $this.('add' + $current + 'examples')($sampletracker)
+        <#
+        $sampletracker.getlogstatus($current)
+        $sampletracker.getlogstatus($next)
+        Write-host '******Before set start******'
+        
+        Write-Host '        when started:'
+        Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
+        Write-Host '            '$next':' $this.getstatus($sampletracker, $next) 
+
+        Write-host '************'
+        #>
         #
         $this.setstart($sampletracker, $log, $current)
         #
@@ -354,10 +365,6 @@ using module .\testtools.psm1
         if ($module -match 'vminform'){
             $log.val = $this.task
             $sampletracker.vmq.openmainqueue($false)
-        }
-        #
-        if ($module -match 'vminform'){
-            $sampletracker.vmq.openmainqueue($false)
             $sampletracker.antibodies | ForEach-Object{
                 $log.val.antibody = $_
                 $log.start($module)
@@ -372,10 +379,6 @@ using module .\testtools.psm1
         #
         if ($module -match 'vminform'){
             $log.val = $this.task
-            $sampletracker.vmq.openmainqueue($false)
-        }
-        #
-        if ($module -match 'vminform'){
             $sampletracker.vmq.openmainqueue($false)
             $sampletracker.antibodies | ForEach-Object{
                 $log.val.antibody = $_
