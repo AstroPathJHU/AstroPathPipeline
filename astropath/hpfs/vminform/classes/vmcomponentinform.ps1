@@ -19,7 +19,7 @@ Usage: $a = [vmcomponentinform]::new($task, $sample)
 #>
 Class vmcomponentinform : vminform {
     #
-    vmcomponentinform([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample, $true) {
+    vmcomponentinform([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample) {
         #
         $this.needscomponent = $true
         #
