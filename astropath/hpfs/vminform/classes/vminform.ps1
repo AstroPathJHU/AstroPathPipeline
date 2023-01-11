@@ -84,9 +84,6 @@ Class vminform : moduletools {
         }
         $this.processvars += 1
         #
-        $this.TestPaths()
-        $this.KillinFormProcess()
-        #
     }
     <# -----------------------------------------
      TestPaths
@@ -113,6 +110,8 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]RunVMinForm(){
         #
+        $this.TestPaths()
+        $this.KillinFormProcess()
         $this.setupvmdirs()
         #
         while(($this.err -le 5) -AND ($this.err -ge 0)){

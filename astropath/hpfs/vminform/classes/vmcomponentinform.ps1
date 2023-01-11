@@ -22,6 +22,8 @@ Class vmcomponentinform : vminform {
     vmcomponentinform([hashtable]$task,[launchmodule]$sample) : base ([hashtable]$task, [launchmodule]$sample) {
         #
         $this.needscomponent = $true
+        $this.algpath = $this.sample.basepath +
+             '\tmp_inform_data\Project_Development\Component\' + $this.alg
         #
     }
     #
