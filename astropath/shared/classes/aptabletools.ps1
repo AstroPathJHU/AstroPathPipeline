@@ -884,9 +884,9 @@ class aptabletools : fileutils {
     #
     [array]findantibodies($basepath, $createwatcher){
         #
-        if (!$this.isWindows()) {
-            return @()
-        }
+        #if (!$this.isWindows()) {
+        #    return @()
+        #}
         #
         $this.ImportMergeConfig($basepath, $createwatcher)
         if (!$this.mergeconfig_data){

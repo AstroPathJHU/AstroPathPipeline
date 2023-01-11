@@ -39,8 +39,6 @@
         #
         if ($cmodule -match 'vminform'){
             #
-            Write-host '**get log status dependencies'
-            Write-host 'Antibodies:' $this.antibodies
             foreach ($abx in $this.antibodies) {
                 $this.getlogstatussub($cmodule, $abx)
             }
