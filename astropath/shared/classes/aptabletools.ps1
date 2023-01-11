@@ -933,9 +933,9 @@ class aptabletools : fileutils {
     #
     [void]getantibodies(){
         #
-        if (!$this.isWindows()) {
-            return
-        }
+        #if (!$this.isWindows()) {
+        #    return
+        #}
         #
         $this.mergeconfigtocsv()
         $this.getantibodies($this.project)
