@@ -60,7 +60,6 @@ using module .\testtools.psm1
         $this.testupdate($sampletracker, 'batchwarpfits', 'imagecorrection')
         $this.testupdate($sampletracker, 'imagecorrection', 'vmcomponentinform')
         $this.testupdate($sampletracker, 'vmcomponentinform', 'vminform')
-        #
         $this.testupdate($sampletracker, 'vminform', 'merge')
         $this.testupdate($sampletracker, 'merge', 'imageqa')
         $this.testupdate($sampletracker, 'imageqa', 'segmaps')
@@ -196,7 +195,6 @@ using module .\testtools.psm1
         } else {
             $log = logger -mpath $this.mpath -module $current -slideid $sampletracker.slideid
         }
-        Write-Host 'log:' $log
         #
         $this.setstart($sampletracker, $log, $current)
         Start-Sleep -s 2
@@ -669,7 +667,7 @@ using module .\testtools.psm1
     [void]removevminformexamples($sampletracker){
         #
         $this.addalgorithms($sampletracker)
-        $sampletracker.removedir($sampletracker.informfolder())
+        $sampletracker.removedir($sampletracker.phenotypefolder())
         #
     }
     #
