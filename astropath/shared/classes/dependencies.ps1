@@ -39,10 +39,7 @@
         #
         if ($cmodule -match 'vminform'){
             #
-            Write-host 'Matched vminform'
-            Write-host 'Antibodies: ' $this.antibodies
             foreach ($abx in $this.antibodies) {
-                Write-host 'Antibody: ' $abx
                 $this.getlogstatussub($cmodule, $abx)
             }
             #
@@ -88,14 +85,11 @@
     #
     [void]getlogstatussub($cmodule, $antibody){
         #
-        Write-Host '*Get log status start'
         $this.moduleinfo.($cmodule).($antibody) = @{}
         $logoutput = $this.checkloginit($cmodule, $antibody, $false)
-        Write-host 'logoutput:' $logoutput
 
         #
         if ($logoutput){
-            Write-host 'checkvminform with antibody:' $antibody ": " ($this.('check'+$cmodule)($antibody))
             switch ($this.('check'+$cmodule)($antibody)){
                 1 {
                     $this.moduleinfo.($cmodule).($antibody).status = $this.status.waiting
