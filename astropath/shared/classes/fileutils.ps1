@@ -480,6 +480,7 @@ class fileutils : generalutils {
     [string]FileWatcher($fpath, $fname, $SI){
         #
         $this.createfile($this.CrossPlatformPaths($SI))
+        $fpath = $this.CrossPlatformPaths($fpath)
         #
         $testw = $false
         $c = 0
