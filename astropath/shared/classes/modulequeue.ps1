@@ -190,6 +190,7 @@
         $mainqueuefile = $this.mpath +
              $this.mainqueue_path + '\' + $this.mainqueue_filename
         #
+        $mainqueuefile = $this.CrossPlatformPaths($mainqueuefile)
         return $mainqueuefile
         #
     } 
@@ -283,6 +284,7 @@
         $localqueuefilea = $this.localqueuepath($project) +
             '\' + $this.localqueue_filename
         #
+        $localqueuefilea = $this.CrossPlatformPaths($localqueuefilea)
         return $localqueuefilea
         #
     }
