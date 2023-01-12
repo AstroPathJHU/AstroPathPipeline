@@ -200,6 +200,7 @@ class SimpleAnnotation(AnnotationBase):
         result = node
         ignored = False
         deleted = False
+        failed = False
       elif result is not None:
         if node["Type"] == "Acquired":
           pass
@@ -209,12 +210,14 @@ class SimpleAnnotation(AnnotationBase):
           ignored = False
         elif node["Type"] == "Deleted":
           deleted = True
+        elif node["Type"] == "AcquisitionFailed":
+          failed = True
         else:
-          raise ValueError(f"Unknown history item {node['Type']} after Acquired for {result['Im3Path']}")
+          raise ValueError(f"Unknown history item {node['Type']} after FlaggedForAcquisition for {result['Im3Path']}")
 
     if result is None:
       return None
-    if ignored or deleted:
+    if ignored or deleted or failed:
       return None
     return result
 
