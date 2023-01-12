@@ -504,11 +504,11 @@ class fileutils : generalutils {
             #
             Register-ObjectEvent $newwatcher `
                 -EventName Changed `
-                -SourceIdentifier ($SI + ';changed')# | Out-Null
+                -SourceIdentifier ($SI + ';changed') | Out-Null
             #
             Register-ObjectEvent $newwatcher `
                 -EventName Renamed `
-                -SourceIdentifier ($SI + ';renamed')#| Out-Null
+                -SourceIdentifier ($SI + ';renamed')| Out-Null
             #
             $testw = $this.testwatcher($fpath, $fname, $SI)
             #
@@ -526,7 +526,7 @@ class fileutils : generalutils {
         $file.Attributes = 'Archive, Hidden'
         $file.Attributes = 'Archive'
         #
-        Write-host '***Get Event:' get-event
+        #Write-host '***Get Event:' get-event
         foreach ($event in get-event) {
             Write-Host '*** Event:' $event
         }
