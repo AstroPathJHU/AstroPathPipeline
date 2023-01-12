@@ -526,7 +526,7 @@ class fileutils : generalutils {
         $file.Attributes = 'Archive, Hidden'
         $file.Attributes = 'Archive'
         #
-        #Write-host '***Get Event:' get-event
+        Write-host '***Get Event:' (get-event)
         foreach ($event in get-event) {
             Write-Host '*** Event:' $event
         }
