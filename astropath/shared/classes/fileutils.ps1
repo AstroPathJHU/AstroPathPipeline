@@ -498,22 +498,17 @@ class fileutils : generalutils {
                     "WARNING: trying file watcher again: $SI")
             }
             #
-            Write-host '***Fpath:' $fpath
             $newwatcher = [System.IO.FileSystemWatcher]::new($fpath)
             $newwatcher.Filter = $fname
             $newwatcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite, Attributes'
             #
-            Write-host '***New watcher:' $newwatcher
-            Write-host '***New watcher filter:' $newwatcher.Filter
-            Write-host '***New watcher notifyfilter:' $newwatcher.notifyfilter
-
             Register-ObjectEvent $newwatcher `
                 -EventName Changed `
-                -SourceIdentifier ($SI + ';changed') | Out-Null
+                -SourceIdentifier ($SI + ';changed')# | Out-Null
             #
             Register-ObjectEvent $newwatcher `
                 -EventName Renamed `
-                -SourceIdentifier ($SI + ';renamed')| Out-Null
+                -SourceIdentifier ($SI + ';renamed')#| Out-Null
             #
             $testw = $this.testwatcher($fpath, $fname, $SI)
             #
@@ -528,11 +523,10 @@ class fileutils : generalutils {
     [switch]testwatcher($fpath, $fname, $SI){
         #
         $file = Get-ChildItem ($this.CrossPlatformPaths($SI))
-        Write-host '***File being changed:' $file
         $file.Attributes = 'Archive, Hidden'
         $file.Attributes = 'Archive'
         #
-        Write-host '***Get Event:'
+        Write-host '***Get Event:' get-event
         foreach ($event in get-event) {
             Write-Host '*** Event:' $event
         }
