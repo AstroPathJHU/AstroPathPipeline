@@ -526,23 +526,16 @@ class fileutils : generalutils {
         $file.Attributes = 'Archive, Hidden'
         $file.Attributes = 'Archive'
         #
-        Write-host '***Get Event:' (get-event)
-        foreach ($event in get-event) {
-            Write-Host '*** Event:' $event
-        }
         $mevents = get-event | 
             Where-Object{$_.sourceidentifier -match [regex]::Escape($SI)}
         #
         if ($mevents){
-            Write-host '***Events found, removing events'
-            Write-host '***mevents:' $mevents
             $mevents |
                 foreach-object {
                     remove-event -eventidentifier $_.eventidentifier
                 }
             return $true
         } else {
-            Write-host '***Running unregister event'
             $this.UnregisterEvent($SI)
         }
         #

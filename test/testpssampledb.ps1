@@ -136,6 +136,9 @@ using module .\testtools.psm1
     #
     [void]testcreatewatchersmodulequeues($sampledb){
         #
+        if(!$sampledb.isWindows()) {
+            return
+        }
         write-host '.'
         write-host 'test check create watcher update started'
         $sampledb.defsampleStages()
