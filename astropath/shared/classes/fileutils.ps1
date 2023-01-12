@@ -534,12 +534,15 @@ class fileutils : generalutils {
             Where-Object{$_.sourceidentifier -match [regex]::Escape($SI)}
         #
         if ($mevents){
+            Write-host '***Events found, removing events'
+            Write-host '***mevents:' $mevents
             $mevents |
                 foreach-object {
                     remove-event -eventidentifier $_.eventidentifier
                 }
             return $true
         } else {
+            Write-host '***Running unregister event'
             $this.UnregisterEvent($SI)
         }
         #
