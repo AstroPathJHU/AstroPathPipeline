@@ -470,15 +470,16 @@ class fileutils : generalutils {
     #
     [string]FileWatcher($fpath, $fname){
         #
+        $SI = "$fpath\$fname"
         return (
-            $this.filewatcher($fpath, $fname, "$fpath\$fname")
+            $this.filewatcher($fpath, $fname, $this.CrossPlatformPaths($SI))
         )
         #
     }
     #
     [string]FileWatcher($fpath, $fname, $SI){
         #
-        $this.createfile("$fpath\$fname")
+        $this.createfile($this.CrossPlatformPaths($SI))
         #
         $testw = $false
         $c = 0
@@ -520,7 +521,7 @@ class fileutils : generalutils {
     #
     [switch]testwatcher($fpath, $fname, $SI){
         #
-        $file = Get-ChildItem ("$fpath\$fname")
+        $file = Get-ChildItem ($this.CrossPlatformPaths($SI))
         $file.Attributes = 'Archive, Hidden'
         $file.Attributes = 'Archive'
         #
