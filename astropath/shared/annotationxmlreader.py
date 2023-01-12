@@ -161,19 +161,66 @@ class SimpleAnnotation(AnnotationBase):
     """
     Was this HPF acquired? (i.e. did it finish successfully?)
     """
-    return self.history[-1]["Type"] == "Acquired"
+    return self.acquisitionnode is not None
   @property
   def isflaggedforacquisition(self):
     """
     Was this HPF flagged for acquisition?
     """
-    return self.isacquired or any(hist["Type"] == "FlaggedForAcquisition" for hist in self.history)
+    return self.flaggedforacquisitionnode is not None
+
   @property
   def acquisitionnode(self):
+    result = None
+    for node in self.history:
+      if node["Type"] == "Acquired":
+        result = node
+        ignored = False
+      elif result is not None:
+        if node["Type"] == "Ignored":
+          ignored = True
+        elif node["Type"] == "Unignored":
+          ignored = False
+        else:
+          raise ValueError(f"Unknown history item {node['Type']} after Acquired for {result['Im3Path']}")
+
+    if result is None:
+      return None
+    if ignored:
+      return None
+    return result
     if self.isacquired:
       return self.history[-1]
-    elif self.isflaggedforacquisition:
-      return [hist for hist in self.history if hist["Type"] == "FlaggedForAcquisition"][-1]
+
+  @property
+  def flaggedforacquisitionnode(self):
+    result = None
+    for node in self.history:
+      if node["Type"] == "FlaggedForAcquisition":
+        result = node
+        ignored = False
+        deleted = False
+        failed = False
+      elif result is not None:
+        if node["Type"] == "Acquired":
+          pass
+        elif node["Type"] == "Ignored":
+          ignored = True
+        elif node["Type"] == "Unignored":
+          ignored = False
+        elif node["Type"] == "Deleted":
+          deleted = True
+        elif node["Type"] == "AcquisitionFailed":
+          failed = True
+        else:
+          raise ValueError(f"Unknown history item {node['Type']} after FlaggedForAcquisition for {result['Im3Path']}")
+
+    if result is None:
+      return None
+    if ignored or deleted or failed:
+      return None
+    return result
+
   @property
   def im3path(self):
     """
@@ -229,7 +276,13 @@ class SimpleAnnotation(AnnotationBase):
     """
     time stamp when the HPF was acquired
     """
-    return dateutil.parser.parse(self.acquisitionnode["TimeStamp"])
+    if self.isacquired:
+      node = self.acquisitionnode
+    elif self.isflaggedforacquisition:
+      node = self.flaggedforacquisitionnode
+    else:
+      return None
+    return dateutil.parser.parse(node["TimeStamp"])
 
   @property
   def globals(self): "{type(self).__name__}s don't have global variables"
