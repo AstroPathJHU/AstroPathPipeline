@@ -419,7 +419,7 @@ class sampledb : sampletracker {
             } -PassThru
         }}
         #
-        $this.moduleobjs.($cmodule).localqueue.($this.project) += $row
+        [array]$this.moduleobjs.($cmodule).localqueue.($this.project) += $row
         #
     }
     #

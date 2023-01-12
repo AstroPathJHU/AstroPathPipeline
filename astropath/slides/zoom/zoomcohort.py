@@ -1,11 +1,12 @@
 from ...shared.argumentparser import CleanupArgumentParser
 from ...shared.cohort import DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
-from .zoomsample import ZoomSample
+from .zoomsample import ZoomSample, ZoomSampleTMA
 
 class ZoomCohort(DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort, CleanupArgumentParser):
   __doc__ = ZoomSample.__doc__
 
   sampleclass = ZoomSample
+  sampleclassTMA = ZoomSampleTMA
 
   def __init__(self, *args, tifflayers, **kwargs):
     self.__tifflayers = tifflayers
