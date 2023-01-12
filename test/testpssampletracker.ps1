@@ -217,17 +217,6 @@ using module .\testtools.psm1
         Write-Host '    adding results for' $current 'and checking for normal behavior'
         #
         $this.('add' + $current + 'examples')($sampletracker)
-        <#
-        $sampletracker.getlogstatus($current)
-        $sampletracker.getlogstatus($next)
-        Write-host '******Before set start******'
-        
-        Write-Host '        when started:'
-        Write-Host '            '$current':' $this.getstatus($sampletracker, $current)
-        Write-Host '            '$next':' $this.getstatus($sampletracker, $next) 
-
-        Write-host '************'
-        #>
         #
         $this.setstart($sampletracker, $log, $current)
         #
@@ -398,7 +387,6 @@ using module .\testtools.psm1
         if ($module -contains 'vminform'){
             #
             $status = ''
-            Write-host "** get status sampletracker antibodies: " $sampletracker.antibodies
             foreach ($abx in $sampletracker.antibodies){
                 $status = $sampletracker.moduleinfo.($module).($abx).status
                 if ($status -ne 'FINISHED'){
