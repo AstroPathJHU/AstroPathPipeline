@@ -10,7 +10,9 @@ from ...shared.image_masking.config import CONST as MASK_CONST
 from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
 from ...shared.overlap import Overlap
-from ...shared.sample import MaskSampleBase, ParallelSample, ReadRectanglesOverlapsComponentTiffFromXML, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, TissueSampleBase, WorkflowSample, XMLLayoutReader
+from ...shared.sample import MaskSampleBase, ParallelSample, ReadRectanglesOverlapsComponentTiffFromXML
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, TissueSampleBase, TMASampleBase
+from ...shared.sample import WorkflowSample, XMLLayoutReader
 from .config import CONST
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image
 from .utilities import RectangleThresholdTableEntry, FieldLog, ThresholdTableEntry
@@ -649,6 +651,8 @@ class MeanImageSampleIm3(MeanImageSampleBaseIm3,WorkflowSample,XMLLayoutReader) 
 class MeanImageSampleComponentTiffTissue(MeanImageSampleComponentTiff, TissueSampleBase) :
     pass
 class MeanImageSampleIm3Tissue(MeanImageSampleIm3, TissueSampleBase) :
+    pass
+class MeanImageSampleIm3ControlTMA(MeanImageSampleIm3, TMASampleBase) :
     pass
 
 #################### FILE-SCOPE FUNCTIONS ####################

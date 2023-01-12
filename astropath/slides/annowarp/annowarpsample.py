@@ -18,7 +18,8 @@ from ..align.field import Field
 from ..align.overlap import AlignmentComparison
 from ..annotationinfo.annotationinfo import CopyAnnotationInfoSampleBase
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, InformMaskSample, StitchAstroPathTissueMaskSample, StitchInformMaskSample, TissueMaskSampleWithPolygons
-from ..zoom.zoomsample import ZoomSample, ZoomSampleBase
+from ..zoom.wsisamplebase import WSISampleBase
+from ..zoom.zoomsample import ZoomSample
 from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelCvxpy
 
 class QPTiffSample(SampleBase, units.ThingWithImscale):
@@ -58,7 +59,7 @@ class QPTiffSample(SampleBase, units.ThingWithImscale):
     """
     return self.__imageinfo["yposition"]
 
-class WSISample(ZoomSampleBase, ZoomFolderSampleBase):
+class WSISample(WSISampleBase, ZoomFolderSampleBase):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 

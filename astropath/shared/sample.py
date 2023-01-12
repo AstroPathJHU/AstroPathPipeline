@@ -340,11 +340,13 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     return self.getbatchprocedurefile(componenttiffsfolder=self.componenttiffsfolder, missing_ok=missing_ok)
 
+  class MessedUpBatchProcedureError(ValueError): pass
+
   @classmethod
   def getnlayersunmixed(cls, componenttiffsfolder, *args, logger=dummylogger, **kwargs):
     try:
       filename = cls.getbatchprocedurefile(componenttiffsfolder, *args, **kwargs)
-    except FileNotFoundError:
+    except (FileNotFoundError, cls.MessedUpBatchProcedureError):
       try:
         filename = next(componenttiffsfolder.glob("*_component_data.tif"))
       except StopIteration:
@@ -799,6 +801,17 @@ class TMASampleBase(SampleBase):
   def Ctrl(self): return self.samp.Ctrl
   @property
   def Date(self): return self.samp.Date
+
+  @classmethod
+  def getbatchprocedurefile(cls, *args, **kwargs):
+    result = super().getbatchprocedurefile(*args, **kwargs)
+    with open(result, "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+        if int(node.xml_attrs["dim"]) != 0:
+          return result
+        else:
+          break
+    raise cls.MessedUpBatchProcedureError("Batch procedure file for TMA is messed up")
 
 class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
