@@ -417,7 +417,7 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     Create the field objects from the rectangles and stitch result
     """
     result = FieldList()
-    gridislands = list(self.islands(useexitstatus=True, gridatol=self.gridatol))
+    gridislands = list(self.islands(useexitstatus=False, gridatol=self.gridatol))
     alignedislands = list(self.islands(useexitstatus=True, gridatol=None))
     onepixel = self.onepixel
     gxdict = collections.defaultdict(dict)
