@@ -144,17 +144,8 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
       r.geomloadcsv(algo) for r in self.rectangles for algo in self.segmentationalgorithms
     }
 
-    def hasanycells(rectangle, algorithm):
-      try:
-        with open(rectangle.geomloadcsv(algorithm)) as f:
-          next(f)
-          next(f)
-      except (FileNotFoundError, StopIteration):
-        return False
-      else:
-        return True
     expectcsvs |= {
-      r.phenotypecsv for r in self.rectangles if hasanycells(r, "inform")
+      r.phenotypecsv for r in self.rectangles if self.hasanycells(r, "inform")
     }
 
     meanimagecsvs = {
@@ -173,7 +164,7 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         "tumorGeometry",
       )
     } | {
-      r.phenotypecsv for r in self.rectangles if not hasanycells(r, "inform")
+      r.phenotypecsv for r in self.rectangles if not self.hasanycells(r, "inform")
     } | {
       r.phenotypeQAQCcsv for r in self.rectangles
     } | annotationinfocsvs | meanimagecsvs
@@ -276,7 +267,12 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     return [dbload/f"{SlideID}_loadfiles.csv"]
 
   def inputfiles(self, **kwargs):
-    return super().inputfiles(**kwargs)
+    yield from super().inputfiles(**kwargs)
+    for r in self.rectangles:
+      for algo in self.segmentationalgorithms:
+        yield r.geomloadcsv(algo)
+      if self.hasanycells(r, "inform"):
+        yield r.phenotypecsv
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
@@ -293,6 +289,17 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
     ] + super().workflowdependencyclasses(**kwargs)
 
   def run(self, *args, **kwargs): return self.runcsvscan(*args, **kwargs)
+
+  @staticmethod
+  def hasanycells(rectangle, algorithm):
+    try:
+      with open(rectangle.geomloadcsv(algorithm)) as f:
+        next(f)
+        next(f)
+    except (FileNotFoundError, StopIteration):
+      return False
+    else:
+      return True
 
 class LoadFile(MyDataClass):
   fileid: str

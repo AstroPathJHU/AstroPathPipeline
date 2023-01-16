@@ -438,7 +438,18 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.xlsx"
   @property
   def mergeconfig(self):
-    return self.readtable(self.mergeconfigcsv, MergeConfig)
+    try:
+      return self.readtable(self.mergeconfigcsv, MergeConfig)
+    except:
+      try:
+        exceptionsecondtime = False
+        return self.readtable(self.mergeconfigcsv, MergeConfig, ignoretrailingcommas=True)
+      except:
+        exceptionsecondtime = True
+        raise
+      finally:
+        if not exceptionsecondtime:
+          self.logger.warningglobalonenter(f"Merge config {self.mergeconfigcsv} has extra trailing commas")
   @property
   def batchxlsx(self) :
     fp = self.root/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
@@ -2228,7 +2239,7 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
       segstatus = layer.SegmentationStatus
       if segstatus != 0:
         segid = layer.ImageQA
-        if segid == "NA":
+        if segid not in ("Tumor", "Immune"):
           segid = segstatus
         if segstatus not in dct:
           dct[segstatus] = segid
