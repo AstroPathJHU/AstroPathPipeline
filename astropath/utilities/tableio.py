@@ -10,7 +10,7 @@ from .misc import MemorizeLastIterator
 from .miscfileio import checkwindowsnewlines, field_size_limit_context, guesspathtype, mountedpathtopath, pathtomountedpath
 
 def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, ignoretrailingcommas=False, **columntypes):
-  """
+  r"""
   Read a csv table into a list of named tuples
 
   filename:       csv file to read from
@@ -74,7 +74,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
     >>> with tempfile.TemporaryDirectory() as folder:
     ...   filename = pathlib.Path(folder)/"test.csv"
     ...   with open(filename, "w") as f:
-    ...     f.write(tablecontents.replace("\n", ",,,\n")+",,," and None #avoid printing return value of f.write
+    ...     f.write(tablecontents.replace("\n", ",,,\n")+",,,") and None #avoid printing return value of f.write
     ...   class Point(MyDataClass):
     ...     ID: str
     ...     x: float
