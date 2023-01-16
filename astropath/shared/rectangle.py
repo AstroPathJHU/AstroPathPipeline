@@ -218,6 +218,10 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
   def usememmap(self, usememmap): self.__usememmap = usememmap
   usememmap: bool = MetaDataAnnotation(usememmap, includeintable=False, use_default=False)
 
+  @classmethod
+  def transforminitargs(cls, *args, usememmap=False, **kwargs):
+    return super().transforminitargs(*args, usememmap=usememmap, **kwargs)
+
   @property
   def im3shape(self):
     return (
