@@ -145,7 +145,7 @@ class TestZoom(TestBaseSaveOutput):
     logfile.parent.mkdir(exist_ok=True, parents=True)
     with open(logfile, "w", newline="\r\n") as f:
       now = datetime.datetime.now().strftime(MyLogger.dateformat)
-      f.write(f"0;0;L1_1;START: zoom {astropathversion};{now}\n")
+      f.write(f"0;0;L1_1;START: zoom-test {astropathversion};{now}\n")
       f.write(f"0;0;L1_1;FINISH: zoom {astropathversion};{now}\n")
     self.testZoomWsi(SlideID=SlideID, mode=mode, **kwargs)
 

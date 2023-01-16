@@ -524,9 +524,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return super().enter_context(*args, **kwargs)
 
   @classmethod
-  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} {astropathversionregex.pattern}$"
+  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()}(?:-test)? {astropathversionregex.pattern}$"
   @classmethod
-  def logendregex(cls): return rf"end {cls.logmodule()}$|FINISH: {cls.logmodule()} v[0-9a-f.devgd+]+$"
+  def logendregex(cls): return rf"end {cls.logmodule()}(?:-test)?$|FINISH: {cls.logmodule()}(?:-test)? v[0-9a-f.devgd+]+$"
 
   @classmethod
   def makeargumentparser(cls, **kwargs):

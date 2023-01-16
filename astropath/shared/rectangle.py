@@ -211,7 +211,12 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
   nlayersim3: int = MetaDataAnnotation(nlayersim3, includeintable=False, use_default=False)
   @property
   @abc.abstractmethod
-  def layersim3(self): return self.__layersim3
+  def layersim3(self): pass
+  @property
+  def usememmap(self): return self.__usememmap
+  @usememmap.setter
+  def usememmap(self, usememmap): self.__usememmap = usememmap
+  usememmap: bool = MetaDataAnnotation(usememmap, includeintable=False, use_default=False)
 
   @property
   def im3shape(self):
@@ -243,7 +248,7 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
     The exposure times for the HPF layersim3 you access
     """
     all = self.allexposuretimes
-    return [all[layer-1] for layer in self.__layersim3]
+    return [all[layer-1] for layer in self.layersim3]
 
   @property
   def broadbandfilters(self):
@@ -251,7 +256,7 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
     The broadband filter ids (numbered from 1) of the layersim3 you access
     """
     all = self.allbroadbandfilters
-    return [all[layer-1] for layer in self.__layersim3]
+    return [all[layer-1] for layer in self.layersim3]
 
   @methodtools.lru_cache()
   @property
@@ -268,6 +273,7 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
     "filename": self.im3file,
     "width": floattoint(float(self.width / self.onepixel)),
     "height": floattoint(float(self.height / self.onepixel)),
+    "usememmap": self.usememmap,
     "_DEBUG": self._DEBUG,
     "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
   }
