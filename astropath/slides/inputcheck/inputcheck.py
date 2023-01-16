@@ -66,19 +66,32 @@ class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTi
           self.logger.warning(f"Corrupt mask: {r.tissuemaskfile}")
 
       self.logger.info("Checking component tiffs")
+      anynonsegmentedexist = False
+      anysegmentedexist = False
+      tolog = []
       for r in self.rectangles:
         nonsegmented = r.componenttifffile.with_name(r.componenttifffile.name.replace("_w_seg", ""))
         if not nonsegmented.exists():
-          self.logger.warning("Missing component tiff: {r.componenttifffile}")
-        elif not r.componenttifffile.exists():
-          self.logger.warning(f"Missing segmented component tiff: {r.componenttifffile}")
+          tolog.append(f"Missing component tiff: {r.componenttifffile}")
         else:
-          if self.checkintegrity:
-            try:
-              with r.using_component_tiff():
-                pass
-            except Exception:
-              self.logger.warning(f"Corrupt segmented component tiff: {r.componenttifffile}")
+          anynonsegmentedexist = True
+          if not r.componenttifffile.exists():
+            tolog.append(f"Missing segmented component tiff: {r.componenttifffile}")
+          else:
+            anysegmentedexist = True
+            if self.checkintegrity:
+              try:
+                with r.using_component_tiff():
+                  pass
+              except Exception:
+                self.logger.warning(f"Corrupt segmented component tiff: {r.componenttifffile}")
+
+      if not anynonsegmentedexist:
+        tolog = ["ALL component tiffs are missing"] + [msg for msg in tolog if "Missing component tiff:" not in msg]
+      elif not anysegmentedexist:
+        tolog = [msg for msg in tolog if "Missing segmented component tiff:" not in msg] + ["ALL segmented component tiffs are missing"]
+      for msg in tolog:
+        self.logger.warning(msg)
 
       self.logger.info("Checking phenotype csvs")
       for r in self.rectangles:
