@@ -1,4 +1,4 @@
-import dataclassy, itertools, methodtools, more_itertools, numpy as np
+import dataclassy, methodtools, more_itertools, numpy as np
 from ...shared.csvclasses import Vertex
 from ...shared.polygon import DataClassWithPolygon, Polygon, polygonfield, SimplePolygon
 from ...shared.rectangle import Rectangle, RectangleCollection, RectangleList, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer

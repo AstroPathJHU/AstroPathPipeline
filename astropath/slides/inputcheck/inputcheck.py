@@ -1,5 +1,5 @@
 from ...hpfs.flatfield.meanimagesample import MeanImageSampleIm3Tissue
-from ...shared.cohort import GeomFolderCohort, Im3Cohort, MaskCohort, PhenotypeFolderCohort, SegmentationFolderCohort, WorkflowCohort
+from ...shared.cohort import GeomFolderCohort, Im3Cohort, MaskCohort, PhenotypeFolderCohort
 from ...shared.rectangle import AstroPathTissueMaskRectangle, GeomLoadRectangle, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, PhenotypedRectangle
 from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, InformSegmentationSample, MaskSampleBase, ReadRectanglesComponentTiffFromXML, ReadRectanglesIm3FromXML, TissueSampleBase
 
