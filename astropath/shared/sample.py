@@ -2228,7 +2228,7 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
       segstatus = layer.SegmentationStatus
       if segstatus != 0:
         segid = layer.ImageQA
-        if segid == "NA":
+        if segid not in ("Tumor", "Immune"):
           segid = segstatus
         if segstatus not in dct:
           dct[segstatus] = segid
