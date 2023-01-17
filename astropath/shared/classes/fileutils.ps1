@@ -578,7 +578,7 @@ class fileutils : generalutils {
      Usage: $this.UnregisterEvent(SI)
     ----------------------------------------- #>
     [void]UnregisterEvent($SI){
-        Unregister-Event -SourceIdentifier ($SI+ ';changed') -Force -EA Stop
-        Unregister-Event -SourceIdentifier ($SI+ ';renamed') -Force -EA Stop
+        Unregister-Event -SourceIdentifier ($SI+ ';changed') -Force -EA SilentlyContinue
+        Unregister-Event -SourceIdentifier ($SI+ ';renamed') -Force -EA SilentlyContinue
     }
 }
