@@ -925,7 +925,10 @@ class aptabletools : fileutils {
         #
         if (!($this.allantibodies.($project))){
             $p1 = $this.full_project_dat | Where-Object {$_.project -eq $project}
-            $p = $this.uncpaths(($p1.dpath, $p1.dname -join '\'))
+            $p = $this.CrossPlatformPaths(
+                $this.uncpaths(($p1.dpath, $p1.dname -join '\'))
+            )
+            Write-host '*** Get antibodies Path:' $p
             $this.allantibodies.($project) = $this.findantibodies($p, $false)
         }
         #
