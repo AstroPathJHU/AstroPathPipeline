@@ -340,11 +340,13 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     return self.getbatchprocedurefile(componenttiffsfolder=self.componenttiffsfolder, missing_ok=missing_ok)
 
+  class MessedUpBatchProcedureError(ValueError): pass
+
   @classmethod
   def getnlayersunmixed(cls, componenttiffsfolder, *args, logger=dummylogger, **kwargs):
     try:
       filename = cls.getbatchprocedurefile(componenttiffsfolder, *args, **kwargs)
-    except FileNotFoundError:
+    except (FileNotFoundError, cls.MessedUpBatchProcedureError):
       try:
         filename = next(componenttiffsfolder.glob("*_component_data.tif"))
       except StopIteration:
@@ -436,7 +438,18 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.xlsx"
   @property
   def mergeconfig(self):
-    return self.readtable(self.mergeconfigcsv, MergeConfig)
+    try:
+      return self.readtable(self.mergeconfigcsv, MergeConfig)
+    except:
+      try:
+        exceptionsecondtime = False
+        return self.readtable(self.mergeconfigcsv, MergeConfig, ignoretrailingcommas=True)
+      except:
+        exceptionsecondtime = True
+        raise
+      finally:
+        if not exceptionsecondtime:
+          self.logger.warningglobalonenter(f"Merge config {self.mergeconfigcsv} has extra trailing commas")
   @property
   def batchxlsx(self) :
     fp = self.root/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
@@ -522,9 +535,9 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return super().enter_context(*args, **kwargs)
 
   @classmethod
-  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()} {astropathversionregex.pattern}$"
+  def logstartregex(cls): return rf"(?:START: )?{cls.logmodule()}(?:-test)? {astropathversionregex.pattern}$"
   @classmethod
-  def logendregex(cls): return rf"end {cls.logmodule()}$|FINISH: {cls.logmodule()} v[0-9a-f.devgd+]+$"
+  def logendregex(cls): return rf"end {cls.logmodule()}(?:-test)?$|FINISH: {cls.logmodule()}(?:-test)? v[0-9a-f.devgd+]+$"
 
   @classmethod
   def makeargumentparser(cls, **kwargs):
@@ -799,6 +812,17 @@ class TMASampleBase(SampleBase):
   def Ctrl(self): return self.samp.Ctrl
   @property
   def Date(self): return self.samp.Date
+
+  @classmethod
+  def getbatchprocedurefile(cls, *args, **kwargs):
+    result = super().getbatchprocedurefile(*args, **kwargs)
+    with open(result, "rb") as f:
+      for path, _, node in jxmlease.parse(f, generator="AllComponents"):
+        if int(node.xml_attrs["dim"]) != 0:
+          return result
+        else:
+          break
+    raise cls.MessedUpBatchProcedureError("Batch procedure file for TMA is messed up")
 
 class WorkflowSample(SampleBase, WorkflowDependencySlideID, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
@@ -2215,7 +2239,7 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
       segstatus = layer.SegmentationStatus
       if segstatus != 0:
         segid = layer.ImageQA
-        if segid == "NA":
+        if segid not in ("Tumor", "Immune"):
           segid = segstatus
         if segstatus not in dct:
           dct[segstatus] = segid

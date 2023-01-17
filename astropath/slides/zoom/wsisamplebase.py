@@ -5,7 +5,7 @@ from ...utilities.miscimage import PILmaximagepixels
 from ...utilities.miscmath import floattoint
 from ..align.field import Field
 
-class ZoomSampleBase(ReadRectanglesDbload):
+class WSISampleBase(ReadRectanglesDbload):
   """
   Base class for any sample that does zooming and makes
   a wsi sized image

@@ -72,7 +72,10 @@ class ImageLoaderBase(abc.ABC):
       self.__debug_load_image_counter += 1
       if self._DEBUG_PRINT_TRACEBACK:
         self.__debug_load_image_tracebacks.append(traceback.format_stack())
-      self.__image_cache = self.getimage()
+      try:
+        self.__image_cache = self.getimage()
+      except Exception as e:
+        raise type(e)(f"Error when loading {self}")
     return self.__image_cache
 
   @contextlib.contextmanager
@@ -122,6 +125,9 @@ class ImageLoaderIm3Base(ImageLoaderBase):
         im[:] = result
         result = im
       return result
+
+  def __str__(self):
+    return f"{type(self).__name__}({self.__filename!r})"
 
   @property
   @abc.abstractmethod
@@ -186,6 +192,9 @@ class ImageLoaderTiffBase(ImageLoaderBase) :
   
   @property
   def filename(self): return self.__filename
+
+  def __str__(self):
+    return f"{type(self).__name__}({self.__filename!r})"
 
   def checktiffpages(self, pages):
     if not pages:
@@ -310,6 +319,9 @@ class ImageLoaderNpz(ImageLoaderBase):
     dct = np.load(self.__filename)
     return dct[self.__key]
 
+  def __str__(self):
+    return f"{type(self).__name__}({self.__filename!r})"
+
 class ImageLoaderBin(ImageLoaderBase):
   def __init__(self, *args, filename, dimensions, **kwargs):
     self.__filename = pathlib.Path(filename)
@@ -319,6 +331,9 @@ class ImageLoaderBin(ImageLoaderBase):
   def getimage(self):
     return ImageMask.unpack_tissue_mask(self.__filename, self.__dimensions)
 
+  def __str__(self):
+    return f"{type(self).__name__}({self.__filename!r})"
+
 class ImageLoaderPng(ImageLoaderBase):
   def __init__(self, *args, filename, **kwargs):
     self.__filename = pathlib.Path(filename)
@@ -327,3 +342,6 @@ class ImageLoaderPng(ImageLoaderBase):
   def getimage(self):
     with PIL.Image.open(self.__filename) as im:
       return np.asarray(im)
+
+  def __str__(self):
+    return f"{type(self).__name__}({self.__filename!r})"
