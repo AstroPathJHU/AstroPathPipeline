@@ -87,7 +87,6 @@
         #
         $this.moduleinfo.($cmodule).($antibody) = @{}
         $logoutput = $this.checkloginit($cmodule, $antibody, $false)
-
         #
         if ($logoutput){
             switch ($this.('check'+$cmodule)($antibody)){

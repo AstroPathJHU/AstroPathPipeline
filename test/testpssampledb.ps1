@@ -136,9 +136,6 @@ using module .\testtools.psm1
     #
     [void]testcreatewatchersmodulequeues($sampledb){
         #
-        if(!$sampledb.isWindows()) {
-            return
-        }
         write-host '.'
         write-host 'test check create watcher update started'
         $sampledb.defsampleStages()
@@ -431,7 +428,6 @@ using module .\testtools.psm1
     #
     [void]checkrowstatus($sampledb, $cmodule, $status, $antibody){
         $moduleobj = $sampledb.moduleobjs.($cmodule)
-        write-host ($moduleobj.localqueue.('0') | format-table | Out-String)
         $row = $moduleobj.localqueue.($this.project) |
             Where-Object { $_.slideid -match $this.slideid}
         if ($row.($antibody + '_Status') -notmatch $status){
