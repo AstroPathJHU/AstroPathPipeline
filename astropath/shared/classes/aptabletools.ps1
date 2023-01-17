@@ -885,7 +885,12 @@ class aptabletools : fileutils {
     [array]findantibodies($basepath, $createwatcher){
         #
         if (!$this.isWindows()) {
-            return @()
+            $this.findantibodies($basepath)
+            if (!$this.antibodies) {
+                return @()
+            } else {
+                return $this.antibodies
+            }
         }
         #
         $this.ImportMergeConfig($basepath, $createwatcher)
@@ -928,7 +933,6 @@ class aptabletools : fileutils {
             $p = $this.CrossPlatformPaths(
                 $this.uncpaths(($p1.dpath, $p1.dname -join '\'))
             )
-            Write-host '*** Get antibodies Path:' $p
             $this.allantibodies.($project) = $this.findantibodies($p, $false)
         }
         #
