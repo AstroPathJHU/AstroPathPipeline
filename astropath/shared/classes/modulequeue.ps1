@@ -527,10 +527,8 @@
         $this.importcohortsinfo($this.mpath)
         #
         $this.getantibodies($project)
-        Write-host '***Antibodies:' $this.antibodies
         #
         $headers = $this.localqueueheadersvm
-        Write-host '**Headers:' $headers
         #
         $this.antibodies | foreach-object{
             $algname = ($_ + '_Algorithm')

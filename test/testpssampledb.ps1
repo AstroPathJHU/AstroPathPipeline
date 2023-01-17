@@ -431,11 +431,9 @@ using module .\testtools.psm1
     #
     [void]checkrowstatus($sampledb, $cmodule, $status, $antibody){
         $moduleobj = $sampledb.moduleobjs.($cmodule)
-        Write-host '***Module obj localqueue:'
         write-host ($moduleobj.localqueue.('0') | format-table | Out-String)
         $row = $moduleobj.localqueue.($this.project) |
             Where-Object { $_.slideid -match $this.slideid}
-        Write-host '***Row:' $row
         if ($row.($antibody + '_Status') -notmatch $status){
             throw ('row status in main queue not match ' +
                 $status + '. status is: ' + $row.($antibody + '_Status'))
