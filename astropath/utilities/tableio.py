@@ -9,8 +9,8 @@ from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import MemorizeLastIterator
 from .miscfileio import checkwindowsnewlines, field_size_limit_context, guesspathtype, mountedpathtopath, pathtomountedpath
 
-def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, **columntypes):
-  """
+def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter=lambda row: True, checkorder=False, checknewlines=False, maxrows=float("inf"), header=True, ignoretrailingcommas=False, **columntypes):
+  r"""
   Read a csv table into a list of named tuples
 
   filename:       csv file to read from
@@ -30,17 +30,20 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
                   and raise an error if it's not (default: False)
   checknewlines:  check that the newlines in the csv file are windows format
                   and raise an error if they're not (default: False)
+  ignoretrailingcommas: 
+                  ignore extra, empty columns
 
   Example:
     >>> import pathlib, tempfile
+    >>> tablecontents = '''
+    ...   ID,x,y
+    ...   A,1,3
+    ...   B,2,4.5
+    ... '''.replace(" ", "").strip()
     >>> with tempfile.TemporaryDirectory() as folder:
     ...   filename = pathlib.Path(folder)/"test.csv"
     ...   with open(filename, "w") as f:
-    ...     f.write('''
-    ...       ID,x,y
-    ...       A,1,3
-    ...       B,2,4.5
-    ...     '''.replace(" ", "").strip()) and None #avoid printing return value of f.write
+    ...     f.write(tablecontents) and None #avoid printing return value of f.write
     ...   class Point(MyDataClass):
     ...     ID: str
     ...     x: float
@@ -53,11 +56,7 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
     >>> with tempfile.TemporaryDirectory() as folder:
     ...   filename = pathlib.Path(folder)/"test.csv"
     ...   with open(filename, "w") as f:
-    ...     f.write('''
-    ...       ID,x,y
-    ...       A,1,3
-    ...       B,2,4.5
-    ...     '''.replace(" ", "").strip()) and None #avoid printing return value of f.write
+    ...     f.write(tablecontents) and None #avoid printing return value of f.write
     ...   class Point(MyDataClass):
     ...     ID: str
     ...     x: int
@@ -71,6 +70,39 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
     <class 'astropath.utilities.tableio.Point'>
     {'ID': 'B', 'x': 2, 'y': '4.5'}
     {'readingfromfile': True, 'extrakwargs': {...}}
+
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   with open(filename, "w") as f:
+    ...     f.write(tablecontents.replace("\n", ",,,\n")+",,,") and None #avoid printing return value of f.write
+    ...   class Point(MyDataClass):
+    ...     ID: str
+    ...     x: float
+    ...     y: float
+    ...   table = readtable(filename, Point)
+    Traceback (most recent call last):
+        ...
+    ValueError: Row has bad syntax:
+    ...
+    A,1,3,,,
+    <class 'astropath.utilities.tableio.Point'>
+    {'ID': 'A', 'x': 1.0, 'y': 3.0, '': ''}
+    {'readingfromfile': True, 'extrakwargs': {...}}
+    >>> with tempfile.TemporaryDirectory() as folder:
+    ...   filename = pathlib.Path(folder)/"test.csv"
+    ...   with open(filename, "w") as f:
+    ...     f.write('''
+    ...       ID,x,y,,,
+    ...       A,1,3,,,
+    ...       B,2,4.5,,,
+    ...     '''.replace(" ", "").strip()) and None #avoid printing return value of f.write
+    ...   class Point(MyDataClass):
+    ...     ID: str
+    ...     x: float
+    ...     y: float
+    ...   table = readtable(filename, Point, ignoretrailingcommas=True)
+    ...   print(table)
+    [Point(ID='A', x=1.0, y=3.0), Point(ID='B', x=2.0, y=4.5)]
 
   You can access the column values through table[0].ID (= "A")
 
@@ -126,6 +158,9 @@ def readtable(filename, rowclass, *, extrakwargs={}, fieldsizelimit=None, filter
 
     for i, row in enumerate(reader):
       if i >= maxrows: break
+      if ignoretrailingcommas:
+        if row.get("", None) == "":
+          del row[""]
       try:
         for column, typ in columntypes.items():
           row[column] = typ(row[column])

@@ -380,8 +380,8 @@
             return 1
         }
         #
-        $this.vmq.getmainslide($this.slideid, $true) 
-        $this.vmq.getlocalslide($this.slideid, $this.project, $true) 
+        $this.vmq.getmainslide($this.slideid, $true)
+        $this.vmq.getlocalslide($this.slideid, $this.project, $true)
         #
         #If there are still running or queued tasks to run, fail
         if ($this.vmq.checkfornewtask($this.project, 

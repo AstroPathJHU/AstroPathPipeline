@@ -12,8 +12,8 @@ using module .\testtools.psm1
 #
  Class testpssampledb : testtools {
     #
-    [string]$class = 'sampletracker'
-    [string]$module = 'sampletracker'
+    [string]$class = 'sampledb'
+    [string]$module = 'sampledb'
     #
     testpssampledb() : base(){
         $this.launchtests()

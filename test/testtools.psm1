@@ -1016,6 +1016,11 @@ Class testtools{
             $sampletracker.im3constant
         )
         #
+        $this.addtestfiles($sampletracker, 
+                $sampletracker.componentfolder(),
+                $sampletracker.componentreqfiles[0], 
+                $sampletracker.im3constant)
+        #
         $sampledb.getmodulelogs($false)
         $sampledb.preparesample($this.slideid)
         #

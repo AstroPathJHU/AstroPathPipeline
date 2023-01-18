@@ -58,8 +58,8 @@ using module .\testtools.psm1
         $this.testupdate($sampletracker, 'warpoctets', 'batchwarpkeys')
         $this.testupdate($sampletracker, 'batchwarpkeys', 'batchwarpfits')
         $this.testupdate($sampletracker, 'batchwarpfits', 'imagecorrection')
-        $this.testupdate($sampletracker, 'imagecorrection', 'vminform')
-        #
+        $this.testupdate($sampletracker, 'imagecorrection', 'vmcomponentinform')
+        $this.testupdate($sampletracker, 'vmcomponentinform', 'vminform')
         $this.testupdate($sampletracker, 'vminform', 'merge')
         $this.testupdate($sampletracker, 'merge', 'imageqa')
         $this.testupdate($sampletracker, 'imageqa', 'segmaps')
@@ -110,7 +110,7 @@ using module .\testtools.psm1
         Write-Host '    Modules:' $sampletracker.modules 
         #
         $cmodules = @('scan', 'scanvalidation', 'transfer', 'shredxml', 'meanimage', 'batchflatfield', 'batchmicomp', 'imagecorrection',
-            'warpoctets', 'batchwarpkeys', 'batchwarpfits', 'vminform', 'merge', 'imageqa', 'segmaps', 'dbload')
+            'vmcomponentinform', 'warpoctets', 'batchwarpkeys', 'batchwarpfits', 'vminform', 'merge', 'imageqa', 'segmaps', 'dbload')
         $out = Compare-Object -ReferenceObject $sampletracker.modules  -DifferenceObject $cmodules
         if ($out){
             Throw ('module lists in [sampletracker] does not match, this may indicate new modules or a typo:' + $out)
@@ -354,10 +354,6 @@ using module .\testtools.psm1
         if ($module -match 'vminform'){
             $log.val = $this.task
             $sampletracker.vmq.openmainqueue($false)
-        }
-        #
-        if ($module -match 'vminform'){
-            $sampletracker.vmq.openmainqueue($false)
             $sampletracker.antibodies | ForEach-Object{
                 $log.val.antibody = $_
                 $log.start($module)
@@ -372,10 +368,6 @@ using module .\testtools.psm1
         #
         if ($module -match 'vminform'){
             $log.val = $this.task
-            $sampletracker.vmq.openmainqueue($false)
-        }
-        #
-        if ($module -match 'vminform'){
             $sampletracker.vmq.openmainqueue($false)
             $sampletracker.antibodies | ForEach-Object{
                 $log.val.antibody = $_
@@ -393,6 +385,7 @@ using module .\testtools.psm1
         $sampletracker.preparesample($this.slideid)
         #
         if ($module -contains 'vminform'){
+            #
             $status = ''
             foreach ($abx in $sampletracker.antibodies){
                 $status = $sampletracker.moduleinfo.($module).($abx).status
@@ -645,10 +638,28 @@ using module .\testtools.psm1
         #
     }
     #
+    [void]removevmcomponentinformexamples($sampletracker){
+        #
+        $this.removetestfiles($sampletracker, 
+            $sampletracker.componentfolder(),
+            $sampletracker.componentreqfiles[0],
+            $sampletracker.im3constant)
+        #
+    }
+    #
+    [void]addvmcomponentinformexamples($sampletracker){
+        #
+        $this.addtestfiles($sampletracker, 
+                $sampletracker.componentfolder(),
+                $sampletracker.componentreqfiles[0], 
+                $sampletracker.im3constant)
+        #
+    }
+    #
     [void]removevminformexamples($sampletracker){
         #
         $this.addalgorithms($sampletracker)
-        $sampletracker.removedir($sampletracker.informfolder())
+        $sampletracker.removedir($sampletracker.phenotypefolder())
         #
     }
     #

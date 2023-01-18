@@ -1,4 +1,4 @@
-import dataclassy, itertools, methodtools, more_itertools, numpy as np
+import dataclassy, methodtools, more_itertools, numpy as np
 from ...shared.csvclasses import Vertex
 from ...shared.polygon import DataClassWithPolygon, Polygon, polygonfield, SimplePolygon
 from ...shared.rectangle import Rectangle, RectangleCollection, RectangleList, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer
@@ -170,7 +170,11 @@ class FieldCollection(RectangleCollection):
     xmax = -float("inf") * self.onepixel
     ymin = float("inf") * self.onepixel
     ymax = -float("inf") * self.onepixel
-    for r, color in zip(self.rectangles, itertools.cycle(["red", "blue", "green", "yellow", "magenta", "violet", "cyan"])):
+    basecolors = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [0.5, 1, 0.5]])
+    ncolordivisions = 7
+    for i, r in enumerate(self.rectangles):
+      basecolor = basecolors[r.gc % len(basecolors)]
+      color = basecolor * ((i%ncolordivisions + 1) / ncolordivisions + 1) / 2
       x, y = xy = units.nominal_values(r.pxvec)
       width, height = shape = r.shape
       xmin = min(xmin, x)

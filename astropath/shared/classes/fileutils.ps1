@@ -470,15 +470,17 @@ class fileutils : generalutils {
     #
     [string]FileWatcher($fpath, $fname){
         #
+        $SI = "$fpath\$fname"
         return (
-            $this.filewatcher($fpath, $fname, "$fpath\$fname")
+            $this.filewatcher($fpath, $fname, $this.CrossPlatformPaths($SI))
         )
         #
     }
     #
     [string]FileWatcher($fpath, $fname, $SI){
         #
-        $this.createfile("$fpath\$fname")
+        $this.createfile($this.CrossPlatformPaths($SI))
+        $fpath = $this.CrossPlatformPaths($fpath)
         #
         $testw = $false
         $c = 0
@@ -487,11 +489,11 @@ class fileutils : generalutils {
             #
             if ($c -ge 5){
                 $this.writeoutput(
-                    "WARNING: File watcher was not trigger on test for: $SI")
+                    "WARNING: File watcher was not triggered on test for: $SI")
                 break
             } elseif ($c -gt 0){
                 $this.writeoutput(
-                    "WARNING: File watcher was not trigger on test for: $SI")
+                    "WARNING: File watcher was not triggered on test for: $SI")
                 $this.writeoutput(
                     "WARNING: trying file watcher again: $SI")
             }
@@ -520,7 +522,7 @@ class fileutils : generalutils {
     #
     [switch]testwatcher($fpath, $fname, $SI){
         #
-        $file = Get-ChildItem ("$fpath\$fname")
+        $file = Get-ChildItem ($this.CrossPlatformPaths($SI))
         $file.Attributes = 'Archive, Hidden'
         $file.Attributes = 'Archive'
         #
@@ -576,7 +578,7 @@ class fileutils : generalutils {
      Usage: $this.UnregisterEvent(SI)
     ----------------------------------------- #>
     [void]UnregisterEvent($SI){
-        Unregister-Event -SourceIdentifier ($SI+ ';changed') -Force -EA Stop
-        Unregister-Event -SourceIdentifier ($SI+ ';renamed') -Force -EA Stop
+        Unregister-Event -SourceIdentifier ($SI+ ';changed') -Force -EA SilentlyContinue
+        Unregister-Event -SourceIdentifier ($SI+ ';renamed') -Force -EA SilentlyContinue
     }
 }
