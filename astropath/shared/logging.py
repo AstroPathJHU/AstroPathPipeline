@@ -365,8 +365,10 @@ def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, i
 
 def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.NOTSET-100, printthreshold=logging.NOTSET-100, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None, sampledefroot=None):
   from .samplemetadata import SampleDef
+  root = pathlib.Path(root)
   if samp is not None:
     if sampledefroot is None: sampledefroot = root
+    sampledefroot = pathlib.Path(sampledefroot)
     samp = SampleDef(root=sampledefroot, samp=samp, apidfile=apidfile, Project=Project, Cohort=Cohort)
   return __getlogger(module=module, root=root, samp=samp, uselogfiles=uselogfiles, threshold=threshold, printthreshold=printthreshold, isglobal=isglobal, mainlog=mainlog, samplelog=samplelog, imagelog=imagelog, moremainlogroots=frozenset(moremainlogroots), reraiseexceptions=reraiseexceptions, skipstartfinish=skipstartfinish)
 
