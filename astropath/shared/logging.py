@@ -365,7 +365,8 @@ def __getlogger(*, module, root, samp, uselogfiles, threshold, printthreshold, i
 
 def getlogger(*, module, root, samp, uselogfiles=False, threshold=logging.NOTSET-100, printthreshold=logging.NOTSET-100, isglobal=False, mainlog=None, samplelog=None, imagelog=None, moremainlogroots=[], reraiseexceptions=True, skipstartfinish=False, apidfile=None, Project=None, Cohort=None, sampledefroot=None):
   from .samplemetadata import SampleDef
-  root = pathlib.Path(root)
+  if root is not None:
+    root = pathlib.Path(root)
   if samp is not None:
     if sampledefroot is None: sampledefroot = root
     sampledefroot = pathlib.Path(sampledefroot)
