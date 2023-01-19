@@ -351,7 +351,7 @@ class AlignSampleTissueBase(AlignSampleBase, TissueSampleBase): pass
 class AlignSampleTMABase(AlignSampleBase, TMASampleBase):
   def run(self, *args, **kwargs):
     for rect in self.rectangles:
-      if "_Core[" in rect.file:
+      if "_Core[" in rect.file.name:
         self.logger.info("sample was imaged by TMA core, not by HPF, no need to align")
         return
     super().run(*args, **kwargs)
@@ -419,6 +419,12 @@ class AlignSampleComponentTiff(AlignSampleComponentTiffBase, ReadRectanglesOverl
   This class is not currently used but is here for completeness.
   """
 
+class AlignSampleComponentTiffTMA(AlignSampleComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignSampleDbloadBase, AlignSampleTMABase):
+  """
+  An align sample that runs for control TMA samples on component tiff images and can write results to the dbload folder.
+  Used to align control TMAs imaged as regular HPFs (not mosaics) that are already unmixed
+  """
+
 class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, AlignSampleTissueBase, ReadRectanglesOverlapsComponentTiffFromXML):
   """
   An align sample that runs on component tiff images and does not rely on the dbload folder.
@@ -443,6 +449,8 @@ class ReadAffineShiftSample(DbloadSample):
 
 def main(args=None):
   AlignSample.runfromargumentparser(args)
+def tma(args=None):
+  AlignSampleTMA.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

@@ -5,7 +5,37 @@ import numpy as np
 class SegmentationConst :
     @property
     def NNUNET_MODEL_TOP_DIR(self) :
-        return pathlib.Path(__file__).parent/'nnunet_models' #directory holding nnUnet model results to use
+        """
+        Top of directory holding nnUNet model results to use
+        """
+        return (pathlib.Path(__file__).parent/'nnunet_models').resolve()
+    @property
+    def NNUNET_TASK_NAME(self) :
+        return 'Task500_Pathology_DAPI'
+    @property
+    def NNUNET_MODEL_DIR(self) :
+        """
+        Path to the directory that holds the pre-trained nnUNet model files
+        """
+        return self.NNUNET_MODEL_TOP_DIR/'nnUNet'/'2d'/self.NNUNET_TASK_NAME/'nnUNetTrainerV2__nnUNetPlansv2.1'
+    @property
+    def NNUNET_MODEL_FILES(self) :
+        """
+        A list of all of the pre-trained nnUNet model files
+        """
+        model_files = [
+            self.NNUNET_MODEL_DIR/'plans.pkl',
+            self.NNUNET_MODEL_DIR/'postprocessing.json',
+        ]
+        for fold_n in (0,1,2,3,4) :
+            model_files+=[
+                self.NNUNET_MODEL_DIR/f'fold_{fold_n}'/'model_final_checkpoint.model.pkl',
+                self.NNUNET_MODEL_DIR/f'fold_{fold_n}'/'model_final_checkpoint.model',
+            ]
+        return model_files
+    @property
+    def NNUNET_MODEL_FILES_URL(self) :
+        return 'https://sciserver.org/public-data/bki-nnunet/' #URL where the NNUNet model files are stored
     @property
     def NNUNET_SEGMENT_FILE_APPEND(self) :
         #append for nnunet segmentation files

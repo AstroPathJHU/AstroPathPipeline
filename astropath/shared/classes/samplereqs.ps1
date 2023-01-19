@@ -31,7 +31,8 @@
         'image_keys_needed.txt','principal_point_octets_selected.csv')
     [array]$batchwarpfitsreqfiles = @('weighted_average_warp.csv')
     [array]$imagecorrectionreqfiles = @('.fw', '.fw01','.flatwim3')
-    [array]$vminformreqfiles = @('.cellseg', '.cellsegsum','.component')
+    [array]$componentreqfiles = @('.component')
+    [array]$vminformreqfiles = @('.cellseg', '.cellsegsum')
     [array]$mergereqfiles = @('.merge')
     [array]$segmapsreqfiles = @('.segmap')
     #
@@ -258,6 +259,13 @@
                 }
         #
         return $true
+        #
+    }
+    #
+    [switch]testvmcomponentinformfiles(){
+        #
+        return $this.testfiles($this.componentfolder(),
+            $this.im3constant, $this.componentreqfiles)
         #
     }
     #

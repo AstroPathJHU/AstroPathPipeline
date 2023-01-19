@@ -3,7 +3,7 @@ import os, shutil
 from batchgenerators.utilities.file_and_folder_operations import join
 from ...utilities.optionalimports import nnunet
 from .config import SEG_CONST
-from .utilities import rebuild_model_files_if_necessary, write_nifti_file_for_rect_im, convert_nnunet_output
+from .utilities import download_model_files_if_necessary, write_nifti_file_for_rect_im, convert_nnunet_output
 from .segmentationsample import SegmentationSampleDAPIComponentTiff
 
 class SegmentationSampleNNUNet(SegmentationSampleDAPIComponentTiff) :
@@ -27,7 +27,7 @@ class SegmentationSampleNNUNet(SegmentationSampleDAPIComponentTiff) :
         default_plans_identifier = nnunet.paths.default_plans_identifier
         default_trainer = nnunet.paths.default_trainer
         #make sure that the necessary model files exist
-        rebuild_model_files_if_necessary()
+        download_model_files_if_necessary(logger=self.logger)
         #create the temporary directory that will hold the NIfTI files
         self.temp_dir = self.segmentationfolder/'nnunet_nifti_input'
         if not self.temp_dir.is_dir() :
@@ -76,9 +76,8 @@ class SegmentationSampleNNUNet(SegmentationSampleDAPIComponentTiff) :
         os.environ['RESULTS_FOLDER'] = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve())
         self.logger.debug('Running nuclear segmentation with nnU-Net....')
         my_network_training_output_dir = str(SEG_CONST.NNUNET_MODEL_TOP_DIR.resolve()/'nnUNet')
-        task_name = 'Task500_Pathology_DAPI'
-        model_folder_name = join(my_network_training_output_dir, '2d', task_name, default_trainer + "__" +
-                                 default_plans_identifier)
+        model_folder_name = join(my_network_training_output_dir, '2d', SEG_CONST.NNUNET_TASK_NAME, 
+                                 default_trainer + "__" + default_plans_identifier)
         try :
             predict_from_folder(model_folder_name, str(self.temp_dir.resolve()), str(self.segmentationfolder.resolve()), 
                                 None, False, self.njobs, self.njobs, None, 0, 1, True, overwrite_existing=False, 

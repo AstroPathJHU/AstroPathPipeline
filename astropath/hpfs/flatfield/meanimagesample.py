@@ -10,7 +10,9 @@ from ...shared.image_masking.config import CONST as MASK_CONST
 from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.image_masking.image_mask import return_new_mask_labelled_regions, save_plots_for_image
 from ...shared.overlap import Overlap
-from ...shared.sample import MaskSampleBase, ParallelSample, ReadRectanglesOverlapsComponentTiffFromXML, ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, TissueSampleBase, WorkflowSample, XMLLayoutReader
+from ...shared.sample import MaskSampleBase, ParallelSample, ReadRectanglesOverlapsComponentTiffFromXML
+from ...shared.sample import ReadCorrectedRectanglesOverlapsIm3MultiLayerFromXML, TissueSampleBase, TMASampleBase
+from ...shared.sample import WorkflowSample, XMLLayoutReader
 from .config import CONST
 from .utilities import get_background_thresholds_and_pixel_hists_for_rectangle_image
 from .utilities import RectangleThresholdTableEntry, FieldLog, ThresholdTableEntry
@@ -239,8 +241,10 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
             self.logger.debug('Writing out labelled mask regions')
             with cd(self.image_masking_dirpath) :
                 writetable(f'{CONST.LABELLED_MASK_REGIONS_CSV_FILENAME}',labelled_mask_regions)
-            #save some masking plots for images with the largest numbers of masked pixels
-            self.__save_set_of_masking_plots(labelled_mask_regions,background_thresholds)
+        else :
+            self.logger.debug(f'No blur or saturation flagged in {self.SlideID}')
+        #save some masking plots for images with the largest numbers of masked pixels
+        self.__save_set_of_masking_plots(labelled_mask_regions,background_thresholds)
         #make and save the plot of the flagged HPF locations
         plot_flagged_HPF_locations(self.SlideID,self.rectangles,labelled_mask_regions,self.image_masking_dirpath)
         #write out the latex summary containing all of the image masking plots that were made
@@ -319,9 +323,11 @@ class MeanImageSampleBaseIm3(MeanImageSampleBase, ReadCorrectedRectanglesOverlap
         for li in range(self.nlayersim3) :
             valid_layer_thresholds = image_bgts_by_layer[:,li][image_bgts_by_layer[:,li]!=0]
             if len(valid_layer_thresholds)<1 :
-                errmsg = f"ERROR: not enough image background thresholds were found in layer {li+1} for "
-                errmsg+= f"{self.SlideID} and so this slide can't be used"
-                raise RuntimeError(errmsg)
+                warnmsg = f"WARNING: {len(valid_layer_thresholds)} nonzero image background thresholds were found in "
+                warnmsg+= f"layer {li+1} for {self.SlideID} and so this layer won't be masked!"
+                self.logger.warning(warnmsg)
+                chosen_thresholds.append(ThresholdTableEntry(li+1,0,0.))
+                continue
             if not self.et_offset_file is None :
                 chosen_thresholds.append(ThresholdTableEntry(li+1,int(np.median(valid_layer_thresholds)),
                                                              np.median(valid_layer_thresholds)/self.med_ets[li]))
@@ -645,6 +651,8 @@ class MeanImageSampleIm3(MeanImageSampleBaseIm3,WorkflowSample,XMLLayoutReader) 
 class MeanImageSampleComponentTiffTissue(MeanImageSampleComponentTiff, TissueSampleBase) :
     pass
 class MeanImageSampleIm3Tissue(MeanImageSampleIm3, TissueSampleBase) :
+    pass
+class MeanImageSampleIm3ControlTMA(MeanImageSampleIm3, TMASampleBase) :
     pass
 
 #################### FILE-SCOPE FUNCTIONS ####################

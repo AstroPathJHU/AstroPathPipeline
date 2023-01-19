@@ -332,7 +332,7 @@ class sampledb : sampletracker {
     refreshmoduledbsub
     -----------------------------------------
     preforms the module table updates for the
-    specified slide and moduel. overload (3) 
+    specified slide and module. overload (3) 
     to include the project for vminform task
     ----------------------------------------- #>
     [void]refreshmoduledbsub($cmodule){
@@ -419,7 +419,7 @@ class sampledb : sampletracker {
             } -PassThru
         }}
         #
-        $this.moduleobjs.($cmodule).localqueue.($this.project) += $row
+        [array]$this.moduleobjs.($cmodule).localqueue.($this.project) += $row
         #
     }
     #
@@ -534,7 +534,7 @@ class sampledb : sampletracker {
             $this.enqueuetask($cmodule, $cmoduleinfo)
             $row.($statlabel) = $slidestatus
         }
-         #
+        #
         if ($modulestatus -notmatch (
                 [regex]::Escape($slidestatus), $this.status.rerun -join '|') -and 
             $slidestatus -match $this.status_settings.update_status){

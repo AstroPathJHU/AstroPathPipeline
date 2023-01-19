@@ -7,19 +7,19 @@ from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
 from ...shared.logging import ThingWithLogger
 from ...shared.rectangle import AstroPathTissueMaskRectangle, IHCTissueMaskRectangle, MaskRectangleBase
 from ...shared.rectangletransformation import ImageTransformation
-from ...shared.sample import MaskSampleBase, MaskWorkflowSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, TissueSampleBase
+from ...shared.sample import MaskSampleBase, MaskWorkflowSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, TissueSampleBase, TMASampleBase
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
 from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldReadSegmentedComponentTiffSingleLayer
-from ..zoom.zoomsamplebase import ZoomSampleBase
+from ..zoom.wsisamplebase import WSISampleBase
 
 class MaskField(Field, MaskRectangleBase): pass
 class AstroPathTissueMaskField(MaskField, AstroPathTissueMaskRectangle): pass
 class IHCTissueMaskField(MaskField, IHCTissueMaskRectangle): pass
 
-class MaskSample(MaskSampleBase, ZoomSampleBase, DbloadArgumentParser, MaskArgumentParser, ThingWithMask, ThingWithLogger):
+class MaskSample(MaskSampleBase, WSISampleBase, DbloadArgumentParser, MaskArgumentParser, ThingWithMask, ThingWithLogger):
   """
   Base class for any sample that has a mask that can be loaded from a file.
   """
@@ -134,7 +134,7 @@ class IHCTissueMaskSample(TissueMaskSample):
   def tissuemasktransformation(self):
     return ImageTransformation(lambda mask: mask.astype(bool))
 
-class StitchMaskSample(WriteMaskSampleBase, TissueSampleBase):
+class StitchMaskSample(WriteMaskSampleBase):
   """
   Base class for stitching the global mask together from the individual HPF masks
   """
@@ -211,7 +211,7 @@ class StitchMaskSample(WriteMaskSampleBase, TissueSampleBase):
   def workflowdependencyclasses(cls, **kwargs):
     return [AlignSample] + super().workflowdependencyclasses(**kwargs)
 
-class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadSegmentedComponentTiff, InformMaskSample):
+class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadSegmentedComponentTiff, InformMaskSample, TissueSampleBase):
   """
   Stitch the inform mask together from layer 9 of the component tiffs.
   The implementation is the same as zoom, and the mask will match the
@@ -243,7 +243,7 @@ class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadSegmentedComp
     with field.using_component_tiff() as im:
       return im
 
-class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSample):
+class StitchAstroPathTissueMaskSampleBase(StitchMaskSample, AstroPathTissueMaskSample):
   """
   Stitch the AstroPath mask together from the bin files.
   The implementation is the same as zoom, and the mask will match the
@@ -284,6 +284,11 @@ class StitchAstroPathTissueMaskSample(StitchMaskSample, AstroPathTissueMaskSampl
   def workflowkwargs(self):
     return {**super().workflowkwargs, "skip_masking": False}
 
+class StitchAstroPathTissueMaskSample(StitchAstroPathTissueMaskSampleBase, TissueSampleBase):
+  pass
+class StitchAstroPathTissueMaskSampleTMA(StitchAstroPathTissueMaskSampleBase, TMASampleBase):
+  pass
+
 class StitchIHCTissueMaskSample(StitchMaskSample, IHCTissueMaskSample):
   """
   Stitch the IHC tissue mask together from the bin files.
@@ -319,6 +324,8 @@ class StitchIHCTissueMaskSample(StitchMaskSample, IHCTissueMaskSample):
 
 def astropathtissuemain(args=None):
   StitchAstroPathTissueMaskSample.runfromargumentparser(args=args)
+def astropathtissuetma(args=None):
+  StitchAstroPathTissueMaskSampleTMA.runfromargumentparser(args=args)
 
 def informmain(args=None):
   StitchInformMaskSample.runfromargumentparser(args=args)

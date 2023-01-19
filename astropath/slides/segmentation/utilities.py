@@ -1,113 +1,97 @@
 #imports
-import re, shutil
+import re, ssl, requests
+from urllib3 import poolmanager
 import numpy as np, SimpleITK as sitk
-from hashlib import sha512
 from .config import SEG_CONST
 
-def split_model_files(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR,
-                      bytes_per_chunk=50000000,remove=True) :
+def model_files_exist(model_dir_path=SEG_CONST.NNUNET_MODEL_DIR) :
     """
-    Recursively search a directory for any "model_final_checkpoint.model" files 
-    and split them into smaller chunks so they can be uploaded as part of the GitHub repo
-
-    model_dir_path = the top directory beneath which anything called "model_final_checkpoint.model" should be split
-    bytes_per_chunk = the maximum number of bytes that should be included in each individual chunk
-    remove = True if the original, single, large "model_final_checkpoint.model" files should be removed 
-        once the split files are all created
+    Returns True if all of the pre-trained nnUNet model files exist and False otherwise
     """
     if not model_dir_path.is_dir() :
         raise FileNotFoundError(f'ERROR: {model_dir_path} is not a directory!')
-    for fp in model_dir_path.rglob('*') :
-        if fp.name=='model_final_checkpoint.model' :
-            ref_hash = sha512()
-            with open(fp,'rb') as ifpo :
-                ref_hash.update(ifpo.read())
-            ref_hash = ref_hash.digest()
-            new_hash_1 = sha512()
-            created_fns = []
-            with open(fp,'rb') as ifpo :
-                chunk_i = 0
-                new_bytes = ifpo.read(bytes_per_chunk)
-                while len(new_bytes)>0 :
-                    new_hash_1.update(new_bytes)
-                    new_fn = f'{fp.name}_chunk_{chunk_i}'
-                    created_fns.append(new_fn)
-                    with open(fp.parent/new_fn,'wb') as ofpo :
-                        ofpo.write(new_bytes)
-                    chunk_i+=1
-                    new_bytes = ifpo.read(bytes_per_chunk)
-            new_hash_1 = new_hash_1.digest()
-            new_hash_2 = sha512()
-            if remove :
-                for new_fn in created_fns :
-                    if not (fp.parent/new_fn).is_file() :
-                        remove = False
-                        break
-                    else :
-                        with open(fp.parent/new_fn,'rb') as newfp :
-                            new_hash_2.update(newfp.read())
-            new_hash_2 = new_hash_2.digest()
-            if not ref_hash==new_hash_1==new_hash_2 :
-                errmsg = f'ERROR: hashes of original {fp} file and individual chunks are mismatched! '
-                errmsg+= 'Original file will not be removed.'
-                raise RuntimeError(errmsg)
-            if remove :
-                fp.unlink()
-
-def assemble_model_files(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR,remove=False) :
-    """
-    Recursively search a directory for any "fold_n" subdirectories and, if those subdirectories 
-    contain any "model_final_checkpoint.model_chunk_n" files, assemble the individual files into 
-    a single larger "model_final_checkpoint.model" file
-
-    model_dir_path = the top directory beneath which any "fold_n" subdirectories should be searched for 
-        "model_final_checkpoint.model_chunk_n" files to combine
-    remove = True if the smaller individual files should be removed once they've been successfully rebuilt 
-    """
-    if not model_dir_path.is_dir() :
-        raise FileNotFoundError(f'ERROR: {model_dir_path} is not a directory!')
-    for fold_dir in model_dir_path.rglob('fold_*') :
-        if not (fold_dir/'model_final_checkpoint.model_chunk_0').is_file() :
-            continue
-        newfp = fold_dir/'model_final_checkpoint.model'
-        ref_hash = sha512()
-        with open(newfp,'wb') as newf :
-            for fp in sorted(fold_dir.glob('model_final_checkpoint.model_chunk_*')) :
-                with open(fp,'rb') as oldf :
-                    shutil.copyfileobj(oldf,newf)
-                with open(fp,'rb') as oldf :
-                    ref_hash.update(oldf.read())
-        ref_hash = ref_hash.digest()
-        new_hash = sha512()
-        if newfp.is_file() :
-            with open(newfp,'rb') as newf :
-                new_hash.update(newf.read())
-        new_hash = new_hash.digest()
-        if not ref_hash==new_hash :
-            errmsg = f'ERROR: hashes of re-assembled {newfp} file and individual chunks are mismatched! '
-            errmsg+= 'Individual chunk files will not be removed.'
-            raise RuntimeError(errmsg)
-        if remove :
-            for fp in fold_dir.glob('model_final_checkpoint.model_chunk_*') :
-                fp.unlink()
-
-def model_files_exist(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR) :
-    """
-    Returns True if every "model_final_checkpoint.model" file exists and False otherwise
-    """
-    if not model_dir_path.is_dir() :
-        raise FileNotFoundError(f'ERROR: {model_dir_path} is not a directory!')
-    for fold_dir in model_dir_path.rglob('fold_*') :
-        if not (fold_dir/'model_final_checkpoint.model').is_file() :
+    for filepath in SEG_CONST.NNUNET_MODEL_FILES :
+        check_filepath = model_dir_path/(filepath.relative_to(SEG_CONST.NNUNET_MODEL_DIR))
+        if not check_filepath.is_file() :
             return False
     return True
 
-def rebuild_model_files_if_necessary(model_dir_path=SEG_CONST.NNUNET_MODEL_TOP_DIR,remove=False) :
+class TLSAdapter(requests.adapters.HTTPAdapter):
+    """
+    Adapter needed to connect to the sciserver public website, see StackOverflow question about the error here:
+    https://stackoverflow.com/questions/61631955/python-requests-ssl-error-during-requests
+    """
+
+    def init_poolmanager(self, connections, maxsize, block=False):
+        """Create and initialize the urllib3 PoolManager."""
+        ctx = ssl.create_default_context()
+        ctx.set_ciphers('DEFAULT@SECLEVEL=0')
+        ctx.check_hostname = False
+        self.poolmanager = poolmanager.PoolManager(
+                num_pools=connections,
+                maxsize=maxsize,
+                block=block,
+                ssl_version=ssl.PROTOCOL_TLS,
+                ssl_context=ctx)
+
+def download_model_files(model_dir_path=SEG_CONST.NNUNET_MODEL_DIR,logger=None) :
+    """
+    Downloads any missing pre-trained nnUNet model files from the public SciServer link
+    """
+    session = None
+    for filepath in SEG_CONST.NNUNET_MODEL_FILES :
+        check_filepath = model_dir_path/(filepath.relative_to(SEG_CONST.NNUNET_MODEL_DIR))
+        if not check_filepath.is_file() :
+            if not check_filepath.parent.is_dir() :
+                check_filepath.parent.mkdir(parents=True)
+            if session is None :
+                session = requests.sessions.Session()
+                session.verify=False
+                session.mount('https://', TLSAdapter())
+            dl_url = f'{SEG_CONST.NNUNET_MODEL_FILES_URL}{filepath.relative_to(SEG_CONST.NNUNET_MODEL_DIR).as_posix()}'
+            if logger is not None :
+                logger.debug(f'Downloading {check_filepath} from {dl_url}...')
+            success = False
+            n_retries = 2
+            exc = None
+            while (not success) and n_retries>0 :
+                try :
+                    resp = session.get(dl_url,verify=False)
+                    with open(check_filepath,'wb') as wfp :
+                        wfp.write(resp.content)
+                    success = True
+                    if logger is not None :
+                        logger.debug(f'Done downloading {check_filepath}')
+                except Exception as e :
+                    n_retries-=1
+                    exc = e
+            if not success :
+                msg = f'ERROR: {check_filepath} failed to be downloaded from {dl_url}! Exception will be reraised.'
+                if logger is not None :
+                    logger.error(msg)
+                else :
+                    print(msg)
+                if session is not None :
+                    try :
+                        session.close()
+                    except :
+                        pass
+                if exc is not None :
+                    raise exc
+    if session is not None :
+        try :
+            session.close()
+        except :
+            pass
+
+def download_model_files_if_necessary(model_dir_path=SEG_CONST.NNUNET_MODEL_DIR,logger=None) :
     """
     Calls two functions above to make sure that the required model files exist
     """
     if not model_files_exist(model_dir_path) :
-        assemble_model_files(model_dir_path,remove)
+        download_model_files(model_dir_path,logger=logger)
+    if not model_files_exist(model_dir_path) :
+        raise FileNotFoundError(f'ERROR: failed to download nnUNet files to expected locations in {model_dir_path}!')
 
 def write_nifti_file_for_rect_im(im,nifti_file_path) :
     """
