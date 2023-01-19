@@ -47,6 +47,9 @@ class SampleDefBase(MyDataClassFrozen):
 
   @classmethod
   def transforminitargs(cls, *args, root=None, samp=None, **kwargs):
+    if root is not None:
+      root = pathlib.Path(root)
+
     if samp is not None:
       if isinstance(samp, str):
         if "SlideID" in kwargs:
