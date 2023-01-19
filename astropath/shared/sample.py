@@ -559,11 +559,13 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       if misckwargs:
         raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
       sample = cls(**initkwargs)
-      with sample:
-        sample.run(**runkwargs)
-        missingoutputs = sample.missingoutputfiles
-        if missingoutputs:
-          raise RuntimeError(f"{sample.logger.SlideID} ran successfully but some output files are missing: {', '.join(str(_) for _ in missingoutputs)}")
+      with sample.joblock() as lock:
+        if not lock: raise RuntimeError(f"Another process is already running {sample}")
+        with sample:
+          sample.run(**runkwargs)
+          missingoutputs = sample.missingoutputfiles
+          if missingoutputs:
+            raise RuntimeError(f"{sample.logger.SlideID} ran successfully but some output files are missing: {', '.join(str(_) for _ in missingoutputs)}")
       return sample
 
   @classmethod
