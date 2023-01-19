@@ -250,7 +250,7 @@ Class testpsmeanimage : testtools {
         $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath) 
         if ($pythontask -notmatch $this.slideid){
             Write-Host '    python task:' $pythontask
-            Throw 'annotation file missing test failied; slideid is in python task'
+            Throw 'annotation file missing test failed; slideid is not in python task'
         }
         $des = $this.processloc, $this.slideid, 'im3\meanimage\image_masking' -join '\'
         $inp.sample.createdirs($des)
