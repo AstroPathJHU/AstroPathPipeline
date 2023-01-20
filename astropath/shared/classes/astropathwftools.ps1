@@ -156,8 +156,13 @@ class astropathwftools : sampledb {
                     -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue}
             } catch {
                 $this.enableremoting($ip)
-                $proc = invoke-command -computername $ip -credential $this.login -EA Stop `
-                    -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue} 
+                if ((Test-NetConnection $ip -InformationLevel Quiet)) {
+                    $proc = invoke-command -computername $ip -credential $this.login -EA Stop `
+                      -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue} 
+                } else {
+                    $this.writeoutput('Error remoting to computer:' + $cname)
+                    $this.writeoutput($_)
+                }
             }
         }
         #
