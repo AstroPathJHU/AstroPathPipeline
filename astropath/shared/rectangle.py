@@ -140,12 +140,17 @@ class RectangleBase(DataClassWithPscale):
   def expectedfilename(self):
     pass
 
+  @property
+  def filepathtype(self):
+    if self.file is None: return pathlib.PurePath
+    return type(self.file)
+
 class Rectangle(RectangleBase):
   @property
   def expectedfilename(self):
     if self.SlideID is None:
       raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
-    return type(self.file)(f"{self.SlideID}_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
+    return self.filepathtype(f"{self.SlideID}_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
 
 class TMARectangle(RectangleBase):
   TMAsector: int
@@ -155,7 +160,7 @@ class TMARectangle(RectangleBase):
   def expectedfilename(self):
     if self.SlideID is None:
       raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
-    return type(self.file)(f"{self.SlideID}_Core[{self.TMAsector},{self.TMAname1},{self.TMAname2}]_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
+    return self.filepathtype(f"{self.SlideID}_Core[{self.TMAsector},{self.TMAname1},{self.TMAname2}]_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
 
 class RectangleWithImageLoaderBase(Rectangle):
   def __post_init__(self, *args, _DEBUG=True, _DEBUG_PRINT_TRACEBACK=False, **kwargs):
