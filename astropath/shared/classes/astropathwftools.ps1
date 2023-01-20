@@ -109,6 +109,9 @@ class astropathwftools : sampledb {
             $processid = $this.checkprocessid($jobname)
             #
             if ($processid -ne 0){
+                if ($processid -eq -1) {
+                    continue
+                }
                 $this.writeoutput("     Orphaned job found: $workertasklog")
                 $this.StartOrphanMonitor($jobname, $processid)
                 $idleworkers[$worker].Status = 'RUNNING'
@@ -161,7 +164,7 @@ class astropathwftools : sampledb {
                       -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue} 
                 } else {
                     $this.writeoutput('Error remoting to computer:' + $cname)
-                    $this.writeoutput($_)
+                    $proc = -1
                 }
             }
         }
