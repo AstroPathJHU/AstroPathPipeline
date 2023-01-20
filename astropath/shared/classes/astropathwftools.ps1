@@ -163,7 +163,7 @@ class astropathwftools : sampledb {
                     $proc = invoke-command -computername $ip -credential $this.login -EA Stop `
                       -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue} 
                 } else {
-                    $this.writeoutput('Error remoting to computer:' + $cname)
+                    $this.writeoutput('Error remoting to computer:' + $ip)
                     $proc = -1
                 }
             }
