@@ -243,7 +243,7 @@ Class testpsmeanimage : testtools {
         $desxml = $this.processloc, $this.slideid, 'test' -join '\'
         $inp.sample.copy($sorxml, $desxml)
         $xmlfile = $inp.sample.getcontent($sorxml)
-        $xmlfile2 = $xmlfile -replace 'Acquired', 'Blah'
+        $xmlfile2 = $xmlfile -replace 'Acquired', 'Unignored'
         $inp.sample.setfile($sorxml, $xmlfile2)
         #
         $et_offset_file = $this.basepath,'corrections\best_exposure_time_offsets_Vectra_9_8_2020.csv' -join '\'
