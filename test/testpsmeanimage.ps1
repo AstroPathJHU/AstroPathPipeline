@@ -33,7 +33,6 @@ Class testpsmeanimage : testtools {
     }
     #
     [void]launchtests(){
-        #
         $this.testpsmeanimageconstruction($this.task)
         $inp = meanimage $this.task 
         $inp.sample.teststatus = $true  
@@ -54,6 +53,7 @@ Class testpsmeanimage : testtools {
         $this.testmasks($inp)
         $this.testcleanup($inp)
         $inp.sample.finish(($this.module+'-test'))
+        $this.clearworkspace($inp)
         $this.testgitstatus($inp.sample)
         Write-Host '.'
     }
@@ -359,6 +359,21 @@ Class testpsmeanimage : testtools {
         }
         Write-Host '    cleanup method complete'
         Write-Host 'test cleanup method finished'
+    }
+    <# --------------------------------------------
+    clearworkspace
+    clear working directory after tests
+    --------------------------------------------#>
+    [void]clearworkspace($inp){
+        #
+        Write-Host '.'
+        Write-Host 'clear workspace started'
+        #
+        $wspath = ($this.uncpath(("$PSScriptRoot\test_for_jenkins\testing_" + $this.module + '\' + $inp.sample.slideid))) 
+        Write-host 'Removing testing workspace:' $wspath
+        $inp.sample.removedir($wspath)
+        #
+        Write-Host 'clear workspace finished'
     }
 }
 #
