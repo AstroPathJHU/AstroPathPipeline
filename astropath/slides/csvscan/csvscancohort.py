@@ -63,7 +63,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     ]
     for i, csv in enumerate(globalcontrolcsvs):
       if not csv.exists():
-        capital = csv.with_name(csv.name.replace("project", "Project").exists())
+        capital = csv.with_name(csv.name.replace("project", "Project"))
         if capital.exists():
           globalcontrolcsvs[i] = capital
     ctrlsamplescsv = globalcontrolcsvs[-1]
