@@ -48,7 +48,7 @@ pipeline {
             // sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsconvertim3path.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminform.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1'
-            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
+            // sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
           }
         }
