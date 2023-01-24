@@ -437,6 +437,8 @@ using module .\testtools.psm1
         $sampletracker.removefile($sampletracker.basepath + '\upkeep_and_progress\imageqa_upkeep.csv')
         $this.removebatchflatfieldexamples($sampletracker)
         $sampletracker.setfile(($this.basepath, $this.slideid, 'im3\flatw\placeholder.txt' -join '\'), '')
+        $logpath = $sampletracker.CrossPlatformPaths($sampletracker.basepath + '\logfiles')
+        $sampletracker.removedir($logpath)
         #
         Write-Host 'clearing logs finished'
         #
