@@ -123,7 +123,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
         assert False, csv
 
       toload.append({"csv": csv, "csvclass": csvclass, "tablename": tablename, "extrakwargs": extrakwargs, "SlideID": f"project{self.Project}-{idx}"})
-      toload.sort(key=lambda x: (x["csv"]))
+      toload.sort(key=lambda x: (str(x["csv"]).lower()))
 
     if expectcsvs or unknowncsvs:
       errors = []
