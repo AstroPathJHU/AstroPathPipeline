@@ -58,10 +58,10 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     if not clinicalcsvs:
       raise FileNotFoundError(f"Didn't find any clinical csvs in {self.root/'Clinical'}")
     globalcontrolcsvs = {
-      self.root/"Ctrl"/f"project{self.Project}_ctrl{ctrl}.csv"
+      self.root/"Ctrl"/f"[Pp]roject{self.Project}_ctrl{ctrl}.csv"
       for ctrl in ("cores", "fluxes", "samples")
     }
-    ctrlsamplescsv = self.root/"Ctrl"/f"project{self.Project}_ctrlsamples.csv"
+    ctrlsamplescsv = self.root/"Ctrl"/f"[Pp]roject{self.Project}_ctrlsamples.csv"
     try:
       controlcsvs = {
         self.root/sample.SlideID/UNIV_CONST.DBLOAD_DIR_NAME/f"{sample.SlideID}_control.csv"
