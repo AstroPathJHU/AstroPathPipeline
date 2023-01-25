@@ -337,7 +337,7 @@ class vminformqueue : modulequeue {
         #
         $this.localslide = $this.localqueue.($cproject) |
             & { process {   
-            if (
+            if ($_.slideid -and
                 $_.slideid.trim() -contains $slideid
             ) { $_ }}}
         #

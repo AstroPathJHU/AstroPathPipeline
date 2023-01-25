@@ -885,7 +885,12 @@ class aptabletools : fileutils {
     [array]findantibodies($basepath, $createwatcher){
         #
         if (!$this.isWindows()) {
-            return @()
+            $this.findantibodies($basepath)
+            if (!$this.antibodies) {
+                return @()
+            } else {
+                return $this.antibodies
+            }
         }
         #
         $this.ImportMergeConfig($basepath, $createwatcher)
@@ -902,10 +907,12 @@ class aptabletools : fileutils {
     [void]findantibodies($basepath){
         #
         if (!$this.isWindows()) {
-            return
+            if (!(test-path $this.mergeconfigcsv_fullfile($basepath))) {
+                return
+            }
+        } else {
+            $this.mergeconfigtocsv()
         }
-        #
-        $this.mergeconfigtocsv()
         #
         $this.ImportMergeConfigCSV($basepath)
         $lintargets = $this.deflineagemarkers()
@@ -923,7 +930,9 @@ class aptabletools : fileutils {
         #
         if (!($this.allantibodies.($project))){
             $p1 = $this.full_project_dat | Where-Object {$_.project -eq $project}
-            $p = $this.uncpaths(($p1.dpath, $p1.dname -join '\'))
+            $p = $this.CrossPlatformPaths(
+                $this.uncpaths(($p1.dpath, $p1.dname -join '\'))
+            )
             $this.allantibodies.($project) = $this.findantibodies($p, $false)
         }
         #
