@@ -58,7 +58,10 @@ class LatexSummaryBase :
                             ]
                 for fp in to_remove :
                     rm_missing_ok(fp)
-                (self.__output_dir / self.__tex_filename).rename((self.failed_compilation_tex_file_path / self.__tex_filename))
+                try :
+                    (self.__output_dir / self.__tex_filename).rename((self.failed_compilation_tex_file_path / self.__tex_filename))
+                except :
+                    pass
                 return 1
             if (self.__output_dir / self.__pdf_filename).is_file() :
                 for fp in self.filepaths_to_remove_on_success :
