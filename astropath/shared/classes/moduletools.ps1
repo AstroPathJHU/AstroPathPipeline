@@ -671,6 +671,7 @@
     [void]runpythontask($taskname, $pythontask){
         #
         $externallog = $this.ProcessLog($taskname)
+        $pythontask = $this.sample.CrossPlatformPaths($pythontask)
         $this.sample.info(('python task: ' + $pythontask))
         if ($this.sample.isWindows()){
             $this.sample.checkconda()
@@ -687,6 +688,7 @@
     [void]runpythontask($taskname, $pythontask, $nolog){
         #
         $externallog = $this.ProcessLog($taskname)
+        $pythontask = $this.sample.CrossPlatformPaths($pythontask)
         $this.sample.info(('python task: ' + $pythontask))
         if ($this.sample.isWindows()){
             $this.sample.checkconda()
