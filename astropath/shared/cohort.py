@@ -43,7 +43,7 @@ class CohortBase(ThingWithRoots, ThingWithLogger):
       yield from readtable(csvfile, csvclass)
   def controlsampledefs(self, **kwargs):
     from .samplemetadata import ControlTMASampleDef
-    csvfiles = (self.sampledefroot/"Ctrl").glob("project*_ctrlsamples.csv")
+    csvfiles = (self.sampledefroot/"Ctrl").glob("[Pp]roject*_ctrlsamples.csv")
     csvclass = ControlTMASampleDef
     for csvfile in csvfiles:
       yield from readtable(csvfile, csvclass)

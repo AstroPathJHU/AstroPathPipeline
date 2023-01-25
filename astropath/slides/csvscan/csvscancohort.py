@@ -57,19 +57,24 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
     }
     if not clinicalcsvs:
       raise FileNotFoundError(f"Didn't find any clinical csvs in {self.root/'Clinical'}")
-    globalcontrolcsvs = {
+    globalcontrolcsvs = [
       self.root/"Ctrl"/f"project{self.Project}_ctrl{ctrl}.csv"
       for ctrl in ("cores", "fluxes", "samples")
-    }
-    ctrlsamplescsv = self.root/"Ctrl"/f"project{self.Project}_ctrlsamples.csv"
+    ]
+    for i, csv in enumerate(globalcontrolcsvs):
+      if not csv.exists():
+        capital = csv.with_name(csv.name.replace("project", "Project"))
+        if capital.exists():
+          globalcontrolcsvs[i] = capital
+    ctrlsamplescsv = globalcontrolcsvs[-1]
     try:
       controlcsvs = {
         self.root/sample.SlideID/UNIV_CONST.DBLOAD_DIR_NAME/f"{sample.SlideID}_control.csv"
         for sample in self.readtable(ctrlsamplescsv, ControlSample)
       }
-    except IOError:
+    except FileNotFoundError:
       controlcsvs = set()
-    expectcsvs = batchcsvs | clinicalcsvs | globalcontrolcsvs
+    expectcsvs = batchcsvs | clinicalcsvs | set(globalcontrolcsvs)
     queuecsvs = {log.with_name(log.name.replace(".log", "-queue.csv")) for log in (self.root/"logfiles").iterdir()}
     optionalcsvs = otherbatchcsvs | controlcsvs
     unknowncsvs = set()
@@ -104,7 +109,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
         extrakwargs = {}
         idx = 2
       elif csv.parent == self.root/"Ctrl":
-        match = re.match(f"project{self.Project}_(.*)[.]csv", csv.name)
+        match = re.match(f"[Pp]roject{self.Project}_(.*)[.]csv", csv.name)
         csvclass, tablename = {
           "ctrlcores": (ControlCore, "Ctrlcores"),
           "ctrlfluxes": (ControlFlux, "Ctrlfluxes"),
@@ -118,7 +123,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
         assert False, csv
 
       toload.append({"csv": csv, "csvclass": csvclass, "tablename": tablename, "extrakwargs": extrakwargs, "SlideID": f"project{self.Project}-{idx}"})
-      toload.sort(key=lambda x: (x["csv"]))
+      toload.sort(key=lambda x: (str(x["csv"]).lower()))
 
     if expectcsvs or unknowncsvs:
       errors = []

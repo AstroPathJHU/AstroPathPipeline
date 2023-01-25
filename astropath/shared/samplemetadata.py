@@ -195,7 +195,7 @@ class ControlTMASampleDef(SampleDefBase):
   def isGood(self): return True
   @classmethod
   def sampledefcsv(cls, root):
-    result, = (root/"Ctrl").glob("project*_ctrlsamples.csv")
+    result, = (root/"Ctrl").glob("[Pp]roject*_ctrlsamples.csv")
     return result
 
 class MetadataSummary(MyDataClassFrozen):
