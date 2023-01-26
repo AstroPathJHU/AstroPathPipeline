@@ -404,6 +404,7 @@ RUN \
 ARG ASTROPATH_INSTALL_EXTRAS=true
 
 RUN sudo pip3 install --use-pep517 pyvips
+RUN sudo pip3 install git+https://github.com/MIC-DKFZ/nnUNet.git@refs/pull/1209/head
 RUN \
   if $ASTROPATH_INSTALL_EXTRAS; then \
     EXTRAS="[all]"; \
