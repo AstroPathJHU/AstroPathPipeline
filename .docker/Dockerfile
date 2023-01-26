@@ -403,13 +403,14 @@ RUN \
 
 ARG ASTROPATH_INSTALL_EXTRAS=true
 
+RUN sudo pip3 install --use-pep517 distro-info
 RUN \
   if $ASTROPATH_INSTALL_EXTRAS; then \
     EXTRAS="[all]"; \
   else \
     EXTRAS=; \
   fi && \
-  sudo pip3 install --use-pep517 "./AstroPathPipelinePrivate$EXTRAS"
+  sudo pip3 install "./AstroPathPipelinePrivate$EXTRAS"
 RUN sudo pip3 uninstall -y astropath
 RUN chown -R root:root /usr/local/lib/python3.8/
 
