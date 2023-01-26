@@ -47,6 +47,9 @@ class SampleDefBase(MyDataClassFrozen):
 
   @classmethod
   def transforminitargs(cls, *args, root=None, samp=None, **kwargs):
+    if root is not None:
+      root = pathlib.Path(root)
+
     if samp is not None:
       if isinstance(samp, str):
         if "SlideID" in kwargs:
@@ -192,7 +195,7 @@ class ControlTMASampleDef(SampleDefBase):
   def isGood(self): return True
   @classmethod
   def sampledefcsv(cls, root):
-    result, = (root/"Ctrl").glob("project*_ctrlsamples.csv")
+    result, = (root/"Ctrl").glob("[Pp]roject*_ctrlsamples.csv")
     return result
 
 class MetadataSummary(MyDataClassFrozen):

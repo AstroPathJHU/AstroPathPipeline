@@ -29,7 +29,7 @@ pipeline {
 
       stages{
 
-		    stage('pip install') {
+        stage('pip install') {
           steps {
             sh 'pip install .[all]'
           }
@@ -45,10 +45,11 @@ pipeline {
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpslogger.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmoduletools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsshredxml.ps1'
+            // sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsconvertim3path.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminform.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsvminformqueue.ps1'
-            //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
-            //sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
+            // sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampletracker.ps1'
+            sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssampledb.ps1'
           }
         }
 
@@ -137,13 +138,11 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpswarpfits.ps1'
                   }
                 }
-                /*
                 stage('test meanimage ps workflow') {
                   steps {
                     sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsmeanimage.ps1'
                   }
                 }
-                */
               }
             }
 

@@ -467,11 +467,11 @@
         $testfile = $testfile -replace '\.', ''
         #
         $count1 = $this.countfiles(
-            $this.($source + 'folder')(), $this.($source + 'constant')
+            $this.CrossPlatformPaths($this.($source + 'folder')()), $this.($source + 'constant')
         )
         #
         $count2 = $this.countfiles(
-            $this.($testfile + 'folder')(), $this.($testfile + 'constant')
+            $this.CrossPlatformPaths($this.($testfile + 'folder')()), $this.($testfile + 'constant')
         )
         #
         if ($count1 -ne $count2){

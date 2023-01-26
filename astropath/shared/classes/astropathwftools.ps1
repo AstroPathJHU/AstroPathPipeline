@@ -109,6 +109,9 @@ class astropathwftools : sampledb {
             $processid = $this.checkprocessid($jobname)
             #
             if ($processid -ne 0){
+                if ($processid -eq -1) {
+                    continue
+                }
                 $this.writeoutput("     Orphaned job found: $workertasklog")
                 $this.StartOrphanMonitor($jobname, $processid)
                 $idleworkers[$worker].Status = 'RUNNING'
@@ -156,8 +159,13 @@ class astropathwftools : sampledb {
                     -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue}
             } catch {
                 $this.enableremoting($ip)
-                $proc = invoke-command -computername $ip -credential $this.login -EA Stop `
-                    -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue} 
+                if ((Test-NetConnection $ip -InformationLevel Quiet)) {
+                    $proc = invoke-command -computername $ip -credential $this.login -EA Stop `
+                      -scriptblock {get-process -id $using:processid -ErrorAction silentlycontinue} 
+                } else {
+                    $this.writeoutput('Error remoting to computer:' + $ip)
+                    $proc = -1
+                }
             }
         }
         #
@@ -329,6 +337,7 @@ class astropathwftools : sampledb {
         $currentworkerip = $this.defcurrentworkerip($currentworker)
         $jobname = $this.defjobname($currentworker)
         $currenttask = $this.getvminformtask($currenttask, $currentworker)
+        $currenttask = $this.getvmcomponentinformtask($currenttask, $currentworker)
         $this.writeoutput("     $currenttask")
         $this.PrepareWorkerFiles(
             $currentworker.module, $currenttask, $jobname, $currentworker)
@@ -362,6 +371,28 @@ class astropathwftools : sampledb {
         return $currenttask
     }
     <# -----------------------------------------
+     getvminformtask
+     get the current info for the vminform task
+     and update the main queue for launching the
+     task
+     ------------------------------------------
+     Usage: $this.getvminformtask($currenttask, $currentworker)
+    ----------------------------------------- #>
+    [array]getvmcomponentinformtask($currenttask, $currentworker){
+        #
+        if ($currentworker.module -notmatch 'vmcomponentinform'){
+            return $currenttask
+        }
+        #
+        $row = $this.slide_data | & { process { 
+            if ($_.SlideID -eq $this.slideid.trim()){ $_ }
+        }}
+        #
+        $currenttask = @($currenttask, $row.BatchID.padleft(2, '0'))
+        #
+        return $currenttask
+    }
+    <# -----------------------------------------
      PrepareWorkerFiles
      set up the worker task file locations and 
      prepare the unique task input string to
@@ -390,6 +421,12 @@ class astropathwftools : sampledb {
                 $currenttaskinput = '" -module ', $cmodule,
                     ' -slideid ', $currenttask[1],
                     ' -antibody ', $currenttask[2], ' -algorithm ', $currenttask[3],
+                    ' -informvers ', $this.vmq.informvers -join '"'
+            }
+            'vmcomponentinform'{
+                $currenttaskinput = '" -module ', $cmodule,
+                    ' -slideid ', $currenttask[1],
+                    ' -antibody ', 'Component', ' -algorithm ', ('component_' + $currenttask[2] + '.ifr'),
                     ' -informvers ', $this.vmq.informvers -join '"'
             } 
             'batch' {

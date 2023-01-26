@@ -140,12 +140,17 @@ class RectangleBase(DataClassWithPscale):
   def expectedfilename(self):
     pass
 
+  @property
+  def filepathtype(self):
+    if self.file is None: return pathlib.PurePath
+    return type(self.file)
+
 class Rectangle(RectangleBase):
   @property
   def expectedfilename(self):
     if self.SlideID is None:
       raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
-    return type(self.file)(f"{self.SlideID}_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
+    return self.filepathtype(f"{self.SlideID}_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
 
 class TMARectangle(RectangleBase):
   TMAsector: int
@@ -155,7 +160,7 @@ class TMARectangle(RectangleBase):
   def expectedfilename(self):
     if self.SlideID is None:
       raise TypeError("Have to give SlideID to the Rectangle constructor if you want to get the expected filename")
-    return type(self.file)(f"{self.SlideID}_Core[{self.TMAsector},{self.TMAname1},{self.TMAname2}]_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
+    return self.filepathtype(f"{self.SlideID}_Core[{self.TMAsector},{self.TMAname1},{self.TMAname2}]_[{floattoint(float(self.cx/self.onemicron)):d},{floattoint(float(self.cy/self.onemicron)):d}]{UNIV_CONST.IM3_EXT}")
 
 class RectangleWithImageLoaderBase(Rectangle):
   def __post_init__(self, *args, _DEBUG=True, _DEBUG_PRINT_TRACEBACK=False, **kwargs):
@@ -211,7 +216,16 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
   nlayersim3: int = MetaDataAnnotation(nlayersim3, includeintable=False, use_default=False)
   @property
   @abc.abstractmethod
-  def layersim3(self): return self.__layersim3
+  def layersim3(self): pass
+  @property
+  def usememmap(self): return self.__usememmap
+  @usememmap.setter
+  def usememmap(self, usememmap): self.__usememmap = usememmap
+  usememmap: bool = MetaDataAnnotation(usememmap, includeintable=False, use_default=False)
+
+  @classmethod
+  def transforminitargs(cls, *args, usememmap=False, **kwargs):
+    return super().transforminitargs(*args, usememmap=usememmap, **kwargs)
 
   @property
   def im3shape(self):
@@ -243,7 +257,7 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
     The exposure times for the HPF layersim3 you access
     """
     all = self.allexposuretimes
-    return [all[layer-1] for layer in self.__layersim3]
+    return [all[layer-1] for layer in self.layersim3]
 
   @property
   def broadbandfilters(self):
@@ -251,7 +265,7 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
     The broadband filter ids (numbered from 1) of the layersim3 you access
     """
     all = self.allbroadbandfilters
-    return [all[layer-1] for layer in self.__layersim3]
+    return [all[layer-1] for layer in self.layersim3]
 
   @methodtools.lru_cache()
   @property
@@ -268,6 +282,7 @@ class RectangleReadIm3Base(RectangleWithImageLoaderBase, RectangleWithImageSize)
     "filename": self.im3file,
     "width": floattoint(float(self.width / self.onepixel)),
     "height": floattoint(float(self.height / self.onepixel)),
+    "usememmap": self.usememmap,
     "_DEBUG": self._DEBUG,
     "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
   }

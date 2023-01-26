@@ -438,7 +438,18 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.xlsx"
   @property
   def mergeconfig(self):
-    return self.readtable(self.mergeconfigcsv, MergeConfig)
+    try:
+      return self.readtable(self.mergeconfigcsv, MergeConfig)
+    except:
+      try:
+        exceptionsecondtime = False
+        return self.readtable(self.mergeconfigcsv, MergeConfig, ignoretrailingcommas=True)
+      except:
+        exceptionsecondtime = True
+        raise
+      finally:
+        if not exceptionsecondtime:
+          self.logger.warningglobalonenter(f"Merge config {self.mergeconfigcsv} has extra trailing commas")
   @property
   def batchxlsx(self) :
     fp = self.root/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
@@ -548,11 +559,13 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       if misckwargs:
         raise TypeError(f"Some miscellaneous kwargs were not processed:\n{misckwargs}")
       sample = cls(**initkwargs)
-      with sample:
-        sample.run(**runkwargs)
-        missingoutputs = sample.missingoutputfiles
-        if missingoutputs:
-          raise RuntimeError(f"{sample.logger.SlideID} ran successfully but some output files are missing: {', '.join(str(_) for _ in missingoutputs)}")
+      with sample.joblock() as lock:
+        if not lock: raise RuntimeError(f"Another process is already running {sample}")
+        with sample:
+          sample.run(**runkwargs)
+          missingoutputs = sample.missingoutputfiles
+          if missingoutputs:
+            raise RuntimeError(f"{sample.logger.SlideID} ran successfully but some output files are missing: {', '.join(str(_) for _ in missingoutputs)}")
       return sample
 
   @classmethod
@@ -2228,7 +2241,7 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
       segstatus = layer.SegmentationStatus
       if segstatus != 0:
         segid = layer.ImageQA
-        if segid == "NA":
+        if segid not in ("Tumor", "Immune"):
           segid = segstatus
         if segstatus not in dct:
           dct[segstatus] = segid
