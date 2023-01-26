@@ -403,7 +403,7 @@ RUN \
 
 ARG ASTROPATH_INSTALL_EXTRAS=true
 
-RUN sudo pip3 install --use-pep517 distro-info
+RUN sudo pip3 install --use-pep517 pyvips
 RUN \
   if $ASTROPATH_INSTALL_EXTRAS; then \
     EXTRAS="[all]"; \
