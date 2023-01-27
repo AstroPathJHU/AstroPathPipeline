@@ -1,5 +1,5 @@
 #comes with python + git and some other utilities
-FROM ubuntu:23.04 AS base
+FROM ubuntu:20.04 AS base
 
 #https://stackoverflow.com/a/25908200/5228524
 #https://github.com/CircleCI-Public/circleci-dockerfiles/blob/eda702fe560b258138d3a895c5d397f4a2cdfcd0/python/images/3.6.12/Dockerfile#L83
@@ -391,7 +391,7 @@ RUN sudo ldconfig
 ARG GITHUB_TOKEN
 ARG ASTROPATH_DEPENDENCY_COMMIT=50aa7189e1999d406588acc1ae565233eafa8779
 
-RUN sudo pip3 install --upgrade pip setuptools packaging
+RUN sudo pip3 install --upgrade pip 'setuptools<66' packaging
 
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
