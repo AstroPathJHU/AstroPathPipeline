@@ -7,8 +7,8 @@ FROM ubuntu:23.04 AS base
 RUN apt-get update && \
       apt-get -y install sudo
 
-RUN adduser --disabled-password --gecos '' astropath && \
-    adduser astropath sudo && \
+RUN PATH="$PATH:/sbin:/usr/sbin:usr/local/sbin" adduser --disabled-password --gecos '' astropath && \
+    PATH="$PATH:/sbin:/usr/sbin:usr/local/sbin" adduser astropath sudo && \
     echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # Install PowerShell From microsoft doc: https://docs.microsoft.com/en-us/powershell/scripting/install/install-ubuntu?view=powershell-7.2
