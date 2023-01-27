@@ -1,5 +1,5 @@
 #comes with python + git and some other utilities
-FROM ubuntu:20.04 AS base
+FROM ubuntu:23.04 AS base
 
 #https://stackoverflow.com/a/25908200/5228524
 #https://github.com/CircleCI-Public/circleci-dockerfiles/blob/eda702fe560b258138d3a895c5d397f4a2cdfcd0/python/images/3.6.12/Dockerfile#L83
