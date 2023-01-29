@@ -5,7 +5,7 @@ FROM ubuntu:20.04 AS base
 #https://github.com/CircleCI-Public/circleci-dockerfiles/blob/eda702fe560b258138d3a895c5d397f4a2cdfcd0/python/images/3.6.12/Dockerfile#L83
 #https://dev.to/emmanuelnk/using-sudo-without-password-prompt-as-non-root-docker-user-52bg
 RUN apt-get update && \
-      apt-get -y install sudo
+      apt-get -y install sudo adduser
 
 RUN adduser --disabled-password --gecos '' astropath && \
     adduser astropath sudo && \
@@ -391,7 +391,7 @@ RUN sudo ldconfig
 ARG GITHUB_TOKEN
 ARG ASTROPATH_DEPENDENCY_COMMIT=50aa7189e1999d406588acc1ae565233eafa8779
 
-RUN sudo pip3 install --upgrade pip setuptools packaging
+RUN sudo pip3 install --upgrade pip 'setuptools<66' packaging
 
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
@@ -403,6 +403,8 @@ RUN \
 
 ARG ASTROPATH_INSTALL_EXTRAS=true
 
+RUN sudo pip3 install --use-pep517 pyvips
+RUN sudo pip3 install git+https://github.com/MIC-DKFZ/nnUNet.git@refs/pull/1209/head
 RUN \
   if $ASTROPATH_INSTALL_EXTRAS; then \
     EXTRAS="[all]"; \
