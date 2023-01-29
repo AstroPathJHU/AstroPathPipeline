@@ -221,7 +221,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         return FilterResult(False, " ".join(messages))
       else:
         return FilterResult(True, "Sample has the right segmentation algorithms in geom.")
-    if not parsed_args_dict["print_mode"]:
+    if not parsed_args_dict["print_mode"] and not result["skipcells"]:
       result["slideidfilters"].append(SampleFilter(correctsegmentations, None, None))
     return result
 
@@ -234,7 +234,12 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
 
   @property
   def initiatesamplekwargs(self):
-    return {**super().initiatesamplekwargs, "segmentationalgorithms": self.segmentationalgorithms}
+    return {
+      **super().initiatesamplekwargs,
+      "segmentationalgorithms": self.segmentationalgorithms,
+      "skipannotations": self.skipannotations,
+      "skipcells": self.skipcells,
+    }
 
   def runsample(self, sample, **kwargs):
     return sample.runcsvscan(**kwargs)
@@ -263,6 +268,8 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
         "printthreshold": True,
         "segmentationalgorithms": True,
         "sampledefroot": True,
+        "skipannotations": True,
+        "skipcells": True,
       }[k]
     }
 
