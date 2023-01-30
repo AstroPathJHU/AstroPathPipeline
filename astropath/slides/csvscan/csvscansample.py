@@ -10,6 +10,7 @@ from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, ReadRectan
 from ...shared.workflowdependency import ThingWithRoots, ThingWithWorkflowKwargs
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield, TableReader
+from ..align.alignsample import AlignSample
 from ..align.field import Field, FieldBoundary, FieldOverlap
 from ..align.imagestats import ImageStats
 from ..align.overlap import AlignmentResult
@@ -23,7 +24,9 @@ class CsvScanRectangle(GeomLoadRectangle, PhenotypedRectangle):
   pass
 
 class CsvScanBase(TableReader, ThingWithWorkflowKwargs):
-  def __init__(self, *args, segmentationalgorithms=None, **kwargs):
+  def __init__(self, *args, skipannotations=False, skipcells=False, segmentationalgorithms=None, **kwargs):
+    self.__skipannotations = skipannotations
+    self.__skipcells = skipcells
     if not segmentationalgorithms: segmentationalgorithms = ["inform"]
     if "inform" not in segmentationalgorithms:
       raise ValueError("Have to include inform segmentation")
@@ -35,6 +38,10 @@ class CsvScanBase(TableReader, ThingWithWorkflowKwargs):
 
   @property
   def segmentationalgorithms(self): return self.__segmentationalgorithms
+  @property
+  def skipcells(self): return self.__skipcells
+  @property
+  def skipannotations(self): return self.__skipannotations
 
   @property
   @abc.abstractmethod
@@ -67,6 +74,8 @@ class CsvScanBase(TableReader, ThingWithWorkflowKwargs):
     return {
       **super().workflowkwargs,
       "segmentationalgorithms": self.segmentationalgorithms,
+      "skipcells": self.skipcells,
+      "skipannotations": self.skipannotations,
     }
 
 class RunCsvScanBase(CsvScanBase, ArgumentParserWithVersionRequirement, InitAndRunFromArgumentParserBase, RunFromArgumentParserBase, ThingWithRoots, ThingWithWorkflowKwargs):
@@ -76,6 +85,8 @@ class RunCsvScanBase(CsvScanBase, ArgumentParserWithVersionRequirement, InitAndR
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
     p.add_argument("--skip-check", action="store_false", dest="checkcsvs", help="do not check the validity of the csvs")
+    p.add_argument("--skip-cells", action="store_true", help="skip cells csvs (segmentation and phenotype)")
+    p.add_argument("--skip-annotations", action="store_true", help="skip annotation csvs")
     p.add_argument("--ignore-csvs", action="append", type=re.compile, help="ignore extraneous csv files that match this regex", default=[])
     p.add_argument("--segmentation-algorithm", action="append", choices=cls.possiblesegmentationalgorithms, help="load cell geometry csvs from these segmentation algorithms", metavar="algorithm", dest="segmentation_algorithms")
     return p
@@ -85,6 +96,8 @@ class RunCsvScanBase(CsvScanBase, ArgumentParserWithVersionRequirement, InitAndR
     kwargs = {
       **super().initkwargsfromargumentparser(parsed_args_dict),
       "segmentationalgorithms": parsed_args_dict.pop("segmentation_algorithms"),
+      "skipcells": parsed_args_dict.pop("skip_cells"),
+      "skipannotations": parsed_args_dict.pop("skip_annotations"),
     }
     return kwargs
 
@@ -122,10 +135,6 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
       self.csv(_) for _ in (
         "affine",
         "align",
-        "annotationinfo",
-        "annotations",
-        "annowarp",
-        "annowarp-stitch",
         "batch",
         "constants",
         "exposures",
@@ -136,17 +145,26 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
         "overlap",
         "qptiff",
         "rect",
-        "regions",
-        "vertices",
       )
     }
-    expectcsvs |= {
-      r.geomloadcsv(algo) for r in self.rectangles for algo in self.segmentationalgorithms
-    }
-
-    expectcsvs |= {
-      r.phenotypecsv for r in self.rectangles if self.hasanycells(r, "inform")
-    }
+    if not self.skipannotations:
+      expectcsvs |= {
+        self.csv(_) for _ in (
+          "annotationinfo",
+          "annotations",
+          "annowarp",
+          "annowarp-stitch",
+          "regions",
+          "vertices",
+        )
+      }
+    if not self.skipcells:
+      expectcsvs |= {
+        r.geomloadcsv(algo) for r in self.rectangles for algo in self.segmentationalgorithms
+      }
+      expectcsvs |= {
+        r.phenotypecsv for r in self.rectangles if self.hasanycells(r, "inform")
+      }
 
     meanimagecsvs = {
       self.im3folder/f"{self.SlideID}-mean.csv",
@@ -212,8 +230,11 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
           "tumorGeometry": (FieldBoundary, "TumorGeometry"),
           "vertices": (WarpedVertex, "Vertices"),
         }[match.group(1)]
-        allannotationinfos = self.readcsv("annotationinfo", AnnotationInfo, extrakwargs={"scanfolder": self.scanfolder})
-        allannotations = self.readcsv("annotations", Annotation, extrakwargs={"annotationinfos": allannotationinfos})
+        if self.skipannotations:
+          allannotationinfos = allannotations = None
+        else:
+          allannotationinfos = self.readcsv("annotationinfo", AnnotationInfo, extrakwargs={"scanfolder": self.scanfolder})
+          allannotations = self.readcsv("annotations", Annotation, extrakwargs={"annotationinfos": allannotationinfos})
         allrectangles = self.readcsv("rect", Rectangle)
         extrakwargs = {
           "annotationinfo": {"scanfolder": self.scanfolder},
@@ -268,25 +289,36 @@ class CsvScanSample(WorkflowSample, ReadRectanglesDbload, GeomSampleBase, CellPh
 
   def inputfiles(self, **kwargs):
     yield from super().inputfiles(**kwargs)
-    for r in self.rectangles:
-      for algo in self.segmentationalgorithms:
-        yield r.geomloadcsv(algo)
-      if self.hasanycells(r, "inform"):
-        yield r.phenotypecsv
+    if not self.skipcells:
+      for r in self.rectangles:
+        for algo in self.segmentationalgorithms:
+          yield r.geomloadcsv(algo)
+        if self.hasanycells(r, "inform"):
+          yield r.phenotypecsv
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
     segmentationalgorithms = kwargs["segmentationalgorithms"]
-    return [
-      AnnoWarpSampleInformTissueMask,
-      CopyAnnotationInfoSampleBase,
-    ] + [
-      {
-        "inform": GeomCellSampleInform,
-        "deepcell": GeomCellSampleDeepCell,
-        "mesmer": GeomCellSampleMesmer,
-      }[algo] for algo in segmentationalgorithms
-    ] + super().workflowdependencyclasses(**kwargs)
+    skipcells = kwargs["skipcells"]
+    skipannotations = kwargs["skipannotations"]
+    result = super().workflowdependencyclasses(**kwargs)
+    result += [
+      AlignSample,
+    ]
+    if not skipannotations:
+      result += [
+        AnnoWarpSampleInformTissueMask,
+        CopyAnnotationInfoSampleBase,
+      ]
+    if not skipcells:
+      result += [
+        {
+          "inform": GeomCellSampleInform,
+          "deepcell": GeomCellSampleDeepCell,
+          "mesmer": GeomCellSampleMesmer,
+        }[algo] for algo in segmentationalgorithms
+      ]
+    return result
 
   def run(self, *args, **kwargs): return self.runcsvscan(*args, **kwargs)
 
