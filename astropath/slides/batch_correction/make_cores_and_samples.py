@@ -3,7 +3,6 @@ This script creates the Ctrl/*_cores.csv and Ctrl/*_samples.csv files for a coho
 """
 
 #imports
-from asyncio import coroutines
 import pathlib
 from argparse import ArgumentParser
 from ...shared.samplemetadata import ControlTMASampleDef
