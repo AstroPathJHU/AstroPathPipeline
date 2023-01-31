@@ -677,6 +677,10 @@
         } else {
            $str = $this.pyoptsnoaxquiredannossubcustomannotation($annotationpath)
         }
+        #
+        return $str
+        #
+    }
     #
     [string]pyoptsnoaxquiredannossub(){
         #

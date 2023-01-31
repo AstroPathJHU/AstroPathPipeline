@@ -238,10 +238,12 @@ Class testpsmeanimage : testtools {
         $dpath = $this.basepath
         $inp.getmodulename()
         #
-        Write-Host '    removing annotations from xml file'
+        Write-Host '    copying annotations file'
         $sorxml = $inp.sample.annotationxml()
         $desxml = $this.processloc, $this.slideid, 'test' -join '\'
         $inp.sample.copy($sorxml, $desxml)
+        #
+        Write-Host '    removing annotations from xml file'
         $xmlfile = $inp.sample.getcontent($desxml)
         $xmlfile2 = $xmlfile -replace 'Acquired', 'Unignored'
         $inp.sample.setfile($desxml, $xmlfile2)
@@ -268,6 +270,7 @@ Class testpsmeanimage : testtools {
         $sorxml = $inp.sample.Scanfolder()
         $inp.sample.copy($desxml, $sorxml, 'annotations.xml')
         #>
+        Write-Host '    cleaning up test annotations file'
         $inp.sample.removefile($desxml)
         Write-Host 'test python [meanimage] in workflow without xml annos finished'
         #
