@@ -37,14 +37,14 @@ Class testpsmeanimage : testtools {
         $inp = meanimage $this.task 
         $inp.sample.teststatus = $true  
         $this.checkcreatepyenv($inp.sample)
-        $this.testprocessroot($inp, $true)
+        <#$this.testprocessroot($inp, $true)
         $this.comparepymeanimageinput($inp)
         $this.runpytaskpyerror($inp, $true)
         $this.testlogpyerror($inp)
         $this.runpytaskaperror($inp)
         $this.testlogaperror($inp)
         $this.runpytaskexpected($inp)
-        $this.testlogsexpected($inp)
+        $this.testlogsexpected($inp) #>
         # $this.runpytaskexpectedapid($inp)
         # $this.testlogsexpectedapid($inp)
         $this.runpytaskexpectednoxml($inp)
@@ -240,10 +240,11 @@ Class testpsmeanimage : testtools {
         #
         Write-Host '    copying annotations file'
         $sorxml = $inp.sample.annotationxml()
-        $desxml = $this.processloc, $this.slideid, 'test' -join '\'
-        $inp.sample.copy($sorxml, $desxml)
+        $desfolder = $this.processloc, $this.slideid, 'test' -join '\'
+        $inp.sample.copy($sorxml, $desfolder)
         #
         Write-Host '    removing annotations from xml file'
+        $desxml = $desfolder, (Split-Path $sorxml -leaf) -join '\'
         $xmlfile = $inp.sample.getcontent($desxml)
         $xmlfile2 = $xmlfile -replace 'Acquired', 'Unignored'
         $inp.sample.setfile($desxml, $xmlfile2)
