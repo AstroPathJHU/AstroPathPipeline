@@ -37,14 +37,14 @@ Class testpsmeanimage : testtools {
         $inp = meanimage $this.task 
         $inp.sample.teststatus = $true  
         $this.checkcreatepyenv($inp.sample)
-        <#$this.testprocessroot($inp, $true)
+        $this.testprocessroot($inp, $true)
         $this.comparepymeanimageinput($inp)
         $this.runpytaskpyerror($inp, $true)
         $this.testlogpyerror($inp)
         $this.runpytaskaperror($inp)
         $this.testlogaperror($inp)
         $this.runpytaskexpected($inp)
-        $this.testlogsexpected($inp) #>
+        $this.testlogsexpected($inp)
         # $this.runpytaskexpectedapid($inp)
         # $this.testlogsexpectedapid($inp)
         $this.runpytaskexpectednoxml($inp)
