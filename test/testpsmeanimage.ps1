@@ -242,12 +242,12 @@ Class testpsmeanimage : testtools {
         $sorxml = $inp.sample.annotationxml()
         $desxml = $this.processloc, $this.slideid, 'test' -join '\'
         $inp.sample.copy($sorxml, $desxml)
-        $xmlfile = $inp.sample.getcontent($sorxml)
+        $xmlfile = $inp.sample.getcontent($desxml)
         $xmlfile2 = $xmlfile -replace 'Acquired', 'Unignored'
-        $inp.sample.setfile($sorxml, $xmlfile2)
+        $inp.sample.setfile($desxml, $xmlfile2)
         #
         $et_offset_file = $this.basepath,'corrections\best_exposure_time_offsets_Vectra_9_8_2020.csv' -join '\'
-        $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath) 
+        $pythontask = $inp.('getpythontask' + $inp.pytype + 'annotation')($dpath, $rpath, $desxml) 
         if ($pythontask -notmatch $this.slideid){
             Write-Host '    python task:' $pythontask
             Throw 'annotation file missing test failed; slideid is not in python task'
@@ -263,11 +263,12 @@ Class testpsmeanimage : testtools {
         #
         $externallog = $inp.ProcessLog($inp.pythonmodulename) 
         $this.runpytesttask($inp, $pythontask, $externallog)
-        #
+        <#
         Write-Host '    putting sampledef file back'
         $sorxml = $inp.sample.Scanfolder()
         $inp.sample.copy($desxml, $sorxml, 'annotations.xml')
-        #
+        #>
+        $inp.sample.removefile($desxml)
         Write-Host 'test python [meanimage] in workflow without xml annos finished'
         #
     }
