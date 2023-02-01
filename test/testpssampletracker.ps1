@@ -490,6 +490,8 @@ using module .\testtools.psm1
             $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
         $this.removetestfiles($sampletracker,
             $sampletracker.meanimagefolder(), '-mask_stack.bin')
+        $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
+        $sampletracker.removefile($sampletracker.mainlogbase('meanimage'))
         #
     }
     #
