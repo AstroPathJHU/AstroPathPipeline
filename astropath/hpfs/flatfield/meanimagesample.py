@@ -613,7 +613,7 @@ class MeanImageSampleIm3(MeanImageSampleBaseIm3,WorkflowSample,XMLLayoutReader) 
         #create and write out the final mask stack, mean image, and std. error of the mean image
         self.__meanimage.make_mean_image()
         self.__meanimage.write_output(self.SlideID,self.workingdirpath)
-        #write out the field log
+        #write out the field logs
         if len(self.field_logs)>0 :
             with cd(self.workingdirpath) :
                 writetable(CONST.FIELDS_USED_CSV_FILENAME,self.field_logs)
