@@ -44,7 +44,9 @@ class LatexSummaryBase :
     def compile(self) :
         """
         Compile the summary.tex file that was created into a .pdf and remove any files that are no longer needed
-        If the compilation fails for any reason then remove the aux/log files and put the .tex file in some specified location
+        If the compilation fails for any reason then remove the aux/log files and put the .tex file in some
+        specified location
+        
         Returns 0 if the compilation was successful and 1 otherwise
         """
         cmd = ['pdflatex',os.fspath(self.__tex_filename)]
