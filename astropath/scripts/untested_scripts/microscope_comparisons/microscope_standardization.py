@@ -6,7 +6,8 @@ import numpy as np
 from astropath.utilities.img_file_io import get_raw_as_hwl, write_image_to_file
 
 #constants
-DEF_CORRECTION_FACTOR_FILEPATH = pathlib.Path()/'w_mk__reference_Polaris2.csv'
+DEF_CORRECTION_FACTOR_FILEPATH = pathlib.Path(__file__).parent/'w_mk__reference_Polaris2.csv'
+DEF_N_PROCS = 16
 IMAGE_DIMS = (1404, 1876, 43)
 
 def write_corrected_file(raw_file_path,correction_factors) :
@@ -15,10 +16,10 @@ def write_corrected_file(raw_file_path,correction_factors) :
     Meant to be run in parallel
     """
     image_array = get_raw_as_hwl(raw_file_path,*IMAGE_DIMS)
-    corrected_image = image_array/correction_factors[np.newaxis,np.newaxis,:]
-    fw_file_path = raw_file_path.parent/(raw_file_path[:-len('.Data.dat')]+'.fw')
+    corrected_image = (image_array/correction_factors[np.newaxis,np.newaxis,:]).astype(image_array.dtype)
+    fw_file_path = raw_file_path.parent/(raw_file_path.name[:-len('.Data.dat')]+'.fw')
     write_image_to_file(corrected_image,fw_file_path)
-    if fw_file_path.is_file() :
+    if fw_file_path.is_file() and fw_file_path.stat().st_size>0 :
         print(f'finished writing {fw_file_path.name}')
     else :
         print(f'ERROR: failed to write out {fw_file_path.name}!')
@@ -36,15 +37,17 @@ def correct_files(processloc,slideID,nprocs,correction_factors) :
         n_raw_files+=1
     print(f'Found {n_raw_files} raw files to correct in {file_loc}')
     procs = []
-    for fp in file_loc.glob('*.Data.dat') :
-        if (fp.parent/(fp.name[:-len('.Data.dat')]+'.fw')).is_file() :
+    for ifp,fp in enumerate(file_loc.glob('*.Data.dat'),start=1) :
+        fw_path = (fp.parent/(fp.name[:-len('.Data.dat')]+'.fw'))
+        if fw_path.is_file() and fw_path.stat().st_size>0 :
             print(f'skipping {fp} because its fw file already exists')
+            continue
         while len(procs)>=nprocs :
             p = procs.pop(0)
-            p.join(1)
+            p.join(0.1)
             if p.is_alive() :
                 procs.append(p)
-        print(f'writing out corrected file for {fp.name}...')
+        print(f'writing out corrected file for {fp.name} ({ifp}/{n_raw_files})...')
         p = mp.Process(target=write_corrected_file,args=(fp,correction_factors))
         p.start()
         procs.append(p)
@@ -82,8 +85,9 @@ def main(args=None) :
     parser.add_argument('--correction_factor_filepath',type=pathlib.Path,default=DEF_CORRECTION_FACTOR_FILEPATH,
         help=f'''Path to the CSV file with correction factors for all three microscopes as a function of image layer
                  (default = {DEF_CORRECTION_FACTOR_FILEPATH})''')
-    parser.add_argument('--nprocs',type=int,default=8,
-        help='Number of parallel processes to use for writing out corrected files')
+    parser.add_argument('--nprocs',type=int,default=DEF_N_PROCS,
+        help=f'Number of parallel processes to use for writing out corrected files (default = {DEF_N_PROCS})')
+    args = parser.parse_args(args)
     #make the list of correction factors to apply
     correction_factors = read_correction_factors(args.correction_factor_filepath,args.microscope_number)
     #read the raw files, correct them, and write them out as "fw" files
