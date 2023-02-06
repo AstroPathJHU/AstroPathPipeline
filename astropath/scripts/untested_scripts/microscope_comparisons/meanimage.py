@@ -102,8 +102,6 @@ def sum_component_tiffs(slideID,comp_tiff_dir,mask_dir,nprocs) :
     print(f'Started sum masks process for {slideID}')
     read_procs = []
     for ifp,fp in enumerate(comp_tiff_dir.glob(f'{slideID}_*_component_data.tif'),start=1) :
-        if ifp>100:
-            break
         while len(read_procs)>=nprocs-2 :
             p = read_procs.pop(0)
             p.join(0.1)
