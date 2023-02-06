@@ -11,8 +11,8 @@ DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Compar
 DEF_MASK_DIR=pathlib.Path('//bki07/')
 DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images')
 DEF_N_PROCS = 8
-IMAGE_DIMS = (1404, 1876, 10)
-#IMAGE_DIMS = (1404, 1872, 10)
+#IMAGE_DIMS = (1404, 1876, 10)
+IMAGE_DIMS = (1404, 1872, 10)
 
 def write_output(output_dir,slideID,mean_image,mask_stack) :
     """
@@ -107,7 +107,8 @@ def sum_component_tiffs(slideID,comp_tiff_dir,mask_dir,nprocs) :
             p.join(0.1)
             if p.is_alive() :
                 read_procs.append(p)
-        print(f'Reading component tiff and image mask for {fp.name} ({ifp}/{n_images})')
+        pct = 100.*ifp/n_images
+        print(f'Reading component tiff and image mask for {fp.name} ({ifp}/{n_images}, {pct:.1f}%)')
         tissue_mask_file_path = get_tissue_mask_path_for_comp_tiff_path(mask_dir,fp)
         new_p = mp.Process(target=queue_masked_image_and_mask,
                            args=(fp,
