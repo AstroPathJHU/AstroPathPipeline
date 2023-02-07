@@ -1,5 +1,5 @@
 #imports
-import pathlib, tifffile
+import pathlib, tifffile, time
 import multiprocessing as mp
 from argparse import ArgumentParser
 import numpy as np
@@ -7,9 +7,11 @@ from astropath.utilities.img_file_io import get_raw_as_hwl, write_image_to_file
 from astropath.shared.image_masking.image_mask import ImageMask
 
 #constants
-DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs')
+#DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs')
+DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs_Corrected')
 DEF_MASK_DIR=pathlib.Path('//bki07/')
-DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images')
+#DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images')
+DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images_corrected')
 DEF_N_PROCS = 8
 #IMAGE_DIMS = (1404, 1876, 10)
 IMAGE_DIMS = (1404, 1872, 10)
@@ -80,14 +82,18 @@ def sum_component_tiffs(slideID,comp_tiff_dir,mask_dir,nprocs) :
     and append the mask and masked image to queues for summing in different processes
     """
     #figure out how many images there are and make sure all of their masks exist
-    n_images = 0
+    n_images = 0; n_missing_masks = 0
     for fp in comp_tiff_dir.glob(f'{slideID}_*_component_data.tif') :
         tissue_mask_file_path = get_tissue_mask_path_for_comp_tiff_path(mask_dir,fp)
         if not tissue_mask_file_path.is_file() :
-            raise FileNotFoundError(f'ERROR: could not find expected tissue mask {tissue_mask_file_path}!')
+            print(f'WARNING!!!!! could not find expected tissue mask {tissue_mask_file_path}!')
+            n_missing_masks+=1
         n_images+=1
     if n_images<=0 :
         raise RuntimeError(f'Found {n_images} unmixed images in {comp_tiff_dir}')
+    if n_missing_masks>0 :
+        print(f'WARNING: missing {n_missing_masks} mask files from the im3 meanimage run!')
+        time.sleep(30)
     print(f'Found {n_images} total unmixed images to mask and sum for {slideID}')
     #start up the process to handle the sum of masked images
     m = mp.Manager()
