@@ -425,8 +425,8 @@ class astropathwftools : sampledb {
             }
             'vmcomponentinform'{
                 $currenttaskinput = '" -module ', $cmodule,
-                    ' -slideid ', $currenttask[1],
-                    ' -antibody ', 'Component', ' -algorithm ', ('component_' + $currenttask[2] + '.ifr'),
+                    ' -slideid ', $currenttask[0],
+                    ' -antibody ', 'Component', ' -algorithm ', ('component_' + $currenttask[1] + '.ifr'),
                     ' -informvers ', $this.vmq.informvers -join '"'
             } 
             'batch' {
