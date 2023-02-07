@@ -388,7 +388,7 @@ class astropathwftools : sampledb {
             if ($_.SlideID -eq $this.slideid.trim()){ $_ }
         }}
         #
-        $currenttask = @($currenttask, $row.BatchID.padleft(2, '0'))
+        $currenttask += $row.BatchID.padleft(2, '0')
         #
         return $currenttask
     }
@@ -426,7 +426,7 @@ class astropathwftools : sampledb {
             'vmcomponentinform'{
                 $currenttaskinput = '" -module ', $cmodule,
                     ' -slideid ', $currenttask[1],
-                    ' -antibody ', 'Component', ' -algorithm ', ('component_' + $currenttask[2] + '.ifr'),
+                    ' -antibody ', 'Component', ' -algorithm ', ('Component_' + $currenttask[2] + '.ifr'),
                     ' -informvers ', $this.vmq.informvers -join '"'
             } 
             'batch' {
