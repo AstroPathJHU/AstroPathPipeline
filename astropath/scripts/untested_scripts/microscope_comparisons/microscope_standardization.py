@@ -11,6 +11,9 @@ DEF_N_PROCS = 16
 #IMAGE_DIMS = (1404, 1876, 43)
 IMAGE_DIMS = (1404, 1872, 43)
 
+POLARIS_1_C_FACTOR = 0.86290655401729
+POLARIS_3_C_FACTOR = 0.8160237555395368
+
 def write_corrected_file(raw_file_path,correction_factors) :
     """
     Read a raw file, apply corrections, write out .fw file
@@ -75,7 +78,12 @@ def read_correction_factors(correction_factor_filepath,microscope_number) :
         errmsg = f'ERROR: found {len(correction_factors)} correction factors for Polaris_{microscope_number} in '
         errmsg+= f'{correction_factor_filepath} but images have {IMAGE_DIMS[-1]} layers!'
         raise RuntimeError(errmsg)
-    return np.array(correction_factors)
+    factors = np.array(correction_factors)
+    if microscope_number==1 :
+        factors = factors/POLARIS_1_C_FACTOR
+    elif microscope_number==3 :
+        factors = factors/POLARIS_3_C_FACTOR
+    return factors
 
 def main(args=None) :
     #parse the arguments
