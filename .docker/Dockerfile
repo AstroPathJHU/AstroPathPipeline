@@ -167,28 +167,6 @@ RUN sudo apt-get autoclean && \
     sudo apt-get autoremove && \
     sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-FROM base as texlive
-
-#install texlive
-ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
-ADD texlive-profile.txt /tmp/texlive-profile.txt
-ADD debian-equivs.txt /tmp/debian-equivs.txt
-
-RUN cd /tmp && \
-    wget http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz && \
-    mkdir /tmp/install-tl && \
-    tar -xzf /tmp/install-tl-unx.tar.gz -C /tmp/install-tl --strip-components=1 && \
-    sudo /tmp/install-tl/install-tl --profile=/tmp/texlive-profile.txt --repository=http://mirror.its.dal.ca/ctan/systems/texlive/tlnet
-
-RUN cd /tmp && \
-    sudo equivs-control texlive-local && \
-    sudo equivs-build debian-equivs.txt && \
-    sudo dpkg -i texlive-local*.deb && \
-    sudo apt-get install -f && \
-    sudo apt-get autoclean && \
-    sudo apt-get autoremove && \
-    sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
 from base as libvips
 
 ENV LIBVIPS_VERSION_MAJOR 8
@@ -213,30 +191,6 @@ RUN \
 RUN \
   cd /tmp/vips-$LIBVIPS_VERSION && \
   sudo ldconfig
-
-#if you add more latex packages, it will build faster
-#if you add them all the way at the bottom, because it can use
-#the cache from previous builds
-
-from texlive as latex_packages
-
-#add latex packages
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr update --self
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install caption
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install cleveref
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install cm-super
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install dvipng
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install hyperref
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install makecell
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install multirow
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install scheme-basic
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install siunitx
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install type1cm
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install todonotes
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install enumitem
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install lineno
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install underscore
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install etoolbox
 
 from base as gdal
 
@@ -426,7 +380,6 @@ COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/include/ ${PROJ_INSTALL_PREFIX}/i
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/bin/ ${PROJ_INSTALL_PREFIX}/bin/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/lib/ ${PROJ_INSTALL_PREFIX}/lib/
 copy --from=python_packages /usr/local/lib/python3.8/dist-packages/ /usr/local/lib/python3.8/dist-packages/
-copy --from=latex_packages /usr/local/texlive/ /usr/local/texlive/
 RUN sudo ldconfig
 #RUN sudo projsync --system-directory --all
 
@@ -439,7 +392,7 @@ COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
 ENV CLASSPATH="/usr/share/java/jackcess-1.1.14.jar:/usr/share/java/commons-logging-1.1.1.jar:/usr/share/java/commons-lang-2.4.jar"
-ENV PATH=/usr/local/texlive/bin/x86_64-linux:/home/astropath/.local/bin:${PATH}
+ENV PATH=/home/astropath/.local/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
 
 USER astropath

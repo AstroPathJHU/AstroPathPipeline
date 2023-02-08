@@ -153,13 +153,6 @@ pipeline {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testalignment'
                   }
                 }
-                stage('alignment documents') {
-                  steps {
-                    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.alignment.makeplots --testing'
-                    sh 'cd documents/alignment; pdflatex alignment.tex; pdflatex alignment.tex; pdflatex alignment.tex'
-                    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/alignment/alignment.log'
-                  }
-                }
               }
             }
 
@@ -188,13 +181,6 @@ pipeline {
                 stage('test annowarp') {
                   steps {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testannowarp'
-                  }
-                }
-                stage('annowarp plots') {
-                  steps {
-                    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.annowarp.makeplots'
-                    sh 'cd documents/annowarp; pdflatex annowarp.tex; pdflatex annowarp.tex; pdflatex annowarp.tex'
-                    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/annowarp/annowarp.log'
                   }
                 }
               }
@@ -226,12 +212,6 @@ pipeline {
                 stage('test meanimage') {
                   steps {
                     sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testmeanimage'
-                  }
-                }
-                stage('flatfield documents') {
-                  steps {
-                    sh 'cd documents/flatfield; pdflatex flatfield_documentation.tex; bibtex flatfield_documentation; pdflatex flatfield_documentation.tex; pdflatex flatfield_documentation.tex'
-                    sh 'folder=$(basename $(pwd)); cd ..; python -m ${folder}.documents.checklog ${folder}/documents/flatfield/flatfield_documentation.log'
                   }
                 }
                 stage('meanimagecomparison') {
@@ -281,9 +261,6 @@ pipeline {
       }
       post {
         always {
-          archiveArtifacts artifacts: 'documents/alignment/alignment.pdf', fingerprint: true
-          archiveArtifacts artifacts: 'documents/annowarp/annowarp.pdf', fingerprint: true
-          archiveArtifacts artifacts: 'documents/flatfield/flatfield_documentation.pdf', fingerprint: true
           archiveArtifacts artifacts: 'test/test_for_jenkins/**', fingerprint: true, allowEmptyArchive: true
         }
       }
