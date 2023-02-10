@@ -408,6 +408,10 @@ class StitchResultBase(RectangleOverlapCollection, units.ThingWithPscale):
     Give all the overlaps a stitchresult vector
     """
     for o in self.overlaps:
+      try:
+        o.result
+      except AttributeError:
+        raise ValueError(f"{o} has not been aligned - maybe you need to call align() or readalignments() first?")
       o.stitchresult = self.dx(o)
 
   @methodtools.lru_cache()
