@@ -8,12 +8,12 @@ from astropath.shared.image_masking.image_mask import ImageMask
 
 #constants
 #DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs')
-#DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs_Corrected')
-DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs_SingleLibrary')
+DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs_Corrected')
+#DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs_SingleLibrary')
 DEF_MASK_DIR=pathlib.Path('//bki07/')
 #DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images')
-#DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images_corrected')
-DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images_single_library')
+DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images_corrected')
+#DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images_single_library')
 DEF_N_PROCS = 16
 #IMAGE_DIMS = (1404, 1876, 10)
 IMAGE_DIMS = (1404, 1872, 10)
