@@ -1,5 +1,5 @@
 #imports
-import pathlib, cv2
+import pathlib, cv2, copy
 import numpy as np
 from ...utilities.miscfileio import cd
 from ...utilities.img_file_io import smooth_image_worker, im3writeraw, write_image_to_file, get_raw_as_hwl
@@ -495,7 +495,7 @@ def return_new_mask_labelled_regions(im_array,layer_groups,bright_layers,im_key,
     """
     mask = ImageMask(im_array,layer_groups,bright_layers,im_key,bg_thresholds,norm_ets)
     mask.save_mask_files(savedir)
-    return mask.labelled_mask_regions
+    return copy.deepcopy(mask.labelled_mask_regions)
 
 def save_plots_for_image(im_array,layer_groups,bright_layers,im_key,bg_thresholds,norm_ets,
                          orig_ets,exp_time_hists_and_bins,savedir) :

@@ -356,6 +356,7 @@ if isa(B.CoexpressionStatus,'double')
            tmpCS_n = [tmpCS_n;t];
            tmpCS_n = reshape(tmpCS_n(tmpCS_n ~= 0),1,[]);
            tmpCS{i1} = tmpCS_n;
+           clear t
        end
    end
    %

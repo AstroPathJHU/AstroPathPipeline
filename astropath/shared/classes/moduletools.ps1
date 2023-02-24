@@ -605,6 +605,12 @@
         return $str
     }
     #
+    [string]buildpyoptscustomannotation($annotationpath){
+        $str = '--allow-local-edits --skip-start-finish',
+            $this.pyoptsnoaxquiredannoscustomannotation($annotationpath) -join ''
+        return $str
+    }
+    #
     [string]buildpyopts($opt){
         $str = '--allow-local-edits --use-apiddef',
             $this.pyoptsnoaxquiredannos() -join ''
@@ -651,6 +657,31 @@
         #
     }
     #
+    [string]pyoptsnoaxquiredannoscustomannotation($annotationpath){
+        #
+        $str = ''
+        #
+        if ($this.sample.batchid -contains $this.sample.slideid) {    
+            #
+            $this.batchslides | foreach-object {
+                $this.sample.slideid = $_
+                $str = $this.pyoptsnoaxquiredannossubcustomannotation($annotationpath)
+                if ($str){
+                    $this.sample.slideid = $this.sample.batchid
+                    return $str
+                }
+            }
+            #
+            $this.sample.slideid = $this.sample.batchid
+            #
+        } else {
+           $str = $this.pyoptsnoaxquiredannossubcustomannotation($annotationpath)
+        }
+        #
+        return $str
+        #
+    }
+    #
     [string]pyoptsnoaxquiredannossub(){
         #
         $str = ''
@@ -668,9 +699,27 @@
         #
     }
     #
+    [string]pyoptsnoaxquiredannossubcustomannotation($annotationpath){
+        #
+        $str = ''
+        #
+        if (test-path $annotationpath){
+            $xmlfile = $this.sample.getcontent($annotationpath)
+            if ([regex]::Escape($xmlfile) -notmatch 'Acquired'){
+                $this.sample.warning('No "Acquired" Fields in annotation xmls, including "Flagged for Acquisition" Fields.')
+                $this.sample.warning('Note some fields may have failed but this cannot be determined from xml file!')
+                $str = ' --include-hpfs-flagged-for-acquisition'
+            }
+        }
+        #
+        return $str
+        #
+    }
+    #
     [void]runpythontask($taskname, $pythontask){
         #
         $externallog = $this.ProcessLog($taskname)
+        $pythontask = $this.sample.CrossPlatformPaths($pythontask)
         $this.sample.info(('python task: ' + $pythontask))
         if ($this.sample.isWindows()){
             $this.sample.checkconda()
@@ -687,6 +736,7 @@
     [void]runpythontask($taskname, $pythontask, $nolog){
         #
         $externallog = $this.ProcessLog($taskname)
+        $pythontask = $this.sample.CrossPlatformPaths($pythontask)
         $this.sample.info(('python task: ' + $pythontask))
         if ($this.sample.isWindows()){
             $this.sample.checkconda()

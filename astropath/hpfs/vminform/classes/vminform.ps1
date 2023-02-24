@@ -741,7 +741,7 @@ Class vminform : moduletools {
     ----------------------------------------- #>
     [void]datavalidation(){
         if ($this.needscomponent) {
-            if (!$this.sample.testcomponentfiles()){
+            if (!$this.sample.testvmcomponentinformfiles()){
                 throw 'Output files are not correct'
             }
         }
