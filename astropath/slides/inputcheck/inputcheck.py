@@ -59,7 +59,7 @@ class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTi
 
       for r in self.rectangles:
         if not r.tissuemaskfile.exists():
-          self.logger.warning("Missing mask: {r.tissuemaskfile}")
+          self.logger.warning(f"Missing mask: {r.tissuemaskfile}")
         try:
           with r.using_tissuemask():
             pass
