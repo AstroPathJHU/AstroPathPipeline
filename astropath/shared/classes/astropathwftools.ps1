@@ -385,7 +385,7 @@ class astropathwftools : sampledb {
         }
         #
         $row = $this.slide_data | & { process { 
-            if ($_.SlideID -eq $this.slideid.trim()){ $_ }
+            if ($_.SlideID -eq $currenttask[1].trim()){ $_ }
         }}
         #
         $currenttask += $row.BatchID.padleft(2, '0')
