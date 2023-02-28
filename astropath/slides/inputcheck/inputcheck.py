@@ -10,11 +10,12 @@ class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTi
   rectangletype = InputCheckerRectangle
   multilayercomponenttiff = True
 
-  def __init__(self, *args, checkintegrity=True, **kwargs):
+  def __init__(self, *args, checkintegrity=True, suppressinitwarnings=True, **kwargs):
     self.__checkintegrity = checkintegrity
     super().__init__(
       *args,
       layerscomponenttiff="setlater",
+      suppressinitwarnings=suppressinitwarnings,
       **kwargs
     )
     self.setlayerscomponenttiff(
