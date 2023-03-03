@@ -739,8 +739,23 @@ class copyutils{
         #
     }
     #
-    [void]writeoutput($mess){
-        Write-Host ("$mess - " + ($this.getformatdate())) -ForegroundColor Yellow
+    [void]writeoutput($out){
+        Write-Host ("$out - " + ($this.getformatdate())) -ForegroundColor Yellow
+        $this.writetodailylog($out)
+    }
+    #
+    [void]writetodailylog($out){
+        $date = Get-Date -Format "MM.dd.yyyy"
+        $dailylogfolder = $dailylog = "C:/Users/Public/astropath/dailylogs/"
+        $dailylog = $dailylogfolder + "astropath.$date.log"
+        #
+        if (!(Test-Path $dailylogfolder)) {
+            New-Item $dailylogfolder -ItemType "directory"
+        }
+        if (!(Test-Path $dailylog)) {
+            New-Item $dailylog
+        }
+        Add-Content $dailylog $out
     }
     #
     [string]getformatdate(){
