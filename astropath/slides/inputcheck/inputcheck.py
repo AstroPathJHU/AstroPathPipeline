@@ -10,11 +10,12 @@ class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTi
   rectangletype = InputCheckerRectangle
   multilayercomponenttiff = True
 
-  def __init__(self, *args, checkintegrity=True, **kwargs):
+  def __init__(self, *args, checkintegrity=True, suppressinitwarnings=True, **kwargs):
     self.__checkintegrity = checkintegrity
     super().__init__(
       *args,
       layerscomponenttiff="setlater",
+      suppressinitwarnings=suppressinitwarnings,
       **kwargs
     )
     self.setlayerscomponenttiff(
@@ -58,7 +59,7 @@ class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTi
 
       for r in self.rectangles:
         if not r.tissuemaskfile.exists():
-          self.logger.warning("Missing mask: {r.tissuemaskfile}")
+          self.logger.warning(f"Missing mask: {r.tissuemaskfile}")
         try:
           with r.using_tissuemask():
             pass
