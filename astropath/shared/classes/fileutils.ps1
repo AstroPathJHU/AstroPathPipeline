@@ -526,14 +526,14 @@ class fileutils : generalutils {
         $file.Attributes = 'Archive, Hidden'
         $file.Attributes = 'Archive'
         #
+        start-sleep 1
+        #
         $mevents = get-event | 
             Where-Object{$_.sourceidentifier -match [regex]::Escape($SI)}
         #
         if ($mevents){
-            $mevents |
-                foreach-object {
-                    remove-event -eventidentifier $_.eventidentifier
-                }
+            #
+            $this.clearevents($mevents[0].SourceIdentifier)
             return $true
         } else {
             $this.UnregisterEvent($SI)
@@ -549,6 +549,11 @@ class fileutils : generalutils {
         get-event | 
             Where-Object {$_.SourceIdentifier -match [regex]::Escape($mevent)} |
             remove-event
+        $mevents = get-event | 
+            Where-Object{$_.sourceidentifier -match [regex]::Escape($mevent)}
+        if ($mevents){
+            $this.writeoutput("WARNING: events not removed correctly: $mevent")
+        }
         #
     }
     <# -----------------------------------------
