@@ -69,15 +69,18 @@
 
     )
     #
-    if ($PSBoundParameters.test){
-        $inp = initmodule -task $PSBoundParameters -module $module -test
-        return $inp
-    }
-    #
-    if ($PSBoundParameters.interactive){
-        Write-host '2'
-        $inp = initmodule -task $PSBoundParameters -module $module -interactive
-        return $inp
+    switch ($true) {
+        ($PSBoundParameters.test -and $PSBoundParameters.interactive) {
+            throw 'Cannot use both test and interactive switch at the same time'
+        }
+        $PSBoundParameters.test {
+            $inp = initmodule -task $PSBoundParameters -module $module -test
+            return $inp
+        }
+        $PSBoundParameters.interactive {
+            $inp = initmodule -task $PSBoundParameters -module $module -interactive
+            return $inp
+        }
     }
     #
     if ($module -match 'batch'){
@@ -85,7 +88,6 @@
             $batchid, $project, $PSBoundParameters)
         #
     } else {
-        Write-host '3'
         $m = [launchmodule]::new($mpath, $module,
             $slideid, $PSBoundParameters)
     }        

@@ -27,14 +27,13 @@ Function initmodule {
     #
     # used for testing; when launched manually without launchmodule
     #
-    if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
+    if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test -or $PSBoundParameters.interactive){
         $log = [launchmodule]::new($task.mpath, $module, $task) 
-       $e = 1
+        $e = 1
     } else {$e = 0}
     #
     $inp = New-Object $module -ArgumentList ($task, $log)
-    if ($e -eq 1 -or $PSBoundParameters.interactive){
-       Write-host '4'
+    if ($e -eq 1){
         return $inp
     }
     #

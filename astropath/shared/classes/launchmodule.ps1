@@ -8,8 +8,6 @@ class launchmodule : mylogger{
     launchmodule($mpath, $module, $val) : base($mpath, $module){
         #
         $this.val = $val
-        $this.level = 12
-        #
         if ($module -match 'batch'){
             $this.sampledefbatch($val.batchid, $val.project)
             $this.currentlogID = $this.batchid
@@ -17,11 +15,16 @@ class launchmodule : mylogger{
             $this.sampledefslide($val.slideid)
             $this.currentlogID = $this.slideid
         }
-        Write-host '1'
         #
-        $this.teststatus = $true
         $this.getlogger()
-        $this.start($module+'-test')
+        #
+        if ($val.ContainsKey('interactive')) {
+            $this.start($this.module)
+        } else {
+            $this.level = 12
+            $this.teststatus = $true
+            $this.start($module+'-test')
+        }
         #
     }
     #
