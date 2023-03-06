@@ -17,7 +17,7 @@ $vers[string]: The version number of inform to use
 #
 Function initmodule {
     #
-    param($task, $log, $module, [Parameter()][switch]$test)
+    param($task, $log, $module, [Parameter()][switch]$test, [Parameter()][switch]$interactive)
     #
     if ($task.ContainsKey('tasklogfile')){
         updateprocessinglog -logfile $task.tasklogfile -jobname $task.jobname `
@@ -28,13 +28,14 @@ Function initmodule {
     # used for testing; when launched manually without launchmodule
     #
     if (!($PSBoundParameters.ContainsKey('log')) -or $PSBoundParameters.test){ 
-       $log = [launchmodule]::new($task.mpath, $module, $task) 
+        $log = [launchmodule]::new($task.mpath, $module, $task) 
        $e = 1
     } else {$e = 0}
     #
     $inp = New-Object $module -ArgumentList ($task, $log)
-    if ($e -eq 1){
-       return $inp
+    if ($e -eq 1 -or $PSBoundParameters.interactive){
+       Write-host '4'
+        return $inp
     }
     #
     try {

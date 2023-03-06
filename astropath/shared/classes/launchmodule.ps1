@@ -15,8 +15,9 @@ class launchmodule : mylogger{
             $this.currentlogID = $this.batchid
         } else {
             $this.sampledefslide($val.slideid)
-            $this.currentlogID = $this.slideid            
+            $this.currentlogID = $this.slideid
         }
+        Write-host '1'
         #
         $this.teststatus = $true
         $this.getlogger()

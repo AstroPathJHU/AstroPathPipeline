@@ -60,12 +60,23 @@
         [Parameter(ParameterSetName = 'inform')]
         [switch]$nolog,
 
+        [Parameter(ParameterSetName = 'slide')]
+        [Parameter(ParameterSetName = 'batch')]
+        [Parameter(ParameterSetName = 'inform')]
+        [switch]$interactive,
+
         [Parameter(ValueFromRemainingArguments)]$overloadargs
 
     )
     #
     if ($PSBoundParameters.test){
-        $inp = initmodule -task $PSBoundParameters -module $module -test    
+        $inp = initmodule -task $PSBoundParameters -module $module -test
+        return $inp
+    }
+    #
+    if ($PSBoundParameters.interactive){
+        Write-host '2'
+        $inp = initmodule -task $PSBoundParameters -module $module -interactive
         return $inp
     }
     #
@@ -74,6 +85,7 @@
             $batchid, $project, $PSBoundParameters)
         #
     } else {
+        Write-host '3'
         $m = [launchmodule]::new($mpath, $module,
             $slideid, $PSBoundParameters)
     }        
