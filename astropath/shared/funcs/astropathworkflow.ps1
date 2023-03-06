@@ -33,6 +33,8 @@
     #
     if ($test){
         return $aw
+    } else{
+        $aw.launchwf()
     }
     #
 }
