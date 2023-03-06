@@ -59,7 +59,7 @@ class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTi
 
       for r in self.rectangles:
         if not r.tissuemaskfile.exists():
-          self.logger.warning("Missing mask: {r.tissuemaskfile}")
+          self.logger.warning(f"Missing mask: {r.tissuemaskfile}")
         try:
           with r.using_tissuemask():
             pass
@@ -70,6 +70,10 @@ class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTi
       anynonsegmentedexist = False
       anysegmentedexist = False
       tolog = []
+      try:
+        self.batchprocedurefile()
+      except FileNotFoundError:
+        tolog.append("Missing batch procedure file")
       for r in self.rectangles:
         nonsegmented = r.componenttifffile.with_name(r.componenttifffile.name.replace("_w_seg", ""))
         if not nonsegmented.exists():
