@@ -219,6 +219,7 @@ using module .\testtools.psm1
         $this.('add' + $current + 'examples')($sampletracker)
         #
         $this.setstart($sampletracker, $log, $current)
+        Start-Sleep -s 2
         #
         $sampletracker.getlogstatus($current)
         $sampletracker.getlogstatus($next)
@@ -264,6 +265,7 @@ using module .\testtools.psm1
         Start-Sleep -s 2
         #
         $this.setstart($sampletracker, $log, $current)
+        Start-Sleep -s 2
         #
         $sampletracker.getlogstatus($current)
         $sampletracker.getlogstatus($next)
@@ -490,8 +492,6 @@ using module .\testtools.psm1
             $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
         $this.removetestfiles($sampletracker,
             $sampletracker.meanimagefolder(), '-mask_stack.bin')
-        $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
-        $sampletracker.removefile($sampletracker.mainlogbase('meanimage'))
         #
     }
     #
