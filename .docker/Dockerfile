@@ -35,7 +35,7 @@ RUN sudo apt-get update && \
     # Install Mono
     sudo apt-get install -y --no-install-recommends mono-runtime && \
     # Remove dependencies
-    sudo apt-get purge -y dirmngr gnupg apt-transport-https ca-certificates software-properties-common && \
+    sudo apt-get purge -y dirmngr gnupg apt-transport-https software-properties-common && \
     sudo apt-get autoremove -y
 
 #libvips stuff is from https://github.com/TailorBrands/docker-libvips/blob/f64952af6871fb963934b7454f7edf5b6738f4b8/8.6.1/Dockerfile
