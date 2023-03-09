@@ -150,7 +150,8 @@ class astropathwftools : sampledb {
         #
         if (
             $env:computername -match $currentworker.server -and 
-            $currentworker.module -notmatch 'vminform'
+            ($currentworker.module -notmatch 'vminform' -or 
+            $currentworker.module -notmatch 'vmcomponentinform')
         ){
             $proc = get-process -id $processid -ErrorAction silentlycontinue
         } else {
@@ -223,7 +224,8 @@ class astropathwftools : sampledb {
         #
         if (
             $env:computername -match $currentworker.server -and 
-            $currentworker.module -notmatch 'vminform'
+            ($currentworker.module -notmatch 'vminform' -or
+            $currentworker.module -notmatch 'vmcomponentinform')
         ){
             #
             $myparameters = @{

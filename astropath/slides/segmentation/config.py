@@ -35,7 +35,7 @@ class SegmentationConst :
         return model_files
     @property
     def NNUNET_MODEL_FILES_URL(self) :
-        return 'https://sciserver.org/public-data/bki-nnunet/' #URL where the NNUNet model files are stored
+        return 'https://data.idies.jhu.edu/bki-nnunet/' #URL where the NNUNet model files are stored
     @property
     def NNUNET_SEGMENT_FILE_APPEND(self) :
         #append for nnunet segmentation files
