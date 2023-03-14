@@ -387,7 +387,22 @@
             conda deactivate
             Throw $_.Exception.Message
         }
-
+    }
+    #
+    [String]getversionpy(){
+        #
+        $pyscript = $PSScriptRoot + '\..\versionpython.py'
+        $version = "";
+        conda activate $this.pyenv()
+        try {
+            $version = python $pyscript
+            conda deactivate
+        }
+        catch {
+            conda deactivate
+            Throw $_.Exception.Message
+        }
+        return $version
     }
     <# ------------------------------------------
     CheckMikTex

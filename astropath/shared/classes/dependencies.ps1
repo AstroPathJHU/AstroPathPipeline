@@ -51,6 +51,9 @@
     #
     [void]getlogstatussub($cmodule){
         #
+        if ($cmodule -match 'shredxml') {
+            Write-host '****dependency check****'
+        }
         $logoutput = $this.checkloginit($cmodule, $false)
         #
         if ($logoutput[1]){
@@ -58,6 +61,9 @@
         } elseif ($logoutput) {
             #
             $check = $this.checkmodule($cmodule)
+            if ($cmodule -match 'shredxml') {
+                Write-host $check
+            }
             #
             switch ($check){
                 1 {
@@ -158,11 +164,16 @@
             $cmoduleinfo =  $this.moduleinfo.($cmodule).($antibody)
         } else {
             $cmoduleinfo =  $this.moduleinfo.($cmodule)
+            Write-host 'module info:'
+            Write-host ($cmoduleinfo | Out-String)
         }
         #
         $startdate = $cmoduleinfo.StartTime
         $finishdate = $cmoduleinfo.FinishTime
         $errorline = $cmoduleinfo.Errorline
+        Write-host 'startdate: ' $startdate
+        Write-host 'finishdate: ' $finishdate
+        Write-host 'errorline: ' $errorline
         #
         return ($this.deflogstatus($startdate,
             $finishdate, $errorline, $dependency))
@@ -439,11 +450,15 @@
         #
         if ($cmodule -notmatch $this.nolog_modules){
             if ($this.checklog($cmodule, $true)){
+                write-host 'check log failed'
                 return 2
             }  
         }
         #
         if (!$this.('test' + $cmodule + 'files')()){
+            if ($cmodule -match 'shredxml') {
+                write-host 'test files failed'
+            }
             return 2
         }
         #
