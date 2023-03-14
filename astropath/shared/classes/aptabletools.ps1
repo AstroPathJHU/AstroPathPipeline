@@ -201,7 +201,7 @@ class aptabletools : fileutils {
         $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
         #
         $config_csv_file = $this.config_fullfile($mpath)
-        $this.UpdateConfigVersion($config_csv_file)
+        #$this.UpdateConfigVersion($config_csv_file)
         #
         if ($createwatcher){
             $this.FileWatcher($config_csv_file)
