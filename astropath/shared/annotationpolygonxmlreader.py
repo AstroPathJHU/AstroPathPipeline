@@ -4,9 +4,9 @@ from ..utilities.dataclasses import MetaDataAnnotation, MyDataClassFrozen
 from ..utilities.miscmath import floattoint
 from ..utilities.tableio import boolasintfield, readtable, writetable
 from ..utilities.units.dataclasses import distancefield, DataClassWithAnnoscale
+from .astropath_logging import dummylogger, printlogger, ThingWithLogger
 from .csvclasses import Annotation, AnnotationInfo, Region, Vertex
 from .image_masking.maskloader import ThingWithTissueMaskPolygons
-from .logging import dummylogger, printlogger, ThingWithLogger
 from .polygon import SimplePolygon
 from .qptiff import QPTiff
 

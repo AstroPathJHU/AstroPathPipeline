@@ -2,7 +2,7 @@ import abc, contextlib, csv, datetime, more_itertools, re
 from ..utilities.dataclasses import MyDataClass
 from ..utilities.miscfileio import field_size_limit_context, rm_missing_ok
 from ..utilities.version.git import GitCommit, thisrepo
-from .logging import MyLogger, printlogger, ThingWithLogger
+from .astropath_logging import MyLogger, printlogger, ThingWithLogger
 
 class MRODebuggingMetaClass(abc.ABCMeta):
   def __new__(cls, name, bases, dct, **kwargs):

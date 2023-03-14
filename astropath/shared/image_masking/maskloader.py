@@ -1,8 +1,8 @@
 import abc, contextlib, cv2, methodtools, numpy as np, scipy.ndimage, skimage.measure, skimage.transform
 from ...utilities import units
+from ..astropath_logging import ThingWithLogger
 from ..contours import findcontoursaspolygons
 from ..imageloader import TransformedImage
-from ..logging import ThingWithLogger
 
 class ThingWithMask(abc.ABC):
   @property

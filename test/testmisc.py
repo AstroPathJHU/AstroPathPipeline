@@ -1,8 +1,8 @@
 import collections, csv, cv2, datetime, hashlib, itertools, logging, more_itertools, numpy as np, os, pathlib, re, time
 from astropath.shared.annotationpolygonxmlreader import AllowedAnnotation, checkannotations, writeannotationcsvs, writeannotationinfo
+from astropath.shared.astropath_logging import getlogger, printlogger
 from astropath.shared.contours import findcontoursaspolygons
 from astropath.shared.csvclasses import Annotation, Region, Vertex
-from astropath.shared.logging import getlogger, printlogger
 from astropath.shared.overlap import rectangleoverlaplist_fromcsvs
 from astropath.shared.polygon import Polygon, PolygonFromGdal, SimplePolygon
 from astropath.shared.rectangle import Rectangle

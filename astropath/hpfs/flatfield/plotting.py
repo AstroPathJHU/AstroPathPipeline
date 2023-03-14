@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib.patches import Rectangle
+from ...shared.astropath_logging import printlogger
 from ...shared.image_masking.config import CONST as MASKING_CONST
-from ...shared.logging import printlogger
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.miscplotting import save_figure_in_dir
 from ...utilities.tableio import readtable

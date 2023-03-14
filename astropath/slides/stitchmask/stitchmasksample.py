@@ -2,9 +2,9 @@ import abc, methodtools, numpy as np, pathlib
 from ...hpfs.flatfield.config import CONST as FF_CONST
 from ...hpfs.flatfield.meanimagesample import MeanImageSampleIm3Tissue
 from ...shared.argumentparser import DbloadArgumentParser, MaskArgumentParser
+from ...shared.astropath_logging import ThingWithLogger
 from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMask, ThingWithTissueMaskPolygons
 from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
-from ...shared.logging import ThingWithLogger
 from ...shared.rectangle import AstroPathTissueMaskRectangle, IHCTissueMaskRectangle, MaskRectangleBase
 from ...shared.rectangletransformation import ImageTransformation
 from ...shared.sample import MaskSampleBase, MaskWorkflowSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, TissueSampleBase, TMASampleBase
