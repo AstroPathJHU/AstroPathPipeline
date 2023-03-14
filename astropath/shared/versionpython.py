@@ -7,7 +7,7 @@ def version_py():
 
     """
     
-    return astropath.utilities.version.astropathversion
+    print(astropath.utilities.version.astropathversion)
 
 if __name__ == "__main__":
     version_py()
