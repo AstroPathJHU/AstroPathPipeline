@@ -197,7 +197,6 @@ using module .\testtools.psm1
         }
         #
         $this.setstart($sampletracker, $log, $current)
-        Start-Sleep -s 2
         $this.setfinish($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
@@ -219,7 +218,6 @@ using module .\testtools.psm1
         $this.('add' + $current + 'examples')($sampletracker)
         #
         $this.setstart($sampletracker, $log, $current)
-        Start-Sleep -s 2
         #
         $sampletracker.getlogstatus($current)
         $sampletracker.getlogstatus($next)
@@ -265,7 +263,6 @@ using module .\testtools.psm1
         Start-Sleep -s 2
         #
         $this.setstart($sampletracker, $log, $current)
-        Start-Sleep -s 2
         #
         $sampletracker.getlogstatus($current)
         $sampletracker.getlogstatus($next)
@@ -328,7 +325,6 @@ using module .\testtools.psm1
         Write-Host '    check clean run'
         #
         $this.setstart($sampletracker, $log, $current)
-        start-sleep -s 2
         $this.setfinish($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
@@ -363,6 +359,7 @@ using module .\testtools.psm1
         } else {
             $log.start($module)
         }
+        Start-Sleep -s 2
         #
     }
     #
@@ -378,6 +375,7 @@ using module .\testtools.psm1
         } else {
             $log.finish($module)
         }
+        Start-Sleep -s 2
         #
     }
     #
@@ -412,7 +410,6 @@ using module .\testtools.psm1
         $log = logger -mpath $this.mpath -module 'transfer' -slideid $sampletracker.slideid
         #
         $this.setstart($sampletracker, $log, 'transfer')
-        Start-Sleep -s 2
         $this.setfinish($sampletracker, $log, 'transfer')
         #
         $sampletracker.removedir($sampletracker.informfolder())

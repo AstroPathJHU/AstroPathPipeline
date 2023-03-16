@@ -176,6 +176,8 @@
         } else {
             $cmoduleinfo =  $this.moduleinfo.($cmodule)
         }
+        Write-Host '***Module info:'
+        Write-Host ($cmoduleinfo | Out-String)
         #
         if (!($this.modulelogs.($cmodule).($this.project))){
             $cmoduleinfo.StartTime = $this.empty_time
@@ -188,6 +190,7 @@
             $this.modulelogs.($cmodule).($this.project), $ID
         )
         $vers = $this.setlogvers($cmodule)
+        Write-host '***Version:' $vers
         #
         if ($antibody){
             $filteredloglines = $this.filterloglines($loglines, $ID, $vers, $antibody)
@@ -197,6 +200,8 @@
         #
         $this.setlogtimes($filteredloglines, $cmoduleinfo)
         #
+        Write-host '***Start Date:' $filteredloglines.startdate
+        Write-host '***Finish Date:' $filteredloglines.finishdate
         return ($this.deflogstatus($filteredloglines.startdate,
             $filteredloglines.finishdate, $filteredloglines.errorline, $dependency))
         #
