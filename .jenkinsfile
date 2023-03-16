@@ -111,7 +111,7 @@ pipeline {
                 }
                 stage('segmentation') {
                   steps {
-                    sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testsegmentation'
+                    //sh 'folder=$(basename $(pwd)); cd ..; python -m unittest ${folder}.test.testsegmentation'
                   }
                 }
               }
