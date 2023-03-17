@@ -22,6 +22,22 @@ RUN sudo apt-get update
 # Install PowerShell
 RUN sudo apt-get install -y powershell
 
+# mono runtime installation for Ubuntu 20.04 from here:
+# https://linuxize.com/post/how-to-install-mono-on-ubuntu-20-04/
+RUN sudo apt-get update && \
+    sudo apt-get upgrade -y && \
+    # Install pre-requisite packages.
+    sudo apt-get install -y --no-install-recommends dirmngr gnupg apt-transport-https ca-certificates software-properties-common && \
+    # Import the repository’s GPG key
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF && \
+    # Add the Mono repository to the system sources’ list
+    sudo apt-add-repository 'deb https://download.mono-project.com/repo/ubuntu stable-focal main' && \
+    # Install Mono
+    sudo apt-get install -y --no-install-recommends mono-runtime && \
+    # Remove dependencies
+    sudo apt-get purge -y dirmngr gnupg apt-transport-https software-properties-common && \
+    sudo apt-get autoremove -y
+
 #libvips stuff is from https://github.com/TailorBrands/docker-libvips/blob/f64952af6871fb963934b7454f7edf5b6738f4b8/8.6.1/Dockerfile
 #gdal stuff is from https://github.com/OSGeo/gdal/blob/f6689b653338502de4150f491864553894c37410/gdal/docker/ubuntu-full/Dockerfile
 
