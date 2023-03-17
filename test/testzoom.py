@@ -1,5 +1,5 @@
 import datetime, gzip, job_lock, more_itertools, numpy as np, os, pathlib, PIL.Image, shutil, tifffile
-from astropath.shared.logging import MyLogger
+from astropath.shared.astropath_logging import MyLogger
 from astropath.utilities.version import astropathversion
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort

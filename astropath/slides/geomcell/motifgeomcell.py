@@ -1,7 +1,7 @@
 import fractions, job_lock, methodtools, multiprocessing as mp, numpy as np, pathlib, skimage.measure, tifffile
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement, ParallelArgumentParser
+from ...shared.astropath_logging import printlogger, ThingWithLogger
 from ...shared.csvclasses import constantsdict
-from ...shared.logging import printlogger, ThingWithLogger
 from ...utilities import units
 from ...utilities.tableio import writetable
 from .geomcellsample import CellGeomLoad, PolygonFinder

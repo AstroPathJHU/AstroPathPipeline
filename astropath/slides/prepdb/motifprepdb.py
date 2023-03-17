@@ -1,7 +1,7 @@
 import methodtools, numpy as np, pathlib, tifffile
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement
+from ...shared.astropath_logging import printlogger, ThingWithLogger
 from ...shared.csvclasses import Constant
-from ...shared.logging import printlogger, ThingWithLogger
 from ...shared.qptiff import QPTiff
 from ...utilities import units
 from ...utilities.tableio import writetable

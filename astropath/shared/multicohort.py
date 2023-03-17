@@ -1,7 +1,7 @@
 import abc, methodtools
 from ..utilities import units
 from .argumentparser import ArgumentParserWithVersionRequirement
-from .logging import MultiLogger
+from .astropath_logging import MultiLogger
 
 class MultiCohortBase(ArgumentParserWithVersionRequirement):
   @classmethod

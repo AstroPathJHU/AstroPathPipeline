@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import matplotlib.cm, matplotlib.collections, matplotlib.colors, matplotlib.patches, matplotlib.pyplot as plt, more_itertools, mpl_toolkits.axes_grid1, networkx as nx, numpy as np, uncertainties.unumpy as unp
-from ...shared.logging import dummylogger
+from ...shared.astropath_logging import dummylogger
 from ...utilities import units
 from ...utilities.miscmath import floattoint
 from ...utilities.miscplotting import pullhist

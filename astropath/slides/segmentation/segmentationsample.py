@@ -1,7 +1,7 @@
 #imports
 import methodtools
 import numpy as np
-from ...shared.logging import dummylogger
+from ...shared.astropath_logging import dummylogger
 from ...shared.sample import ParallelSample, SampleWithSegmentationFolder, TissueSampleBase, WorkflowSample
 from ...shared.sample import ReadRectanglesComponentTiffFromXML, ReadRectanglesComponentAndIHCTiffFromXML, ReadRectanglesFromXML
 from .config import SEG_CONST

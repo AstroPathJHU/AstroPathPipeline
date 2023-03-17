@@ -4,7 +4,7 @@ try:
 except AttributeError:
   import contextlib2 as contextlib
 
-from ..shared.logging import dummylogger
+from ..shared.astropath_logging import dummylogger
 from .dataclasses import MetaDataAnnotation, MyDataClass
 from .misc import MemorizeLastIterator
 from .miscfileio import checkwindowsnewlines, field_size_limit_context, guesspathtype, mountedpathtopath, pathtomountedpath

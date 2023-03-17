@@ -7,7 +7,7 @@ from queue import Queue
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.tableio import readtable
 from ...utilities.img_file_io import get_raw_as_hwl
-from ...shared.logging import dummylogger, ThingWithLogger
+from ...shared.astropath_logging import dummylogger, ThingWithLogger
 from ...shared.image_masking.utilities import LabelledMaskRegion
 from ...shared.image_masking.image_mask import ImageMask
 from .config import CONST

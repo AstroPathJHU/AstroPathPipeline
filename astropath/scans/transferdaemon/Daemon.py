@@ -11,7 +11,7 @@ import traceback
 import subprocess
 import pandas
 import argparse
-from ...shared.logging import getlogger
+from ...shared.astropath_logging import getlogger
 import logging
 from ...shared import shared_tools as st
 import lxml.etree as et
