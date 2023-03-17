@@ -392,7 +392,7 @@
     [String]getversionpy(){
         #
         $pyscript = $PSScriptRoot + '\..\versionpython.py'
-        $version = "";
+        $version = ""
         conda activate $this.pyenv()
         try {
             $version = python $pyscript
@@ -503,6 +503,7 @@
         try{
             $this.checkconda()
             conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+            git fetch --all --tags
             $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
             $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
                 " CONDA ENVIR ACTIVATED; $time  `r`n"))

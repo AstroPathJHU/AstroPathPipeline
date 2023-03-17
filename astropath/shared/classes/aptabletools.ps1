@@ -221,6 +221,7 @@ class aptabletools : fileutils {
     #
     [void]UpdateConfigVersion($config){
         #
+        $this.checkconda()
         $ver = $this.getversionpy()
         write-host $ver
         #
