@@ -91,7 +91,6 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       "Scan": self.Scan,
       "SlideID": self.SlideID,
       "BatchID": self.BatchID,
-      "logger": self.logger,
     }
     try:
       result["xmlfolder"] = self.xmlfolder
