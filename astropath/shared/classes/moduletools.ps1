@@ -600,7 +600,7 @@
      Usage: $this.buildpyopts()
     ----------------------------------------- #>
     [string]buildpyopts(){
-        $str = '--allow-local-edits --skip-start-finish',
+        $str = '--allow-local-edits --skip-start-finish --job-lock-timeout 0:5:0',
             $this.pyoptsnoaxquiredannos() -join ''
         return $str
     }
