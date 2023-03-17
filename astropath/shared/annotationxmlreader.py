@@ -176,21 +176,22 @@ class SimpleAnnotation(AnnotationBase):
       if node["Type"] == "Acquired":
         result = node
         ignored = False
+        deleted = False
       elif result is not None:
         if node["Type"] == "Ignored":
           ignored = True
         elif node["Type"] == "Unignored":
           ignored = False
+        elif node["Type"] == "Deleted":
+          deleted = True
         else:
           raise ValueError(f"Unknown history item {node['Type']} after Acquired for {result['Im3Path']}")
 
     if result is None:
       return None
-    if ignored:
+    if ignored or deleted:
       return None
     return result
-    if self.isacquired:
-      return self.history[-1]
 
   @property
   def flaggedforacquisitionnode(self):
