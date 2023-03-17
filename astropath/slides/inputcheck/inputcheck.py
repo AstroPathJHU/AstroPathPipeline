@@ -46,25 +46,40 @@ class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTi
       self.logger.warning("Missing HPF layout annotations file")
     else:
       self.logger.info("Checking im3s")
+      tolog = []
+      anyexist = False
       for r in self.rectangles:
         if not r.im3file.exists():
-          self.logger.warning(f"Missing im3: {r.im3file}")
+          tolog.append(f"Missing im3: {r.im3file}")
         else:
+          anyexist = True
           if self.checkintegrity:
             try:
               with r.using_im3():
                 pass
             except Exception:
-              self.logger.warning(f"Corrupt im3: {r.im3file}")
+              tolog.append(f"Corrupt im3: {r.im3file}")
+      if not anyexist:
+        tolog = ["ALL im3s are missing"] + [msg for msg in tolog if "Missing im3" not in msg]
+      for msg in tolog:
+        self.logger.warning(msg)
 
+      tolog = []
+      anyexist = False
       for r in self.rectangles:
         if not r.tissuemaskfile.exists():
-          self.logger.warning(f"Missing mask: {r.tissuemaskfile}")
-        try:
-          with r.using_tissuemask():
-            pass
-        except Exception:
-          self.logger.warning(f"Corrupt mask: {r.tissuemaskfile}")
+          tolog.append(f"Missing mask: {r.tissuemaskfile}")
+        else:
+          anyexist = True
+          try:
+            with r.using_tissuemask():
+              pass
+          except Exception:
+            tolog.append(f"Corrupt mask: {r.tissuemaskfile}")
+      if not anyexist:
+        tolog = ["ALL masks are missing"] + [msg for msg in tolog if "Missing mask" not in msg]
+      for msg in tolog:
+        self.logger.warning(msg)
 
       self.logger.info("Checking component tiffs")
       anynonsegmentedexist = False
