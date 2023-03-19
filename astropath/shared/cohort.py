@@ -838,7 +838,7 @@ class WorkflowCohort(Cohort):
     def slideidfilter(self, sample, **kwargs):
       sampleclass = self.sampleclassforsampledef(sample)
       return runstatusfilter(
-        runstatus=sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
+        runstatus=sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, BatchID=sample.BatchID, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
           dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, BatchID=sample.BatchID, **self.workflowkwargs)
           for dependency in sampleclass.workflowdependencyclasses(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
