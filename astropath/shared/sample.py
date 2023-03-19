@@ -475,13 +475,13 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     except:
       try:
         exceptionsecondtime = False
-        return self.readtable(mergeconfigcsv, MergeConfig, ignoretrailingcommas=True)
+        return readtable(mergeconfigcsv, MergeConfig, ignoretrailingcommas=True)
       except:
         exceptionsecondtime = True
         raise
       finally:
         if not exceptionsecondtime:
-          logger.warningglobalonenter(f"Merge config {self.mergeconfigcsv} has extra trailing commas")
+          logger.warningglobalonenter(f"Merge config {mergeconfigcsv} has extra trailing commas")
   @property
   def mergeconfig(self):
     return self.getmergeconfig(root=self.root, BatchID=self.BatchID, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
