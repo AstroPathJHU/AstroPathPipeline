@@ -337,9 +337,13 @@ class TestMisc(TestBaseCopyInput, TestBaseSaveOutput):
     s1 = PrepDbSample(thisfolder/"data", SlideID, uselogfiles=False)
     s2 = PrepDbSample(thisfolder/"data", SlideID, informdataroot=informdataroot, uselogfiles=False)
     s3 = PrepDbSample(thisfolder/"data", SlideID, informdataroot=informdataroot/"only_segmented", uselogfiles=False)
+    s4 = PrepDbSample(thisfolder/"data", SlideID, batchroot=informdataroot, uselogfiles=False)
+    s5 = PrepDbSample(thisfolder/"data", SlideID, informdataroot=informdataroot/"only_segmented", batchroot=informdataroot, uselogfiles=False)
     with self.assertRaises(FileNotFoundError):
-      s3.nlayersunmixed
+      s5.nlayersunmixed
     self.assertEqual(s1.nlayersunmixed, s2.nlayersunmixed)
+    self.assertEqual(s1.nlayersunmixed, s3.nlayersunmixed)
+    self.assertEqual(s1.nlayersunmixed, s4.nlayersunmixed)
 
   def testRequireCommit(self):
     testrequirecommit = thisrepo.getcommit("cf271f3a")

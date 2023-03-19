@@ -34,7 +34,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressinitwarnings=False, **kwargs):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, batchroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressinitwarnings=False, **kwargs):
     self.__root = pathlib.Path(root)
     if sampledefroot is None: sampledefroot = root
     self.samp = self.sampledefclass(root=sampledefroot, samp=samp, Project=Project)
@@ -46,6 +46,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     self.__im3root = pathlib.Path(im3root)
     if informdataroot is None: informdataroot = root
     self.__informdataroot = pathlib.Path(informdataroot)
+    if batchroot is None: batchroot = root
+    self.__batchroot = pathlib.Path(batchroot)
     self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots, skipstartfinish=skipstartfinish, printthreshold=printthreshold, sampledefroot=sampledefroot)
     self.__printlogger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=False, threshold=logthreshold, skipstartfinish=True, printthreshold=printthreshold, sampledefroot=sampledefroot)
     if xmlfolders is None: xmlfolders = []
@@ -71,6 +73,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   @property
   def informdataroot(self): return self.__informdataroot
   @property
+  def batchroot(self): return self.__batchroot
+  @property
   def logger(self): return self.__logger
   @property
   def printlogger(self): return self.__printlogger
@@ -81,7 +85,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @property
   def rootnames(self):
-    return {"root", "logroot", "im3root", "informdataroot", *super().rootnames}
+    return {"root", "logroot", "im3root", "informdataroot", "batchroot", *super().rootnames}
 
   @property
   def workflowkwargs(self):
@@ -396,7 +400,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the number of component tiff layers from the xml metadata
     """
-    return self.getnlayersunmixed(componenttiffsfolder=self.componenttiffsfolder, logger=self.logger if not self.__suppressinitwarnings else dummylogger, root=self.root, BatchID=self.BatchID)
+    return self.getnlayersunmixed(componenttiffsfolder=self.componenttiffsfolder, logger=self.logger if not self.__suppressinitwarnings else dummylogger, batchroot=self.batchroot, BatchID=self.BatchID)
 
   def _getimageinfos(self):
     """
@@ -456,8 +460,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return result
 
   @classmethod
-  def getmergeconfigcsv(cls, root, BatchID, **kwargs):
-    return root/"Batch"/f"MergeConfig_{BatchID:02d}.csv"
+  def getmergeconfigcsv(cls, batchroot, BatchID, **kwargs):
+    return batchroot/"Batch"/f"MergeConfig_{BatchID:02d}.csv"
   @classmethod
   def getmergeconfigxlsx(cls, **kwargs):
     return cls.getmergeconfigcsv(**kwargs).with_suffix(".xlsx")
@@ -487,10 +491,10 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     return self.getmergeconfig(root=self.root, BatchID=self.BatchID, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
   @property
   def batchxlsx(self) :
-    fp = self.root/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
+    fp = self.batchroot/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
     if fp.is_file() :
       return fp
-    fp = self.root/"Batch"/f"BatchID_{self.BatchID:02d}.xlsx"
+    fp = self.batchroot/"Batch"/f"BatchID_{self.BatchID:02d}.xlsx"
     return fp
 
   @property
