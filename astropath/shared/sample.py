@@ -488,7 +488,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
           logger.warningglobalonenter(f"Merge config {mergeconfigcsv} has extra trailing commas")
   @property
   def mergeconfig(self):
-    return self.getmergeconfig(root=self.root, BatchID=self.BatchID, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
+    return self.getmergeconfig(**self.workflowkwargs, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
   @property
   def batchxlsx(self) :
     fp = self.batchroot/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
