@@ -206,5 +206,5 @@ Class testpsconvertim3path : testtools{
 #
 # launch test and exit if no error found
 #
-[testpsconvertim3path]::new($true) | Out-Null
+[testpsconvertim3path]::new() | Out-Null
 exit 0

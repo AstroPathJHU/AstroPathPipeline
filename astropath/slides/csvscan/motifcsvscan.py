@@ -1,6 +1,6 @@
 import pathlib
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement
-from ...shared.logging import printlogger, ThingWithLogger
+from ...shared.astropath_logging import printlogger, ThingWithLogger
 from ...utilities import units
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.tableio import pathfield, writetable

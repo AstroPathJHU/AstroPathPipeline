@@ -1,9 +1,9 @@
 import abc, contextlib, cv2, datetime, itertools, job_lock, matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, scipy.ndimage, skimage.measure, skimage.morphology
 from ...utilities.config import CONST as UNIV_CONST
 from ...shared.argumentparser import CleanupArgumentParser
+from ...shared.astropath_logging import dummylogger
 from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
-from ...shared.logging import dummylogger
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
 from ...shared.sample import DeepCellSegmentationSample, DeepCellSegmentationSampleBase, GeomSampleBase, InformSegmentationSample, MesmerSegmentationSample, ParallelSample, ReadRectanglesDbload, ReadRectanglesDbloadSegmentedComponentTiff, SampleWithSegmentations, TissueSampleBase, WorkflowSample

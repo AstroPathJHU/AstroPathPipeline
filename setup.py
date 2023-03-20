@@ -156,7 +156,7 @@ setupkwargs = dict(
     "urllib3",
   ],
   extras_require = {
-    "deepcell": ["deepcell>=0.12.0"],
+    "deepcell": ["deepcell==0.12.0"],
     "gdal": ["gdal>=3.3.0"],
     "nnunet": ["nnunet>=1.6.0"],
     "test": [
