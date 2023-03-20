@@ -1,6 +1,6 @@
 import collections, errno, numpy as np, os, pathlib, PIL, re, shutil
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement
-from ...shared.logging import printlogger, ThingWithLogger
+from ...shared.astropath_logging import printlogger, ThingWithLogger
 from ...utilities import units
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips

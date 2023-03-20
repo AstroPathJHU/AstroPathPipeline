@@ -60,13 +60,27 @@
         [Parameter(ParameterSetName = 'inform')]
         [switch]$nolog,
 
+        [Parameter(ParameterSetName = 'slide')]
+        [Parameter(ParameterSetName = 'batch')]
+        [Parameter(ParameterSetName = 'inform')]
+        [switch]$interactive,
+
         [Parameter(ValueFromRemainingArguments)]$overloadargs
 
     )
     #
-    if ($PSBoundParameters.test){
-        $inp = initmodule -task $PSBoundParameters -module $module -test    
-        return $inp
+    switch ($true) {
+        ($PSBoundParameters.test -and $PSBoundParameters.interactive) {
+            throw 'Cannot use both test and interactive switch at the same time'
+        }
+        $PSBoundParameters.test {
+            $inp = initmodule -task $PSBoundParameters -module $module -test
+            return $inp
+        }
+        $PSBoundParameters.interactive {
+            $inp = initmodule -task $PSBoundParameters -module $module -interactive
+            return $inp
+        }
     }
     #
     if ($module -match 'batch'){

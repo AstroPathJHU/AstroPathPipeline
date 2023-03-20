@@ -1,7 +1,7 @@
 import abc, contextlib, numpy as np, pathlib, PIL, tifffile, traceback, warnings
 from ..utilities.miscfileio import memmapcontext
+from .astropath_logging import printlogger
 from .image_masking.image_mask import ImageMask
-from .logging import printlogger
 
 class ImageLoaderBase(abc.ABC):
   #if _DEBUG is true, then when the image loader is deleted, it will print

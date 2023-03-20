@@ -8,7 +8,7 @@ from ..utilities import units
 from ..utilities.tableio import readtable, writetable
 from ..utilities.version.git import thisrepo
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, RunFromArgumentParser, SegmentationFolderArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
-from .logging import getlogger, ThingWithLogger
+from .astropath_logging import getlogger, ThingWithLogger
 from .rectangle import rectanglefilter
 from .workflowdependency import ThingWithRoots, ThingWithWorkflowKwargs, WorkflowDependency
 
@@ -214,12 +214,14 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
          (default: False)
   uselogfiles, logroot: these arguments are passed to the logger
   """
-  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, xmlfolders=[], **kwargs):
+  def __init__(self, *args, slideidfilters=[], samplefilters=[], im3root=None, debug=False, informdataroot=None, batchroot=None, xmlfolders=[], **kwargs):
     super().__init__(*args, reraiseexceptions=debug, **kwargs)
     if im3root is None: im3root = self.root
     self.im3root = pathlib.Path(im3root)
     if informdataroot is None: informdataroot = self.root
     self.informdataroot = pathlib.Path(informdataroot)
+    if batchroot is None: batchroot = self.root
+    self.batchroot = pathlib.Path(batchroot)
     self.slideidfilters = slideidfilters
     self.samplefilters = samplefilters
     self.xmlfolders = xmlfolders
@@ -368,6 +370,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
       "logroot": self.logroot,
       "im3root": self.im3root,
       "informdataroot": self.informdataroot,
+      "batchroot": self.batchroot,
       "xmlfolders": self.xmlfolders,
       "moremainlogroots": self.moremainlogroots,
       "skipstartfinish": self.skipstartfinish,
@@ -387,7 +390,7 @@ class Cohort(RunCohortBase, ArgumentParserMoreRoots, ThingWithWorkflowKwargs, co
 
   @property
   def rootnames(self):
-    return {*super().rootnames, "im3root", "informdataroot"}
+    return {*super().rootnames, "im3root", "informdataroot", "batchroot"}
   @property
   def workflowkwargs(self):
     return {
@@ -835,9 +838,9 @@ class WorkflowCohort(Cohort):
     def slideidfilter(self, sample, **kwargs):
       sampleclass = self.sampleclassforsampledef(sample)
       return runstatusfilter(
-        runstatus=sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs, **kwargs),
+        runstatus=sampleclass.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, BatchID=sample.BatchID, **self.workflowkwargs, **kwargs),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
+          dependency.getrunstatus(SlideID=sample.SlideID, Scan=sample.Scan, BatchID=sample.BatchID, **self.workflowkwargs)
           for dependency in sampleclass.workflowdependencyclasses(SlideID=sample.SlideID, Scan=sample.Scan, **self.workflowkwargs)
         ],
         **runstatusfilterkwargs,
@@ -848,8 +851,8 @@ class WorkflowCohort(Cohort):
       return runstatusfilter(
         runstatus=sample.runstatus(),
         dependencyrunstatuses=[
-          dependency.getrunstatus(SlideID=SlideID, Scan=sample.samp.Scan, **self.workflowkwargs, **kwargs)
-          for dependency, SlideID in sample.workflowdependencies(SlideID=sample.SlideID, Scan=sample.samp.Scan, **self.workflowkwargs)
+          dependency.getrunstatus(SlideID=SlideID, Scan=sample.samp.Scan, BatchID=sample.samp.BatchID, **self.workflowkwargs, **kwargs)
+          for dependency, SlideID in sample.workflowdependencies(SlideID=sample.SlideID, Scan=sample.samp.Scan, BatchID=sample.samp.BatchID, **self.workflowkwargs)
         ],
         **runstatusfilterkwargs,
       )

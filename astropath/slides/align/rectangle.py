@@ -4,7 +4,7 @@ try:
 except AttributeError:
   import contextlib2 as contextlib
 
-from ...shared.logging import dummylogger
+from ...shared.astropath_logging import dummylogger
 from ...shared.imageloader import TransformedImage
 from ...shared.rectangle import Rectangle, RectangleReadComponentTiffBase, RectangleReadComponentTiffMultiLayer, RectangleReadComponentTiffSingleLayer, RectangleReadIm3Base, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer
 from ...shared.rectangletransformation import RectangleTransformationBase

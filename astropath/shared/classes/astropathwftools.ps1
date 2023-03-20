@@ -150,7 +150,8 @@ class astropathwftools : sampledb {
         #
         if (
             $env:computername -match $currentworker.server -and 
-            $currentworker.module -notmatch 'vminform'
+            ($currentworker.module -notmatch 'vminform' -or 
+            $currentworker.module -notmatch 'vmcomponentinform')
         ){
             $proc = get-process -id $processid -ErrorAction silentlycontinue
         } else {
@@ -223,7 +224,8 @@ class astropathwftools : sampledb {
         #
         if (
             $env:computername -match $currentworker.server -and 
-            $currentworker.module -notmatch 'vminform'
+            ($currentworker.module -notmatch 'vminform' -or
+            $currentworker.module -notmatch 'vmcomponentinform')
         ){
             #
             $myparameters = @{
@@ -385,7 +387,7 @@ class astropathwftools : sampledb {
         }
         #
         $row = $this.slide_data | & { process { 
-            if ($_.SlideID -eq $this.slideid.trim()){ $_ }
+            if ($_.SlideID -eq $currenttask[1].trim()){ $_ }
         }}
         #
         $currenttask += $row.BatchID.padleft(2, '0')

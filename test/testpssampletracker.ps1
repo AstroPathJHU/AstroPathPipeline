@@ -197,7 +197,6 @@ using module .\testtools.psm1
         }
         #
         $this.setstart($sampletracker, $log, $current)
-        Start-Sleep -s 2
         $this.setfinish($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
@@ -326,7 +325,6 @@ using module .\testtools.psm1
         Write-Host '    check clean run'
         #
         $this.setstart($sampletracker, $log, $current)
-        start-sleep -s 2
         $this.setfinish($sampletracker, $log, $current)
         #
         $sampletracker.getlogstatus($current)
@@ -361,6 +359,7 @@ using module .\testtools.psm1
         } else {
             $log.start($module)
         }
+        Start-Sleep -s 2
         #
     }
     #
@@ -376,6 +375,7 @@ using module .\testtools.psm1
         } else {
             $log.finish($module)
         }
+        Start-Sleep -s 2
         #
     }
     #
@@ -410,7 +410,6 @@ using module .\testtools.psm1
         $log = logger -mpath $this.mpath -module 'transfer' -slideid $sampletracker.slideid
         #
         $this.setstart($sampletracker, $log, 'transfer')
-        Start-Sleep -s 2
         $this.setfinish($sampletracker, $log, 'transfer')
         #
         $sampletracker.removedir($sampletracker.informfolder())
@@ -490,8 +489,6 @@ using module .\testtools.psm1
             $sampletracker.meanimagefolder(), $sampletracker.meanimagereqfiles)
         $this.removetestfiles($sampletracker,
             $sampletracker.meanimagefolder(), '-mask_stack.bin')
-        $sampletracker.removefile($sampletracker.slidelogbase('meanimage'))
-        $sampletracker.removefile($sampletracker.mainlogbase('meanimage'))
         #
     }
     #

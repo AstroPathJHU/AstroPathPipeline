@@ -1,6 +1,6 @@
 import collections, contextlib, itertools, matplotlib.pyplot as plt, more_itertools, numpy as np, scipy.ndimage, skimage.registration, skimage.transform, uncertainties as unc, uncertainties.umath as umath, uncertainties.unumpy as unp
 
-from ...shared.logging import dummylogger, MultiLogger, ThingWithLogger
+from ...shared.astropath_logging import dummylogger, MultiLogger, ThingWithLogger
 from ...shared.sample import TissueSampleBase
 from ...slides.align.computeshift import computeshift, OptimizeResult, shiftimg
 from ...slides.align.overlap import AlignmentComparison

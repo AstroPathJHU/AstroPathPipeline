@@ -1,5 +1,5 @@
 import abc, collections, itertools, methodtools, more_itertools, numpy as np, pathlib, uncertainties as unc
-from ...shared.logging import dummylogger
+from ...shared.astropath_logging import dummylogger
 from ...shared.overlap import RectangleOverlapCollection
 from ...shared.rectangle import Rectangle, rectangledict
 from ...utilities import units

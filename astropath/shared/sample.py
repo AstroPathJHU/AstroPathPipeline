@@ -13,8 +13,8 @@ from ..utilities.version import astropathversionregex
 from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SegmentationFolderArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
+from .astropath_logging import dummylogger, getlogger, ThingWithLogger
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
-from .logging import dummylogger, getlogger, ThingWithLogger
 from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import ControlTMASampleDef, SampleDef
@@ -34,7 +34,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     these arguments get passed to getlogger
     logroot, by default, is the same as root
   """
-  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressinitwarnings=False, **kwargs):
+  def __init__(self, root, samp, *, xmlfolders=None, uselogfiles=False, logthreshold=logging.NOTSET-100, reraiseexceptions=True, logroot=None, mainlog=None, samplelog=None, im3root=None, informdataroot=None, batchroot=None, moremainlogroots=[], skipstartfinish=False, printthreshold=logging.DEBUG, Project=None, sampledefroot=None, suppressinitwarnings=False, **kwargs):
     self.__root = pathlib.Path(root)
     if sampledefroot is None: sampledefroot = root
     self.samp = self.sampledefclass(root=sampledefroot, samp=samp, Project=Project)
@@ -46,6 +46,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     self.__im3root = pathlib.Path(im3root)
     if informdataroot is None: informdataroot = root
     self.__informdataroot = pathlib.Path(informdataroot)
+    if batchroot is None: batchroot = root
+    self.__batchroot = pathlib.Path(batchroot)
     self.__logger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=uselogfiles, threshold=logthreshold, reraiseexceptions=reraiseexceptions, mainlog=mainlog, samplelog=samplelog, moremainlogroots=moremainlogroots, skipstartfinish=skipstartfinish, printthreshold=printthreshold, sampledefroot=sampledefroot)
     self.__printlogger = getlogger(module=self.logmodule(), root=self.logroot, samp=self.samp, uselogfiles=False, threshold=logthreshold, skipstartfinish=True, printthreshold=printthreshold, sampledefroot=sampledefroot)
     if xmlfolders is None: xmlfolders = []
@@ -71,6 +73,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
   @property
   def informdataroot(self): return self.__informdataroot
   @property
+  def batchroot(self): return self.__batchroot
+  @property
   def logger(self): return self.__logger
   @property
   def printlogger(self): return self.__printlogger
@@ -81,7 +85,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @property
   def rootnames(self):
-    return {"root", "logroot", "im3root", "informdataroot", *super().rootnames}
+    return {"root", "logroot", "im3root", "informdataroot", "batchroot", *super().rootnames}
 
   @property
   def workflowkwargs(self):
@@ -90,6 +94,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
       **{name: getattr(self, name) for name in self.rootnames},
       "Scan": self.Scan,
       "SlideID": self.SlideID,
+      "BatchID": self.BatchID,
     }
     try:
       result["xmlfolder"] = self.xmlfolder
@@ -324,7 +329,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
         raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
   @classmethod
-  def getbatchprocedurefile(cls, componenttiffsfolder, *, missing_ok=False):
+  def getbatchprocedurefile(cls, componenttiffsfolder, *, missing_ok=False, **kwargs):
     filenames = [componenttiffsfolder/"batch_procedure.ifp", componenttiffsfolder/"batch_procedure.ifr"]
     for filename in filenames:
       if filename.exists():
@@ -344,26 +349,50 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @classmethod
   def getnlayersunmixed(cls, componenttiffsfolder, *args, logger=dummylogger, **kwargs):
+    batchprocedureresult = None
     try:
-      filename = cls.getbatchprocedurefile(componenttiffsfolder, *args, **kwargs)
+      batchprocedurefile = cls.getbatchprocedurefile(componenttiffsfolder, *args, **kwargs)
     except (FileNotFoundError, cls.MessedUpBatchProcedureError):
-      try:
-        filename = next(componenttiffsfolder.glob("*_component_data.tif"))
-      except StopIteration:
-        raise FileNotFoundError("Didn't find any batch procedure files or component tiffs")
-      with tifffile.TiffFile(filename) as f:
-        for i, page in enumerate(f.pages, start=1):
-          #iterate until we get the color picture
-          if page.tags["SamplesPerPixel"].value != 1:
-            i -= 1
-            break
-        logger.warningonenter(f"Didn't find any batch procedure files, using {i} layers based on the component tiff files")
-        return i
-      
+      pass
     else:
-      with open(filename, "rb") as f:
+      with open(batchprocedurefile, "rb") as f:
         for path, _, node in jxmlease.parse(f, generator="AllComponents"):
-          return int(node.xml_attrs["dim"])
+          batchprocedureresult = int(node.xml_attrs["dim"])
+          break
+
+    mergeconfigresult = None
+    try:
+      mergeconfigcsv = cls.getmergeconfigcsv(logger=logger, **kwargs)
+      mergeconfig = cls.getmergeconfig(logger=logger, **kwargs)
+    except FileNotFoundError:
+      pass
+    else:
+      if {m.layer for m in mergeconfig} != set(range(1, len(mergeconfig)+1)):
+        raise ValueError("MergeConfig layers are not sequential")
+      mergeconfigresult = len(mergeconfig)
+
+    if batchprocedureresult is None:
+      logger.warningonenter("Didn't find batch_procedure file")
+    if mergeconfigresult is None:
+      logger.warningonenter("Didn't find MergeConfig csv file")
+
+    if None is not batchprocedureresult != mergeconfigresult is not None:
+      raise ValueError(f"Number of component tiff layers inconsistent between batch_procedure ({batchprocedurefile}, {batchprocedureresult}) and MergeConfig ({mergeconfigcsv}, {mergeconfigresult})")
+    if batchprocedureresult: return batchprocedureresult
+    if mergeconfigresult: return mergeconfigresult
+
+    try:
+      filename = next(componenttiffsfolder.glob("*_component_data.tif"))
+    except StopIteration:
+      raise FileNotFoundError("Didn't find any batch procedure files or component tiffs")
+    with tifffile.TiffFile(filename) as f:
+      for i, page in enumerate(f.pages, start=1):
+        #iterate until we get the color picture
+        if page.tags["SamplesPerPixel"].value != 1:
+          i -= 1
+          break
+      logger.warningonenter(f"Using {i} layers based on the component tiff files")
+      return i
 
   @methodtools.lru_cache()
   @property
@@ -371,7 +400,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the number of component tiff layers from the xml metadata
     """
-    return self.getnlayersunmixed(componenttiffsfolder=self.componenttiffsfolder, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
+    return self.getnlayersunmixed(componenttiffsfolder=self.componenttiffsfolder, logger=self.logger if not self.__suppressinitwarnings else dummylogger, batchroot=self.batchroot, BatchID=self.BatchID)
 
   def _getimageinfos(self):
     """
@@ -430,32 +459,42 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
     return result
 
+  @classmethod
+  def getmergeconfigcsv(cls, batchroot, BatchID, **kwargs):
+    return batchroot/"Batch"/f"MergeConfig_{BatchID:02d}.csv"
+  @classmethod
+  def getmergeconfigxlsx(cls, **kwargs):
+    return cls.getmergeconfigcsv(**kwargs).with_suffix(".xlsx")
   @property
   def mergeconfigcsv(self):
-    return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.csv"
+    return self.getmergeconfigcsv(root=self.root, BatchID=self.BatchID)
   @property
   def mergeconfigxlsx(self):
-    return self.root/"Batch"/f"MergeConfig_{self.BatchID:02d}.xlsx"
-  @property
-  def mergeconfig(self):
+    return self.getmergeconfigxlsx(root=self.root, BatchID=self.BatchID)
+  @classmethod
+  def getmergeconfig(cls, logger, **kwargs):
+    mergeconfigcsv = cls.getmergeconfigcsv(**kwargs)
     try:
-      return self.readtable(self.mergeconfigcsv, MergeConfig)
+      return readtable(mergeconfigcsv, MergeConfig)
     except:
       try:
         exceptionsecondtime = False
-        return self.readtable(self.mergeconfigcsv, MergeConfig, ignoretrailingcommas=True)
+        return readtable(mergeconfigcsv, MergeConfig, ignoretrailingcommas=True)
       except:
         exceptionsecondtime = True
         raise
       finally:
         if not exceptionsecondtime:
-          self.logger.warningglobalonenter(f"Merge config {self.mergeconfigcsv} has extra trailing commas")
+          logger.warningglobalonenter(f"Merge config {mergeconfigcsv} has extra trailing commas")
+  @property
+  def mergeconfig(self):
+    return self.getmergeconfig(**self.workflowkwargs, logger=self.logger if not self.__suppressinitwarnings else dummylogger)
   @property
   def batchxlsx(self) :
-    fp = self.root/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
+    fp = self.batchroot/"Batch"/f"Batch_{self.BatchID:02d}.xlsx"
     if fp.is_file() :
       return fp
-    fp = self.root/"Batch"/f"BatchID_{self.BatchID:02d}.xlsx"
+    fp = self.batchroot/"Batch"/f"BatchID_{self.BatchID:02d}.xlsx"
     return fp
 
   @property

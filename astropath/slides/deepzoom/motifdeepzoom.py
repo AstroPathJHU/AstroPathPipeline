@@ -1,7 +1,7 @@
 import collections, errno, methodtools, numpy as np, os, pathlib, PIL, re, shutil
 from ...shared.argumentparser import ArgumentParserWithVersionRequirement
+from ...shared.astropath_logging import printlogger, ThingWithLogger
 from ...shared.csvclasses import constantsdict
-from ...shared.logging import printlogger, ThingWithLogger
 from ...shared.qptiff import QPTiff
 from ...utilities import units
 from ...utilities.miscfileio import rm_missing_ok
