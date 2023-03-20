@@ -3,7 +3,7 @@ import pathlib, tifffile, time
 import multiprocessing as mp
 from argparse import ArgumentParser
 import numpy as np
-from astropath.utilities.img_file_io import get_raw_as_hwl, write_image_to_file
+from astropath.utilities.img_file_io import write_image_to_file
 from astropath.shared.image_masking.image_mask import ImageMask
 
 #constants
@@ -133,11 +133,11 @@ def sum_component_tiffs(slideID,comp_tiff_dir,mask_dir,nprocs) :
         p.join()
     masked_image_queue.put(None)
     mask_queue.put(None)
-    print(f'finishing summing masks...')
+    print('finishing summing masks...')
     sum_masks_proc.join()
-    print(f'finishing summing masked images...')
+    print('finishing summing masked images...')
     sum_masked_images_proc.join()
-    print(f'Getting sum of masked images and mask stack...')
+    print('Getting sum of masked images and mask stack...')
     sum_masked_images = masked_image_queue.get()
     mask_stack = mask_queue.get()
     return sum_masked_images, mask_stack

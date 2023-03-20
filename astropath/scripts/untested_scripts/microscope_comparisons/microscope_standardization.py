@@ -55,7 +55,7 @@ def correct_files(processloc,slideID,nprocs,correction_factors) :
         p = mp.Process(target=write_corrected_file,args=(fp,correction_factors))
         p.start()
         procs.append(p)
-    print(f'joining all processes...')
+    print('joining all processes...')
     for p in procs :
         p.join()
 
