@@ -7,7 +7,7 @@ from astropath.utilities.img_file_io import get_raw_as_hwl, write_image_to_file
 
 #constants
 DEF_CORRECTION_FACTOR_FILEPATH = pathlib.Path('//bki04/astropath_processing/microscope_correction')/'w_mk__reference_Polaris2.csv'
-DEF_N_PROCS = 32
+DEF_N_PROCS = 8
 #IMAGE_DIMS = (1404, 1876, 43)
 IMAGE_DIMS = (1404, 1872, 43)
 
