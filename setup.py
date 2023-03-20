@@ -184,6 +184,7 @@ setupkwargs = dict(
       "slides/zoom/color_matrix_8.txt",
       "slides/zoom/color_matrix_9.txt",
       "utilities/version/commits.csv",
+      "utilities/version/commits_saved.csv",
     ]+get_nnunet_package_files(),
   },
 )
