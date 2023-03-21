@@ -123,8 +123,7 @@ Class imagecorrection : moduletools {
             $dpath, 
             '--sampleregex', $this.sample.slideid,
             '--shardedim3root', $rpath, 
-            '--flatfield-file', $this.sample.pybatchflatfieldfullpath(),
-            '--warping-file', ('warping_BatchID_', $this.sample.batchid.padleft(2, '0'), '.csv' -join ''), 
+            '--correction-model-file', $this.sample.corrmodels_fullfile($this.sample.basepath),
             "--njobs '8' --no-log --layers -1 1", $globalargs,
             '--workingdir', ($rpath + '\' + $this.sample.slideid) -join ' ')
         #
@@ -137,9 +136,8 @@ Class imagecorrection : moduletools {
         $pythontask = ($this.pythonmodulename,
             $dpath, 
             $this.sample.slideid,
-            '--shardedim3root', $rpath, 
-            '--flatfield-file', $this.sample.pybatchflatfieldfullpath(),
-            '--warping-file', ('warping_BatchID_', $this.sample.batchid.padleft(2, '0'), '.csv' -join ''), 
+            '--shardedim3root', $rpath,
+            '--correction-model-file', $this.sample.corrmodels_fullfile($this.sample.basepath), 
             "--njobs '8' --no-log --layers -1 1", $globalargs,
             '--workingdir', ($rpath + '\' + $this.sample.slideid) -join ' ')
         #
