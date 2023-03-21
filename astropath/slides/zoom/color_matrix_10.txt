@@ -1,0 +1,11 @@
+%%blue%green%yellow%red%orange%cyan%magenta%purple%dark green
+mycol.all = [0 0 1;
+    0 1 0;
+    1 1 0;
+    1 0 0;
+    0.91 0.41 0.17;
+    0 1 1;
+    1 0 1;
+    0.67 0.45 1;
+    0.14 0.55 1;
+    0 0 0];
