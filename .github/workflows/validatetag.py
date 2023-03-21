@@ -1,4 +1,4 @@
-import argparse, re, setuptools_scm, subprocess
+import argparse, re, subprocess
 
 def validatetag(*, tag, ok_if_version_unchanged):
   regex = r"v([0-9]+)\.([0-9]+)\.([0-9]+)$"
