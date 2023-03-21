@@ -482,7 +482,7 @@ class PolygonFinder(ThingWithPscale):
     possibleendpointorder = {label: itertools.permutations(labelendpoints[label], 2) for label in labels}
 
     if len(labels) > 7:
-      logger.warning("too many broken pieces of membrane to connect")
+      self.logger.warning("too many broken pieces of membrane to connect")
       return
 
     possiblepointstoconnect = []
