@@ -1,0 +1,36 @@
+name: 'Make tag'
+
+on:
+  push:
+    paths:
+      - version.txt
+    branches:
+      - main
+
+jobs:
+  make-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          #https://stackoverflow.com/a/67059629/5228524
+          token: ${{ secrets.CI_TOKEN }}
+          submodules: true
+          fetch-depth: 0
+      - name: Read version
+        id: version
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: ./version.txt
+          trim: true
+      - name: Validate tag
+        run: |
+          git fetch --tags &&
+          python .github/workflows/validatetag.py "${{ steps.version.outputs.content }}"
+      - name: Make tag
+        uses: negz/create-tag@v1
+        with:
+          version: ${{ steps.version.outputs.content }}
+          message: "update tag version to ${{ steps.version.outputs.content }}"
+          token: ${{ secrets.CI_TOKEN }}
