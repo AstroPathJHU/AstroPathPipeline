@@ -3,15 +3,20 @@ import pathlib, tifffile, time
 import multiprocessing as mp
 from argparse import ArgumentParser
 import numpy as np
-from astropath.utilities.img_file_io import get_raw_as_hwl, write_image_to_file
+from astropath.utilities.img_file_io import write_image_to_file
 from astropath.shared.image_masking.image_mask import ImageMask
 
 #constants
 #DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs')
-DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs_Corrected')
+#DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs_Corrected')
+#DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_1/Component_Tiffs_SingleLibrary')
+#DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_2/Component_Tiffs')
+#DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_2/Component_Tiffs_SingleLibrary')
+DEF_COMP_TIFF_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/Microscope_Comparison/Round_2/Component_Tiffs_Corrected')
 DEF_MASK_DIR=pathlib.Path('//bki07/')
 #DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images')
 DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images_corrected')
+#DEF_OUTPUT_DIR=pathlib.Path('//bki-fs1.idies.jhu.edu/data02/maggie/microscope_comparison/mean_images_single_library')
 DEF_N_PROCS = 8
 #IMAGE_DIMS = (1404, 1876, 10)
 IMAGE_DIMS = (1404, 1872, 10)
@@ -128,11 +133,11 @@ def sum_component_tiffs(slideID,comp_tiff_dir,mask_dir,nprocs) :
         p.join()
     masked_image_queue.put(None)
     mask_queue.put(None)
-    print(f'finishing summing masks...')
+    print('finishing summing masks...')
     sum_masks_proc.join()
-    print(f'finishing summing masked images...')
+    print('finishing summing masked images...')
     sum_masked_images_proc.join()
-    print(f'Getting sum of masked images and mask stack...')
+    print('Getting sum of masked images and mask stack...')
     sum_masked_images = masked_image_queue.get()
     mask_stack = mask_queue.get()
     return sum_masked_images, mask_stack
@@ -159,18 +164,22 @@ def get_arguments(args=None) :
         print(f'WARNING: setting number of processes to 4 (the minimum) instead of {args.nprocs}')
         args.nprocs = 4
     polaris_number = None 
-    if args.slideID.startswith('AP018') :
+    if args.slideID.startswith('AP018') or args.slideID.startswith('AP025') :
         polaris_number = 1
-    elif args.slideID.startswith('AP017') :
+    elif args.slideID.startswith('AP017') or args.slideID.startswith('AP026') :
         polaris_number = 2
-    elif args.slideID.startswith('AP019') :
+    elif args.slideID.startswith('AP019') or args.slideID.startswith('AP024') :
         polaris_number = 3
     if polaris_number not in (1,2,3) :
         raise ValueError(f'ERROR: could not determine polaris number from slide ID {args.SlideID}')
     if args.comp_tiff_dir==DEF_COMP_TIFF_DIR :
         args.comp_tiff_dir = args.comp_tiff_dir/f'Polaris{polaris_number}'
     if args.mask_dir==DEF_MASK_DIR :
-        args.mask_dir = args.mask_dir/f'JHU_Polaris_{polaris_number}'/args.slideID/'im3'/'meanimage'/'image_masking'
+        if 'Round_2' in args.comp_tiff_dir.as_posix() :
+            args.mask_dir = args.mask_dir/f'JHU_Polaris_{polaris_number}_Rescans'
+        else :
+            args.mask_dir = args.mask_dir/f'JHU_Polaris_{polaris_number}'
+        args.mask_dir = args.mask_dir/args.slideID/'im3'/'meanimage'/'image_masking'
     if args.output_dir==DEF_OUTPUT_DIR :
         args.output_dir = args.output_dir/args.slideID
     #print out the paths

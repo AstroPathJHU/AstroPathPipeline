@@ -7,7 +7,7 @@ from astropath.utilities.img_file_io import get_raw_as_hwl, write_image_to_file
 
 #constants
 DEF_CORRECTION_FACTOR_FILEPATH = pathlib.Path('//bki04/astropath_processing/microscope_correction')/'w_mk__reference_Polaris2.csv'
-DEF_N_PROCS = 16
+DEF_N_PROCS = 8
 #IMAGE_DIMS = (1404, 1876, 43)
 IMAGE_DIMS = (1404, 1872, 43)
 
@@ -55,7 +55,7 @@ def correct_files(processloc,slideID,nprocs,correction_factors) :
         p = mp.Process(target=write_corrected_file,args=(fp,correction_factors))
         p.start()
         procs.append(p)
-    print(f'joining all processes...')
+    print('joining all processes...')
     for p in procs :
         p.join()
 
@@ -80,9 +80,9 @@ def read_correction_factors(correction_factor_filepath,microscope_number) :
         raise RuntimeError(errmsg)
     factors = np.array(correction_factors)
     if microscope_number==1 :
-        factors = factors/POLARIS_1_C_FACTOR
+        factors = factors*POLARIS_1_C_FACTOR
     elif microscope_number==3 :
-        factors = factors/POLARIS_3_C_FACTOR
+        factors = factors*POLARIS_3_C_FACTOR
     return factors
 
 def main(args=None) :
