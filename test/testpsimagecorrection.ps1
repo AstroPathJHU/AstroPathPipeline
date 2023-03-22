@@ -164,9 +164,7 @@ Class testpsimagecorrection : testtools {
             $dpath,
             $this.slideid, 
             '--shardedim3root', $rpath,
-            '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
-                $this.pybatchflatfieldtest + '.bin'), 
-            '--warping-file', $this.pybatchwarpingfiletest, 
+            '--correction-model-file', ($dpath + '\AstroPathCorrectionModels.csv'),
             "--njobs '8' --no-log --layers -1 1 --allow-local-edits",
             '--skip-start-finish'
             ) -join ' ') + $wd
