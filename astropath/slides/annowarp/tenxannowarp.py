@@ -6,6 +6,10 @@ from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
 
 class TenXAnnoWarp(TenXSampleBase):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.logger.warningonenter("This is a work in progress, doesn't actually work yet")
+
   @property
   def logmodule(self):
     return "tenxannowarp"
