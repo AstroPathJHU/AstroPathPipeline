@@ -1,7 +1,7 @@
 import abc, contextlib, json, methodtools, numpy as np, pathlib
 from .argumentparser import ArgumentParserWithVersionRequirement
 from .imageloader import ImageLoaderTiff
-from .logging import printlogger, ThingWithLogger
+from .astropath_logging import printlogger, ThingWithLogger
 from ..utilities import units
 from ..utilities.tableio import boolasintfield, optionalfield
 from ..utilities.units.dataclasses import DataClassWithPscale, distancefield
