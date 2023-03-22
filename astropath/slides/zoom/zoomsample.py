@@ -542,7 +542,6 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     result = super().inputfiles(**kwargs)
     result += [
       self.csv("fields"),
-      self.batchprocedurefile(missing_ok=True),
     ]
     if all(_.exists() for _ in result):
       result += [
@@ -569,9 +568,9 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     )
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, **otherrootkwargs):
+  def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, BatchID, batchroot, **otherrootkwargs):
     try:
-      nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs")
+      nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, batchroot=batchroot, BatchID=BatchID)
     except FileNotFoundError:
       nlayers = 1
     if layers is None:

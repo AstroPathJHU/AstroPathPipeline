@@ -1,4 +1,4 @@
-import contextlib, datetime, job_lock, os, re
+import contextlib, datetime, job_lock, os, pathlib, re
 from ...utilities.config import CONST as UNIV_CONST
 from ...shared.cohort import FilterResult, GeomFolderCohort, GlobalDbloadCohort, GlobalDbloadCohortBase, PhenotypeFolderCohort, SampleFilter, SelectRectanglesCohort, WorkflowCohort
 from ...shared.csvclasses import MakeClinicalInfo, ControlCore, ControlFlux, ControlSample, GlobalBatch, MergeConfig
@@ -7,8 +7,10 @@ from ...shared.workflowdependency import WorkflowDependency
 from .csvscansample import CsvScanBase, CsvScanSample, RunCsvScanBase
 
 class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, contextlib.ExitStack):
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, batchroot, **kwargs):
     super().__init__(*args, **kwargs)
+    if batchroot is None: batchroot = self.root
+    self.batchroot = pathlib.Path(batchroot)
 
   def __enter__(self):
     result = super().__enter__()
@@ -31,12 +33,12 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
   def runcsvscan(self, *, checkcsvs=True, ignorecsvs=[], segmentationalgorithms=None):
     toload = []
     batchcsvs = {
-      self.root/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
+      self.batchroot/"Batch"/f"{csv}_{s.BatchID:02d}.csv"
       for csv in ("MergeConfig", "BatchID")
       for s in self.sampledefs()
     }
     otherbatchcsvs = {
-      self.root/"Batch"/f"{csv}_{BatchID:02d}.csv"
+      self.batchroot/"Batch"/f"{csv}_{BatchID:02d}.csv"
       for csv in ("MergeConfig", "BatchID")
       for BatchID in range(1, max(s.BatchID for s in self.sampledefs())+1)
     } - batchcsvs
@@ -95,7 +97,7 @@ class CsvScanGlobalCsv(CsvScanBase, GlobalDbloadCohortBase, WorkflowDependency, 
           unknowncsvs.add(csv)
           continue
 
-      if csv.parent == self.root/"Batch":
+      if csv.parent == self.batchroot/"Batch":
         match = re.match("(.*)_[0-9]+[.]csv", csv.name)
         csvclass, tablename = {
           "BatchID": (GlobalBatch, "Batch"),
@@ -252,6 +254,7 @@ class CsvScanCohort(GlobalDbloadCohort, GeomFolderCohort, PhenotypeFolderCohort,
     return {
       k: v for k, v in self.initiatesamplekwargs.items()
       if {
+        "batchroot": True,
         "dbloadroot": True,
         "geomroot": False,
         "im3root": False,

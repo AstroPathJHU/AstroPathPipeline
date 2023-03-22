@@ -302,11 +302,11 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     return {"layers": self.layerscomponenttiff, "tifflayers": None, **super().workflowkwargs}
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, informdataroot, deepzoomroot, layers, checkimages=False, **otherworkflowkwargs):
+  def getoutputfiles(cls, SlideID, *, root, informdataroot, deepzoomroot, layers, checkimages=False, BatchID, **otherworkflowkwargs):
     zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
     if layers is None:
       try:
-        nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs")
+        nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, BatchID=BatchID)
       except FileNotFoundError:
         nlayers = 1
       layers = range(1, nlayers+1)

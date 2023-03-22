@@ -50,7 +50,20 @@ class GitRepo:
   def initrepo(self):
     committables = [_ for _ in (here/"commits_saved.csv", here/"commits.csv") if _.exists()]
     if have_git:
-      committables.append(io.StringIO("hash,parents,tags\n"+subprocess.run(["git", "log", "--all", "--pretty=%H\t%P\t%D", "--no-abbrev-commit"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="ascii", check=True, cwd=self.cwd).stdout.replace(",", "").replace("\t", ",")))
+      try:
+        process = subprocess.run(["git", "log", "--all", "--pretty=%H\t%P\t%D", "--no-abbrev-commit"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="ascii", check=True, cwd=self.cwd)
+      except subprocess.CalledProcessError as e:
+        print("======")
+        print("stdout")
+        print("======")
+        print(e.stdout)
+        print()
+        print("======")
+        print("stderr")
+        print("======")
+        print(e.stdout)
+        raise
+      committables.append(io.StringIO("hash,parents,tags\n"+process.stdout.replace(",", "").replace("\t", ",")))
 
     allcommits = sum((
       readtable(table, GitCommit, extrakwargs={"repo": self})

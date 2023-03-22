@@ -28,6 +28,12 @@ pipeline {
       }
 
       stages{
+        stage('validate version.txt') {
+          steps {
+            sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
+            sh 'if ! [ -z ${CHANGE_ID} ] && [ "${CHANGE_TARGET}" = main ]; then options=; else options="--ok-if-version-unchanged"; fi; python ./.github/workflows/validatetag.py $options "$(cat version.txt)"'
+          }
+        }
 
         stage('pip install') {
           steps {
@@ -37,7 +43,6 @@ pipeline {
 
         stage('ps module install') {
           steps {
-            sh 'url="$(git config --get remote.origin.url)"; url="$(echo $url | sed s/github/astropathjhujenkins:${GITHUB_TOKEN}@github/)"; git fetch --tags -f "$url"'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsimport.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpssharedtools.ps1'
             sh 'folder=$(basename $(pwd)); pwsh -File ./test/testpsaptables.ps1'
