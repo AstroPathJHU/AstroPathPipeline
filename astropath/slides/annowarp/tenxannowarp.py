@@ -55,7 +55,6 @@ class TenXAnnoWarp(TenXSampleBase):
         continue
       allangles = np.linspace(-np.pi, np.pi, 1001)
       goodindices = np.zeros_like(allangles, dtype=int)
-      goodangles = []
       for i, angle in enumerate(allangles):
         coordinate = (np.array([y, x]) + r*np.array([np.sin(angle), np.cos(angle)])).astype(int)
         try:
