@@ -542,7 +542,6 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     result = super().inputfiles(**kwargs)
     result += [
       self.csv("fields"),
-      self.batchprocedurefile(missing_ok=True),
     ]
     if all(_.exists() for _ in result):
       result += [

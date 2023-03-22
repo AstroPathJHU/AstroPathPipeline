@@ -85,6 +85,10 @@ class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTi
       anynonsegmentedexist = False
       anysegmentedexist = False
       tolog = []
+      try:
+        self.batchprocedurefile()
+      except FileNotFoundError:
+        tolog.append("Missing batch procedure file")
       for r in self.rectangles:
         nonsegmented = r.componenttifffile.with_name(r.componenttifffile.name.replace("_w_seg", ""))
         if not nonsegmented.exists():

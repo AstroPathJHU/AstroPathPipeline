@@ -178,6 +178,7 @@ setupkwargs = dict(
   package_data = {
     "astropath": [
       "shared/master_annotation_list.csv",
+      "slides/zoom/color_matrix_10.txt",
       "slides/zoom/color_matrix_8.txt",
       "slides/zoom/color_matrix_9.txt",
       "utilities/version/commits.csv",
