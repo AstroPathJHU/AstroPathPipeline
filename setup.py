@@ -19,15 +19,17 @@ class build_commits_csv(setuptools.Command):
         tags = tags.replace(",", "").replace("->", "").split()
         writer.writerow({"hash": hash, "parents": " ".join(parents), "tags": " ".join(tags)})
 
-class build_py(setuptools.command.build_py.build_py):
-  def run(self):
-    self.run_command("build_commits_csv")
-    super().run()
+def subclass_command(cmd):
+  class newcmd(cmd):
+    def run(self):
+      self.run_command("build_commits_csv")
+      super().run()
+  newcmd.__name__ = cmd.__name__
+  return newcmd
 
-class develop(setuptools.command.develop.develop):
-  def run(self):
-    self.run_command("build_commits_csv")
-    super().run()
+build_py = subclass_command(setuptools.command.build_py.build_py)
+develop = subclass_command(setuptools.command.develop.develop)
+egg_info = subclass_command(setuptools.command.egg_info.egg_info)
 
 def get_nnunet_package_files():
   directory = here/'astropath'/'slides'/'segmentation'/'nnunet_models'
@@ -44,6 +46,7 @@ setupkwargs = dict(
     'build_commits_csv': build_commits_csv,
     'build_py': build_py,
     'develop': develop,
+    'egg_info': egg_info,
   },
   entry_points = {
     "console_scripts": [
@@ -182,6 +185,7 @@ setupkwargs = dict(
       "slides/zoom/color_matrix_8.txt",
       "slides/zoom/color_matrix_9.txt",
       "utilities/version/commits.csv",
+      "utilities/version/commits_saved.csv",
     ]+get_nnunet_package_files(),
   },
 )
