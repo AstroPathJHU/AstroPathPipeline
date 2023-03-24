@@ -4,10 +4,13 @@ from ...utilities import units
 from ...utilities.miscmath import covariance_matrix
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
+from .stitch import AnnoWarpStitchResultDefaultModel
 
 class TenXAnnoWarp(TenXSampleBase):
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, breaksx, breaksy, **kwargs):
     super().__init__(*args, **kwargs)
+    self.breaksx = np.array(breaksx)
+    self.breaksy = np.array(breaksy)
     self.logger.warningonenter("This is a work in progress, doesn't actually work yet")
 
   @property
@@ -124,9 +127,37 @@ class TenXAnnoWarp(TenXSampleBase):
 
     return circles
 
+  @methodtools.lru_cache()
+  @property
+  def __bigtilesizeoffset(self):
+    xdiffs = self.breaksx[1:] - self.breaksx[:-1]
+    ydiffs = self.breaksy[1:] - self.breaksy[:-1]
+
+    xmean = np.mean(xdiffs)
+    xstd = np.std(xdiffs)
+    ymean = np.mean(ydiffs)
+    ystd = np.std(ydiffs)
+
+    if xstd / xmean > 0.02: raise ValueError(f"xdiffs {xdiffs} are inconsistent (mean {xmean} std {xstd})")
+    if ystd / ymean > 0.02: raise ValueError(f"ydiffs {ydiffs} are inconsistent (mean {ymean} std {ystd})")
+
+    x0 = np.mean([xi - i*xmean for i, xi in enumerate(self.breaksx)])
+    y0 = np.mean([yi - i*ymean for i, yi in enumerate(self.breaksy)])
+
+    return np.array([xmean, ymean]), np.array([x0, y0])
+
+  @property
+  def bigtilesize(self):
+    return self.__bigtilesizeoffset[0]
+  @property
+  def bigtileoffset(self):
+    return self.__bigtilesizeoffset[1]
+
   def alignspots(self, *, write_result=True, draw=False):
     commonalignmentresultkwargs = dict(
       pscale=self.pscale,
+      bigtilesize=self.bigtilesize,
+      bigtileoffset=self.bigtileoffset,
     )
     spots = self.spots["fiducial"]
     nspots = len(spots)
@@ -189,8 +220,24 @@ class TenXAnnoWarp(TenXSampleBase):
     read the alignments from a csv file
     """
     if filename is None: filename = self.alignmentcsv
-    results = self.__alignmentresults = self.readtable(filename, TenXAnnoWarpAlignmentResult)
+    results = self.__alignmentresults = self.readtable(filename, TenXAnnoWarpAlignmentResult, extrakwargs={"bigtilesize": self.bigtilesize, "bigtileoffset": self.bigtileoffset})
     return results
+
+  @property
+  def alignmentresults(self):
+    return self.__alignmentresults
+  @property
+  def goodresults(self):
+    return [_ for _ in self.alignmentresults if _]
+
+  def stitch(self):
+    A, b, c = AnnoWarpStitchResultDefaultModel.Abc(self.goodresults, None, None, self.logger)
+    result = units.np.linalg.solve(2*A, -b)
+    delta2nllfor1sigma = 1
+    covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
+    result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
+    self.__stitchresult = stitchresult = AnnoWarpStitchResultDefaultModel(result, A=A, b=b, c=c, constraintmus=None, constraintsigmas=None, pscale=1, apscale=1)
+    return stitchresult
 
 class TenXAnnoWarpAlignmentResult(DataClassWithPscale):
   """
@@ -214,6 +261,11 @@ class TenXAnnoWarpAlignmentResult(DataClassWithPscale):
   covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format)
   exit: int
 
+  def __post_init__(self, *args, bigtilesize, bigtileoffset, **kwargs):
+    self.__bigtilesize = bigtilesize
+    self.__bigtileoffset = bigtileoffset
+    super().__post_init__(*args, **kwargs)
+
   @classmethod
   def transforminitargs(cls, *args, **kwargs):
     dxvec = kwargs.pop("dxvec", None)
@@ -234,6 +286,30 @@ class TenXAnnoWarpAlignmentResult(DataClassWithPscale):
 
   def __bool__(self):
     return self.exit == 0
+
+  @property
+  def xvec(self):
+    return np.array([self.x, self.y])
+  @property
+  def dxvec(self):
+    return np.array([self.dx, self.dy])
+  @property
+  def covariance(self):
+    return np.array([[self.covxx, self.covxy], [self.covxy, self.covyy]])
+
+  @property
+  def bigtileoffset(self): return self.__bigtileoffset
+  @property
+  def bigtilesize(self): return self.__bigtilesize
+  @property
+  def bigtileindex(self):
+    return (self.xvec - self.bigtileoffset) // self.bigtilesize
+  @property
+  def bigtilecorner(self):
+    return self.bigtileindex * self.bigtilesize + self.bigtileoffset
+  @property
+  def coordinaterelativetobigtile(self):
+    return self.xvec - self.bigtilecorner
 
 class FittedCircle(DataClassWithPscale):
   x: units.Distance = distancefield(pixelsormicrons="pixels")
