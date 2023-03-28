@@ -123,10 +123,15 @@
             $this.checkmoduleexists($mpath, $module)
         }
         #
+        Write-Host 'THIS IS HAPPENING'
         if ($this.apversionchecks($mpath, $module, $vers)){
             return ("v" + $vers)
         } else {
-            $vers = $this.getfullversion()
+            #$vers = $this.getfullversion()
+            #$this.upgradepyenvir()
+            $this.checkconda()
+            $vers = $this.getversionpy()
+            Write-Host 'Getting this version:' $vers
         }
         # 
         return $vers
