@@ -110,7 +110,8 @@ Class testpsmeanimage : testtools {
             ' --workingdir', $md_processloc,
             "--njobs '8'",
             '--allow-local-edits',
-            '--skip-start-finish')
+            '--skip-start-finish',
+            '--job-lock-timeout 0:5:0')
         #
         $inp.getmodulename()
         $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath)
