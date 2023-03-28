@@ -1,9 +1,12 @@
-import cv2, itertools, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, skimage.morphology, uncertainties as unc
-from ...shared.tenx import TenXSampleBase
+import abc, cv2, hashlib, itertools, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, skimage.morphology, uncertainties as unc
+from ...shared.csvclasses import Annotation, AnnotationInfo, Region
+from ...shared.polygon import SimplePolygon
+from ...shared.tenx import Spot, TenXSampleBase
 from ...utilities import units
 from ...utilities.miscmath import covariance_matrix
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
+from .annowarpsample import WarpedVertex
 from .stitch import AnnoWarpStitchResultDefaultModel
 
 class TenXAnnoWarp(TenXSampleBase):
@@ -168,11 +171,12 @@ class TenXAnnoWarp(TenXSampleBase):
       circles = self.findcircle(spot, draw=draw)
       alignmentresultkwargs = dict(
         **commonalignmentresultkwargs,
-        n=i,
+        n=spot.n,
         x=nominal[0],
         y=nominal[1],
         row=spot.row,
         col=spot.col,
+        r=spot.r,
       )
       if len(circles) != 1:
         results.append(
@@ -203,9 +207,32 @@ class TenXAnnoWarp(TenXSampleBase):
     return results
 
   @property
+  def fittedspots(self):
+    return TenXFittedSpot(
+      spot=spot,
+      pxvec=self.__stitchresult.dxvec(spot)
+    )
+
+  @property
   def alignmentcsv(self):
     self.dbloadfolder.mkdir(exist_ok=True, parents=True)
     return self.dbloadfolder/"align_fiducal_spots.csv"
+  @property
+  def annotationinfocsv(self):
+    self.dbloadfolder.mkdir(exist_ok=True, parents=True)
+    return self.dbloadfolder/"annotationinfo.csv"
+  @property
+  def annotationscsv(self):
+    self.dbloadfolder.mkdir(exist_ok=True, parents=True)
+    return self.dbloadfolder/"annotations.csv"
+  @property
+  def verticescsv(self):
+    self.dbloadfolder.mkdir(exist_ok=True, parents=True)
+    return self.dbloadfolder/"vertices.csv"
+  @property
+  def regionscsv(self):
+    self.dbloadfolder.mkdir(exist_ok=True, parents=True)
+    return self.dbloadfolder/"regions.csv"
 
   def writealignments(self, *, filename=None):
     """
@@ -239,7 +266,143 @@ class TenXAnnoWarp(TenXSampleBase):
     self.__stitchresult = stitchresult = AnnoWarpStitchResultDefaultModel(result, A=A, b=b, c=c, constraintmus=None, constraintsigmas=None, pscale=1, apscale=1)
     return stitchresult
 
-class TenXAnnoWarpAlignmentResult(DataClassWithPscale):
+  def fittedspots(self, spottype):
+    return [TenXFittedSpot(spot=spot, stitchresult=self.__stitchresult, bigtilesize=self.bigtilesize, bigtileoffset=self.bigtileoffset) for spot in self.spots[spottype]]
+
+  def writeannotations(self, *, nangles=128):
+    annotations = []
+    allvertices = []
+    regions = []
+    annotationinfos = []
+    with open(self.spotsfile, "rb") as f:
+      hash = hashlib.sha256()
+      hash.update(f.read())
+      xmlsha = hash.hexdigest()
+
+    for layer, (name, color, visible) in enumerate((
+      ("FiducialSpotNominal", "0x307846", False),
+      ("FiducialSpotAligned", "0x307178", False),
+      ("FiducialSpotFitted", "0x303578", True),
+      ("OligoSpotNominal", "0x733078", False),
+      ("OligoSpotFitted", "0xA62FAF", True),
+    ), start=1):
+      annotationinfo = AnnotationInfo(
+        sampleid=0,
+        originalname=name,
+        dbname=name,
+        annotationsource="wsi",
+        position=(0, 0),
+        pscale=self.pscale,
+        apscale=self.pscale,
+        annoscale=self.pscale,
+        xmlfile=self.spotsfile,
+        xmlsha=xmlsha,
+        scanfolder=None,
+      )
+      annotationinfos.append(annotationinfo)
+      annotation = Annotation(
+        sampleid=0,
+        layer=layer,
+        name=name,
+        color=color,
+        visible=visible,
+        poly=None,
+        apscale=self.pscale,
+        pscale=self.pscale,
+        annoscale=self.pscale,
+        annotationinfo=annotationinfo,
+      )
+      annotations.append(annotation)
+
+      spottype, aligntype = name.lower().split("spot")
+      if aligntype == "nominal":
+        spots = self.spots[spottype]
+        xc = lambda spot: spot.imageX
+        yc = lambda spot: spot.imageY
+      elif aligntype == "aligned":
+        assert spottype == "fiducial"
+        spots = self.alignmentresults
+        xc = lambda spot: spot.x + spot.dx
+        yc = lambda spot: spot.y + spot.dy
+      elif aligntype == "fitted":
+        spots = self.fittedspots(spottype)
+        xc = lambda spot: spot.px
+        yc = lambda spot: spot.py
+      else:
+        assert False
+
+      for n, spot in enumerate(spots, start=1):
+        r = spot.r
+        rid = spot.n
+        regionid = layer*10000 + rid
+        vertices = [
+          WarpedVertex(
+            regionid=regionid,
+            x=xc(spot) + r*np.cos(phi),
+            y=yc(spot) + r*np.sin(phi),
+            vid=k,
+            pscale=self.pscale,
+            annotation=annotation,
+            wx=xc(spot) + r*np.cos(phi),
+            wy=yc(spot) + r*np.sin(phi),
+          ) for k, phi in enumerate(np.linspace(-np.pi, np.pi, nangles+1), start=1)
+        ]
+        poly = SimplePolygon(vertices=vertices, pscale=spot.pscale, annoscale=spot.pscale)
+        poly = poly.round()
+        poly = poly.smooth_rdp(epsilon=2*self.onepixel)
+        allvertices += poly.vertices
+        region = Region(
+          regionid=regionid,
+          sampleid=0,
+          layer=layer,
+          rid=rid,
+          isNeg=0,
+          type="Polygon",
+          nvert=len(vertices),
+          poly=poly,
+        )
+        regions.append(region)
+    writetable(self.annotationinfocsv, annotationinfos, logger=self.logger)
+    writetable(self.annotationscsv, annotations, logger=self.logger)
+    writetable(self.verticescsv, allvertices, logger=self.logger)
+    writetable(self.regionscsv, regions, logger=self.logger)
+    return annotationinfos, annotations, allvertices, regions
+
+class BigTileCoordinateBase(abc.ABC):
+  @property
+  @abc.abstractmethod
+  def bigtilesize(self): pass
+  @property
+  @abc.abstractmethod
+  def bigtileoffset(self): pass
+  @property
+  @abc.abstractmethod
+  def xvec(self): pass
+  @property
+  def bigtileindex(self):
+    return (self.xvec - self.bigtileoffset) // self.bigtilesize
+  @property
+  def bigtilecorner(self):
+    return self.bigtileindex * self.bigtilesize + self.bigtileoffset
+  @property
+  def coordinaterelativetobigtile(self):
+    return self.xvec - self.bigtilecorner
+
+class BigTileCoordinate(BigTileCoordinateBase):
+  def __init__(self, x, y, bigtilesize, bigtileoffset):
+    self.__bigtilesize = bigtilesize
+    self.__bigtileoffset = bigtileoffset
+    self.__x = x
+    self.__y = y
+
+  @property
+  def xvec(self): return np.array([self.__x, self.__y])
+  @property
+  def bigtileoffset(self): return self.__bigtileoffset
+  @property
+  def bigtilesize(self): return self.__bigtilesize
+
+class TenXAnnoWarpAlignmentResult(DataClassWithPscale, BigTileCoordinateBase):
   """
   A result from the alignment of one tile of the annowarp
 
@@ -252,6 +415,7 @@ class TenXAnnoWarpAlignmentResult(DataClassWithPscale):
   n: int
   x: units.Distance = distancefield(pixelsormicrons="pixels")
   y: units.Distance = distancefield(pixelsormicrons="pixels")
+  r: units.Distance = distancefield(pixelsormicrons="pixels")
   row: int
   col: int
   dx: units.Distance = distancefield(pixelsormicrons="pixels", secondfunction="{:.6g}".format)
@@ -301,15 +465,38 @@ class TenXAnnoWarpAlignmentResult(DataClassWithPscale):
   def bigtileoffset(self): return self.__bigtileoffset
   @property
   def bigtilesize(self): return self.__bigtilesize
-  @property
-  def bigtileindex(self):
-    return (self.xvec - self.bigtileoffset) // self.bigtilesize
-  @property
-  def bigtilecorner(self):
-    return self.bigtileindex * self.bigtilesize + self.bigtileoffset
-  @property
-  def coordinaterelativetobigtile(self):
-    return self.xvec - self.bigtilecorner
+
+class TenXFittedSpot(Spot):
+  px: units.Distance = distancefield(pixelsormicrons="pixels")
+  py: units.Distance = distancefield(pixelsormicrons="pixels")
+  covxx: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format)
+  covxy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format)
+  covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2, secondfunction="{:.6g}".format)
+
+  @classmethod
+  def transforminitargs(cls, *args, spot=None, stitchresult=None, bigtilesize=None, bigtileoffset=None, **kwargs):
+    spotkwargs = {}
+    if stitchresult is not None and bigtilesize is not None and bigtileoffset is not None:
+      if spot is None: raise TypeError("Have to provide a spot if calculating pxvec from stitchresult")
+      coordinate = BigTileCoordinate(
+        x=spot.imageX,
+        y=spot.imageY,
+        bigtilesize=bigtilesize,
+        bigtileoffset=bigtileoffset,
+      )
+      pxvec = coordinate.xvec + stitchresult.dxvec(coordinate, apscale=spot.pscale)
+      px, py = units.nominal_values(pxvec)
+      (covxx, covxy), (covxy, covyy) = units.covariance_matrix(pxvec)
+      spotkwargs = {
+        "px": px,
+        "py": py,
+        "covxx": covxx,
+        "covxy": covxy,
+        "covyy": covyy,
+      }
+    elif stitchresult is not None or bigtilesize is not None or bigtileoffset is not None:
+      raise TypeError("Have to provide all of stitchresult, bigtilesize, bigtileoffset or none of them")
+    return super().transforminitargs(*args, spot=spot, **spotkwargs, **kwargs)
 
 class FittedCircle(DataClassWithPscale):
   x: units.Distance = distancefield(pixelsormicrons="pixels")

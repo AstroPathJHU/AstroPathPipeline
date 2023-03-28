@@ -1,4 +1,4 @@
-import abc, contextlib, json, methodtools, numpy as np, pathlib
+import abc, contextlib, dataclassy, json, methodtools, numpy as np, pathlib
 from .argumentparser import ArgumentParserWithVersionRequirement
 from .imageloader import ImageLoaderTiff
 from .astropath_logging import printlogger, ThingWithLogger
@@ -65,8 +65,8 @@ class TenXSampleBase(ArgumentParserWithVersionRequirement, ThingWithLogger, unit
           pass
         elif k in ("oligo", "fiducial"):
           spots[k] = []
-          for spotkwargs in v:
-            spotkwargs = {kk: vv*self.onepixel if kk in ("dia", "imageX", "imageY") else vv for kk, vv in spotkwargs.items()}
+          for n, spotkwargs in enumerate(v, start=1):
+            spotkwargs = {"n": n, **{kk: vv*self.onepixel if kk in ("dia", "imageX", "imageY") else vv for kk, vv in spotkwargs.items()}}
             spots[k].append(Spot(**spotkwargs, pscale=self.pscale))
         else:
           raise ValueError(k)
@@ -116,6 +116,7 @@ class TenXSampleBase(ArgumentParserWithVersionRequirement, ThingWithLogger, unit
   def logger(self): return printlogger(self.logmodule)
 
 class Spot(DataClassWithPscale):
+  n: int
   x: int
   y: int
   row: int
@@ -125,3 +126,26 @@ class Spot(DataClassWithPscale):
   imageX: units.Distance = distancefield(pixelsormicrons="pixels")
   imageY: units.Distance = distancefield(pixelsormicrons="pixels")
   tissue: bool = boolasintfield(None, optional=True)
+
+  @classmethod
+  def transforminitargs(cls, *args, spot=None, **kwargs):
+    """
+    If you give an existing Spot to init, the current spot
+    will be identical to that one.  This is useful for subclasses.
+    """
+    spotkwargs = {}
+    if spot is not None:
+      spotkwargs = {
+        **{
+          field: getattr(spot, field)
+          for field in set(dataclassy.fields(type(spot))) & set(dataclassy.fields(cls))
+        }
+      }
+    return super().transforminitargs(
+      *args,
+      **spotkwargs,
+      **kwargs,
+    )
+
+  @property
+  def r(self): return self.dia/2
