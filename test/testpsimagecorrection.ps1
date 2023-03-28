@@ -164,9 +164,10 @@ Class testpsimagecorrection : testtools {
             $dpath,
             $this.slideid, 
             '--shardedim3root', $rpath,
-            '--correction-model-file', ($dpath + '\AstroPathCorrectionModels.csv'),
+            '--correction-model-file', ($dpath + '\astropath_processing\AstroPathCorrectionModels.csv'),
             "--njobs '8' --no-log --layers -1 1 --allow-local-edits",
-            '--skip-start-finish'
+            '--skip-start-finish',
+            '--job-lock-timeout 0:5:0'
             ) -join ' ') + $wd
         #
         #$this.runpytesttask($inp, $userpythontask, $externaltask)
