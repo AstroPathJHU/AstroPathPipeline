@@ -136,6 +136,7 @@ class GeomCellSampleBase(GeomSampleBase, SampleWithSegmentations, ReadRectangles
             box += pxvec
             box = box // onepixel * onepixel
 
+
             geomload.append(
               CellGeomLoad(
                 field=field.n,
@@ -312,8 +313,6 @@ class CellGeomLoad(DataClassWithPolygon):
       **boxkwargs,
     )
 
-
-
 class PolygonFinder(ThingWithPscale):
   def __init__(self, image, celllabel, *, ismembrane, bbox, pscale, pxvec, mxbox, _debugdraw=False, _debugdrawonerror=False, repair=True, logger=dummylogger, loginfo=""):
     self.image = image
@@ -327,7 +326,7 @@ class PolygonFinder(ThingWithPscale):
     self.mxbox = mxbox
     self._debugdraw = _debugdraw
     self._debugdrawonerror = _debugdrawonerror
-    self.repair = repair and self.slicedimage.size <= 200*200
+    self.repair = repair and self.slicedimage.size <= 2000
 
   @property
   def pscale(self): return self.__pscale
@@ -481,6 +480,10 @@ class PolygonFinder(ThingWithPscale):
         labelendpoints[label] += labelsinglepixels[label]*2
 
     possibleendpointorder = {label: itertools.permutations(labelendpoints[label], 2) for label in labels}
+
+    if len(labels) > 7:
+      self.logger.warning("too many broken pieces of membrane to connect")
+      return
 
     possiblepointstoconnect = []
     for labelordering in itertools.permutations(labels):
