@@ -123,7 +123,7 @@ Class imagecorrection : moduletools {
             $dpath, 
             '--sampleregex', $this.sample.slideid,
             '--shardedim3root', $rpath, 
-            '--correction-model-file', $this.sample.corrmodels_fullfile($this.sample.basepath),
+            '--correction-model-file', $this.sample.corrmodels_fullfile($this.sample.mpath),
             "--njobs '8' --no-log --layers -1 1", $globalargs,
             '--workingdir', ($rpath + '\' + $this.sample.slideid) -join ' ')
         #
@@ -137,7 +137,7 @@ Class imagecorrection : moduletools {
             $dpath, 
             $this.sample.slideid,
             '--shardedim3root', $rpath,
-            '--correction-model-file', $this.sample.corrmodels_fullfile($this.sample.basepath), 
+            '--correction-model-file', $this.sample.corrmodels_fullfile($this.sample.mpath), 
             "--njobs '8' --no-log --layers -1 1", $globalargs,
             '--workingdir', ($rpath + '\' + $this.sample.slideid) -join ' ')
         #
