@@ -220,7 +220,7 @@ class sampledef : sharedtools{
                 $this.slideid + '\logfiles\' + 
                 $this.slideid + '-' + $cmodule + '.log'
         }
-        $vers = $this.GetVersion($this.mpath, $cmodule, $this.project, $true)
+        $vers = $this.GetVersion($this.mpath, $cmodule, $this.project)
         $this.moduleinfo.($cmodule) = @{mainlog=$cmainlog; slidelog=$cslidelog; version=$vers}
         #
         $cmainlog = $null
