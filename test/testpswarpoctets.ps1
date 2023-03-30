@@ -100,7 +100,8 @@ Class testpswarpoctets : testtools {
             $inp.gpuopt(),
             '--no-log',
             '--allow-local-edits',
-            '--skip-start-finish')
+            '--skip-start-finish',
+            '--job-lock-timeout 0:5:0')
         #
         $inp.getmodulename()
         $pythontask = $inp.('getpythontask' + $inp.pytype)($dpath, $rpath)

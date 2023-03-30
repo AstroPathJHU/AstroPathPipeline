@@ -10,7 +10,7 @@ running git commands.  The only reason to do this is if git is slow, which
 happens when editing the repo on cygwin and running on cmd or powershell.
 """
 
-import datetime, os, pkg_resources, re, setuptools_scm
+import datetime, os, pkg_resources, re, setuptools_scm, warnings
 from ... import __name__ as package_name
 
 try:
@@ -18,7 +18,9 @@ try:
     env_var_no_git = True
     raise LookupError
   env_var_no_git = False
-  astropathversion = "v"+setuptools_scm.get_version(root="../../..", relative_to=__file__)
+  with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", ".* is shallow and may cause errors", module="setuptools_scm[.]git")
+    astropathversion = "v"+setuptools_scm.get_version(root="../../..", relative_to=__file__)
   have_git = True
 except LookupError:
   have_git = False

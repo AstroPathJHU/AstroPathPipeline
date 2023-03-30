@@ -193,7 +193,7 @@ using module .\testtools.psm1
             '--flatfield-file', ($this.mpath + '\flatfield\flatfield_' +
                             $this.pybatchflatfieldtest + '.bin'),
             $inp.gpuopt(), '--no-log --ignore-dependencies --allow-local-edits',
-            '--use-apiddef', $wd
+            '--use-apiddef --job-lock-timeout 0:5:0', $wd
         ) -join ' '
         #
         $this.removewarpoctetsdep($inp)

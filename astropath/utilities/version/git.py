@@ -1,4 +1,4 @@
-import abc, io, methodtools, pathlib, subprocess
+import abc, io, methodtools, pathlib, re, subprocess
 from .version import astropathversionmatch, have_git
 from ..dataclasses import MetaDataAnnotation, MyDataClass
 from ..tableio import readtable, writetable
@@ -48,6 +48,7 @@ class GitRepo:
     self.initrepo()
 
   def initrepo(self):
+    committables = [_ for _ in (here/"commits_saved.csv", here/"commits.csv") if _.exists()]
     if have_git:
       try:
         process = subprocess.run(["git", "log", "--all", "--pretty=%H\t%P\t%D", "--no-abbrev-commit"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="ascii", check=True, cwd=self.cwd)
@@ -62,11 +63,58 @@ class GitRepo:
         print("======")
         print(e.stdout)
         raise
-      committable = io.StringIO("hash,parents,tags\n"+process.stdout.replace(",", "").replace("\t", ","))
-    else:
-      committable = here/"commits.csv"
+      committables.append(io.StringIO("hash,parents,tags\n"+process.stdout.replace(",", "").replace("\t", ",")))
 
-    self.commits = frozenset(readtable(committable, GitCommit, extrakwargs={"repo": self}))
+    allcommits = sum((
+      readtable(table, GitCommit, extrakwargs={"repo": self})
+      for table in committables
+    ), [])
+
+    byhash = {
+      hash: [c for c in allcommits if c.hash == hash]
+      for hash in {c.hash for c in allcommits}
+    }
+    for hash, commits in byhash.items():
+      while len(commits) > 1:
+        commit1, commit2, *_ = commits
+        alltags = set(commit1.tags | commit2.tags)
+
+        #grafted means it's the bottom of a shallow clone
+        if "grafted" in commit2.tags and "grafted" not in commit1.tags:
+          assert not commit2._parents
+          parents = commit1._parents
+          alltags.remove("grafted")
+        elif "grafted" in commit1.tags and "grafted" not in commit2.tags:
+          assert not commit1._parents
+          parents = commit2._parents
+          alltags.remove("grafted")
+        else:
+          possibleparents = {commit1._parents, commit2._parents}
+          try:
+            parents, = possibleparents
+          except ValueError:
+            raise ValueError(f"Inconsistent parents for commit {hash}: {commit1.parents}, {commit2.parents}")
+
+        newcommit = GitCommit(hash=hash, parents=parents, tags=frozenset(alltags), repo=self)
+        for lst in commits, allcommits:
+          lst.remove(commit1)
+          lst.remove(commit2)
+          lst.append(newcommit)
+
+    for commit in allcommits:
+      if "grafted" in commit.tags:
+        raise ValueError(f"No parent info available for commit {commit} --> try using a deeper clone (it doesn't necessarily have to be a full clone) or updating {committables[0]}")
+
+    bytag = {
+      tag: {c for c in allcommits if tag in c.tags}
+      for tag in frozenset.union(*(c.tags for c in allcommits))
+    }
+    for tag, commits in bytag.items():
+      if len(commits) > 1:
+        raise ValueError(f"Multiple commits {[commit.hash for commit in commits]} with the same tag: {tag}")
+
+    self.commits = set(allcommits)
+    assert len(self.commits) == len(allcommits)
 
   def writecommits(self):
     if not have_git:
@@ -116,18 +164,30 @@ class GitCommit(MyDataClass):
   hash: str
   @property
   def parents(self):
-    return tuple(self.repo.getcommit(p) for p in self.__parents)
+    return tuple(self.repo.getcommit(p) for p in self._parents)
   @parents.setter
   def parents(self, parents):
-    self.__parents = parents
-  parents: tuple = MetaDataAnnotation(parents, writefunction=lambda x: " ".join(_.hash for _ in x), readfunction=lambda x: tuple(x.split()), usedefault=False)
-  tags: frozenset = MetaDataAnnotation(writefunction=lambda x: " ".join(sorted(x)), readfunction=lambda x: frozenset(_ for _ in x.split() if _ != "->"))
+    self._parents = parents
+  parents: tuple = MetaDataAnnotation(
+    parents,
+    writefunction=lambda x: " ".join(_.hash for _ in x),
+    readfunction=lambda x: tuple(x.split()),
+    usedefault=False
+  )
+  tags: frozenset = MetaDataAnnotation(
+    writefunction=lambda x: " ".join(sorted(x)),
+    readfunction=lambda x: frozenset(
+      _ for _ in x.split()
+      if re.match("v[0-9]+[.][0-9]+[.][0-9]+", _)
+      or _ == "grafted"
+    ),
+  )
   repo: GitRepo = MetaDataAnnotation(includeintable=False)
 
   def __copy__(self):
-    return GitCommit(hash=self.hash, parents=self.__parents, tags=self.tags, repo=self.repo)
+    return GitCommit(hash=self.hash, parents=self._parents, tags=self.tags, repo=self.repo)
   def __deepcopy__(self, memo):
-    return GitCommit(hash=self.hash, parents=self.__parents, tags=self.tags, repo=self.repo)
+    return GitCommit(hash=self.hash, parents=self._parents, tags=self.tags, repo=self.repo)
   def __eq__(self, other):
     if isinstance(other, GitCommit):
       return self.hash == other.hash
@@ -165,6 +225,6 @@ class GitCommit(MyDataClass):
   def __hash__(self):
     return hash(self.hash)
   def __repr__(self):
-    return f"{type(self).__name__}(hash={self.hash!r}, parents={self.__parents!r}, tags={self.tags!r}, repo={self.repo!r})"
+    return f"{type(self).__name__}(hash={self.hash!r}, parents={self._parents!r}, tags={self.tags!r}, repo={self.repo!r})"
 
 thisrepo = GitRepo(here.parent.parent.parent)
