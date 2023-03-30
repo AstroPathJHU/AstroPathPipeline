@@ -207,13 +207,6 @@ class TenXAnnoWarp(TenXSampleBase):
     return results
 
   @property
-  def fittedspots(self):
-    return TenXFittedSpot(
-      spot=spot,
-      pxvec=self.__stitchresult.dxvec(spot)
-    )
-
-  @property
   def alignmentcsv(self):
     self.dbloadfolder.mkdir(exist_ok=True, parents=True)
     return self.dbloadfolder/"align_fiducal_spots.csv"
