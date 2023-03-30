@@ -436,11 +436,7 @@
         if ($check){
             return $check
         }
-        <#
-        if ($this.('test' + $cmodule + 'files')()){
-            return 3
-        }
-        #>
+        #
         if ($cmodule -notmatch $this.nolog_modules){
             if ($this.checklog($cmodule, $true)){
                 return 2
