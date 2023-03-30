@@ -1,4 +1,4 @@
-import contextlib, csv, job_lock, methodtools, multiprocessing as mp, numpy as np, pathlib, skimage.measure
+import contextlib, csv, job_lock, methodtools, multiprocessing as mp, numpy as np, skimage.measure
 from ...shared.argumentparser import ParallelArgumentParser
 from ...shared.imageloader import ImageLoaderPng
 from ...shared.tenx import TenXSampleBase
