@@ -178,27 +178,6 @@ class TenXGeomCell(TenXSampleWithFields, ParallelArgumentParser):
         sample.run(**runkwargs)
       return sample
 
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "mainfolder": parsed_args_dict.pop("main_folder"),
-    }
-
-  @classmethod
-  def misckwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().misckwargsfromargumentparser(parsed_args_dict),
-      "units": parsed_args_dict.pop("units"),
-    }
-
-  @classmethod
-  def makeargumentparser(cls, **kwargs):
-    p = super().makeargumentparser(**kwargs)
-    p.add_argument("main_folder", type=pathlib.Path, help="Folder with the whole_slide and tile folders")
-    p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default="safe")
-    return p
-
   @property
   def pscale(self): return 1
 
