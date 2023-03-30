@@ -201,7 +201,6 @@ class aptabletools : fileutils {
         $paths_data = $this.OpencsvFileConfirm($paths_csv_file)
         #
         $config_csv_file = $this.config_fullfile($mpath)
-        #$this.UpdateConfigVersion($config_csv_file)
         #
         if ($createwatcher){
             $this.FileWatcher($config_csv_file)
@@ -216,14 +215,6 @@ class aptabletools : fileutils {
             $merged_project_dat, $config_data, 'Project')
         #
         $this.defallprojects()
-        #
-    }
-    #
-    [void]UpdateConfigVersion($config){
-        #
-        $this.checkconda()
-        $ver = $this.getversionpy()
-        write-host $ver
         #
     }
     #
