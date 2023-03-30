@@ -1,7 +1,7 @@
-import contextlib, csv, job_lock, methodtools, multiprocessing as mp, numpy as np, pathlib, skimage.measure
-from ...shared.argumentparser import ArgumentParserWithVersionRequirement, ParallelArgumentParser
-from ...shared.astropath_logging import printlogger, ThingWithLogger
+import contextlib, csv, job_lock, methodtools, multiprocessing as mp, numpy as np, skimage.measure
+from ...shared.argumentparser import ParallelArgumentParser
 from ...shared.imageloader import ImageLoaderPng
+from ...shared.tenx import TenXSampleBase
 from ...utilities import units
 from ...utilities.tableio import writetable
 from .geomcellsample import CellGeomLoad, PolygonFinder
@@ -56,19 +56,7 @@ class MiniField(units.ThingWithPscale):
   def mxbox(self):
     return np.array([self.py, self.px, self.py+self.height, self.px+self.width])
 
-class TenXSampleWithFields(units.ThingWithPscale, contextlib.ExitStack):
-  def __init__(self, *args, mainfolder, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.__mainfolder = pathlib.Path(mainfolder)
-  @property
-  def mainfolder(self): return self.__mainfolder
-  @property
-  def csvfolder(self): return self.__mainfolder/"tile"/"csv"
-  @property
-  def pngfolder(self): return self.__mainfolder/"tile"/"nuclear_mask"
-  @property
-  def geomfolder(self): return self.__mainfolder/"tile"/"geom"
-
+class TenXSampleWithFields(TenXSampleBase):
   @methodtools.lru_cache()
   @property
   def fields(self):
@@ -97,7 +85,7 @@ class TenXSampleWithFields(units.ThingWithPscale, contextlib.ExitStack):
         result.append(mf)
     return result
         
-class TenXGeomCell(TenXSampleWithFields, ArgumentParserWithVersionRequirement, ParallelArgumentParser, ThingWithLogger):
+class TenXGeomCell(TenXSampleWithFields, ParallelArgumentParser):
   def __init__(self, *args, njobs=None, **kwargs):
     super().__init__(*args, **kwargs)
     self.__njobs = njobs
@@ -111,8 +99,8 @@ class TenXGeomCell(TenXSampleWithFields, ArgumentParserWithVersionRequirement, P
     return mp.get_context().Pool(nworkers)
 
   @property
-  def logger(self):
-    return printlogger("tenxgeomcell")
+  def logmodule(self):
+    return "tenxgeomcell"
 
   @staticmethod
   def runHPF(i, field, *, logger, outputfolder, _debugdraw=(), _debugdrawonerror=False, _onlydebug=False, repair=True, minarea, nfields, unitsargs):
@@ -189,27 +177,6 @@ class TenXGeomCell(TenXSampleWithFields, ArgumentParserWithVersionRequirement, P
       with sample:
         sample.run(**runkwargs)
       return sample
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "mainfolder": parsed_args_dict.pop("main_folder"),
-    }
-
-  @classmethod
-  def misckwargsfromargumentparser(cls, parsed_args_dict):
-    return {
-      **super().misckwargsfromargumentparser(parsed_args_dict),
-      "units": parsed_args_dict.pop("units"),
-    }
-
-  @classmethod
-  def makeargumentparser(cls, **kwargs):
-    p = super().makeargumentparser(**kwargs)
-    p.add_argument("main_folder", type=pathlib.Path, help="Folder with the whole_slide and tile folders")
-    p.add_argument("--units", choices=("safe", "fast", "fast_pixels", "fast_microns"), default="safe")
-    return p
 
   @property
   def pscale(self): return 1
