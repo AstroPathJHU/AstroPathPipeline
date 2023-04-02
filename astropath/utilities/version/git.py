@@ -158,7 +158,10 @@ class GitRepo:
 
   @property
   def currentcommit(self):
-    return self.getcommit(astropathversionmatch.group("commit"))
+    if astropathversionmatch.group("dev"):
+      return self.getcommit(astropathversionmatch.group("commit"))
+    else:
+      return self.getcommit("v"+astropathversionmatch.group("version"))
 
 class GitCommit(MyDataClass):
   hash: str
