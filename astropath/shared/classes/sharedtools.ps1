@@ -379,16 +379,16 @@
         $pyscript = $PSScriptRoot + '\..\versionpython.py'
         $version = ""
         try {
-            if ($this.iswindows()) {
+            if ($this.isWindows()) {
                 conda activate $this.pyenv()
-                $version = python $pyscript
+                $version = Invoke-Expression python $pyscript
                 conda deactivate
             } else {
-                $version = python $pyscript
+                $version = Invoke-Expression python ($pyscript -replace '\\', '/')
             }
         }
         catch {
-            if ($this.iswindows()) {
+            if ($this.isWindows()) {
                 conda deactivate
             }
             Throw $_.Exception.Message
