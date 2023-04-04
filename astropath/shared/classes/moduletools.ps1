@@ -585,7 +585,7 @@
     [void]runmatlabtask($taskname, $matlabtask){
         #
         $externallog = $this.ProcessLog($taskname)
-        matlab -nosplash -nodesktop -minimize -sd $this.funclocation -batch $matlabtask -wait *> $externallog
+        matlab -nosplash -nodesktop -minimize -sd $this.funclocation -batch $matlabtask -wait *>> $externallog
         $this.getexternallogs($externallog)
         #
     }
