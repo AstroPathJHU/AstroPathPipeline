@@ -59,6 +59,7 @@ class mylogger : samplereqs {
     #
     getlogger(){
         $this.vers = $this.GetVersion($this.mpath, $this.module, $this.project)
+        Write-Host "LOGGER VERSION:" $this.vers
     }
     #
     # change level default 
