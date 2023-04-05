@@ -130,7 +130,7 @@
      started or if there was an error between
      runs. if it is a dependency run it returns
      false if the task is finished and true if
-     the task is still running (as inidicated by
+     the task is still running (as indicated by
      the logs). If is not a dependency it returns
      the opposite.
      ------------------------------------------

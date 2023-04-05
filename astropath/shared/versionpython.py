@@ -1,4 +1,4 @@
-import astropath.utilities.version
+
 
 def version_py():
     """
@@ -6,7 +6,7 @@ def version_py():
     >> version_py()
 
     """
-    
+    import astropath.utilities.version
     print(astropath.utilities.version.astropathversion)
 
 if __name__ == "__main__":

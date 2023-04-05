@@ -869,11 +869,14 @@ class astropathwftools : sampledb {
     [switch]fastping($currentworker){
         #
         $obj = New-Object System.Net.NetworkInformation.Ping
-        return (
-            (
-                $obj.send($this.defcurrentworkerip($currentworker), 2000)
-            ).status -match 'Success'
-        )
+        #
+        try {
+            $reply = $obj.send($this.defcurrentworkerip($currentworker), 2000)
+            return ($reply.status -match 'Success')
+        }
+        catch {
+            return $false
+        }
         #
     }
 }

@@ -21,6 +21,7 @@
     [array]$newtasks
     [string]$processname
     [string]$processid
+    [string]$latestvers
     [hashtable]$softwareurls = @{
         'Miniconda3' = 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe';
         'MikTeX' = '';
@@ -118,38 +119,22 @@
             Throw ('Project not found for project number: '  + $project)
         }    
         #
-        $vers = $projectconfig.($module+'version')    
+        $vers = $projectconfig.($module+'version')
         if (!$vers){
             $this.checkmoduleexists($mpath, $module)
         }
         #
         if ($this.apversionchecks($mpath, $module, $vers)){
             return ("v" + $vers)
-        } else {
-            $vers = $this.getfullversion()
+        } else{
+            if (!$this.latestvers) {
+                $this.checkconda()
+                $this.latestvers = $this.getversionpy()
+            }
+            $vers = $this.latestvers
         }
         # 
         return $vers
-        #
-    }
-    #
-    [string]GetVersion($mpath, $module, $project, $short){
-        #
-        $this.ImportCohortsInfo($mpath) 
-        #
-        $projectconfig = $this.full_project_dat | 
-            & { process { if ($_.Project -eq $project) {$_}}}
-        if (!$projectconfig){
-            Throw ('Project not found for project number: '  + $project)
-        }    
-        #
-        $vers = $projectconfig.($module+'version')    
-        if (!$vers){
-           $this.checkmoduleexists($mpath, $module)
-           $vers = '0.0.2'
-        }
-        #
-        return ("v" + $vers)
         #
     }
     <# -----------------------------------------
@@ -163,7 +148,7 @@
     [switch]APVersionChecks($mpath, $module, $vers){
         #
         if ($this.package -match 'astropath' -and
-            $vers -match '0.0.1'){
+            (($vers -match '0.0.1') -or ($vers -match '0.0.2'))){
             return $true
         } else {
             return $false
@@ -392,15 +377,25 @@
     [String]getversionpy(){
         #
         $pyscript = $PSScriptRoot + '\..\versionpython.py'
-        $version = "";
-        conda activate $this.pyenv()
+        $version = ""
+        $pythonexp = "python $pyscript"
         try {
-            $version = python $pyscript
-            conda deactivate
+            if ($this.isWindows()) {
+                conda activate $this.pyenv()
+                $version = Invoke-Expression $pythonexp
+                conda deactivate
+            } else {
+                $version = Invoke-Expression ($pythonexp -replace '\\', '/')
+            }
         }
         catch {
-            conda deactivate
+            if ($this.isWindows()) {
+                conda deactivate
+            }
             Throw $_.Exception.Message
+        }
+        if ($version -eq "") {
+            Throw 'Error in getting version through python'
         }
         return $version
     }
@@ -503,6 +498,7 @@
         try{
             $this.checkconda()
             conda activate $this.pyenv() 2>&1 >> $this.pyinstalllog()
+            git fetch --all --tags
             $time = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
             $this.PopFile($this.pyinstalllog(), ($this.pyenv() + 
                 " CONDA ENVIR ACTIVATED; $time  `r`n"))
