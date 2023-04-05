@@ -520,8 +520,16 @@ class RectangleReadIHCTiff(RectangleWithImageLoaderBase) :
   ihctifffolder: pathlib.Path = pathfield(ihctifffolder, includeintable=False, use_default=False)  
 
   @property
+  def ihctiffhpffolder(self): return self.ihctifffolder/"HPFs"
+  @property
+  def ihctiffunmixedfolder(self): return self.ihctifffolder/"Unmixed_Images"
+
+  @property
   def ihctifffile(self):
-    return self.ihctifffolder/self.file.name.replace(UNIV_CONST.IM3_EXT, '_IHC.tif')
+    return self.ihctiffhpffolder/self.file.name.replace(UNIV_CONST.IM3_EXT, '_IHC.tif')
+  @property
+  def ihctiffunmixedfile(self):
+    return self.ihctiffunmixedfolder/self.file.name.replace(UNIV_CONST.IM3_EXT, '_IHC.tif')
 
   @methodtools.lru_cache()
   @property
@@ -531,6 +539,18 @@ class RectangleReadIHCTiff(RectangleWithImageLoaderBase) :
   @property
   def ihctiffloaderkwargs(self): return {
     "filename": self.ihctifffile,
+    "_DEBUG": self._DEBUG,
+    "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
+  }
+
+  @methodtools.lru_cache()
+  @property
+  def ihctiffunmixedloader(self): return ImageLoaderHasSingleLayerTiff(**self.ihctiffloaderkwargs)
+  def using_ihc_tiff_unmixed(self):
+    return self.ihctiffunmixedloader.using_image()
+  @property
+  def ihctiffunmixedloaderkwargs(self): return {
+    "filename": self.ihctiffunmixedfile,
     "_DEBUG": self._DEBUG,
     "_DEBUG_PRINT_TRACEBACK": self._DEBUG_PRINT_TRACEBACK,
   }

@@ -10,7 +10,7 @@ from ..align.field import FieldReadComponentTiffMultiLayer
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, StitchAstroPathTissueMaskSample
 from .wsisamplebase import WSISampleBase
 
-class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbloadComponentTiff, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
+class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbload, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
@@ -24,9 +24,6 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     3. vips assembles each 16384x16384 tile in a file and uses
        libvips to merge them together into the wsi
   """
-  rectangletype = FieldReadComponentTiffMultiLayer
-  multilayercomponenttiff = True
-
   def __init__(self, *args, layers=None, tifflayers="color", **kwargs):
     self.__tifflayers = tifflayers
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
@@ -77,7 +74,7 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
       for i, field in enumerate(self.rectangles, start=1):
         self.logger.debug("%d / %d", i, nrectangles)
         #load the image file
-        with field.using_component_tiff() as image:
+        with self.using_zoom_image(field) as image:
           #scale the intensity
           image = np.clip(image/fmax, a_min=None, a_max=1)
 
@@ -181,12 +178,12 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     return np.array([[float(_) for _ in row.split()] for row in matrix.split(";")], dtype=dtype)
 
   @property
-  def colormatrix(self): return self._colormatrix(dtype=np.float16, nlayers=self.nlayersunmixed)[tuple(np.array(self.layerscomponenttiff)-1), :]
+  def colormatrix(self): return self._colormatrix(dtype=np.float16, nlayers=self.nlayerszoom)[tuple(np.array(self.layerszoom)-1), :]
 
   @property
   def needtifflayers(self):
     if self.tifflayers is None: return ()
-    if self.tifflayers == "color": return range(1, self.nlayersunmixed+1)
+    if self.tifflayers == "color": return range(1, self.nlayerszoom+1)
     return self.tifflayers
 
   def makewsitiff(self, layers):
@@ -264,7 +261,7 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
       Helper class to save the big tiles.
 
       The class also inherits from ExitStack so that you can use it
-      to enter using_component_tiff contexts for rectangles.
+      to enter using_zoom_image contexts for rectangles.
       """
       def __init__(self, tilex, tiley, tilesize, bufferx, buffery):
         super().__init__()
@@ -296,8 +293,8 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     #  with tile:
     #    for each rectangle that overlaps the tile:
     #      for each other tile that we haven't gotten to yet that overlaps the rectangle:
-    #        othertile.enter_context(rectangle.using_component_tiff())
-    #      with rectangle.using_component_tiff():
+    #        othertile.enter_context(self.using_zoom_image(rectangle))
+    #      with self.using_zoom_image(rectangle):
     #        fill the image into this tile
 
     #in this way, we load each image in the first tile that uses it,
@@ -364,11 +361,11 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
               if othertilen == tilen: assert othertile is tile
               if othertilen <= tilen: continue
               if othertile.overlapsrectangle(globalx1=globalx1, globalx2=globalx2, globaly1=globaly1, globaly2=globaly2):
-                othertile.enter_context(field.using_component_tiff())
+                othertile.enter_context(self.using_zoom_image(field))
 
             if tileimage is None: tileimage = np.zeros(shape=tuple((self.zoomtilesize + 2*floattoint((buffer/onepixel).astype(float)))[::-1]) + (len(self.layerscomponenttiff),), dtype=np.float32)
 
-            with field.using_component_tiff() as image:
+            with self.using_zoom_image(field) as image:
               image = np.clip(image/fmax, a_min=None, a_max=1)
 
               #find where it should sit in the tile
@@ -568,9 +565,28 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     )
 
   @classmethod
+  @abc.abstractmethod
+  def getnlayerszoom(cls, **kwargs):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def nlayerszoom(cls, **kwargs):
+    pass
+
+  @property
+  @abc.abstractmethod
+  def layerszoom(cls, **kwargs):
+    pass
+
+  @abc.abstractmethod
+  def using_zoom_image(self, field):
+    pass
+
+  @classmethod
   def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, BatchID, batchroot, **otherrootkwargs):
     try:
-      nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, batchroot=batchroot, BatchID=BatchID)
+      nlayers = cls.getnlayerszoom(componenttiffsfolder=informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, batchroot=batchroot, BatchID=BatchID)
     except FileNotFoundError:
       nlayers = 1
     if layers is None:
@@ -594,6 +610,29 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
     return [StitchAstroPathTissueMaskSample] + super().workflowdependencyclasses(**kwargs)
+
+class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentTiff):
+  rectangletype = FieldReadComponentTiffMultiLayer
+  multilayercomponenttiff = True
+
+  @classmethod
+  def getnlayerszoom(cls, **kwargs): return cls.getnlayerscomponenttiff(**kwargs)
+  @property
+  def nlayerszoom(self): return self.nlayerscomponenttiff
+  @property
+  def layerszoom(self): return self.layerscomponenttiff
+  def using_zoom_image(self, field):
+    return field.using_component_tiff()
+
+class ZoomSampleIHC(ZoomSampleBase, ReadRectanglesDbloadUnmixedIHCTiff):
+  @classmethod
+  def getnlayerszoom(cls, **kwargs): return 3
+  @property
+  def nlayerszoom(self): return 3
+  @property
+  def layerszoom(self): return 1, 2, 3
+  def using_zoom_image(self, field):
+    return field.using_ihc_tiff_unmixed()
 
 class ZoomSample(ZoomSampleBase, TissueSampleBase):
   pass

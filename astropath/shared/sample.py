@@ -159,11 +159,11 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     The sample's IHC tiffs folder
     """
-    return self.informdataroot/self.SlideID/"IHC"/"HPFs"
+    return self.informdataroot/self.SlideID/"IHC"
 
   @property
   def ihcmaskfolder(self):
-   return self.ihctiffsfolder/"image_masking"
+   return self.ihctiffsfolder/"HPFs"/"image_masking"
 
   def __getimageinfofromcomponenttiff(self):
     """
@@ -1416,6 +1416,17 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase, SelectLayersComponentT
         "layercomponenttiff": self.layercomponenttiff,
       })
     return kwargs
+
+class ReadRectanglesIHCTiff(ReadRectanglesBase):
+  rectangletype = RectangleReadIHCTiff
+  @property
+  def rectangleextrakwargs(self):
+    kwargs =  {
+      **super().rectangleextrakwargs,
+      'ihctifffolder':self.ihctiffsfolder,
+    }
+    return kwargs
+  
 
 class ReadRectanglesComponentAndIHCTiffBase(ReadRectanglesBase, SelectLayersComponentTiff) :
   """
