@@ -102,7 +102,7 @@ class astropathwftools : sampledb {
             if (!($this.fastping($idleworkers[$worker]))){
                 $this.writeoutput(('WARNING:', 
                     $idleworkers[$worker].server, $idleworkers[$worker].location,
-                    'is set to ON but state is OFF!' -join ' '))
+                    'is set to ON but state is OFF or VMs are unable to connect at this time' -join ' '))
                 continue
             }
             #
@@ -280,7 +280,7 @@ class astropathwftools : sampledb {
                 if (!($this.fastping($currentworker))){
                     $this.writeoutput(('WARNING:', 
                         $currentworker.server, $currentworker.location,
-                        'is set to ON but state is OFF!' -join ' '))
+                        'is set to ON but state is OFF or VMs are unable to connect at this time.' -join ' '))
                     continue
                 }
                 #
