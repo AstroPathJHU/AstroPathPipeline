@@ -61,14 +61,23 @@ Class shredxml : moduletools {
     [void]cleanup(){
         #
         $this.sample.info("cleanup started")
+        $this.silentcleanup()
+        $this.sample.info("cleanup finished")
+        #
+    }
+    <# -----------------------------------------
+     silentcleanup
+     silentcleanup
+     ------------------------------------------
+     Usage: $this.silentcleanup()
+    ----------------------------------------- #>
+    [void]silentcleanup(){
         #
         if ($this.processvars[4]){
             $this.sample.removedir($this.processloc) 
         } else {
             $this.sample.removefile($this.processloc, '.xml')
         }
-        #
-        $this.sample.info("cleanup finished")
         #
     }
 }
