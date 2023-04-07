@@ -747,7 +747,7 @@ Class vminform : moduletools {
         }
         else {
             if (!$this.sample.testinformfiles($this.abx, $this.alg)){
-                throw 'Output files are not correct'
+                throw 'batch log algorithm does not match last queued algorithm'
             }
         }
     }
