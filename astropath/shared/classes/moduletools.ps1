@@ -585,6 +585,9 @@
     [void]runmatlabtask($taskname, $matlabtask){
         #
         $externallog = $this.ProcessLog($taskname)
+        if (Test-Path $externallog) {
+            Clear-Content $externallog
+        }
         matlab -nosplash -nodesktop -minimize -sd $this.funclocation -batch $matlabtask -wait *>> $externallog
         $this.getexternallogs($externallog)
         #
