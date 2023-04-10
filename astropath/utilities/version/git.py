@@ -65,13 +65,15 @@ class GitRepo:
         raise
       committables.append(io.StringIO("hash,parents,tags\n"+process.stdout.replace(",", "").replace("\t", ",")))
 
-    allcommits = sum((
-      readtable(table, GitCommit, extrakwargs={"repo": self})
-      for table in committables
-    ), [])
+    allcommits = set.union(
+      *(
+        set(readtable(table, GitCommit, extrakwargs={"repo": self}))
+        for table in committables
+      )
+    )
 
     byhash = {
-      hash: [c for c in allcommits if c.hash == hash]
+      hash: {c for c in allcommits if c.hash == hash}
       for hash in {c.hash for c in allcommits}
     }
     for hash, commits in byhash.items():
@@ -96,10 +98,10 @@ class GitRepo:
             raise ValueError(f"Inconsistent parents for commit {hash}: {commit1.parents}, {commit2.parents}")
 
         newcommit = GitCommit(hash=hash, parents=parents, tags=frozenset(alltags), repo=self)
-        for lst in commits, allcommits:
-          lst.remove(commit1)
-          lst.remove(commit2)
-          lst.append(newcommit)
+        for set_ in commits, allcommits:
+          set_.remove(commit1)
+          set_.remove(commit2)
+          set_.append(newcommit)
 
     for commit in allcommits:
       if "grafted" in commit.tags:
@@ -193,7 +195,7 @@ class GitCommit(MyDataClass):
     return GitCommit(hash=self.hash, parents=self._parents, tags=self.tags, repo=self.repo)
   def __eq__(self, other):
     if isinstance(other, GitCommit):
-      return self.hash == other.hash
+      return self.hash == other.hash and self._parents == other._parents and self.tags == other.tags
     if self.hash == other: return True
     return self.hash == self.repo.rev_parse(other)
   def __lt__(self, other):
@@ -226,7 +228,7 @@ class GitCommit(MyDataClass):
     other = self.repo.getcommit(other)
     return self in other.recursiveparents
   def __hash__(self):
-    return hash(self.hash)
+    return hash((self.hash, self._parents, self.tags))
   def __repr__(self):
     return f"{type(self).__name__}(hash={self.hash!r}, parents={self._parents!r}, tags={self.tags!r}, repo={self.repo!r})"
 
