@@ -129,13 +129,13 @@ def check_image_integrity(filename, *, remove, error, logger=None):
     if remove:
       message += ", removing it"
 
+    if remove:
+      filename.unlink()
+
     if error:
       raise IOError(message)
     elif logger is not None:
       logger.warning(message)
-
-    if remove:
-      filename.unlink()
 
     return False
 
