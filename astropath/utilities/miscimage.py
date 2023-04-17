@@ -149,3 +149,9 @@ class TIFFIntegrityVerifier(integv._IntegrityVerifierBase):
       return False
     else:
       return True
+
+#patch integv to work with Pillow >= 9.5.0
+def readline(self, *args, **kwargs):
+  return self._file.readline(*args, **kwargs)
+integv._file.NormalizedFile.readline = readline
+del readline
