@@ -461,7 +461,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @classmethod
   def getmergeconfigcsv(cls, batchroot, BatchID, **kwargs):
-    return batchroot/"Batch"/f"MergeConfig_{BatchID:02d}.csv"
+    return batchroot/"Batch"/f"MergeConfig_{int(BatchID):02d}.csv"
   @classmethod
   def getmergeconfigxlsx(cls, **kwargs):
     return cls.getmergeconfigcsv(**kwargs).with_suffix(".xlsx")
