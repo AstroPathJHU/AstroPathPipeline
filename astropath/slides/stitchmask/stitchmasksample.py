@@ -35,9 +35,9 @@ class MaskSample(MaskSampleBase, WSISampleBase, DbloadArgumentParser, MaskArgume
     """
     Get the mask filename
     """
-    stem = pathlib.Path(f"{self.SlideID}_{self.maskfilestem()}")
-    if stem.suffix or stem.parent != pathlib.Path("."):
+    if "." in self.maskfilestem() or "/" in self.maskfilestem():
       raise ValueError(f"maskfilestem {self.maskfilestem()} shouldn't have '.' or '/' in it")
+    stem = pathlib.Path(f"{self.SlideID}_{self.maskfilestem()}")
     filename = stem.with_suffix(self.maskfilesuffix)
     folder = self.maskfolder
     return folder/filename
