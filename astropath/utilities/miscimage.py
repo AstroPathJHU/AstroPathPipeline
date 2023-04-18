@@ -129,13 +129,13 @@ def check_image_integrity(filename, *, remove, error, logger=None):
     if remove:
       message += ", removing it"
 
+    if remove:
+      filename.unlink()
+
     if error:
       raise IOError(message)
     elif logger is not None:
       logger.warning(message)
-
-    if remove:
-      filename.unlink()
 
     return False
 
@@ -149,3 +149,9 @@ class TIFFIntegrityVerifier(integv._IntegrityVerifierBase):
       return False
     else:
       return True
+
+#patch integv to work with Pillow >= 9.5.0
+def readline(self, *args, **kwargs):
+  return self._file.readline(*args, **kwargs)
+integv._file.NormalizedFile.readline = readline
+del readline
