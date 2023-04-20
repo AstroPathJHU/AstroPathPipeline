@@ -371,7 +371,7 @@ class ZoomFolderArgumentParser(RunFromArgumentParser):
   @classmethod
   def makeargumentparser(cls, **kwargs):
     p = super().makeargumentparser(**kwargs)
-    p.add_argument("--zoomroot", type=pathlib.Path, required=True, help="root location of stitched wsi images.")
+    p.add_argument("--zoomroot", type=pathlib.Path, help="root location of stitched wsi images.")
     return p
 
   @classmethod

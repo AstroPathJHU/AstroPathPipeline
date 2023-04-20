@@ -1094,8 +1094,9 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   zoomroot: Root location of the zoomed images.
             (The images are in zoomroot/SlideID/big and zoomroot/SlideID/wsi)
   """
-  def __init__(self, *args, zoomroot, **kwargs):
+  def __init__(self, *args, zoomroot=None, **kwargs):
     super().__init__(*args, **kwargs)
+    if zoomroot is None: zoomroot = self.root
     self.__zoomroot = pathlib.Path(zoomroot)
   @property
   def rootnames(self): return {"zoomroot", *super().rootnames}
