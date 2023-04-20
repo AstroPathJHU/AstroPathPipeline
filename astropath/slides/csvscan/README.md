@@ -20,5 +20,5 @@ To see more command line arguments, run `csvscansample --help` or `csvscancohort
 
 The output is `\\<Dpath>\<Dname>\<SlideID>\dbload\<SlideID>_loadfiles.csv`.
 
-Additionally, when running a cohort, `\\<Dpath>\<Dname>\dbload\<SlideID>_loadfiles.csv`.
+Additionally, when running a cohort, `\\<Dpath>\<Dname>\dbload\<SlideID>_loadfiles.csv` will also be created.
 This file lists the global csv files that get loaded into the database.
