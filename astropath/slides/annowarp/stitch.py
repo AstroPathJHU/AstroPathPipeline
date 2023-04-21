@@ -492,13 +492,13 @@ class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultMode
     self.ydybreaks = ydybreaks
     self.ydyshifts = ydyshifts
 
-    if not len(self.xdxbreaks) == len(self.xdxshifts) == self.nxdxbreaks():$
+    if not len(self.xdxbreaks) == len(self.xdxshifts) == self.nxdxbreaks():
       raise ValueError(f"Mismatch in xdxbreaks: {len(self.xdxbreaks)} {len(self.xdxshifts)} {self.nxdxbreaks}")
-    if not len(self.xdybreaks) == len(self.xdyshifts) == self.nxdybreaks():$
+    if not len(self.xdybreaks) == len(self.xdyshifts) == self.nxdybreaks():
       raise ValueError(f"Mismatch in xdybreaks: {len(self.xdybreaks)} {len(self.xdyshifts)} {self.nxdybreaks}")
-    if not len(self.ydxbreaks) == len(self.ydxshifts) == self.nydxbreaks():$
+    if not len(self.ydxbreaks) == len(self.ydxshifts) == self.nydxbreaks():
       raise ValueError(f"Mismatch in ydxbreaks: {len(self.ydxbreaks)} {len(self.ydxshifts)} {self.nydxbreaks}")
-    if not len(self.ydybreaks) == len(self.ydyshifts) == self.nydybreaks():$
+    if not len(self.ydybreaks) == len(self.ydyshifts) == self.nydybreaks():
       raise ValueError(f"Mismatch in ydybreaks: {len(self.ydybreaks)} {len(self.ydyshifts)} {self.nydybreaks}")
 
   def dxvec(self, qptiffcoordinate, *, apscale):
@@ -601,7 +601,8 @@ class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultMode
   def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults, logger, *, ntotalshifts, **kwargs):
     floatedparams, mus, sigmas = super().floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
 
-    if len(floatedparams) < cls.nparams(ntotalshifts)
+    if len(floatedparams) < cls.nparams(ntotalshifts):
+      ...
 
     bigtileindices = np.array([_.bigtileindex for _ in alignmentresults])
     bigtilexs, bigtileys = bigtileindices.T
