@@ -8,19 +8,19 @@ normalized for average brightness in the tissue regions.
 
 To run `zoom` on a single slide, run:
 ```
-zoomsample \\<Dpath>\<Dname> <SlideID> --zoomroot \\<Zpath>
+zoomsample \\<Dpath>\<Dname> <SlideID>
 ```
 
 To run `zoom` on a whole cohort of slides, run:
 ```
-zoomcohort \\<Dpath>\<Dname> --zoomroot \\<Zpath>
+zoomcohort \\<Dpath>\<Dname>
 ```
 (See [here](../../scans/docs/Definitions.md#43-definitions) for definitions
 of the terms in `<angle brackets>`.)
 
 To see more command line arguments, run `zoomsample --help` or `zoomcohort --help`.
 
-The outputs will be in `\\<Zpath>\<SlideID>\wsi\`, which will contain one file
+The outputs will be in `\\<Dpath>\<Dname>\<SlideID>\wsi\`, which will contain one file
 for each unmixed layer.  The files are named `<SlideID>-Z9-L<layer>-wsi.png`,
 where Z9 refers to the fact that this is the most zoomed in version of the image.
 The zoomed out versions will be created in the `deepzoom` step.
