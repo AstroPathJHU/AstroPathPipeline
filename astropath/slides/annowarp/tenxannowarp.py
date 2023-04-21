@@ -1,4 +1,4 @@
-import abc, cv2, hashlib, itertools, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, skimage.morphology, uncertainties as unc
+import abc, cv2, hashlib, itertools, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, peakutils, scipy.interpolate, skimage.morphology, uncertainties as unc
 from ...shared.csvclasses import Annotation, AnnotationInfo, Region
 from ...shared.polygon import SimplePolygon
 from ...shared.tenx import Spot, TenXSampleBase
@@ -361,9 +361,7 @@ class TenXAnnoWarp(TenXSampleBase):
     writetable(self.regionscsv, regions, logger=self.logger)
     return annotationinfos, annotations, allvertices, regions
 
-  def findjumps(self, goodresults, ii, jj):
-    import uncertainties.unumpy as unp, matplotlib.pyplot as plt, scipy.interpolate, peakutils
-
+  def findjumps(self, goodresults, ii, jj, *, draw=False):
     window = 1000
     resample_density = 20 #pixels, spot separation ~ 200 pixels
     threshold = 18
@@ -371,7 +369,7 @@ class TenXAnnoWarp(TenXSampleBase):
     min_n_between = 5
 
     x = [r.xvec[ii] for r in goodresults]
-    dx = unp.nominal_values([r.dxvec - self.__stitchresult.dxvec(r, apscale=1) for r in goodresults])[:,jj]
+    dx = units.nominal_values([r.dxvec - self.__stitchresult.dxvec(r, apscale=1) for r in goodresults])[:,jj]
     unique_x = np.unique(x)
     between = (unique_x[:-1] + unique_x[1:]) / 2
 
@@ -406,9 +404,10 @@ class TenXAnnoWarp(TenXSampleBase):
     newy = interpolator(newx)
     newstd = std_interpolator(newx)
 
-    plt.scatter(x_valid, diff)
-    plt.scatter(newx, newy)
-    plt.scatter(newx, newstd)
+    if draw:
+      plt.scatter(x_valid, diff)
+      plt.scatter(newx, newy)
+      plt.scatter(newx, newstd)
 
 
     #peaks, _ = scipy.signal.find_peaks(newy, width=10, height=10)
@@ -448,7 +447,8 @@ class TenXAnnoWarp(TenXSampleBase):
     extrema = np.array([e for e in extrema if e not in toremove])
     toremove = True
 
-    plt.scatter(newx[extrema], newy[extrema])
+    if draw:
+      plt.scatter(newx[extrema], newy[extrema])
 
     while toremove:
       toremove = set()
@@ -485,12 +485,15 @@ class TenXAnnoWarp(TenXSampleBase):
           toremove.add(extrema[-1])
       extrema = np.array([e for e in extrema if e not in toremove])
 
-    plt.scatter(newx[extrema], newy[extrema])
-    plt.show()
-    plt.scatter(x, dx)
-    for e in extrema:
-      plt.axvline(newx[e])
-    plt.show()
+    if draw:
+      plt.scatter(newx[extrema], newy[extrema])
+      plt.show()
+      plt.scatter(x, dx)
+      for e in extrema:
+        plt.axvline(newx[e])
+      plt.show()
+
+    return newx[extrema]
 
 class BigTileCoordinateBase(abc.ABC):
   @property

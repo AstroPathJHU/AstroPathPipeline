@@ -465,6 +465,161 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
 
     return floatedparams, mus, sigmas
 
+class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultModelBase):
+  @classmethod
+  @abc.abstractmethod
+  def nxdxbreaks(cls): pass
+  @classmethod
+  @abc.abstractmethod
+  def nxdybreaks(cls): pass
+  @classmethod
+  @abc.abstractmethod
+  def nydxbreaks(cls): pass
+  @classmethod
+  @abc.abstractmethod
+  def nydybreaks(cls): pass
+  @classmethod
+  def ntotalbreaks(cls):
+    return cls.nxdxbreaks() + cls.nxdybreaks() + cls.nydxbreaks() + cls.nydybreaks()
+
+  def __init__(self, *, xdxbreaks, xdxshifts, xdybreaks, xdyshifts, ydxbreaks, ydxshifts, ydybreaks, ydyshifts, **kwargs):
+    self.xdxbreaks = xdxbreaks
+    self.xdxshifts = xdxshifts
+    self.xdybreaks = xdybreaks
+    self.xdyshifts = xdyshifts
+    self.ydxbreaks = ydxbreaks
+    self.ydxshifts = ydxshifts
+    self.ydybreaks = ydybreaks
+    self.ydyshifts = ydyshifts
+
+    if not len(self.xdxbreaks) == len(self.xdxshifts) == self.nxdxbreaks():$
+      raise ValueError(f"Mismatch in xdxbreaks: {len(self.xdxbreaks)} {len(self.xdxshifts)} {self.nxdxbreaks}")
+    if not len(self.xdybreaks) == len(self.xdyshifts) == self.nxdybreaks():$
+      raise ValueError(f"Mismatch in xdybreaks: {len(self.xdybreaks)} {len(self.xdyshifts)} {self.nxdybreaks}")
+    if not len(self.ydxbreaks) == len(self.ydxshifts) == self.nydxbreaks():$
+      raise ValueError(f"Mismatch in ydxbreaks: {len(self.ydxbreaks)} {len(self.ydxshifts)} {self.nydxbreaks}")
+    if not len(self.ydybreaks) == len(self.ydyshifts) == self.nydybreaks():$
+      raise ValueError(f"Mismatch in ydybreaks: {len(self.ydybreaks)} {len(self.ydyshifts)} {self.nydybreaks}")
+
+  def dxvec(self, qptiffcoordinate, *, apscale):
+    """
+    Get \Delta\vec{x} for a qptiff coordinate based on the fitted model
+    """
+    x, y = qptiffcoordinate
+    dx, dy = super().dxvec(qptiffcoordinate, apscale=apscale)
+
+    xdxshifts = units.convertpscale(self.xdxshifts, self.imscale, apscale)
+    xdxbreaks = units.convertpscale(self.xdxbreaks, self.imscale, apscale)
+    xdyshifts = units.convertpscale(self.xdyshifts, self.imscale, apscale)
+    xdybreaks = units.convertpscale(self.xdybreaks, self.imscale, apscale)
+    ydxshifts = units.convertpscale(self.ydxshifts, self.imscale, apscale)
+    ydxbreaks = units.convertpscale(self.ydxbreaks, self.imscale, apscale)
+    ydyshifts = units.convertpscale(self.ydyshifts, self.imscale, apscale)
+    ydybreaks = units.convertpscale(self.ydybreaks, self.imscale, apscale)
+    for xdxbreak, xdxshift in more_itertools.zip_equal(xdxbreaks, xdxshifts):
+      if x > xdxbreak: dx += xdxshift
+    for xdybreak, xdyshift in more_itertools.zip_equal(xdybreaks, xdyshifts):
+      if x > xdybreak: dy += xdyshift
+    for ydxbreak, ydxshift in more_itertools.zip_equal(ydxbreaks, ydxshifts):
+      if y > ydxbreak: dx += ydxshift
+    for ydybreak, ydyshift in more_itertools.zip_equal(ydybreaks, ydyshifts):
+      if y > ydybreak: dy += ydyshift
+
+    return np.array([dx, dy])
+
+  @property
+  def stitchresultentries(self):
+    """
+    Get the stitch result entries for the fitted result
+    """
+    return (
+      *super().stitchresultentries,
+      *sum((
+        (
+          self.EntryLite(
+            value=xdxbreak,
+            description=f"position of dx jump #{i} in x",
+          ), 
+          self.EntryLite(
+            value=xdxshift,
+            description=f"dx jump #{i} in x",
+          ),
+        ) for i, (xdxbreak, xdxshift) in enumerate(more_itertools.zip_equal(self.xdxbreaks, self.xdxshifts))
+      ), ()),
+      *sum((
+        (
+          self.EntryLite(
+            value=xdybreak,
+            description=f"position of dy jump #{i} in x",
+          ), 
+          self.EntryLite(
+            value=xdyshift,
+            description=f"dy jump #{i} in x",
+          ),
+        ) for i, (xdybreak, xdyshift) in enumerate(more_itertools.zip_equal(self.xdybreaks, self.xdyshifts))
+      ), ()),
+      *sum((
+        (
+          self.EntryLite(
+            value=ydxbreak,
+            description=f"position of dx jump #{i} in y",
+          ), 
+          self.EntryLite(
+            value=ydxshift,
+            description=f"dx jump #{i} in y",
+          ),
+        ) for i, (ydxbreak, ydxshift) in enumerate(more_itertools.zip_equal(self.ydxbreaks, self.ydxshifts))
+      ), ()),
+      *sum((
+        (
+          self.EntryLite(
+            value=ydybreak,
+            description=f"position of dy jump #{i} in y",
+          ), 
+          self.EntryLite(
+            value=ydyshift,
+            description=f"dy jump #{i} in y",
+          ),
+        ) for i, (ydybreak, ydyshift) in enumerate(more_itertools.zip_equal(self.ydybreaks, self.ydyshifts))
+      ), ()),
+    )
+
+  @classmethod
+  def variablepowers(cls, *, ntotalshifts, **kwargs):
+    """
+    powers of the distance units for the variables
+    coeffrelativetobigtile is dimensionless, bigtileindexcoeff and constant
+    have units of distance
+    """
+    return super().variablepowers(**kwargs) + (1, 1) * ntotalshifts
+
+  @classmethod
+  def nparams(cls, *, ntotalshifts, **kwargs):
+    return super().nparams(**kwargs) + 2 * ntotalshifts
+
+  @classmethod
+  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults, logger, *, ntotalshifts, **kwargs):
+    floatedparams, mus, sigmas = super().floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
+
+    if len(floatedparams) < cls.nparams(ntotalshifts)
+
+    bigtileindices = np.array([_.bigtileindex for _ in alignmentresults])
+    bigtilexs, bigtileys = bigtileindices.T
+    if len(set(bigtilexs)) == 1:
+      floatedparams[4] = floatedparams[6] = False
+      if mus[4] is None: mus[4] = 0
+      if sigmas[4] is None: sigmas[4] = .001*alignmentresults[0].oneimpixel
+      if mus[6] is None: mus[6] = 0
+      if sigmas[6] is None: sigmas[6] = .001*alignmentresults[0].oneimpixel
+    if len(set(bigtileys)) == 1:
+      floatedparams[5] = floatedparams[7] = False
+      if mus[5] is None: mus[5] = 0
+      if sigmas[5] is None: sigmas[5] = .001*alignmentresults[0].oneimpixel
+      if mus[7] is None: mus[7] = 0
+      if sigmas[7] is None: sigmas[7] = .001*alignmentresults[0].oneimpixel
+
+    return floatedparams, mus, sigmas
+
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
   """
   Stitch result for the default model with no cvxpy
