@@ -361,6 +361,137 @@ class TenXAnnoWarp(TenXSampleBase):
     writetable(self.regionscsv, regions, logger=self.logger)
     return annotationinfos, annotations, allvertices, regions
 
+  def findjumps(self, goodresults, ii, jj):
+    import uncertainties.unumpy as unp, matplotlib.pyplot as plt, scipy.interpolate, peakutils
+
+    window = 1000
+    resample_density = 20 #pixels, spot separation ~ 200 pixels
+    threshold = 18
+    min_dist = 50
+    min_n_between = 5
+
+    x = [r.xvec[ii] for r in goodresults]
+    dx = unp.nominal_values([r.dxvec - self.__stitchresult.dxvec(r, apscale=1) for r in goodresults])[:,jj]
+    unique_x = np.unique(x)
+    between = (unique_x[:-1] + unique_x[1:]) / 2
+
+    x_valid = []
+    diff = []
+    stds = []
+
+    for u in between:
+      left_idx = (x < u) & (x > u - window)
+      right_idx = (x > u) & (x < u + window)
+      nleft = np.count_nonzero(left_idx)
+      nright = np.count_nonzero(right_idx)
+      if nleft < 5 or nright < 5: continue
+
+      frac = .9
+      left_average = frac*np.median(dx[left_idx]) + (1-frac)*np.mean(dx[left_idx])
+      right_average = frac*np.median(dx[right_idx]) + (1-frac)*np.mean(dx[right_idx])
+      left_std = np.std(dx[left_idx])
+      right_std = np.std(dx[right_idx])
+      x_valid.append(u)
+      diff.append(right_average - left_average)
+      stds.append((left_std**2+right_std**2)**.5)
+
+    x_valid = np.array(x_valid)
+    diff = np.array(diff)
+    stds = np.array(stds)
+    interpolator = scipy.interpolate.interp1d(x_valid, diff)
+    std_interpolator = scipy.interpolate.interp1d(x_valid, stds)
+    minx = np.min(x_valid)
+    maxx = np.max(x_valid)
+    newx = np.linspace(minx, maxx, int((maxx-minx) // resample_density))
+    newy = interpolator(newx)
+    newstd = std_interpolator(newx)
+
+    plt.scatter(x_valid, diff)
+    plt.scatter(newx, newy)
+    plt.scatter(newx, newstd)
+
+
+    #peaks, _ = scipy.signal.find_peaks(newy, width=10, height=10)
+    #peaks2, _ = scipy.signal.find_peaks(-newy, width=10, height=10)
+
+    maxima = peakutils.indexes(newy, min_dist=min_dist)
+    minima = peakutils.indexes(-newy, min_dist=min_dist)
+    maxima = maxima[newy[maxima]>0]
+    minima = minima[newy[minima]<0]
+    assert not (frozenset(minima) & frozenset(maxima)), (minima, maxima)
+
+    extrema = np.concatenate([maxima, minima])
+    extrema.sort()
+
+    extrema = extrema[newstd[extrema] < abs(newy[extrema])]
+
+    last = None
+    toremove = set()
+    for e in extrema:
+      if last is None:
+        last = e
+      elif (e in minima and last in maxima) or (e in maxima and last in minima):
+        last = e
+      elif (e in minima and last in minima):
+        if newy[e] < newy[last]:
+          toremove.add(last)
+          last = e
+        else:
+          toremove.add(e)
+      elif (e in maxima and last in maxima):
+        if newy[e] > newy[last]:
+          toremove.add(last)
+          last = e
+        else:
+          toremove.add(e)
+
+    extrema = np.array([e for e in extrema if e not in toremove])
+    toremove = True
+
+    plt.scatter(newx[extrema], newy[extrema])
+
+    while toremove:
+      toremove = set()
+      for i, e1 in enumerate(extrema):
+        try:
+          e2 = extrema[i+1]
+          e3 = extrema[i+2]
+        except IndexError:
+          continue
+
+        y1, y2, y3 = newy[[e1, e2, e3]]
+        if abs(y2-y1) < threshold and abs(y2-y1) <= abs(y2-y3):
+          toremove |= {e1, e2}
+          break
+        elif abs(y2-y3) < threshold:
+          toremove |= {e2, e3}
+          break
+
+        try:
+          e4 = extrema[i+3]
+        except IndexError:
+          pass
+        else:
+          n_between_12 = np.count_nonzero((newx[e1] < x_valid) & (x_valid < newx[e2]))
+          n_between_23 = np.count_nonzero((newx[e2] < x_valid) & (x_valid < newx[e3]))
+          n_between_34 = np.count_nonzero((newx[e3] < x_valid) & (x_valid < newx[e4]))
+          if n_between_23 < min_n_between and n_between_23 < n_between_12 and n_between_23 < n_between_34:
+            toremove |= {e2, e3}
+
+      if not toremove:
+        if abs(newy[extrema[0]]) < threshold/2:
+          toremove.add(extrema[0])
+        if abs(newy[extrema[-1]]) < threshold/2:
+          toremove.add(extrema[-1])
+      extrema = np.array([e for e in extrema if e not in toremove])
+
+    plt.scatter(newx[extrema], newy[extrema])
+    plt.show()
+    plt.scatter(x, dx)
+    for e in extrema:
+      plt.axvline(newx[e])
+    plt.show()
+
 class BigTileCoordinateBase(abc.ABC):
   @property
   @abc.abstractmethod
