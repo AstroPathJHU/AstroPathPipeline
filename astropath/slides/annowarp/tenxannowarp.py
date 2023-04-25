@@ -5,9 +5,9 @@ from ...shared.tenx import Spot, TenXSampleBase
 from ...utilities import units
 from ...utilities.miscmath import covariance_matrix
 from ...utilities.tableio import writetable
-from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
+from ...utilities.units.dataclasses import DataClassWithImscale, DataClassWithPscale, distancefield
 from .annowarpsample import WarpedVertex
-from .stitch import AnnoWarpStitchResultDefaultModel
+from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelWithBreaks
 
 class TenXAnnoWarp(TenXSampleBase):
   def __init__(self, *args, breaksx, breaksy, **kwargs):
@@ -250,13 +250,30 @@ class TenXAnnoWarp(TenXSampleBase):
   def goodresults(self):
     return [_ for _ in self.alignmentresults if _]
 
-  def stitch(self):
-    A, b, c = AnnoWarpStitchResultDefaultModel.Abc(self.goodresults, None, None, self.logger)
+  def stitch(self, *, _debug=True, draw=True, iterate=True):
+    goodresults = self.goodresults
+    A, b, c = AnnoWarpStitchResultDefaultModel.Abc(goodresults, None, None, self.logger)
     result = units.np.linalg.solve(2*A, -b)
     delta2nllfor1sigma = 1
     covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
     result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
-    self.__stitchresult = stitchresult = AnnoWarpStitchResultDefaultModel(result, A=A, b=b, c=c, constraintmus=None, constraintsigmas=None, pscale=1, apscale=1)
+    stitchresult = AnnoWarpStitchResultDefaultModel(result, A=A, b=b, c=c, constraintmus=None, constraintsigmas=None, pscale=1, apscale=1)
+
+    if iterate:
+      jumpsxx = self.findjumps(0, 0, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      jumpsxy = self.findjumps(0, 1, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      jumpsyx = self.findjumps(1, 0, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      jumpsyy = self.findjumps(1, 1, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+
+      stitchresultcls = AnnoWarpStitchResultDefaultModelWithBreaks.subclass(xdxbreaks=jumpsxx, xdybreaks=jumpsxy, ydxbreaks=jumpsyx, ydybreaks=jumpsyy)
+      A, b, c = stitchresultcls.Abc(goodresults, None, None, self.logger, _debug=_debug)
+      result = units.np.linalg.solve(2*A, -b)
+      delta2nllfor1sigma = 1
+      covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
+      result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
+      stitchresult = stitchresultcls(result, A=A, b=b, c=c, constraintmus=None, constraintsigmas=None, pscale=1, apscale=1)
+
+    self.__stitchresult = stitchresult
     return stitchresult
 
   def fittedspots(self, spottype):
@@ -361,7 +378,7 @@ class TenXAnnoWarp(TenXSampleBase):
     writetable(self.regionscsv, regions, logger=self.logger)
     return annotationinfos, annotations, allvertices, regions
 
-  def findjumps(self, goodresults, ii, jj, *, draw=False):
+  def findjumps(self, ii, jj, *, stitchresult, goodresults, draw=False):
     window = 1000
     resample_density = 20 #pixels, spot separation ~ 200 pixels
     threshold = 18
@@ -369,7 +386,7 @@ class TenXAnnoWarp(TenXSampleBase):
     min_n_between = 5
 
     x = [r.xvec[ii] for r in goodresults]
-    dx = units.nominal_values([r.dxvec - self.__stitchresult.dxvec(r, apscale=1) for r in goodresults])[:,jj]
+    dx = units.nominal_values([r.dxvec - stitchresult.dxvec(r, apscale=1) for r in goodresults])[:,jj]
     unique_x = np.unique(x)
     between = (unique_x[:-1] + unique_x[1:]) / 2
 
@@ -529,7 +546,7 @@ class BigTileCoordinate(BigTileCoordinateBase):
   @property
   def bigtilesize(self): return self.__bigtilesize
 
-class TenXAnnoWarpAlignmentResult(DataClassWithPscale, BigTileCoordinateBase):
+class TenXAnnoWarpAlignmentResult(DataClassWithImscale, BigTileCoordinateBase):
   """
   A result from the alignment of one tile of the annowarp
 
@@ -572,6 +589,9 @@ class TenXAnnoWarpAlignmentResult(DataClassWithPscale, BigTileCoordinateBase):
     if covariancematrix is not None:
       units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
       (morekwargs["covxx"], morekwargs["covxy"]), (morekwargs["covxy"], morekwargs["covyy"]) = covariancematrix
+
+    if "pscale" in kwargs and "apscale" not in kwargs:
+      morekwargs["apscale"] = kwargs["pscale"]
 
     return super().transforminitargs(*args, **kwargs, **morekwargs)
 

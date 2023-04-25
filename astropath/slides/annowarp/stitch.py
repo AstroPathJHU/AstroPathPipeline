@@ -205,7 +205,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     return A, b, c
 
   @classmethod
-  def Abc(cls, alignmentresults, mus, sigmas, logger, floatedparams="all"):
+  def Abc(cls, alignmentresults, mus, sigmas, logger, floatedparams="all", **kwargs):
     """
     Gives the total A, b, and c from the alignment results and constraints.
 
@@ -222,7 +222,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     #add the alignment result contributions
     A = b = c = 0
     for alignmentresult in alignmentresults:
-      addA, addb, addc = cls.unconstrainedAbccontributions(alignmentresult)
+      addA, addb, addc = cls.unconstrainedAbccontributions(alignmentresult, **kwargs)
       A += addA
       b += addb
       c += addc
@@ -491,7 +491,7 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     return cls.nxdxbreaks() + cls.nxdybreaks() + cls.nydxbreaks() + cls.nydybreaks()
 
   @classmethod
-  def getsubclass(cls, *, xdxbreaks, xdybreaks, ydxbreaks, ydybreaks):
+  def subclass(cls, *, xdxbreaks, xdybreaks, ydxbreaks, ydybreaks):
     class subcls(cls):
       @classmethod
       def xdxbreaks(cls): return xdxbreaks
@@ -509,10 +509,10 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     name = name.replace(".", "p")
     name = name.replace("-", "m")
     name = name.replace("+", "p")
-    match = re.match(r"^\w", name, flags=re.ASCII)
+    match = re.match(r"^\w+$", name, flags=re.ASCII)
     if not match: raise ValueError(f"{name!r} doesn't match {match!r}")
     subcls.__name__ = name
-    return subclass
+    return subcls
 
   def __init__(self, *, xdxshifts, xdyshifts, ydxshifts, ydyshifts, **kwargs):
     self.xdxshifts = xdxshifts
@@ -619,11 +619,11 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     coeffrelativetobigtile is dimensionless, bigtileindexcoeff and constant
     have units of distance
     """
-    return super().variablepowers(**kwargs) + (1, 1) * cls.ntotalbreaks()
+    return super().variablepowers(**kwargs) + (1,) * cls.ntotalbreaks()
 
   @classmethod
   def nparams(cls, **kwargs):
-    return super().nparams(**kwargs) + 2 * cls.ntotalbreaks()
+    return super().nparams(**kwargs) + cls.ntotalbreaks()
 
   @classmethod
   def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults, logger, **kwargs):
@@ -632,7 +632,7 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     if len(floatedparams) == cls.nparams():
       pass
     elif len(floatedparams) == super().nparams():
-      floatedparams = list(floatedparams) + [False, True] * cls.ntotalbreaks()
+      floatedparams = list(floatedparams) + [True] * cls.ntotalbreaks()
 
     if len(floatedparams) != cls.nparams():
       raise ValueError(f"floatedparams has the wrong length {len(floatedparams)}")
@@ -808,7 +808,6 @@ class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultMode
     Assemble the A matrix, b vector, and c scalar for the default model
     from the alignment result
     """
-
     nparams = cls.nparams()
     #get the indices for each parameter
     (
@@ -825,7 +824,7 @@ class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultMode
       *shifts,
     ) = range(nparams)
 
-    xdxshifts, xdyshifts, ydxshifts = np.split(shifts, [cls.nxdxshifts(), cls.nxdxshifts()+cls.nxdyshifts(), cls.nxdxshifts()+cls.nxdyshifts()+cls.ndyxshifts()])
+    xdxshifts, xdyshifts, ydxshifts, ydyshifts = np.split(shifts, [cls.nxdxbreaks(), cls.nxdxbreaks()+cls.nxdybreaks(), cls.nxdxbreaks()+cls.nxdybreaks()+cls.nydxbreaks()])
 
     const_x_indices = [const_x]
     const_y_indices = [const_y]
@@ -914,7 +913,7 @@ class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultMode
         A[const_y_idx, const_x_idx] += invcov[1,0]
     for const_y_idx_1 in const_y_indices:
       for const_y_idx_2 in const_y_indices:
-        A[const_y_idx, const_y_idx] += invcov[1,1]
+        A[const_y_idx_1, const_y_idx_2] += invcov[1,1]
 
     #fill the b vector
     b[crtbt_xx:crtbt_xy+1] -= 2 * crtbt * invcov[0,0] * dxvec[0]
@@ -938,7 +937,7 @@ class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultMode
     c += dxvec @ invcov @ dxvec
 
     if _debug:
-      superA, superb, superc = super().unconstrainedAbccontributions(alignmentresult)
+      superA, superb, superc = AnnoWarpStitchResultDefaultModel.unconstrainedAbccontributions(alignmentresult) #not super because that will give the wrong nparams
       np.testing.assert_array_equal(A[:10,:10], superA)
       np.testing.assert_array_equal(b[:10], superb)
       np.testing.assert_array_equal(c, superc)
@@ -966,10 +965,10 @@ class AnnoWarpStitchResultDefaultModelWithBreaksCvxpy(AnnoWarpStitchResultDefaul
   def makecvxpyvariables(cls):
     return {
       **super().makecvxpyvariables(),
-      "xdxshifts": cp.Variable(shape=self.nxdxshifts()),
-      "xdyshifts": cp.Variable(shape=self.nxdyshifts()),
-      "ydxshifts": cp.Variable(shape=self.nydxshifts()),
-      "ydyshifts": cp.Variable(shape=self.nydyshifts()),
+      "xdxshifts": cp.Variable(shape=self.nxdxbreaks()),
+      "xdyshifts": cp.Variable(shape=self.nxdybreaks()),
+      "ydxshifts": cp.Variable(shape=self.nydxbreaks()),
+      "ydyshifts": cp.Variable(shape=self.nydybreaks()),
     }
 
   @classmethod
