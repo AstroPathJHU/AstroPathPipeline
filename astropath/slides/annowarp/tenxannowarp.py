@@ -14,7 +14,6 @@ class TenXAnnoWarp(TenXSampleBase):
     super().__init__(*args, **kwargs)
     self.breaksx = np.array(breaksx)
     self.breaksy = np.array(breaksy)
-    self.logger.warningonenter("This is a work in progress, doesn't actually work yet")
 
   @property
   def logmodule(self):
