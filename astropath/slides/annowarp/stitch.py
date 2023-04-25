@@ -639,11 +639,6 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     if len(floatedparams) != cls.nparams():
       raise ValueError(f"floatedparams has the wrong length {len(floatedparams)}")
 
-    for i in range(super().nparams(), super().nparams() + cls.ntotalbreaks(), 2):
-      floatedparams[i] = False
-      if mus[i] is None: mus[i] = 0
-      if sigmas[i] is None: sigmas[i] = .001*alignmentresults[0].oneimpixel
-
     return floatedparams, mus, sigmas
 
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
