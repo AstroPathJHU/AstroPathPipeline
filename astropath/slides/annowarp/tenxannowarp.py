@@ -461,7 +461,7 @@ class TenXAnnoWarp(TenXSampleBase):
         else:
           toremove.add(e)
 
-    extrema = np.array([e for e in extrema if e not in toremove])
+    extrema = np.array([e for e in extrema if e not in toremove], dtype=extrema.dtype)
     toremove = True
 
     if draw:
@@ -495,12 +495,12 @@ class TenXAnnoWarp(TenXSampleBase):
           if n_between_23 < min_n_between and n_between_23 < n_between_12 and n_between_23 < n_between_34:
             toremove |= {e2, e3}
 
-      if not toremove:
+      if extrema.size and not toremove:
         if abs(newy[extrema[0]]) < threshold/2:
           toremove.add(extrema[0])
         if abs(newy[extrema[-1]]) < threshold/2:
           toremove.add(extrema[-1])
-      extrema = np.array([e for e in extrema if e not in toremove])
+      extrema = np.array([e for e in extrema if e not in toremove], dtype=extrema.dtype)
 
     if draw:
       plt.scatter(newx[extrema], newy[extrema])

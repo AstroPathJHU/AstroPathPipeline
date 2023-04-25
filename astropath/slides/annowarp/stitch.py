@@ -529,11 +529,13 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     if len(self.ydyshifts) != self.nydybreaks():
       raise ValueError(f"Mismatch in ydyshifts: {len(self.ydyshifts)} {self.nydybreaks}")
 
+    super().__init__(**kwargs)
+
   def dxvec(self, qptiffcoordinate, *, apscale):
     """
     Get \Delta\vec{x} for a qptiff coordinate based on the fitted model
     """
-    x, y = qptiffcoordinate
+    x, y = qptiffcoordinate.xvec
     dx, dy = super().dxvec(qptiffcoordinate, apscale=apscale)
 
     xdxshifts = units.convertpscale(self.xdxshifts, self.imscale, apscale)
