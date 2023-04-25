@@ -1,9 +1,10 @@
-import abc, cv2, hashlib, itertools, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, peakutils, scipy.interpolate, skimage.morphology, uncertainties as unc
+import abc, cv2, hashlib, itertools, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, scipy.interpolate, skimage.morphology, uncertainties as unc
 from ...shared.csvclasses import Annotation, AnnotationInfo, Region
 from ...shared.polygon import SimplePolygon
 from ...shared.tenx import Spot, TenXSampleBase
 from ...utilities import units
 from ...utilities.miscmath import covariance_matrix
+from ...utilities.optionalimports import peakutils
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, DataClassWithPscale, distancefield
 from .annowarpsample import WarpedVertex
