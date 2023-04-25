@@ -483,7 +483,7 @@ class AnnoWarpStitchResultDefaultModelWithJumpsBase(AnnoWarpStitchResultDefaultM
   def nydxjumps(cls): return len(cls.ydxjumppositions())
   @classmethod
   @abc.abstractmethod
-  def nydyjumps(cls): pass
+  def ydyjumppositions(cls): pass
   @classmethod
   def nydyjumps(cls): return len(cls.ydyjumppositions())
   @classmethod
@@ -962,10 +962,10 @@ class AnnoWarpStitchResultDefaultModelWithJumpsCvxpy(AnnoWarpStitchResultDefault
   def makecvxpyvariables(cls):
     return {
       **super().makecvxpyvariables(),
-      "xdxjumps": cp.Variable(shape=self.nxdxjumps()),
-      "xdyjumps": cp.Variable(shape=self.nxdyjumps()),
-      "ydxjumps": cp.Variable(shape=self.nydxjumps()),
-      "ydyjumps": cp.Variable(shape=self.nydyjumps()),
+      "xdxjumps": cp.Variable(shape=cls.nxdxjumps()),
+      "xdyjumps": cp.Variable(shape=cls.nxdyjumps()),
+      "ydxjumps": cp.Variable(shape=cls.nydxjumps()),
+      "ydyjumps": cp.Variable(shape=cls.nydyjumps()),
     }
 
   @classmethod
