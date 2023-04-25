@@ -548,8 +548,9 @@ class ZoomFolderCohort(Cohort, ZoomFolderArgumentParser):
   Base class for any cohort that uses zoom files
   zoomroot: root for the zoom files
   """
-  def __init__(self, *args, zoomroot, **kwargs):
+  def __init__(self, *args, zoomroot=None, **kwargs):
     super().__init__(*args, **kwargs)
+    if zoomroot is None: zoomroot = self.root
     self.zoomroot = pathlib.Path(zoomroot)
 
   @property
