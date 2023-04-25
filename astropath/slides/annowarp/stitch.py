@@ -465,47 +465,47 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
 
     return floatedparams, mus, sigmas
 
-class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefaultModelBase):
+class AnnoWarpStitchResultDefaultModelWithJumpsBase(AnnoWarpStitchResultDefaultModelBase):
   @classmethod
   @abc.abstractmethod
-  def xdxbreaks(cls): pass
+  def xdxjumppositions(cls): pass
   @classmethod
-  def nxdxbreaks(cls): return len(cls.xdxbreaks())
-  @classmethod
-  @abc.abstractmethod
-  def xdybreaks(cls): pass
-  @classmethod
-  def nxdybreaks(cls): return len(cls.xdybreaks())
+  def nxdxjumps(cls): return len(cls.xdxjumppositions())
   @classmethod
   @abc.abstractmethod
-  def ydxbreaks(cls): pass
+  def xdyjumppositions(cls): pass
   @classmethod
-  def nydxbreaks(cls): return len(cls.ydxbreaks())
+  def nxdyjumps(cls): return len(cls.xdyjumppositions())
   @classmethod
   @abc.abstractmethod
-  def nydybreaks(cls): pass
+  def ydxjumppositions(cls): pass
   @classmethod
-  def nydybreaks(cls): return len(cls.ydybreaks())
+  def nydxjumps(cls): return len(cls.ydxjumppositions())
   @classmethod
-  def ntotalbreaks(cls):
-    return cls.nxdxbreaks() + cls.nxdybreaks() + cls.nydxbreaks() + cls.nydybreaks()
+  @abc.abstractmethod
+  def nydyjumps(cls): pass
+  @classmethod
+  def nydyjumps(cls): return len(cls.ydyjumppositions())
+  @classmethod
+  def ntotaljumps(cls):
+    return cls.nxdxjumps() + cls.nxdyjumps() + cls.nydxjumps() + cls.nydyjumps()
 
   @classmethod
-  def subclass(cls, *, xdxbreaks, xdybreaks, ydxbreaks, ydybreaks):
+  def subclass(cls, *, xdxjumppositions, xdyjumppositions, ydxjumppositions, ydyjumppositions):
     class subcls(cls):
       @classmethod
-      def xdxbreaks(cls): return xdxbreaks
+      def xdxjumppositions(cls): return xdxjumppositions
       @classmethod
-      def xdybreaks(cls): return xdybreaks
+      def xdyjumppositions(cls): return xdyjumppositions
       @classmethod
-      def ydxbreaks(cls): return ydxbreaks
+      def ydxjumppositions(cls): return ydxjumppositions
       @classmethod
-      def ydybreaks(cls): return ydybreaks
+      def ydyjumppositions(cls): return ydyjumppositions
     name = cls.__name__
-    name += "_xdx_" + "_".join(str(xdxbreak) for xdxbreak in xdxbreaks)
-    name += "_xdy_" + "_".join(str(xdybreak) for xdybreak in xdybreaks)
-    name += "_ydx_" + "_".join(str(ydxbreak) for ydxbreak in ydxbreaks)
-    name += "_ydy_" + "_".join(str(ydybreak) for ydybreak in ydybreaks)
+    name += "_xdx_" + "_".join(str(xdxjumpposition) for xdxjumpposition in xdxjumppositions)
+    name += "_xdy_" + "_".join(str(xdyjumpposition) for xdyjumpposition in xdyjumppositions)
+    name += "_ydx_" + "_".join(str(ydxjumpposition) for ydxjumpposition in ydxjumppositions)
+    name += "_ydy_" + "_".join(str(ydyjumpposition) for ydyjumpposition in ydyjumppositions)
     name = name.replace(".", "p")
     name = name.replace("-", "m")
     name = name.replace("+", "p")
@@ -514,20 +514,20 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     subcls.__name__ = name
     return subcls
 
-  def __init__(self, *, xdxshifts, xdyshifts, ydxshifts, ydyshifts, **kwargs):
-    self.xdxshifts = xdxshifts
-    self.xdyshifts = xdyshifts
-    self.ydxshifts = ydxshifts
-    self.ydyshifts = ydyshifts
+  def __init__(self, *, xdxjumps, xdyjumps, ydxjumps, ydyjumps, **kwargs):
+    self.xdxjumps = xdxjumps
+    self.xdyjumps = xdyjumps
+    self.ydxjumps = ydxjumps
+    self.ydyjumps = ydyjumps
 
-    if len(self.xdxshifts) != self.nxdxbreaks():
-      raise ValueError(f"Mismatch in xdxshifts: {len(self.xdxshifts)} {self.nxdxbreaks}")
-    if len(self.xdyshifts) != self.nxdybreaks():
-      raise ValueError(f"Mismatch in xdyshifts: {len(self.xdyshifts)} {self.nxdybreaks}")
-    if len(self.ydxshifts) != self.nydxbreaks():
-      raise ValueError(f"Mismatch in ydxshifts: {len(self.ydxshifts)} {self.nydxbreaks}")
-    if len(self.ydyshifts) != self.nydybreaks():
-      raise ValueError(f"Mismatch in ydyshifts: {len(self.ydyshifts)} {self.nydybreaks}")
+    if len(self.xdxjumps) != self.nxdxjumps():
+      raise ValueError(f"Mismatch in xdxjumps: {len(self.xdxjumps)} {self.nxdxjumps}")
+    if len(self.xdyjumps) != self.nxdyjumps():
+      raise ValueError(f"Mismatch in xdyjumps: {len(self.xdyjumps)} {self.nxdyjumps}")
+    if len(self.ydxjumps) != self.nydxjumps():
+      raise ValueError(f"Mismatch in ydxjumps: {len(self.ydxjumps)} {self.nydxjumps}")
+    if len(self.ydyjumps) != self.nydyjumps():
+      raise ValueError(f"Mismatch in ydyjumps: {len(self.ydyjumps)} {self.nydyjumps}")
 
     super().__init__(**kwargs)
 
@@ -538,22 +538,22 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     x, y = qptiffcoordinate.xvec
     dx, dy = super().dxvec(qptiffcoordinate, apscale=apscale)
 
-    xdxshifts = units.convertpscale(self.xdxshifts, self.imscale, apscale)
-    xdxbreaks = units.convertpscale(self.xdxbreaks(), self.imscale, apscale)
-    xdyshifts = units.convertpscale(self.xdyshifts, self.imscale, apscale)
-    xdybreaks = units.convertpscale(self.xdybreaks(), self.imscale, apscale)
-    ydxshifts = units.convertpscale(self.ydxshifts, self.imscale, apscale)
-    ydxbreaks = units.convertpscale(self.ydxbreaks(), self.imscale, apscale)
-    ydyshifts = units.convertpscale(self.ydyshifts, self.imscale, apscale)
-    ydybreaks = units.convertpscale(self.ydybreaks(), self.imscale, apscale)
-    for xdxbreak, xdxshift in more_itertools.zip_equal(xdxbreaks, xdxshifts):
-      if x > xdxbreak: dx += xdxshift
-    for xdybreak, xdyshift in more_itertools.zip_equal(xdybreaks, xdyshifts):
-      if x > xdybreak: dy += xdyshift
-    for ydxbreak, ydxshift in more_itertools.zip_equal(ydxbreaks, ydxshifts):
-      if y > ydxbreak: dx += ydxshift
-    for ydybreak, ydyshift in more_itertools.zip_equal(ydybreaks, ydyshifts):
-      if y > ydybreak: dy += ydyshift
+    xdxjumps = units.convertpscale(self.xdxjumps, self.imscale, apscale)
+    xdxjumppositions = units.convertpscale(self.xdxjumppositions(), self.imscale, apscale)
+    xdyjumps = units.convertpscale(self.xdyjumps, self.imscale, apscale)
+    xdyjumppositions = units.convertpscale(self.xdyjumppositions(), self.imscale, apscale)
+    ydxjumps = units.convertpscale(self.ydxjumps, self.imscale, apscale)
+    ydxjumppositions = units.convertpscale(self.ydxjumppositions(), self.imscale, apscale)
+    ydyjumps = units.convertpscale(self.ydyjumps, self.imscale, apscale)
+    ydyjumppositions = units.convertpscale(self.ydyjumppositions(), self.imscale, apscale)
+    for xdxjumpposition, xdxjump in more_itertools.zip_equal(xdxjumppositions, xdxjumps):
+      if x > xdxjumpposition: dx += xdxjump
+    for xdyjumpposition, xdyjump in more_itertools.zip_equal(xdyjumppositions, xdyjumps):
+      if x > xdyjumpposition: dy += xdyjump
+    for ydxjumpposition, ydxjump in more_itertools.zip_equal(ydxjumppositions, ydxjumps):
+      if y > ydxjumpposition: dx += ydxjump
+    for ydyjumpposition, ydyjump in more_itertools.zip_equal(ydyjumppositions, ydyjumps):
+      if y > ydyjumpposition: dy += ydyjump
 
     return np.array([dx, dy])
 
@@ -567,50 +567,50 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
       *sum((
         (
           self.EntryLite(
-            value=xdxbreak,
+            value=xdxjumpposition,
             description=f"position of dx jump #{i} in x",
           ), 
           self.EntryLite(
-            value=xdxshift,
+            value=xdxjump,
             description=f"dx jump #{i} in x",
           ),
-        ) for i, (xdxbreak, xdxshift) in enumerate(more_itertools.zip_equal(self.xdxbreaks(), self.xdxshifts))
+        ) for i, (xdxjumpposition, xdxjump) in enumerate(more_itertools.zip_equal(self.xdxjumppositions(), self.xdxjumps))
       ), ()),
       *sum((
         (
           self.EntryLite(
-            value=xdybreak,
+            value=xdyjumpposition,
             description=f"position of dy jump #{i} in x",
           ), 
           self.EntryLite(
-            value=xdyshift,
+            value=xdyjump,
             description=f"dy jump #{i} in x",
           ),
-        ) for i, (xdybreak, xdyshift) in enumerate(more_itertools.zip_equal(self.xdybreaks(), self.xdyshifts))
+        ) for i, (xdyjumpposition, xdyjump) in enumerate(more_itertools.zip_equal(self.xdyjumppositions(), self.xdyjumps))
       ), ()),
       *sum((
         (
           self.EntryLite(
-            value=ydxbreak,
+            value=ydxjumpposition,
             description=f"position of dx jump #{i} in y",
           ), 
           self.EntryLite(
-            value=ydxshift,
+            value=ydxjump,
             description=f"dx jump #{i} in y",
           ),
-        ) for i, (ydxbreak, ydxshift) in enumerate(more_itertools.zip_equal(self.ydxbreaks(), self.ydxshifts))
+        ) for i, (ydxjumpposition, ydxjump) in enumerate(more_itertools.zip_equal(self.ydxjumppositions(), self.ydxjumps))
       ), ()),
       *sum((
         (
           self.EntryLite(
-            value=ydybreak,
+            value=ydyjumpposition,
             description=f"position of dy jump #{i} in y",
           ), 
           self.EntryLite(
-            value=ydyshift,
+            value=ydyjump,
             description=f"dy jump #{i} in y",
           ),
-        ) for i, (ydybreak, ydyshift) in enumerate(more_itertools.zip_equal(self.ydybreaks(), self.ydyshifts))
+        ) for i, (ydyjumpposition, ydyjump) in enumerate(more_itertools.zip_equal(self.ydyjumppositions(), self.ydyjumps))
       ), ()),
     )
 
@@ -621,11 +621,11 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     coeffrelativetobigtile is dimensionless, bigtileindexcoeff and constant
     have units of distance
     """
-    return super().variablepowers(**kwargs) + (1,) * cls.ntotalbreaks()
+    return super().variablepowers(**kwargs) + (1,) * cls.ntotaljumps()
 
   @classmethod
   def nparams(cls, **kwargs):
-    return super().nparams(**kwargs) + cls.ntotalbreaks()
+    return super().nparams(**kwargs) + cls.ntotaljumps()
 
   @classmethod
   def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults, logger, **kwargs):
@@ -634,7 +634,7 @@ class AnnoWarpStitchResultDefaultModelWithBreaksBase(AnnoWarpStitchResultDefault
     if len(floatedparams) == cls.nparams():
       pass
     elif len(floatedparams) == super().nparams():
-      floatedparams = list(floatedparams) + [True] * cls.ntotalbreaks()
+      floatedparams = list(floatedparams) + [True] * cls.ntotaljumps()
 
     if len(floatedparams) != cls.nparams():
       raise ValueError(f"floatedparams has the wrong length {len(floatedparams)}")
@@ -787,17 +787,17 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
       + constant
     )
 
-class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultModelWithBreaksBase, AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultNoCvxpyBase):
+class AnnoWarpStitchResultDefaultModelWithJumps(AnnoWarpStitchResultDefaultModelWithJumpsBase, AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultNoCvxpyBase):
   def __init__(self, flatresult, **kwargs):
-    other, xdxshifts, xdyshifts, ydxshifts, ydyshifts = np.split(
+    other, xdxjumps, xdyjumps, ydxjumps, ydyjumps = np.split(
       flatresult, [
         10,
-        10+self.nxdxbreaks(),
-        10+self.nxdxbreaks()+self.nxdybreaks(),
-        10+self.nxdxbreaks()+self.nxdybreaks()+self.nydxbreaks(),
+        10+self.nxdxjumps(),
+        10+self.nxdxjumps()+self.nxdyjumps(),
+        10+self.nxdxjumps()+self.nxdyjumps()+self.nydxjumps(),
       ]
     )
-    super().__init__(flatresult=flatresult, xdxshifts=xdxshifts, xdyshifts=xdyshifts, ydxshifts=ydxshifts, ydyshifts=ydyshifts, **kwargs)
+    super().__init__(flatresult=flatresult, xdxjumps=xdxjumps, xdyjumps=xdyjumps, ydxjumps=ydxjumps, ydyjumps=ydyjumps, **kwargs)
 
   @classmethod
   def unconstrainedAbccontributions(cls, alignmentresult, *, _debug=True):
@@ -818,26 +818,26 @@ class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultMode
       bti_yy,
       const_x,
       const_y,
-      *shifts,
+      *jumps,
     ) = range(nparams)
 
-    xdxshifts, xdyshifts, ydxshifts, ydyshifts = np.split(shifts, [cls.nxdxbreaks(), cls.nxdxbreaks()+cls.nxdybreaks(), cls.nxdxbreaks()+cls.nxdybreaks()+cls.nydxbreaks()])
+    xdxjumps, xdyjumps, ydxjumps, ydyjumps = np.split(jumps, [cls.nxdxjumps(), cls.nxdxjumps()+cls.nxdyjumps(), cls.nxdxjumps()+cls.nxdyjumps()+cls.nydxjumps()])
 
     const_x_indices = [const_x]
     const_y_indices = [const_y]
 
-    for xdxbreak, xdxshift in more_itertools.zip_equal(cls.xdxbreaks(), xdxshifts):
-      if alignmentresult.x > xdxbreak:
-        const_x_indices.append(xdxshift)
-    for xdybreak, xdyshift in more_itertools.zip_equal(cls.xdybreaks(), xdyshifts):
-      if alignmentresult.x > xdybreak:
-        const_y_indices.append(xdyshift)
-    for ydxbreak, ydxshift in more_itertools.zip_equal(cls.ydxbreaks(), ydxshifts):
-      if alignmentresult.y > ydxbreak:
-        const_x_indices.append(ydxshift)
-    for ydybreak, ydyshift in more_itertools.zip_equal(cls.ydybreaks(), ydyshifts):
-      if alignmentresult.y > ydybreak:
-        const_y_indices.append(ydyshift)
+    for xdxjumpposition, xdxjump in more_itertools.zip_equal(cls.xdxjumppositions(), xdxjumps):
+      if alignmentresult.x > xdxjumpposition:
+        const_x_indices.append(xdxjump)
+    for xdyjumpposition, xdyjump in more_itertools.zip_equal(cls.xdyjumppositions(), xdyjumps):
+      if alignmentresult.x > xdyjumpposition:
+        const_y_indices.append(xdyjump)
+    for ydxjumpposition, ydxjump in more_itertools.zip_equal(cls.ydxjumppositions(), ydxjumps):
+      if alignmentresult.y > ydxjumpposition:
+        const_x_indices.append(ydxjump)
+    for ydyjumpposition, ydyjump in more_itertools.zip_equal(cls.ydyjumppositions(), ydyjumps):
+      if alignmentresult.y > ydyjumpposition:
+        const_y_indices.append(ydyjump)
 
     #create A, b, and c
     A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
@@ -941,49 +941,49 @@ class AnnoWarpStitchResultDefaultModelWithBreaks(AnnoWarpStitchResultDefaultMode
 
     return A, b, c
 
-class AnnoWarpStitchResultDefaultModelWithBreaksCvxpy(AnnoWarpStitchResultDefaultModelWithBreaksBase, AnnoWarpStitchResultDefaultModelCvxpy, AnnoWarpStitchResultCvxpyBase):
-  def __init__(self, *, xdxshifts, xdyshifts, ydxshifts, ydyshifts, pscale, apscale, **kwargs):
+class AnnoWarpStitchResultDefaultModelWithJumpsCvxpy(AnnoWarpStitchResultDefaultModelWithJumpsBase, AnnoWarpStitchResultDefaultModelCvxpy, AnnoWarpStitchResultCvxpyBase):
+  def __init__(self, *, xdxjumps, xdyjumps, ydxjumps, ydyjumps, pscale, apscale, **kwargs):
     onepixel = units.onepixel(pscale=pscale / np.round(float(pscale/apscale)))
     super().__init__(
-      xdxshifts=xdxshifts.value*onepixel,
-      xdyshifts=xdyshifts.value*onepixel,
-      ydxshifts=ydxshifts.value*onepixel,
-      ydyshifts=ydyshifts.value*onepixel,
+      xdxjumps=xdxjumps.value*onepixel,
+      xdyjumps=xdyjumps.value*onepixel,
+      ydxjumps=ydxjumps.value*onepixel,
+      ydyjumps=ydyjumps.value*onepixel,
       pscale=pscale,
       apscale=apscale,
       **kwargs,
     )
-    self.xdxshiftsvar = xdxshifts
-    self.xdyshiftsvar = xdyshifts
-    self.ydxshiftsvar = ydxshifts
-    self.ydyshiftsvar = ydyshifts
+    self.xdxjumpsvar = xdxjumps
+    self.xdyjumpsvar = xdyjumps
+    self.ydxjumpsvar = ydxjumps
+    self.ydyjumpsvar = ydyjumps
 
   @classmethod
   def makecvxpyvariables(cls):
     return {
       **super().makecvxpyvariables(),
-      "xdxshifts": cp.Variable(shape=self.nxdxbreaks()),
-      "xdyshifts": cp.Variable(shape=self.nxdybreaks()),
-      "ydxshifts": cp.Variable(shape=self.nydxbreaks()),
-      "ydyshifts": cp.Variable(shape=self.nydybreaks()),
+      "xdxjumps": cp.Variable(shape=self.nxdxjumps()),
+      "xdyjumps": cp.Variable(shape=self.nxdyjumps()),
+      "ydxjumps": cp.Variable(shape=self.nydxjumps()),
+      "ydyjumps": cp.Variable(shape=self.nydyjumps()),
     }
 
   @classmethod
-  def cvxpydxvec(cls, alignmentresult, *, xdxshifts, xdyshifts, ydxshifts, ydyshifts, **kwargs):
+  def cvxpydxvec(cls, alignmentresult, *, xdxjumps, xdyjumps, ydxjumps, ydyjumps, **kwargs):
     result = super().cvxpydxvec(alignmentresult, **kwargs)
     dx = dy = 0
-    for xdxbreak, xdxshift in more_itertools.zip_equal(cls.xdxbreaks(), xdxshifts):
-      if alignmentresult.x > xdxbreak:
-        dx += xdxshift
-    for xdybreak, xdyshift in more_itertools.zip_equal(cls.xdybreaks(), xdyshifts):
-      if alignmentresult.x > xdybreak:
-        dy += xdyshift
-    for ydxbreak, ydxshift in more_itertools.zip_equal(cls.ydxbreaks(), ydxshifts):
-      if alignmentresult.y > ydxbreak:
-        dx += ydxshift
-    for ydybreak, ydyshift in more_itertools.zip_equal(cls.ydybreaks(), ydyshifts):
-      if alignmentresult.y > ydybreak:
-        dy += ydyshift
+    for xdxjumpposition, xdxjump in more_itertools.zip_equal(cls.xdxjumppositions(), xdxjumps):
+      if alignmentresult.x > xdxjumpposition:
+        dx += xdxjump
+    for xdyjumpposition, xdyjump in more_itertools.zip_equal(cls.xdyjumppositions(), xdyjumps):
+      if alignmentresult.x > xdyjumpposition:
+        dy += xdyjump
+    for ydxjumpposition, ydxjump in more_itertools.zip_equal(cls.ydxjumppositions(), ydxjumps):
+      if alignmentresult.y > ydxjumpposition:
+        dx += ydxjump
+    for ydyjumpposition, ydyjump in more_itertools.zip_equal(cls.ydyjumppositions(), ydyjumps):
+      if alignmentresult.y > ydyjumpposition:
+        dy += ydyjump
     result += np.array([dx, dy])
     return result
 

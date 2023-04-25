@@ -7,7 +7,7 @@ from ...utilities.miscmath import covariance_matrix
 from ...utilities.tableio import writetable
 from ...utilities.units.dataclasses import DataClassWithImscale, DataClassWithPscale, distancefield
 from .annowarpsample import WarpedVertex
-from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelWithBreaks
+from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelWithJumps
 
 class TenXAnnoWarp(TenXSampleBase):
   def __init__(self, *args, breaksx, breaksy, **kwargs):
@@ -260,12 +260,12 @@ class TenXAnnoWarp(TenXSampleBase):
     stitchresult = AnnoWarpStitchResultDefaultModel(result, A=A, b=b, c=c, constraintmus=None, constraintsigmas=None, pscale=1, apscale=1)
 
     if iterate:
-      jumpsxx = self.findjumps(0, 0, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
-      jumpsxy = self.findjumps(0, 1, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
-      jumpsyx = self.findjumps(1, 0, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
-      jumpsyy = self.findjumps(1, 1, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      xdxjumppositions = self.findjumps(0, 0, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      xdyjumppositions = self.findjumps(0, 1, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      ydxjumppositions = self.findjumps(1, 0, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      ydyjumppositions = self.findjumps(1, 1, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
 
-      stitchresultcls = AnnoWarpStitchResultDefaultModelWithBreaks.subclass(xdxbreaks=jumpsxx, xdybreaks=jumpsxy, ydxbreaks=jumpsyx, ydybreaks=jumpsyy)
+      stitchresultcls = AnnoWarpStitchResultDefaultModelWithJumps.subclass(xdxjumppositions=xdxjumppositions, xdyjumppositions=xdyjumppositions, ydxjumppositions=ydxjumppositions, ydyjumppositions=ydyjumppositions)
       A, b, c = stitchresultcls.Abc(goodresults, None, None, self.logger, _debug=_debug)
       result = units.np.linalg.solve(2*A, -b)
       delta2nllfor1sigma = 1
