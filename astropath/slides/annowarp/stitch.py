@@ -205,7 +205,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     return A, b, c
 
   @classmethod
-  def Abc(cls, alignmentresults, mus, sigmas, logger, floatedparams="all"):
+  def Abc(cls, alignmentresults, mus, sigmas, logger, floatedparams="all", **kwargs):
     """
     Gives the total A, b, and c from the alignment results and constraints.
 
@@ -222,7 +222,7 @@ class AnnoWarpStitchResultNoCvxpyBase(AnnoWarpStitchResultBase):
     #add the alignment result contributions
     A = b = c = 0
     for alignmentresult in alignmentresults:
-      addA, addb, addc = cls.unconstrainedAbccontributions(alignmentresult)
+      addA, addb, addc = cls.unconstrainedAbccontributions(alignmentresult, **kwargs)
       A += addA
       b += addb
       c += addc
@@ -465,12 +465,188 @@ class AnnoWarpStitchResultDefaultModelBase(AnnoWarpStitchResultBase):
 
     return floatedparams, mus, sigmas
 
+class AnnoWarpStitchResultDefaultModelWithJumpsBase(AnnoWarpStitchResultDefaultModelBase):
+  @classmethod
+  @abc.abstractmethod
+  def xdxjumppositions(cls): pass
+  @classmethod
+  def nxdxjumps(cls): return len(cls.xdxjumppositions())
+  @classmethod
+  @abc.abstractmethod
+  def xdyjumppositions(cls): pass
+  @classmethod
+  def nxdyjumps(cls): return len(cls.xdyjumppositions())
+  @classmethod
+  @abc.abstractmethod
+  def ydxjumppositions(cls): pass
+  @classmethod
+  def nydxjumps(cls): return len(cls.ydxjumppositions())
+  @classmethod
+  @abc.abstractmethod
+  def ydyjumppositions(cls): pass
+  @classmethod
+  def nydyjumps(cls): return len(cls.ydyjumppositions())
+  @classmethod
+  def ntotaljumps(cls):
+    return cls.nxdxjumps() + cls.nxdyjumps() + cls.nydxjumps() + cls.nydyjumps()
+
+  @classmethod
+  def subclass(cls, *, xdxjumppositions, xdyjumppositions, ydxjumppositions, ydyjumppositions):
+    class subcls(cls):
+      @classmethod
+      def xdxjumppositions(cls): return xdxjumppositions
+      @classmethod
+      def xdyjumppositions(cls): return xdyjumppositions
+      @classmethod
+      def ydxjumppositions(cls): return ydxjumppositions
+      @classmethod
+      def ydyjumppositions(cls): return ydyjumppositions
+    name = cls.__name__
+    name += "_xdx_" + "_".join(str(xdxjumpposition) for xdxjumpposition in xdxjumppositions)
+    name += "_xdy_" + "_".join(str(xdyjumpposition) for xdyjumpposition in xdyjumppositions)
+    name += "_ydx_" + "_".join(str(ydxjumpposition) for ydxjumpposition in ydxjumppositions)
+    name += "_ydy_" + "_".join(str(ydyjumpposition) for ydyjumpposition in ydyjumppositions)
+    name = name.replace(".", "p")
+    name = name.replace("-", "m")
+    name = name.replace("+", "p")
+    match = re.match(r"^\w+$", name, flags=re.ASCII)
+    if not match: raise ValueError(f"{name!r} doesn't match {match!r}")
+    subcls.__name__ = name
+    return subcls
+
+  def __init__(self, *, xdxjumps, xdyjumps, ydxjumps, ydyjumps, **kwargs):
+    self.xdxjumps = xdxjumps
+    self.xdyjumps = xdyjumps
+    self.ydxjumps = ydxjumps
+    self.ydyjumps = ydyjumps
+
+    if len(self.xdxjumps) != self.nxdxjumps():
+      raise ValueError(f"Mismatch in xdxjumps: {len(self.xdxjumps)} {self.nxdxjumps}")
+    if len(self.xdyjumps) != self.nxdyjumps():
+      raise ValueError(f"Mismatch in xdyjumps: {len(self.xdyjumps)} {self.nxdyjumps}")
+    if len(self.ydxjumps) != self.nydxjumps():
+      raise ValueError(f"Mismatch in ydxjumps: {len(self.ydxjumps)} {self.nydxjumps}")
+    if len(self.ydyjumps) != self.nydyjumps():
+      raise ValueError(f"Mismatch in ydyjumps: {len(self.ydyjumps)} {self.nydyjumps}")
+
+    super().__init__(**kwargs)
+
+  def dxvec(self, qptiffcoordinate, *, apscale):
+    """
+    Get \Delta\vec{x} for a qptiff coordinate based on the fitted model
+    """
+    x, y = qptiffcoordinate.xvec
+    dx, dy = super().dxvec(qptiffcoordinate, apscale=apscale)
+
+    xdxjumps = units.convertpscale(self.xdxjumps, self.imscale, apscale)
+    xdxjumppositions = units.convertpscale(self.xdxjumppositions(), self.imscale, apscale)
+    xdyjumps = units.convertpscale(self.xdyjumps, self.imscale, apscale)
+    xdyjumppositions = units.convertpscale(self.xdyjumppositions(), self.imscale, apscale)
+    ydxjumps = units.convertpscale(self.ydxjumps, self.imscale, apscale)
+    ydxjumppositions = units.convertpscale(self.ydxjumppositions(), self.imscale, apscale)
+    ydyjumps = units.convertpscale(self.ydyjumps, self.imscale, apscale)
+    ydyjumppositions = units.convertpscale(self.ydyjumppositions(), self.imscale, apscale)
+    for xdxjumpposition, xdxjump in more_itertools.zip_equal(xdxjumppositions, xdxjumps):
+      if x > xdxjumpposition: dx += xdxjump
+    for xdyjumpposition, xdyjump in more_itertools.zip_equal(xdyjumppositions, xdyjumps):
+      if x > xdyjumpposition: dy += xdyjump
+    for ydxjumpposition, ydxjump in more_itertools.zip_equal(ydxjumppositions, ydxjumps):
+      if y > ydxjumpposition: dx += ydxjump
+    for ydyjumpposition, ydyjump in more_itertools.zip_equal(ydyjumppositions, ydyjumps):
+      if y > ydyjumpposition: dy += ydyjump
+
+    return np.array([dx, dy])
+
+  @property
+  def stitchresultentries(self):
+    """
+    Get the stitch result entries for the fitted result
+    """
+    return (
+      *super().stitchresultentries,
+      *sum((
+        (
+          self.EntryLite(
+            value=xdxjumpposition,
+            description=f"position of dx jump #{i} in x",
+          ), 
+          self.EntryLite(
+            value=xdxjump,
+            description=f"dx jump #{i} in x",
+          ),
+        ) for i, (xdxjumpposition, xdxjump) in enumerate(more_itertools.zip_equal(self.xdxjumppositions(), self.xdxjumps))
+      ), ()),
+      *sum((
+        (
+          self.EntryLite(
+            value=xdyjumpposition,
+            description=f"position of dy jump #{i} in x",
+          ), 
+          self.EntryLite(
+            value=xdyjump,
+            description=f"dy jump #{i} in x",
+          ),
+        ) for i, (xdyjumpposition, xdyjump) in enumerate(more_itertools.zip_equal(self.xdyjumppositions(), self.xdyjumps))
+      ), ()),
+      *sum((
+        (
+          self.EntryLite(
+            value=ydxjumpposition,
+            description=f"position of dx jump #{i} in y",
+          ), 
+          self.EntryLite(
+            value=ydxjump,
+            description=f"dx jump #{i} in y",
+          ),
+        ) for i, (ydxjumpposition, ydxjump) in enumerate(more_itertools.zip_equal(self.ydxjumppositions(), self.ydxjumps))
+      ), ()),
+      *sum((
+        (
+          self.EntryLite(
+            value=ydyjumpposition,
+            description=f"position of dy jump #{i} in y",
+          ), 
+          self.EntryLite(
+            value=ydyjump,
+            description=f"dy jump #{i} in y",
+          ),
+        ) for i, (ydyjumpposition, ydyjump) in enumerate(more_itertools.zip_equal(self.ydyjumppositions(), self.ydyjumps))
+      ), ()),
+    )
+
+  @classmethod
+  def variablepowers(cls, **kwargs):
+    """
+    powers of the distance units for the variables
+    coeffrelativetobigtile is dimensionless, bigtileindexcoeff and constant
+    have units of distance
+    """
+    return super().variablepowers(**kwargs) + (1,) * cls.ntotaljumps()
+
+  @classmethod
+  def nparams(cls, **kwargs):
+    return super().nparams(**kwargs) + cls.ntotaljumps()
+
+  @classmethod
+  def floatedparams(cls, floatedparams, mus, sigmas, alignmentresults, logger, **kwargs):
+    floatedparams, mus, sigmas = super().floatedparams(floatedparams, mus, sigmas, alignmentresults, logger=logger)
+
+    if len(floatedparams) == cls.nparams():
+      pass
+    elif len(floatedparams) == super().nparams():
+      floatedparams = list(floatedparams) + [True] * cls.ntotaljumps()
+
+    if len(floatedparams) != cls.nparams():
+      raise ValueError(f"floatedparams has the wrong length {len(floatedparams)}")
+
+    return floatedparams, mus, sigmas
+
 class AnnoWarpStitchResultDefaultModel(AnnoWarpStitchResultDefaultModelBase, AnnoWarpStitchResultNoCvxpyBase):
   """
   Stitch result for the default model with no cvxpy
   """
   def __init__(self, flatresult, **kwargs):
-    coeffrelativetobigtile, bigtileindexcoeff, constant = np.split(flatresult, [4, 8])
+    coeffrelativetobigtile, bigtileindexcoeff, constant, other = np.split(flatresult, [4, 8, 10])
     coeffrelativetobigtile = coeffrelativetobigtile.reshape(2, 2)
     bigtileindexcoeff = bigtileindexcoeff.reshape(2, 2)
     super().__init__(flatresult=flatresult, coeffrelativetobigtile=coeffrelativetobigtile, bigtileindexcoeff=bigtileindexcoeff, constant=constant, **kwargs)
@@ -610,6 +786,206 @@ class AnnoWarpStitchResultDefaultModelCvxpy(AnnoWarpStitchResultDefaultModelBase
       + bigtileindexcoeff @ alignmentresult.bigtileindex
       + constant
     )
+
+class AnnoWarpStitchResultDefaultModelWithJumps(AnnoWarpStitchResultDefaultModelWithJumpsBase, AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultNoCvxpyBase):
+  def __init__(self, flatresult, **kwargs):
+    other, xdxjumps, xdyjumps, ydxjumps, ydyjumps = np.split(
+      flatresult, [
+        10,
+        10+self.nxdxjumps(),
+        10+self.nxdxjumps()+self.nxdyjumps(),
+        10+self.nxdxjumps()+self.nxdyjumps()+self.nydxjumps(),
+      ]
+    )
+    super().__init__(flatresult=flatresult, xdxjumps=xdxjumps, xdyjumps=xdyjumps, ydxjumps=ydxjumps, ydyjumps=ydyjumps, **kwargs)
+
+  @classmethod
+  def unconstrainedAbccontributions(cls, alignmentresult, *, _debug=True):
+    """
+    Assemble the A matrix, b vector, and c scalar for the default model
+    from the alignment result
+    """
+    nparams = cls.nparams()
+    #get the indices for each parameter
+    (
+      crtbt_xx,
+      crtbt_xy,
+      crtbt_yx,
+      crtbt_yy,
+      bti_xx,
+      bti_xy,
+      bti_yx,
+      bti_yy,
+      const_x,
+      const_y,
+      *jumps,
+    ) = range(nparams)
+
+    xdxjumps, xdyjumps, ydxjumps, ydyjumps = np.split(jumps, [cls.nxdxjumps(), cls.nxdxjumps()+cls.nxdyjumps(), cls.nxdxjumps()+cls.nxdyjumps()+cls.nydxjumps()])
+
+    const_x_indices = [const_x]
+    const_y_indices = [const_y]
+
+    for xdxjumpposition, xdxjump in more_itertools.zip_equal(cls.xdxjumppositions(), xdxjumps):
+      if alignmentresult.x > xdxjumpposition:
+        const_x_indices.append(xdxjump)
+    for xdyjumpposition, xdyjump in more_itertools.zip_equal(cls.xdyjumppositions(), xdyjumps):
+      if alignmentresult.x > xdyjumpposition:
+        const_y_indices.append(xdyjump)
+    for ydxjumpposition, ydxjump in more_itertools.zip_equal(cls.ydxjumppositions(), ydxjumps):
+      if alignmentresult.y > ydxjumpposition:
+        const_x_indices.append(ydxjump)
+    for ydyjumpposition, ydyjump in more_itertools.zip_equal(cls.ydyjumppositions(), ydyjumps):
+      if alignmentresult.y > ydyjumpposition:
+        const_y_indices.append(ydyjump)
+
+    #create A, b, and c
+    A = np.zeros(shape=(nparams, nparams), dtype=units.unitdtype)
+    b = np.zeros(shape=nparams, dtype=units.unitdtype)
+    c = 0
+
+    #get the factors that the parameters are going to multiply
+    crtbt = alignmentresult.coordinaterelativetobigtile
+    bti = alignmentresult.bigtileindex
+
+    #get the alignment result dxvec and covariance matrix
+    dxvec = units.nominal_values(alignmentresult.dxvec)
+    invcov = units.np.linalg.inv(alignmentresult.covariance)
+
+    #fill the A matrix
+    A[crtbt_xx:crtbt_xy+1, crtbt_xx:crtbt_xy+1] += np.outer(crtbt, crtbt) * invcov[0,0]
+    A[crtbt_yx:crtbt_yy+1, crtbt_xx:crtbt_xy+1] += np.outer(crtbt, crtbt) * invcov[0,1]
+    A[crtbt_xx:crtbt_xy+1, crtbt_yx:crtbt_yy+1] += np.outer(crtbt, crtbt) * invcov[1,0]
+    A[crtbt_yx:crtbt_yy+1, crtbt_yx:crtbt_yy+1] += np.outer(crtbt, crtbt) * invcov[1,1]
+
+    A[crtbt_xx:crtbt_xy+1, bti_xx:bti_xy+1] += np.outer(crtbt, bti) * invcov[0,0]
+    A[crtbt_yx:crtbt_yy+1, bti_xx:bti_xy+1] += np.outer(crtbt, bti) * invcov[0,1]
+    A[crtbt_xx:crtbt_xy+1, bti_yx:bti_yy+1] += np.outer(crtbt, bti) * invcov[1,0]
+    A[crtbt_yx:crtbt_yy+1, bti_yx:bti_yy+1] += np.outer(crtbt, bti) * invcov[1,1]
+
+    for const_x_idx in const_x_indices:
+      A[crtbt_xx:crtbt_xy+1, const_x_idx] += crtbt * invcov[0,0]
+      A[crtbt_yx:crtbt_yy+1, const_x_idx] += crtbt * invcov[1,0]
+    for const_y_idx in const_y_indices:
+      A[crtbt_xx:crtbt_xy+1, const_y_idx] += crtbt * invcov[0,1]
+      A[crtbt_yx:crtbt_yy+1, const_y_idx] += crtbt * invcov[1,1]
+
+    A[bti_xx:bti_xy+1, crtbt_xx:crtbt_xy+1] += np.outer(bti, crtbt) * invcov[0,0]
+    A[bti_yx:bti_yy+1, crtbt_xx:crtbt_xy+1] += np.outer(bti, crtbt) * invcov[0,1]
+    A[bti_xx:bti_xy+1, crtbt_yx:crtbt_yy+1] += np.outer(bti, crtbt) * invcov[1,0]
+    A[bti_yx:bti_yy+1, crtbt_yx:crtbt_yy+1] += np.outer(bti, crtbt) * invcov[1,1]
+
+    A[bti_xx:bti_xy+1, bti_xx:bti_xy+1] += np.outer(bti, bti) * invcov[0,0]
+    A[bti_yx:bti_yy+1, bti_xx:bti_xy+1] += np.outer(bti, bti) * invcov[0,1]
+    A[bti_xx:bti_xy+1, bti_yx:bti_yy+1] += np.outer(bti, bti) * invcov[1,0]
+    A[bti_yx:bti_yy+1, bti_yx:bti_yy+1] += np.outer(bti, bti) * invcov[1,1]
+
+    for const_x_idx in const_x_indices:
+      A[bti_xx:bti_xy+1, const_x_idx] += bti * invcov[0,0]
+      A[bti_yx:bti_yy+1, const_x_idx] += bti * invcov[1,0]
+    for const_y_idx in const_y_indices:
+      A[bti_xx:bti_xy+1, const_y_idx] += bti * invcov[0,1]
+      A[bti_yx:bti_yy+1, const_y_idx] += bti * invcov[1,1]
+
+    for const_x_idx in const_x_indices:
+      A[const_x_idx, crtbt_xx:crtbt_xy+1] += crtbt * invcov[0,0]
+      A[const_x_idx, crtbt_yx:crtbt_yy+1] += crtbt * invcov[1,0]
+    for const_y_idx in const_y_indices:
+      A[const_y_idx, crtbt_xx:crtbt_xy+1] += crtbt * invcov[0,1]
+      A[const_y_idx, crtbt_yx:crtbt_yy+1] += crtbt * invcov[1,1]
+
+    for const_x_idx in const_x_indices:
+      A[const_x_idx, bti_xx:bti_xy+1] += bti * invcov[0,0]
+      A[const_x_idx, bti_yx:bti_yy+1] += bti * invcov[1,0]
+    for const_y_idx in const_y_indices:
+      A[const_y_idx, bti_xx:bti_xy+1] += bti * invcov[0,1]
+      A[const_y_idx, bti_yx:bti_yy+1] += bti * invcov[1,1]
+
+    for const_x_idx_1 in const_x_indices:
+      for const_x_idx_2 in const_x_indices:
+        A[const_x_idx_1, const_x_idx_2] += invcov[0,0]
+    for const_x_idx in const_x_indices:
+      for const_y_idx in const_y_indices:
+        A[const_x_idx, const_y_idx] += invcov[0,1]
+        A[const_y_idx, const_x_idx] += invcov[1,0]
+    for const_y_idx_1 in const_y_indices:
+      for const_y_idx_2 in const_y_indices:
+        A[const_y_idx_1, const_y_idx_2] += invcov[1,1]
+
+    #fill the b vector
+    b[crtbt_xx:crtbt_xy+1] -= 2 * crtbt * invcov[0,0] * dxvec[0]
+    b[crtbt_xx:crtbt_xy+1] -= 2 * crtbt * invcov[0,1] * dxvec[1]
+    b[crtbt_yx:crtbt_yy+1] -= 2 * crtbt * invcov[1,0] * dxvec[0]
+    b[crtbt_yx:crtbt_yy+1] -= 2 * crtbt * invcov[1,1] * dxvec[1]
+
+    b[bti_xx:bti_xy+1] -= 2 * bti * invcov[0,0] * dxvec[0]
+    b[bti_xx:bti_xy+1] -= 2 * bti * invcov[0,1] * dxvec[1]
+    b[bti_yx:bti_yy+1] -= 2 * bti * invcov[1,0] * dxvec[0]
+    b[bti_yx:bti_yy+1] -= 2 * bti * invcov[1,1] * dxvec[1]
+
+    for const_x_idx in const_x_indices:
+      b[const_x_idx] -= 2 * invcov[0,0] * dxvec[0]
+      b[const_x_idx] -= 2 * invcov[0,1] * dxvec[1]
+    for const_y_idx in const_y_indices:
+      b[const_y_idx] -= 2 * invcov[1,0] * dxvec[0]
+      b[const_y_idx] -= 2 * invcov[1,1] * dxvec[1]
+
+    #fill c
+    c += dxvec @ invcov @ dxvec
+
+    if _debug:
+      superA, superb, superc = AnnoWarpStitchResultDefaultModel.unconstrainedAbccontributions(alignmentresult) #not super because that will give the wrong nparams
+      np.testing.assert_array_equal(A[:10,:10], superA)
+      np.testing.assert_array_equal(b[:10], superb)
+      np.testing.assert_array_equal(c, superc)
+
+    return A, b, c
+
+class AnnoWarpStitchResultDefaultModelWithJumpsCvxpy(AnnoWarpStitchResultDefaultModelWithJumpsBase, AnnoWarpStitchResultDefaultModelCvxpy, AnnoWarpStitchResultCvxpyBase):
+  def __init__(self, *, xdxjumps, xdyjumps, ydxjumps, ydyjumps, pscale, apscale, **kwargs):
+    onepixel = units.onepixel(pscale=pscale / np.round(float(pscale/apscale)))
+    super().__init__(
+      xdxjumps=xdxjumps.value*onepixel,
+      xdyjumps=xdyjumps.value*onepixel,
+      ydxjumps=ydxjumps.value*onepixel,
+      ydyjumps=ydyjumps.value*onepixel,
+      pscale=pscale,
+      apscale=apscale,
+      **kwargs,
+    )
+    self.xdxjumpsvar = xdxjumps
+    self.xdyjumpsvar = xdyjumps
+    self.ydxjumpsvar = ydxjumps
+    self.ydyjumpsvar = ydyjumps
+
+  @classmethod
+  def makecvxpyvariables(cls):
+    return {
+      **super().makecvxpyvariables(),
+      "xdxjumps": cp.Variable(shape=cls.nxdxjumps()),
+      "xdyjumps": cp.Variable(shape=cls.nxdyjumps()),
+      "ydxjumps": cp.Variable(shape=cls.nydxjumps()),
+      "ydyjumps": cp.Variable(shape=cls.nydyjumps()),
+    }
+
+  @classmethod
+  def cvxpydxvec(cls, alignmentresult, *, xdxjumps, xdyjumps, ydxjumps, ydyjumps, **kwargs):
+    result = super().cvxpydxvec(alignmentresult, **kwargs)
+    dx = dy = 0
+    for xdxjumpposition, xdxjump in more_itertools.zip_equal(cls.xdxjumppositions(), xdxjumps):
+      if alignmentresult.x > xdxjumpposition:
+        dx += xdxjump
+    for xdyjumpposition, xdyjump in more_itertools.zip_equal(cls.xdyjumppositions(), xdyjumps):
+      if alignmentresult.x > xdyjumpposition:
+        dy += xdyjump
+    for ydxjumpposition, ydxjump in more_itertools.zip_equal(cls.ydxjumppositions(), ydxjumps):
+      if alignmentresult.y > ydxjumpposition:
+        dx += ydxjump
+    for ydyjumpposition, ydyjump in more_itertools.zip_equal(cls.ydyjumppositions(), ydyjumps):
+      if alignmentresult.y > ydyjumpposition:
+        dy += ydyjump
+    result += np.array([dx, dy])
+    return result
 
 class AnnoWarpStitchResultEntry(DataClassWithImscale):
   """

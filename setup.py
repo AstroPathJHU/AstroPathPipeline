@@ -162,6 +162,7 @@ setupkwargs = dict(
     "deepcell": ["deepcell==0.12.0"],
     "gdal": ["gdal>=3.3.0"],
     "nnunet": ["nnunet>=1.6.0"],
+    "peakutils": ["peakutils"],
     "test": [
       #packages needed for running tests
       "beautifulsoup4",

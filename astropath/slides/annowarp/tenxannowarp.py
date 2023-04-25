@@ -1,20 +1,20 @@
-import abc, cv2, hashlib, itertools, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, skimage.morphology, uncertainties as unc
+import abc, cv2, hashlib, itertools, matplotlib.patches, matplotlib.pyplot as plt, methodtools, numpy as np, scipy.interpolate, skimage.morphology, uncertainties as unc
 from ...shared.csvclasses import Annotation, AnnotationInfo, Region
 from ...shared.polygon import SimplePolygon
 from ...shared.tenx import Spot, TenXSampleBase
 from ...utilities import units
 from ...utilities.miscmath import covariance_matrix
+from ...utilities.optionalimports import peakutils
 from ...utilities.tableio import writetable
-from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
+from ...utilities.units.dataclasses import DataClassWithImscale, DataClassWithPscale, distancefield
 from .annowarpsample import WarpedVertex
-from .stitch import AnnoWarpStitchResultDefaultModel
+from .stitch import AnnoWarpStitchResultDefaultModel, AnnoWarpStitchResultDefaultModelWithJumps
 
 class TenXAnnoWarp(TenXSampleBase):
   def __init__(self, *args, breaksx, breaksy, **kwargs):
     super().__init__(*args, **kwargs)
     self.breaksx = np.array(breaksx)
     self.breaksy = np.array(breaksy)
-    self.logger.warningonenter("This is a work in progress, doesn't actually work yet")
 
   @property
   def logmodule(self):
@@ -250,13 +250,30 @@ class TenXAnnoWarp(TenXSampleBase):
   def goodresults(self):
     return [_ for _ in self.alignmentresults if _]
 
-  def stitch(self):
-    A, b, c = AnnoWarpStitchResultDefaultModel.Abc(self.goodresults, None, None, self.logger)
+  def stitch(self, *, _debug=True, draw=True, iterate=True):
+    goodresults = self.goodresults
+    A, b, c = AnnoWarpStitchResultDefaultModel.Abc(goodresults, None, None, self.logger)
     result = units.np.linalg.solve(2*A, -b)
     delta2nllfor1sigma = 1
     covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
     result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
-    self.__stitchresult = stitchresult = AnnoWarpStitchResultDefaultModel(result, A=A, b=b, c=c, constraintmus=None, constraintsigmas=None, pscale=1, apscale=1)
+    stitchresult = AnnoWarpStitchResultDefaultModel(result, A=A, b=b, c=c, constraintmus=None, constraintsigmas=None, pscale=1, apscale=1)
+
+    if iterate:
+      xdxjumppositions = self.findjumps(0, 0, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      xdyjumppositions = self.findjumps(0, 1, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      ydxjumppositions = self.findjumps(1, 0, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+      ydyjumppositions = self.findjumps(1, 1, stitchresult=stitchresult, goodresults=goodresults, draw=draw)
+
+      stitchresultcls = AnnoWarpStitchResultDefaultModelWithJumps.subclass(xdxjumppositions=xdxjumppositions, xdyjumppositions=xdyjumppositions, ydxjumppositions=ydxjumppositions, ydyjumppositions=ydyjumppositions)
+      A, b, c = stitchresultcls.Abc(goodresults, None, None, self.logger, _debug=_debug)
+      result = units.np.linalg.solve(2*A, -b)
+      delta2nllfor1sigma = 1
+      covariancematrix = units.np.linalg.inv(A) * delta2nllfor1sigma
+      result = np.array(units.correlated_distances(distances=result, covariance=covariancematrix))
+      stitchresult = stitchresultcls(result, A=A, b=b, c=c, constraintmus=None, constraintsigmas=None, pscale=1, apscale=1)
+
+    self.__stitchresult = stitchresult
     return stitchresult
 
   def fittedspots(self, spottype):
@@ -361,6 +378,140 @@ class TenXAnnoWarp(TenXSampleBase):
     writetable(self.regionscsv, regions, logger=self.logger)
     return annotationinfos, annotations, allvertices, regions
 
+  def findjumps(self, ii, jj, *, stitchresult, goodresults, draw=False):
+    window = 1000
+    resample_density = 20 #pixels, spot separation ~ 200 pixels
+    threshold = 18
+    min_dist = 50
+    min_n_between = 5
+
+    x = [r.xvec[ii] for r in goodresults]
+    dx = units.nominal_values([r.dxvec - stitchresult.dxvec(r, apscale=1) for r in goodresults])[:,jj]
+    unique_x = np.unique(x)
+    between = (unique_x[:-1] + unique_x[1:]) / 2
+
+    x_valid = []
+    diff = []
+    stds = []
+
+    for u in between:
+      left_idx = (x < u) & (x > u - window)
+      right_idx = (x > u) & (x < u + window)
+      nleft = np.count_nonzero(left_idx)
+      nright = np.count_nonzero(right_idx)
+      if nleft < 5 or nright < 5: continue
+
+      frac = .9
+      left_average = frac*np.median(dx[left_idx]) + (1-frac)*np.mean(dx[left_idx])
+      right_average = frac*np.median(dx[right_idx]) + (1-frac)*np.mean(dx[right_idx])
+      left_std = np.std(dx[left_idx])
+      right_std = np.std(dx[right_idx])
+      x_valid.append(u)
+      diff.append(right_average - left_average)
+      stds.append((left_std**2+right_std**2)**.5)
+
+    x_valid = np.array(x_valid)
+    diff = np.array(diff)
+    stds = np.array(stds)
+    interpolator = scipy.interpolate.interp1d(x_valid, diff)
+    std_interpolator = scipy.interpolate.interp1d(x_valid, stds)
+    minx = np.min(x_valid)
+    maxx = np.max(x_valid)
+    newx = np.linspace(minx, maxx, int((maxx-minx) // resample_density))
+    newy = interpolator(newx)
+    newstd = std_interpolator(newx)
+
+    if draw:
+      plt.scatter(x_valid, diff)
+      plt.scatter(newx, newy)
+      plt.scatter(newx, newstd)
+
+
+    #peaks, _ = scipy.signal.find_peaks(newy, width=10, height=10)
+    #peaks2, _ = scipy.signal.find_peaks(-newy, width=10, height=10)
+
+    maxima = peakutils.indexes(newy, min_dist=min_dist)
+    minima = peakutils.indexes(-newy, min_dist=min_dist)
+    maxima = maxima[newy[maxima]>0]
+    minima = minima[newy[minima]<0]
+    assert not (frozenset(minima) & frozenset(maxima)), (minima, maxima)
+
+    extrema = np.concatenate([maxima, minima])
+    extrema.sort()
+
+    extrema = extrema[newstd[extrema] < abs(newy[extrema])]
+
+    last = None
+    toremove = set()
+    for e in extrema:
+      if last is None:
+        last = e
+      elif (e in minima and last in maxima) or (e in maxima and last in minima):
+        last = e
+      elif (e in minima and last in minima):
+        if newy[e] < newy[last]:
+          toremove.add(last)
+          last = e
+        else:
+          toremove.add(e)
+      elif (e in maxima and last in maxima):
+        if newy[e] > newy[last]:
+          toremove.add(last)
+          last = e
+        else:
+          toremove.add(e)
+
+    extrema = np.array([e for e in extrema if e not in toremove], dtype=extrema.dtype)
+    toremove = True
+
+    if draw:
+      plt.scatter(newx[extrema], newy[extrema])
+
+    while toremove:
+      toremove = set()
+      for i, e1 in enumerate(extrema):
+        try:
+          e2 = extrema[i+1]
+          e3 = extrema[i+2]
+        except IndexError:
+          continue
+
+        y1, y2, y3 = newy[[e1, e2, e3]]
+        if abs(y2-y1) < threshold and abs(y2-y1) <= abs(y2-y3):
+          toremove |= {e1, e2}
+          break
+        elif abs(y2-y3) < threshold:
+          toremove |= {e2, e3}
+          break
+
+        try:
+          e4 = extrema[i+3]
+        except IndexError:
+          pass
+        else:
+          n_between_12 = np.count_nonzero((newx[e1] < x_valid) & (x_valid < newx[e2]))
+          n_between_23 = np.count_nonzero((newx[e2] < x_valid) & (x_valid < newx[e3]))
+          n_between_34 = np.count_nonzero((newx[e3] < x_valid) & (x_valid < newx[e4]))
+          if n_between_23 < min_n_between and n_between_23 < n_between_12 and n_between_23 < n_between_34:
+            toremove |= {e2, e3}
+
+      if extrema.size and not toremove:
+        if abs(newy[extrema[0]]) < threshold/2:
+          toremove.add(extrema[0])
+        if abs(newy[extrema[-1]]) < threshold/2:
+          toremove.add(extrema[-1])
+      extrema = np.array([e for e in extrema if e not in toremove], dtype=extrema.dtype)
+
+    if draw:
+      plt.scatter(newx[extrema], newy[extrema])
+      plt.show()
+      plt.scatter(x, dx)
+      for e in extrema:
+        plt.axvline(newx[e])
+      plt.show()
+
+    return newx[extrema]
+
 class BigTileCoordinateBase(abc.ABC):
   @property
   @abc.abstractmethod
@@ -395,7 +546,7 @@ class BigTileCoordinate(BigTileCoordinateBase):
   @property
   def bigtilesize(self): return self.__bigtilesize
 
-class TenXAnnoWarpAlignmentResult(DataClassWithPscale, BigTileCoordinateBase):
+class TenXAnnoWarpAlignmentResult(DataClassWithImscale, BigTileCoordinateBase):
   """
   A result from the alignment of one tile of the annowarp
 
@@ -438,6 +589,9 @@ class TenXAnnoWarpAlignmentResult(DataClassWithPscale, BigTileCoordinateBase):
     if covariancematrix is not None:
       units.np.testing.assert_allclose(covariancematrix[0, 1], covariancematrix[1, 0])
       (morekwargs["covxx"], morekwargs["covxy"]), (morekwargs["covxy"], morekwargs["covyy"]) = covariancematrix
+
+    if "pscale" in kwargs and "apscale" not in kwargs:
+      morekwargs["apscale"] = kwargs["pscale"]
 
     return super().transforminitargs(*args, **kwargs, **morekwargs)
 
