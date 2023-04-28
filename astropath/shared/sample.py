@@ -15,7 +15,7 @@ from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnno
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SegmentationFolderArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .astropath_logging import dummylogger, getlogger, ThingWithLogger
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
-from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
+from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentTiffMultiLayer, RectangleReadComponentTiffSingleLayer, RectangleReadIHCTiff, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffSingleLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer, rectangleoroverlapfilter
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import ControlTMASampleDef, SampleDef
 from .workflowdependency import ThingWithWorkflowKwargs, WorkflowDependencySlideID
@@ -163,7 +163,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @property
   def ihcmaskfolder(self):
-   return self.ihctiffsfolder/"HPFs"/"image_masking"
+    return self.ihctiffsfolder/"HPFs"/"image_masking"
 
   def __getimageinfofromcomponenttiff(self):
     """

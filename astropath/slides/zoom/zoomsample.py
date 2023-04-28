@@ -1,7 +1,7 @@
-import contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, skimage.transform
+import abc, contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, skimage.transform
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import ReadRectanglesDbloadComponentTiff, TempDirSample, TissueSampleBase, TMASampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, ReadRectanglesIHCTiff, TempDirSample, TissueSampleBase, TMASampleBase, WorkflowSample, ZoomFolderSampleBase
 from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing_ok
 from ...utilities.miscimage import check_image_integrity, vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
@@ -624,7 +624,7 @@ class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentT
   def using_zoom_image(self, field):
     return field.using_component_tiff()
 
-class ZoomSampleIHC(ZoomSampleBase, ReadRectanglesDbloadUnmixedIHCTiff):
+class ZoomSampleIHC(ZoomSampleBase, ReadRectanglesDbload, ReadRectanglesIHCTiff, TissueSampleBase):
   @classmethod
   def getnlayerszoom(cls, **kwargs): return 3
   @property
