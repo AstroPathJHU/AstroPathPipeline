@@ -461,7 +461,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
 
   @classmethod
   def getmergeconfigcsv(cls, batchroot, BatchID, **kwargs):
-    return batchroot/"Batch"/f"MergeConfig_{BatchID:02d}.csv"
+    return batchroot/"Batch"/f"MergeConfig_{int(BatchID):02d}.csv"
   @classmethod
   def getmergeconfigxlsx(cls, **kwargs):
     return cls.getmergeconfigcsv(**kwargs).with_suffix(".xlsx")
@@ -1094,8 +1094,9 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   zoomroot: Root location of the zoomed images.
             (The images are in zoomroot/SlideID/big and zoomroot/SlideID/wsi)
   """
-  def __init__(self, *args, zoomroot, **kwargs):
+  def __init__(self, *args, zoomroot=None, **kwargs):
     super().__init__(*args, **kwargs)
+    if zoomroot is None: zoomroot = self.root
     self.__zoomroot = pathlib.Path(zoomroot)
   @property
   def rootnames(self): return {"zoomroot", *super().rootnames}

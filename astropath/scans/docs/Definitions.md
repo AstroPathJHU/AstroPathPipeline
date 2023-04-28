@@ -60,7 +60,6 @@ The file pathes have been standarized and are described below. Additional exampl
    - Usually the specifier used on the ```<Dname>``` folder is also found as an extension on this folder
    - Additional details on these files can be found in the flatw workflow description [5.7.3.2.](../../hpfs/imagecorrection/docs/ImportantDefinitions.md#5732-output-formatting)
 - ```<Rpath>```: This is the same as ```<FWpath>``` above, except with the distinction that the image files in the directory are single column raw image files (.Data.dat) instead of flat field and warping images (.fw).
-- ```<Zpath>```: The path to the zoomed whole slide images
 - ```<DZpath>```: The path to the deepzoomed images
 - ```base[sting]```: This is sometimes used throughout the documentation to refer to the combination of ```<Dpath>\<Dname>``` (both defined above)
 - ```<im3_path>```: The path between the ```<SlideID>``` and where the original im3 are kept

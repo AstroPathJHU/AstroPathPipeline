@@ -6,12 +6,12 @@ one.  These image tiles will be used to create the viewable images in cellview.
 
 To run `deepzoom` on a single slide, run:
 ```
-deepzoomsample \\<Dpath>\<Dname> <SlideID> --zoomroot \\<Zpath> --deepzoomroot \\<DZpath>
+deepzoomsample \\<Dpath>\<Dname> <SlideID> --deepzoomroot \\<DZpath>
 ```
 
 To run `deepzoom` on a whole cohort of slides, run:
 ```
-deepzoomcohort \\<Dpath>\<Dname> --zoomroot \\<Zpath> --deepzoomroot \\<DZpath>
+deepzoomcohort \\<Dpath>\<Dname> --deepzoomroot \\<DZpath>
 ```
 (See [here](../../scans/docs/Definitions.md#43-definitions) for definitions
 of the terms in `<angle brackets>`.)

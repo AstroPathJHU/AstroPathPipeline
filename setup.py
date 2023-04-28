@@ -162,6 +162,7 @@ setupkwargs = dict(
     "deepcell": ["deepcell==0.12.0"],
     "gdal": ["gdal>=3.3.0"],
     "nnunet": ["nnunet>=1.6.0"],
+    "peakutils": ["peakutils"],
     "test": [
       #packages needed for running tests
       "beautifulsoup4",
@@ -175,6 +176,8 @@ setupkwargs = dict(
       #packages that are standard dependencies, but
       #a specific version is needed for reference comparison
       "deepcell==0.12.3",
+      #make sure we are compatible with newer releases of things
+      "pillow>=9.5.0",
     ],
     "vips": ["pyvips"],
   },
