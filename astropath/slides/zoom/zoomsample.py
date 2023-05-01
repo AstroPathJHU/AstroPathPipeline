@@ -24,9 +24,9 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     3. vips assembles each 16384x16384 tile in a file and uses
        libvips to merge them together into the wsi
   """
-  def __init__(self, *args, layers=None, tifflayers="color", **kwargs):
+  def __init__(self, *args, tifflayers="color", **kwargs):
     self.__tifflayers = tifflayers
-    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
+    super().__init__(*args, **kwargs)
 
   def __enter__(self):
     result = super().__enter__()
@@ -595,6 +595,12 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
   def workflowdependencyclasses(cls, **kwargs):
     return [StitchAstroPathTissueMaskSample] + super().workflowdependencyclasses(**kwargs)
 
+  @property
+  def workflowkwargs(self):
+    result = super().workflowkwargs
+    result["tifflayers"] = self.tifflayers
+    return result
+
 class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentTiff):
   rectangletype = FieldReadComponentTiffMultiLayer
   multilayercomponenttiff = True
@@ -616,9 +622,10 @@ class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentT
     return layers
 
   @property
-  def nlayerszoom(self): return self.nlayerscomponenttiff
-  @property
-  def layerszoom(self): return self.layerscomponenttiff
+  def layerszoom(self):
+    result = super().layerszoom
+    assert result == self.layerscomponenttiff
+    return result
   @classmethod
   def getbigfolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
     return zoomroot/SlideID/"big"
@@ -638,7 +645,6 @@ class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentT
       result["layers"] = self.layerscomponenttiff
     except FileNotFoundError:
       result["layers"] = [1]
-    result["tifflayers"] = self.tifflayers
     return result
 
 class ZoomSample(ZoomSampleComponentTiffBase, TissueSampleBase):
@@ -653,10 +659,8 @@ class ZoomSampleIHC(ZoomSampleBase, ReadRectanglesDbload, ReadRectanglesIHCTiff,
 
   @classmethod
   def getnlayerszoom(cls, **kwargs): return 3
-  @property
-  def nlayerszoom(self): return 3
-  @property
-  def layerszoom(self): return 1, 2, 3
+  @classmethod
+  def getlayerszoom(cls, **kwargs): return 1, 2, 3
   @classmethod
   def getbigfolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
     return zoomroot/SlideID/"big_IHC"
