@@ -1102,10 +1102,16 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   def rootnames(self): return {"zoomroot", *super().rootnames}
   @property
   def zoomroot(self): return self.__zoomroot
+  @classmethod
+  @abc.abstractmethod
+  def getbigfolder(cls, **kwargs): pass
+  @classmethod
+  @abc.abstractmethod
+  def getwsifolder(cls, **kwargs): pass
   @property
-  def bigfolder(self): return self.zoomroot/self.SlideID/"big"
+  def bigfolder(self): return self.getbigfolder(**self.workflowkwargs)
   @property
-  def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
+  def wsifolder(self): return self.getwsifolder(**self.workflowkwargs)
 
   zmax = 9
   ztiff = 8
