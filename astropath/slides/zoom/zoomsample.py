@@ -24,6 +24,10 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     3. vips assembles each 16384x16384 tile in a file and uses
        libvips to merge them together into the wsi
   """
+  def __init__(self, *args, layers=None, tifflayers="color", **kwargs):
+    self.__tifflayers = tifflayers
+    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
+
   def __enter__(self):
     result = super().__enter__()
     self.enter_context(self.PILmaximagepixels())
@@ -599,8 +603,7 @@ class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentT
   rectangletype = FieldReadComponentTiffMultiLayer
   multilayercomponenttiff = True
 
-  def __init__(self, *args, layers=None, tifflayers="color", **kwargs):
-    self.__tifflayers = tifflayers
+  def __init__(self, *args, layers=None, **kwargs):
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
 
   @classmethod
@@ -660,6 +663,8 @@ def main(args=None):
   ZoomSample.runfromargumentparser(args)
 def tma(args=None):
   ZoomSampleTMA.runfromargumentparser(args)
+def ihc(args=None):
+  ZoomSampleIHC.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

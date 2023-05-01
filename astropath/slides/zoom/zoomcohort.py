@@ -1,12 +1,9 @@
 from ...shared.argumentparser import CleanupArgumentParser
 from ...shared.cohort import DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
-from .zoomsample import ZoomSample, ZoomSampleTMA
+from .zoomsample import ZoomSample, ZoomSampleBase, ZoomSampleIHC, ZoomSampleTMA
 
-class ZoomCohort(DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort, CleanupArgumentParser):
-  __doc__ = ZoomSample.__doc__
-
-  sampleclass = ZoomSample
-  sampleclassTMA = ZoomSampleTMA
+class ZoomCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort, CleanupArgumentParser):
+  sampleclass = ZoomSampleBase
 
   def __init__(self, *args, tifflayers, **kwargs):
     self.__tifflayers = tifflayers
@@ -49,10 +46,27 @@ class ZoomCohort(DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesC
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layers, "tifflayers": self.tifflayers, **super().workflowkwargs}
+    return {"tifflayers": self.tifflayers, **super().workflowkwargs}
+
+class ZoomCohort(ZoomCohortBase, SelectLayersCohort):
+  __doc__ = ZoomSample.__doc__
+
+  sampleclass = ZoomSample
+  sampleclassTMA = ZoomSampleTMA
+
+  @property
+  def workflowkwargs(self):
+    return {"layers": self.layers, **super().workflowkwargs}
+
+class ZoomCohortIHC(ZoomCohortBase):
+  __doc__ = ZoomSample.__doc__
+
+  sampleclass = ZoomSampleIHC
 
 def main(args=None):
   ZoomCohort.runfromargumentparser(args)
+def ihc(args=None):
+  ZoomCohortIHC.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()
