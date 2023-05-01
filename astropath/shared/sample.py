@@ -1135,6 +1135,22 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
     name += "-wsi.tiff"
     return self.wsifolder/name
 
+class ZoomFolderSampleComponentTiff(ZoomFolderSampleBase):
+  @classmethod
+  def getbigfolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
+    return zoomroot/SlideID/"big"
+  @classmethod
+  def getwsifolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
+    return zoomroot/SlideID/"wsi"
+
+class ZoomFolderSampleIHC(ZoomFolderSampleBase):
+  @classmethod
+  def getbigfolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
+    return zoomroot/SlideID/"big_IHC"
+  @classmethod
+  def getwsifolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
+    return zoomroot/SlideID/"wsi_IHC"
+
 class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """
   Base class for any sample that uses the deepzoomed images.

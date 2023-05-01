@@ -1,7 +1,7 @@
 import abc, contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, skimage.transform
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, ReadRectanglesIHCTiff, TempDirSample, TissueSampleBase, TMASampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, ReadRectanglesIHCTiff, TempDirSample, TissueSampleBase, TMASampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
 from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing_ok
 from ...utilities.miscimage import check_image_integrity, vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
@@ -597,7 +597,7 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     result["tifflayers"] = self.tifflayers
     return result
 
-class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentTiff):
+class ZoomSampleComponentTiffBase(ZoomSampleBase, ZoomFolderSampleComponentTiff, ReadRectanglesDbloadComponentTiff):
   rectangletype = FieldReadComponentTiffMultiLayer
   multilayercomponenttiff = True
 
@@ -622,12 +622,6 @@ class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentT
     result = super().layerszoom
     assert result == self.layerscomponenttiff
     return result
-  @classmethod
-  def getbigfolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
-    return zoomroot/SlideID/"big"
-  @classmethod
-  def getwsifolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
-    return zoomroot/SlideID/"wsi"
   def using_zoom_image(self, field):
     return field.using_component_tiff()
 
@@ -658,7 +652,7 @@ class ZoomSample(ZoomSampleComponentTiffBase, TissueSampleBase):
 class ZoomSampleTMA(ZoomSampleComponentTiffBase, TMASampleBase):
   pass
 
-class ZoomSampleIHC(ZoomSampleBase, ReadRectanglesDbload, ReadRectanglesIHCTiff, TissueSampleBase):
+class ZoomSampleIHC(ZoomSampleBase, ZoomFolderSampleIHC, ReadRectanglesDbload, ReadRectanglesIHCTiff, TissueSampleBase):
   rectangletype = FieldReadIHCTiff
   @classmethod
   def logmodule(self): return "zoomIHC"
@@ -667,12 +661,6 @@ class ZoomSampleIHC(ZoomSampleBase, ReadRectanglesDbload, ReadRectanglesIHCTiff,
   def getnlayerszoom(cls, **kwargs): return 3
   @classmethod
   def getlayerszoom(cls, **kwargs): return 1, 2, 3
-  @classmethod
-  def getbigfolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
-    return zoomroot/SlideID/"big_IHC"
-  @classmethod
-  def getwsifolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
-    return zoomroot/SlideID/"wsi_IHC"
   def using_zoom_image(self, field):
     return field.using_ihc_tiff_unmixed()
 

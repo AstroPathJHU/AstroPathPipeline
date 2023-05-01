@@ -1,30 +1,25 @@
 import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips
 from ...utilities.tableio import pathfield, readtable, writetable
 from ..zoom.zoomsample import ZoomSample
 
-class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
+class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   The deepzoom step takes the whole slide image and produces an image pyramid
   of different zoom levels.
   """
 
-  def __init__(self, *args, layers=None, tilesize=256, **kwargs):
+  def __init__(self, *args, tilesize=256, **kwargs):
     """
     tilesize: size of the tiles at each level of the image pyramid
     """
-    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
+    super().__init__(*args, **kwargs)
     self.__tilesize = tilesize
-
-  multilayercomponenttiff = True
-
-  @classmethod
-  def logmodule(self): return "deepzoom"
 
   @property
   def tilesize(self): return self.__tilesize
@@ -347,6 +342,19 @@ class DeepZoomFile(MyDataClass):
     This is used to sort for the csv file.
     """
     return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
+
+class DeepZoomSample(DeepZoomSampleBase, ZoomFolderSampleComponentTiff, SelectLayersComponentTiff):
+  def __init__(self, *args, layers=None, **kwargs):
+    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
+
+  multilayercomponenttiff = True
+
+  @classmethod
+  def logmodule(self): return "deepzoom"
+
+class DeepZoomSampleIHC(DeepZoomSampleBase, ZoomFolderSampleIHC):
+  @classmethod
+  def logmodule(self): return "deepzoomIHC"
 
 def main(args=None):
   DeepZoomSample.runfromargumentparser(args)
