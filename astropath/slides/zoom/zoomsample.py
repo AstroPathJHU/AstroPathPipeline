@@ -548,22 +548,6 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
       cls.getoutputfiles(SlideID=SlideID, zoomroot=zoomroot, **otherworkflowkwargs),
     )
 
-  @classmethod
-  @abc.abstractmethod
-  def getnlayerszoom(cls, **kwargs):
-    pass
-  @classmethod
-  @abc.abstractmethod
-  def getlayerszoom(cls, **kwargs):
-    pass
-
-  @property
-  def nlayerszoom(self):
-    return self.getnlayerszoom(**self.workflowkwargs)
-  @property
-  def layerszoom(self):
-    return self.getlayerszoom(**self.workflowkwargs)
-
   @abc.abstractmethod
   def using_zoom_image(self, field):
     pass
@@ -603,19 +587,6 @@ class ZoomSampleComponentTiffBase(ZoomSampleBase, ZoomFolderSampleComponentTiff,
 
   def __init__(self, *args, layers=None, **kwargs):
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
-
-  @classmethod
-  def getnlayerszoom(cls, **kwargs):
-    return cls.getnlayerscomponenttiff(**kwargs)
-  @classmethod
-  def getlayerszoom(cls, *, root, informdataroot, batchroot, SlideID, layers, **kwargs):
-    try:
-      nlayers = cls.getnlayerszoom(componenttiffsfolder=informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, batchroot=batchroot, BatchID=BatchID)
-    except FileNotFoundError:
-      nlayers = 1
-    if layers is None:
-      layers = range(1, nlayers+1)
-    return layers
 
   @property
   def layerszoom(self):
@@ -657,10 +628,6 @@ class ZoomSampleIHC(ZoomSampleBase, ZoomFolderSampleIHC, ReadRectanglesDbload, R
   @classmethod
   def logmodule(self): return "zoomIHC"
 
-  @classmethod
-  def getnlayerszoom(cls, **kwargs): return 3
-  @classmethod
-  def getlayerszoom(cls, **kwargs): return 1, 2, 3
   def using_zoom_image(self, field):
     return field.using_ihc_tiff_unmixed()
 

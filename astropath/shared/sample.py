@@ -1113,6 +1113,17 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   @property
   def wsifolder(self): return self.getwsifolder(**self.workflowkwargs)
 
+  @classmethod
+  @abc.abstractmethod
+  def getnlayerszoom(cls, **kwargs): pass
+  @classmethod
+  @abc.abstractmethod
+  def getlayerszoom(cls, **kwargs): pass
+  @property
+  def nlayerszoom(self): return self.getnlayerszoom(**self.workflowkwargs)
+  @property
+  def layerszoom(self): return self.getlayerszoom(**self.workflowkwargs)
+
   zmax = 9
   ztiff = 8
 
@@ -1143,6 +1154,19 @@ class ZoomFolderSampleComponentTiff(ZoomFolderSampleBase):
   def getwsifolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
     return zoomroot/SlideID/"wsi"
 
+  @classmethod
+  def getnlayerszoom(cls, **kwargs):
+    return cls.getnlayerscomponenttiff(**kwargs)
+  @classmethod
+  def getlayerszoom(cls, *, root, informdataroot, batchroot, SlideID, layers, **kwargs):
+    try:
+      nlayers = cls.getnlayerszoom(componenttiffsfolder=informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, batchroot=batchroot, BatchID=BatchID)
+    except FileNotFoundError:
+      nlayers = 1
+    if layers is None:
+      layers = range(1, nlayers+1)
+    return layers
+
 class ZoomFolderSampleIHC(ZoomFolderSampleBase):
   @classmethod
   def getbigfolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
@@ -1150,6 +1174,11 @@ class ZoomFolderSampleIHC(ZoomFolderSampleBase):
   @classmethod
   def getwsifolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
     return zoomroot/SlideID/"wsi_IHC"
+
+  @classmethod
+  def getnlayerszoom(cls, **kwargs): return 3
+  @classmethod
+  def getlayerszoom(cls, **kwargs): return 1, 2, 3
 
 class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """
