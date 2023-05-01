@@ -556,29 +556,25 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
   @abc.abstractmethod
   def getnlayerszoom(cls, **kwargs):
     pass
-
-  @property
+  @classmethod
   @abc.abstractmethod
-  def nlayerszoom(cls, **kwargs):
+  def getlayerszoom(cls, **kwargs):
     pass
 
   @property
-  @abc.abstractmethod
-  def layerszoom(cls, **kwargs):
-    pass
+  def nlayerszoom(self):
+    return self.getnlayerszoom(**self.workflowkwargs)
+  @property
+  def layerszoom(self):
+    return self.getlayerszoom(**self.workflowkwargs)
 
   @abc.abstractmethod
   def using_zoom_image(self, field):
     pass
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, zoomroot, informdataroot, layers, tifflayers, BatchID, batchroot, **otherrootkwargs):
-    try:
-      nlayers = cls.getnlayerszoom(componenttiffsfolder=informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, batchroot=batchroot, BatchID=BatchID)
-    except FileNotFoundError:
-      nlayers = 1
-    if layers is None:
-      layers = range(1, nlayers+1)
+  def getoutputfiles(cls, SlideID, *, zoomroot, tifflayers, **otherworkflowkwargs):
+    layers = cls.getlayerszoom(SlideID=SlideID, **otherworkflowkwargs)
     result = [
       *(
         cls.getwsifolder(SlideID=SlideID, zoomroot=zoomroot)/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"
@@ -607,7 +603,18 @@ class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentT
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
 
   @classmethod
-  def getnlayerszoom(cls, **kwargs): return cls.getnlayerscomponenttiff(**kwargs)
+  def getnlayerszoom(cls, **kwargs):
+    return cls.getnlayerscomponenttiff(**kwargs)
+  @classmethod
+  def getlayerszoom(cls, *, root, informdataroot, batchroot, SlideID, layers, **kwargs):
+    try:
+      nlayers = cls.getnlayerszoom(componenttiffsfolder=informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, batchroot=batchroot, BatchID=BatchID)
+    except FileNotFoundError:
+      nlayers = 1
+    if layers is None:
+      layers = range(1, nlayers+1)
+    return layers
+
   @property
   def nlayerszoom(self): return self.nlayerscomponenttiff
   @property
