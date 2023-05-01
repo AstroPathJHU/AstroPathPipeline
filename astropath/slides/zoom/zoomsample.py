@@ -538,10 +538,6 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     result += [
       self.csv("fields"),
     ]
-    if all(_.exists() for _ in result):
-      result += [
-        *(r.componenttifffile for r in self.rectangles),
-      ]
     return result
 
   @classmethod
@@ -647,6 +643,16 @@ class ZoomSampleComponentTiffBase(ZoomSampleBase, ReadRectanglesDbloadComponentT
       result["layers"] = [1]
     return result
 
+  def inputfiles(self, **kwargs):
+    result = super().inputfiles(**kwargs)
+    if all(_.exists() for _ in result):
+      result += [
+        *(r.componenttifffile for r in self.rectangles),
+      ]
+    return result
+
+
+
 class ZoomSample(ZoomSampleComponentTiffBase, TissueSampleBase):
   pass
 class ZoomSampleTMA(ZoomSampleComponentTiffBase, TMASampleBase):
@@ -669,6 +675,14 @@ class ZoomSampleIHC(ZoomSampleBase, ReadRectanglesDbload, ReadRectanglesIHCTiff,
     return zoomroot/SlideID/"wsi_IHC"
   def using_zoom_image(self, field):
     return field.using_ihc_tiff_unmixed()
+
+  def inputfiles(self, **kwargs):
+    result = super().inputfiles(**kwargs)
+    if all(_.exists() for _ in result):
+      result += [
+        *(r.ihctiffunmixedfile for r in self.rectangles),
+      ]
+    return result
 
 def main(args=None):
   ZoomSample.runfromargumentparser(args)
