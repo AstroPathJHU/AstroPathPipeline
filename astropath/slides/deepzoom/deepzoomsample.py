@@ -284,7 +284,7 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleB
     ]
 
   @classmethod
-  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, layers, **workflowkwargs):
+  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, **workflowkwargs):
     deepzoomfolder = deepzoomroot/SlideID
     return itertools.chain(
       deepzoomfolder.glob("L*_files/Z*/*.png"),
