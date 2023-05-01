@@ -357,6 +357,8 @@ class DeepZoomSampleIHC(DeepZoomSampleBase, ZoomFolderSampleIHC):
 
 def main(args=None):
   DeepZoomSample.runfromargumentparser(args)
+def ihc(args=None):
+  DeepZoomSampleIHC.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()
