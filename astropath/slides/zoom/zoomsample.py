@@ -555,6 +555,7 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
   @classmethod
   def getoutputfiles(cls, SlideID, *, zoomroot, tifflayers, **otherworkflowkwargs):
     layers = cls.getlayerszoom(SlideID=SlideID, **otherworkflowkwargs)
+    nlayers = cls.getnlayerszoom(SlideID=SlideID, **otherworkflowkwargs)
     result = [
       *(
         cls.getwsifolder(SlideID=SlideID, zoomroot=zoomroot)/f"{SlideID}-Z{cls.zmax}-L{layer}-wsi.png"

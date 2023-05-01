@@ -1158,7 +1158,7 @@ class ZoomFolderSampleComponentTiff(ZoomFolderSampleBase):
   def getnlayerszoom(cls, **kwargs):
     return cls.getnlayerscomponenttiff(**kwargs)
   @classmethod
-  def getlayerszoom(cls, *, root, informdataroot, batchroot, SlideID, layers, **kwargs):
+  def getlayerszoom(cls, *, root, informdataroot, batchroot, SlideID, layers, BatchID, **otherworkflowkwargs):
     try:
       nlayers = cls.getnlayerszoom(componenttiffsfolder=informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, batchroot=batchroot, BatchID=BatchID)
     except FileNotFoundError:
