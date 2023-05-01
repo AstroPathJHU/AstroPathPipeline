@@ -6,7 +6,7 @@ from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips
 from ...utilities.tableio import pathfield, readtable, writetable
-from ..zoom.zoomsample import ZoomSample
+from ..zoom.zoomsample import ZoomSample, ZoomSampleIHC
 
 class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
   """
@@ -309,10 +309,6 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleB
       result += [file.name for file in files]
     return result
 
-  @classmethod
-  def workflowdependencyclasses(cls, **kwargs):
-    return [ZoomSample] + super().workflowdependencyclasses(**kwargs)
-
 @functools.total_ordering
 class DeepZoomFile(MyDataClass):
   """
@@ -351,9 +347,17 @@ class DeepZoomSample(DeepZoomSampleBase, ZoomFolderSampleComponentTiff, SelectLa
   def workflowkwargs(self):
     return {"layers": self.layerscomponenttiff, **super().workflowkwargs}
 
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
+    return [ZoomSample] + super().workflowdependencyclasses(**kwargs)
+
 class DeepZoomSampleIHC(DeepZoomSampleBase, ZoomFolderSampleIHC):
   @classmethod
   def logmodule(self): return "deepzoomIHC"
+
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
+    return [ZoomSampleIHC] + super().workflowdependencyclasses(**kwargs)
 
 def main(args=None):
   DeepZoomSample.runfromargumentparser(args)
