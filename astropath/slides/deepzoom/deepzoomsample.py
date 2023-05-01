@@ -299,7 +299,7 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleB
   @classmethod
   def getoutputfiles(cls, SlideID, *, deepzoomroot, checkimages=False, **otherworkflowkwargs):
     zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
-    layers = cls.getnlayerszoom(SlideID=SlideID, **otherworkflowkwargs)
+    layers = cls.getlayerszoom(SlideID=SlideID, **otherworkflowkwargs)
     result = [
       zoomlist,
       *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),
