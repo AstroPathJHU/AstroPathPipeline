@@ -147,12 +147,19 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
 
+  @classmethod
+  def getcomponenttiffsfolder(cls, *, SlideID, informdataroot, **otherworkflowkwargs):
+    """
+    The sample's component tiffs folder
+    """
+    return informdataroot/SlideID/"inform_data"/"Component_Tiffs"
+
   @property
   def componenttiffsfolder(self):
     """
     The sample's component tiffs folder
     """
-    return self.informdataroot/self.SlideID/"inform_data"/"Component_Tiffs"
+    return self.getcomponenttiffsfolder(**self.workflowkwargs)
 
   @property
   def ihctiffsfolder(self):
@@ -329,7 +336,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
         raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
   @classmethod
-  def getbatchprocedurefile(cls, componenttiffsfolder, *, missing_ok=False, **kwargs):
+  def getbatchprocedurefile(cls, *, missing_ok=False, **kwargs):
+    componenttiffsfolder = cls.getcomponenttiffsfolder(**kwargs)
     filenames = [componenttiffsfolder/"batch_procedure.ifp", componenttiffsfolder/"batch_procedure.ifr"]
     for filename in filenames:
       if filename.exists():
@@ -343,15 +351,15 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the batch procedure filename
     """
-    return self.getbatchprocedurefile(componenttiffsfolder=self.componenttiffsfolder, missing_ok=missing_ok)
+    return self.getbatchprocedurefile(missing_ok=missing_ok, **self.workflowkwargs)
 
   class MessedUpBatchProcedureError(ValueError): pass
 
   @classmethod
-  def getnlayersunmixed(cls, componenttiffsfolder, *args, logger=dummylogger, **kwargs):
+  def getnlayersunmixed(cls, *args, logger=dummylogger, **kwargs):
     batchprocedureresult = None
     try:
-      batchprocedurefile = cls.getbatchprocedurefile(componenttiffsfolder, *args, **kwargs)
+      batchprocedurefile = cls.getbatchprocedurefile(*args, **kwargs)
     except (FileNotFoundError, cls.MessedUpBatchProcedureError):
       pass
     else:
@@ -381,6 +389,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if batchprocedureresult: return batchprocedureresult
     if mergeconfigresult: return mergeconfigresult
 
+    componenttiffsfolder = cls.componenttiffsfolder(**kwargs)
     try:
       filename = next(componenttiffsfolder.glob("*_component_data.tif"))
     except StopIteration:
@@ -400,7 +409,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the number of component tiff layers from the xml metadata
     """
-    return self.getnlayersunmixed(componenttiffsfolder=self.componenttiffsfolder, logger=self.logger if not self.__suppressinitwarnings else dummylogger, batchroot=self.batchroot, BatchID=self.BatchID)
+    return self.getnlayersunmixed(logger=self.logger if not self.__suppressinitwarnings else dummylogger, **self.workflowkwargs)
 
   def _getimageinfos(self):
     """
@@ -1156,11 +1165,11 @@ class ZoomFolderSampleComponentTiff(ZoomFolderSampleBase):
 
   @classmethod
   def getnlayerszoom(cls, **kwargs):
-    return cls.getnlayerscomponenttiff(**kwargs)
+    return cls.getnlayersunmixed(**kwargs)
   @classmethod
-  def getlayerszoom(cls, *, root, informdataroot, batchroot, SlideID, layers, BatchID, **otherworkflowkwargs):
+  def getlayerszoom(cls, *, layers, **otherworkflowkwargs):
     try:
-      nlayers = cls.getnlayerszoom(componenttiffsfolder=informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, batchroot=batchroot, BatchID=BatchID)
+      nlayers = cls.getnlayerszoom(**otherworkflowkwargs)
     except FileNotFoundError:
       nlayers = 1
     if layers is None:
