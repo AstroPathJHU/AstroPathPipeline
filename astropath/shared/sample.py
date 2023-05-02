@@ -389,7 +389,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if batchprocedureresult: return batchprocedureresult
     if mergeconfigresult: return mergeconfigresult
 
-    componenttiffsfolder = cls.componenttiffsfolder(**kwargs)
+    componenttiffsfolder = cls.getcomponenttiffsfolder(**kwargs)
     try:
       filename = next(componenttiffsfolder.glob("*_component_data.tif"))
     except StopIteration:
