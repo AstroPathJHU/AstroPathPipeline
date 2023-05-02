@@ -24,5 +24,5 @@ class WSISampleBase(ReadRectanglesDbload):
     maxxy = np.max([units.nominal_values(field.pxvec)+field.shape+self.margin for field in self.rectangles], axis=0)
     return floattoint(-((-maxxy) // (self.zoomtilesize*self.onepixel)).astype(float))
   def PILmaximagepixels(self):
-    return PILmaximagepixels(int(np.product(self.ntiles)) * self.__tilesize**2)
+    return PILmaximagepixels(int(np.product(self.ntiles)) * self.zoomtilesize**2)
 

@@ -1,30 +1,25 @@
 import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase
+from ...shared.sample import DbloadSampleBase, DeepZoomSampleBase, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips
 from ...utilities.tableio import pathfield, readtable, writetable
-from ..zoom.zoomsample import ZoomSample
+from ..zoom.zoomsample import ZoomSample, ZoomSampleIHC
 
-class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
+class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomSampleBase, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   The deepzoom step takes the whole slide image and produces an image pyramid
   of different zoom levels.
   """
 
-  def __init__(self, *args, layers=None, tilesize=256, **kwargs):
+  def __init__(self, *args, tilesize=256, **kwargs):
     """
     tilesize: size of the tiles at each level of the image pyramid
     """
-    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
+    super().__init__(*args, **kwargs)
     self.__tilesize = tilesize
-
-  multilayercomponenttiff = True
-
-  @classmethod
-  def logmodule(self): return "deepzoom"
 
   @property
   def tilesize(self): return self.__tilesize
@@ -229,7 +224,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     Write the csv file that lists all the png files to load
     """
     lst = []
-    for layer in self.layerscomponenttiff:
+    for layer in self.layerszoom:
       folder = self.layerfolder(layer)
       for zoomfolder in sorted(folder.iterdir()):
         zoom = int(re.match("Z([0-9]*)", zoomfolder.name).group(1))
@@ -247,7 +242,7 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
     """
     Run the full deepzoom pipeline
     """
-    for layer in self.layerscomponenttiff:
+    for layer in self.layerszoom:
       folder = self.layerfolder(layer)
       if folder.exists():
         for i in range(10):
@@ -285,11 +280,11 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
-      *(self.wsifilename(layer) for layer in self.layerscomponenttiff),
+      *(self.wsifilename(layer) for layer in self.layerszoom),
     ]
 
   @classmethod
-  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, layers, **workflowkwargs):
+  def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, **workflowkwargs):
     deepzoomfolder = deepzoomroot/SlideID
     return itertools.chain(
       deepzoomfolder.glob("L*_files/Z*/*.png"),
@@ -299,17 +294,12 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
 
   @property
   def workflowkwargs(self):
-    return {"layers": self.layerscomponenttiff, "tifflayers": None, **super().workflowkwargs}
+    return {"tifflayers": None, **super().workflowkwargs}
 
   @classmethod
-  def getoutputfiles(cls, SlideID, *, root, informdataroot, deepzoomroot, layers, checkimages=False, BatchID, **otherworkflowkwargs):
+  def getoutputfiles(cls, SlideID, *, deepzoomroot, checkimages=False, **otherworkflowkwargs):
     zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
-    if layers is None:
-      try:
-        nlayers = cls.getnlayersunmixed(informdataroot/SlideID/"inform_data"/"Component_Tiffs", root=root, BatchID=BatchID)
-      except FileNotFoundError:
-        nlayers = 1
-      layers = range(1, nlayers+1)
+    layers = cls.getlayerszoom(SlideID=SlideID, **otherworkflowkwargs)
     result = [
       zoomlist,
       *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),
@@ -318,10 +308,6 @@ class DeepZoomSample(SelectLayersComponentTiff, DbloadSampleBase, ZoomFolderSamp
       files = readtable(zoomlist, DeepZoomFile)
       result += [file.name for file in files]
     return result
-
-  @classmethod
-  def workflowdependencyclasses(cls, **kwargs):
-    return [ZoomSample] + super().workflowdependencyclasses(**kwargs)
 
 @functools.total_ordering
 class DeepZoomFile(MyDataClass):
@@ -348,8 +334,35 @@ class DeepZoomFile(MyDataClass):
     """
     return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
 
+class DeepZoomSample(DeepZoomSampleBase, ZoomFolderSampleComponentTiff, SelectLayersComponentTiff):
+  def __init__(self, *args, layers=None, **kwargs):
+    super().__init__(*args, layerscomponenttiff=layers, **kwargs)
+
+  multilayercomponenttiff = True
+
+  @classmethod
+  def logmodule(self): return "deepzoom"
+
+  @property
+  def workflowkwargs(self):
+    return {"layers": self.layerscomponenttiff, **super().workflowkwargs}
+
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
+    return [ZoomSample] + super().workflowdependencyclasses(**kwargs)
+
+class DeepZoomSampleIHC(DeepZoomSampleBase, ZoomFolderSampleIHC):
+  @classmethod
+  def logmodule(self): return "deepzoomIHC"
+
+  @classmethod
+  def workflowdependencyclasses(cls, **kwargs):
+    return [ZoomSampleIHC] + super().workflowdependencyclasses(**kwargs)
+
 def main(args=None):
   DeepZoomSample.runfromargumentparser(args)
+def ihc(args=None):
+  DeepZoomSampleIHC.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

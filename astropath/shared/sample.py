@@ -15,7 +15,7 @@ from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnno
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SegmentationFolderArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .astropath_logging import dummylogger, getlogger, ThingWithLogger
 from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
-from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3SingleLayer, RectangleCorrectedIm3MultiLayer, rectangleoroverlapfilter, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadIm3SingleLayer, RectangleReadIm3MultiLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
+from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentTiffMultiLayer, RectangleReadComponentTiffSingleLayer, RectangleReadIHCTiff, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffSingleLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer, rectangleoroverlapfilter
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import ControlTMASampleDef, SampleDef
 from .workflowdependency import ThingWithWorkflowKwargs, WorkflowDependencySlideID
@@ -147,23 +147,30 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     return self.scanfolder/(self.SlideID+"_"+self.scanfolder.name+".qptiff")
 
+  @classmethod
+  def getcomponenttiffsfolder(cls, *, SlideID, informdataroot, **otherworkflowkwargs):
+    """
+    The sample's component tiffs folder
+    """
+    return informdataroot/SlideID/"inform_data"/"Component_Tiffs"
+
   @property
   def componenttiffsfolder(self):
     """
     The sample's component tiffs folder
     """
-    return self.informdataroot/self.SlideID/"inform_data"/"Component_Tiffs"
+    return self.getcomponenttiffsfolder(**self.workflowkwargs)
 
   @property
   def ihctiffsfolder(self):
     """
     The sample's IHC tiffs folder
     """
-    return self.informdataroot/self.SlideID/"IHC"/"HPFs"
+    return self.informdataroot/self.SlideID/"IHC"
 
   @property
   def ihcmaskfolder(self):
-   return self.ihctiffsfolder/"image_masking"
+    return self.ihctiffsfolder/"HPFs"/"image_masking"
 
   def __getimageinfofromcomponenttiff(self):
     """
@@ -329,7 +336,8 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
         raise IOError(f'Couldn\'t find Shape in {self.parametersxmlfile}')
 
   @classmethod
-  def getbatchprocedurefile(cls, componenttiffsfolder, *, missing_ok=False, **kwargs):
+  def getbatchprocedurefile(cls, *, missing_ok=False, **kwargs):
+    componenttiffsfolder = cls.getcomponenttiffsfolder(**kwargs)
     filenames = [componenttiffsfolder/"batch_procedure.ifp", componenttiffsfolder/"batch_procedure.ifr"]
     for filename in filenames:
       if filename.exists():
@@ -343,15 +351,15 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the batch procedure filename
     """
-    return self.getbatchprocedurefile(componenttiffsfolder=self.componenttiffsfolder, missing_ok=missing_ok)
+    return self.getbatchprocedurefile(missing_ok=missing_ok, **self.workflowkwargs)
 
   class MessedUpBatchProcedureError(ValueError): pass
 
   @classmethod
-  def getnlayersunmixed(cls, componenttiffsfolder, *args, logger=dummylogger, **kwargs):
+  def getnlayersunmixed(cls, *args, logger=dummylogger, **kwargs):
     batchprocedureresult = None
     try:
-      batchprocedurefile = cls.getbatchprocedurefile(componenttiffsfolder, *args, **kwargs)
+      batchprocedurefile = cls.getbatchprocedurefile(*args, **kwargs)
     except (FileNotFoundError, cls.MessedUpBatchProcedureError):
       pass
     else:
@@ -381,6 +389,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     if batchprocedureresult: return batchprocedureresult
     if mergeconfigresult: return mergeconfigresult
 
+    componenttiffsfolder = cls.getcomponenttiffsfolder(**kwargs)
     try:
       filename = next(componenttiffsfolder.glob("*_component_data.tif"))
     except StopIteration:
@@ -400,7 +409,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the number of component tiff layers from the xml metadata
     """
-    return self.getnlayersunmixed(componenttiffsfolder=self.componenttiffsfolder, logger=self.logger if not self.__suppressinitwarnings else dummylogger, batchroot=self.batchroot, BatchID=self.BatchID)
+    return self.getnlayersunmixed(logger=self.logger if not self.__suppressinitwarnings else dummylogger, **self.workflowkwargs)
 
   def _getimageinfos(self):
     """
@@ -1102,10 +1111,27 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
   def rootnames(self): return {"zoomroot", *super().rootnames}
   @property
   def zoomroot(self): return self.__zoomroot
+  @classmethod
+  @abc.abstractmethod
+  def getbigfolder(cls, **kwargs): pass
+  @classmethod
+  @abc.abstractmethod
+  def getwsifolder(cls, **kwargs): pass
   @property
-  def bigfolder(self): return self.zoomroot/self.SlideID/"big"
+  def bigfolder(self): return self.getbigfolder(**self.workflowkwargs)
   @property
-  def wsifolder(self): return self.zoomroot/self.SlideID/"wsi"
+  def wsifolder(self): return self.getwsifolder(**self.workflowkwargs)
+
+  @classmethod
+  @abc.abstractmethod
+  def getnlayerszoom(cls, **kwargs): pass
+  @classmethod
+  @abc.abstractmethod
+  def getlayerszoom(cls, **kwargs): pass
+  @property
+  def nlayerszoom(self): return self.getnlayerszoom(**self.workflowkwargs)
+  @property
+  def layerszoom(self): return self.getlayerszoom(**self.workflowkwargs)
 
   zmax = 9
   ztiff = 8
@@ -1128,6 +1154,40 @@ class ZoomFolderSampleBase(SampleBase, ZoomFolderArgumentParser):
       name += "-L" + "".join(str(l) for l in sorted(layers))
     name += "-wsi.tiff"
     return self.wsifolder/name
+
+class ZoomFolderSampleComponentTiff(ZoomFolderSampleBase):
+  @classmethod
+  def getbigfolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
+    return zoomroot/SlideID/"big"
+  @classmethod
+  def getwsifolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
+    return zoomroot/SlideID/"wsi"
+
+  @classmethod
+  def getnlayerszoom(cls, **kwargs):
+    return cls.getnlayersunmixed(**kwargs)
+  @classmethod
+  def getlayerszoom(cls, *, layers, **otherworkflowkwargs):
+    try:
+      nlayers = cls.getnlayerszoom(**otherworkflowkwargs)
+    except FileNotFoundError:
+      nlayers = 1
+    if layers is None:
+      layers = range(1, nlayers+1)
+    return layers
+
+class ZoomFolderSampleIHC(ZoomFolderSampleBase):
+  @classmethod
+  def getbigfolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
+    return zoomroot/SlideID/"big_IHC"
+  @classmethod
+  def getwsifolder(cls, *, zoomroot, SlideID, **otherworkflowkwargs):
+    return zoomroot/SlideID/"wsi_IHC"
+
+  @classmethod
+  def getnlayerszoom(cls, **kwargs): return 3
+  @classmethod
+  def getlayerszoom(cls, **kwargs): return 1, 2, 3
 
 class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   """
@@ -1417,6 +1477,17 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase, SelectLayersComponentT
         "layercomponenttiff": self.layercomponenttiff,
       })
     return kwargs
+
+class ReadRectanglesIHCTiff(ReadRectanglesBase):
+  rectangletype = RectangleReadIHCTiff
+  @property
+  def rectangleextrakwargs(self):
+    kwargs =  {
+      **super().rectangleextrakwargs,
+      'ihctifffolder':self.ihctiffsfolder,
+    }
+    return kwargs
+  
 
 class ReadRectanglesComponentAndIHCTiffBase(ReadRectanglesBase, SelectLayersComponentTiff) :
   """

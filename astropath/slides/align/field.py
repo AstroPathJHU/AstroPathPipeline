@@ -1,7 +1,7 @@
 import dataclassy, methodtools, more_itertools, numpy as np
 from ...shared.csvclasses import Vertex
 from ...shared.polygon import DataClassWithPolygon, Polygon, polygonfield, SimplePolygon
-from ...shared.rectangle import Rectangle, RectangleCollection, RectangleList, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer
+from ...shared.rectangle import Rectangle, RectangleCollection, RectangleList, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIHCTiff, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer
 from ...shared.overlap import Overlap
 from ...utilities import units
 from ...utilities.units.dataclasses import distancefield
@@ -160,6 +160,11 @@ class FieldReadIm3SingleLayer(Field, RectangleReadIm3SingleLayer):
 class FieldReadIm3MultiLayer(Field, RectangleReadIm3MultiLayer):
   """
   A Field that can read multiple layers of the im3
+  """
+
+class FieldReadIHCTiff(Field, RectangleReadIHCTiff):
+  """
+  A Field that can read the IHC tiff
   """
 
 class FieldCollection(RectangleCollection):
