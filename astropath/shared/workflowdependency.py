@@ -316,7 +316,7 @@ class SampleRunStatus(MyDataClass):
 
               try:
                 gitcommit = startmatch.group("commit")
-                if gitcommit is None: gitcommit = startmatch.group("version")
+                if gitcommit is None: gitcommit = "v"+startmatch.group("version")
                 if gitcommit is not None: gitcommit = thisrepo.getcommit(gitcommit)
                 localedits = bool(startmatch.group("date"))
               except ValueError:
