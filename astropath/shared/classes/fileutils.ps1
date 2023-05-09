@@ -523,8 +523,13 @@ class fileutils : generalutils {
     [switch]testwatcher($fpath, $fname, $SI){
         #
         $file = Get-ChildItem ($this.CrossPlatformPaths($SI))
-        $file.Attributes = 'Archive, Hidden'
-        $file.Attributes = 'Archive'
+        try {
+            $file.Attributes = 'Archive, Hidden'
+            $file.Attributes = 'Archive'
+        } catch {
+            Write-Host 'Failure to find file:' $this.CrossPlatformPaths($SI)
+            throw $_
+        }
         #
         start-sleep 1
         #

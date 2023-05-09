@@ -121,7 +121,7 @@ class sampledb : sampletracker {
     for each module and file watchers for the samples
     log
     ------------------------------------------
-    Usage: $this.defNotCompletedSlides(cleanedslides)
+    Usage: $this.defsampleStages()
     ----------------------------------------- #>
     [void]defsampleStages(){
         #
