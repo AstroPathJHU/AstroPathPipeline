@@ -409,7 +409,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the number of component tiff layers from the xml metadata
     """
-    return self.getnlayersunmixed(logger=self.logger if not self.__suppressinitwarnings else dummylogger, **self.workflowkwargs)
+    return self.getnlayersunmixed(logger=self.logger if not self.__suppressinitwarnings else dummylogger, SlideID=self.SlideID, informdataroot=self.informdataroot, batchroot=self.batchroot, BatchID=self.BatchID)
 
   def _getimageinfos(self):
     """
