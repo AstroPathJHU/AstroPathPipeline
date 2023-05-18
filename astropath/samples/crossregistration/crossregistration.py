@@ -419,7 +419,7 @@ class CrossRegistration(contextlib.ExitStack, ThingWithZoomedScale, ThingWithLog
   def processmask(mask):
     mask = scipy.ndimage.binary_fill_holes(mask)
     mask = skimage.morphology.area_opening(mask, 1000)
-    disk = skimage.morphology.disk(20, dtype=np.bool)
+    disk = skimage.morphology.disk(20, dtype=bool)
     mask = skimage.morphology.binary_closing(mask, disk)
     mask = skimage.morphology.binary_opening(mask, disk)
     mask = skimage.morphology.binary_dilation(mask, disk)
