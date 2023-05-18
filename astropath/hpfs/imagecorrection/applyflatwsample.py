@@ -3,6 +3,7 @@ from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.miscfileio import cd
 from ...utilities.img_file_io import write_image_to_file
 from ...shared.argumentparser import SelectLayersArgumentParser, WorkingDirArgumentParser
+from ...shared.astropath_logging import dummylogger
 from ...shared.sample import ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSample, ParallelSample, TissueSampleBase
 from .config import IMAGECORRECTION_CONST
 
@@ -120,7 +121,14 @@ class ApplyFlatWSample(ReadCorrectedRectanglesIm3MultiLayerFromXML, WorkflowSamp
         if ( (outdir==cls.automatic_output_dir(SlideID,shardedim3root)) 
             and ((layers is None) or type(layers)==range or layers==[-1]) ) :
             outextstem = UNIV_CONST.RAW_EXT #same as raw if we're overwriting the raw multilayer files
-        rawfile_stems = [rfp.name.rstrip(UNIV_CONST.RAW_EXT) for rfp in (shardedim3root/SlideID).glob(f'*{UNIV_CONST.RAW_EXT}')]
+
+        rectangles, _, _, _ = cls.getXMLplan(logger=dummylogger,pscale=1,root=root,SlideID=SlideID,shardedim3root=shardedim3root,layers=layers,workingdir=workingdir,**otherworkflowkwargs)
+     
+        rawfile_stems = [
+          rectangle.file.stem
+          for rectangle in rectangles
+          if (shardedim3root/SlideID/f"{rectangle.file.stem}{UNIV_CONST.RAW_EXT}").exists()
+        ]
         outputfiles = []
         for rfs in rawfile_stems :
             if (layers is None) or type(layers)==range : #if it's None or a range then it's just the multilayer images

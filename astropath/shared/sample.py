@@ -409,7 +409,7 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     Find the number of component tiff layers from the xml metadata
     """
-    return self.getnlayersunmixed(logger=self.logger if not self.__suppressinitwarnings else dummylogger, **self.workflowkwargs)
+    return self.getnlayersunmixed(logger=self.logger if not self.__suppressinitwarnings else dummylogger, SlideID=self.SlideID, informdataroot=self.informdataroot, batchroot=self.batchroot, BatchID=self.BatchID)
 
   def _getimageinfos(self):
     """
@@ -555,7 +555,59 @@ class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger
     """
     annotationsxmlfile = cls.getannotationsxmlfile(SlideID=SlideID, **otherworkflowkwargs)
     reader = AnnotationXMLReader(annotationsxmlfile, xmlfolder=xmlfolder, pscale=pscale, includehpfsflaggedforacquisition=includehpfsflaggedforacquisition, logger=logger, SlideID=SlideID)
-    return reader.rectangles, reader.globals, reader.perimeters, reader.microscopename
+    rectangles = reader.rectangles
+    cls.fixM2(rectangles, logger=logger)
+    cls.fixrectanglefilenames(rectangles, logger=logger)
+    cls.fixduplicaterectangles(rectangles, logger=logger)
+    return rectangles, reader.globals, reader.perimeters, reader.microscopename
+
+  @classmethod
+  def fixM2(cls, rectangles, *, logger):
+    """
+    Fix any _M2 in the rectangle filenames
+    """
+    for rectangle in rectangles[:]:
+      if rectangle.file is not None and "_M2" in rectangle.file.name:
+        duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
+        if not duplicates:
+          rectangle.file = rectangle.file.with_name(rectangle.file.name.replace("_M2", ""))
+        for d in duplicates:
+          rectangles.remove(d)
+        logger.warningglobalonenter(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
+    for i, rectangle in enumerate(rectangles, start=1):
+      rectangle.n = i
+
+  @classmethod
+  def fixrectanglefilenames(self, rectangles, *, logger):
+    """
+    Fix rectangle filenames if the coordinates are messed up
+    """
+    for r in rectangles:
+      expected = r.expectedfilename
+      actual = r.file
+      if expected != actual:
+        logger.warningglobalonenter(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
+      r.file = expected
+
+  @classmethod
+  def fixduplicaterectangles(self, rectangles, *, logger):
+    """
+    Remove duplicate rectangles from the list
+    """
+    seen = set()
+    for r in rectangles[:]:
+      if tuple(r.cxvec) in seen: continue
+      seen.add(tuple(r.cxvec))
+      duplicates = [r2 for r2 in rectangles if r2 is not r and np.all(r2.cxvec == r.cxvec)]
+      if not duplicates: continue
+      for r2 in duplicates:
+        if r2.file != r.file:
+          raise ValueError(f"Multiple rectangles at {r.cxvec} with different filenames {', '.join(r3.file for r3 in [r]+duplicates)}")
+      logger.warningglobalonenter(f"annotations.xml has the rectangle at {r.cxvec} with filename {r.file} {len(duplicates)+1} times")
+      for r2 in [r]+duplicates[:-1]:
+        rectangles.remove(r2)
+    for i, rectangle in enumerate(rectangles, start=1):
+      rectangle.n = i
 
   @methodtools.lru_cache()
   def XMLplan(self, **kwargs):
@@ -1636,9 +1688,6 @@ class XMLLayoutReader(SampleBase):
     and the im3 files, compare them, and return the rectangles.
     """
     rectangles, globals, perimeters, microscopename = self.XMLplan()
-    self.fixM2(rectangles)
-    self.fixrectanglefilenames(rectangles)
-    self.fixduplicaterectangles(rectangles)
     rectanglefiles = self.getdir()
     maxtimediff = datetime.timedelta(0)
     for r in rectangles[:]:
@@ -1663,51 +1712,6 @@ class XMLLayoutReader(SampleBase):
     if not rectangles:
       raise ValueError("No layout annotations")
     return rectangles
-
-  def fixM2(self, rectangles):
-    """
-    Fix any _M2 in the rectangle filenames
-    """
-    for rectangle in rectangles[:]:
-      if rectangle.file is not None and "_M2" in rectangle.file.name:
-        duplicates = [r for r in rectangles if r is not rectangle and np.all(r.cxvec == rectangle.cxvec)]
-        if not duplicates:
-          rectangle.file = rectangle.file.with_name(rectangle.file.name.replace("_M2", ""))
-        for d in duplicates:
-          rectangles.remove(d)
-        self.logger.warningglobalonenter(f"{rectangle.file} has _M2 in the name.  {len(duplicates)} other duplicate rectangles.")
-    for i, rectangle in enumerate(rectangles, start=1):
-      rectangle.n = i
-
-  def fixrectanglefilenames(self, rectangles):
-    """
-    Fix rectangle filenames if the coordinates are messed up
-    """
-    for r in rectangles:
-      expected = r.expectedfilename
-      actual = r.file
-      if expected != actual:
-        self.logger.warningglobalonenter(f"rectangle at ({r.cx}, {r.cy}) has the wrong filename {actual}.  Changing it to {expected}.")
-      r.file = expected
-
-  def fixduplicaterectangles(self, rectangles):
-    """
-    Remove duplicate rectangles from the list
-    """
-    seen = set()
-    for r in rectangles[:]:
-      if tuple(r.cxvec) in seen: continue
-      seen.add(tuple(r.cxvec))
-      duplicates = [r2 for r2 in rectangles if r2 is not r and np.all(r2.cxvec == r.cxvec)]
-      if not duplicates: continue
-      for r2 in duplicates:
-        if r2.file != r.file:
-          raise ValueError(f"Multiple rectangles at {r.cxvec} with different filenames {', '.join(r3.file for r3 in [r]+duplicates)}")
-      self.logger.warningglobalonenter(f"annotations.xml has the rectangle at {r.cxvec} with filename {r.file} {len(duplicates)+1} times")
-      for r2 in [r]+duplicates[:-1]:
-        rectangles.remove(r2)
-    for i, rectangle in enumerate(rectangles, start=1):
-      rectangle.n = i
 
   @property
   def im3filenameregex(self):
