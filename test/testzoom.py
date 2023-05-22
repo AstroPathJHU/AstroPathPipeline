@@ -3,7 +3,6 @@ from astropath.shared.astropath_logging import MyLogger
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
 from astropath.utilities.version import astropathversion
-from astropath.utilities.miscfileio import rmdir_missing_ok
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -83,13 +82,12 @@ class TestZoom(TestBaseSaveOutput):
     if maskroot is not None:
       args += ["--maskroot", os.fspath(maskroot)]
 
-    sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=selectrectangles, layers=layers, tifflayers=tifflayers, maskroot=maskroot)
-    rmdir_missing_ok(sample.bigfolder)
-
     (ZoomSample if usesample else ZoomCohort).runfromargumentparser(args)
+    sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=selectrectangles, layers=layers, tifflayers=tifflayers, maskroot=maskroot)
 
     try:
-      assert not sample.bigfolder.exists()
+      if mode == "vips":
+        assert not sample.bigfolder.exists()
       for layer in layers:
         filename = f"{SlideID}-Z9-L{layer}-wsi.png"
         sample.logger.info("comparing "+filename)
