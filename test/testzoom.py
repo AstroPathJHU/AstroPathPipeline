@@ -57,13 +57,17 @@ class TestZoom(TestBaseSaveOutput):
       thisfolder/"test_for_jenkins"/"zoom"/"logfiles"/"zoom.log"
     ]
 
-  def testZoomWsi(self, SlideID="L1_1", units="safe", mode="vips", tifflayers="color"):
+  def testZoomWsi(self, SlideID="L1_1", units="safe", mode="vips", tifflayers="color", usesample=False):
     root = thisfolder/"data"
     zoomroot = thisfolder/"test_for_jenkins"/"zoom"
     selectrectangles = self.selectrectangles(SlideID)
     layers = self.layers(SlideID)
     maskroot = None
-    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(zoomroot), "--sampleregex", SlideID, "--debug", "--units", units, "--mode", mode, "--allow-local-edits", "--ignore-dependencies"]
+    args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(zoomroot), "--units", units, "--mode", mode, "--allow-local-edits"]
+    if usesample:
+      args += [SlideID]
+    else:
+      args += ["--sampleregex", SlideID, "--ignore-dependencies", "--debug"]
     if selectrectangles is not None:
       args += ["--selectrectangles", *(str(_) for _ in selectrectangles)]
     if layers is not None:
@@ -72,7 +76,7 @@ class TestZoom(TestBaseSaveOutput):
       args += ["--tiff-layers", *(str(_) for _ in tifflayers)]
     if maskroot is not None:
       args += ["--maskroot", os.fspath(maskroot)]
-    ZoomCohort.runfromargumentparser(args)
+    (ZoomSample if usesample else ZoomCohort).runfromargumentparser(args)
     sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=selectrectangles, layers=layers, tifflayers=tifflayers, maskroot=maskroot)
 
     try:
@@ -150,7 +154,7 @@ class TestZoom(TestBaseSaveOutput):
     self.testZoomWsi(SlideID=SlideID, mode=mode, **kwargs)
 
   def testExistingWSIFast(self, SlideID="L1_1", **kwargs):
-    self.testExistingWSI(SlideID, mode="fast", **kwargs)
+    self.testExistingWSI(SlideID, mode="fast", usesample=True, **kwargs)
 
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID
