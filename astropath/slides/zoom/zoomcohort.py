@@ -1,8 +1,7 @@
-from ...shared.argumentparser import CleanupArgumentParser
 from ...shared.cohort import DbloadCohort, MaskCohort, SelectLayersCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort
-from .zoomsample import ZoomSample, ZoomSampleBase, ZoomSampleIHC, ZoomSampleTMA
+from .zoomsample import ZoomArgumentParserBase, ZoomArgumentParserComponentTiff, ZoomSample, ZoomSampleBase, ZoomSampleIHC, ZoomSampleTMA
 
-class ZoomCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort, CleanupArgumentParser):
+class ZoomCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort, TempDirCohort, WorkflowCohort, ZoomFolderCohort, ZoomArgumentParserBase):
   sampleclass = ZoomSampleBase
 
   def __init__(self, *args, tifflayers, **kwargs):
@@ -19,38 +18,11 @@ class ZoomCohortBase(DbloadCohort, MaskCohort, SelectRectanglesCohort, TempDirCo
       "tifflayers": self.tifflayers
     }
 
-  @classmethod
-  def makeargumentparser(cls, **kwargs):
-    p = super().makeargumentparser(**kwargs)
-    p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips", help="mode to run zoom: fast is fastest, vips uses the least memory.")
-    g = p.add_mutually_exclusive_group()
-    g.add_argument("--tiff-color", action="store_const", default=cls.defaulttifflayers, const="color", dest="tiff_layers", help="save false color wsi.tiff (this is the default)")
-    g.add_argument("--tiff-layers", type=int, nargs="*", help="layers that go into the output wsi.tiff file")
-    return p
-
-  @classmethod
-  def initkwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().initkwargsfromargumentparser(parsed_args_dict),
-      "tifflayers": parsed_args_dict.pop("tiff_layers"),
-    }
-    return kwargs
-
-  @classmethod
-  def runkwargsfromargumentparser(cls, parsed_args_dict):
-    kwargs = {
-      **super().runkwargsfromargumentparser(parsed_args_dict),
-      "mode": parsed_args_dict.pop("mode"),
-    }
-    return kwargs
-
   @property
   def workflowkwargs(self):
     return {"tifflayers": self.tifflayers, **super().workflowkwargs}
 
-  defaulttifflayers = None
-
-class ZoomCohort(ZoomCohortBase, SelectLayersCohort):
+class ZoomCohort(ZoomCohortBase, SelectLayersCohort, ZoomArgumentParserComponentTiff):
   __doc__ = ZoomSample.__doc__
 
   sampleclass = ZoomSample

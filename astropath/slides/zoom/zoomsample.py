@@ -10,7 +10,39 @@ from ..align.field import FieldReadComponentTiffMultiLayer, FieldReadIHCTiff
 from ..stitchmask.stitchmasksample import AstroPathTissueMaskSample, StitchAstroPathTissueMaskSample
 from .wsisamplebase import WSISampleBase
 
-class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbload, WorkflowSample, CleanupArgumentParser, SelectLayersArgumentParser):
+class ZoomArgumentParserBase(CleanupArgumentParser, SelectLayersArgumentParser):
+  @classmethod
+  def makeargumentparser(cls, **kwargs):
+    p = super().makeargumentparser(**kwargs)
+    p.add_argument("--mode", choices=("vips", "fast", "memmap"), default="vips", help="mode to run zoom: fast is fastest, vips uses the least memory.")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--tiff-color", action="store_const", default=cls.defaulttifflayers, const="color", dest="tiff_layers", help="save false color wsi.tiff (this is the default)")
+    g.add_argument("--tiff-layers", type=int, nargs="*", help="layers that go into the output wsi.tiff file")
+    return p
+
+  @classmethod
+  def initkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().initkwargsfromargumentparser(parsed_args_dict),
+      "tifflayers": parsed_args_dict.pop("tiff_layers"),
+    }
+    return kwargs
+
+  @classmethod
+  def runkwargsfromargumentparser(cls, parsed_args_dict):
+    kwargs = {
+      **super().runkwargsfromargumentparser(parsed_args_dict),
+      "mode": parsed_args_dict.pop("mode"),
+    }
+    return kwargs
+
+  defaulttifflayers = None
+
+class ZoomArgumentParserComponentTiff(ZoomArgumentParserBase):
+  #defaulttifflayers = "color"
+  pass
+
+class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbload, WorkflowSample, ZoomArgumentParserBase):
   """
   Run the zoom step of the pipeline:
   create big images of 16384x16384 pixels by merging the fields
@@ -582,7 +614,7 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     result["tifflayers"] = self.tifflayers
     return result
 
-class ZoomSampleComponentTiffBase(ZoomSampleBase, ZoomFolderSampleComponentTiff, ReadRectanglesDbloadComponentTiff):
+class ZoomSampleComponentTiffBase(ZoomSampleBase, ZoomFolderSampleComponentTiff, ReadRectanglesDbloadComponentTiff, ZoomArgumentParserComponentTiff):
   rectangletype = FieldReadComponentTiffMultiLayer
   multilayercomponenttiff = True
 
@@ -616,8 +648,6 @@ class ZoomSampleComponentTiffBase(ZoomSampleBase, ZoomFolderSampleComponentTiff,
         *(r.componenttifffile for r in self.rectangles),
       ]
     return result
-
-
 
 class ZoomSample(ZoomSampleComponentTiffBase, TissueSampleBase):
   pass
