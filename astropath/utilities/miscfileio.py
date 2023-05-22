@@ -28,6 +28,12 @@ def rmtree_missing_ok(path, **kwargs):
   except FileNotFoundError:
     pass
 
+def rmdir_missing_ok(path, **kwargs):
+  try:
+    path.rmdir(**kwargs)
+  except FileNotFoundError:
+    pass
+
 def iterdir_missing_ok(path, **kwargs):
   try:
     yield from path.iterdir(**kwargs)

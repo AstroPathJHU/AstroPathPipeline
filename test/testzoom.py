@@ -1,8 +1,9 @@
 import datetime, gzip, job_lock, more_itertools, numpy as np, os, pathlib, PIL.Image, shutil, tifffile
 from astropath.shared.astropath_logging import MyLogger
-from astropath.utilities.version import astropathversion
 from astropath.slides.zoom.zoomsample import ZoomSample
 from astropath.slides.zoom.zoomcohort import ZoomCohort
+from astropath.utilities.version import astropathversion
+from astropath.utilities.miscfileio import rmdir_missing_ok
 from .testbase import TestBaseSaveOutput
 
 thisfolder = pathlib.Path(__file__).parent
@@ -63,6 +64,7 @@ class TestZoom(TestBaseSaveOutput):
     selectrectangles = self.selectrectangles(SlideID)
     layers = self.layers(SlideID)
     maskroot = None
+
     args = [os.fspath(root), "--zoomroot", os.fspath(zoomroot), "--logroot", os.fspath(zoomroot), "--units", units, "--mode", mode, "--allow-local-edits"]
     if usesample:
       args += [SlideID]
@@ -75,13 +77,16 @@ class TestZoom(TestBaseSaveOutput):
     if tifflayers is None:
       pass
     elif tifflayers == "color":
-      args += ["--tiff-layers", tifflayers]
+      args += ["--tiff-color"]
     else:
       args += ["--tiff-layers", *(f"{_:d}" for _ in tifflayers)]
     if maskroot is not None:
       args += ["--maskroot", os.fspath(maskroot)]
-    (ZoomSample if usesample else ZoomCohort).runfromargumentparser(args)
+
     sample = ZoomSample(root, SlideID, zoomroot=zoomroot, logroot=zoomroot, selectrectangles=selectrectangles, layers=layers, tifflayers=tifflayers, maskroot=maskroot)
+    rmdir_missing_ok(sample.bigfolder)
+
+    (ZoomSample if usesample else ZoomCohort).runfromargumentparser(args)
 
     try:
       assert not sample.bigfolder.exists()
