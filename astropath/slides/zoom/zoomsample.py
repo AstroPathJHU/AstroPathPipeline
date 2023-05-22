@@ -39,7 +39,8 @@ class ZoomArgumentParserBase(CleanupArgumentParser, SelectLayersArgumentParser):
   defaulttifflayers = None
 
 class ZoomArgumentParserComponentTiff(ZoomArgumentParserBase):
-  defaulttifflayers = "color"
+  #defaulttifflayers = "color"
+  pass
 
 class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleBase, TempDirSample, ReadRectanglesDbload, WorkflowSample, ZoomArgumentParserBase):
   """

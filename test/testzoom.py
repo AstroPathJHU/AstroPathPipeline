@@ -72,8 +72,12 @@ class TestZoom(TestBaseSaveOutput):
       args += ["--selectrectangles", *(str(_) for _ in selectrectangles)]
     if layers is not None:
       args += ["--layers", *(str(_) for _ in layers)]
-    if tifflayers != "color":
-      args += ["--tiff-layers", *(str(_) for _ in tifflayers)]
+    if tifflayers is None:
+      pass
+    elif tifflayers == "color":
+      args += ["--tiff-layers", tifflayers]
+    else:
+      args += ["--tiff-layers", *(f"{_:d}" for _ in tifflayers)]
     if maskroot is not None:
       args += ["--maskroot", os.fspath(maskroot)]
     (ZoomSample if usesample else ZoomCohort).runfromargumentparser(args)
@@ -81,22 +85,23 @@ class TestZoom(TestBaseSaveOutput):
 
     try:
       assert not sample.bigfolder.exists()
-      tifffilename = sample.wsitifffilename(tifflayers)
-      with tifffile.TiffFile(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/tifffilename) as tiff, \
-           tifffile.TiffFile(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/tifffilename) as targettiff:
-        for layer in layers:
-          filename = f"{SlideID}-Z9-L{layer}-wsi.png"
-          sample.logger.info("comparing "+filename)
-          with sample.PILmaximagepixels(), \
-               PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/filename) as img, \
-               PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
-            imgarray = np.asarray(img)
-            targetarray = np.asarray(targetimg)
-            np.testing.assert_allclose(imgarray, targetarray, atol=1)
+      for layer in layers:
+        filename = f"{SlideID}-Z9-L{layer}-wsi.png"
+        sample.logger.info("comparing "+filename)
+        with sample.PILmaximagepixels(), \
+             PIL.Image.open(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/filename) as img, \
+             PIL.Image.open(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/filename) as targetimg:
+          imgarray = np.asarray(img)
+          targetarray = np.asarray(targetimg)
+          np.testing.assert_allclose(imgarray, targetarray, atol=1)
 
-        for tiffpage, targettiffpage in more_itertools.zip_equal(tiff.pages, targettiff.pages):
-          sample.logger.info("comparing tiff")
-          np.testing.assert_array_equal(tiffpage.asarray(), targettiffpage.asarray())
+      if tifflayers is not None:
+        tifffilename = sample.wsitifffilename(tifflayers)
+        with tifffile.TiffFile(thisfolder/"test_for_jenkins"/"zoom"/SlideID/"wsi"/tifffilename) as tiff, \
+             tifffile.TiffFile(thisfolder/"data"/"reference"/"zoom"/SlideID/"wsi"/tifffilename) as targettiff:
+          for tiffpage, targettiffpage in more_itertools.zip_equal(tiff.pages, targettiff.pages):
+            sample.logger.info("comparing tiff")
+            np.testing.assert_array_equal(tiffpage.asarray(), targettiffpage.asarray())
 
     except:
       self.saveoutput()
@@ -105,7 +110,7 @@ class TestZoom(TestBaseSaveOutput):
       self.removeoutput()
 
   def testZoomWsiFast(self, SlideID="L1_1", **kwargs):
-    self.testZoomWsi(SlideID, mode="fast", **kwargs)
+    self.testZoomWsi(SlideID, mode="fast", tifflayers=None, **kwargs)
 
   def testzoomM206(self, **kwargs):
     self.testZoomWsi("M206", mode="memmap", tifflayers=[1], **kwargs)
@@ -154,7 +159,7 @@ class TestZoom(TestBaseSaveOutput):
     self.testZoomWsi(SlideID=SlideID, mode=mode, **kwargs)
 
   def testExistingWSIFast(self, SlideID="L1_1", **kwargs):
-    self.testExistingWSI(SlideID, mode="fast", usesample=True, **kwargs)
+    self.testExistingWSI(SlideID, mode="fast", tifflayers=None, usesample=True, **kwargs)
 
 def gunzipreference(SlideID):
   folder = thisfolder/"data"/"reference"/"zoom"/SlideID
