@@ -1,7 +1,7 @@
 import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBase, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
+from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBase, SelectLayersComponentTiffMultiLayer, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips
@@ -334,7 +334,7 @@ class DeepZoomFile(MyDataClass):
     """
     return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
 
-class DeepZoomSample(DeepZoomSampleBase, ZoomFolderSampleComponentTiff, SelectLayersComponentTiff):
+class DeepZoomSample(DeepZoomSampleBase, ZoomFolderSampleComponentTiff, SelectLayersComponentTiffMultiLayer):
   def __init__(self, *args, layers=None, **kwargs):
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
 
