@@ -56,7 +56,8 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     if not np.all(array.shape == (*TMAcore.shape[::-1], self.nlayersunmixed)):
       raise ValueError(f"shape mismatch: shape in npz is {array.shape}, shape from core_locations.csv is {tuple(TMAcore.shape)}")
     assert layer >= 1
-    array = np.ascontiguousarray(array[:,:,layer-1])
+    array = array[:,:,layer-1]
+    array = skimage.img_as_ubyte(array)
     img = array_to_vips_image(array)
     wsi = img.embed(
       TMAcore.x1,
@@ -65,11 +66,8 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
       int((TMAcore.x2+2*self.tilesize)//self.tilesize) * self.tilesize,
       int((TMAcore.y2+2*self.tilesize)//self.tilesize) * self.tilesize,
     )
-    from ...utilities.miscimage import vips_image_to_array
-    print(array.dtype)
-    print(vips_image_to_array(wsi).dtype)
-    assert 0
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
+    assert 0
 
   def prunezoom(self, TMAcore, layer):
     """
