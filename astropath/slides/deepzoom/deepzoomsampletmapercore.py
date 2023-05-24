@@ -68,6 +68,8 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     from ...utilities.miscimage import vips_image_to_array
     print(array.shape)
     print(vips_image_to_array(wsi).shape)
+    print(array.count_nonzero())
+    print(vips_image_to_array(wsi).count_nonzero())
     assert 0
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
 
