@@ -679,9 +679,11 @@ class RectangleReadSegmentedComponentTiffSingleLayer(RectangleReadComponentTiffS
       **super().componenttiffloaderkwargs,
     }
 
-class RectangleReadComponentSingleLayerAndIHCTiff(RectangleReadComponentTiffSingleLayer,RectangleReadIHCTiff) :
+class RectangleReadComponentAndIHCTiff(RectangleReadComponentTiffBase,RectangleReadIHCTiff) :
   pass
-class RectangleReadComponentMultiLayerAndIHCTiff(RectangleReadComponentTiffMultiLayer,RectangleReadIHCTiff) :
+class RectangleReadComponentSingleLayerAndIHCTiff(RectangleReadComponentAndIHCTiff, RectangleReadComponentTiffSingleLayer) :
+  pass
+class RectangleReadComponentMultiLayerAndIHCTiff(RectangleReadComponentAndIHCTiff, RectangleReadComponentTiffMultiLayer) :
   pass
 
 class RectangleCollection(units.ThingWithPscale):

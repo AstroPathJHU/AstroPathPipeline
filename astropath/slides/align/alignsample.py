@@ -3,7 +3,7 @@
 import contextlib, methodtools, numpy as np
 
 from ...shared.argumentparser import DbloadArgumentParser, SelectRectanglesArgumentParser
-from ...shared.sample import DbloadSample, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, TissueSampleBase, TMASampleBase, WorkflowSample
+from ...shared.sample import DbloadSample, ReadRectanglesComponentTiffSingleLayer, ReadRectanglesIm3SingleLayer, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, TissueSampleBase, TMASampleBase, WorkflowSample
 from ...utilities.config import CONST as UNIV_CONST
 from ...utilities.gpu import get_GPU_thread
 from ...utilities.tableio import writetable
@@ -375,7 +375,7 @@ class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
   @property
   def margin(self): return self.__margin
 
-class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
+class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base, ReadRectanglesIm3SingleLayer):
   """
   An align sample that uses im3 images
   """
@@ -385,7 +385,7 @@ class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
   def __init__(self, *args, layer=None, **kwargs):
     super().__init__(*args, layerim3=layer, **kwargs)
 
-class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsComponentTiffBase):
+class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesComponentTiffSingleLayer):
   """
   An align sample that uses component tiffs
   """
