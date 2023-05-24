@@ -14,7 +14,7 @@ from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SegmentationFolderArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .astropath_logging import dummylogger, getlogger, ThingWithLogger
-from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
+from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile, TMACoreLocation
 from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentTiffMultiLayer, RectangleReadComponentTiffSingleLayer, RectangleReadIHCTiff, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffSingleLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer, rectangleoroverlapfilter
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import ControlTMASampleDef, SampleDef
@@ -1403,7 +1403,7 @@ class ReadRectanglesMeta(type):
     try:
       rectangletype = dct["rectangletype"]
     except KeyError:
-      raise TypeError(f"trying to define {name} without a 'rectangletype' attribute")
+      raise TypeError(f"trying to define {clsname} without a 'rectangletype' attribute")
 
     for base in bases:
       if not issubclass(rectangletype, base.rectangletype):
@@ -2480,16 +2480,16 @@ class SampleWithPerCoreImages(SampleBase):
     folder = self.percoreimagesfolder
     return self.readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder})
   def percoreimagefile(self, TMAcore):
-    row = TMAcore.row
-    col = TMAcore.col
-    return self.percoreimagesfolder/"AP0210001_Core[1,{row},{col}]_component_data.npz"
+    row = TMAcore.core_row
+    col = TMAcore.core_col
+    return self.percoreimagesfolder/f"AP0210001_Core[1,{row},{col}]_component_data.npz"
   def percoremaskfile(self, TMAcore):
-    row = TMAcore.row
-    col = TMAcore.col
-    return self.percoreimagesfolder/"AP0210001_Core[1,{row},{col}]_mask.npz"
+    row = TMAcore.core_row
+    col = TMAcore.core_col
+    return self.percoreimagesfolder/f"AP0210001_Core[1,{row},{col}]_mask.npz"
 
 class DeepZoomFolderSampleBaseTMAPerCore(DeepZoomFolderSampleBase, SampleWithPerCoreImages):
   def deepzoomfolderTMAcore(self, TMAcore):
-    row = TMAcore.row
-    col = TMAcore.col
+    row = TMAcore.core_row
+    col = TMAcore.core_col
     return self.deepzoomfolder/f"Core[1,{row},{col}]"

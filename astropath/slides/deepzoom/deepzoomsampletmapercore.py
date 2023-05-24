@@ -1,12 +1,11 @@
-import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
+import collections, errno, functools, itertools, numpy as np, os, PIL, re, shutil
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBaseTMAPerCore, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
-from ...utilities.dataclasses import MyDataClass
+from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBaseTMAPerCore, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff
 from ...utilities.miscfileio import rm_missing_ok
-from ...utilities.optionalimports import pyvips
-from ...utilities.tableio import pathfield, readtable, writetable
-from ..zoom.zoomsample import ZoomSample, ZoomSampleIHC
+from ...utilities.miscimage import array_to_vips_image
+from ...utilities.tableio import readtable, writetable
+from .deepzoomsample import DeepZoomFile
 
 class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderSampleBaseTMAPerCore, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
   """
@@ -28,15 +27,15 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     """
     Folder where the image pyramid for a given layer will go
     """
-    return self.deepzoomfolderTMAcore(row, col)/f"L{layer:d}_files"
+    return self.deepzoomfolderTMAcore(TMAcore)/f"L{layer:d}_files"
 
   def deepzoom_vips(self, TMAcore, layer):
     """
     Use vips to create the image pyramid.  This is an out of the box
     functionality of vips.
     """
-    row = TMAcore.row
-    col = TMAcore.col
+    row = TMAcore.core_row
+    col = TMAcore.core_col
     self.logger.info("running vips for row %d column %d layer %d", row, col, layer)
     filename = self.percoreimagefile(TMAcore, layer)
 
@@ -73,8 +72,8 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     #However, sometimes some images on the edge have one or both dimensions
     #as 128 instead of 256, so that also reduces the size.  We can't just delete
     #all the smallest ones.
-    row = TMAcore.row
-    col = TMAcore.col
+    row = TMAcore.core_row
+    col = TMAcore.core_col
     self.logger.info("checking which files are non-empty for row %d column %d layer %d", row, col, layer)
     destfolder = self.layerfolder(TMAcore, layer)
 
@@ -124,8 +123,8 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     Also, sometimes the images on the right or bottom edges have 128 pixels
     in one of their dimensions.  We pad them to be 256x256.
     """
-    row = TMAcore.row
-    col = TMAcore.col
+    row = TMAcore.core_row
+    col = TMAcore.core_col
     self.logger.info("patching zoom image sizes for row %d column %d layer %d", row, col, layer)
     destfolder = self.layerfolder(TMAcore, layer)
 
@@ -191,9 +190,9 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     in on the smallest one from vips.
     """
     #rename the folders
-    row = TMAcore.row
-    col = TMAcore.col
-    self.logger.info("relabeling zooms for row %d column %d layer %d", layer)
+    row = TMAcore.core_row
+    col = TMAcore.core_col
+    self.logger.info("relabeling zooms for row %d column %d layer %d", row, col, layer)
     destfolder = self.layerfolder(TMAcore, layer)
     folders = sorted((_ for _ in destfolder.iterdir() if _.name != "runningflag"), key=lambda x: int(x.name))
     maxfolder = int(folders[-1].name)
@@ -236,8 +235,8 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     Write the csv file that lists all the png files to load
     """
     lst = []
-    row = TMAcore.row
-    col = TMAcore.col
+    row = TMAcore.core_row
+    col = TMAcore.core_col
     for layer in self.layerszoom:
       folder = self.layerfolder(TMAcore, layer)
       for zoomfolder in sorted(folder.iterdir()):
@@ -315,7 +314,7 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
   def getoutputfiles(cls, SlideID, *, deepzoomroot, checkimages=False, **otherworkflowkwargs):
     result = []
     for core in cls.getTMAcores(SlideID=SlideID, **otherworkflowkwargs):
-      folder = deepzoomroot/SlideID/f"Core[1,{core.row},{core.col}]"
+      folder = deepzoomroot/SlideID/f"Core[1,{core.core_row},{core.core_col}]"
       zoomlist = folder/"zoomlist.csv"
       layers = cls.getlayerszoom(SlideID=SlideID, **otherworkflowkwargs)
       result += [
@@ -339,7 +338,7 @@ class DeepZoomFileTMACore(DeepZoomFile):
     """
     return (self.sample, self.row, self.col, self.zoom, self.marker, self.x, self.y) < (other.sample, self.row, self.col, other.zoom, other.marker, other.x, other.y)
 
-class DeepZoomSampleTMAPerCore(DeepZoomSampleBase, ZoomFolderSampleComponentTiff, SelectLayersComponentTiff):
+class DeepZoomSampleTMAPerCore(DeepZoomSampleBaseTMAPerCore, ZoomFolderSampleComponentTiff, SelectLayersComponentTiff):
   def __init__(self, *args, layers=None, **kwargs):
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
 
@@ -357,7 +356,7 @@ class DeepZoomSampleTMAPerCore(DeepZoomSampleBase, ZoomFolderSampleComponentTiff
     return super().workflowdependencyclasses(**kwargs)
 
 def main(args=None):
-  DeepZoomSamplePerCore.runfromargumentparser(args)
+  DeepZoomSampleTMAPerCore.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

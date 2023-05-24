@@ -746,3 +746,12 @@ class ControlSample(MyDataClass):
   BatchID: int
   Scan: str
   SlideID: str
+
+class TMACoreLocation(DataClassWithPscale):
+  core_index: int
+  core_row: int
+  core_col: int
+  x1: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  y1: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  x2: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  y2: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
