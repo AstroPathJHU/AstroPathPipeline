@@ -2520,21 +2520,13 @@ class SampleWithPerCoreImages(SampleBase):
   def percoreimagesfolder(self):
     return self.getpercoreimagesfolder(**self.workflowkwargs)
   @classmethod
-  def getTMAcores(cls, **kwargs):
-    folder = cls.getpercoreimagesfolder(**kwargs)
-    return readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder})
+  def getTMAcores(cls, *, SlideID, **kwargs):
+    folder = cls.getpercoreimagesfolder(SlideID=SlideID, **kwargs)
+    return readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder, "SlideID": SlideID})
   @property
   def TMAcores(self):
     folder = self.percoreimagesfolder
-    return self.readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder})
-  def percoreimagefile(self, TMAcore):
-    row = TMAcore.core_row
-    col = TMAcore.core_col
-    return self.percoreimagesfolder/f"AP0210001_Core[1,{row},{col}]_component_data.npz"
-  def percoremaskfile(self, TMAcore):
-    row = TMAcore.core_row
-    col = TMAcore.core_col
-    return self.percoreimagesfolder/f"AP0210001_Core[1,{row},{col}]_mask.npz"
+    return self.readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder, "SlideID": self.SlideID})
 
 class DeepZoomFolderSampleBaseTMAPerCore(DeepZoomFolderSampleBase, SampleWithPerCoreImages):
   def deepzoomfolderTMAcore(self, TMAcore):

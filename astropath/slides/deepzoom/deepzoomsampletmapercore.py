@@ -37,7 +37,7 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     row = TMAcore.core_row
     col = TMAcore.core_col
     self.logger.info("running vips for row %d column %d layer %d", row, col, layer)
-    filename = self.percoreimagefile(TMAcore, layer)
+    filename = TMAcore.percoreimagefile
 
     #create the output folder and make sure it's empty
     destfolder = self.layerfolder(TMAcore, layer)
@@ -53,8 +53,10 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
 
     #open the image in vips and save the deepzoom
     array = np.load(filename)["arr_0"]
-    if not np.all(array.shape == TMAcore.shape):
+    if not np.all(array.shape == (*TMAcore.shape, self.nlayersunmixed)):
       raise ValueError(f"shape mismatch: shape in npz is {array.shape}, shape from core_locations.csv is {tuple(TMAcore.shape)}")
+    assert layer >= 1
+    array = array[:,:,layer-1]
     img = array_to_vips_image(array)
     wsi = img.affine([1, 0, 0, 1], idx=TMAcore.x1, idy=TMAcore.y1)
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)

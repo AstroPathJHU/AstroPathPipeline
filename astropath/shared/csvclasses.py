@@ -755,3 +755,12 @@ class TMACoreLocation(DataClassWithPscale):
   y1: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   x2: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   y2: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  SlideID: str = MetaDataAnnotation(includeintable=False)
+  percoreimagesfolder: pathlib.Path = MetaDataAnnotation(includeintable=False)
+
+  @property
+  def percoreimagefile(self):
+    return self.percoreimagesfolder/f"{self.SlideID}_Core[1,{self.core_row},{self.core_col}]_component_data.npz"
+  @property
+  def maskfile(self):
+    return self.percoreimagesfolder/f"{self.SlideID}_Core[1,{self.core_row},{self.core_col}]_mask.npz"
