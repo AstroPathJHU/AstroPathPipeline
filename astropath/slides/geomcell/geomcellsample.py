@@ -6,7 +6,7 @@ from ...shared.contours import findcontoursaspolygons
 from ...shared.csvclasses import constantsdict
 from ...shared.polygon import DataClassWithPolygon, InvalidPolygonError, Polygon, polygonfield
 from ...shared.rectangle import GeomLoadRectangle, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer
-from ...shared.sample import DeepCellSegmentationSample, DeepCellSegmentationSampleBase, GeomSampleBase, InformSegmentationSample, MesmerSegmentationSample, ParallelSample, ReadRectanglesDbload, ReadRectanglesDbloadSegmentedComponentTiff, SampleWithSegmentations, TissueSampleBase, WorkflowSample
+from ...shared.sample import DeepCellSegmentationSample, DeepCellSegmentationSampleBase, GeomSampleBase, InformSegmentationSampleMultiLayer, MesmerSegmentationSample, ParallelSample, ReadRectanglesDbload, ReadRectanglesDbloadSegmentedComponentTiff, SampleWithSegmentations, TissueSampleBase, WorkflowSample
 from ...utilities import units
 from ...utilities.misc import dict_product
 from ...utilities.tableio import readtable, writetable
@@ -170,7 +170,7 @@ class GeomCellSampleBase(GeomSampleBase, SampleWithSegmentations, ReadRectangles
   def workflowdependencyclasses(cls, **kwargs):
     return [AlignSample] + super().workflowdependencyclasses(**kwargs)
 
-class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, InformSegmentationSample):
+class GeomCellSampleInform(GeomCellSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, InformSegmentationSampleMultiLayer):
   rectangletype = GeomCellFieldInform
   multilayercomponenttiff = True
 

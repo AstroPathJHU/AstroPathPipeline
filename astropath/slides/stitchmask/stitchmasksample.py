@@ -7,7 +7,7 @@ from ...shared.image_masking.maskloader import ThingWithMask, ThingWithTissueMas
 from ...shared.imageloader import ImageLoaderBin, ImageLoaderNpz
 from ...shared.rectangle import AstroPathTissueMaskRectangle, IHCTissueMaskRectangle, MaskRectangleBase
 from ...shared.rectangletransformation import ImageTransformation
-from ...shared.sample import MaskSampleBase, MaskWorkflowSampleBase, ReadRectanglesDbloadSegmentedComponentTiff, TissueSampleBase, TMASampleBase
+from ...shared.sample import MaskSampleBase, MaskWorkflowSampleBase, ReadRectanglesDbloadSegmentedComponentTiffSingleLayer, TissueSampleBase, TMASampleBase
 from ...utilities.img_file_io import im3writeraw
 from ...utilities.miscmath import floattoint
 from ...utilities.config import CONST as UNIV_CONST
@@ -211,7 +211,7 @@ class StitchMaskSample(WriteMaskSampleBase):
   def workflowdependencyclasses(cls, **kwargs):
     return [AlignSample] + super().workflowdependencyclasses(**kwargs)
 
-class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadSegmentedComponentTiff, InformMaskSample, TissueSampleBase):
+class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadSegmentedComponentTiffSingleLayer, InformMaskSample, TissueSampleBase):
   """
   Stitch the inform mask together from layer 9 of the component tiffs.
   The implementation is the same as zoom, and the mask will match the
@@ -220,7 +220,7 @@ class StitchInformMaskSample(StitchMaskSample, ReadRectanglesDbloadSegmentedComp
   """
   def __init__(self, *args, **kwargs):
     super().__init__(*args, layercomponenttiff="setlater", **kwargs)
-    self.setlayerscomponenttiff(layercomponenttiff=self.masklayer)
+    self.setlayercomponenttiff(layercomponenttiff=self.masklayer)
 
   @classmethod
   def logmodule(self): return "stitchinformmask"

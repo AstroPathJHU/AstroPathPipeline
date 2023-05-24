@@ -2402,7 +2402,7 @@ class SampleWithSegmentationFolder(SampleWithSegmentations, SegmentationFolderAr
         outputdir = outputdir/SlideID
     return outputdir
 
-class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentTiffBase):
+class InformSegmentationSampleBase(SampleWithSegmentations, ReadRectanglesComponentTiffBase):
   @classmethod
   def segmentationalgorithm(cls):
     return "inform"
@@ -2471,7 +2471,7 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
       idx -= self.nsegmentations
     return self.segmentationids[idx-1]
 
-  rectangletype = RectangleReadSegmentedComponentTiffMultiLayer
+  rectangletype = RectangleReadSegmentedComponentTiffBase
   @property
   def rectangleextrakwargs(self):
     kwargs = {
@@ -2480,7 +2480,14 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
     }
     return kwargs
 
-class ReadRectanglesDbloadSegmentedComponentTiff(ReadRectanglesDbloadComponentTiff, InformSegmentationSample):
+class InformSegmentationSampleMultiLayer(InformSegmentationSampleBase, ReadRectanglesComponentTiffMultiLayer):
+  rectangletype = RectangleReadSegmentedComponentTiffMultiLayer
+class InformSegmentationSampleSingleLayer(InformSegmentationSampleBase, ReadRectanglesComponentTiffSingleLayer):
+  rectangletype = RectangleReadSegmentedComponentTiffSingleLayer
+
+class ReadRectanglesDbloadSegmentedComponentTiffMultiLayer(ReadRectanglesDbloadComponentTiff, InformSegmentationSampleMultiLayer):
+  pass
+class ReadRectanglesDbloadSegmentedComponentTiffSingleLayer(ReadRectanglesDbloadComponentTiff, InformSegmentationSampleSingleLayer):
   pass
 
 class DeepCellSegmentationSampleBase(SampleWithSegmentationFolder):
