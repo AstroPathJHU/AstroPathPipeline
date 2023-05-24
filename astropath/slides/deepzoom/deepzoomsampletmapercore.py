@@ -59,11 +59,11 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     array = np.ascontiguousarray(array[:,:,layer-1])
     img = array_to_vips_image(array)
     wsi = img.embed(
-      x=TMAcore.x1,
-      y=TMAcore.y1,
+      TMAcore.x1,
+      TMAcore.y1,
       #pretty sure 2* is not necessary
-      width=int((TMAcore.x2+2*self.tilesize)//self.tilesize) * self.tilesize,
-      height=int((TMAcore.y2+2*self.tilesize)//self.tilesize) * self.tilesize,
+      int((TMAcore.x2+2*self.tilesize)//self.tilesize) * self.tilesize,
+      int((TMAcore.y2+2*self.tilesize)//self.tilesize) * self.tilesize,
     )
     from ...utilities.miscimage import vips_image_to_array
     print(array.shape)
