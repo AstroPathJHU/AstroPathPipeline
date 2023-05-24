@@ -1241,7 +1241,7 @@ class ZoomFolderSampleIHC(ZoomFolderSampleBase):
   @classmethod
   def getlayerszoom(cls, **kwargs): return 1, 2, 3
 
-class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
+class DeepZoomFolderSampleBase(SampleBase, DeepZoomArgumentParser):
   """
   Base class for any sample that uses the deepzoomed images.
   deepzoomroot: Root location of the deepzoomed images.
@@ -1256,6 +1256,25 @@ class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
   def deepzoomroot(self): return self.__deepzoomroot
   @property
   def deepzoomfolder(self): return self.deepzoomroot/self.SlideID
+
+class SampleWithPerCoreImages(ReadRectanglesBase):
+  @property
+  def percoreimagesfolder(self):
+    return self.informdataroot/SlideID/"inform_data"/"per_core_images"
+  @property
+  def TMAcores(self):
+    return readtable(self.percoreimagesfolder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": self.percoreimagesfolder})
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "percoreimagesfolder": self.percoreimagesfolder,
+    }
+  rectangletype = RectangleWithPerCoreImages
+
+class DeepZoomFolderSampleBaseTMAPerCore(DeepZoomFolderSampleBase, SampleWithPerCoreImages):
+  def deepzoomfolderTMAcore(self, row, col):
+    return self.deepzoomfolder/f"Core[1,{row},{col}]"
 
 class GeomSampleBase(SampleBase, GeomFolderArgumentParser):
   """

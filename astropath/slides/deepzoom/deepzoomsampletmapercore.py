@@ -1,14 +1,14 @@
 import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBase, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
+from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBaseTMAPerCore, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
 from ...utilities.dataclasses import MyDataClass
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.optionalimports import pyvips
 from ...utilities.tableio import pathfield, readtable, writetable
 from ..zoom.zoomsample import ZoomSample, ZoomSampleIHC
 
-class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderSampleBase, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
+class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderSampleBaseTMAPerCore, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   The deepzoom step takes the whole slide image and produces an image pyramid
   of different zoom levels.
@@ -24,23 +24,23 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
   @property
   def tilesize(self): return self.__tilesize
 
-  def layerfolder(self, layer):
+  def layerfolder(self, row, col, layer):
     """
     Folder where the image pyramid for a given layer will go
     """
-    return self.deepzoomfolder/f"L{layer:d}_files"
+    return self.deepzoomfolderTMAcore(row, col)/f"L{layer:d}_files"
 
-  def deepzoom_vips(self, layer):
+  def deepzoom_vips(self, row, col, layer):
     """
     Use vips to create the image pyramid.  This is an out of the box
     functionality of vips.
     """
-    self.logger.info("running vips for layer %d", layer)
-    filename = self.wsifilename(layer)
+    self.logger.info("running vips for row %d column %d layer %d", row, col, layer)
+    filename = self.wsifilename(row, col, layer)
 
     #create the output folder and make sure it's empty
-    self.deepzoomfolder.mkdir(parents=True, exist_ok=True)
-    destfolder = self.layerfolder(layer)
+    destfolder = self.layerfolder(row, col, layer)
+    destfolder.parent.mkdir(parents=True, exist_ok=True)
     if destfolder.exists():
       for subfolder in destfolder.iterdir():
         if subfolder.is_dir(): subfolder.rmdir()
