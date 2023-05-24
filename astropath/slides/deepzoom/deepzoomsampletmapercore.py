@@ -1,7 +1,7 @@
 import collections, errno, functools, itertools, numpy as np, os, PIL, re, shutil
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBaseTMAPerCore, SelectLayersComponentTiff, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff
+from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBaseTMAPerCore, SelectLayersComponentTiffMultiLayer, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff
 from ...utilities.miscfileio import rm_missing_ok
 from ...utilities.miscimage import array_to_vips_image
 from ...utilities.tableio import readtable, writetable
@@ -338,7 +338,7 @@ class DeepZoomFileTMACore(DeepZoomFile):
     """
     return (self.sample, self.row, self.col, self.zoom, self.marker, self.x, self.y) < (other.sample, self.row, self.col, other.zoom, other.marker, other.x, other.y)
 
-class DeepZoomSampleTMAPerCore(DeepZoomSampleBaseTMAPerCore, ZoomFolderSampleComponentTiff, SelectLayersComponentTiff):
+class DeepZoomSampleTMAPerCore(DeepZoomSampleBaseTMAPerCore, ZoomFolderSampleComponentTiff, SelectLayersComponentTiffMultiLayer):
   def __init__(self, *args, layers=None, **kwargs):
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
 
