@@ -70,6 +70,7 @@ setupkwargs = dict(
       "deepzoomcohortihc=astropath.slides.deepzoom.deepzoomcohort:ihc",
       "deepzoomsample=astropath.slides.deepzoom.deepzoomsample:main",
       "deepzoomsampleihc=astropath.slides.deepzoom.deepzoomsample:ihc",
+      "deepzoomsampletmapercore=astropath.slides.deepzoom.deepzoomsampletmapercore:main",
       "find_slide_overexposed_hpfs=astropath.hpfs.overexposedhpfs.find_slide_overexposed_hpfs:main",
       "fixfw01cohort=astropath.hpfs.fixfw01.fixfw01cohort:main_xml",
       "fixfw01cohortdbload=astropath.hpfs.fixfw01.fixfw01cohort:main_dbload",
