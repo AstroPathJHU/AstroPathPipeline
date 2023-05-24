@@ -1257,25 +1257,6 @@ class DeepZoomFolderSampleBase(SampleBase, DeepZoomArgumentParser):
   @property
   def deepzoomfolder(self): return self.deepzoomroot/self.SlideID
 
-class SampleWithPerCoreImages(ReadRectanglesBase):
-  @property
-  def percoreimagesfolder(self):
-    return self.informdataroot/SlideID/"inform_data"/"per_core_images"
-  @property
-  def TMAcores(self):
-    return readtable(self.percoreimagesfolder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": self.percoreimagesfolder})
-  @property
-  def rectangleextrakwargs(self):
-    return {
-      **super().rectangleextrakwargs,
-      "percoreimagesfolder": self.percoreimagesfolder,
-    }
-  rectangletype = RectangleWithPerCoreImages
-
-class DeepZoomFolderSampleBaseTMAPerCore(DeepZoomFolderSampleBase, SampleWithPerCoreImages):
-  def deepzoomfolderTMAcore(self, row, col):
-    return self.deepzoomfolder/f"Core[1,{row},{col}]"
-
 class GeomSampleBase(SampleBase, GeomFolderArgumentParser):
   """
   Base class for any sample that uses the _cellgeomload.csv files
@@ -1417,7 +1398,20 @@ class SelectLayersComponentTiff(SampleBase):
 
   multilayercomponenttiff = False #can override in subclasses
 
-class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgumentParser):
+class ReadRectanglesMeta(type):
+  def __new__(cls, clsname, bases, dct):
+    try:
+      rectangletype = dct["rectangletype"]
+    except KeyError:
+      raise TypeError(f"trying to define {name} without a 'rectangletype' attribute")
+
+    for base in bases:
+      if not issubclass(rectangletype, base.rectangletype):
+        raise ValueError(f"{clsname} inherits from {base.__name__}, but its rectangletype {rectangletype.__name__} does not inherit from {base.rectangletype.__name__}")
+
+    return super().__new__(cls, clsname, bases, dct)
+
+class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgumentParser, metaclass=ReadRectanglesMeta):
   """
   Base class for any sample that reads HPF info from any source.
   selectrectangles: filter for selecting rectangles (a list of ids or a function)
@@ -2469,3 +2463,22 @@ class MesmerSegmentationSample(DeepCellSegmentationSampleBase):
   @classmethod
   def segmentationalgorithm(cls):
     return "mesmer"
+
+class SampleWithPerCoreImages(ReadRectanglesBase):
+  @property
+  def percoreimagesfolder(self):
+    return self.informdataroot/SlideID/"inform_data"/"per_core_images"
+  @property
+  def TMAcores(self):
+    return readtable(self.percoreimagesfolder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": self.percoreimagesfolder})
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "percoreimagesfolder": self.percoreimagesfolder,
+    }
+  rectangletype = RectangleWithPerCoreImages
+
+class DeepZoomFolderSampleBaseTMAPerCore(DeepZoomFolderSampleBase, SampleWithPerCoreImages):
+  def deepzoomfolderTMAcore(self, row, col):
+    return self.deepzoomfolder/f"Core[1,{row},{col}]"
