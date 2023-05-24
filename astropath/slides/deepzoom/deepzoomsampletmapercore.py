@@ -1,4 +1,4 @@
-import collections, errno, functools, itertools, numpy as np, os, PIL, re, shutil
+import collections, errno, functools, itertools, numpy as np, os, PIL, re, shutil, skimage
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
 from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBaseTMAPerCore, SelectLayersComponentTiffMultiLayer, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff
