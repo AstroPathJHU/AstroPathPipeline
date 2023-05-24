@@ -2464,21 +2464,32 @@ class MesmerSegmentationSample(DeepCellSegmentationSampleBase):
   def segmentationalgorithm(cls):
     return "mesmer"
 
-class SampleWithPerCoreImages(ReadRectanglesBase):
+class SampleWithPerCoreImages(SampleBase):
+  @classmethod
+  def getpercoreimagesfolder(cls, *, informdataroot, SlideID, **kwargs):
+    return informdataroot/SlideID/"inform_data"/"per_core_images"
   @property
   def percoreimagesfolder(self):
-    return self.informdataroot/SlideID/"inform_data"/"per_core_images"
+    return self.getpercoreimagesfolder(**self.workflowkwargs)
+  @classmethod
+  def getTMAcores(cls, **kwargs):
+    folder = cls.getpercoreimagesfolder(**kwargs)
+    return readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder})
   @property
   def TMAcores(self):
-    return readtable(self.percoreimagesfolder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": self.percoreimagesfolder})
-  @property
-  def rectangleextrakwargs(self):
-    return {
-      **super().rectangleextrakwargs,
-      "percoreimagesfolder": self.percoreimagesfolder,
-    }
-  rectangletype = RectangleWithPerCoreImages
+    folder = self.percoreimagesfolder
+    return self.readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder})
+  def percoreimagefile(self, TMAcore):
+    row = TMAcore.row
+    col = TMAcore.col
+    return self.percoreimagesfolder/"AP0210001_Core[1,{row},{col}]_component_data.npz"
+  def percoremaskfile(self, TMAcore):
+    row = TMAcore.row
+    col = TMAcore.col
+    return self.percoreimagesfolder/"AP0210001_Core[1,{row},{col}]_mask.npz"
 
 class DeepZoomFolderSampleBaseTMAPerCore(DeepZoomFolderSampleBase, SampleWithPerCoreImages):
-  def deepzoomfolderTMAcore(self, row, col):
+  def deepzoomfolderTMAcore(self, TMAcore):
+    row = TMAcore.row
+    col = TMAcore.col
     return self.deepzoomfolder/f"Core[1,{row},{col}]"

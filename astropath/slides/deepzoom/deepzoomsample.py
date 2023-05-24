@@ -306,7 +306,7 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
     ]
     if checkimages and zoomlist.exists():
       files = readtable(zoomlist, DeepZoomFile)
-      result += [file.name for file in files]
+      result += [deepzoomroot/file.name for file in files]
     return result
 
 @functools.total_ordering
