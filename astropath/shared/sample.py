@@ -2522,7 +2522,7 @@ class SampleWithPerCoreImages(SampleBase):
   @classmethod
   def getTMAcores(cls, *, SlideID, **kwargs):
     folder = cls.getpercoreimagesfolder(SlideID=SlideID, **kwargs)
-    return readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder, "SlideID": SlideID})
+    return readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder, "SlideID": SlideID, "pscale": 1})
   @property
   def TMAcores(self):
     folder = self.percoreimagesfolder
