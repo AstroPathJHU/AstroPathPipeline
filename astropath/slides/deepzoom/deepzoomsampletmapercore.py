@@ -295,7 +295,6 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
         self.patchfolderstructure(layer=layer, TMAcore=TMAcore)
         (folder/"runningflag").unlink()
 
-        assert 0
       self.writezoomlist(TMAcore=TMAcore)
 
   def run(self, *, cleanup=False, **kwargs):
