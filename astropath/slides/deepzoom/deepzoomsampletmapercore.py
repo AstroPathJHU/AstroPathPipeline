@@ -59,6 +59,10 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     array = np.ascontiguousarray(array[:,:,layer-1])
     img = array_to_vips_image(array)
     wsi = img.affine([1, 0, 0, 1], idx=TMAcore.x1, idy=TMAcore.y1)
+    from ...utilities.miscimage import vips_image_to_array
+    print(img.shape)
+    print(vips_image_to_array(wsi).shape)
+    assert 0
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
 
   def prunezoom(self, TMAcore, layer):
