@@ -56,7 +56,7 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
     if not np.all(array.shape == (*TMAcore.shape[::-1], self.nlayersunmixed)):
       raise ValueError(f"shape mismatch: shape in npz is {array.shape}, shape from core_locations.csv is {tuple(TMAcore.shape)}")
     assert layer >= 1
-    array = array[:,:,layer-1]
+    array = np.ascontiguousarray(array[:,:,layer-1])
     img = array_to_vips_image(array)
     wsi = img.affine([1, 0, 0, 1], idx=TMAcore.x1, idy=TMAcore.y1)
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
