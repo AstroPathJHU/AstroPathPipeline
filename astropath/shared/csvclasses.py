@@ -764,3 +764,6 @@ class TMACoreLocation(DataClassWithPscale):
   @property
   def maskfile(self):
     return self.percoreimagesfolder/f"{self.SlideID}_Core[1,{self.core_row},{self.core_col}]_mask.npz"
+  @property
+  def shape(self):
+    return np.array([self.x2, self.y2]) - [self.x1, self.y1]

@@ -53,7 +53,7 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
 
     #open the image in vips and save the deepzoom
     array = np.load(filename)["arr_0"]
-    if not np.all(array.shape == (*TMAcore.shape, self.nlayersunmixed)):
+    if not np.all(array.shape == (*TMAcore.shape[::-1], self.nlayersunmixed)):
       raise ValueError(f"shape mismatch: shape in npz is {array.shape}, shape from core_locations.csv is {tuple(TMAcore.shape)}")
     assert layer >= 1
     array = array[:,:,layer-1]
