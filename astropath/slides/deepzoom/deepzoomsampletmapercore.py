@@ -67,7 +67,6 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
       int((TMAcore.y2+2*self.tilesize)//self.tilesize) * self.tilesize,
     )
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
-    assert 0
 
   def prunezoom(self, TMAcore, layer):
     """
@@ -296,6 +295,7 @@ class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZ
         self.patchfolderstructure(layer=layer, TMAcore=TMAcore)
         (folder/"runningflag").unlink()
 
+        assert 0
       self.writezoomlist(TMAcore=TMAcore)
 
   def run(self, *, cleanup=False, **kwargs):
