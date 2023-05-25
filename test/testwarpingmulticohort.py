@@ -4,7 +4,7 @@ import numpy as np
 from astropath.utilities.config import CONST as UNIV_CONST
 from astropath.utilities.img_file_io import read_image_from_layer_files, write_image_to_file
 from astropath.shared.samplemetadata import MetadataSummary
-from astropath.shared.sample import ReadRectanglesIm3FromXML, TissueSampleBase
+from astropath.shared.sample import ReadRectanglesIm3FromXML, ReadRectanglesIm3MultiLayer, TissueSampleBase
 from astropath.hpfs.warping.utilities import FieldLog
 from astropath.hpfs.warping.warpingmulticohort import WarpingMultiCohort
 from .testbase import compare_two_csv_files, TestBaseCopyInput, TestBaseSaveOutput
@@ -21,7 +21,7 @@ background_thresholds_file_ref = folder/'data'/'reference'/'meanimage'/f'{slideI
 background_thresholds_file_new = folder/'data'/slideID/UNIV_CONST.IM3_DIR_NAME/UNIV_CONST.MEANIMAGE_DIRNAME
 background_thresholds_file_new = background_thresholds_file_new/f'{slideID}-background_thresholds.csv'
 
-class DummySample(ReadRectanglesIm3FromXML, TissueSampleBase) :
+class DummySample(ReadRectanglesIm3FromXML, ReadRectanglesIm3MultiLayer, TissueSampleBase) :
 
     def __init__(self,*args,**kwargs) :
         super().__init__(*args,uselogfiles=False,**kwargs)

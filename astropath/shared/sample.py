@@ -1320,7 +1320,7 @@ class SelectLayersIm3SingleLayer(SelectLayersIm3):
   """
   Base class for any sample that needs a layer selection for the im3.
   """
-  def __init__(self, *args, layerim3=None, **kwargs):
+  def __init__(self, *args, layerim3=None, layersim3=None, **kwargs):
     if layerim3 != "setlater":
       self.setlayerim3(layerim3=layerim3)
     super().__init__(*args, **kwargs)
@@ -1387,10 +1387,14 @@ class SelectLayersComponentTiff(SampleBase):
 
   @property
   def workflowkwargs(self):
-    return {
+    result = {
       **super().workflowkwargs,
-      "layerscomponenttiff": self.layerscomponenttiff,
     }
+    try:
+      result["layerscomponenttiff"] = self.layerscomponenttiff
+    except AttributeError: #haven't called setlayerscomponenttiff() yet
+      pass
+    return result
 
 class SelectLayersComponentTiffSingleLayer(SelectLayersComponentTiff):
   """
@@ -1454,7 +1458,7 @@ class SelectLayersComponentTiffMultiLayer(SelectLayersComponentTiff):
     return result
 
 class ReadRectanglesMeta(MRODebuggingMetaClass):
-  def __new__(metacls, clsname, bases, dct):
+  def __new__(metacls, clsname, bases, dct, **kwargs):
     cls = super().__new__(metacls, clsname, bases, dct)
 
     try:
@@ -1541,7 +1545,6 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
       "width": self.fwidth,
       "height": self.fheight,
       "nlayersim3": self.nlayersim3,
-      "layerim3": self.layerim3,
     }
 
 class ReadRectanglesIm3SingleLayer(ReadRectanglesIm3Base, SelectLayersIm3SingleLayer):
@@ -1560,6 +1563,7 @@ class ReadRectanglesIm3SingleLayer(ReadRectanglesIm3Base, SelectLayersIm3SingleL
   @property
   def rectangleextrakwargs(self):
     return {
+      "layerim3": self.layerim3,
       "readlayerfile": self.__readlayerfile,
       **super().rectangleextrakwargs,
     }
@@ -2034,19 +2038,17 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
     elif len(corrs)==3 :
       return f'corrected for {corrs[0]}, {corrs[1]}, and {corrs[2]}'
 
-class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML) :
+class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML, ReadRectanglesIm3SingleLayer) :
   """
   Base class for any sample that reads single layers of rectangles from the XML metadata,
   loads the rectangle images from im3 files, and corrects the rectangle images for differences in exposure time,
   flatfielding effects, and/or warping effects
   """
 
-  multilayerim3 = False #The original files are multilayer, we're just going to be working with one of them
   rectangletype = RectangleCorrectedIm3SingleLayer
 
-  def __init__(self,*args,layer=1,**kwargs) :
-    self.__layer = layer
-    super().__init__(*args,layerim3=layer,readlayerfile=False,**kwargs)
+  def __init__(self,*args,**kwargs) :
+    super().__init__(*args,readlayerfile=False,**kwargs)
     self.__med_et = None
 
   def initrectangles(self) :
@@ -2057,7 +2059,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     #find the median exposure time
     slide_exp_times = np.zeros(shape=(len(self.rectangles)))
     for ir,r in enumerate(self.rectangles) :
-        slide_exp_times[ir] = r.allexposuretimes[self.__layer-1]
+        slide_exp_times[ir] = r.allexposuretimes[self.layerim3-1]
     self.__med_et = np.median(slide_exp_times)
     for r in self.rectangles :
         r.set_med_et(self.__med_et)
@@ -2073,7 +2075,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     if self.skip_et_corrections or self.et_offset_file is None :
       return None
 
-    self.logger.infoonenter(f'Copying exposure time offset for {self.SlideID} layer {self.__layer} from file {self.et_offset_file}')
+    self.logger.infoonenter(f'Copying exposure time offset for {self.SlideID} layer {self.layerim3} from file {self.et_offset_file}')
     #read the offset from the Full.xml file
     if self.et_offset_file==self.fullxmlfile :
       tree = ET.parse(self.et_offset_file)
@@ -2088,9 +2090,9 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     #read the offset from the LayerOffset file
     else :
       layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
-      offsets_to_return = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==self.__layer]
+      offsets_to_return = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==self.layerim3]
       if len(offsets_to_return)!=1 :
-        raise ValueError(f'ERROR: found {len(offsets_to_return)} entries for layer {self.__layer} in file {self.et_offset_file}')
+        raise ValueError(f'ERROR: found {len(offsets_to_return)} entries for layer {self.layerim3} in file {self.et_offset_file}')
       return offsets_to_return[0]
 
   @methodtools.lru_cache()
@@ -2102,9 +2104,9 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
       return None
 
     warpsummaries = readtable(self.warping_file,WarpingSummary)
-    relevant_warps = [ws for ws in warpsummaries if self.__layer in range(ws.first_layer_n,ws.last_layer_n+1)]
+    relevant_warps = [ws for ws in warpsummaries if self.layerim3 in range(ws.first_layer_n,ws.last_layer_n+1)]
     if len(relevant_warps)!=1 :
-      raise ValueError(f'ERROR: found {len(relevant_warps)} warps for layer {self.__layer} in {self.warping_file}')
+      raise ValueError(f'ERROR: found {len(relevant_warps)} warps for layer {self.layerim3} in {self.warping_file}')
     ws = relevant_warps[0]
     warp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
     self.logger.infoonenter(f'Warping corrections will be applied from {self.__warping_file}')
@@ -2119,7 +2121,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
                                self.rectangles[0].im3shape[0],self.rectangles[0].im3shape[1],self.nlayersim3,
                                np.float64)
     self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
-    return flatfield[:,:,self.__layer-1]
+    return flatfield[:,:,self.layerim3-1]
 
   @property
   def rectangleextrakwargs(self):
@@ -2143,13 +2145,12 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
         'layer': parsed_args_dict.pop('layer'),
     }
 
-class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML) :
+class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML, ReadRectanglesIm3MultiLayer) :
   """
   Base class for any sample that reads multilayer rectangles from the XML metadata, 
   loads the rectangle images from im3 files, and corrects the rectangle images for differences in exposure time, flatfielding effects, and/or warping
   """
 
-  multilayerim3 = True
   rectangletype = RectangleCorrectedIm3MultiLayer
 
   def __init__(self,*args,**kwargs) :
