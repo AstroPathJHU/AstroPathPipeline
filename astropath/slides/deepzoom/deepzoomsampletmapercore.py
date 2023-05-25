@@ -1,14 +1,13 @@
-import collections, errno, functools, itertools, numpy as np, os, pathlib, PIL, re, shutil
+import collections, errno, functools, itertools, numpy as np, os, PIL, re, shutil, skimage
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBase, SelectLayersComponentTiffMultiLayer, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
-from ...utilities.dataclasses import MyDataClass
+from ...shared.sample import DbloadSampleBase, DeepZoomFolderSampleBaseTMAPerCore, SelectLayersComponentTiffMultiLayer, TissueSampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff
 from ...utilities.miscfileio import rm_missing_ok
-from ...utilities.optionalimports import pyvips
-from ...utilities.tableio import pathfield, readtable, writetable
-from ..zoom.zoomsample import ZoomSample, ZoomSampleIHC
+from ...utilities.miscimage import array_to_vips_image
+from ...utilities.tableio import readtable, writetable
+from .deepzoomsample import DeepZoomFile
 
-class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderSampleBase, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
+class DeepZoomSampleBaseTMAPerCore(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderSampleBaseTMAPerCore, WorkflowSample, TissueSampleBase, CleanupArgumentParser, SelectLayersArgumentParser):
   """
   The deepzoom step takes the whole slide image and produces an image pyramid
   of different zoom levels.
@@ -24,23 +23,25 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
   @property
   def tilesize(self): return self.__tilesize
 
-  def layerfolder(self, layer):
+  def layerfolder(self, TMAcore, layer):
     """
     Folder where the image pyramid for a given layer will go
     """
-    return self.deepzoomfolder/f"L{layer:d}_files"
+    return self.deepzoomfolderTMAcore(TMAcore)/f"L{layer:d}_files"
 
-  def deepzoom_vips(self, layer):
+  def deepzoom_vips(self, TMAcore, layer):
     """
     Use vips to create the image pyramid.  This is an out of the box
     functionality of vips.
     """
-    self.logger.info("running vips for layer %d", layer)
-    filename = self.wsifilename(layer)
+    row = TMAcore.core_row
+    col = TMAcore.core_col
+    self.logger.info("running vips for row %d column %d layer %d", row, col, layer)
+    filename = TMAcore.percoreimagefile
 
     #create the output folder and make sure it's empty
-    self.deepzoomfolder.mkdir(parents=True, exist_ok=True)
-    destfolder = self.layerfolder(layer)
+    destfolder = self.layerfolder(TMAcore, layer)
+    destfolder.parent.mkdir(parents=True, exist_ok=True)
     if destfolder.exists():
       for subfolder in destfolder.iterdir():
         if subfolder.is_dir(): subfolder.rmdir()
@@ -50,11 +51,24 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
     #vips adds that
     dest = destfolder.with_name(destfolder.name.replace("_files", ""))
 
-    #open the wsi in vips and save the deepzoom
-    wsi = pyvips.Image.new_from_file(os.fspath(filename))
+    #open the image in vips and save the deepzoom
+    array = np.load(filename)["arr_0"]
+    if not np.all(array.shape == (*TMAcore.shape[::-1], self.nlayersunmixed)):
+      raise ValueError(f"shape mismatch: shape in npz is {array.shape}, shape from core_locations.csv is {tuple(TMAcore.shape)}")
+    assert layer >= 1
+    array = array[:,:,layer-1]
+    array = skimage.img_as_ubyte(array)
+    img = array_to_vips_image(array)
+    wsi = img.embed(
+      TMAcore.x1,
+      TMAcore.y1,
+      #pretty sure 2* is not necessary
+      int((TMAcore.x2+2*self.tilesize)//self.tilesize) * self.tilesize,
+      int((TMAcore.y2+2*self.tilesize)//self.tilesize) * self.tilesize,
+    )
     wsi.dzsave(os.fspath(dest), suffix=".png", background=0, depth="onetile", overlap=0, tile_size=self.tilesize)
 
-  def prunezoom(self, layer):
+  def prunezoom(self, TMAcore, layer):
     """
     Clean up the deepzoom output
     """
@@ -67,8 +81,10 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
     #However, sometimes some images on the edge have one or both dimensions
     #as 128 instead of 256, so that also reduces the size.  We can't just delete
     #all the smallest ones.
-    self.logger.info("checking which files are non-empty for layer %d", layer)
-    destfolder = self.layerfolder(layer)
+    row = TMAcore.core_row
+    col = TMAcore.core_col
+    self.logger.info("checking which files are non-empty for row %d column %d layer %d", row, col, layer)
+    destfolder = self.layerfolder(TMAcore, layer)
 
     #save all file sizes in a dict
     filesizedict = collections.defaultdict(list)
@@ -111,13 +127,15 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
     ngood = nfiles - nbad
     self.logger.info("there are %d remaining non-empty files", ngood)
 
-  def patchsmallimages(self, layer):
+  def patchsmallimages(self, TMAcore, layer):
     """
     Also, sometimes the images on the right or bottom edges have 128 pixels
     in one of their dimensions.  We pad them to be 256x256.
     """
-    self.logger.info("patching zoom image sizes for layer %d", layer)
-    destfolder = self.layerfolder(layer)
+    row = TMAcore.core_row
+    col = TMAcore.core_col
+    self.logger.info("patching zoom image sizes for row %d column %d layer %d", row, col, layer)
+    destfolder = self.layerfolder(TMAcore, layer)
 
     #pad images that are too small
     def tilexy(filename):
@@ -173,7 +191,7 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
           im = PIL.Image.fromarray(np.pad(np.asarray(im), ((0, self.tilesize-m), (0, self.tilesize-n))))
           im.save(edgefilename)
 
-  def patchfolderstructure(self, layer):
+  def patchfolderstructure(self, TMAcore, layer):
     """
     Rename the folders to our desired convention: Z9 is always the most zoomed in,
     Z0 is always the most zoomed out.  If there are less than 10 different zoom
@@ -181,8 +199,10 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
     in on the smallest one from vips.
     """
     #rename the folders
-    self.logger.info("relabeling zooms for layer %d", layer)
-    destfolder = self.layerfolder(layer)
+    row = TMAcore.core_row
+    col = TMAcore.core_col
+    self.logger.info("relabeling zooms for row %d column %d layer %d", row, col, layer)
+    destfolder = self.layerfolder(TMAcore, layer)
     folders = sorted((_ for _ in destfolder.iterdir() if _.name != "runningflag"), key=lambda x: int(x.name))
     maxfolder = int(folders[-1].name)
     if maxfolder > 9:
@@ -219,13 +239,15 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
         im = PIL.Image.fromarray(im)
         im.save(newfilename)
 
-  def writezoomlist(self):
+  def writezoomlist(self, TMAcore):
     """
     Write the csv file that lists all the png files to load
     """
     lst = []
+    row = TMAcore.core_row
+    col = TMAcore.core_col
     for layer in self.layerszoom:
-      folder = self.layerfolder(layer)
+      folder = self.layerfolder(TMAcore, layer)
       for zoomfolder in sorted(folder.iterdir()):
         zoom = int(re.match("Z([0-9]*)", zoomfolder.name).group(1))
         for filename in sorted(zoomfolder.iterdir()):
@@ -233,7 +255,7 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
           x = int(match.group(1))
           y = int(match.group(2))
 
-          lst.append(DeepZoomFile(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, name=filename.relative_to(self.deepzoomroot)))
+          lst.append(DeepZoomFileTMACore(sample=self.SlideID, zoom=zoom, x=x, y=y, marker=layer, row=row, col=col, name=filename.relative_to(self.deepzoomroot)))
 
     lst.sort()
     writetable(self.deepzoomfolder/"zoomlist.csv", lst)
@@ -242,37 +264,38 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
     """
     Run the full deepzoom pipeline
     """
-    for layer in self.layerszoom:
-      folder = self.layerfolder(layer)
-      if folder.exists():
-        for i in range(10):
-          if (folder/f"{i}").exists():
-            shutil.rmtree(folder/f"{i}")
-          if (folder/f"Z{i}").exists():
-            try:
-              (folder/f"Z{i}").rmdir()
-            except OSError as e:
-              if e.errno == errno.ENOTEMPTY:
-                pass
-              else:
-                raise
-        if (folder/"runningflag").exists():
+    for TMAcore in self.TMAcores:
+      for layer in self.layerszoom:
+        folder = self.layerfolder(layer=layer, TMAcore=TMAcore)
+        if folder.exists():
           for i in range(10):
+            if (folder/f"{i}").exists():
+              shutil.rmtree(folder/f"{i}")
             if (folder/f"Z{i}").exists():
-              shutil.rmtree(folder/f"Z{i}")
-          (folder/"runningflag").unlink()
-        elif all((folder/f"Z{i}").exists() for i in range(10)):
-          self.logger.info(f"layer {layer} has already been deepzoomed")
-          continue
+              try:
+                (folder/f"Z{i}").rmdir()
+              except OSError as e:
+                if e.errno == errno.ENOTEMPTY:
+                  pass
+                else:
+                  raise
+          if (folder/"runningflag").exists():
+            for i in range(10):
+              if (folder/f"Z{i}").exists():
+                shutil.rmtree(folder/f"Z{i}")
+            (folder/"runningflag").unlink()
+          elif all((folder/f"Z{i}").exists() for i in range(10)):
+            self.logger.info(f"layer {layer} has already been deepzoomed")
+            continue
 
-      self.deepzoom_vips(layer)
-      (folder/"runningflag").touch()
-      self.prunezoom(layer)
-      self.patchsmallimages(layer)
-      self.patchfolderstructure(layer)
-      (folder/"runningflag").unlink()
+        self.deepzoom_vips(layer=layer, TMAcore=TMAcore)
+        (folder/"runningflag").touch()
+        self.prunezoom(layer=layer, TMAcore=TMAcore)
+        self.patchsmallimages(layer=layer, TMAcore=TMAcore)
+        self.patchfolderstructure(layer=layer, TMAcore=TMAcore)
+        (folder/"runningflag").unlink()
 
-    self.writezoomlist()
+      self.writezoomlist(TMAcore=TMAcore)
 
   def run(self, *, cleanup=False, **kwargs):
     if cleanup: self.cleanup()
@@ -280,16 +303,16 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
 
   def inputfiles(self, **kwargs):
     return super().inputfiles(**kwargs) + [
-      *(self.wsifilename(layer) for layer in self.layerszoom),
+      *(self.percoreimagefile(TMAcore) for TMAcore in self.TMAcores),
     ]
 
   @classmethod
   def getworkinprogressfiles(cls, SlideID, *, deepzoomroot, **workflowkwargs):
     deepzoomfolder = deepzoomroot/SlideID
     return itertools.chain(
-      deepzoomfolder.glob("L*_files/Z*/*.png"),
-      deepzoomfolder.glob("L*.dzi"),
-      [deepzoomfolder/"zoomlist.csv"],
+      deepzoomfolder.glob("Core[[]*[]]/L*_files/Z*/*.png"),
+      deepzoomfolder.glob("Core[[]*[]]/L*.dzi"),
+      deepzoomfolder.glob("Core[[]*[]]/zoomlist.csv"),
     )
 
   @property
@@ -298,50 +321,40 @@ class DeepZoomSampleBase(DbloadSampleBase, ZoomFolderSampleBase, DeepZoomFolderS
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, deepzoomroot, checkimages=False, **otherworkflowkwargs):
-    zoomlist = deepzoomroot/SlideID/"zoomlist.csv"
-    layers = cls.getlayerszoom(SlideID=SlideID, **otherworkflowkwargs)
-    result = [
-      zoomlist,
-      *(deepzoomroot/SlideID/f"L{layer}.dzi" for layer in layers),
-    ]
-    if checkimages and zoomlist.exists():
-      files = readtable(zoomlist, DeepZoomFile)
-      result += [deepzoomroot/file.name for file in files]
+    result = []
+    for core in cls.getTMAcores(SlideID=SlideID, **otherworkflowkwargs):
+      folder = deepzoomroot/SlideID/f"Core[1,{core.core_row},{core.core_col}]"
+      zoomlist = folder/"zoomlist.csv"
+      layers = cls.getlayerszoom(SlideID=SlideID, **otherworkflowkwargs)
+      result += [
+        zoomlist,
+        *(folder/f"L{layer}.dzi" for layer in layers),
+      ]
+      if checkimages and zoomlist.exists():
+        files = readtable(zoomlist, DeepZoomFile)
+        result += [deepzoomroot/file.name for file in files]
     return result
 
 @functools.total_ordering
-class DeepZoomFile(MyDataClass):
-  """
-  Metadata for a png file for the zoomlist.csv
-
-  sample: the SlideID
-  zoom: the zoom level
-  marker: the layer number
-  x, y: the x and y index of the tile
-  name: the png filename
-  """
-  sample: str
-  zoom: int
-  marker: int
-  x: int
-  y: int
-  name: pathlib.Path = pathfield()
+class DeepZoomFileTMACore(DeepZoomFile):
+  row: int
+  col: int
 
   def __lt__(self, other):
     """
     The ordering goes by zoom level, then layer, then x, then y.
     This is used to sort for the csv file.
     """
-    return (self.sample, self.zoom, self.marker, self.x, self.y) < (other.sample, other.zoom, other.marker, other.x, other.y)
+    return (self.sample, self.row, self.col, self.zoom, self.marker, self.x, self.y) < (other.sample, self.row, self.col, other.zoom, other.marker, other.x, other.y)
 
-class DeepZoomSample(DeepZoomSampleBase, ZoomFolderSampleComponentTiff, SelectLayersComponentTiffMultiLayer):
+class DeepZoomSampleTMAPerCore(DeepZoomSampleBaseTMAPerCore, ZoomFolderSampleComponentTiff, SelectLayersComponentTiffMultiLayer):
   def __init__(self, *args, layers=None, **kwargs):
     super().__init__(*args, layerscomponenttiff=layers, **kwargs)
 
   multilayercomponenttiff = True
 
   @classmethod
-  def logmodule(self): return "deepzoom"
+  def logmodule(self): return "deepzoompercore"
 
   @property
   def workflowkwargs(self):
@@ -349,20 +362,10 @@ class DeepZoomSample(DeepZoomSampleBase, ZoomFolderSampleComponentTiff, SelectLa
 
   @classmethod
   def workflowdependencyclasses(cls, **kwargs):
-    return [ZoomSample] + super().workflowdependencyclasses(**kwargs)
-
-class DeepZoomSampleIHC(DeepZoomSampleBase, ZoomFolderSampleIHC):
-  @classmethod
-  def logmodule(self): return "deepzoomIHC"
-
-  @classmethod
-  def workflowdependencyclasses(cls, **kwargs):
-    return [ZoomSampleIHC] + super().workflowdependencyclasses(**kwargs)
+    return super().workflowdependencyclasses(**kwargs)
 
 def main(args=None):
-  DeepZoomSample.runfromargumentparser(args)
-def ihc(args=None):
-  DeepZoomSampleIHC.runfromargumentparser(args)
+  DeepZoomSampleTMAPerCore.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

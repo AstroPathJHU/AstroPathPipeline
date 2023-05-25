@@ -14,11 +14,11 @@ from .annotationxmlreader import AnnotationXMLReader
 from .annotationpolygonxmlreader import ThingWithAnnotationInfos, XMLPolygonAnnotationReader, XMLPolygonAnnotationReaderWithOutline
 from .argumentparser import ArgumentParserMoreRoots, DbloadArgumentParser, DeepZoomArgumentParser, GeomFolderArgumentParser, Im3ArgumentParser, ImageCorrectionArgumentParser, MaskArgumentParser, ParallelArgumentParser, SegmentationFolderArgumentParser, SelectRectanglesArgumentParser, TempDirArgumentParser, XMLPolygonFileArgumentParser, ZoomFolderArgumentParser
 from .astropath_logging import dummylogger, getlogger, ThingWithLogger
-from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile
-from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentTiffMultiLayer, RectangleReadComponentTiffSingleLayer, RectangleReadIHCTiff, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffSingleLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer, rectangleoroverlapfilter
+from .csvclasses import AnnotationInfo, constantsdict, ExposureTime, MakeClinicalInfo, MergeConfig, RectangleFile, TMACoreLocation
+from .rectangle import Rectangle, RectangleCollection, RectangleCorrectedIm3MultiLayer, RectangleCorrectedIm3SingleLayer, RectangleReadComponentAndIHCTiff, RectangleReadComponentTiffBase, RectangleReadComponentMultiLayerAndIHCTiff, RectangleReadComponentSingleLayerAndIHCTiff, RectangleReadComponentTiffMultiLayer, RectangleReadComponentTiffSingleLayer, RectangleReadIHCTiff, RectangleReadIm3Base, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffBase, RectangleReadSegmentedComponentTiffMultiLayer, RectangleReadSegmentedComponentTiffSingleLayer, SegmentationRectangle, SegmentationRectangleDeepCell, SegmentationRectangleMesmer, rectangleoroverlapfilter
 from .overlap import Overlap, OverlapCollection, RectangleOverlapCollection
 from .samplemetadata import ControlTMASampleDef, SampleDef
-from .workflowdependency import ThingWithWorkflowKwargs, WorkflowDependencySlideID
+from .workflowdependency import MRODebuggingMetaClass, ThingWithWorkflowKwargs, WorkflowDependencySlideID
 
 class SampleBase(units.ThingWithPscale, ArgumentParserMoreRoots, ThingWithLogger, ThingWithWorkflowKwargs, contextlib.ExitStack):
   """
@@ -1241,7 +1241,7 @@ class ZoomFolderSampleIHC(ZoomFolderSampleBase):
   @classmethod
   def getlayerszoom(cls, **kwargs): return 1, 2, 3
 
-class DeepZoomSampleBase(SampleBase, DeepZoomArgumentParser):
+class DeepZoomFolderSampleBase(SampleBase, DeepZoomArgumentParser):
   """
   Base class for any sample that uses the deepzoomed images.
   deepzoomroot: Root location of the deepzoomed images.
@@ -1305,9 +1305,60 @@ class SelectLayersIm3(SampleBase):
   """
   Base class for any sample that needs a layer selection for the im3.
   """
+  @property
+  @abc.abstractmethod
+  def layersim3(self): pass
+
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "layersim3": self.layersim3,
+    }
+
+class SelectLayersIm3SingleLayer(SelectLayersIm3):
+  """
+  Base class for any sample that needs a layer selection for the im3.
+  """
   def __init__(self, *args, layerim3=None, layersim3=None, **kwargs):
-    if layerim3 != "setlater" != layersim3:
-      self.setlayersim3(layerim3=layerim3, layersim3=layersim3)
+    if layerim3 != "setlater":
+      self.setlayerim3(layerim3=layerim3)
+    super().__init__(*args, **kwargs)
+
+  def setlayerim3(self, layerim3=None):
+    try:
+      self.__layerim3
+    except AttributeError:
+      pass
+    else:
+      raise AttributeError("Already called setlayerim3 for this sample")
+
+    if layerim3 is None:
+      layerim3 = 1
+    self.__layerim3 = layerim3
+
+  @property
+  def layersim3(self):
+    return self.layerim3,
+
+  @property
+  def layerim3(self):
+    return self.__layerim3
+
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "layerim3": self.layerim3,
+    }
+
+class SelectLayersIm3MultiLayer(SelectLayersIm3):
+  """
+  Base class for any sample that needs a layer selection for the im3.
+  """
+  def __init__(self, *args, layersim3=None, **kwargs):
+    if layersim3 != "setlater":
+      self.setlayersim3(layersim3=layersim3)
     super().__init__(*args, **kwargs)
 
   def setlayersim3(self, layerim3=None, layersim3=None):
@@ -1317,16 +1368,6 @@ class SelectLayersIm3(SampleBase):
       pass
     else:
       raise AttributeError("Already called setlayersim3 for this sample")
-    if self.multilayerim3:
-      if layerim3 is not None:
-        raise TypeError(f"Can't provide layerim3 for a multilayer sample {type(self).__name__}")
-    else:
-      if layersim3 is not None:
-        raise TypeError(f"Can't provide layersim3 for a single layer sample {type(self).__name__}")
-      if layerim3 is None:
-        layerim3 = 1
-      self.__layerim3 = layerim3
-      layersim3 = layerim3,
 
     self.__layersim3 = layersim3
 
@@ -1336,32 +1377,68 @@ class SelectLayersIm3(SampleBase):
     if result is None: return range(1, self.nlayersim3+1)
     return result
 
-  @property
-  def layerim3(self):
-    if self.multilayerim3:
-      raise TypeError(f"Can't get layerim3 for a multilayer sample {type(self).__name__}")
-    return self.__layerim3
-
-  multilayerim3 = False #can override in subclasses
-
-class SelectLayersIm3WorkflowSample(SelectLayersIm3, WorkflowSample):
-  @property
-  def workflowkwargs(self):
-    result = {
-      **super().workflowkwargs,
-      "layersim3": self.layersim3,
-    }
-    if not self.multilayerim3:
-      result["layerim3"] = self.layerim3
-    return result
-
 class SelectLayersComponentTiff(SampleBase):
   """
   Base class for any sample that needs a layer selection for the component tiff.
   """
-  def __init__(self, *args, layercomponenttiff=None, layerscomponenttiff=None, **kwargs):
-    if layercomponenttiff != "setlater" != layerscomponenttiff:
-      self.setlayerscomponenttiff(layercomponenttiff=layercomponenttiff, layerscomponenttiff=layerscomponenttiff)
+  @property
+  @abc.abstractmethod
+  def layerscomponenttiff(self): pass
+
+  @property
+  def workflowkwargs(self):
+    result = {
+      **super().workflowkwargs,
+    }
+    try:
+      result["layerscomponenttiff"] = self.layerscomponenttiff
+    except AttributeError: #haven't called setlayerscomponenttiff() yet
+      pass
+    return result
+
+class SelectLayersComponentTiffSingleLayer(SelectLayersComponentTiff):
+  """
+  Base class for any sample that needs a layer selection for the componenttiff.
+  """
+  def __init__(self, *args, layercomponenttiff=None, **kwargs):
+    if layercomponenttiff != "setlater":
+      self.setlayercomponenttiff(layercomponenttiff=layercomponenttiff)
+    super().__init__(*args, **kwargs)
+
+  def setlayercomponenttiff(self, layercomponenttiff=None):
+    try:
+      self.__layercomponenttiff
+    except AttributeError:
+      pass
+    else:
+      raise AttributeError("Already called setlayercomponenttiff for this sample")
+
+    if layercomponenttiff is None:
+      layercomponenttiff = 1
+    self.__layercomponenttiff = layercomponenttiff
+
+  @property
+  def layerscomponenttiff(self):
+    return self.layercomponenttiff,
+
+  @property
+  def layercomponenttiff(self):
+    return self.__layercomponenttiff
+
+  @property
+  def workflowkwargs(self):
+    return {
+      **super().workflowkwargs,
+      "layercomponenttiff": self.layercomponenttiff,
+    }
+
+class SelectLayersComponentTiffMultiLayer(SelectLayersComponentTiff):
+  """
+  Base class for any sample that needs a layer selection for the componenttiff.
+  """
+  def __init__(self, *args, layerscomponenttiff=None, **kwargs):
+    if layerscomponenttiff != "setlater":
+      self.setlayerscomponenttiff(layerscomponenttiff=layerscomponenttiff)
     super().__init__(*args, **kwargs)
 
   def setlayerscomponenttiff(self, layercomponenttiff=None, layerscomponenttiff=None):
@@ -1371,16 +1448,6 @@ class SelectLayersComponentTiff(SampleBase):
       pass
     else:
       raise AttributeError("Already called setlayerscomponenttiff for this sample")
-    if self.multilayercomponenttiff:
-      if layercomponenttiff is not None:
-        raise TypeError(f"Can't provide layercomponenttiff for a multilayer sample {type(self).__name__}")
-    else:
-      if layerscomponenttiff is not None:
-        raise TypeError(f"Can't provide layerscomponenttiff for a single layer sample {type(self).__name__}")
-      if layercomponenttiff is None:
-        layercomponenttiff = 1
-      self.__layercomponenttiff = layercomponenttiff
-      layerscomponenttiff = layercomponenttiff,
 
     self.__layerscomponenttiff = layerscomponenttiff
 
@@ -1390,15 +1457,22 @@ class SelectLayersComponentTiff(SampleBase):
     if result is None: return range(1, self.nlayersunmixed+1)
     return result
 
-  @property
-  def layercomponenttiff(self):
-    if self.multilayercomponenttiff:
-      raise TypeError(f"Can't get layercomponenttiff for a multilayer sample {type(self).__name__}")
-    return self.__layercomponenttiff
+class ReadRectanglesMeta(MRODebuggingMetaClass):
+  def __new__(metacls, clsname, bases, dct, **kwargs):
+    cls = super().__new__(metacls, clsname, bases, dct, **kwargs)
 
-  multilayercomponenttiff = False #can override in subclasses
+    try:
+      rectangletype = cls.rectangletype
+    except AttributeError:
+      raise TypeError(f"trying to define {clsname} without a 'rectangletype' attribute")
 
-class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgumentParser):
+    for base in bases:
+      if isinstance(base, ReadRectanglesMeta) and not issubclass(rectangletype, base.rectangletype):
+        raise ValueError(f"{clsname} inherits from {base.__name__}, but its rectangletype {rectangletype.__name__} does not inherit from {base.rectangletype.__name__}")
+
+    return cls
+
+class ReadRectanglesBase(RectangleCollection, SampleBase, SelectRectanglesArgumentParser, metaclass=ReadRectanglesMeta):
   """
   Base class for any sample that reads HPF info from any source.
   selectrectangles: filter for selecting rectangles (a list of ids or a function)
@@ -1460,29 +1534,11 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
   readlayerfile: whether or not to read from a file with a single layer, e.g. .fw01
   """
 
-  def __init__(self, *args, readlayerfile=None, **kwargs):
-    if readlayerfile is None: readlayerfile = not self.multilayerim3
+  rectangletype = RectangleReadIm3Base
 
-    if self.multilayerim3 and readlayerfile:
-      raise ValueError(f"Can't read a layer file for a multilayer sample {type(self).__name__}")
-
-    self.__readlayerfile = readlayerfile
-
-    super().__init__(*args, **kwargs)
-
-  @property
-  def nlayersim3(self):
-    if self.__readlayerfile: return 1
-    return super().nlayersim3
-  @property
-  def rectangletype(self):
-    if self.multilayerim3:
-      return RectangleReadIm3MultiLayer
-    else:
-      return RectangleReadIm3SingleLayer
   @property
   def rectangleextrakwargs(self):
-    kwargs = {
+    return {
       **super().rectangleextrakwargs,
       "im3folder": self.shardedim3root/self.SlideID,
       "im3filetype": self.im3filetype,
@@ -1490,16 +1546,37 @@ class ReadRectanglesIm3Base(ReadRectanglesBase, Im3SampleBase, SelectLayersIm3):
       "height": self.fheight,
       "nlayersim3": self.nlayersim3,
     }
-    if self.multilayerim3:
-      kwargs.update({
-        "layersim3": self.layersim3,
-      })
-    else:
-      kwargs.update({
-        "readlayerfile": self.__readlayerfile,
-        "layerim3": self.layerim3,
-      })
-    return kwargs
+
+class ReadRectanglesIm3SingleLayer(ReadRectanglesIm3Base, SelectLayersIm3SingleLayer):
+  rectangletype = RectangleReadIm3SingleLayer
+
+  def __init__(self, *args, readlayerfile=None, **kwargs):
+    if readlayerfile is None: readlayerfile = True
+    self.__readlayerfile = readlayerfile
+    super().__init__(*args, **kwargs)
+
+  @property
+  def nlayersim3(self):
+    if self.__readlayerfile: return 1
+    return super().nlayersim3
+
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      "layerim3": self.layerim3,
+      "readlayerfile": self.__readlayerfile,
+      **super().rectangleextrakwargs,
+    }
+
+class ReadRectanglesIm3MultiLayer(ReadRectanglesIm3Base, SelectLayersIm3MultiLayer):
+  rectangletype = RectangleReadIm3MultiLayer
+
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "layersim3": self.layersim3,
+    }
 
 class ReadRectanglesComponentTiffBase(ReadRectanglesBase, SelectLayersComponentTiff):
   """
@@ -1507,28 +1584,31 @@ class ReadRectanglesComponentTiffBase(ReadRectanglesBase, SelectLayersComponentT
   layer or layers: the layer or layers to read, depending on whether
                    the class uses multilayer images or not
   """
-  @property
-  def rectangletype(self):
-    if self.multilayercomponenttiff:
-      return RectangleReadComponentTiffMultiLayer
-    else:
-      return RectangleReadComponentTiffSingleLayer
+  rectangletype = RectangleReadComponentTiffBase
   @property
   def rectangleextrakwargs(self):
-    kwargs = {
+    return {
       **super().rectangleextrakwargs,
       "componenttifffolder": self.componenttiffsfolder,
       "nlayerscomponenttiff": self.nlayersunmixed,
     }
-    if self.multilayercomponenttiff:
-      kwargs.update({
-        "layerscomponenttiff": self.layerscomponenttiff,
-      })
-    else:
-      kwargs.update({
-        "layercomponenttiff": self.layercomponenttiff,
-      })
-    return kwargs
+
+class ReadRectanglesComponentTiffSingleLayer(ReadRectanglesComponentTiffBase, SelectLayersComponentTiffSingleLayer):
+  rectangletype = RectangleReadComponentTiffSingleLayer
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "layercomponenttiff": self.layercomponenttiff,
+    }
+class ReadRectanglesComponentTiffMultiLayer(ReadRectanglesComponentTiffBase, SelectLayersComponentTiffMultiLayer):
+  rectangletype = RectangleReadComponentTiffMultiLayer
+  @property
+  def rectangleextrakwargs(self):
+    return {
+      **super().rectangleextrakwargs,
+      "layerscomponenttiff": self.layerscomponenttiff,
+    }
 
 class ReadRectanglesIHCTiff(ReadRectanglesBase):
   rectangletype = RectangleReadIHCTiff
@@ -1541,33 +1621,16 @@ class ReadRectanglesIHCTiff(ReadRectanglesBase):
     return kwargs
   
 
-class ReadRectanglesComponentAndIHCTiffBase(ReadRectanglesBase, SelectLayersComponentTiff) :
+class ReadRectanglesComponentAndIHCTiffBase(ReadRectanglesComponentTiffBase, ReadRectanglesIHCTiff) :
   """
   Base class for any sample that loads images from an IHC .tif file
   """
-  @property
-  def rectangletype(self):
-    if self.multilayercomponenttiff:
-      return RectangleReadComponentMultiLayerAndIHCTiff
-    else:
-      return RectangleReadComponentSingleLayerAndIHCTiff
-  @property
-  def rectangleextrakwargs(self):
-    kwargs =  {
-      **super().rectangleextrakwargs,
-      'componenttifffolder': self.componenttiffsfolder,
-      'ihctifffolder':self.ihctiffsfolder,
-      'nlayerscomponenttiff': self.nlayersunmixed,
-      }
-    if self.multilayercomponenttiff:
-      kwargs.update({
-        "layerscomponenttiff": self.layerscomponenttiff,
-      })
-    else:
-      kwargs.update({
-        "layercomponenttiff": self.layercomponenttiff,
-      })
-    return kwargs
+  rectangletype = RectangleReadComponentAndIHCTiff
+
+class ReadRectanglesComponentAndIHCTiffSingleLayer(ReadRectanglesComponentAndIHCTiffBase, ReadRectanglesComponentTiffSingleLayer) :
+  rectangletype = RectangleReadComponentSingleLayerAndIHCTiff
+class ReadRectanglesComponentAndIHCTiffMultiLayer(ReadRectanglesComponentAndIHCTiffBase, ReadRectanglesComponentTiffMultiLayer) :
+  rectangletype = RectangleReadComponentMultiLayerAndIHCTiff
 
 class ReadRectanglesOverlapsBase(ReadRectanglesBase, RectangleOverlapCollection, OverlapCollection, SampleBase):
   """
@@ -1975,19 +2038,17 @@ class ImageCorrectionSample(ImageCorrectionArgumentParser) :
     elif len(corrs)==3 :
       return f'corrected for {corrs[0]}, {corrs[1]}, and {corrs[2]}'
 
-class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML) :
+class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML, ReadRectanglesIm3SingleLayer) :
   """
   Base class for any sample that reads single layers of rectangles from the XML metadata,
   loads the rectangle images from im3 files, and corrects the rectangle images for differences in exposure time,
   flatfielding effects, and/or warping effects
   """
 
-  multilayerim3 = False #The original files are multilayer, we're just going to be working with one of them
   rectangletype = RectangleCorrectedIm3SingleLayer
 
-  def __init__(self,*args,layer=1,**kwargs) :
-    self.__layer = layer
-    super().__init__(*args,layerim3=layer,readlayerfile=False,**kwargs)
+  def __init__(self,*args,**kwargs) :
+    super().__init__(*args,readlayerfile=False,**kwargs)
     self.__med_et = None
 
   def initrectangles(self) :
@@ -1998,7 +2059,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     #find the median exposure time
     slide_exp_times = np.zeros(shape=(len(self.rectangles)))
     for ir,r in enumerate(self.rectangles) :
-        slide_exp_times[ir] = r.allexposuretimes[self.__layer-1]
+        slide_exp_times[ir] = r.allexposuretimes[self.layerim3-1]
     self.__med_et = np.median(slide_exp_times)
     for r in self.rectangles :
         r.set_med_et(self.__med_et)
@@ -2014,7 +2075,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     if self.skip_et_corrections or self.et_offset_file is None :
       return None
 
-    self.logger.infoonenter(f'Copying exposure time offset for {self.SlideID} layer {self.__layer} from file {self.et_offset_file}')
+    self.logger.infoonenter(f'Copying exposure time offset for {self.SlideID} layer {self.layerim3} from file {self.et_offset_file}')
     #read the offset from the Full.xml file
     if self.et_offset_file==self.fullxmlfile :
       tree = ET.parse(self.et_offset_file)
@@ -2029,9 +2090,9 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
     #read the offset from the LayerOffset file
     else :
       layer_offsets_from_file = readtable(self.et_offset_file,LayerOffset)
-      offsets_to_return = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==self.__layer]
+      offsets_to_return = [lo.offset for lo in layer_offsets_from_file if lo.layer_n==self.layerim3]
       if len(offsets_to_return)!=1 :
-        raise ValueError(f'ERROR: found {len(offsets_to_return)} entries for layer {self.__layer} in file {self.et_offset_file}')
+        raise ValueError(f'ERROR: found {len(offsets_to_return)} entries for layer {self.layerim3} in file {self.et_offset_file}')
       return offsets_to_return[0]
 
   @methodtools.lru_cache()
@@ -2043,9 +2104,9 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
       return None
 
     warpsummaries = readtable(self.warping_file,WarpingSummary)
-    relevant_warps = [ws for ws in warpsummaries if self.__layer in range(ws.first_layer_n,ws.last_layer_n+1)]
+    relevant_warps = [ws for ws in warpsummaries if self.layerim3 in range(ws.first_layer_n,ws.last_layer_n+1)]
     if len(relevant_warps)!=1 :
-      raise ValueError(f'ERROR: found {len(relevant_warps)} warps for layer {self.__layer} in {self.warping_file}')
+      raise ValueError(f'ERROR: found {len(relevant_warps)} warps for layer {self.layerim3} in {self.warping_file}')
     ws = relevant_warps[0]
     warp = CameraWarp(ws.n,ws.m,ws.cx,ws.cy,ws.fx,ws.fy,ws.k1,ws.k2,ws.k3,ws.p1,ws.p2)
     self.logger.infoonenter(f'Warping corrections will be applied from {self.__warping_file}')
@@ -2060,7 +2121,7 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
                                self.rectangles[0].im3shape[0],self.rectangles[0].im3shape[1],self.nlayersim3,
                                np.float64)
     self.logger.infoonenter(f'Flatfield corrections will be applied from {self.flatfield_file}')
-    return flatfield[:,:,self.__layer-1]
+    return flatfield[:,:,self.layerim3-1]
 
   @property
   def rectangleextrakwargs(self):
@@ -2084,13 +2145,12 @@ class ReadCorrectedRectanglesIm3SingleLayerFromXML(ImageCorrectionSample, ReadRe
         'layer': parsed_args_dict.pop('layer'),
     }
 
-class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML) :
+class ReadCorrectedRectanglesIm3MultiLayerFromXML(ImageCorrectionSample, ReadRectanglesIm3FromXML, ReadRectanglesIm3MultiLayer) :
   """
   Base class for any sample that reads multilayer rectangles from the XML metadata, 
   loads the rectangle images from im3 files, and corrects the rectangle images for differences in exposure time, flatfielding effects, and/or warping
   """
 
-  multilayerim3 = True
   rectangletype = RectangleCorrectedIm3MultiLayer
 
   def __init__(self,*args,**kwargs) :
@@ -2343,7 +2403,7 @@ class SampleWithSegmentationFolder(SampleWithSegmentations, SegmentationFolderAr
         outputdir = outputdir/SlideID
     return outputdir
 
-class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentTiffBase):
+class InformSegmentationSampleBase(SampleWithSegmentations, ReadRectanglesComponentTiffBase):
   @classmethod
   def segmentationalgorithm(cls):
     return "inform"
@@ -2412,12 +2472,7 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
       idx -= self.nsegmentations
     return self.segmentationids[idx-1]
 
-  @property
-  def rectangletype(self):
-    if self.multilayercomponenttiff:
-      return RectangleReadSegmentedComponentTiffMultiLayer
-    else:
-      return RectangleReadSegmentedComponentTiffSingleLayer
+  rectangletype = RectangleReadSegmentedComponentTiffBase
   @property
   def rectangleextrakwargs(self):
     kwargs = {
@@ -2426,7 +2481,14 @@ class InformSegmentationSample(SampleWithSegmentations, ReadRectanglesComponentT
     }
     return kwargs
 
-class ReadRectanglesDbloadSegmentedComponentTiff(ReadRectanglesDbloadComponentTiff, InformSegmentationSample):
+class InformSegmentationSampleMultiLayer(InformSegmentationSampleBase, ReadRectanglesComponentTiffMultiLayer):
+  rectangletype = RectangleReadSegmentedComponentTiffMultiLayer
+class InformSegmentationSampleSingleLayer(InformSegmentationSampleBase, ReadRectanglesComponentTiffSingleLayer):
+  rectangletype = RectangleReadSegmentedComponentTiffSingleLayer
+
+class ReadRectanglesDbloadSegmentedComponentTiffMultiLayer(ReadRectanglesDbloadComponentTiff, InformSegmentationSampleMultiLayer):
+  pass
+class ReadRectanglesDbloadSegmentedComponentTiffSingleLayer(ReadRectanglesDbloadComponentTiff, InformSegmentationSampleSingleLayer):
   pass
 
 class DeepCellSegmentationSampleBase(SampleWithSegmentationFolder):
@@ -2450,3 +2512,25 @@ class MesmerSegmentationSample(DeepCellSegmentationSampleBase):
   @classmethod
   def segmentationalgorithm(cls):
     return "mesmer"
+
+class SampleWithPerCoreImages(SampleBase):
+  @classmethod
+  def getpercoreimagesfolder(cls, *, informdataroot, SlideID, **kwargs):
+    return informdataroot/SlideID/"inform_data"/"per_core_images"
+  @property
+  def percoreimagesfolder(self):
+    return self.getpercoreimagesfolder(**self.workflowkwargs)
+  @classmethod
+  def getTMAcores(cls, *, SlideID, **kwargs):
+    folder = cls.getpercoreimagesfolder(SlideID=SlideID, **kwargs)
+    return readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder, "SlideID": SlideID, "pscale": 1})
+  @property
+  def TMAcores(self):
+    folder = self.percoreimagesfolder
+    return self.readtable(folder/"core_locations.csv", TMACoreLocation, extrakwargs={"percoreimagesfolder": folder, "SlideID": self.SlideID})
+
+class DeepZoomFolderSampleBaseTMAPerCore(DeepZoomFolderSampleBase, SampleWithPerCoreImages):
+  def deepzoomfolderTMAcore(self, TMAcore):
+    row = TMAcore.core_row
+    col = TMAcore.core_col
+    return self.deepzoomfolder/f"Core[1,{row},{col}]"

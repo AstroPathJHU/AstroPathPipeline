@@ -23,12 +23,17 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=None,useGPU=True,gputhread=None,gpufftdict=None,layers=None,**kwargs) :
-        super().__init__(*args,layersim3=layers,**kwargs)
+    def __init__(self,*args,workingdir=None,useGPU=True,gputhread=None,gpufftdict=None,layers=None,layer=None,**kwargs) :
         #make sure the user is only specifying a single layer
-        if len(self.layersim3)!=1 :
-            errmsg = f'ERROR: a WarpingSample can only be run for one layer at a time but layers = {self.layersim3}'
-            raise RuntimeError(errmsg)
+        if layer is not None is not layers:
+            raise ValueError('Provided both layer and layers')
+        elif layer is None is not layers:
+            try:
+                layer, = layers
+            except ValueError:
+                errmsg = f'ERROR: a WarpingSample can only be run for one layer at a time but layers = {layers}'
+                raise RuntimeError(errmsg)
+        super().__init__(*args,layerim3=layer,**kwargs)
         if self.et_offset_file is None :
             raise RuntimeError('ERROR: must supply an exposure time offset file to fit for warping!')
         if self.flatfield_file is None :
