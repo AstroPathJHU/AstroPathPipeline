@@ -1,12 +1,12 @@
 from ...hpfs.flatfield.meanimagesample import MeanImageSampleIm3Tissue
 from ...shared.cohort import GeomFolderCohort, Im3Cohort, MaskCohort, PhenotypeFolderCohort
 from ...shared.rectangle import AstroPathTissueMaskRectangle, GeomLoadRectangle, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, PhenotypedRectangle
-from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, InformSegmentationSample, MaskSampleBase, ReadRectanglesComponentTiffFromXML, ReadRectanglesIm3FromXML, TissueSampleBase
+from ...shared.sample import CellPhenotypeSampleBase, GeomSampleBase, InformSegmentationSampleMultiLayer, MaskSampleBase, ReadRectanglesComponentTiffFromXML, ReadRectanglesIm3FromXML, ReadRectanglesIm3SingleLayer, TissueSampleBase
 
 class InputCheckerRectangle(RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffMultiLayer, GeomLoadRectangle, PhenotypedRectangle, AstroPathTissueMaskRectangle):
   pass
 
-class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTiffFromXML, GeomSampleBase, InformSegmentationSample, CellPhenotypeSampleBase, MaskSampleBase):
+class InputCheckerSampleBase(ReadRectanglesIm3FromXML, ReadRectanglesComponentTiffFromXML, GeomSampleBase, InformSegmentationSampleMultiLayer, ReadRectanglesIm3SingleLayer, CellPhenotypeSampleBase, MaskSampleBase):
   rectangletype = InputCheckerRectangle
   multilayercomponenttiff = True
 
