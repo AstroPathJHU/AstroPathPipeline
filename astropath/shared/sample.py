@@ -1459,7 +1459,7 @@ class SelectLayersComponentTiffMultiLayer(SelectLayersComponentTiff):
 
 class ReadRectanglesMeta(MRODebuggingMetaClass):
   def __new__(metacls, clsname, bases, dct, **kwargs):
-    cls = super().__new__(metacls, clsname, bases, dct)
+    cls = super().__new__(metacls, clsname, bases, dct, **kwargs)
 
     try:
       rectangletype = cls.rectangletype

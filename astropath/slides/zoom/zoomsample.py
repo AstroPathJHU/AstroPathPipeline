@@ -1,7 +1,7 @@
 import abc, contextlib, cv2, datetime, itertools, job_lock, methodtools, more_itertools, numpy as np, os, pathlib, PIL, re, skimage.transform
 
 from ...shared.argumentparser import CleanupArgumentParser, SelectLayersArgumentParser
-from ...shared.sample import ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, ReadRectanglesIHCTiff, TempDirSample, TissueSampleBase, TMASampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
+from ...shared.sample import ReadRectanglesComponentTiffMultiLayer, ReadRectanglesDbload, ReadRectanglesDbloadComponentTiff, ReadRectanglesIHCTiff, TempDirSample, TissueSampleBase, TMASampleBase, WorkflowSample, ZoomFolderSampleBase, ZoomFolderSampleComponentTiff, ZoomFolderSampleIHC
 from ...utilities.miscfileio import memmapcontext, rm_missing_ok, rmtree_missing_ok
 from ...utilities.miscimage import check_image_integrity, vips_format_dtype, vips_sinh
 from ...utilities.miscmath import floattoint
@@ -614,7 +614,7 @@ class ZoomSampleBase(AstroPathTissueMaskSample, WSISampleBase, ZoomFolderSampleB
     result["tifflayers"] = self.tifflayers
     return result
 
-class ZoomSampleComponentTiffBase(ZoomSampleBase, ZoomFolderSampleComponentTiff, ReadRectanglesDbloadComponentTiff, ZoomArgumentParserComponentTiff):
+class ZoomSampleComponentTiffBase(ZoomSampleBase, ZoomFolderSampleComponentTiff, ReadRectanglesDbloadComponentTiff, ReadRectanglesComponentTiffMultiLayer, ZoomArgumentParserComponentTiff):
   rectangletype = FieldReadComponentTiffMultiLayer
   multilayercomponenttiff = True
 

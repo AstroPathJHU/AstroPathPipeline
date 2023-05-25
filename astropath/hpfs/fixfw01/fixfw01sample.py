@@ -1,6 +1,6 @@
 import contextlib, dataclassy, job_lock, numpy as np
 from ...shared.argumentparser import Im3ArgumentParser, SelectLayersArgumentParser, SelectRectanglesArgumentParser
-from ...shared.sample import ReadRectanglesDbloadIm3, ReadRectanglesIm3Base, ReadRectanglesIm3FromXML, SelectLayersIm3WorkflowSample, TissueSampleBase
+from ...shared.sample import ReadRectanglesDbloadIm3, ReadRectanglesIm3SingleLayer, ReadRectanglesIm3FromXML, TissueSampleBase, WorkflowSample
 from ...slides.prepdb.prepdbsample import PrepDbSample
 from ...utilities.miscfileio import CorruptMemmapError, memmapcontext, rm_missing_ok
 
@@ -38,12 +38,16 @@ class FixFW01ArgumentParser(SelectLayersArgumentParser, SelectRectanglesArgument
   @classmethod
   def defaultim3filetype(cls): return "flatWarp"
 
-class FixFW01SampleBase(ReadRectanglesIm3Base, SelectLayersIm3WorkflowSample, TissueSampleBase, FixFW01ArgumentParser):
-  def __init__(self, *args, layer=None, layers=None, **kwargs):
-    if layers is not None and layer is None:
-      layer, = layers
-      layers = None
-    super().__init__(*args, layerim3=layer, layersim3=layers, readlayerfile=False, **kwargs)
+class FixFW01SampleBase(ReadRectanglesIm3SingleLayer, WorkflowSample, TissueSampleBase, FixFW01ArgumentParser):
+  def __init__(self, *args, layers=None, **kwargs):
+    if layers is None:
+      layer = layers
+    else:
+      try:
+        layer, = layers
+      except ValueError:
+        raise ValueError("Can only run for one layer at a time")
+    super().__init__(*args, layerim3=layer, readlayerfile=False, **kwargs)
 
   @classmethod
   def logmodule(self): return "fixfw01"
