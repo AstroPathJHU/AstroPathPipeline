@@ -23,11 +23,11 @@ class WarpingSample(ReadCorrectedRectanglesOverlapsIm3SingleLayerFromXML, Workfl
 
     #################### PUBLIC FUNCTIONS ####################
 
-    def __init__(self,*args,workingdir=None,useGPU=True,gputhread=None,gpufftdict=None,layers=None,**kwargs) :
+    def __init__(self,*args,workingdir=None,useGPU=True,gputhread=None,gpufftdict=None,layers=None,layer=None,**kwargs) :
         #make sure the user is only specifying a single layer
-        if layers is None:
-            layer = layers
-        else:
+        if layer is not None is not layers:
+            raise ValueError('Provided both layer and layers')
+        elif layer is None is not layers:
             try:
                 layer, = layers
             except ValueError:

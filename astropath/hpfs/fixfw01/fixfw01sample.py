@@ -39,14 +39,15 @@ class FixFW01ArgumentParser(SelectLayersArgumentParser, SelectRectanglesArgument
   def defaultim3filetype(cls): return "flatWarp"
 
 class FixFW01SampleBase(ReadRectanglesIm3SingleLayer, WorkflowSample, TissueSampleBase, FixFW01ArgumentParser):
-  def __init__(self, *args, layers=None, **kwargs):
-    if layers is None:
-      layer = layers
-    else:
+  def __init__(self, *args, layers=None, layer=None, **kwargs):
+    if layer is not None is not layers:
+      raise ValueError("Provided both layer and layers")
+    elif layer is None is not layers:
       try:
         layer, = layers
       except ValueError:
-        raise ValueError("Can only run for one layer at a time")
+        errmsg = f"can only run for one layer at a time but layers = {layers}"
+        raise RuntimeError(errmsg)
     super().__init__(*args, layerim3=layer, readlayerfile=False, **kwargs)
 
   @classmethod
