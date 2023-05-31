@@ -23,9 +23,9 @@ def printrms(**kwargs):
   shiftaffine = units.nominal_values(shiftaffine)
   shifted = units.nominal_values(shifted)
 
-  print(units.np.std(raw, axis=0))
-  print(units.np.std(shiftaffine, axis=0))
-  print(units.np.std(shifted, axis=0))
+  A.printlogger.debug(units.np.std(raw, axis=0))
+  A.printlogger.debug(units.np.std(shiftaffine, axis=0))
+  A.printlogger.debug(units.np.std(shifted, axis=0))
 
 if __name__ == "__main__":
   p = argparse.ArgumentParser()

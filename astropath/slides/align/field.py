@@ -1,6 +1,8 @@
-import dataclassy, numpy as np
-from ...baseclasses.rectangle import Rectangle, RectangleReadComponentTiff, RectangleReadComponentTiffMultiLayer, RectangleReadIm3, RectangleReadIm3MultiLayer
-from ...baseclasses.overlap import Overlap
+import dataclassy, methodtools, more_itertools, numpy as np
+from ...shared.csvclasses import Vertex
+from ...shared.polygon import DataClassWithPolygon, Polygon, polygonfield, SimplePolygon
+from ...shared.rectangle import Rectangle, RectangleCollection, RectangleList, RectangleReadComponentTiffSingleLayer, RectangleReadComponentTiffMultiLayer, RectangleReadIHCTiff, RectangleReadIm3MultiLayer, RectangleReadIm3SingleLayer, RectangleReadSegmentedComponentTiffSingleLayer, RectangleReadSegmentedComponentTiffMultiLayer
+from ...shared.overlap import Overlap
 from ...utilities import units
 from ...utilities.units.dataclasses import distancefield
 
@@ -22,19 +24,18 @@ class Field(Rectangle):
   gx, gy: index of the row and column within the island
   """
 
-  __pixelsormicrons = "pixels"
-  ix: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
-  iy: distancefield(pixelsormicrons=__pixelsormicrons, dtype=int)
+  ix: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
+  iy: units.Distance = distancefield(pixelsormicrons="pixels", dtype=int)
   gc: int
-  px: distancefield(pixelsormicrons=__pixelsormicrons)
-  py: distancefield(pixelsormicrons=__pixelsormicrons)
-  cov_x_x: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
-  cov_x_y: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
-  cov_y_y: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
-  mx1: distancefield(pixelsormicrons=__pixelsormicrons)
-  mx2: distancefield(pixelsormicrons=__pixelsormicrons)
-  my1: distancefield(pixelsormicrons=__pixelsormicrons)
-  my2: distancefield(pixelsormicrons=__pixelsormicrons)
+  px: units.Distance = distancefield(pixelsormicrons="pixels")
+  py: units.Distance = distancefield(pixelsormicrons="pixels")
+  cov_x_x: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_x_y: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_y_y: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  mx1: units.Distance = distancefield(pixelsormicrons="pixels")
+  mx2: units.Distance = distancefield(pixelsormicrons="pixels")
+  my1: units.Distance = distancefield(pixelsormicrons="pixels")
+  my2: units.Distance = distancefield(pixelsormicrons="pixels")
   gx: int
   gy: int
 
@@ -90,6 +91,16 @@ class Field(Rectangle):
   def mxbox(self):
     return np.array([self.my1, self.mx1, self.my2, self.mx2])
 
+  @methodtools.lru_cache()
+  @property
+  def boundary(self):
+    my1, mx1, my2, mx2 = self.mxbox // self.onepixel * self.onepixel
+    Px = mx1, mx2, mx2, mx1
+    Py = my1, my1, my2, my2
+    vertices = [Vertex(regionid=None, vid=i, im3x=x, im3y=y, pscale=self.pscale, annoscale=self.pscale) for i, (x, y) in enumerate(more_itertools.zip_equal(Px, Py))]
+    poly = SimplePolygon(vertices=vertices, pscale=self.pscale)
+    return FieldBoundary(n=self.n, k=1, poly=poly, pscale=self.pscale)
+
 class FieldOverlap(Overlap):
   """
   An Overlap with additional information about the stitching.
@@ -97,11 +108,10 @@ class FieldOverlap(Overlap):
   in the positions of the two HPFs described by the overlap.
   """
 
-  __pixelsormicrons = "pixels"
-  cov_x1_x2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
-  cov_x1_y2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
-  cov_y1_x2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
-  cov_y1_y2: distancefield(pixelsormicrons=__pixelsormicrons, power=2)
+  cov_x1_x2: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_x1_y2: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_y1_x2: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  cov_y1_y2: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
 
   @classmethod
   def transforminitargs(cls, *args, overlap=None, **kwargs):
@@ -122,7 +132,7 @@ class FieldOverlap(Overlap):
       **kwargs,
     )
 
-class FieldReadComponentTiff(Field, RectangleReadComponentTiff):
+class FieldReadComponentTiffSingleLayer(Field, RectangleReadComponentTiffSingleLayer):
   """
   A Field that can read a single layer of the component tiff
   """
@@ -132,7 +142,17 @@ class FieldReadComponentTiffMultiLayer(Field, RectangleReadComponentTiffMultiLay
   A Field that can read multiple layers of the component tiff
   """
 
-class FieldReadIm3(Field, RectangleReadIm3):
+class FieldReadSegmentedComponentTiffSingleLayer(Field, RectangleReadSegmentedComponentTiffSingleLayer):
+  """
+  A Field that can read a single layer of the segmented component tiff
+  """
+
+class FieldReadSegmentedComponentTiffMultiLayer(Field, RectangleReadSegmentedComponentTiffMultiLayer):
+  """
+  A Field that can read multiple layers of the segmented component tiff
+  """
+
+class FieldReadIm3SingleLayer(Field, RectangleReadIm3SingleLayer):
   """
   A Field that can read a single layer of the im3
   """
@@ -141,3 +161,77 @@ class FieldReadIm3MultiLayer(Field, RectangleReadIm3MultiLayer):
   """
   A Field that can read multiple layers of the im3
   """
+
+class FieldReadIHCTiff(Field, RectangleReadIHCTiff):
+  """
+  A Field that can read the IHC tiff
+  """
+
+class FieldCollection(RectangleCollection):
+  def showalignedrectanglelayout(self, *, showplot=None, saveas=None, rid=True):
+    import matplotlib.patches as patches, matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    xmin = float("inf") * self.onepixel
+    xmax = -float("inf") * self.onepixel
+    ymin = float("inf") * self.onepixel
+    ymax = -float("inf") * self.onepixel
+    basecolors = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [0.5, 1, 0.5]])
+    ncolordivisions = 7
+    for i, r in enumerate(self.rectangles):
+      basecolor = basecolors[r.gc % len(basecolors)]
+      color = basecolor * ((i%ncolordivisions + 1) / ncolordivisions + 1) / 2
+      x, y = xy = units.nominal_values(r.pxvec)
+      width, height = shape = r.shape
+      xmin = min(xmin, x)
+      xmax = max(xmax, x+width)
+      ymin = min(ymin, y)
+      ymax = max(ymax, y+height)
+      patch = patches.Rectangle(xy / r.onepixel, *shape / r.onepixel, color=color, alpha=0.5)
+      ax.add_patch(patch)
+      if rid: ax.text(*(xy+shape/2) / r.onepixel, str(r.n), ha="center", va="center")
+
+    for r in self.rectangles:
+      x, y = xy = np.array([r.mx1, r.my1])
+      width, height = shape = np.array([r.mx2 - r.mx1, r.my2 - r.my1])
+      patch = patches.Rectangle(xy / r.onepixel, *shape / r.onepixel, edgecolor="white", fill=False)
+      ax.add_patch(patch)
+
+    margin = .05
+    left = float((xmin - (xmax-xmin)*margin) / r.onepixel)
+    right = float((xmax + (xmax-xmin)*margin) / r.onepixel)
+    top = float((ymin - (ymax-ymin)*margin) / r.onepixel)
+    bottom = float((ymax + (ymax-ymin)*margin) / r.onepixel)
+
+    ax.set_xlim(left=left, right=right)
+    ax.set_ylim(top=top, bottom=bottom)
+    ax.set_aspect('equal', adjustable='box')
+
+    if showplot is None: showplot = saveas is None
+    if showplot:
+      plt.show()
+    if saveas is not None:
+      fig.savefig(saveas)
+    if not showplot:
+      plt.close()
+
+class FieldList(RectangleList, FieldCollection): pass
+
+class FieldBoundary(DataClassWithPolygon):
+  """
+  Data class for storing a field boundary.
+
+  n: index of the HPF
+  k: index of the boundary within the HPF
+  poly: gdal polygon string for the boundary
+  """
+  @classmethod
+  def transforminitargs(cls, *args, pscale, **kwargs):
+    if "annoscale" not in kwargs: kwargs["annoscale"] = pscale
+    return super().transforminitargs(
+      *args,
+      pscale=pscale,
+      **kwargs,
+    )
+  n: int
+  k: int
+  poly: Polygon = polygonfield()

@@ -11,7 +11,7 @@ The code is driven by the files located in a main processing folder, named the `
   - ```Inform[string]```: The status of the inform algorithm for classification and segmentation. Should be indicated as blank (not started), *Started*, or *Done*.
   - ```Merged[string]```: The status of the inform processing and merge. Should be indicated as blank (not started), *Started*, or *Done*.
   - ```QC[string]```: The status of the quality control assessment of samples. Should be indicated as blank (not started), *Started*, or *Done*.
-  - ```Annotations[string]```: Whether or not the slide annotations have been created for a panel. Annotation directions can be found in [5.12.](../../hpfs/transferanno#512-transfer-annotations). Should be indicated as blank (not started), *Started*, or *Done*.
+  - ```Annotations[string]```: Whether or not the slide annotations have been created for a panel. Annotation directions can be found in [5.11.](../../hpfs/transferanno#511-transfer-annotations). Should be indicated as blank (not started), *Started*, or *Done*.
   - ```ReadyForDB[string]```: Indicates whether final checks for the manual interaction steps with the data have been complete. ***A full checklist is still in progress.***. Should be indicated as blank (not started), *Started*, or *Done*.
   - ```DBLoad[string]```: The current status of the database load. Should be indicated as blank (not started), *Started*, or *Done*.
 - *AstropathConfig.csv*
@@ -21,7 +21,7 @@ Project, Cohort, Dname, Delete, Space_TB, Process_Merge
 ```
  - ```Delete[string]```: An option of the ```transferdeamon``` module, input is either *yes* or *no* and is not case sensitive. Indicates whether or not to automatically delete data from the source directory after it is transferred to the ```<dpath>\<dname>```, compressed to the ```<Cpath>\<Dname>``` location, and verfied using *checksums*. ([Path name definitions](Definitions.md/#432-path-definitions))
  - ```Space_TB[float]```: updated by the ```mergeloop``` module to verify that there is enough space on the server for different processes, add a zero for intializing a project
- - ```Process_Merge[string]```: An option of the ```mergeloop``` module, input is either *yes* or *no* and is not case sensitive. Indicates whether or not to run the *mergeloop* module for that project. Once data is validated through QC ([documentation here](../../hpfs/inform_processing/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#5106-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)) it is usually best to turn off the ```mergeloop``` processing for that ```Project```.
+ - ```Process_Merge[string]```: An option of the ```mergeloop``` module, input is either *yes* or *no* and is not case sensitive. Indicates whether or not to run the *mergeloop* module for that project. Once data is validated through QC ([documentation here](../../hpfs/vminform/docs/EvaluatinginFormPhenotypeQCOutputfortheAstroPathPipeline.md#586-evaluating-inform-phenotype-qc-output-for-the-astropath-pipeline)) it is usually best to turn off the ```mergeloop``` processing for that ```Project```.
 - *AstropathControldef.csv*
   - This file is updated by the code and records the control information. Users do not need to open, create, or modify this file. The columns are as follows:
   ```

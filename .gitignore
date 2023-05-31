@@ -1,3 +1,8 @@
+# The model/pkl/json files needed by nnU-Net
+/astropath/slides/segmentation/nnunet_models/**/*.model
+/astropath/slides/segmentation/nnunet_models/**/*.pkl
+/astropath/slides/segmentation/nnunet_models/**/*.json
+
 *.pyc
 .ipynb_checkpoints
 # Compiled source #
@@ -9,6 +14,7 @@
 *.o
 *.so
 *.egg-info
+/build
 
 # Packages #
 ############

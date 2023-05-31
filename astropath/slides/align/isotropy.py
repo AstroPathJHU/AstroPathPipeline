@@ -22,7 +22,7 @@ def isotropy(alignsample, maxfreq=5, bins=24, showplot=None, saveas=None, figure
   x = np.linspace(-np.pi, np.pi, 1001)
   y = 0*x
   for i in range(maxfreq):
-    print(f"{i:3d}  {cosintegrals[i]:.3f}  {sinintegrals[i]:.3f}")
+    alignsample.printlogger.info(f"{i:3d}  {cosintegrals[i]:.3f}  {sinintegrals[i]:.3f}")
     y += (cosintegrals[i] * np.cos(i*x) + sinintegrals[i] * np.sin(i*x)) / (2 if i==0 else 1) * (2*np.pi / bins)
     plt.plot(x, y, label=f"{i}")
 

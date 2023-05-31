@@ -77,7 +77,10 @@ def solve(matrix, vector):
     resultentrypower = {v-m for m, v in zip(columnpower, vectorpower) if m is not None and v is not None}
     if len(resultentrypower) > 1:
       raise UnitsError(f"column {i} of matrix has powers {columnpower} which aren't consistent with the vector powers {vectorpower}")
-    resultpowers.append(resultentrypower.pop())
+    if resultentrypower:
+      resultpowers.append(resultentrypower.pop())
+    else:
+      resultpowers.append(None)
 
   return distances(pixels=solvepixels, pscale=pscale, power=resultpowers)
 

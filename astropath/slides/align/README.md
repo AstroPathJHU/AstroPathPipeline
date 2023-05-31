@@ -1,16 +1,16 @@
 # 6.3. Align
 
 This document describes how to technically run the align stage of the pipeline.
-For a more detailed mathematical explanation, see [this document](README.pdf).
+For a more detailed mathematical explanation, see [this document](../../../documents/alignment/alignment_compiled.pdf).
 
-To run alignment on single slide, run:
+To run alignment on a single slide, run:
 ```
-alignsample \\<Dpath>\<Dname> \\<FWpath>\<Dname> <SlideID>
+alignsample \\<Dpath>\<Dname> \\<FWpath> <SlideID>
 ```
 
 To run alignment on a whole cohort of slides, run:
 ```
-aligncohort \\<Dpath>\<Dname> \\<FWpath>\<Dname>
+aligncohort \\<Dpath>\<Dname> \\<FWpath>
 ```
 
 (See [here](../../scans/docs/Definitions.md#43-definitions) for definitions of the terms in `<angle brackets>`.)
@@ -24,3 +24,4 @@ be created:
  - `<SlideID>_fields.csv` contains the final stitched positions of the HPFs.
  - `<SlideID>_fieldoverlaps.csv` contains the covariance matrix elements for the corresponding to the positions of adjacent HPFs, which can be used to get the error on the relative positions of those HPFs.
  - `<SlideID>_affine.csv` contains the affine matrix and its error.
+ - `<SlideID>_fieldGeometry.csv` contains the gdal polygons describing the HPF boundaries.

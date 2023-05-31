@@ -1,12 +1,21 @@
-from ...baseclasses.cohort import DbloadCohort, WorkflowCohort
-from .prepdbsample import PrepDbSample
+from ...shared.cohort import DbloadCohort, WorkflowCohort
+from .prepdbsample import PrepDbArgumentParser, PrepDbSample, PrepDbSampleTMA
 
-class PrepDbCohort(DbloadCohort, WorkflowCohort):
+class PrepDbCohort(DbloadCohort, WorkflowCohort, PrepDbArgumentParser):
   sampleclass = PrepDbSample
+  TMAsampleclass = PrepDbSampleTMA
   __doc__ = sampleclass.__doc__
 
-  def runsample(self, sample):
-    return sample.writemetadata()
+  def __init__(self, *args, margin, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__margin = margin
+
+  @property
+  def initiatesamplekwargs(self):
+    return {
+      **super().initiatesamplekwargs,
+      "margin": self.__margin,
+    }
 
 def main(args=None):
   PrepDbCohort.runfromargumentparser(args)

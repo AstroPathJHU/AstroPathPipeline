@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt, methodtools, more_itertools, numpy as np, typing, uncertainties as unc
 
-from ...baseclasses.overlap import Overlap
+from ...shared.overlap import Overlap
 from ...utilities import units
-from ...utilities.dataclasses import MetaDataAnnotation
-from ...utilities.misc import covariance_matrix, floattoint
+from ...utilities.dataclasses import MetaDataAnnotation, MyDataClassUnsafeHash
+from ...utilities.miscmath import covariance_matrix, floattoint
 from ...utilities.units.dataclasses import DataClassWithPscale, distancefield
 from .computeshift import computeshift, mse, shiftimg
 
@@ -30,6 +30,12 @@ class AlignmentComparison(abc.ABC):
     """
     The relative shift of the two images
     """
+  @property
+  @abc.abstractmethod
+  def dxpscale(self):
+    """
+    The pscale units of dxvec
+    """
 
   @property
   @abc.abstractmethod
@@ -42,7 +48,8 @@ class AlignmentComparison(abc.ABC):
     """
     The images shifted by dxvec
     """
-    return shiftimg(self.unshifted, *units.nominal_values(self.result.dxvec/self.onepixel),use_gpu=self.use_gpu)
+    shifted = shiftimg(self.unshifted, *units.nominal_values(self.dxvec/units.onepixel(self.dxpscale)),use_gpu=self.use_gpu)
+    return shifted
   @property
   def scaleratio(self):
     """
@@ -91,7 +98,7 @@ class AlignmentComparison(abc.ABC):
       plt.savefig(saveas, **savekwargs)
       plt.close()
 
-class AlignmentOverlap(AlignmentComparison, Overlap):
+class AlignmentOverlap(AlignmentComparison, Overlap, MyDataClassUnsafeHash):
   """
   Overlap to be used for align.
 
@@ -102,32 +109,51 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     super().__post_init__(*args, **kwargs)
     if layer1 is None:
       try:
-        self.rectangles[0].layer
+        self.rectangles[0].alignmentlayer
       except AttributeError:
-        raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[0].layers}")
+        if len(self.rectangles[0].alignmentlayers)==1 :
+          layer1 = self.rectangles[0].alignmentlayers[0]
+        else :
+          raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[0].alignmentlayers}")
     if layer2 is None:
       try:
-        self.rectangles[1].layer
+        self.rectangles[1].alignmentlayer
       except AttributeError:
-        raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[1].layers}")
+        if len(self.rectangles[1].alignmentlayers)==1 :
+          layer2 = self.rectangles[1].alignmentlayers[0]
+        else :
+          raise ValueError(f"Have to tell the overlap which layer you're using for rectangle 1. choices: {self.rectangles[1].alignmentlayers}")
     self.__layers = layer1, layer2
 
   def __hash__(self):
     if not self.ismultilayer: return super().__hash__()
-    return hash((super().__hash__(), self.layers))
+    return hash((super().__hash__(), self.alignmentlayers))
   def __eq__(self, other):
-    return super().__eq__(other) and self.layers == other.layers
+    return super().__eq__(other) and self.alignmentlayers == other.alignmentlayers
 
   @property
-  def layers(self): return self.__layers
+  def alignmentlayers(self): return self.__layers
   @property
-  def layer1(self): return self.__layers[0]
+  def alignmentlayer1(self): return self.__layers[0]
   @property
-  def layer2(self): return self.__layers[1]
+  def alignmentlayer2(self): return self.__layers[1]
   @methodtools.lru_cache()
   @property
   def ismultilayer(self):
-    return any(_ is not None for _ in self.layers)
+    return any(_ is not None for _ in self.alignmentlayers)
+
+  @property
+  def alignmentlayer(self):
+    """
+    Layer number of the rectangles in the overlap
+    """
+    try:
+      layers = [r.alignmentlayer for r in self.rectangles]
+    except KeyError:
+      raise TypeError("Trying to get layer for overlap whose rectangles don't have a layer assigned")
+    if layers[0] != layers[1]:
+      raise ValueError(f"Rectangles have inconsistent layers: {layers}")
+    return layers[0]
 
   @property
   def images(self):
@@ -135,8 +161,8 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     The images for the two HPFs
     """
     images = [None, None]
-    with self.rectangles[0].using_image() as images[0], self.rectangles[1].using_image() as images[1]:
-      result = tuple(image[:, :] if layer is None else image[r.layers.index(layer), :, :] for r, image, layer in more_itertools.zip_equal(self.rectangles, images, self.layers))
+    with self.rectangles[0].using_alignment_image() as images[0], self.rectangles[1].using_alignment_image() as images[1]:
+      result = tuple(image[:, :] if layer is None else image[:, :, r.alignmentlayers.index(layer)] for r, image, layer in more_itertools.zip_equal(self.rectangles, images, self.alignmentlayers))
       for i in result: i.flags.writeable = False
       return result
 
@@ -243,7 +269,6 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
         kwargs1 = {k: getattr(self.result, k) for k in ("dxvec", "exit")}
       else:
         raise ValueError(f"Unknown value alreadyalignedstrategy={alreadyalignedstrategy!r}")
-
     try:
       if mseonly: raise Exception("Not aligning this overlap because you specified mseonly")
       if alreadyalignedstrategy != "shift_only":
@@ -282,6 +307,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     """
     mean squared flux of the first image
     """
+    if not self.cutimages[0].size: return np.nan
     return mse(self.cutimages[0].astype(float))
 
   @methodtools.lru_cache()
@@ -290,6 +316,7 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     """
     mean squared flux of the second image
     """
+    if not self.cutimages[1].size: return np.nan
     return mse(self.cutimages[1].astype(float))
 
   @methodtools.lru_cache()
@@ -320,12 +347,12 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     }
     if self.ismultilayer:
       result.update({
-        "layer1": self.layers[0],
-        "layer2": self.layers[1],
+        "layer1": self.alignmentlayers[0],
+        "layer2": self.alignmentlayers[1],
       })
     else:
       result.update({
-        "layer": self.layer,
+        "layer": self.alignmentlayer,
       })
     return result
 
@@ -333,17 +360,24 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
     """
     is this overlap between (p1, p2) the inverse of another overlap (p2, p1)?
     """
-    return (inverse.p1, inverse.p2) == (self.p2, self.p1) and inverse.layers == tuple(reversed(self.layers))
+    return (inverse.p1, inverse.p2) == (self.p2, self.p1) and inverse.alignmentlayers == tuple(reversed(self.alignmentlayers))
 
   def getinversealignment(self, inverse):
     """
     create an alignment result from the inverse alignment result
     """
     assert self.isinverseof(inverse)
+    try:
+      mse3 = inverse.result.mse3 / inverse.result.sc**2
+    except ZeroDivisionError:
+      if inverse.result.exit != 0:
+        mse3 = 0
+      else:
+        raise ZeroDivisionError(f"Problem with mse3 for successful alignment: {inverse.result}")
     self.result = self.alignmentresulttype(
       exit = inverse.result.exit,
       dxvec = -inverse.result.dxvec,
-      mse3 = inverse.result.mse3 / inverse.result.sc**2,
+      mse3 = mse3,
       **self.alignmentresultkwargs,
     )
     return self.result
@@ -383,6 +417,8 @@ class AlignmentOverlap(AlignmentComparison, Overlap):
 
   @property
   def dxvec(self): return self.result.dxvec
+  @property
+  def dxpscale(self): return self.pscale
 
 class AlignmentResultBase(DataClassWithPscale):
   """
@@ -423,6 +459,9 @@ class AlignmentResultBase(DataClassWithPscale):
     The relative shift, including its error
     """
     return np.array(units.correlated_distances(distances=[self.dx, self.dy], covariance=self.covariance))
+  @property
+  def dxpscale(self):
+    return self.pscale
 
   @property
   def isedge(self):
@@ -455,24 +494,22 @@ class AlignmentResult(AlignmentResultBase):
   covxx, covxy, covyy: the covariance matrix on (dx, dy)
   exception: the exception object if the exit code is 255
   """
-  pixelsormicrons = "pixels"
-
   n: int
   p1: int
   p2: int
   code: int
   layer: int
   exit: int
-  dx: distancefield(pixelsormicrons=pixelsormicrons)
-  dy: distancefield(pixelsormicrons=pixelsormicrons)
+  dx: units.Distance = distancefield(pixelsormicrons="pixels")
+  dy: units.Distance = distancefield(pixelsormicrons="pixels")
   sc: float
   mse1: float
   mse2: float
   mse3: float
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  exception: MetaDataAnnotation(typing.Optional[Exception], includeintable=False) = None
+  covxx: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  covxy: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  exception: typing.Optional[Exception] = MetaDataAnnotation(None, includeintable=False)
 
 class LayerAlignmentResult(AlignmentResultBase):
   """
@@ -493,8 +530,6 @@ class LayerAlignmentResult(AlignmentResultBase):
   covxx, covxy, covyy: the covariance matrix on (dx, dy)
   exception: the exception object if the exit code is 255
   """
-  pixelsormicrons = "pixels"
-
   n: int
   p1: int
   p2: int
@@ -502,13 +537,13 @@ class LayerAlignmentResult(AlignmentResultBase):
   layer1: int
   layer2: int
   exit: int
-  dx: distancefield(pixelsormicrons=pixelsormicrons)
-  dy: distancefield(pixelsormicrons=pixelsormicrons)
+  dx: units.Distance = distancefield(pixelsormicrons="pixels")
+  dy: units.Distance = distancefield(pixelsormicrons="pixels")
   sc: float
   mse1: float
   mse2: float
   mse3: float
-  covxx: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covyy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  covxy: distancefield(pixelsormicrons=pixelsormicrons, power=2)
-  exception: MetaDataAnnotation(typing.Optional[Exception], includeintable=False) = None
+  covxx: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  covyy: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  covxy: units.Distance = distancefield(pixelsormicrons="pixels", power=2)
+  exception: typing.Optional[Exception] = MetaDataAnnotation(None, includeintable=False)

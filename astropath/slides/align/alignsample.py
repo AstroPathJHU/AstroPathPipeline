@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 
-import argparse, contextlib, numpy as np, pathlib, traceback
+import contextlib, methodtools, numpy as np
 
-from ...baseclasses.sample import DbloadSample, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, SampleBase, WorkflowSample
-from ...utilities import units
-from ...utilities.tableio import readtable, writetable
+from ...shared.argumentparser import DbloadArgumentParser, SelectRectanglesArgumentParser
+from ...shared.sample import DbloadSample, ReadRectanglesComponentTiffSingleLayer, ReadRectanglesIm3SingleLayer, ReadRectanglesOverlapsBase, ReadRectanglesOverlapsFromXML, ReadRectanglesOverlapsDbloadIm3, ReadRectanglesOverlapsIm3Base, ReadRectanglesOverlapsIm3FromXML, ReadRectanglesOverlapsDbloadComponentTiff, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesOverlapsComponentTiffFromXML, TissueSampleBase, TMASampleBase, WorkflowSample
+from ...utilities.config import CONST as UNIV_CONST
+from ...utilities.gpu import get_GPU_thread
+from ...utilities.tableio import writetable
 from ..prepdb.prepdbsample import PrepDbSample
 from .imagestats import ImageStats
 from .overlap import AlignmentResult, AlignmentOverlap
-from .rectangle import AlignmentRectangle, AlignmentRectangleBase, AlignmentRectangleComponentTiff, AlignmentRectangleProvideImage
-from .stitch import ReadStitchResult, stitch
+from .rectangle import AlignmentRectangleBase, AlignmentRectangleComponentTiffSingleLayer, AlignmentRectangleIm3SingleLayer
+from .stitch import AffineEntry, ReadStitchResult, stitch
 
-class AlignSampleBase(SampleBase):
+class AlignSampleBase(ReadRectanglesOverlapsBase):
   """
   Main class for aligning the HPFs in a slide
   """
@@ -28,7 +30,9 @@ class AlignSampleBase(SampleBase):
 
     if forceGPU: useGPU = True
     self.gpufftdict = None
-    self.gputhread=self.__getGPUthread(interactive=interactive, force=forceGPU) if useGPU else None
+    self.gputhread=get_GPU_thread(interactive,self.logger) if useGPU else None
+    if self.gputhread is None and forceGPU :
+      raise RuntimeError(f'ERROR: GPU computation is not available, but "forceGPU" is {forceGPU}!')
     self.__images = None
 
   def initrectangles(self):
@@ -42,7 +46,7 @@ class AlignSampleBase(SampleBase):
   def inverseoverlapsdictkey(self, overlap):
     return overlap.p2, overlap.p1
 
-  def align(self, *, skip_corners=False, return_on_invalid_result=False, warpwarnings=False, **kwargs):
+  def align(self, **kwargs):
     """
     Do the alignment over all HPF overlaps in the sample.
     The individual alignment results can be accessed from the overlaps as
@@ -52,17 +56,11 @@ class AlignSampleBase(SampleBase):
     mean squared difference in pixel fluxes.  This can be used as a quality
     check on previous stages of image processing (such as warping and flatfielding)
 
-    skip_corners: only align edge overlaps (default: False)
-
-    These keyword arguments are used in the warping calibration.  For just alignment,
-    you should not touch them.  Note that a failed alignment is not necessarily bad,
+    Note that a failed alignment is not necessarily bad,
     it just means that there were not enough cells in the overlap area to obtain
     a result.  But you don't want to use that result to calibrate the warping model.
 
-    return_on_invalid_result: end the alignment loop early if an overlap alignment fails
-    warpwarnings: print warnings for failed alignments
-
-    Other keyword arguments are passed to overlap.align()
+    Keyword arguments are passed to overlap.align()
     """
     #load the images for all HPFs and keep them in memory as long as
     #the AlignSample is active
@@ -74,8 +72,6 @@ class AlignSampleBase(SampleBase):
     done = set()
 
     for i, overlap in enumerate(self.overlaps, start=1):
-      if skip_corners and overlap.tag in [1,3,7,9] :
-        continue
       self.logger.debug(f"aligning overlap {overlap.n} ({i}/{len(self.overlaps)})")
       result = None
       #check if the inverse overlap has already been aligned
@@ -96,19 +92,6 @@ class AlignSampleBase(SampleBase):
         w = (overlap.cutimages[0].shape[0]*overlap.cutimages[0].shape[1])
         weighted_sum_mse+=w*result.mse[2]
         sum_weights+=w
-      else :
-        if result is None:
-          reason = "is None"
-        else:
-          reason = f"has exit status {result.exit}"
-        if return_on_invalid_result :
-          if warpwarnings: self.logger.warningglobal(f'Overlap number {i} alignment result {reason}: returning 1e10!!')
-          return 1e10
-        else :
-          if warpwarnings: self.logger.warningglobal(f'Overlap number {i} alignment result {reason}: adding 1e10 to sum_mse!!')
-          w = (overlap.cutimages[0].shape[0]*overlap.cutimages[0].shape[1])
-          weighted_sum_mse+=w*1e10
-          sum_weights+=w
 
     self.logger.info("finished align loop for "+self.SlideID)
     return weighted_sum_mse/sum_weights
@@ -129,7 +112,7 @@ class AlignSampleBase(SampleBase):
         #load all the actual images (calculated by dividing by the mean
         #of the raw images), while the raw images are still in memory
         for r in self.rectangles:
-          self.__images.enter_context(r.using_image())
+          self.__images.enter_context(r.using_alignment_image())
 
     #create the dictionary of compiled GPU FFT objects if possible
     if self.gputhread is not None :
@@ -144,84 +127,6 @@ class AlignSampleBase(SampleBase):
           new_fft = FFT(gpu_im)
           new_fftc = new_fft.compile(self.gputhread)
           self.gpufftdict[cutimages_shapes[0]] = new_fftc
-
-  def updateRectangleImages(self,imgs,usewarpedimages=True,correct_with_meanimage=False,recalculate_meanimage=False) :
-    """
-    Updates the "image" variable in each rectangle based on a dictionary of image layers
-    imgs            = list of WarpImages to use for update
-    usewarpedimages = if True, warped rather than raw images will be read
-    """
-    #close the images context manager to free memory
-    if self.__images is not None:
-      self.__images.close()
-      self.__images = None
-
-    for img in imgs:
-      if usewarpedimages :
-        thisupdateimg=img.warped_image
-      else :
-        thisupdateimg=img.raw_image
-
-      if img.rectangle_list_index!=-1 : #if the image comes with its index in the list of rectangles it can be directly updated
-        i = img.rectangle_list_index
-      else : #otherwise all the rectangles have to be searched
-        i = [i for (i, r) in enumerate(self.rectangles) if img.rawfile_key==r.file.rstrip('.im3')]
-        assert len(i)==1
-        i = i[0]
-
-      r = self.rectangles[i]
-      mean_image = None
-      if not recalculate_meanimage:
-        mean_image = r.meanimage
-      newr = AlignmentRectangleProvideImage(rectangle=r, layer=r.layer, mean_image=mean_image, use_mean_image=correct_with_meanimage, image=thisupdateimg, readingfromfile=False)
-      self.rectangles[i] = newr
-
-    if correct_with_meanimage :
-      for r in self.rectangles:
-        r.setrectanglelist(self.rectangles)
-
-    for o in self.overlaps:
-      o.updaterectangles(self.rectangles)
-
-  def getOverlapComparisonImagesDict(self) :
-    """
-    Write out a figure for each overlap showing comparisons between the original and shifted images
-    """
-    overlap_shift_comparisons = {}
-    for o in self.overlaps :
-      overlap_shift_comparisons[o.getShiftComparisonDetailTuple()]=o.getShiftComparisonImages()
-    return overlap_shift_comparisons
-
-  def __getGPUthread(self, interactive, force) :
-    """
-    Tries to create and return a Reikna Thread object to use for running some computations on the GPU
-    interactive : if True (and some GPU is available), user will be given the option to choose a device 
-    """
-    #first try to import Reikna
-    try :
-      import reikna as rk 
-    except ModuleNotFoundError :
-      if force: raise
-      self.logger.warningglobal("Reikna isn't installed. Please install with 'pip install reikna' to use GPU devices.")
-      return None
-    #create an API
-    #try :
-    #    api = rk.cluda.cuda_api()
-    #except Exception :
-    #  logger.info('CUDA-based GPU API not available, will try to get one based on OpenCL instead.')
-    #  try :
-    #    api = rk.cluda.ocl_api()
-    #  except Exception :
-    #    logger.warningglobal('WARNING: Failed to create an OpenCL API, no GPU computation will be available!!')
-    #    return None
-    try :
-      api = rk.cluda.ocl_api()
-      #return a thread from the API
-      return api.Thread.create(interactive=interactive)
-    except Exception :
-      if force: raise
-      self.logger.warningglobal('Failed to create an OpenCL API, no GPU computation will be available!!')
-      return None
 
   rectangletype = AlignmentRectangleBase
   overlaptype = AlignmentOverlap
@@ -239,7 +144,7 @@ class AlignSampleBase(SampleBase):
     return result
 
   def dostitching(self, **kwargs):
-    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, logger=self.logger, **kwargs)
+    return stitch(overlaps=self.overlaps, rectangles=self.rectangles, origin=self.position, margin=self.margin, logger=self.logger, **kwargs)
 
   def applystitchresult(self, result):
     result.applytooverlaps()
@@ -288,9 +193,19 @@ class AlignSampleBase(SampleBase):
   def stitchresult(self, stitchresult):
     self.__stitchresult = stitchresult
 
-class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
+  def run(self, *, doalignment=True, dostitching=True):
+    if doalignment:
+      self.getDAPI()
+      self.align()
+    else:
+      self.readalignments()
+
+    if dostitching:
+      self.stitch()
+
+class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample, DbloadArgumentParser, SelectRectanglesArgumentParser):
   """
-  An alignment set that runs from the dbload folder and can write results
+  An align sample that runs from the dbload folder and can write results
   to the dbload folder
   """
   @property
@@ -303,29 +218,14 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     if filename is None: filename = self.alignmentsfilename
     writetable(filename, [o.result for o in self.overlaps if hasattr(o, "result")], retry=self.interactive, logger=self.logger)
 
-  def readalignments(self, *, filename=None, interactive=True):
+  def readalignments(self, *, filename=None):
     """
     Read the alignment results from align.csv
     """
-    interactive = interactive and self.interactive and filename is None
     if filename is None: filename = self.alignmentsfilename
     self.logger.info("reading alignments from "+str(filename))
 
-    try:
-      alignmentresults = {o.n: o for o in readtable(filename, self.alignmentresulttype, extrakwargs={"pscale": self.pscale})}
-    except Exception:
-      if interactive:
-        print()
-        traceback.print_exc()
-        print()
-        answer = ""
-        while answer.lower() not in ("y", "n"):
-          answer = input(f"readalignments() gave an exception for {self.SlideID}.  Do the alignment?  [Y/N] ")
-        if answer.lower() == "y":
-          if not hasattr(self, "images"): self.getDAPI()
-          self.align()
-          return self.readalignments(interactive=False)
-      raise
+    alignmentresults = {o.n: o for o in self.readtable(filename, self.alignmentresulttype)}
 
     for o in self.overlaps:
       try:
@@ -340,7 +240,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
     if writeimstat:
       self.imagestats = []
       for rectangle in self.rectangles:
-        with rectangle.using_image() as image:
+        with rectangle.using_alignment_image() as image:
           self.imagestats.append(
             ImageStats(
               n=rectangle.n,
@@ -363,6 +263,7 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
       self.csv("affine"),
       self.csv("fields"),
       self.csv("fieldoverlaps"),
+      self.csv("fieldGeometry"),
     )
 
   def writestitchresult(self, result, *, filenames=None, check=False):
@@ -380,34 +281,21 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
       logger=self.logger,
     )
 
-  def readstitchresult(self, *, filenames=None, saveresult=True, interactive=True):
+  def readstitchresult(self, *, filenames=None, saveresult=True):
     """
     Read the stitch results from the stitched csvs
     """
     self.logger.info("reading stitch results")
-    interactive = interactive and self.interactive and saveresult and filenames is None
     if filenames is None: filenames = self.stitchfilenames
 
-    try:
-      result = ReadStitchResult(
-        *filenames,
-        overlaps=self.overlaps,
-        rectangles=self.rectangles,
-        origin=self.position,
-        logger=self.logger,
-      )
-    except Exception:
-      if interactive:
-        print()
-        traceback.print_exc()
-        print()
-        answer = ""
-        while answer.lower() not in ("y", "n"):
-          answer = input(f"readstitchresult() gave an exception for {self.SlideID}.  Do the stitching?  [Y/N] ")
-        if answer.lower() == "y":
-          self.stitch()
-          return self.readstitchresult(interactive=False)
-      raise
+    result = ReadStitchResult(
+      *filenames,
+      overlaps=self.overlaps,
+      rectangles=self.rectangles,
+      origin=self.position,
+      margin=self.margin,
+      logger=self.logger,
+    )
 
     if saveresult:
       self.applystitchresult(result)
@@ -431,58 +319,82 @@ class AlignSampleDbloadBase(AlignSampleBase, DbloadSample, WorkflowSample):
 
   @classmethod
   def getoutputfiles(cls, SlideID, *, dbloadroot, **otherrootkwargs):
-    dbload = dbloadroot/SlideID/"dbload"
+    dbload = dbloadroot/SlideID/UNIV_CONST.DBLOAD_DIR_NAME
     return [
       dbload/f"{SlideID}_align.csv",
       dbload/f"{SlideID}_affine.csv",
       dbload/f"{SlideID}_fields.csv",
       dbload/f"{SlideID}_fieldoverlaps.csv",
+      dbload/f"{SlideID}_fieldGeometry.csv",
     ]
 
-  @property
-  def inputfiles(self):
-    return [
+  def inputfiles(self, **kwargs):
+    return super().inputfiles(**kwargs) + [
       self.csv("constants"),
       self.csv("overlap"),
       self.csv("rect"),
-      *(r.imagefile for r in self.rectangles),
+      *(r.im3file for r in self.rectangles),
     ]
 
   @classmethod
-  def workflowdependencies(cls):
-    return [PrepDbSample] + super().workflowdependencies()
+  def workflowdependencyclasses(cls, **kwargs):
+    return [PrepDbSample] + super().workflowdependencyclasses(**kwargs)
+
+  @property
+  def workflowkwargs(self) :
+    return {
+      **super().workflowkwargs,
+      "skipannotations": True,  #don't need prepdb annotations output
+    }
+
+class AlignSampleTissueBase(AlignSampleBase, TissueSampleBase): pass
+class AlignSampleTMABase(AlignSampleBase, TMASampleBase):
+  def run(self, *args, **kwargs):
+    for rect in self.rectangles:
+      if "_Core[" in rect.file.name:
+        self.logger.info("sample was imaged by TMA core, not by HPF, no need to align")
+        return
+    super().run(*args, **kwargs)
 
 class AlignSampleFromXMLBase(AlignSampleBase, ReadRectanglesOverlapsFromXML):
   """
-  An alignment set that does not rely on the dbload folder and cannot write the output.
-  It is a little slower to initialize than an alignment set that does have dbload.
+  An align sample that does not rely on the dbload folder and cannot write the output.
+  It is a little slower to initialize than an align sample that does have dbload.
   """
-  def __init__(self, *args, nclip, position=None, **kwargs):
+  def __init__(self, *args, nclip, margin=None, position=None, **kwargs):
     self.__nclip = nclip
     super().__init__(*args, **kwargs)
     if position is None: position = np.array([0, 0])
     self.__position = position
+    if margin is None: margin = 1024 * self.onepixel
+    self.__margin = margin
   @property
   def nclip(self): return self.__nclip*self.onepixel
   @property
   def position(self): return self.__position
+  @property
+  def margin(self): return self.__margin
 
-class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base):
+class AlignSampleIm3Base(AlignSampleBase, ReadRectanglesOverlapsIm3Base, ReadRectanglesIm3SingleLayer):
   """
-  An alignment set that uses im3 images
+  An align sample that uses im3 images
   """
-  rectangletype = AlignmentRectangle
-  def __init__(self, *args, filetype="flatWarp", **kwargs):
-    super().__init__(*args, filetype=filetype, **kwargs)
+  rectangletype = AlignmentRectangleIm3SingleLayer
+  @classmethod
+  def defaultim3filetype(cls): return "flatWarp"
+  def __init__(self, *args, layer=None, **kwargs):
+    super().__init__(*args, layerim3=layer, **kwargs)
 
-class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsComponentTiffBase):
+class AlignSampleComponentTiffBase(AlignSampleBase, ReadRectanglesOverlapsComponentTiffBase, ReadRectanglesComponentTiffSingleLayer):
   """
-  An alignment set that uses component tiffs
+  An align sample that uses component tiffs
   """
-  rectangletype = AlignmentRectangleComponentTiff
+  rectangletype = AlignmentRectangleComponentTiffSingleLayer
+  def __init__(self, *args, layer=None, **kwargs):
+    super().__init__(*args, layercomponenttiff=layer, **kwargs)
 
-class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase):
-  #An alignment set that runs on im3 images and can write results to the dbload folder.
+class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase, AlignSampleTissueBase):
+  #An align sample that runs on im3 images and can write results to the dbload folder.
   #This is the primary AlignSample class that is used for calibration.
   """
   The alignment step of the pipeline finds the relative shift between adjacent HPFs.
@@ -490,34 +402,55 @@ class AlignSample(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSamp
   see README.md and README.pdf in this folder.
   """
 
-class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase):
+class AlignSampleTMA(AlignSampleIm3Base, ReadRectanglesOverlapsDbloadIm3, AlignSampleDbloadBase, AlignSampleTMABase):
   """
-  An alignment set that runs on im3 images and does not rely on the dbload folder.
+  Like AlignSample, but for a TMA control sample instead of a tissue sample
+  """
+
+class AlignSampleFromXML(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTissueBase):
+  """
+  An align sample that runs on im3 images and does not rely on the dbload folder.
   This class is used for calibrating the warping.
   """
 
-class AlignSampleComponentTiff(AlignSampleComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignSampleDbloadBase):
+class AlignSampleComponentTiff(AlignSampleComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignSampleDbloadBase, AlignSampleTissueBase):
   """
-  An alignment set that runs on im3 images and can write results to the dbload folder.
+  An align sample that runs on component tiff images and can write results to the dbload folder.
   This class is not currently used but is here for completeness.
   """
 
-class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, ReadRectanglesOverlapsComponentTiffFromXML):
+class AlignSampleComponentTiffTMA(AlignSampleComponentTiffBase, ReadRectanglesOverlapsDbloadComponentTiff, AlignSampleDbloadBase, AlignSampleTMABase):
   """
-  An alignment set that runs on im3 images and does not rely on the dbload folder.
+  An align sample that runs for control TMA samples on component tiff images and can write results to the dbload folder.
+  Used to align control TMAs imaged as regular HPFs (not mosaics) that are already unmixed
+  """
+
+class AlignSampleComponentTiffFromXML(AlignSampleComponentTiffBase, AlignSampleFromXMLBase, AlignSampleTissueBase, ReadRectanglesOverlapsComponentTiffFromXML):
+  """
+  An align sample that runs on component tiff images and does not rely on the dbload folder.
   This class is used for identifying overexposed HPFs.
   """
 
+class AlignSampleFromXMLTMA(AlignSampleIm3Base, ReadRectanglesOverlapsIm3FromXML, AlignSampleFromXMLBase, AlignSampleTMABase):
+  """
+  Like AlignSampleFromXML, but for a control TMA sample instead of a tissue sample
+  """
+
+class ReadAffineShiftSample(DbloadSample):
+  """
+  Utility class for reading the shift from the affine csv.
+  """
+  @methodtools.lru_cache()
+  @property
+  def affineshift(self):
+    affines = self.readcsv("affine", AffineEntry)
+    dct = {affine.description: affine.value for affine in affines}
+    return np.array([dct["shiftx"], dct["shifty"]])
+
 def main(args=None):
-  p = argparse.ArgumentParser()
-  p.add_argument("root", type=pathlib.Path)
-  p.add_argument("root2", type=pathlib.Path)
-  p.add_argument("SlideID")
-  args = p.parse_args(args=args)
-  with units.setup_context("fast"):
-    A = AlignSample(root=args.root, root2=args.root2, samp=args.SlideID)
-    A.align()
-    A.stitch()
+  AlignSample.runfromargumentparser(args)
+def tma(args=None):
+  AlignSampleTMA.runfromargumentparser(args)
 
 if __name__ == "__main__":
   main()

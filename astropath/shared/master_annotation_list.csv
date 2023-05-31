@@ -1,0 +1,10 @@
+name,layer,color,synonyms,isfromxml
+good tissue,1,FFFF00,,1
+tumor,2,00FF00,tumour,1
+lymph node,3,FF0000,,1
+regression,4,00FFFF,regression bed,1
+epithelial islands,5,FF00FF,,1
+benign,6,0000FF,,1
+outline,7,FFFFFF,,0
+good tissue x,8,FFFF00,,1
+tumor x,9,00FF00,tumour x,1

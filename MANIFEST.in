@@ -1,0 +1,1 @@
+recursive-include /astropath/slides/segmentation/nnunet_models/nnUNet/2d/Task500_Pathology_DAPI/nnUNetTrainerV2_nnUNetPlansv2.1 *

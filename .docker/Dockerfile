@@ -1,33 +1,76 @@
 #comes with python + git and some other utilities
-FROM circleci/python:3.6.12 AS base
+FROM ubuntu:20.04 AS base
+
+#https://stackoverflow.com/a/25908200/5228524
+#https://github.com/CircleCI-Public/circleci-dockerfiles/blob/eda702fe560b258138d3a895c5d397f4a2cdfcd0/python/images/3.6.12/Dockerfile#L83
+#https://dev.to/emmanuelnk/using-sudo-without-password-prompt-as-non-root-docker-user-52bg
+RUN apt-get update && \
+      apt-get -y install sudo adduser
+
+RUN adduser --disabled-password --gecos '' astropath && \
+    adduser astropath sudo && \
+    echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Install PowerShell From microsoft doc: https://docs.microsoft.com/en-us/powershell/scripting/install/install-ubuntu?view=powershell-7.2
+Run sudo apt update
+RUN sudo apt-get install -y wget apt-transport-https software-properties-common
+RUN wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+# Register the Microsoft repository GPG keys
+RUN sudo dpkg -i packages-microsoft-prod.deb
+# Update the list of packages after we added packages.microsoft.com
+RUN sudo apt-get update
+# Install PowerShell
+RUN sudo apt-get install -y powershell
+
+# mono runtime installation for Ubuntu 20.04 from here:
+# https://linuxize.com/post/how-to-install-mono-on-ubuntu-20-04/
+RUN sudo apt-get update && \
+    sudo apt-get upgrade -y && \
+    # Install pre-requisite packages.
+    sudo apt-get install -y --no-install-recommends dirmngr gnupg apt-transport-https ca-certificates software-properties-common && \
+    # Import the repository’s GPG key
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF && \
+    # Add the Mono repository to the system sources’ list
+    sudo apt-add-repository 'deb https://download.mono-project.com/repo/ubuntu stable-focal main' && \
+    # Install Mono
+    sudo apt-get install -y --no-install-recommends mono-runtime && \
+    # Remove dependencies
+    sudo apt-get purge -y dirmngr gnupg apt-transport-https software-properties-common && \
+    sudo apt-get autoremove -y
 
 #libvips stuff is from https://github.com/TailorBrands/docker-libvips/blob/f64952af6871fb963934b7454f7edf5b6738f4b8/8.6.1/Dockerfile
 #gdal stuff is from https://github.com/OSGeo/gdal/blob/f6689b653338502de4150f491864553894c37410/gdal/docker/ubuntu-full/Dockerfile
 
 #make the home directory editable
-RUN sudo mkdir -p /home/circleci/.cache/pip /home/circleci/.cache/matplotlib
-RUN sudo chmod -R a+w /home/circleci
-
-#apt-get stuff
-RUN sudo apt-get install equivs
-
-ARG JAVA_VERSION=11
+RUN sudo mkdir -p /home/astropath/.cache/pip /home/astropath/.cache/matplotlib
+RUN sudo chmod -R a+w /home/astropath
 
 RUN sudo apt-get update && \
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
   #for gdal
   ant \
   #for vips
+  automake \
   bison \
+  build-essential \
+  ccache \
   cdbs \
+  cmake \
+  curl \
   debhelper \
   #for gdal
   default-libmysqlclient-dev \
   #for vips
   dh-autoreconf \
+  #for build
+  equivs \
+  #for vips
   fftw3-dev \
   flex \
   gettext \
+  #for build
+  git \
+  #for vips
   gtk-doc-tools \
   #for gdal
   libarmadillo-dev \
@@ -97,6 +140,7 @@ RUN sudo apt-get update && \
   #for gdal
   libpoppler-private-dev \
   libpq-dev \
+  libpython3-dev \
   #for vips
   librsvg2-dev \
   #for gdal
@@ -115,52 +159,41 @@ RUN sudo apt-get update && \
   libxml2-dev \
   #for gdal
   libzstd-dev \
-  openjdk-"$JAVA_VERSION"-jdk \
   #for vips
   pkg-config \
+  #for astropath
+  python-is-python3 \
+  python3-pip \
   #for gdal
+  rsync \
   sqlite3 \
   swig \
   unixodbc-dev \
+  unzip \
+  wget \
+  zip \
   #for vips
   zlib1g-dev
 
-FROM base as texlive
+#for gdal
+ARG JAVA_VERSION=11
+RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-"$JAVA_VERSION"-jdk
 
-#install texlive
-ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
-ADD texlive-profile.txt /tmp/texlive-profile.txt
-ADD debian-equivs.txt /tmp/debian-equivs.txt
-
-RUN cd /tmp && \
-    wget http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz && \
-    mkdir /tmp/install-tl && \
-    tar -xzf /tmp/install-tl-unx.tar.gz -C /tmp/install-tl --strip-components=1 && \
-    sudo /tmp/install-tl/install-tl --profile=/tmp/texlive-profile.txt --repository=http://mirror.its.dal.ca/ctan/systems/texlive/tlnet
-
-RUN cd /tmp && \
-    sudo equivs-control texlive-local && \
-    sudo equivs-build debian-equivs.txt && \
-    sudo dpkg -i texlive-local*.deb && \
-    sudo apt-get install -f && \
-    sudo apt-get autoclean && \
+RUN sudo apt-get autoclean && \
     sudo apt-get autoremove && \
     sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 from base as libvips
 
-RUN sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    automake build-essential curl
-
 ENV LIBVIPS_VERSION_MAJOR 8
-ENV LIBVIPS_VERSION_MINOR 6
+ENV LIBVIPS_VERSION_MINOR 12
 ENV LIBVIPS_VERSION_PATCH 1
 ENV LIBVIPS_VERSION $LIBVIPS_VERSION_MAJOR.$LIBVIPS_VERSION_MINOR.$LIBVIPS_VERSION_PATCH
 
 RUN \
   # Build libvips
   cd /tmp && \
-  curl -L -O https://github.com/jcupitt/libvips/releases/download/v$LIBVIPS_VERSION/vips-$LIBVIPS_VERSION.tar.gz && \
+  curl -L -O https://github.com/libvips/libvips/releases/download/v$LIBVIPS_VERSION/vips-$LIBVIPS_VERSION.tar.gz && \
   tar zxvf vips-$LIBVIPS_VERSION.tar.gz
 RUN \
   cd /tmp/vips-$LIBVIPS_VERSION && \
@@ -175,33 +208,7 @@ RUN \
   cd /tmp/vips-$LIBVIPS_VERSION && \
   sudo ldconfig
 
-#if you add more latex packages, it will build faster
-#if you add them all the way at the bottom, because it can use
-#the cache from previous builds
-
-from texlive as latex_packages
-
-#add latex packages
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr update --self
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install caption
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install cleveref
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install cm-super
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install dvipng
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install hyperref
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install makecell
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install multirow
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install scheme-basic
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install siunitx
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install type1cm
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install todonotes
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install enumitem
-RUN sudo /usr/local/texlive/bin/x86_64-linux/tlmgr install lineno
-
 from base as gdal
-
-RUN sudo apt-get update && \
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    cmake
 
 # Build likbkea
 ARG KEA_VERSION=1.4.13
@@ -316,24 +323,22 @@ RUN if echo "$WITH_FILEGDB" | grep -Eiq "^(y(es)?|1|true)$"  ; then ( \
   && sudo rm -rf FileGDB_API_1_5_1-64gcc51.tar.gz \
   ) ; fi
 
-RUN sudo apt-get update -y \
-    && sudo apt-get install -y --fix-missing --no-install-recommends rsync ccache \
-    && sudo rm -rf /var/lib/apt/lists/*
 ARG RSYNC_REMOTE
 
 ARG WITH_DEBUG_SYMBOLS=no
 
 # Build PROJ
-ARG PROJ_VERSION=7.2.1
+ARG PROJ_VERSION=8.0.1
 ARG PROJ_INSTALL_PREFIX=/usr/local
 COPY ./bh-proj.sh /buildscripts/bh-proj.sh
 RUN sudo -E bash /buildscripts/bh-proj.sh
 
 # Build GDAL
 ARG JAVA_VERSION=11
-ARG GDAL_VERSION=v3.2.1
+ARG GDAL_VERSION=v3.3.0
 ARG GDAL_RELEASE_DATE
 ARG GDAL_BUILD_IS_RELEASE
+ENV LD_LIBRARY_PATH=/build/usr/local/lib/
 COPY ./bh-gdal.sh /buildscripts/bh-gdal.sh
 RUN sudo -E bash /buildscripts/bh-gdal.sh
 
@@ -352,16 +357,33 @@ COPY --from=gdal  /build_gdal_python/usr/ /usr/
 COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
-ENV ASTROPATH_DEPENDENCY_COMMIT 32969ca4b135b5062da8d053d3578ef12b90689f
-ARG GITHUB_TOKEN
-
 #add python packages
-RUN sudo pip install --upgrade pip
+ARG GITHUB_TOKEN
+ARG ASTROPATH_DEPENDENCY_COMMIT=50aa7189e1999d406588acc1ae565233eafa8779
+
+RUN sudo pip3 install --upgrade pip 'setuptools<66' packaging
+
 RUN \
   sudo git config --global url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf https://github && \
-  sudo pip install "astropath-calibration[all] @ git+https://github.com/AstropathJHU/microscopealignment@${ASTROPATH_DEPENDENCY_COMMIT}" && \
+  sudo git clone https://github.com/AstropathJHU/AstroPathPipelinePrivate && \
+  cd AstroPathPipelinePrivate && \
+  sudo git fetch && \
+  sudo git checkout "${ASTROPATH_DEPENDENCY_COMMIT}" && \
   sudo git config --global --unset url."https://astropathjhujenkins:${GITHUB_TOKEN}@github".insteadOf
-RUN sudo pip uninstall -y astropath-calibration
+
+ARG ASTROPATH_INSTALL_EXTRAS=true
+
+RUN sudo pip3 install --use-pep517 pyvips
+RUN sudo pip3 install git+https://github.com/MIC-DKFZ/nnUNet.git@refs/pull/1209/head
+RUN \
+  if $ASTROPATH_INSTALL_EXTRAS; then \
+    EXTRAS="[all]"; \
+  else \
+    EXTRAS=; \
+  fi && \
+  sudo pip3 install "./AstroPathPipelinePrivate$EXTRAS"
+RUN sudo pip3 uninstall -y astropath
+RUN chown -R root:root /usr/local/lib/python3.8/
 
 from base as final
 
@@ -373,8 +395,7 @@ COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/share/proj/ ${PROJ_INSTALL_PREFIX
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/include/ ${PROJ_INSTALL_PREFIX}/include/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/bin/ ${PROJ_INSTALL_PREFIX}/bin/
 COPY --from=gdal  /build${PROJ_INSTALL_PREFIX}/lib/ ${PROJ_INSTALL_PREFIX}/lib/
-copy --from=python_packages /usr/local/lib/python3.6/site-packages/ /usr/local/lib/python3.6/site-packages/
-copy --from=latex_packages /usr/local/texlive/ /usr/local/texlive/
+copy --from=python_packages /usr/local/lib/python3.8/dist-packages/ /usr/local/lib/python3.8/dist-packages/
 RUN sudo ldconfig
 #RUN sudo projsync --system-directory --all
 
@@ -387,7 +408,10 @@ COPY --from=gdal  /build_gdal_version_changing/usr/ /usr/
 RUN sudo ldconfig
 
 ENV CLASSPATH="/usr/share/java/jackcess-1.1.14.jar:/usr/share/java/commons-logging-1.1.1.jar:/usr/share/java/commons-lang-2.4.jar"
-ENV PATH=/usr/local/texlive/bin/x86_64-linux:${PATH}
+ENV PATH=/home/astropath/.local/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/lib/:${LD_LIBRARY_PATH}
+
+USER astropath
+LABEL astropath=true
 
 CMD ["/bin/bash"]
