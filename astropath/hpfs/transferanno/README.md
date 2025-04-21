@@ -41,7 +41,7 @@ To improve analysis capability in the database slides should be hand annotated b
    - Polygons can also be copied from one layer to annotation
 4. Save the annotations (*crtl + s*)
 5. View settings can be adjusted to highlight specific fluorescence channels to assist in the annotation process
-6. In the case of annotations being reotated in HALO, see [6.3.3. Annotations Rotated (Protocols)](https://github.com/TMEJHU/Protocols/blob/main/OtherInformation/docs/HALO1FrequentIssuesandFixes.md#633-annotations-rotated "Title")
+6. **In the case of annotations being rotated in HALO**, see [6.3.3. Annotations Rotated (Protocols)](https://github.com/TMEJHU/Protocols/blob/main/OtherInformation/docs/HALO1FrequentIssuesandFixes.md#633-annotations-rotated "Title")
 
 ### 5.11.2.3. Annotation Layer Data Dictionary
 
